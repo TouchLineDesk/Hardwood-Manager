@@ -65,6 +65,22 @@ public sealed class League
     public List<Player> Retired { get; } = new();
     public List<SeasonSummary> History { get; } = new();
     public int NextPlayerId { get; set; } = 1;
+    /// <summary>Every future draft pick in the world (both rounds, several years ahead).</summary>
+    public List<DraftPickAsset> Picks { get; } = new();
+    public int NextPickId { get; set; } = 1;
+    public const int PickYearsAhead = 7;
+
+    public IEnumerable<DraftPickAsset> PicksOwnedBy(int teamId) => Picks.Where(p => p.OwnerTeamId == teamId).OrderBy(p => p.Year).ThenBy(p => p.Round);
+
+    /// <summary>Make sure each team has own picks for every year through Season + PickYearsAhead.</summary>
+    public void EnsurePicks()
+    {
+        for (int year = Season + 1; year <= Season + PickYearsAhead; year++)
+        foreach (var t in Teams)
+        for (int round = 1; round <= 2; round++)
+            if (!Picks.Any(p => p.Year == year && p.Round == round && p.OriginalTeamId == t.Id))
+                Picks.Add(new DraftPickAsset { Id = NextPickId++, Year = year, Round = round, OriginalTeamId = t.Id, OwnerTeamId = t.Id });
+    }
 
     public Team TeamById(int id) => Teams.First(t => t.Id == id);
     public IEnumerable<Player> AllActivePlayers => Teams.SelectMany(t => t.Roster);

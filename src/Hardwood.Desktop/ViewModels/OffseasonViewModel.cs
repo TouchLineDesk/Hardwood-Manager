@@ -40,7 +40,7 @@ public sealed class PickRow
 {
     public required DraftPick Pick { get; init; }
     public string Where => $"R{Pick.Round} #{Pick.Pick}";
-    public string Team => Pick.Team.Abbreviation;
+    public string Team => Pick.Team.Abbreviation + (Pick.OriginalTeam != null && Pick.OriginalTeam != Pick.Team ? $" (via {Pick.OriginalTeam.Abbreviation})" : "");
     public string Player => Pick.Player.Name;
     public string Pos => Pick.Player.PrimaryPosition.ToString();
     public string Ability => $"{Pick.Player.CurrentAbility}/{Pick.Player.PotentialAbility}";
@@ -117,7 +117,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
             case OffseasonPhase.Draft:
                 OnTheClock = o.OnTheClock == team;
                 Headline = $"Draft {o.Season + 1} · round {o.CurrentRound}, pick {o.NextPickIndex + 1}";
-                ClockText = OnTheClock ? "You are on the clock." : o.DraftComplete ? "Draft complete." : $"{o.OnTheClock?.FullName} is on the clock.";
+                int ourPicks = o.PickOwners.Skip(o.NextPickIndex).Count(t => t == team);
+                ClockText = OnTheClock ? "You are on the clock." : o.DraftComplete ? "Draft complete." : $"{o.OnTheClock?.FullName} is on the clock. You have {ourPicks} pick{(ourPicks == 1 ? "" : "s")} left.";
                 Instructions = OnTheClock ? "Select a prospect and make your pick. First-round picks sign rookie-scale deals; second-rounders are unguaranteed and go to the free-agent pool."
                                           : "Continue to run the draft to your next pick.";
                 int rank = 1;

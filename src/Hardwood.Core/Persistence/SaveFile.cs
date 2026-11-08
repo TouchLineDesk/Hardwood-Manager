@@ -11,8 +11,10 @@ namespace Hardwood.Core.Persistence;
 /// </summary>
 public sealed class SaveFile
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
     private readonly string _path;
+    /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
+    public List<Player> LoadedProspects { get; } = new();
 
     public SaveFile(string path) => _path = path;
 
@@ -30,27 +32,31 @@ public sealed class SaveFile
     }
 
     // ------------------------------------------------------------------------------------------
-    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null)
+    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null, IEnumerable<Player>? prospects = null)
     {
         using var conn = Open();
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
 
-        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury;");
+        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury; DELETE FROM draft_pick;");
 
         Exec(conn, "INSERT INTO meta(key, value) VALUES('schema_version', $v), ('saved_at', $t)",
             ("$v", SchemaVersion.ToString()), ("$t", DateTime.UtcNow.ToString("O")));
 
         Exec(conn, """
             INSERT INTO league(id, name, season, rules_name, periods, minutes_per_period, shot_clock, fouls_out, bonus_threshold, three_distance,
-                               hard_cap, min_salary, roster_max, roster_min, rookie_scale_first, next_player_id)
-            VALUES(1, $name, $season, $rn, $per, $mpp, $sc, $fo, $bt, $td, $cap, $min, $rmax, $rmin, $rs, $npid)
+                               hard_cap, min_salary, roster_max, roster_min, rookie_scale_first, next_player_id, next_pick_id)
+            VALUES(1, $name, $season, $rn, $per, $mpp, $sc, $fo, $bt, $td, $cap, $min, $rmax, $rmin, $rs, $npid, $npk)
             """,
             ("$name", league.Name), ("$season", league.Season), ("$rn", league.Rules.Name), ("$per", league.Rules.Periods),
             ("$mpp", league.Rules.MinutesPerPeriod), ("$sc", league.Rules.ShotClockSeconds), ("$fo", league.Rules.FoulsToFoulOut),
             ("$bt", league.Rules.TeamFoulBonusThreshold), ("$td", league.Rules.ThreePointDistanceM),
             ("$cap", league.Finance.HardCap), ("$min", league.Finance.MinSalary), ("$rmax", league.Finance.RosterMax),
-            ("$rmin", league.Finance.RosterMin), ("$rs", league.Finance.RookieScaleFirstPick), ("$npid", league.NextPlayerId));
+            ("$rmin", league.Finance.RosterMin), ("$rs", league.Finance.RookieScaleFirstPick), ("$npid", league.NextPlayerId), ("$npk", league.NextPickId));
+
+        foreach (var pk in league.Picks)
+            Exec(conn, "INSERT INTO draft_pick(id, year, round, original_team_id, owner_team_id, protected_top) VALUES($id, $y, $r, $o, $w, $p)",
+                ("$id", pk.Id), ("$y", pk.Year), ("$r", pk.Round), ("$o", pk.OriginalTeamId), ("$w", pk.OwnerTeamId), ("$p", pk.ProtectedTop));
 
         foreach (var t in league.Teams)
         {
@@ -66,6 +72,7 @@ public sealed class SaveFile
         foreach (var t in league.Teams) foreach (var p in t.Roster) InsertPlayer(conn, p, t.Id, "active");
         foreach (var p in league.FreeAgents) InsertPlayer(conn, p, null, "free_agent");
         foreach (var p in league.Retired) InsertPlayer(conn, p, null, "retired");
+        if (prospects != null) foreach (var p in prospects) InsertPlayer(conn, p, null, "prospect");
 
         foreach (var h in league.History)
         {
@@ -129,7 +136,7 @@ public sealed class SaveFile
         League league;
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT name, season, rules_name, periods, minutes_per_period, shot_clock, fouls_out, bonus_threshold, three_distance, hard_cap, min_salary, roster_max, roster_min, rookie_scale_first, next_player_id FROM league WHERE id = 1";
+            cmd.CommandText = "SELECT name, season, rules_name, periods, minutes_per_period, shot_clock, fouls_out, bonus_threshold, three_distance, hard_cap, min_salary, roster_max, roster_min, rookie_scale_first, next_player_id, next_pick_id FROM league WHERE id = 1";
             using var r = cmd.ExecuteReader();
             if (!r.Read()) throw new InvalidOperationException("Save file has no league");
             league = new League
@@ -139,7 +146,16 @@ public sealed class SaveFile
                 Rules = new Rules(r.GetString(2), r.GetInt32(3), r.GetInt32(4), r.GetInt32(5), r.GetInt32(6), r.GetInt32(7), r.GetDouble(8)),
                 Finance = new Finance(r.GetInt64(9), r.GetInt64(10), r.GetInt32(11), r.GetInt32(12), r.GetInt64(13)),
                 NextPlayerId = r.GetInt32(14),
+                NextPickId = r.IsDBNull(15) ? 1 : r.GetInt32(15),
             };
+        }
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT id, year, round, original_team_id, owner_team_id, protected_top FROM draft_pick";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                league.Picks.Add(new DraftPickAsset { Id = r.GetInt32(0), Year = r.GetInt32(1), Round = r.GetInt32(2), OriginalTeamId = r.GetInt32(3), OwnerTeamId = r.GetInt32(4), ProtectedTop = r.GetInt32(5) });
         }
 
         using (var cmd = conn.CreateCommand())
@@ -203,12 +219,13 @@ public sealed class SaveFile
                 {
                     case "active": league.TeamById(p.TeamId!.Value).Roster.Add(p); break;
                     case "free_agent": league.FreeAgents.Add(p); break;
+                    case "prospect": LoadedProspects.Add(p); break;
                     default: league.Retired.Add(p); break;
                 }
             }
         }
 
-        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).ToDictionary(p => p.Id);
+        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(LoadedProspects).ToDictionary(p => p.Id);
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "SELECT player_id, name, severity, occurred, return_date, attr_loss, current FROM injury ORDER BY occurred";
@@ -276,7 +293,8 @@ public sealed class SaveFile
             CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE IF NOT EXISTS league(id INTEGER PRIMARY KEY, name TEXT, season INTEGER, rules_name TEXT, periods INTEGER, minutes_per_period INTEGER,
                 shot_clock INTEGER, fouls_out INTEGER, bonus_threshold INTEGER, three_distance REAL,
-                hard_cap INTEGER, min_salary INTEGER, roster_max INTEGER, roster_min INTEGER, rookie_scale_first INTEGER, next_player_id INTEGER);
+                hard_cap INTEGER, min_salary INTEGER, roster_max INTEGER, roster_min INTEGER, rookie_scale_first INTEGER, next_player_id INTEGER, next_pick_id INTEGER);
+            CREATE TABLE IF NOT EXISTS draft_pick(id INTEGER PRIMARY KEY, year INTEGER, round INTEGER, original_team_id INTEGER, owner_team_id INTEGER, protected_top INTEGER);
             CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY, city TEXT, name TEXT, abbr TEXT, conference INTEGER, division TEXT, arena_capacity INTEGER,
                 pace REAL, three_emphasis INTEGER, crash_glass INTEGER, def_aggression INTEGER, star_usage INTEGER);
             CREATE TABLE IF NOT EXISTS player(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, nationality TEXT,

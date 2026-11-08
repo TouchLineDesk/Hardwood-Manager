@@ -3,7 +3,7 @@ using Hardwood.Core.Model;
 
 namespace Hardwood.Core.Season;
 
-public sealed record DraftPick(int Round, int Pick, Team Team, Player Player);
+public sealed record DraftPick(int Round, int Pick, Team Team, Player Player, Team? OriginalTeam = null);
 
 public enum OffseasonPhase { NotStarted, ReSigning, Draft, FreeAgency, Complete }
 
@@ -15,6 +15,7 @@ public sealed class OffseasonReport
     public List<(Player player, Team team)> ReSigned { get; } = new();
     public List<(Player player, Team from)> ToFreeAgency { get; } = new();
     public LotteryResult? Lottery { get; set; }
+    public List<(DraftPickAsset pick, int slot)> ProtectionsTriggered { get; } = new();
     public List<DraftPick> Draft { get; } = new();
     public List<(Player player, Team team, long salary, int years)> FreeAgentSignings { get; } = new();
     public List<(Player player, Team team)> Waived { get; } = new();
@@ -41,14 +42,18 @@ public sealed class Offseason
 
     /// <summary>Players whose contracts expired, per team, awaiting a re-sign or release decision.</summary>
     public Dictionary<int, List<Player>> Expiring { get; } = new();
-    /// <summary>Full two-round draft order (team per pick), set once the lottery has run.</summary>
+    /// <summary>Lottery result: the slot order by ORIGINAL team (slot 1 = worst / lottery winner).</summary>
     public List<Team> DraftOrder { get; private set; } = new();
+    /// <summary>Who actually picks at each slot (60 entries: round 1 then round 2), after ownership and protections.</summary>
+    public List<Team> PickOwners { get; private set; } = new();
     public List<Player> Prospects { get; private set; } = new();
-    /// <summary>Index of the next pick to be made (0-based into DraftOrder, round 1 then round 2).</summary>
+    /// <summary>Index of the next pick to be made (0-based into PickOwners).</summary>
     public int NextPickIndex { get; private set; }
-    public bool DraftComplete => NextPickIndex >= DraftOrder.Count * 2;
-    public Team? OnTheClock => DraftComplete ? null : DraftOrder[NextPickIndex % DraftOrder.Count];
+    public bool DraftComplete => NextPickIndex >= PickOwners.Count;
+    public Team? OnTheClock => DraftComplete ? null : PickOwners[NextPickIndex];
     public int CurrentRound => NextPickIndex / Math.Max(1, DraftOrder.Count) + 1;
+    /// <summary>Original team for a given pick index.</summary>
+    public Team OriginalTeamAt(int pickIndex) => DraftOrder[pickIndex % DraftOrder.Count];
 
     public Offseason(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng, DevelopmentConfig? devConfig = null)
     {
@@ -57,6 +62,25 @@ public sealed class Offseason
         Season = league.Season;
         Date = new DateOnly(Season + 1, 7, 1);
         Report = new OffseasonReport { Season = Season };
+    }
+
+    /// <summary>Rebuild an in-progress offseason from saved state (development, retirements and lottery already applied).</summary>
+    public static Offseason Restore(League league, Rng rng, OffseasonPhase phase, List<int> draftOrderTeamIds, List<int> pickOwnerTeamIds,
+        List<Player> prospects, int nextPickIndex, Dictionary<int, List<Player>> expiring, List<DraftPick> picksMade)
+    {
+        var outcome = new SeasonOutcome { Standings = new Standings(league) };
+        var o = new Offseason(league, outcome, new Dictionary<int, PlayerSeasonStats>(), rng)
+        {
+            Phase = phase,
+            DraftOrder = draftOrderTeamIds.Select(league.TeamById).ToList(),
+            PickOwners = pickOwnerTeamIds.Select(league.TeamById).ToList(),
+            Prospects = prospects,
+            NextPickIndex = nextPickIndex,
+        };
+        foreach (var kv in expiring) o.Expiring[kv.Key] = kv.Value;
+        foreach (var t in league.Teams) o.Expiring.TryAdd(t.Id, new List<Player>());
+        o.Report.Draft.AddRange(picksMade);
+        return o;
     }
 
     /// <summary>Headless: every team is AI.</summary>
@@ -117,9 +141,37 @@ public sealed class Offseason
             .SelectMany(x => new[] { x.Series.Winner.Id, x.Series.Loser.Id }).ToHashSet();
         Report.Lottery = DraftLottery.Run(reverse, playoffTeams, _rng);
         DraftOrder = Report.Lottery.Order;
+        ResolvePickOwners();
         Prospects = GenerateProspects();
 
         Phase = OffseasonPhase.ReSigning;
+    }
+
+    /// <summary>Map each slot to the team that owns that original team's pick this year, applying protections.</summary>
+    private void ResolvePickOwners()
+    {
+        int draftYear = Season + 1;
+        PickOwners = new List<Team>();
+        for (int round = 1; round <= 2; round++)
+        for (int slot = 0; slot < DraftOrder.Count; slot++)
+        {
+            var original = DraftOrder[slot];
+            var asset = _league.Picks.FirstOrDefault(p => p.Year == draftYear && p.Round == round && p.OriginalTeamId == original.Id);
+            Team owner = original;
+            if (asset != null)
+            {
+                if (asset.ProtectedTop > 0 && slot + 1 <= asset.ProtectedTop && asset.OwnerTeamId != original.Id)
+                {
+                    // Protection hits: original keeps this pick; the owner gets next year's same-round pick instead (rolls once).
+                    var next = _league.Picks.FirstOrDefault(p => p.Year == draftYear + 1 && p.Round == round && p.OriginalTeamId == original.Id && p.OwnerTeamId == original.Id);
+                    if (next != null) next.OwnerTeamId = asset.OwnerTeamId;
+                    Report.ProtectionsTriggered.Add((asset, slot + 1));
+                }
+                else owner = _league.TeamById(asset.OwnerTeamId);
+                _league.Picks.Remove(asset); // consumed
+            }
+            PickOwners.Add(owner);
+        }
     }
 
     /// <summary>What an expiring player asks for from his current team.</summary>
@@ -132,8 +184,10 @@ public sealed class Offseason
     public long ReservedForDraft(Team team)
     {
         if (Phase != OffseasonPhase.ReSigning) return 0;
-        int slot = DraftOrder.IndexOf(team);
-        return slot < 0 ? 0 : Math.Max(_league.Finance.MinSalary, (long)(_league.Finance.RookieScaleFirstPick * Math.Pow(0.93, slot)));
+        long total = 0;
+        for (int slot = 0; slot < DraftOrder.Count && slot < PickOwners.Count; slot++)
+            if (PickOwners[slot] == team) total += Math.Max(_league.Finance.MinSalary, (long)(_league.Finance.RookieScaleFirstPick * Math.Pow(0.93, slot)));
+        return total;
     }
 
     public bool CanAfford(Team team, long salary) => CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.HardCap;
@@ -217,7 +271,7 @@ public sealed class Offseason
         int round = CurrentRound;
         int overall = NextPickIndex + 1;
         var fin = _league.Finance;
-        var pick = new DraftPick(round, overall, team, prospect);
+        var pick = new DraftPick(round, overall, team, prospect, OriginalTeamAt(NextPickIndex));
         Report.Draft.Add(pick);
         if (round == 1)
         {
@@ -255,6 +309,9 @@ public sealed class Offseason
     {
         if (Phase != OffseasonPhase.Draft) return;
         AutoDraftUntil(null);
+        // Undrafted prospects try their luck in free agency.
+        _league.FreeAgents.AddRange(Prospects);
+        Prospects = new List<Player>();
         Phase = OffseasonPhase.FreeAgency;
     }
 
@@ -351,6 +408,7 @@ public sealed class Offseason
             if (p.Injury != null && p.Injury.ReturnDate <= new DateOnly(Season + 1, 10, 15)) p.Injury = null;
 
         _league.Season = Season + 1;
+        _league.EnsurePicks();
         Phase = OffseasonPhase.Complete;
     }
 

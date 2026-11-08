@@ -13,7 +13,7 @@ public static class SessionStore
         using var conn = file.OpenConnection();
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
-        SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM box_line; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM depth_chart;");
+        SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM box_line; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM depth_chart; DELETE FROM offseason; DELETE FROM offseason_expiring; DELETE FROM offseason_pick;");
 
         SaveFile.Exec(conn, "INSERT INTO session(id, human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage) VALUES(1, $t, $d, $p, $s, $r, $m, $ps)",
             ("$t", s.HumanTeam.Id), ("$d", s.Today.ToString("yyyy-MM-dd")), ("$p", (int)s.Phase), ("$s", (long)s.Seed), ("$r", (long)s.NextRngSeed),
@@ -39,6 +39,18 @@ public static class SessionStore
             foreach (var se in s.Postseason.Series)
                 SaveFile.Exec(conn, "INSERT INTO postseason_series(ord, round, higher_id, lower_id, higher_wins, lower_wins, wins_needed) VALUES($o, $r, $h, $l, $hw, $lw, $n)",
                     ("$o", order++), ("$r", se.Round), ("$h", se.Higher.Id), ("$l", se.Lower.Id), ("$hw", se.HigherWins), ("$lw", se.LowerWins), ("$n", se.WinsNeeded));
+        }
+
+        if (s.Offseason is { } o && s.Phase == SessionPhase.Offseason)
+        {
+            SaveFile.Exec(conn, "INSERT INTO offseason(id, phase, season, draft_order, pick_owners, next_pick) VALUES(1, $p, $s, $d, $o, $n)",
+                ("$p", (int)o.Phase), ("$s", o.Season), ("$d", string.Join(",", o.DraftOrder.Select(t => t.Id))), ("$o", string.Join(",", o.PickOwners.Select(t => t.Id))), ("$n", o.NextPickIndex));
+            foreach (var kv in o.Expiring)
+            foreach (var p in kv.Value)
+                SaveFile.Exec(conn, "INSERT INTO offseason_expiring(team_id, player_id) VALUES($t, $p)", ("$t", kv.Key), ("$p", p.Id));
+            foreach (var d in o.Report.Draft)
+                SaveFile.Exec(conn, "INSERT INTO offseason_pick(pick, round, team_id, player_id, original_team_id) VALUES($k, $r, $t, $p, $o)",
+                    ("$k", d.Pick), ("$r", d.Round), ("$t", d.Team.Id), ("$p", d.Player.Id), ("$o", (object?)d.OriginalTeam?.Id ?? DBNull.Value));
         }
 
         if (s.HumanTeam.DepthChart is { } chart)
@@ -80,7 +92,7 @@ public static class SessionStore
         }
 
         var session = new GameSession(league, league.TeamById(humanId), seed, file, rngState: rngSeed);
-        var players = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).ToDictionary(p => p.Id);
+        var players = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(file.LoadedProspects).ToDictionary(p => p.Id);
 
         var boxes = new Dictionary<int, Dictionary<int, List<PlayerLine>>>(); // game -> team -> lines
         using (var cmd = conn.CreateCommand())
@@ -155,6 +167,44 @@ public static class SessionStore
             }
         }
 
+        if (phase == SessionPhase.Offseason)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT phase, season, draft_order, pick_owners, next_pick FROM offseason WHERE id = 1";
+            using var r = cmd.ExecuteReader();
+            if (r.Read())
+            {
+                var oPhase = (OffseasonPhase)r.GetInt32(0);
+                var order = r.GetString(2).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+                var owners = r.GetString(3).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+                int nextPick = r.GetInt32(4);
+                r.Close();
+
+                var expiring = new Dictionary<int, List<Player>>();
+                using (var c2 = conn.CreateCommand())
+                {
+                    c2.CommandText = "SELECT team_id, player_id FROM offseason_expiring";
+                    using var r2 = c2.ExecuteReader();
+                    while (r2.Read())
+                    {
+                        if (!players.TryGetValue(r2.GetInt32(1), out var p)) continue;
+                        expiring.TryAdd(r2.GetInt32(0), new());
+                        expiring[r2.GetInt32(0)].Add(p);
+                    }
+                }
+                var picksMade = new List<DraftPick>();
+                using (var c3 = conn.CreateCommand())
+                {
+                    c3.CommandText = "SELECT pick, round, team_id, player_id, original_team_id FROM offseason_pick ORDER BY pick";
+                    using var r3 = c3.ExecuteReader();
+                    while (r3.Read())
+                        if (players.TryGetValue(r3.GetInt32(3), out var p))
+                            picksMade.Add(new DraftPick(r3.GetInt32(1), r3.GetInt32(0), league.TeamById(r3.GetInt32(2)), p, r3.IsDBNull(4) ? null : league.TeamById(r3.GetInt32(4))));
+                }
+                session.RestoreOffseason(oPhase, order, owners, file.LoadedProspects, nextPick, expiring, picksMade);
+            }
+        }
+
         if (phase == SessionPhase.Postseason && stage != null)
         {
             var rows = new List<(string, int, int, int, int, int)>();
@@ -178,6 +228,9 @@ public static class SessionStore
             CREATE TABLE IF NOT EXISTS inbox(id INTEGER PRIMARY KEY, date TEXT, title TEXT, body TEXT, category TEXT, read INTEGER);
             CREATE TABLE IF NOT EXISTS postseason_series(ord INTEGER PRIMARY KEY, round TEXT, higher_id INTEGER, lower_id INTEGER, higher_wins INTEGER, lower_wins INTEGER, wins_needed INTEGER);
             CREATE TABLE IF NOT EXISTS depth_chart(team_id INTEGER PRIMARY KEY, starters TEXT, minutes TEXT);
+            CREATE TABLE IF NOT EXISTS offseason(id INTEGER PRIMARY KEY, phase INTEGER, season INTEGER, draft_order TEXT, pick_owners TEXT, next_pick INTEGER);
+            CREATE TABLE IF NOT EXISTS offseason_expiring(team_id INTEGER, player_id INTEGER);
+            CREATE TABLE IF NOT EXISTS offseason_pick(pick INTEGER PRIMARY KEY, round INTEGER, team_id INTEGER, player_id INTEGER, original_team_id INTEGER);
             """);
     }
 }

@@ -19,7 +19,7 @@
             </ComboBox>
             <TextBlock Text="{Binding PartnerDirection}" VerticalAlignment="Center" Classes="muted"/>
           </StackPanel>
-          <Grid Grid.Row="1" ColumnDefinitions="*,*">
+          <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="*,Auto">
             <DockPanel>
               <TextBlock DockPanel.Dock="Top" Text="You send" Classes="h2" Margin="0,0,0,6"/>
               <DataGrid ItemsSource="{Binding Ours}" IsReadOnly="False">
@@ -50,6 +50,22 @@
                 </DataGrid.Columns>
               </DataGrid>
             </DockPanel>
+            <DataGrid Grid.Row="1" Grid.Column="0" ItemsSource="{Binding OurPicks}" IsReadOnly="False" MaxHeight="150" Margin="0,8,6,0">
+              <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="" Binding="{Binding Included}" Width="36"/>
+                <DataGridTextColumn Header="Your picks" Binding="{Binding Description}" Width="*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Proj." Binding="{Binding Projected}" Width="66" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Their value" Binding="{Binding Value}" Width="90" IsReadOnly="True"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <DataGrid Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TheirPicks}" IsReadOnly="False" MaxHeight="150" Margin="6,8,0,0">
+              <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="" Binding="{Binding Included}" Width="36"/>
+                <DataGridTextColumn Header="Their picks" Binding="{Binding Description}" Width="*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Proj." Binding="{Binding Projected}" Width="66" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Their value" Binding="{Binding Value}" Width="90" IsReadOnly="True"/>
+              </DataGrid.Columns>
+            </DataGrid>
           </Grid>
           <Border Grid.Row="2" Classes="panel">
             <Grid ColumnDefinitions="*,Auto,Auto">

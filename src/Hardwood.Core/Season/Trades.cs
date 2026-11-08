@@ -10,6 +10,9 @@ public sealed class TradeProposal
     public required Team To { get; init; }
     public List<Player> FromPlayers { get; } = new();
     public List<Player> ToPlayers { get; } = new();
+    public List<DraftPickAsset> FromPicks { get; } = new();
+    public List<DraftPickAsset> ToPicks { get; } = new();
+    public bool IsEmpty => FromPlayers.Count + ToPlayers.Count + FromPicks.Count + ToPicks.Count == 0;
 }
 
 public sealed record TradeEvaluation(
@@ -76,12 +79,65 @@ public sealed class TradeEngine
         return Math.Max(0, Math.Pow(Math.Max(v, 1), 1.35) / 10.0);
     }
 
+    /// <summary>Where the original team is likely to pick: 1 (worst) .. 30 (best). Further years regress to the middle.</summary>
+    public double ProjectedSlot(DraftPickAsset pick)
+    {
+        var original = _league.TeamById(pick.OriginalTeamId);
+        double slotNow;
+        if (_standings != null && _standings[original].Games >= 15)
+        {
+            var reverse = _standings.All().Select(r => r.Team).Reverse().ToList();
+            slotNow = reverse.IndexOf(original) + 1;
+        }
+        else
+        {
+            var cores = _league.Teams.Select(t => (t, core: t.Roster.OrderByDescending(p => p.CurrentAbility).Take(7).Average(p => p.CurrentAbility))).OrderBy(x => x.core).ToList();
+            slotNow = cores.FindIndex(x => x.t == original) + 1;
+        }
+        int yearsOut = Math.Max(0, pick.Year - (_league.Season + 1));
+        double weight = Math.Pow(0.6, yearsOut); // this year's pick is well known, three years out is anyone's guess
+        return slotNow * weight + 15.5 * (1 - weight);
+    }
+
+    /// <summary>Value of a pick to a team: the synthetic prospect it is likely to yield, discounted for time and protection.</summary>
+    public double PickValueTo(Team team, DraftPickAsset pick)
+    {
+        double slot = ProjectedSlot(pick);
+        int yearsOut = Math.Max(0, pick.Year - (_league.Season + 1));
+        // Expected prospect by slot (CA / PA), first round steep at the top, second round flat.
+        int ca, pa;
+        if (pick.Round == 1)
+        {
+            ca = (int)Math.Round(114 - (slot - 1) * 1.45);   // 1 → 114, 30 → 72
+            pa = ca + (int)Math.Round(50 - (slot - 1) * 0.6); // 1 → 164, 30 → 105
+        }
+        else { ca = 70; pa = 98; }
+        var dir = Direction(team);
+        double v = dir switch
+        {
+            TeamDirection.Contending => ca * 0.55 + (pa - ca) * 0.15,
+            TeamDirection.Rebuilding => ca * 0.75 + (pa - ca) * 0.55,
+            _ => ca * 0.65 + (pa - ca) * 0.35,
+        };
+        v += 8; // rookie-scale contracts are cheap production
+        if (pick.ProtectedTop > 0 && pick.OwnerTeamId != pick.OriginalTeamId)
+        {
+            // Protection: probability the slot lands inside the protected range, roughly.
+            double pHit = Math.Clamp((pick.ProtectedTop - slot + 3) / 8.0, 0, 0.9);
+            v *= 1 - pHit * 0.6;
+        }
+        v *= Math.Pow(0.88, yearsOut);
+        return Math.Max(0, Math.Pow(Math.Max(v, 1), 1.35) / 10.0);
+    }
+
     public (bool legal, string note) CheckLegality(TradeProposal t)
     {
         var fin = _league.Finance;
-        if (t.FromPlayers.Count == 0 && t.ToPlayers.Count == 0) return (false, "Nothing is being traded.");
+        if (t.IsEmpty) return (false, "Nothing is being traded.");
         if (t.FromPlayers.Any(p => !t.From.Roster.Contains(p)) || t.ToPlayers.Any(p => !t.To.Roster.Contains(p)))
             return (false, "A player in the deal is not on that roster.");
+        if (t.FromPicks.Any(p => p.OwnerTeamId != t.From.Id) || t.ToPicks.Any(p => p.OwnerTeamId != t.To.Id))
+            return (false, "A pick in the deal is not owned by that team.");
 
         foreach (var (team, outgoing, incoming) in new[] { (t.From, t.FromPlayers, t.ToPlayers), (t.To, t.ToPlayers, t.FromPlayers) })
         {
@@ -98,8 +154,8 @@ public sealed class TradeEngine
     public TradeEvaluation Evaluate(TradeProposal t)
     {
         var (legal, note) = CheckLegality(t);
-        double given = t.ToPlayers.Sum(p => ValueTo(t.To, p));
-        double received = t.FromPlayers.Sum(p => ValueTo(t.To, p));
+        double given = t.ToPlayers.Sum(p => ValueTo(t.To, p)) + t.ToPicks.Sum(p => PickValueTo(t.To, p));
+        double received = t.FromPlayers.Sum(p => ValueTo(t.To, p)) + t.FromPicks.Sum(p => PickValueTo(t.To, p));
         // Roster-spot friction: taking back more bodies than you send costs a little.
         received -= Math.Max(0, t.FromPlayers.Count - t.ToPlayers.Count) * 1.5;
         double gain = given <= 0 ? received : (received - given) / given;
@@ -119,6 +175,8 @@ public sealed class TradeEngine
         if (!legal) throw new InvalidOperationException(note);
         foreach (var p in t.FromPlayers) { t.From.Roster.Remove(p); t.To.Roster.Add(p); p.TeamId = t.To.Id; }
         foreach (var p in t.ToPlayers) { t.To.Roster.Remove(p); t.From.Roster.Add(p); p.TeamId = t.From.Id; }
+        foreach (var pk in t.FromPicks) pk.OwnerTeamId = t.To.Id;
+        foreach (var pk in t.ToPicks) pk.OwnerTeamId = t.From.Id;
         t.From.DepthChart = null;
         t.To.DepthChart = null;
     }
@@ -131,6 +189,20 @@ public sealed class TradeEngine
         double need = eval.ValueGivenByTo * (1 + AcceptanceMargin) - eval.ValueReceivedByTo + 1.5;
         return t.From.Roster.Where(p => !t.FromPlayers.Contains(p))
             .Select(p => (p, v: ValueTo(t.To, p)))
+            .Where(x => x.v >= need)
+            .OrderBy(x => x.v)
+            .Select(x => x.p)
+            .FirstOrDefault();
+    }
+
+    /// <summary>Cheapest pick from the From team that would get the deal over the line, if any.</summary>
+    public DraftPickAsset? SuggestPickSweetener(TradeProposal t)
+    {
+        var eval = Evaluate(t);
+        if (eval.Accepted || !eval.Legal) return null;
+        double need = eval.ValueGivenByTo * (1 + AcceptanceMargin) - eval.ValueReceivedByTo + 1.0;
+        return _league.PicksOwnedBy(t.From.Id).Where(p => !t.FromPicks.Contains(p))
+            .Select(p => (p, v: PickValueTo(t.To, p)))
             .Where(x => x.v >= need)
             .OrderBy(x => x.v)
             .Select(x => x.p)
@@ -161,13 +233,18 @@ public sealed class TradeEngine
             var proposal = new TradeProposal { From = contender, To = rebuilder };
             proposal.ToPlayers.Add(sell);
             proposal.FromPlayers.Add(young[0]);
-            // Add salary filler / second piece until the rebuilder accepts or it stops making sense for the contender.
+            // Add a second young piece, then a future first, until the rebuilder accepts.
             for (int k = 1; k < Math.Min(3, young.Count) && !Evaluate(proposal).Accepted; k++) proposal.FromPlayers.Add(young[k]);
+            if (!Evaluate(proposal).Accepted)
+            {
+                var first = _league.PicksOwnedBy(contender.Id).Where(p => p.Round == 1 && p.OriginalTeamId == contender.Id).OrderByDescending(p => p.Year).FirstOrDefault();
+                if (first != null) proposal.FromPicks.Add(first);
+            }
             var eval = Evaluate(proposal);
             if (!eval.Accepted) continue;
 
             // Contender must also come out ahead by its own lights.
-            double contenderGain = proposal.ToPlayers.Sum(p => ValueTo(contender, p)) - proposal.FromPlayers.Sum(p => ValueTo(contender, p));
+            double contenderGain = proposal.ToPlayers.Sum(p => ValueTo(contender, p)) - proposal.FromPlayers.Sum(p => ValueTo(contender, p)) - proposal.FromPicks.Sum(p => PickValueTo(contender, p));
             if (contenderGain <= 0) continue;
 
             Execute(proposal);

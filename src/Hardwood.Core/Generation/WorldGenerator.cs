@@ -43,6 +43,7 @@ public sealed class WorldGenerator
         }
         }
         finally { league.NextPlayerId = players.NextId; }
+        league.EnsurePicks();
         return league;
     }
 

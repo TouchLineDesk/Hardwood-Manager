@@ -152,8 +152,8 @@ public sealed class GameSession
                     $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
                     (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""), "League");
                 Today = Today.AddDays(1);
-                SaveNow();           // checkpoint before the offseason; the offseason itself is finished in one sitting
                 BeginOffseason();
+                SaveNow();
                 return played;
             }
         }
@@ -202,7 +202,7 @@ public sealed class GameSession
         TradesThisSeason.AddRange(done);
         foreach (var t in done)
             Post($"Trade: {t.From.Abbreviation} and {t.To.Abbreviation}",
-                $"{t.From.FullName} send {string.Join(", ", t.FromPlayers.Select(p => p.Name))} to {t.To.FullName} for {string.Join(", ", t.ToPlayers.Select(p => p.Name))}.", "Transactions");
+                $"{t.From.FullName} send {DescribeSide(t.FromPlayers, t.FromPicks)} to {t.To.FullName} for {DescribeSide(t.ToPlayers, t.ToPicks)}.", "Transactions");
     }
 
     // ------------------------------------------------------------------------------------------
@@ -220,7 +220,7 @@ public sealed class GameSession
             Trades.Execute(proposal);
             TradesThisSeason.Add(proposal);
             Post($"Trade completed with {proposal.To.Abbreviation}",
-                $"You send {string.Join(", ", proposal.FromPlayers.Select(p => p.Name))} for {string.Join(", ", proposal.ToPlayers.Select(p => p.Name))}.", "Transactions");
+                $"You send {DescribeSide(proposal.FromPlayers, proposal.FromPicks)} for {DescribeSide(proposal.ToPlayers, proposal.ToPicks)}.", "Transactions");
             SaveNow();
         }
         return eval;
@@ -304,11 +304,11 @@ public sealed class GameSession
     }
 
     // ------------------------------------------------------------------------------------------
-    /// <summary>Saves after every day. During the offseason nothing is written: closing the app mid-offseason returns you to the Finals checkpoint.</summary>
+    /// <summary>Saves after every day and after every offseason decision.</summary>
     public void SaveNow()
     {
-        if (Save == null || Phase == SessionPhase.Offseason) return;
-        Save.Save(League, Stats.Values);
+        if (Save == null) return;
+        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null);
         Save.SaveSession(this);
     }
 
@@ -337,7 +337,19 @@ public sealed class GameSession
     {
         Postseason = new Postseason(League, Standings);
         Postseason.Restore(stage, rows);
-        if (Postseason.Complete) BeginOffseason();
+    }
+
+    internal void RestoreOffseason(OffseasonPhase phase, List<int> draftOrder, List<int> pickOwners, List<Player> prospects, int nextPick,
+        Dictionary<int, List<Player>> expiring, List<DraftPick> picksMade)
+    {
+        Phase = SessionPhase.Offseason;
+        Offseason = Offseason.Restore(League, _rng, phase, draftOrder, pickOwners, prospects, nextPick, expiring, picksMade);
+    }
+
+    public string DescribeSide(IEnumerable<Player> players, IEnumerable<DraftPickAsset> picks)
+    {
+        var parts = players.Select(p => p.Name).Concat(picks.Select(p => p.Describe(id => League.TeamById(id).Abbreviation))).ToList();
+        return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
     }
 
     private static string Ordinal(int n) => n % 100 is 11 or 12 or 13 ? $"{n}th" : (n % 10) switch { 1 => $"{n}st", 2 => $"{n}nd", 3 => $"{n}rd", _ => $"{n}th" };

@@ -21,8 +21,21 @@ public sealed partial class TradePiece : ObservableObject
     partial void OnIncludedChanged(bool value) => Owner.Evaluate();
 }
 
+public sealed partial class PickPiece : ObservableObject
+{
+    public required DraftPickAsset Pick { get; init; }
+    public TransactionsViewModel Owner { get; init; } = null!;
+    public string Description { get; init; } = "";
+    public string Projected { get; init; } = "";
+    public string Value { get; init; } = "";
+    [ObservableProperty] private bool _included;
+    partial void OnIncludedChanged(bool value) => Owner.Evaluate();
+}
+
 public sealed partial class TransactionsViewModel : PageViewModel
 {
+    public ObservableCollection<PickPiece> OurPicks { get; } = new();
+    public ObservableCollection<PickPiece> TheirPicks { get; } = new();
     public override string Title => "Transactions";
 
     // Free agents
@@ -115,6 +128,12 @@ public sealed partial class TransactionsViewModel : PageViewModel
             Ours.Add(new TradePiece { Player = p, Owner = this, Age = p.Age(s.Today), Value = engine.ValueTo(Partner, p).ToString("0.0") });
         foreach (var p in Partner.Roster.OrderByDescending(p => p.CurrentAbility))
             Theirs.Add(new TradePiece { Player = p, Owner = this, Age = p.Age(s.Today), Value = engine.ValueTo(Partner, p).ToString("0.0") });
+        OurPicks.Clear(); TheirPicks.Clear();
+        string Abbr(int id) => s.League.TeamById(id).Abbreviation;
+        foreach (var pk in s.League.PicksOwnedBy(s.HumanTeam.Id))
+            OurPicks.Add(new PickPiece { Pick = pk, Owner = this, Description = pk.Describe(Abbr), Projected = $"~#{engine.ProjectedSlot(pk):0}", Value = engine.PickValueTo(Partner, pk).ToString("0.0") });
+        foreach (var pk in s.League.PicksOwnedBy(Partner.Id))
+            TheirPicks.Add(new PickPiece { Pick = pk, Owner = this, Description = pk.Describe(Abbr), Projected = $"~#{engine.ProjectedSlot(pk):0}", Value = engine.PickValueTo(Partner, pk).ToString("0.0") });
         PartnerDirection = $"{Partner.FullName}: {engine.Direction(Partner)} · payroll ${ContractMarket.Payroll(Partner) / 1e6:F1}M · {Partner.Roster.Count} players";
         Evaluate();
     }
@@ -125,18 +144,21 @@ public sealed partial class TransactionsViewModel : PageViewModel
         var t = new TradeProposal { From = Session.HumanTeam, To = Partner };
         t.FromPlayers.AddRange(Ours.Where(x => x.Included).Select(x => x.Player));
         t.ToPlayers.AddRange(Theirs.Where(x => x.Included).Select(x => x.Player));
+        t.FromPicks.AddRange(OurPicks.Where(x => x.Included).Select(x => x.Pick));
+        t.ToPicks.AddRange(TheirPicks.Where(x => x.Included).Select(x => x.Pick));
         return t;
     }
 
     public void Evaluate()
     {
         var t = Build();
-        if (t == null || (t.FromPlayers.Count == 0 && t.ToPlayers.Count == 0)) { Verdict = "Select players on both sides."; VerdictDetail = ""; CanPropose = false; return; }
+        if (t == null || t.IsEmpty) { Verdict = "Select players or picks to trade."; VerdictDetail = ""; CanPropose = false; return; }
         var eval = Session.Trades.Evaluate(t);
         Verdict = eval.Verdict;
         VerdictDetail = eval.Legal
             ? $"They value what they give at {eval.ValueGivenByTo:0.0} and what they get at {eval.ValueReceivedByTo:0.0} ({eval.GainForTo * 100:+0;-0}%)."
-              + (eval.Accepted ? "" : Session.Trades.SuggestSweetener(t) is { } sw ? $" Adding {sw.Name} would get it done." : "")
+              + (eval.Accepted ? "" : Session.Trades.SuggestSweetener(t) is { } sw ? $" Adding {sw.Name} would get it done."
+                 : Session.Trades.SuggestPickSweetener(t) is { } pk ? $" Adding your {pk.Describe(id => Session.League.TeamById(id).Abbreviation)} pick would get it done." : "")
             : eval.LegalityNote;
         CanPropose = eval.Accepted && !(Session.TradeDeadlinePassed && Session.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason);
     }
@@ -156,5 +178,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
     {
         foreach (var x in Ours) x.Included = false;
         foreach (var x in Theirs) x.Included = false;
+        foreach (var x in OurPicks) x.Included = false;
+        foreach (var x in TheirPicks) x.Included = false;
     }
 }
