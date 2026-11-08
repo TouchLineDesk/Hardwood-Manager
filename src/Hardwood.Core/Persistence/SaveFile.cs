@@ -42,7 +42,7 @@ public sealed class SaveFile
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
 
-        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury; DELETE FROM draft_pick; DELETE FROM career; DELETE FROM hall_of_fame; DELETE FROM retired_number;");
+        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury; DELETE FROM draft_pick; DELETE FROM career; DELETE FROM hall_of_fame; DELETE FROM retired_number; DELETE FROM staff; DELETE FROM training;");
 
         Exec(conn, "INSERT INTO meta(key, value) VALUES('schema_version', $v), ('saved_at', $t)",
             ("$v", SchemaVersion.ToString()), ("$t", DateTime.UtcNow.ToString("O")));
@@ -57,6 +57,7 @@ public sealed class SaveFile
             ("$bt", league.Rules.TeamFoulBonusThreshold), ("$td", league.Rules.ThreePointDistanceM),
             ("$cap", league.Finance.HardCap), ("$min", league.Finance.MinSalary), ("$rmax", league.Finance.RosterMax),
             ("$rmin", league.Finance.RosterMin), ("$rs", league.Finance.RookieScaleFirstPick), ("$npid", league.NextPlayerId), ("$npk", league.NextPickId));
+        Exec(conn, "INSERT INTO meta(key, value) VALUES('next_staff_id', $v)", ("$v", league.NextStaffId.ToString()));
 
         foreach (var pk in league.Picks)
             Exec(conn, "INSERT INTO draft_pick(id, year, round, original_team_id, owner_team_id, protected_top) VALUES($id, $y, $r, $o, $w, $p)",
@@ -86,6 +87,18 @@ public sealed class SaveFile
             foreach (var (teamId, w, l) in h.Records)
                 Exec(conn, "INSERT INTO season_record(season, team_id, wins, losses) VALUES($s, $t, $w, $l)", ("$s", h.Season), ("$t", teamId), ("$w", w), ("$l", l));
         }
+
+        foreach (var st in league.Teams.SelectMany(t => t.Staff).Concat(league.FreeStaff))
+            Exec(conn, """
+                INSERT INTO staff(id, first_name, last_name, birth_date, role, coaching, development, fitness, medical, scouting, reputation, team_id, salary, years)
+                VALUES($id, $fn, $ln, $bd, $role, $c, $d, $f, $m, $s, $r, $t, $sal, $y)
+                """,
+                ("$id", st.Id), ("$fn", st.FirstName), ("$ln", st.LastName), ("$bd", st.BirthDate.ToString("yyyy-MM-dd")), ("$role", (int)st.Role),
+                ("$c", st.Coaching), ("$d", st.Development), ("$f", st.Fitness), ("$m", st.Medical), ("$s", st.Scouting), ("$r", st.Reputation),
+                ("$t", (object?)st.TeamId ?? DBNull.Value), ("$sal", st.Salary), ("$y", st.ContractYears));
+        foreach (var t in league.Teams)
+            Exec(conn, "INSERT INTO training(team_id, intensity, focus) VALUES($t, $i, $f)",
+                ("$t", t.Id), ("$i", t.Training.Intensity), ("$f", string.Join(",", t.Training.Focus.Select(kv => $"{kv.Key}:{(int)kv.Value}"))));
 
         foreach (var c in league.Careers.Values)
             Exec(conn, "INSERT INTO career(player_id, json) VALUES($p, $j)", ("$p", c.PlayerId), ("$j", ToJson(c)));
@@ -164,6 +177,12 @@ public sealed class SaveFile
             };
         }
 
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM meta WHERE key = 'next_staff_id'";
+            var v = cmd.ExecuteScalar() as string;
+            if (v != null) league.NextStaffId = int.Parse(v);
+        }
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "SELECT id, year, round, original_team_id, owner_team_id, protected_top FROM draft_pick";
@@ -275,6 +294,33 @@ public sealed class SaveFile
         }
         using (var cmd = conn.CreateCommand())
         {
+            cmd.CommandText = "SELECT id, first_name, last_name, birth_date, role, coaching, development, fitness, medical, scouting, reputation, team_id, salary, years FROM staff";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                var st = new Staff
+                {
+                    Id = r.GetInt32(0), FirstName = r.GetString(1), LastName = r.GetString(2), BirthDate = DateOnly.Parse(r.GetString(3)), Role = (StaffRole)r.GetInt32(4),
+                    Coaching = r.GetInt32(5), Development = r.GetInt32(6), Fitness = r.GetInt32(7), Medical = r.GetInt32(8), Scouting = r.GetInt32(9), Reputation = r.GetInt32(10),
+                    TeamId = r.IsDBNull(11) ? null : r.GetInt32(11), Salary = r.GetInt64(12), ContractYears = r.GetInt32(13),
+                };
+                if (st.TeamId is { } tid) league.TeamById(tid).Staff.Add(st); else league.FreeStaff.Add(st);
+            }
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT team_id, intensity, focus FROM training";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                var t = league.TeamById(r.GetInt32(0));
+                t.Training = new TrainingPlan { Intensity = r.GetInt32(1) };
+                var f = r.GetString(2);
+                if (f.Length > 0) foreach (var kv in f.Split(',')) { var parts = kv.Split(':'); t.Training.Focus[int.Parse(parts[0])] = (AttrGroup)int.Parse(parts[1]); }
+            }
+        }
+        using (var cmd = conn.CreateCommand())
+        {
             cmd.CommandText = "SELECT player_id, json FROM career";
             using var r = cmd.ExecuteReader();
             while (r.Read()) { var c = FromJson<CareerTotals>(r.GetString(1)); if (c != null) league.Careers[r.GetInt32(0)] = c; }
@@ -344,6 +390,8 @@ public sealed class SaveFile
             CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER);
             CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER, finals_mvp_player_id INTEGER, awards_json TEXT);
             CREATE TABLE IF NOT EXISTS career(player_id INTEGER PRIMARY KEY, json TEXT);
+            CREATE TABLE IF NOT EXISTS staff(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, role INTEGER, coaching INTEGER, development INTEGER, fitness INTEGER, medical INTEGER, scouting INTEGER, reputation INTEGER, team_id INTEGER, salary INTEGER, years INTEGER);
+            CREATE TABLE IF NOT EXISTS training(team_id INTEGER PRIMARY KEY, intensity INTEGER, focus TEXT);
             CREATE TABLE IF NOT EXISTS hall_of_fame(player_id INTEGER PRIMARY KEY, year INTEGER, score REAL);
             CREATE TABLE IF NOT EXISTS retired_number(team_id INTEGER, player_id INTEGER, PRIMARY KEY(team_id, player_id));
             CREATE TABLE IF NOT EXISTS season_record(season INTEGER, team_id INTEGER, wins INTEGER, losses INTEGER, PRIMARY KEY(season, team_id));

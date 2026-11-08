@@ -56,6 +56,7 @@ public sealed class DevelopmentEngine
 {
     private readonly DevelopmentConfig _cfg;
     private readonly Rng _rng;
+    private AttrGroup? _focus;
 
     public DevelopmentEngine(Rng rng, DevelopmentConfig? cfg = null)
     {
@@ -65,8 +66,9 @@ public sealed class DevelopmentEngine
 
     /// <param name="mpg">Minutes per game in the season just finished (0 if unused).</param>
     /// <param name="trainingQuality">Team training quality 1–20 (stub until staff exist; 10 = average).</param>
-    public DevelopmentReport Develop(Player p, DateOnly offseasonDate, double mpg, int trainingQuality = 10)
+    public DevelopmentReport Develop(Player p, DateOnly offseasonDate, double mpg, double trainingQuality = 10, AttrGroup? focus = null)
     {
+        _focus = focus;
         int age = p.Age(offseasonDate);
         int oldCa = p.CurrentAbility, oldPa = p.PotentialAbility;
 
@@ -115,16 +117,21 @@ public sealed class DevelopmentEngine
                 case AttrGroup.Mental:
                     // Mental keeps growing slowly regardless of CA until the early 30s, and never declines fast.
                     d = Math.Max(d, 0) * 0.6 + (age <= 31 ? _cfg.MentalGrowth : 0) + Math.Min(d, 0) * 0.25;
+                    if (_focus == AttrGroup.Mental) d += 0.25;
                     break;
                 case AttrGroup.Physical:
                     // Physical declines with age independently of skill growth; young players gain a bit.
                     if (age >= 30) d = Math.Min(d, 0) * 0.5 - _cfg.PhysicalDeclineBase * (1 + (age - 30) * 0.35);
                     else if (age <= 22) d = Math.Max(d, 0) * 0.8 + 0.15;
                     else d = Math.Max(d, 0) * 0.5;
+                    if (_focus == AttrGroup.Physical) d += age >= 30 ? 0.3 : 0.2;
                     break;
                 default:
                     // Skill groups carry most of the CA change; growth is a little uneven across attributes.
                     d = d * 1.25 * (0.6 + _rng.NextDouble() * 0.8);
+                    // Training focus tilts skill growth toward one group (the anchor step below keeps the total honest).
+                    if (_focus is { } f && f is AttrGroup.Shooting or AttrGroup.Playmaking or AttrGroup.Defense && d > 0)
+                        d *= group == f ? 1.6 : 0.8;
                     break;
             }
 

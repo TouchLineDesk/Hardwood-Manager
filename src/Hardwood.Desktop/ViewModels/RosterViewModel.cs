@@ -20,14 +20,16 @@ public sealed class PlayerRow
         return $"{inches / 12}'{inches % 12}\"";
     }
     public int HeightCm => Player.HeightCm;
-    public double Ovr => Math.Round(Player.Overall, 1);
-    public int CA => Player.CurrentAbility;
-    public int PA => Player.PotentialAbility;
-    public double Sho => Math.Round(Player.Attributes.Average(AttrGroup.Shooting), 1);
-    public double Ply => Math.Round(Player.Attributes.Average(AttrGroup.Playmaking), 1);
-    public double Def => Math.Round(Player.Attributes.Average(AttrGroup.Defense), 1);
-    public double Men => Math.Round(Player.Attributes.Average(AttrGroup.Mental), 1);
-    public double Phy => Math.Round(Player.Attributes.Average(AttrGroup.Physical), 1);
+    public double Knowledge { get; init; } = 1.0;
+    public string Ovr => Knowledge >= 0.999 ? Player.Overall.ToString("0.0") : $"{Scouting.Ability(Player, Knowledge).Low / 200.0 * 14 + 4:0.0}-{Scouting.Ability(Player, Knowledge).High / 200.0 * 14 + 4:0.0}";
+    public string CA => Scouting.Ability(Player, Knowledge).ToString();
+    public string PA => Scouting.Potential(Player, Knowledge).ToString();
+    public int CaSort => Player.CurrentAbility;
+    public string Sho => Scouting.GroupAverage(Player, AttrGroup.Shooting, Knowledge);
+    public string Ply => Scouting.GroupAverage(Player, AttrGroup.Playmaking, Knowledge);
+    public string Def => Scouting.GroupAverage(Player, AttrGroup.Defense, Knowledge);
+    public string Men => Scouting.GroupAverage(Player, AttrGroup.Mental, Knowledge);
+    public string Phy => Scouting.GroupAverage(Player, AttrGroup.Physical, Knowledge);
     public string Salary => Player.Contract is { } c ? $"${c.Salary / 1e6:F1}M" : "-";
     public long SalaryValue => Player.Contract?.Salary ?? 0;
     public string Years => Player.Contract is { } c ? (c.Years <= 0 ? "Expiring" : $"{c.Years} yr") : "-";
@@ -39,13 +41,13 @@ public sealed class PlayerRow
     public string FgPct { get; init; } = "";
     public string Team { get; init; } = "";
 
-    public static PlayerRow From(Player p, GameSession s, string? team = null)
+    public static PlayerRow From(Player p, GameSession s, string? team = null, bool prospect = false)
     {
         s.Stats.TryGetValue(p.Id, out var st);
         string status = p.IsAvailable(s.Today) ? "" : $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)";
         return new PlayerRow
         {
-            Player = p, Age = p.Age(s.Today), Status = status,
+            Player = p, Age = p.Age(s.Today), Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",
             Team = team ?? (p.TeamId is { } id ? s.League.TeamById(id).Abbreviation : "FA"),
@@ -84,6 +86,6 @@ public sealed partial class RosterViewModel : PageViewModel
         var fin = Session.League.Finance;
         long payroll = ContractMarket.Payroll(team);
         Summary = $"{team.Roster.Count} players · payroll ${payroll / 1e6:F1}M · room ${(fin.HardCap - payroll) / 1e6:F1}M · hard cap ${fin.HardCap / 1e6:F0}M"
-                  + (team == Session.HumanTeam ? "" : $" · {Session.Trades.Direction(team)}");
+                  + (team == Session.HumanTeam ? "" : $" · {Session.Trades.Direction(team)} · scouting knowledge {StaffEffects.ScoutingKnowledge(Session.HumanTeam) * 100:F0}% (ranges show what your scouts believe)");
     }
 }

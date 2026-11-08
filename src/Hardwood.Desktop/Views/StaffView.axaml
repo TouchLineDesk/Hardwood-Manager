@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.StaffView"
+             x:DataType="vm:StaffViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="10">
+      <TextBlock Text="Staff &amp; Training" Classes="h1" Margin="0"/>
+      <TextBlock Text="{Binding Effects}" Classes="muted" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding Status}" Classes="accent"/>
+
+      <Grid ColumnDefinitions="*,*">
+        <StackPanel Margin="0,0,6,0">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="Your staff" Classes="h2"/>
+            <Button Grid.Column="1" Content="Release selected" Command="{Binding FireCommand}" VerticalAlignment="Bottom"/>
+          </Grid>
+          <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="190">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="160"/>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
+              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="52"/>
+              <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="76"/>
+              <DataGridTextColumn Header="Deal" Binding="{Binding Contract}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Text="Staff market" Classes="h2"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding RoleFilter}" Width="190" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="2" Classes="primary" Content="Hire selected" Command="{Binding HireCommand}" VerticalAlignment="Bottom"/>
+          </Grid>
+          <DataGrid ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="190">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="160"/>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
+              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="52"/>
+              <DataGridTextColumn Header="Coa" Binding="{Binding Coaching}" Width="48"/>
+              <DataGridTextColumn Header="Dev" Binding="{Binding Development}" Width="48"/>
+              <DataGridTextColumn Header="Fit" Binding="{Binding Fitness}" Width="48"/>
+              <DataGridTextColumn Header="Med" Binding="{Binding Medical}" Width="48"/>
+              <DataGridTextColumn Header="Sco" Binding="{Binding Scouting}" Width="48"/>
+              <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </Grid>
+
+      <Border Classes="panel">
+        <StackPanel>
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Training intensity" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding IntensityText}" Classes="muted"/></Grid>
+          <Slider Minimum="0" Maximum="100" Value="{Binding Intensity}"/>
+          <TextBlock Text="Harder training grows players faster and wears them down; your strength coach decides how much it costs." Classes="muted" FontSize="11.5"/>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="Individual focus" Classes="h2"/>
+      <TextBlock Text="Pick what each player works on. Focus tilts skill growth toward one area; young players with headroom benefit most." Classes="muted"/>
+      <DataGrid ItemsSource="{Binding Players}" IsReadOnly="False" Height="380" CanUserSortColumns="False">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="52" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52" IsReadOnly="True"/>
+          <DataGridTextColumn Header="CA / PA" Binding="{Binding Ability}" Width="90" IsReadOnly="True"/>
+          <DataGridTemplateColumn Header="Focus" Width="200">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:FocusRow">
+                <ComboBox ItemsSource="{Binding Owner.FocusOptions}" SelectedItem="{Binding Focus}" HorizontalAlignment="Stretch" Margin="2"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

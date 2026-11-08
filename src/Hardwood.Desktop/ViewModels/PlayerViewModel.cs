@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.Model;
+using Hardwood.Core.Season;
 
 namespace Hardwood.Desktop.ViewModels;
 
@@ -8,6 +9,7 @@ public sealed class AttrCell
 {
     public required string Name { get; init; }
     public int Value { get; init; }
+    public string Text { get; init; } = "";
     public string Color => Value >= 16 ? "#3FB950" : Value >= 13 ? "#A3D977" : Value >= 10 ? "#E6EAF0" : Value >= 7 ? "#D29922" : "#F85149";
 }
 
@@ -15,7 +17,7 @@ public sealed class AttrGroupVm
 {
     public required string Name { get; init; }
     public List<AttrCell> Cells { get; init; } = new();
-    public double Average => Math.Round(Cells.Average(c => c.Value), 1);
+    public string Average { get; init; } = "";
 }
 
 public sealed class SeasonLine
@@ -60,7 +62,8 @@ public sealed partial class PlayerViewModel : PageViewModel
         var p = Player; var s = Session;
         var team = p.TeamId is { } id ? s.League.TeamById(id).FullName : "Free agent";
         Headline = $"{p.PrimaryPosition}{(p.SecondaryPosition is { } sp ? "/" + sp : "")} · {team}";
-        Bio = $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {p.HeightCm} cm · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {p.CurrentAbility} / potential {p.PotentialAbility} · Overall {p.Overall:F1}";
+        double k = Scouting.Knowledge(s.HumanTeam, p);
+        Bio = $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {Scouting.Potential(p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
         Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M per year, {(c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} remaining")}{(c.TeamOption ? ", team option" : "")}" : "No contract";
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
@@ -84,10 +87,16 @@ public sealed partial class PlayerViewModel : PageViewModel
         var t = p.Tendencies;
         Tendencies = $"Three-point rate {t.ThreePointRate} · drives {t.DriveRate} · post-ups {t.PostUpRate} · isolation {t.IsolationRate} · pass-first {t.PassFirst} · crash glass {t.CrashGlass}";
 
+        double know = Scouting.Knowledge(s.HumanTeam, p);
         Groups = Enum.GetValues<AttrGroup>().Select(g => new AttrGroupVm
         {
             Name = g.ToString(),
-            Cells = AttrInfo.All.Where(a => AttrInfo.GroupOf(a) == g).Select(a => new AttrCell { Name = Pretty(a), Value = p.Attributes[a] }).ToList(),
+            Average = Scouting.GroupAverage(p, g, know),
+            Cells = AttrInfo.All.Where(a => AttrInfo.GroupOf(a) == g).Select(a =>
+            {
+                var r = Scouting.Attribute(p, a, know);
+                return new AttrCell { Name = Pretty(a), Value = (int)Math.Round(r.Mid), Text = r.ToString() };
+            }).ToList(),
         }).ToList();
 
         Seasons.Clear();

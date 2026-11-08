@@ -34,9 +34,9 @@
                 <ItemsControl ItemsSource="{Binding Cells}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:AttrCell">
-                      <Grid ColumnDefinitions="*,32" Margin="0,1">
+                      <Grid ColumnDefinitions="*,48" Margin="0,1">
                         <TextBlock Text="{Binding Name}" FontSize="12.5"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="{Binding Color}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Text}" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="{Binding Color}"/>
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

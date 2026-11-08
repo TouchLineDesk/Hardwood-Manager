@@ -24,6 +24,9 @@ public sealed class Team
     /// <summary>Player ids whose numbers hang in the rafters.</summary>
     public List<int> RetiredNumbers { get; } = new();
 
+    public List<Staff> Staff { get; } = new();
+    public TrainingPlan Training { get; set; } = new();
+
     /// <summary>Players fit to play on a given day.</summary>
     public IEnumerable<Player> Available(DateOnly on) => Roster.Where(p => p.IsAvailable(on));
 
@@ -71,6 +74,9 @@ public sealed class League
     /// <summary>Every future draft pick in the world (both rounds, several years ahead).</summary>
     public List<DraftPickAsset> Picks { get; } = new();
     public Dictionary<int, Season.CareerTotals> Careers { get; } = new();
+    /// <summary>Staff without a team, available to hire.</summary>
+    public List<Staff> FreeStaff { get; } = new();
+    public int NextStaffId { get; set; } = 1;
     public List<Season.HallOfFamer> HallOfFame { get; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;

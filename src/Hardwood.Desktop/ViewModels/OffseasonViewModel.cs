@@ -26,13 +26,14 @@ public sealed class ProspectRow
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
     public int Age { get; init; }
-    public string Height => $"{Player.HeightCm} cm";
-    public int CA => Player.CurrentAbility;
-    public int PA => Player.PotentialAbility;
-    public double Sho => Math.Round(Player.Attributes.Average(AttrGroup.Shooting), 1);
-    public double Ply => Math.Round(Player.Attributes.Average(AttrGroup.Playmaking), 1);
-    public double Def => Math.Round(Player.Attributes.Average(AttrGroup.Defense), 1);
-    public double Phy => Math.Round(Player.Attributes.Average(AttrGroup.Physical), 1);
+    public string Height => PlayerRow.FormatHeight(Player.HeightCm);
+    public double Knowledge { get; init; } = 1.0;
+    public string CA => Scouting.Ability(Player, Knowledge).ToString();
+    public string PA => Scouting.Potential(Player, Knowledge).ToString();
+    public string Sho => Scouting.GroupAverage(Player, AttrGroup.Shooting, Knowledge);
+    public string Ply => Scouting.GroupAverage(Player, AttrGroup.Playmaking, Knowledge);
+    public string Def => Scouting.GroupAverage(Player, AttrGroup.Defense, Knowledge);
+    public string Phy => Scouting.GroupAverage(Player, AttrGroup.Physical, Knowledge);
     public string Need { get; init; } = "";
 }
 
@@ -119,11 +120,12 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 Headline = $"Draft {o.Season + 1} · round {o.CurrentRound}, pick {o.NextPickIndex + 1}";
                 int ourPicks = o.PickOwners.Skip(o.NextPickIndex).Count(t => t == team);
                 ClockText = OnTheClock ? "You are on the clock." : o.DraftComplete ? "Draft complete." : $"{o.OnTheClock?.FullName} is on the clock. You have {ourPicks} pick{(ourPicks == 1 ? "" : "s")} left.";
-                Instructions = OnTheClock ? "Select a prospect and make your pick. First-round picks sign rookie-scale deals; second-rounders are unguaranteed and go to the free-agent pool."
-                                          : "Continue to run the draft to your next pick.";
+                Instructions = (OnTheClock ? "Select a prospect and make your pick. First-round picks sign rookie-scale deals; second-rounders are unguaranteed and go to the free-agent pool."
+                                          : "Continue to run the draft to your next pick.") + $" Your scouts' knowledge of the class: {Scouting.Knowledge(team, o.Prospects.FirstOrDefault() ?? team.Roster[0], prospect: true) * 100:F0}%; ability shows as a range.";
                 int rank = 1;
+                double know = Scouting.Knowledge(team, o.Prospects.FirstOrDefault() ?? team.Roster[0], prospect: true);
                 foreach (var p in o.Prospects)
-                    Prospects.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(o.Date), Need = team.Roster.Count(x => x.PrimaryPosition == p.PrimaryPosition) <= 1 ? "Need" : "" });
+                    Prospects.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(o.Date), Knowledge = know, Need = team.Roster.Count(x => x.PrimaryPosition == p.PrimaryPosition) <= 1 ? "Need" : "" });
                 foreach (var d in o.Report.Draft.OrderByDescending(d => d.Pick)) Picks.Add(new PickRow { Pick = d, Ours = d.Team == team });
                 SelectedProspect = Prospects.FirstOrDefault();
                 break;

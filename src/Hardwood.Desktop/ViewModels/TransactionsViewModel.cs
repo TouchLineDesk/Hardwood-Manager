@@ -13,8 +13,9 @@ public sealed partial class TradePiece : ObservableObject
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
     public int Age { get; init; }
-    public int CA => Player.CurrentAbility;
-    public int PA => Player.PotentialAbility;
+    public double Knowledge { get; init; } = 1.0;
+    public string CA => Scouting.Ability(Player, Knowledge).ToString();
+    public string PA => Scouting.Potential(Player, Knowledge).ToString();
     public string Salary => Player.Contract is { } c ? $"${c.Salary / 1e6:F1}M × {Math.Max(c.Years, 1)}" : "-";
     public string Value { get; init; } = "";
     [ObservableProperty] private bool _included;
@@ -126,8 +127,9 @@ public sealed partial class TransactionsViewModel : PageViewModel
         if (Partner == null) return;
         foreach (var p in s.HumanTeam.Roster.OrderByDescending(p => p.CurrentAbility))
             Ours.Add(new TradePiece { Player = p, Owner = this, Age = p.Age(s.Today), Value = engine.ValueTo(Partner, p).ToString("0.0") });
+        double know = Scouting.Knowledge(s.HumanTeam, Partner.Roster.FirstOrDefault() ?? s.HumanTeam.Roster[0]);
         foreach (var p in Partner.Roster.OrderByDescending(p => p.CurrentAbility))
-            Theirs.Add(new TradePiece { Player = p, Owner = this, Age = p.Age(s.Today), Value = engine.ValueTo(Partner, p).ToString("0.0") });
+            Theirs.Add(new TradePiece { Player = p, Owner = this, Age = p.Age(s.Today), Knowledge = know, Value = engine.ValueTo(Partner, p).ToString("0.0") });
         OurPicks.Clear(); TheirPicks.Clear();
         string Abbr(int id) => s.League.TeamById(id).Abbreviation;
         foreach (var pk in s.League.PicksOwnedBy(s.HumanTeam.Id))

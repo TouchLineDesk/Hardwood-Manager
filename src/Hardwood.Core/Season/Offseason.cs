@@ -22,6 +22,8 @@ public sealed class OffseasonReport
     public List<Player> LeftUnsigned { get; } = new();
     public List<Player> HallOfFame { get; } = new();
     public List<(Player player, Team team)> RetiredNumbers { get; } = new();
+    public List<(Staff staff, Team team)> StaffReleased { get; } = new();
+    public List<(Staff staff, Team team)> StaffHired { get; } = new();
 }
 
 /// <summary>
@@ -107,11 +109,20 @@ public sealed class Offseason
         if (Phase != OffseasonPhase.NotStarted) return;
         RecordHistory();
 
-        foreach (var p in _league.AllActivePlayers.Concat(_league.FreeAgents).ToList())
+        foreach (var team in _league.Teams)
         {
-            double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
-            Report.Development.Add(_dev.Develop(p, Date, mpg));
+            double quality = StaffEffects.TrainingQuality(team);
+            foreach (var p in team.Roster.ToList())
+            {
+                double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
+                team.Training.Focus.TryGetValue(p.Id, out var focus);
+                Report.Development.Add(_dev.Develop(p, Date, mpg, quality, team.Training.Focus.ContainsKey(p.Id) ? focus : null));
+            }
         }
+        foreach (var p in _league.FreeAgents.ToList())
+            Report.Development.Add(_dev.Develop(p, Date, 0, 8));
+
+        StaffOffseason();
 
         foreach (var team in _league.Teams)
         foreach (var p in team.Roster.ToList())
@@ -396,6 +407,7 @@ public sealed class Offseason
             }
         }
         AiFreeAgency(null);
+        AiHireStaff(null);
 
         foreach (var p in _league.FreeAgents.ToList())
         {
@@ -469,6 +481,60 @@ public sealed class Offseason
     }
 
     public double HallOfFameThreshold { get; set; } = 60;
+
+    /// <summary>Staff contracts tick down; AI teams re-sign good staff or hire from the market; retirements and new faces.</summary>
+    private void StaffOffseason()
+    {
+        var gen = new Generation.StaffGenerator(_rng);
+        foreach (var team in _league.Teams)
+        {
+            foreach (var st in team.Staff.ToList())
+            {
+                st.ContractYears--;
+                if (st.ContractYears > 0) continue;
+                bool keep = st.KeyAttribute >= 10 && _rng.Chance(0.75);
+                if (keep) { st.ContractYears = _rng.Next(1, 4); st.Salary = Generation.StaffGenerator.SalaryFor(st); }
+                else { team.Staff.Remove(st); st.TeamId = null; _league.FreeStaff.Add(st); Report.StaffReleased.Add((st, team)); }
+            }
+        }
+        // Old staff retire; the market gets fresh candidates.
+        foreach (var st in _league.FreeStaff.ToList())
+            if (st.Age(Date) >= 65 || _rng.Chance(0.15)) _league.FreeStaff.Remove(st);
+        for (int i = 0; i < 12; i++)
+            _league.FreeStaff.Add(gen.Generate(_league, Enum.GetValues<StaffRole>()[_rng.Next(5)], Date, (int)Math.Round(Math.Clamp(_rng.NextGaussian(10, 3), 3, 18))));
+    }
+
+    /// <summary>AI teams fill empty staff roles with the best available; the human team is left alone.</summary>
+    public void AiHireStaff(int? humanTeamId)
+    {
+        foreach (var team in _league.Teams.Where(t => t.Id != humanTeamId))
+        foreach (var role in Enum.GetValues<StaffRole>())
+        {
+            if (team.Staff.Any(s => s.Role == role)) continue;
+            var best = _league.FreeStaff.Where(s => s.Role == role).OrderByDescending(s => s.KeyAttribute).FirstOrDefault();
+            if (best == null) continue;
+            Hire(team, best);
+        }
+    }
+
+    public void Hire(Team team, Staff st)
+    {
+        if (!_league.FreeStaff.Remove(st)) return;
+        var existing = team.Staff.FirstOrDefault(s => s.Role == st.Role);
+        if (existing != null) Fire(team, existing);
+        st.TeamId = team.Id;
+        st.ContractYears = Math.Max(1, st.ContractYears);
+        team.Staff.Add(st);
+        Report.StaffHired.Add((st, team));
+    }
+
+    public void Fire(Team team, Staff st)
+    {
+        if (!team.Staff.Remove(st)) return;
+        st.TeamId = null;
+        _league.FreeStaff.Add(st);
+        Report.StaffReleased.Add((st, team));
+    }
 
     private void Retire(Team team, Player p)
     {

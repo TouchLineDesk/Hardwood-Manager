@@ -34,7 +34,7 @@ public sealed class GameSimulator
             foreach (var box in new[] { result.Home, result.Away })
             foreach (var line in box.Lines)
             {
-                var inj = injuries.Roll(line.Player, line, d, rng);
+                var inj = injuries.Roll(line.Player, line, d, rng, box.Team);
                 if (inj != null) result.Injuries.Add((line.Player, inj));
             }
         }

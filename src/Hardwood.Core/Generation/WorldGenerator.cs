@@ -44,6 +44,7 @@ public sealed class WorldGenerator
         }
         finally { league.NextPlayerId = players.NextId; }
         league.EnsurePicks();
+        new StaffGenerator(_rng).Populate(league, today);
         return league;
     }
 

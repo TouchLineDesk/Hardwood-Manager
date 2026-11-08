@@ -91,6 +91,31 @@ public sealed class GameSession
         Schedule.Where(g => (g.Home == HumanTeam || g.Away == HumanTeam) && Results.ContainsKey(g.Index)).Select(g => (g, Results[g.Index]));
     public Series? HumanSeries => Postseason?.Series.LastOrDefault(s => s.Higher == HumanTeam || s.Lower == HumanTeam);
 
+    // ------------------------------------------------------------------------------------------
+    // Staff
+    // ------------------------------------------------------------------------------------------
+    public bool HireStaff(Staff st)
+    {
+        if (!League.FreeStaff.Remove(st)) return false;
+        var existing = HumanTeam.Staff.FirstOrDefault(x => x.Role == st.Role);
+        if (existing != null) { HumanTeam.Staff.Remove(existing); existing.TeamId = null; League.FreeStaff.Add(existing); }
+        st.TeamId = HumanTeam.Id;
+        st.ContractYears = Math.Max(1, st.ContractYears);
+        HumanTeam.Staff.Add(st);
+        Post($"Hired {st.Name}", $"{st.Name} joins as {Staff.RoleName(st.Role).ToLower()} on a {st.ContractYears}-year deal at ${st.Salary / 1e6:F2}M." + (existing != null ? $" {existing.Name} has been let go." : ""), "Staff");
+        SaveNow();
+        return true;
+    }
+
+    public void FireStaff(Staff st)
+    {
+        if (!HumanTeam.Staff.Remove(st)) return;
+        st.TeamId = null;
+        League.FreeStaff.Add(st);
+        Post($"Released {st.Name}", $"{Staff.RoleName(st.Role)} {st.Name} has left the organisation.", "Staff");
+        SaveNow();
+    }
+
     public void Post(string title, string body, string category = "News")
     {
         Inbox.Insert(0, new InboxMessage { Id = _nextMessageId++, Date = Today, Title = title, Body = body, Category = category });
@@ -263,6 +288,8 @@ public sealed class GameSession
         int ourPick = lottery.Order.IndexOf(HumanTeam) + 1;
         Post("Draft lottery results",
             $"You pick {Ordinal(ourPick)} in the first round." + (lottery.Jumps.Count > 0 ? "\n" + string.Join("\n", lottery.Jumps.Select(j => $"{j.team.Abbreviation} moved from {Ordinal(j.preLotterySlot)} to {Ordinal(j.pick)}")) : ""), "League");
+        var staffGone = Offseason.Report.StaffReleased.Where(x => x.team == HumanTeam).Select(x => $"{x.staff.Name} ({Staff.RoleName(x.staff.Role).ToLower()})").ToList();
+        if (staffGone.Count > 0) Post("Staff contracts expired", $"{string.Join(", ", staffGone)} left at the end of their deals. Hire replacements from the staff market.", "Staff");
         var expiring = Offseason.Expiring[HumanTeam.Id];
         Post("Contract decisions",
             expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${Offseason.Ask(p) / 1e6:F1}M)"))}. Re-sign or release each one, then continue to the draft.", "Roster");
