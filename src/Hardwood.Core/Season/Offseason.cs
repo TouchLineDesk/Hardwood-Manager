@@ -5,6 +5,8 @@ namespace Hardwood.Core.Season;
 
 public sealed record DraftPick(int Round, int Pick, Team Team, Player Player);
 
+public enum OffseasonPhase { NotStarted, ReSigning, Draft, FreeAgency, Complete }
+
 public sealed class OffseasonReport
 {
     public int Season { get; init; }
@@ -12,6 +14,7 @@ public sealed class OffseasonReport
     public List<Player> Retired { get; } = new();
     public List<(Player player, Team team)> ReSigned { get; } = new();
     public List<(Player player, Team from)> ToFreeAgency { get; } = new();
+    public LotteryResult? Lottery { get; set; }
     public List<DraftPick> Draft { get; } = new();
     public List<(Player player, Team team, long salary, int years)> FreeAgentSignings { get; } = new();
     public List<(Player player, Team team)> Waived { get; } = new();
@@ -19,251 +22,369 @@ public sealed class OffseasonReport
 }
 
 /// <summary>
-/// Turns one finished season into the next: progression and aging, retirements, contract expiry under a hard cap,
-/// a two-round draft of generated rookies, free agency, roster trimming, and the season counter.
+/// Turns one finished season into the next, in phases so a human-controlled team can act at each decision point:
+/// development, aging and retirements → contract expiry (re-sign or release) → lottery and draft → free agency → compliance.
+/// AI teams decide for themselves; <see cref="RunAll"/> runs the whole thing headless.
 /// </summary>
 public sealed class Offseason
 {
     private readonly Rng _rng;
     private readonly DevelopmentEngine _dev;
+    private readonly League _league;
+    private readonly SeasonOutcome _outcome;
+    private readonly Dictionary<int, PlayerSeasonStats> _stats;
 
-    public Offseason(Rng rng, DevelopmentConfig? devConfig = null)
+    public OffseasonReport Report { get; }
+    public OffseasonPhase Phase { get; private set; } = OffseasonPhase.NotStarted;
+    public DateOnly Date { get; }
+    public int Season { get; }
+
+    /// <summary>Players whose contracts expired, per team, awaiting a re-sign or release decision.</summary>
+    public Dictionary<int, List<Player>> Expiring { get; } = new();
+    /// <summary>Full two-round draft order (team per pick), set once the lottery has run.</summary>
+    public List<Team> DraftOrder { get; private set; } = new();
+    public List<Player> Prospects { get; private set; } = new();
+    /// <summary>Index of the next pick to be made (0-based into DraftOrder, round 1 then round 2).</summary>
+    public int NextPickIndex { get; private set; }
+    public bool DraftComplete => NextPickIndex >= DraftOrder.Count * 2;
+    public Team? OnTheClock => DraftComplete ? null : DraftOrder[NextPickIndex % DraftOrder.Count];
+    public int CurrentRound => NextPickIndex / Math.Max(1, DraftOrder.Count) + 1;
+
+    public Offseason(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng, DevelopmentConfig? devConfig = null)
     {
-        _rng = rng;
+        _league = league; _outcome = outcome; _stats = stats; _rng = rng;
         _dev = new DevelopmentEngine(rng, devConfig);
+        Season = league.Season;
+        Date = new DateOnly(Season + 1, 7, 1);
+        Report = new OffseasonReport { Season = Season };
     }
 
-    public OffseasonReport Run(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats)
+    /// <summary>Headless: every team is AI.</summary>
+    public static OffseasonReport RunAll(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng)
     {
-        int season = league.Season;
-        var offseasonDate = new DateOnly(season + 1, 7, 1);
-        var report = new OffseasonReport { Season = season };
-        var fin = league.Finance;
+        var o = new Offseason(league, outcome, stats, rng);
+        o.Begin();
+        o.AiReSignAll();
+        o.AdvanceToDraft();
+        o.AutoDraftUntil(null);
+        o.AdvanceToFreeAgency();
+        o.AiFreeAgency(null);
+        o.Complete();
+        return o.Report;
+    }
 
-        RecordHistory(league, outcome, stats);
+    // ------------------------------------------------------------------------------------------
+    // Phase 1: history, development, retirements, contract expiry, lottery
+    // ------------------------------------------------------------------------------------------
+    public void Begin()
+    {
+        if (Phase != OffseasonPhase.NotStarted) return;
+        RecordHistory();
 
-        // 1. Development and aging for everyone in the world (free agents too).
-        foreach (var p in league.AllActivePlayers.Concat(league.FreeAgents).ToList())
+        foreach (var p in _league.AllActivePlayers.Concat(_league.FreeAgents).ToList())
         {
-            double mpg = stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
-            report.Development.Add(_dev.Develop(p, offseasonDate, mpg));
+            double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
+            Report.Development.Add(_dev.Develop(p, Date, mpg));
         }
 
-        // 2. Retirements.
-        foreach (var team in league.Teams)
+        foreach (var team in _league.Teams)
+        foreach (var p in team.Roster.ToList())
         {
-            foreach (var p in team.Roster.ToList())
+            double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
+            if (_dev.ShouldRetire(p, Date, mpg)) Retire(team, p);
+        }
+        foreach (var p in _league.FreeAgents.ToList())
+        {
+            if (_dev.ShouldRetire(p, Date, 0) || p.CurrentAbility < 60)
             {
-                double mpg = stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
-                if (!_dev.ShouldRetire(p, offseasonDate, mpg)) continue;
-                Retire(league, team, p, report);
+                _league.FreeAgents.Remove(p);
+                _league.Retired.Add(p);
+                Report.Retired.Add(p);
             }
         }
-        foreach (var p in league.FreeAgents.ToList())
-        {
-            if (_dev.ShouldRetire(p, offseasonDate, 0) || p.CurrentAbility < 60)
-            {
-                league.FreeAgents.Remove(p);
-                league.Retired.Add(p);
-                report.Retired.Add(p);
-            }
-        }
 
-        // 3. Draft first (rookie deals are cheap and known), then contracts: tick down and handle expiries under the hard cap.
-        foreach (var team in league.Teams)
+        // Contracts tick down; expiring players wait for a decision.
+        foreach (var team in _league.Teams)
+        {
             foreach (var p in team.Roster) if (p.Contract != null) p.Contract.Years--;
-        RunDraft(league, outcome, offseasonDate, report);
-
-        foreach (var team in league.Teams)
-        {
-            var expiring = team.Roster.Where(p => p.Contract == null || p.Contract.Years <= 0)
-                .OrderByDescending(p => ContractMarket.Value(p, offseasonDate)).ToList();
-            foreach (var p in expiring)
-            {
-                long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(offseasonDate), fin);
-                long payrollWithout = team.Roster.Where(x => x != p && x.Contract != null && x.Contract.Years > 0).Sum(x => x.Contract!.Salary);
-                bool fits = payrollWithout + ask <= fin.HardCap;
-                // Keep the good ones if the money works; the player's loyalty nudges the odds.
-                double wantToKeep = Math.Clamp((ContractMarket.Value(p, offseasonDate) - 72) / 50.0, 0.05, 0.95);
-                double wantToStay = 0.6 + p.Hidden.Loyalty / 20.0 * 0.35;
-                if (fits && _rng.Chance(wantToKeep * wantToStay))
-                {
-                    p.Contract = new Contract { Years = ContractMarket.ContractLength(p, offseasonDate, _rng), Salary = ask, StartSeason = season + 1 };
-                    report.ReSigned.Add((p, team));
-                }
-                else
-                {
-                    team.Roster.Remove(p);
-                    p.TeamId = null;
-                    p.Contract = null;
-                    league.FreeAgents.Add(p);
-                    report.ToFreeAgency.Add((p, team));
-                }
-            }
+            Expiring[team.Id] = team.Roster.Where(p => p.Contract == null || p.Contract.Years <= 0)
+                .OrderByDescending(p => ContractMarket.Value(p, Date)).ToList();
         }
 
-        // 4. Free agency: fill rosters to 13+ with the best fits that fit under the cap.
-        RunFreeAgency(league, offseasonDate, report);
+        // Lottery and draft order.
+        var reverse = _outcome.Standings.All().Select(r => r.Team).Reverse().ToList();
+        var playoffTeams = _outcome.Playoffs.Where(x => x.Round.EndsWith("First Round"))
+            .SelectMany(x => new[] { x.Series.Winner.Id, x.Series.Loser.Id }).ToHashSet();
+        Report.Lottery = DraftLottery.Run(reverse, playoffTeams, _rng);
+        DraftOrder = Report.Lottery.Order;
+        Prospects = GenerateProspects();
 
-        // 5. Trim rosters over the maximum and get under the hard cap; waived players join the pool, then one more pass of free agency.
-        foreach (var team in league.Teams)
-        {
-            while (team.Roster.Count > fin.RosterMax ||
-                   (ContractMarket.Payroll(team) > fin.HardCap && team.Roster.Count > fin.RosterMin))
-            {
-                // Over the cap: shed the worst value per dollar; over the roster limit: shed the least valuable.
-                var cut = ContractMarket.Payroll(team) > fin.HardCap
-                    ? team.Roster.OrderBy(p => ContractMarket.Value(p, offseasonDate) - (p.Contract?.Salary ?? 0) / 1e6 * 1.5).First()
-                    : team.Roster.OrderBy(p => ContractMarket.Value(p, offseasonDate)).First();
-                team.Roster.Remove(cut);
-                cut.TeamId = null; cut.Contract = null;
-                league.FreeAgents.Add(cut);
-                report.Waived.Add((cut, team));
-            }
-        }
-        RunFreeAgency(league, offseasonDate, report);
-
-        // Unsigned players: the weak and the old leave the pool, and the pool itself is capped (the rest play abroad).
-        foreach (var p in league.FreeAgents.ToList())
-        {
-            if (p.CurrentAbility < 80 || p.Age(offseasonDate) >= 35)
-            {
-                league.FreeAgents.Remove(p);
-                league.Retired.Add(p);
-                report.LeftUnsigned.Add(p);
-            }
-        }
-        foreach (var p in league.FreeAgents.OrderByDescending(p => ContractMarket.Value(p, offseasonDate)).Skip(90).ToList())
-        {
-            league.FreeAgents.Remove(p);
-            league.Retired.Add(p);
-            report.LeftUnsigned.Add(p);
-        }
-
-        league.Season = season + 1;
-        return report;
+        Phase = OffseasonPhase.ReSigning;
     }
 
-    private static void RecordHistory(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats)
-    {
-        var finals = outcome.Playoffs.Last().Series;
-        var scoring = stats.Values.Where(s => s.Games >= 50).OrderByDescending(s => s.Ppg).FirstOrDefault();
-        // MVP stub: best per-game production on a winning team.
-        var teamWins = league.Teams.ToDictionary(t => t.Id, t => outcome.Standings[t].Wins);
-        var mvp = stats.Values.Where(s => s.Games >= 55 && teamWins[s.TeamId] >= 41)
-            .OrderByDescending(s => s.Ppg + s.Rpg * 1.2 + s.Apg * 1.5 + s.PlusMinus / 20.0).FirstOrDefault();
+    /// <summary>What an expiring player asks for from his current team.</summary>
+    public long Ask(Player p) => ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), _league.Finance);
 
-        league.History.Add(new SeasonSummary
-        {
-            Season = league.Season,
-            ChampionTeamId = finals.Winner.Id,
-            RunnerUpTeamId = finals.Loser.Id,
-            Records = league.Teams.Select(t => (t.Id, outcome.Standings[t].Wins, outcome.Standings[t].Losses)).ToList(),
-            ScoringLeaderPlayerId = scoring?.PlayerId,
-            MvpPlayerId = mvp?.PlayerId,
-        });
+    /// <summary>Payroll committed for next season (players under contract beyond this one).</summary>
+    public long CommittedPayroll(Team team) => team.Roster.Where(x => x.Contract != null && x.Contract.Years > 0).Sum(x => x.Contract!.Salary);
+
+    /// <summary>Rookie-scale money this team's first-round pick will cost, so re-signing leaves room for it.</summary>
+    public long ReservedForDraft(Team team)
+    {
+        if (Phase != OffseasonPhase.ReSigning) return 0;
+        int slot = DraftOrder.IndexOf(team);
+        return slot < 0 ? 0 : Math.Max(_league.Finance.MinSalary, (long)(_league.Finance.RookieScaleFirstPick * Math.Pow(0.93, slot)));
     }
 
-    private void Retire(League league, Team team, Player p, OffseasonReport report)
+    public bool CanAfford(Team team, long salary) => CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.HardCap;
+
+    /// <summary>Re-sign an expiring player at his ask. Returns false if it doesn't fit under the cap.</summary>
+    public bool ReSign(Team team, Player p, int? years = null)
     {
+        if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return false;
+        long ask = Ask(p);
+        if (!CanAfford(team, ask)) return false;
+        p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = ask, StartSeason = Season + 1 };
+        list.Remove(p);
+        Report.ReSigned.Add((p, team));
+        return true;
+    }
+
+    public void Release(Team team, Player p)
+    {
+        if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return;
         team.Roster.Remove(p);
         p.TeamId = null; p.Contract = null;
-        league.Retired.Add(p);
-        report.Retired.Add(p);
+        _league.FreeAgents.Add(p);
+        list.Remove(p);
+        Report.ToFreeAgency.Add((p, team));
     }
 
-    private void RunDraft(League league, SeasonOutcome outcome, DateOnly date, OffseasonReport report)
+    public void AiReSign(Team team)
     {
-        var fin = league.Finance;
-        int season = league.Season;
+        foreach (var p in Expiring[team.Id].ToList())
+        {
+            double wantToKeep = Math.Clamp((ContractMarket.Value(p, Date) - 72) / 50.0, 0.05, 0.95);
+            double wantToStay = 0.6 + p.Hidden.Loyalty / 20.0 * 0.35;
+            if (CanAfford(team, Ask(p)) && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
+            else Release(team, p);
+        }
+    }
 
-        // Draft order: reverse regular-season record (no lottery yet).
-        var order = outcome.Standings.All().Select(r => r.Team).Reverse().ToList();
+    public void AiReSignAll(int? exceptTeamId = null)
+    {
+        foreach (var team in _league.Teams) if (team.Id != exceptTeamId) AiReSign(team);
+    }
 
-        // Prospect pool: 75 players aged 19–22 with a steep talent curve.
-        var gen = new PlayerGenerator(_rng, league.NextPlayerId);
+    // ------------------------------------------------------------------------------------------
+    // Phase 2: draft
+    // ------------------------------------------------------------------------------------------
+    public void AdvanceToDraft()
+    {
+        if (Phase != OffseasonPhase.ReSigning) return;
+        // Anyone still undecided is released.
+        foreach (var team in _league.Teams) foreach (var p in Expiring[team.Id].ToList()) Release(team, p);
+        Phase = OffseasonPhase.Draft;
+    }
+
+    private List<Player> GenerateProspects()
+    {
+        var gen = new PlayerGenerator(_rng, _league.NextPlayerId);
         var prospects = new List<Player>();
         var positions = Enum.GetValues<Position>();
         for (int i = 0; i < 75; i++)
         {
             int age = _rng.Next(19, 23);
-            // A few blue-chippers, a solid middle, a long tail.
             double u = _rng.NextDouble();
             int ca = u < 0.05 ? _rng.Next(105, 125) : u < 0.30 ? _rng.Next(85, 105) : _rng.Next(55, 88);
-            var p = gen.Generate(positions[_rng.Next(5)], ca, age, date);
-            // Prospects get extra headroom: the draft is about potential.
+            var p = gen.Generate(positions[_rng.Next(5)], ca, age, Date);
             p.PotentialAbility = Math.Clamp(p.PotentialAbility + _rng.Next(0, 25), p.CurrentAbility, 200);
             prospects.Add(p);
         }
-        league.NextPlayerId = gen.NextId;
+        _league.NextPlayerId = gen.NextId;
+        return prospects.OrderByDescending(p => ContractMarket.Value(p, Date)).ToList();
+    }
 
-        // AI picks: best available by front-office value with a little noise (imperfect scouting).
-        for (int round = 1; round <= 2; round++)
+    public double AiBoardScore(Team team, Player prospect) =>
+        ContractMarket.Value(prospect, Date) + PositionNeed(team, prospect) * 4;
+
+    /// <summary>Make the current pick for the team on the clock.</summary>
+    public DraftPick MakePick(Player prospect)
+    {
+        if (Phase != OffseasonPhase.Draft || DraftComplete) throw new InvalidOperationException("No pick on the clock");
+        if (!Prospects.Remove(prospect)) throw new InvalidOperationException("Prospect not available");
+        var team = OnTheClock!;
+        int round = CurrentRound;
+        int overall = NextPickIndex + 1;
+        var fin = _league.Finance;
+        var pick = new DraftPick(round, overall, team, prospect);
+        Report.Draft.Add(pick);
+        if (round == 1)
         {
-            for (int i = 0; i < order.Count; i++)
+            long salary = (long)(fin.RookieScaleFirstPick * Math.Pow(0.93, overall - 1));
+            prospect.Contract = new Contract { Years = 4, Salary = Math.Max(salary, fin.MinSalary), StartSeason = Season + 1, TeamOption = true };
+            prospect.TeamId = team.Id;
+            team.Roster.Add(prospect);
+        }
+        else
+        {
+            // Second-round picks are unguaranteed: they go to the pool and must earn a deal in free agency.
+            _league.FreeAgents.Add(prospect);
+        }
+        NextPickIndex++;
+        return pick;
+    }
+
+    public DraftPick AutoPick()
+    {
+        var team = OnTheClock ?? throw new InvalidOperationException("Draft complete");
+        var best = Prospects.OrderByDescending(p => AiBoardScore(team, p) + _rng.NextGaussian(0, 6)).First();
+        return MakePick(best);
+    }
+
+    /// <summary>Run AI picks until the given team is on the clock (or the draft ends). Null = run everything.</summary>
+    public void AutoDraftUntil(int? humanTeamId)
+    {
+        while (!DraftComplete && OnTheClock!.Id != humanTeamId) AutoPick();
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Phase 3: free agency
+    // ------------------------------------------------------------------------------------------
+    public void AdvanceToFreeAgency()
+    {
+        if (Phase != OffseasonPhase.Draft) return;
+        AutoDraftUntil(null);
+        Phase = OffseasonPhase.FreeAgency;
+    }
+
+    public long Room(Team team) => _league.Finance.HardCap - ContractMarket.Payroll(team);
+
+    /// <summary>Sign a free agent at market salary. Below the roster minimum a minimum deal is allowed regardless of room.</summary>
+    public bool SignFreeAgent(Team team, Player p, int? years = null)
+    {
+        if (!_league.FreeAgents.Contains(p) || team.Roster.Count >= _league.Finance.RosterMax) return false;
+        var fin = _league.Finance;
+        long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
+        long room = Room(team);
+        bool mustFill = team.Roster.Count < fin.RosterMin;
+        long salary;
+        if (ask <= room) salary = ask;
+        else if (mustFill && ask <= fin.MinSalary * 2) salary = fin.MinSalary;
+        else return false;
+
+        p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = salary, StartSeason = Season + 1 };
+        p.TeamId = team.Id;
+        team.Roster.Add(p);
+        _league.FreeAgents.Remove(p);
+        Report.FreeAgentSignings.Add((p, team, salary, p.Contract.Years));
+        return true;
+    }
+
+    public void Waive(Team team, Player p)
+    {
+        if (!team.Roster.Remove(p)) return;
+        p.TeamId = null; p.Contract = null;
+        _league.FreeAgents.Add(p);
+        Report.Waived.Add((p, team));
+    }
+
+    /// <summary>AI teams fill their rosters; the human team (if any) is skipped.</summary>
+    public void AiFreeAgency(int? humanTeamId)
+    {
+        var fin = _league.Finance;
+        for (int round = 0; round < 6; round++)
+        {
+            var teams = _league.Teams.Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax)
+                .OrderBy(t => t.Roster.Count).ThenByDescending(Room).ToList();
+            bool any = false;
+            foreach (var team in teams)
             {
-                var team = order[i];
-                var pick = prospects
-                    .OrderByDescending(p => ContractMarket.Value(p, date) + _rng.NextGaussian(0, 6) + PositionNeed(team, p) * 4)
-                    .First();
-                prospects.Remove(pick);
-                int overall = (round - 1) * order.Count + i + 1;
-                report.Draft.Add(new DraftPick(round, overall, team, pick));
-                if (round == 1)
-                {
-                    long salary = (long)(fin.RookieScaleFirstPick * Math.Pow(0.93, overall - 1));
-                    pick.Contract = new Contract { Years = 4, Salary = Math.Max(salary, fin.MinSalary), StartSeason = season + 1, TeamOption = true };
-                    pick.TeamId = team.Id;
-                    team.Roster.Add(pick);
-                }
-                else
-                {
-                    // Second-round picks are not guaranteed: they compete for a spot in free agency like everyone else.
-                    league.FreeAgents.Add(pick);
-                }
+                long room = Room(team);
+                bool mustFill = team.Roster.Count < fin.RosterMin;
+                var pick = _league.FreeAgents
+                    .Select(p => (p, ask: ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin)))
+                    .Where(x => x.ask <= room || (mustFill && x.ask <= fin.MinSalary * 2))
+                    .OrderByDescending(x => ContractMarket.Value(x.p, Date) + PositionNeed(team, x.p) * 5)
+                    .FirstOrDefault();
+                if (pick.p == null) continue;
+                if (SignFreeAgent(team, pick.p)) any = true;
+            }
+            if (!any) break;
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Phase 4: compliance and roll the calendar
+    // ------------------------------------------------------------------------------------------
+    public void Complete()
+    {
+        if (Phase == OffseasonPhase.Complete) return;
+        if (Phase < OffseasonPhase.FreeAgency) { AdvanceToDraft(); AdvanceToFreeAgency(); }
+        var fin = _league.Finance;
+
+        // Every team, human included, must be legal: trim over the roster max, get under the cap, reach the minimum.
+        foreach (var team in _league.Teams)
+        {
+            while (team.Roster.Count > fin.RosterMax ||
+                   (ContractMarket.Payroll(team) > fin.HardCap && team.Roster.Count > fin.RosterMin))
+            {
+                var cut = ContractMarket.Payroll(team) > fin.HardCap
+                    ? team.Roster.OrderBy(p => ContractMarket.Value(p, Date) - (p.Contract?.Salary ?? 0) / 1e6 * 1.5).First()
+                    : team.Roster.OrderBy(p => ContractMarket.Value(p, Date)).First();
+                Waive(team, cut);
             }
         }
-        // Undrafted prospects enter free agency.
-        league.FreeAgents.AddRange(prospects);
+        AiFreeAgency(null);
+
+        foreach (var p in _league.FreeAgents.ToList())
+        {
+            if (p.CurrentAbility < 80 || p.Age(Date) >= 35) { _league.FreeAgents.Remove(p); _league.Retired.Add(p); Report.LeftUnsigned.Add(p); }
+        }
+        foreach (var p in _league.FreeAgents.OrderByDescending(p => ContractMarket.Value(p, Date)).Skip(90).ToList())
+        {
+            _league.FreeAgents.Remove(p); _league.Retired.Add(p); Report.LeftUnsigned.Add(p);
+        }
+
+        // Injuries heal over the summer unless they run past opening night.
+        foreach (var p in _league.AllActivePlayers)
+            if (p.Injury != null && p.Injury.ReturnDate <= new DateOnly(Season + 1, 10, 15)) p.Injury = null;
+
+        _league.Season = Season + 1;
+        Phase = OffseasonPhase.Complete;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    private void RecordHistory()
+    {
+        var finals = _outcome.Playoffs.Last().Series;
+        var scoring = _stats.Values.Where(s => s.Games >= 50).OrderByDescending(s => s.Ppg).FirstOrDefault();
+        var teamWins = _league.Teams.ToDictionary(t => t.Id, t => _outcome.Standings[t].Wins);
+        var mvp = _stats.Values.Where(s => s.Games >= 55 && teamWins[s.TeamId] >= 41)
+            .OrderByDescending(s => s.Ppg + s.Rpg * 1.2 + s.Apg * 1.5 + s.PlusMinus / 20.0).FirstOrDefault();
+
+        _league.History.Add(new SeasonSummary
+        {
+            Season = _league.Season,
+            ChampionTeamId = finals.Winner.Id,
+            RunnerUpTeamId = finals.Loser.Id,
+            Records = _league.Teams.Select(t => (t.Id, _outcome.Standings[t].Wins, _outcome.Standings[t].Losses)).ToList(),
+            ScoringLeaderPlayerId = scoring?.PlayerId,
+            MvpPlayerId = mvp?.PlayerId,
+        });
+    }
+
+    private void Retire(Team team, Player p)
+    {
+        team.Roster.Remove(p);
+        p.TeamId = null; p.Contract = null;
+        _league.Retired.Add(p);
+        Report.Retired.Add(p);
     }
 
     private static int PositionNeed(Team team, Player p)
     {
         int count = team.Roster.Count(x => x.PrimaryPosition == p.PrimaryPosition);
         return count <= 1 ? 2 : count == 2 ? 1 : 0;
-    }
-
-    private void RunFreeAgency(League league, DateOnly date, OffseasonReport report)
-    {
-        var fin = league.Finance;
-        // Several rounds: teams with the most open spots and most cap room choose first each round.
-        for (int round = 0; round < 6; round++)
-        {
-            var teams = league.Teams.Where(t => t.Roster.Count < fin.RosterMax)
-                .OrderBy(t => t.Roster.Count).ThenByDescending(t => fin.HardCap - ContractMarket.Payroll(t)).ToList();
-            bool any = false;
-            foreach (var team in teams)
-            {
-                long room = fin.HardCap - ContractMarket.Payroll(team);
-                bool mustFill = team.Roster.Count < fin.RosterMin;
-                var pick = league.FreeAgents
-                    .Select(p => (p, ask: ContractMarket.MarketSalary(p.CurrentAbility, p.Age(date), fin)))
-                    .Where(x => x.ask <= room || (mustFill && x.ask <= fin.MinSalary * 2))
-                    .OrderByDescending(x => ContractMarket.Value(x.p, date) + PositionNeed(team, x.p) * 5)
-                    .FirstOrDefault();
-                if (pick.p == null) continue;
-
-                // Below the minimum roster a team may sign minimum deals regardless of cap room (roster-minimum exception).
-                long salary = pick.ask <= room ? pick.ask : fin.MinSalary;
-                int years = ContractMarket.ContractLength(pick.p, date, _rng);
-                pick.p.Contract = new Contract { Years = years, Salary = salary, StartSeason = league.Season + 1 };
-                pick.p.TeamId = team.Id;
-                team.Roster.Add(pick.p);
-                league.FreeAgents.Remove(pick.p);
-                report.FreeAgentSignings.Add((pick.p, team, salary, years));
-                any = true;
-            }
-            if (!any) break;
-        }
     }
 }

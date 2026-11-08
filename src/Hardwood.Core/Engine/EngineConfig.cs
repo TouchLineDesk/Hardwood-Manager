@@ -63,6 +63,9 @@ public sealed class EngineConfig
     /// <summary>Fourth-quarter margin (at 0:00, growing 1.5/min earlier) at which the deep bench comes in.</summary>
     public int BlowoutMargin { get; set; } = 18;
 
+    // --- Injuries: per player-game probability at 30 minutes for an average player (≈ 7 injuries per team per season)
+    public double InjuryBaseRate { get; set; } = 0.011;
+
     // --- Overtime
     public int OvertimeMinutes { get; set; } = 5;
 

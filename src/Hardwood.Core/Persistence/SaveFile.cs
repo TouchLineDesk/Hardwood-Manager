@@ -16,6 +16,9 @@ public sealed class SaveFile
 
     public SaveFile(string path) => _path = path;
 
+    /// <summary>Open a connection for extension stores (sessions). Caller disposes.</summary>
+    public SqliteConnection OpenConnection() => Open();
+
     private SqliteConnection Open()
     {
         var conn = new SqliteConnection($"Data Source={_path}");
@@ -33,7 +36,7 @@ public sealed class SaveFile
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
 
-        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record;");
+        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury;");
 
         Exec(conn, "INSERT INTO meta(key, value) VALUES('schema_version', $v), ('saved_at', $t)",
             ("$v", SchemaVersion.ToString()), ("$t", DateTime.UtcNow.ToString("O")));
@@ -108,6 +111,11 @@ public sealed class SaveFile
             ("$prof", h.Professionalism), ("$amb", h.Ambition), ("$loy", h.Loyalty), ("$temp", h.Temperament), ("$pres", h.Pressure), ("$adapt", h.Adaptability),
             ("$cons", h.Consistency), ("$big", h.BigGames), ("$inj", h.InjuryProneness), ("$ego", h.Ego),
             ("$t3", t.ThreePointRate), ("$tdr", t.DriveRate), ("$tpo", t.PostUpRate), ("$tiso", t.IsolationRate), ("$tpf", t.PassFirst), ("$tcr", t.CrashGlass), ("$tga", t.GambleSteals));
+
+        foreach (var inj in p.InjuryHistory)
+            Exec(conn, "INSERT INTO injury(player_id, name, severity, occurred, return_date, attr_loss, current) VALUES($pid, $n, $sev, $occ, $ret, $loss, $cur)",
+                ("$pid", p.Id), ("$n", inj.Name), ("$sev", (int)inj.Severity), ("$occ", inj.Occurred.ToString("yyyy-MM-dd")), ("$ret", inj.ReturnDate.ToString("yyyy-MM-dd")),
+                ("$loss", inj.AttributeLoss), ("$cur", ReferenceEquals(inj, p.Injury) ? 1 : 0));
 
         if (p.Contract is { } c)
             Exec(conn, "INSERT INTO contract(player_id, years, salary, start_season, team_option, player_option) VALUES($pid, $y, $s, $ss, $to, $po)",
@@ -200,6 +208,24 @@ public sealed class SaveFile
             }
         }
 
+        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).ToDictionary(p => p.Id);
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT player_id, name, severity, occurred, return_date, attr_loss, current FROM injury ORDER BY occurred";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                if (!allPlayers.TryGetValue(r.GetInt32(0), out var p)) continue;
+                var inj = new Injury
+                {
+                    Name = r.GetString(1), Severity = (InjurySeverity)r.GetInt32(2),
+                    Occurred = DateOnly.Parse(r.GetString(3)), ReturnDate = DateOnly.Parse(r.GetString(4)), AttributeLoss = r.GetInt32(5),
+                };
+                p.InjuryHistory.Add(inj);
+                if (r.GetInt32(6) == 1) p.Injury = inj;
+            }
+        }
+
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "SELECT season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id FROM season_history ORDER BY season";
@@ -260,6 +286,8 @@ public sealed class SaveFile
                 consistency INTEGER, big_games INTEGER, injury_proneness INTEGER, ego INTEGER,
                 t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER);
             CREATE INDEX IF NOT EXISTS ix_player_team ON player(team_id);
+            CREATE TABLE IF NOT EXISTS injury(player_id INTEGER, name TEXT, severity INTEGER, occurred TEXT, return_date TEXT, attr_loss INTEGER, current INTEGER);
+            CREATE INDEX IF NOT EXISTS ix_injury_player ON injury(player_id);
             CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER);
             CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER);
             CREATE TABLE IF NOT EXISTS season_record(season INTEGER, team_id INTEGER, wins INTEGER, losses INTEGER, PRIMARY KEY(season, team_id));
@@ -269,7 +297,7 @@ public sealed class SaveFile
             """);
     }
 
-    private static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)
+    internal static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)
     {
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;

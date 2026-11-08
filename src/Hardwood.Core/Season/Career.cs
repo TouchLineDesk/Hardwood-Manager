@@ -29,7 +29,7 @@ public sealed class Career
         var outcome = sim.Run(league, schedule, progress);
         var stats = PlayerSeasonStats.Aggregate(outcome.RegularSeason, season);
 
-        var offseason = new Offseason(_rng).Run(league, outcome, stats);
+        var offseason = Offseason.RunAll(league, outcome, stats, _rng);
         _save?.Save(league, stats.Values);
         return new SeasonPlayed(season, outcome, stats, offseason);
     }

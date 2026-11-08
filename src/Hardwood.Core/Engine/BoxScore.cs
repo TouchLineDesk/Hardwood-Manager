@@ -49,7 +49,9 @@ public sealed class TeamBox
     public int TeamFoulsThisPeriod { get; set; }
     public int Timeouts { get; set; } = 7;
 
-    public int Points => Lines.Sum(l => l.Points);
+    /// <summary>Set when a result is restored from a save without its box score.</summary>
+    public int? FixedPoints { get; set; }
+    public int Points => FixedPoints ?? Lines.Sum(l => l.Points);
     public int FGM => Lines.Sum(l => l.FGM);
     public int FGA => Lines.Sum(l => l.FGA);
     public int ThreePM => Lines.Sum(l => l.ThreePM);
@@ -73,7 +75,9 @@ public sealed class GameResult
     public required TeamBox Away { get; init; }
     public int Overtimes { get; set; }
     public ulong Seed { get; init; }
+    public DateOnly? Date { get; init; }
     public List<string> PlayLog { get; } = new();
+    public List<(Player player, Injury injury)> Injuries { get; } = new();
 
     public TeamBox Winner => Home.Points > Away.Points ? Home : Away;
     public TeamBox Loser => Home.Points > Away.Points ? Away : Home;

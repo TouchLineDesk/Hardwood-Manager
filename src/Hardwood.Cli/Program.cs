@@ -74,6 +74,12 @@ public static class Program
 
         PrintLeaders(league, outcome.RegularSeason);
 
+        var injuries = outcome.RegularSeason.SelectMany(g => g.Injuries).ToList();
+        Console.WriteLine($"=== Injuries: {injuries.Count} in the regular season ({injuries.Count / 30.0:F1} per team), avg {injuries.Average(x => x.injury.ReturnDate.DayNumber - x.injury.Occurred.DayNumber):F1} days ===");
+        foreach (var g in injuries.GroupBy(x => x.injury.Severity).OrderBy(g => g.Key))
+            Console.WriteLine($"  {g.Key,-13} {g.Count(),4}   e.g. {g.First().player.Name}: {g.First().injury.Name}, {g.First().injury.ReturnDate.DayNumber - g.First().injury.Occurred.DayNumber} days");
+        Console.WriteLine();
+
         Console.WriteLine("=== League averages vs. real-world targets ===");
         Console.WriteLine(LeagueAverages.From(outcome.RegularSeason).Report());
         return 0;

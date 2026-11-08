@@ -18,7 +18,22 @@ public sealed class Team
     /// <summary>Team tactics used by the engine.</summary>
     public Tactic Tactic { get; set; } = new();
 
+    /// <summary>Human-set rotation. When null or empty the engine picks starters and minutes itself.</summary>
+    public DepthChart? DepthChart { get; set; }
+
+    /// <summary>Players fit to play on a given day.</summary>
+    public IEnumerable<Player> Available(DateOnly on) => Roster.Where(p => p.IsAvailable(on));
+
     public override string ToString() => FullName;
+}
+
+/// <summary>A coach's rotation sheet: who starts and how many minutes each player should get.</summary>
+public sealed class DepthChart
+{
+    /// <summary>Player ids of the five starters, in position order PG..C.</summary>
+    public List<int> Starters { get; set; } = new();
+    /// <summary>Target minutes per player id. Players missing from the dictionary get 0 (deep bench).</summary>
+    public Dictionary<int, double> MinutesTargets { get; set; } = new();
 }
 
 /// <summary>Minimal tactic set for the prototype; the full system/role model comes in the vertical slice.</summary>

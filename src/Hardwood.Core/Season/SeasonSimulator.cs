@@ -18,6 +18,14 @@ public sealed class SeasonSimulator
 {
     private readonly GameSimulator _sim;
     private readonly Rng _rng;
+    private DateOnly? _date;   // running date through the postseason
+
+    private GameResult Play(Team home, Team away, Rules rules)
+    {
+        var r = _sim.Simulate(home, away, rules, _rng.NextULong(), date: _date);
+        if (_date is { } d) _date = d.AddDays(2);
+        return r;
+    }
 
     public SeasonSimulator(Rng rng, EngineConfig? cfg = null)
     {
@@ -33,12 +41,13 @@ public sealed class SeasonSimulator
         int i = 0;
         foreach (var g in schedule)
         {
-            var r = _sim.Simulate(g.Home, g.Away, league.Rules, _rng.NextULong());
+            var r = _sim.Simulate(g.Home, g.Away, league.Rules, _rng.NextULong(), date: g.Date);
             standings.Record(r);
             outcome.RegularSeason.Add(r);
             if (++i % 100 == 0) progress?.Invoke(i, schedule.Count);
         }
 
+        _date = schedule.Count > 0 ? schedule.Last().Date.AddDays(2) : null;
         var east = Seed(standings, Conference.East, league.Rules, outcome);
         var west = Seed(standings, Conference.West, league.Rules, outcome);
 
@@ -60,12 +69,12 @@ public sealed class SeasonSimulator
         var seeds = table.Take(6).ToList();
         var (t7, t8, t9, t10) = (table[6], table[7], table[8], table[9]);
 
-        var g78 = _sim.Simulate(t7, t8, rules, _rng.NextULong());
-        var g910 = _sim.Simulate(t9, t10, rules, _rng.NextULong());
+        var g78 = Play(t7, t8, rules);
+        var g910 = Play(t9, t10, rules);
         var seed7 = g78.Winner.Team;
         var loser78 = g78.Loser.Team;
         var winner910 = g910.Winner.Team;
-        var g8 = _sim.Simulate(loser78, winner910, rules, _rng.NextULong());
+        var g8 = Play(loser78, winner910, rules);
         var seed8 = g8.Winner.Team;
 
         outcome.Playoffs.Add(($"{conf} Play-In 7/8", new SeriesResult(seed7, loser78, 1, 0, new() { g78 })));
@@ -110,7 +119,7 @@ public sealed class SeasonSimulator
         {
             var home = higherHome[g] ? higher : lower;
             var away = higherHome[g] ? lower : higher;
-            var r = _sim.Simulate(home, away, rules, _rng.NextULong());
+            var r = Play(home, away, rules);
             games.Add(r);
             if (r.Winner.Team == higher) hw++; else lw++;
         }

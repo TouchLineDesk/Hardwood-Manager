@@ -13,7 +13,7 @@ public sealed class GameSimulator
 
     public GameSimulator(EngineConfig? cfg = null) => _cfg = cfg ?? EngineConfig.Default;
 
-    public GameResult Simulate(Team home, Team away, Rules rules, ulong seed, bool keepLog = false)
+    public GameResult Simulate(Team home, Team away, Rules rules, ulong seed, bool keepLog = false, DateOnly? date = null)
     {
         var rng = new Rng(seed);
         var result = new GameResult
@@ -21,11 +21,23 @@ public sealed class GameSimulator
             Home = new TeamBox { Team = home },
             Away = new TeamBox { Team = away },
             Seed = seed,
+            Date = date,
         };
-        var h = new Side(home, result.Home, rng, _cfg, isHome: true);
-        var a = new Side(away, result.Away, rng, _cfg, isHome: false);
+        var h = new Side(home, result.Home, rng, _cfg, isHome: true, date);
+        var a = new Side(away, result.Away, rng, _cfg, isHome: false, date);
         var game = new GameState(h, a, rules, rng, _cfg, result, keepLog);
         game.Run();
+
+        if (date is { } d)
+        {
+            var injuries = new InjuryEngine(_cfg);
+            foreach (var box in new[] { result.Home, result.Away })
+            foreach (var line in box.Lines)
+            {
+                var inj = injuries.Roll(line.Player, line, d, rng);
+                if (inj != null) result.Injuries.Add((line.Player, inj));
+            }
+        }
         return result;
     }
 
@@ -47,10 +59,13 @@ public sealed class GameSimulator
         public int TeamFouls { get; set; }
         public int Possessions { get; set; }
 
-        public Side(Team team, TeamBox box, Rng rng, EngineConfig cfg, bool isHome)
+        public Side(Team team, TeamBox box, Rng rng, EngineConfig cfg, bool isHome, DateOnly? date)
         {
             Team = team; Box = box; IsHome = isHome;
-            var available = team.Roster.OrderByDescending(p => p.Overall).ToList();
+            // Injured players are not dressed. Below eight healthy bodies, the hurt ones play anyway (the sim must still run).
+            var healthy = (date is { } d ? team.Roster.Where(p => p.IsAvailable(d)) : team.Roster).OrderByDescending(p => p.Overall).ToList();
+            var available = healthy.Count >= 8 ? healthy : team.Roster.OrderByDescending(p => p.Overall).ToList();
+            Dressed.AddRange(available);
             foreach (var p in available)
             {
                 Box.Lines.Add(new PlayerLine { Player = p });
@@ -58,31 +73,58 @@ public sealed class GameSimulator
                 double sd = cfg.FormSd * (21 - p.Hidden.Consistency) / 10.0;
                 Form[p] = rng.NextGaussian(0, sd);
             }
-            // Starters: greedy one-per-position by quality, then best remaining.
+            // Players not dressed still get a (zero-minute) line so stats lookups never miss.
+            foreach (var p in team.Roster.Except(available)) { Box.Lines.Add(new PlayerLine { Player = p }); Energy[p] = 1.0; Form[p] = 0; }
+
+            var chart = team.DepthChart;
             var starters = new List<Player>();
+            if (chart != null && chart.Starters.Count == 5)
+                starters.AddRange(chart.Starters.Select(id => available.FirstOrDefault(p => p.Id == id)).Where(p => p != null)!);
+
+            // Fill gaps (no chart, or chart names an injured player): greedy one-per-position by quality, then best remaining.
             foreach (var pos in Enum.GetValues<Position>())
             {
+                if (starters.Count >= 5) break;
+                if (starters.Any(p => p.PrimaryPosition == pos)) continue;
                 var best = available.FirstOrDefault(p => !starters.Contains(p) && (p.PrimaryPosition == pos || p.SecondaryPosition == pos));
                 if (best != null) starters.Add(best);
             }
             foreach (var p in available) { if (starters.Count >= 5) break; if (!starters.Contains(p)) starters.Add(p); }
             for (int i = 0; i < 5; i++) { OnCourt[i] = starters[i]; Box.LineFor(starters[i]).Started = true; }
             Starters.AddRange(starters);
-            // Rotation: starters first, then the best of the rest.
-            Rotation.AddRange(starters.OrderByDescending(p => p.Overall));
-            Rotation.AddRange(available.Where(p => !starters.Contains(p)).Take(Math.Max(cfg.RotationSize, 5) - 5));
 
-            // Minutes targets by rotation slot, scaled to the game length.
             double scale = cfg.RegulationMinutes / 48.0;
-            for (int i = 0; i < Rotation.Count; i++)
+            if (chart != null && chart.MinutesTargets.Count > 0)
             {
-                double minutes = i < cfg.TargetMinutesBySlot.Length ? cfg.TargetMinutesBySlot[i] : 0;
-                TargetSeconds[Rotation[i]] = minutes * 60 * scale;
+                // Human rotation: everyone with a minutes target is in the rotation, ordered by target.
+                var planned = available.Where(p => chart.MinutesTargets.GetValueOrDefault(p.Id) > 0)
+                    .OrderByDescending(p => chart.MinutesTargets[p.Id]).ToList();
+                Rotation.AddRange(starters.OrderByDescending(p => chart.MinutesTargets.GetValueOrDefault(p.Id)));
+                Rotation.AddRange(planned.Where(p => !starters.Contains(p)));
+                // Minutes lost to injured rotation players are shared out so the targets still add up to 240.
+                double total = Rotation.Sum(p => chart.MinutesTargets.GetValueOrDefault(p.Id));
+                double fill = total < 1 ? 1 : 240 * scale / total;
+                foreach (var p in Rotation) TargetSeconds[p] = chart.MinutesTargets.GetValueOrDefault(p.Id) * 60 * scale * fill;
+                if (Rotation.Count < 8)
+                    foreach (var p in available.Where(p => !Rotation.Contains(p)).Take(8 - Rotation.Count)) { Rotation.Add(p); TargetSeconds[p] = 8 * 60 * scale; }
             }
-            foreach (var p in available) TargetSeconds.TryAdd(p, 0);
+            else
+            {
+                // AI rotation: starters first, then the best of the rest; minutes by slot.
+                Rotation.AddRange(starters.OrderByDescending(p => p.Overall));
+                Rotation.AddRange(available.Where(p => !starters.Contains(p)).Take(Math.Max(cfg.RotationSize, 5) - 5));
+                for (int i = 0; i < Rotation.Count; i++)
+                {
+                    double minutes = i < cfg.TargetMinutesBySlot.Length ? cfg.TargetMinutesBySlot[i] : 0;
+                    TargetSeconds[Rotation[i]] = minutes * 60 * scale;
+                }
+            }
+            foreach (var p in team.Roster) TargetSeconds.TryAdd(p, 0);
         }
 
         public PlayerLine Line(Player p) => Box.LineFor(p);
+        /// <summary>Players in uniform tonight (healthy, or everyone if too many are hurt).</summary>
+        public List<Player> Dressed { get; } = new();
     }
 
     // ------------------------------------------------------------------------------------------
@@ -575,7 +617,7 @@ public sealed class GameSimulator
             if (slot < 0) return;
 
             IEnumerable<Player> pool = deepBench
-                ? side.Team.Roster.Where(p => side.Rotation.IndexOf(p) is < 0 or >= 8)
+                ? side.Dressed.Where(p => side.Rotation.IndexOf(p) is < 0 or >= 8)
                 : side.Rotation;
             IEnumerable<Player> candidates = pool
                 .Where(p => Array.IndexOf(side.OnCourt, p) < 0 && !side.Line(p).FouledOut);
@@ -583,7 +625,7 @@ public sealed class GameSimulator
 
             var list = candidates.ToList();
             if (list.Count == 0 && force)
-                list = side.Team.Roster.Where(p => Array.IndexOf(side.OnCourt, p) < 0 && !side.Line(p).FouledOut).ToList();
+                list = side.Dressed.Where(p => Array.IndexOf(side.OnCourt, p) < 0 && !side.Line(p).FouledOut).ToList();
             if (list.Count == 0) return;
 
             // Prefer the player furthest behind his minutes target, with positional fit and quality as tie-breakers.

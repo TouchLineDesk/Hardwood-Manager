@@ -60,6 +60,10 @@ public sealed class Player
     public int? TeamId { get; set; }
     public Contract? Contract { get; set; }
 
+    public Injury? Injury { get; set; }
+    public List<Injury> InjuryHistory { get; } = new();
+    public bool IsAvailable(DateOnly on) => Injury == null || !Injury.IsOut(on);
+
     public int Age(DateOnly on)
     {
         var age = on.Year - BirthDate.Year;

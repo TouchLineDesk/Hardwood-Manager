@@ -1,0 +1,344 @@
+using Hardwood.Core.Engine;
+using Hardwood.Core.Generation;
+using Hardwood.Core.Model;
+using Hardwood.Core.Persistence;
+
+namespace Hardwood.Core.Season;
+
+public enum SessionPhase { Preseason, RegularSeason, Postseason, Offseason }
+
+public sealed class InboxMessage
+{
+    public int Id { get; init; }
+    public DateOnly Date { get; init; }
+    public required string Title { get; init; }
+    public required string Body { get; init; }
+    public string Category { get; init; } = "News";
+    public bool Read { get; set; }
+}
+
+/// <summary>
+/// A playable career: one human-controlled team in a living league, advanced one day at a time.
+/// Owns the calendar, schedule, standings, stats, inbox, postseason and offseason, and saves after every day.
+/// </summary>
+public sealed class GameSession
+{
+    private readonly Rng _rng;
+    private readonly GameSimulator _sim;
+    private int _nextMessageId = 1;
+
+    public League League { get; }
+    public Team HumanTeam { get; private set; }
+    public DateOnly Today { get; private set; }
+    public SessionPhase Phase { get; private set; }
+    public SaveFile? Save { get; set; }
+
+    public List<ScheduledGame> Schedule { get; private set; } = new();
+    public Dictionary<int, GameResult> Results { get; } = new();          // by schedule index
+    public Standings Standings { get; private set; }
+    public Dictionary<int, PlayerSeasonStats> Stats { get; private set; } = new();
+    public List<InboxMessage> Inbox { get; } = new();
+    public Postseason? Postseason { get; private set; }
+    public Offseason? Offseason { get; private set; }
+    public List<TradeProposal> TradesThisSeason { get; } = new();
+    /// <summary>A fresh seed for the RNG on reload, so a loaded game doesn't replay the same future.</summary>
+    public ulong NextRngSeed => _rng.NextULong();
+    public bool TradeDeadlinePassed => Phase != SessionPhase.RegularSeason && Phase != SessionPhase.Preseason || Today > TradeDeadline;
+
+    public DateOnly OpeningNight => new(League.Season, 10, 21);
+    public DateOnly TradeDeadline => new(League.Season + 1, 2, 6);
+    public ulong Seed { get; }
+
+    public GameSession(League league, Team humanTeam, ulong seed, SaveFile? save = null, EngineConfig? engine = null, ulong? rngState = null)
+    {
+        League = league; HumanTeam = humanTeam; Seed = seed; Save = save;
+        _rng = new Rng(rngState ?? (seed ^ 0x5E5510));
+        _sim = new GameSimulator(engine);
+        Standings = new Standings(league);
+        Today = OpeningNight.AddDays(-7);
+        Phase = SessionPhase.Preseason;
+        BuildSeason();
+    }
+
+    /// <summary>Start a new career from a generated world.</summary>
+    public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026)
+    {
+        var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", season, new DateOnly(season, 10, 1));
+        var session = new GameSession(league, league.TeamById(humanTeamId), seed, savePath != null ? new SaveFile(savePath) : null);
+        session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName}. Preseason runs until {session.OpeningNight:MMM d}: set your rotation and tactics, then press Continue.", "Board");
+        session.SaveNow();
+        return session;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    private void BuildSeason()
+    {
+        Schedule = ScheduleBuilder.Build(League, OpeningNight, _rng);
+        Results.Clear();
+        Standings = new Standings(League);
+        Stats = new Dictionary<int, PlayerSeasonStats>();
+        Postseason = null;
+        Offseason = null;
+        TradesThisSeason.Clear();
+    }
+
+    public IEnumerable<ScheduledGame> GamesOn(DateOnly date) => Schedule.Where(g => g.Date == date);
+    public ScheduledGame? NextHumanGame => Schedule.FirstOrDefault(g => g.Date >= Today && (g.Home == HumanTeam || g.Away == HumanTeam) && !Results.ContainsKey(g.Index));
+    public IEnumerable<(ScheduledGame game, GameResult result)> HumanResults =>
+        Schedule.Where(g => (g.Home == HumanTeam || g.Away == HumanTeam) && Results.ContainsKey(g.Index)).Select(g => (g, Results[g.Index]));
+    public Series? HumanSeries => Postseason?.Series.LastOrDefault(s => s.Higher == HumanTeam || s.Lower == HumanTeam);
+
+    public void Post(string title, string body, string category = "News")
+    {
+        Inbox.Insert(0, new InboxMessage { Id = _nextMessageId++, Date = Today, Title = title, Body = body, Category = category });
+        if (Inbox.Count > 400) Inbox.RemoveRange(400, Inbox.Count - 400);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    /// <summary>Advance one day. Returns the games played today.</summary>
+    public List<GameResult> AdvanceDay()
+    {
+        if (Phase == SessionPhase.Offseason) return new List<GameResult>();
+        var played = new List<GameResult>();
+
+        if (Phase == SessionPhase.Preseason && Today >= OpeningNight) Phase = SessionPhase.RegularSeason;
+
+        if (Phase == SessionPhase.RegularSeason)
+        {
+            foreach (var g in GamesOn(Today))
+            {
+                var r = _sim.Simulate(g.Home, g.Away, League.Rules, _rng.NextULong(), keepLog: g.Home == HumanTeam || g.Away == HumanTeam, date: Today);
+                Results[g.Index] = r;
+                Standings.Record(r);
+                foreach (var box in new[] { r.Home, r.Away })
+                foreach (var l in box.Lines)
+                {
+                    if (l.Seconds <= 0) continue;
+                    if (!Stats.TryGetValue(l.Player.Id, out var s))
+                        Stats[l.Player.Id] = s = new PlayerSeasonStats { PlayerId = l.Player.Id, TeamId = box.Team.Id, Season = League.Season };
+                    s.Add(l);
+                }
+                played.Add(r);
+                ReportGame(r);
+            }
+
+            if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
+                AiTrades();
+
+            if (Today == TradeDeadline)
+                Post("Trade deadline has passed", "No more trades until the season ends.", "League");
+
+            if (Schedule.All(g => Results.ContainsKey(g.Index)))
+            {
+                Phase = SessionPhase.Postseason;
+                Postseason = new Postseason(League, Standings);
+                var rec = Standings[HumanTeam];
+                int seed = Standings.Conference(HumanTeam.Conference).FindIndex(r => r.Team == HumanTeam) + 1;
+                Post("Regular season complete",
+                    $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(seed)} in the {HumanTeam.Conference}. " +
+                    (seed <= 6 ? "You are in the playoffs." : seed <= 10 ? "You are in the play-in." : "Your season is over; the lottery awaits."), "League");
+            }
+        }
+        else if (Phase == SessionPhase.Postseason && Postseason != null)
+        {
+            var before = Postseason.Stage;
+            played = Postseason.PlayDay(_sim, _rng, Today);
+            foreach (var r in played) if (r.Home.Team == HumanTeam || r.Away.Team == HumanTeam) ReportGame(r, HumanSeries);
+            if (Postseason.Stage != before && !Postseason.Complete)
+                Post($"{Postseason.Stage} begins", string.Join("\n", Postseason.Active.Select(s => $"{s.Higher.FullName} vs {s.Lower.FullName}")), "League");
+            if (Postseason.Complete)
+            {
+                Post($"{Postseason.Champion!.FullName} are champions",
+                    $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
+                    (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""), "League");
+                Today = Today.AddDays(1);
+                SaveNow();           // checkpoint before the offseason; the offseason itself is finished in one sitting
+                BeginOffseason();
+                return played;
+            }
+        }
+
+        Today = Today.AddDays(1);
+        SaveNow();
+        return played;
+    }
+
+    /// <summary>Advance until the human team's next game has been played, or the phase changes.</summary>
+    public List<GameResult> AdvanceToNextGame()
+    {
+        var all = new List<GameResult>();
+        var start = Phase;
+        for (int i = 0; i < 30 && Phase == start; i++)
+        {
+            var day = AdvanceDay();
+            all.AddRange(day);
+            if (day.Any(r => r.Home.Team == HumanTeam || r.Away.Team == HumanTeam)) break;
+        }
+        return all;
+    }
+
+    private void ReportGame(GameResult r, Series? series = null)
+    {
+        if (r.Home.Team != HumanTeam && r.Away.Team != HumanTeam)
+        {
+            foreach (var (p, inj) in r.Injuries) { /* league-wide injuries are not inbox-worthy */ }
+            return;
+        }
+        var us = r.Home.Team == HumanTeam ? r.Home : r.Away;
+        var them = us == r.Home ? r.Away : r.Home;
+        bool won = us.Points > them.Points;
+        var top = us.Lines.OrderByDescending(l => l.Points).First();
+        string seriesNote = series != null ? $" Series: {series.Score}." : "";
+        Post($"{(won ? "W" : "L")} {us.Points}-{them.Points} {(us == r.Home ? "vs" : "at")} {them.Team.Abbreviation}",
+            $"{top.Player.Name} led with {top.Points} points, {top.Rebounds} rebounds and {top.Assists} assists.{seriesNote}", "Game");
+        foreach (var (p, inj) in r.Injuries.Where(x => x.player.TeamId == HumanTeam.Id))
+            Post($"{p.Name} injured: {inj.Name}", $"Out approximately {inj.DaysOut(Today)} days (expected return {inj.ReturnDate:MMM d}).{(inj.AttributeLoss > 0 ? " The medical staff expect some lasting loss of athleticism." : "")}", "Medical");
+    }
+
+    private void AiTrades()
+    {
+        var engine = new TradeEngine(League, Today, Standings);
+        var done = engine.AiTradeRound(_rng, HumanTeam.Id);
+        TradesThisSeason.AddRange(done);
+        foreach (var t in done)
+            Post($"Trade: {t.From.Abbreviation} and {t.To.Abbreviation}",
+                $"{t.From.FullName} send {string.Join(", ", t.FromPlayers.Select(p => p.Name))} to {t.To.FullName} for {string.Join(", ", t.ToPlayers.Select(p => p.Name))}.", "Transactions");
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Human trades
+    // ------------------------------------------------------------------------------------------
+    public TradeEngine Trades => new(League, Today, Phase is SessionPhase.RegularSeason or SessionPhase.Postseason ? Standings : null);
+
+    public TradeEvaluation ProposeTrade(TradeProposal proposal)
+    {
+        if (TradeDeadlinePassed && Phase != SessionPhase.Offseason && Phase != SessionPhase.Preseason)
+            return new TradeEvaluation(false, "The trade deadline has passed.", 0, 0, 0, false, "The trade deadline has passed.");
+        var eval = Trades.Evaluate(proposal);
+        if (eval.Accepted)
+        {
+            Trades.Execute(proposal);
+            TradesThisSeason.Add(proposal);
+            Post($"Trade completed with {proposal.To.Abbreviation}",
+                $"You send {string.Join(", ", proposal.FromPlayers.Select(p => p.Name))} for {string.Join(", ", proposal.ToPlayers.Select(p => p.Name))}.", "Transactions");
+            SaveNow();
+        }
+        return eval;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Offseason
+    // ------------------------------------------------------------------------------------------
+    private void BeginOffseason()
+    {
+        var outcome = new SeasonOutcome { Standings = Standings };
+        outcome.RegularSeason.AddRange(Results.Values);
+        Postseason!.FillOutcome(outcome);
+
+        Phase = SessionPhase.Offseason;
+        Offseason = new Offseason(League, outcome, Stats, _rng);
+        Offseason.Begin();
+        Offseason.AiReSignAll(exceptTeamId: HumanTeam.Id);
+
+        var retired = Offseason.Report.Retired.Where(p => p.InjuryHistory != null).ToList();
+        var ours = Offseason.Report.Retired.Where(p => HumanTeamHad(p)).ToList();
+        if (ours.Count > 0) Post("Retirements", string.Join(", ", ours.Select(p => p.Name)) + (ours.Count == 1 ? " has" : " have") + " retired.", "Roster");
+        var lottery = Offseason.Report.Lottery!;
+        int ourPick = lottery.Order.IndexOf(HumanTeam) + 1;
+        Post("Draft lottery results",
+            $"You pick {Ordinal(ourPick)} in the first round." + (lottery.Jumps.Count > 0 ? "\n" + string.Join("\n", lottery.Jumps.Select(j => $"{j.team.Abbreviation} moved from {Ordinal(j.preLotterySlot)} to {Ordinal(j.pick)}")) : ""), "League");
+        var expiring = Offseason.Expiring[HumanTeam.Id];
+        Post("Contract decisions",
+            expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${Offseason.Ask(p) / 1e6:F1}M)"))}. Re-sign or release each one, then continue to the draft.", "Roster");
+        var dev = Offseason.Report.Development.Where(d => d.Player.TeamId == HumanTeam.Id && Math.Abs(d.NewCa - d.OldCa) >= 6).OrderByDescending(d => d.NewCa - d.OldCa).ToList();
+        if (dev.Count > 0) Post("Player development", string.Join("\n", dev.Select(d => $"{d.Player.Name}: {(d.NewCa > d.OldCa ? "+" : "")}{d.NewCa - d.OldCa} ability")), "Roster");
+    }
+
+    private bool HumanTeamHad(Player p) => Stats.TryGetValue(p.Id, out var s) && s.TeamId == HumanTeam.Id;
+
+    /// <summary>Move the offseason forward one phase: re-signing → draft (AI picks until you're on the clock) → free agency → new season.</summary>
+    public void AdvanceOffseason()
+    {
+        if (Offseason == null) return;
+        switch (Offseason.Phase)
+        {
+            case OffseasonPhase.ReSigning:
+                Offseason.AdvanceToDraft();
+                Offseason.AutoDraftUntil(HumanTeam.Id);
+                if (Offseason.DraftComplete) AdvanceOffseason();
+                else Post("You're on the clock", $"Pick {Offseason.NextPickIndex + 1} (round {Offseason.CurrentRound}). {Offseason.Prospects.Count} prospects remain.", "Draft");
+                break;
+            case OffseasonPhase.Draft:
+                Offseason.AdvanceToFreeAgency();
+                Offseason.AiFreeAgency(HumanTeam.Id);
+                var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
+                Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players and ${Offseason.Room(HumanTeam) / 1e6:F1}M of room; rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
+                break;
+            case OffseasonPhase.FreeAgency:
+                Offseason.Complete();
+                StartNewSeason();
+                break;
+        }
+        SaveNow();
+    }
+
+    /// <summary>Human draft pick; then AI picks run until the human is on the clock again or the draft ends.</summary>
+    public DraftPick MakePick(Player prospect)
+    {
+        var pick = Offseason!.MakePick(prospect);
+        Offseason.AutoDraftUntil(HumanTeam.Id);
+        if (Offseason.DraftComplete) AdvanceOffseason();
+        SaveNow();
+        return pick;
+    }
+
+    private void StartNewSeason()
+    {
+        Phase = SessionPhase.Preseason;
+        Today = OpeningNight.AddDays(-7);
+        HumanTeam.DepthChart = null;
+        BuildSeason();
+        var last = League.History.Last();
+        Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
+            $"Last season's champions: {League.TeamById(last.ChampionTeamId).FullName}. Opening night is {OpeningNight:MMM d}. Review your rotation before the first game.", "Board");
+    }
+
+    // ------------------------------------------------------------------------------------------
+    /// <summary>Saves after every day. During the offseason nothing is written: closing the app mid-offseason returns you to the Finals checkpoint.</summary>
+    public void SaveNow()
+    {
+        if (Save == null || Phase == SessionPhase.Offseason) return;
+        Save.Save(League, Stats.Values);
+        Save.SaveSession(this);
+    }
+
+    public static GameSession Load(string path)
+    {
+        var save = new SaveFile(path);
+        var league = save.Load();
+        return save.LoadSession(league);
+    }
+
+    /// <summary>Used by SaveFile to restore state; not for gameplay.</summary>
+    internal void Restore(DateOnly today, SessionPhase phase, List<ScheduledGame> schedule, Dictionary<int, GameResult> results,
+        Dictionary<int, PlayerSeasonStats> stats, List<InboxMessage> inbox, int nextMessageId)
+    {
+        Today = today; Phase = phase;
+        Schedule = schedule;
+        Results.Clear(); foreach (var kv in results) Results[kv.Key] = kv.Value;
+        Standings = new Standings(League);
+        foreach (var r in results.OrderBy(kv => kv.Key).Select(kv => kv.Value)) Standings.Record(r);
+        Stats = stats;
+        Inbox.Clear(); Inbox.AddRange(inbox);
+        _nextMessageId = nextMessageId;
+    }
+
+    internal void RestorePostseason(string stage, IEnumerable<(string, int, int, int, int, int)> rows)
+    {
+        Postseason = new Postseason(League, Standings);
+        Postseason.Restore(stage, rows);
+        if (Postseason.Complete) BeginOffseason();
+    }
+
+    private static string Ordinal(int n) => n % 100 is 11 or 12 or 13 ? $"{n}th" : (n % 10) switch { 1 => $"{n}st", 2 => $"{n}nd", 3 => $"{n}rd", _ => $"{n}th" };
+}
