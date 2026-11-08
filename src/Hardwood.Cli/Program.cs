@@ -1,0 +1,142 @@
+using System.Diagnostics;
+using Hardwood.Core;
+using Hardwood.Core.Engine;
+using Hardwood.Core.Generation;
+using Hardwood.Core.Model;
+using Hardwood.Core.Season;
+
+namespace Hardwood.Cli;
+
+/// <summary>
+/// Console runner for the prototype:
+///   hardwood season [--seed N]          generate a league, play 82 games + playoffs, print standings, leaders, averages
+///   hardwood game [--seed N] [--log]     generate a league, play one game, print the box score (and play log)
+///   hardwood roster [--seed N] [--team ABBR]
+/// </summary>
+public static class Program
+{
+    public static int Main(string[] args)
+    {
+        var cmd = args.Length > 0 ? args[0] : "season";
+        ulong seed = (ulong)(ArgValue(args, "--seed") is { } s ? long.Parse(s) : 2026);
+        var today = new DateOnly(2026, 10, 1);
+
+        var world = new WorldGenerator(new Rng(seed));
+        var league = world.Generate("North American Basketball League", 2026, today);
+
+        switch (cmd)
+        {
+            case "season": return RunSeason(league, seed, today);
+            case "game": return RunGame(league, seed, args.Contains("--log"));
+            case "roster": return ShowRoster(league, ArgValue(args, "--team") ?? "BOS");
+            default:
+                Console.Error.WriteLine("Usage: hardwood season|game|roster [--seed N] [--log] [--team ABBR]");
+                return 1;
+        }
+    }
+
+    private static string? ArgValue(string[] args, string name)
+    {
+        int i = Array.IndexOf(args, name);
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+    }
+
+    private static int RunSeason(League league, ulong seed, DateOnly today)
+    {
+        var rng = new Rng(seed ^ 0xABCDEF);
+        var schedule = ScheduleBuilder.Build(league, new DateOnly(2026, 10, 21), rng);
+        Console.WriteLine($"{league.Name} {league.Season}-{league.Season + 1}: {league.Teams.Count} teams, {schedule.Count} games, seed {seed}");
+        Console.WriteLine($"Season runs {schedule.First().Date} to {schedule.Last().Date}");
+
+        var sw = Stopwatch.StartNew();
+        var season = new SeasonSimulator(rng);
+        var outcome = season.Run(league, schedule);
+        sw.Stop();
+        Console.WriteLine($"Simulated regular season + playoffs in {sw.Elapsed.TotalSeconds:F1}s ({schedule.Count / sw.Elapsed.TotalSeconds:F0} games/s)\n");
+
+        foreach (var conf in new[] { Conference.East, Conference.West })
+        {
+            Console.WriteLine($"=== {conf} ===");
+            Console.WriteLine($"{"#",2} {"Team",-24} {"W",3} {"L",3} {"Pct",5} {"Diff",6} {"Home",7}");
+            int rank = 1;
+            foreach (var r in outcome.Standings.Conference(conf))
+                Console.WriteLine($"{rank++,2} {r.Team.FullName,-24} {r.Wins,3} {r.Losses,3} {r.WinPct,5:F3} {r.PointDiff,6:+0.0;-0.0} {r.HomeWins + "-" + r.HomeLosses,7}");
+            Console.WriteLine();
+        }
+
+        Console.WriteLine("=== Playoffs ===");
+        foreach (var (round, s) in outcome.Playoffs)
+            Console.WriteLine($"{round,-22} {s.Winner.FullName,-24} def. {s.Loser.FullName,-24} {s.WinnerGames}-{s.LoserGames}");
+        Console.WriteLine($"\nCHAMPION: {outcome.Champion!.FullName}\n");
+
+        PrintLeaders(league, outcome.RegularSeason);
+
+        Console.WriteLine("=== League averages vs. real-world targets ===");
+        Console.WriteLine(LeagueAverages.From(outcome.RegularSeason).Report());
+        return 0;
+    }
+
+    private static void PrintLeaders(League league, List<GameResult> games)
+    {
+        var totals = new Dictionary<Player, (int g, double min, int pts, int reb, int ast, int fgm, int fga, int tpm, int tpa)>();
+        foreach (var g in games)
+        foreach (var box in new[] { g.Home, g.Away })
+        foreach (var l in box.Lines)
+        {
+            if (l.Seconds <= 0) continue;
+            var t = totals.GetValueOrDefault(l.Player);
+            totals[l.Player] = (t.g + 1, t.min + l.Minutes, t.pts + l.Points, t.reb + l.Rebounds, t.ast + l.Assists, t.fgm + l.FGM, t.fga + l.FGA, t.tpm + l.ThreePM, t.tpa + l.ThreePA);
+        }
+
+        var teamOf = league.Teams.SelectMany(t => t.Roster.Select(p => (p, t))).ToDictionary(x => x.p, x => x.t);
+        Console.WriteLine("=== Scoring leaders (min 50 games) ===");
+        Console.WriteLine($"{"Player",-24} {"Team",-4} {"Pos",-3} {"CA",3} {"GP",3} {"MPG",5} {"PPG",5} {"RPG",5} {"APG",5} {"FG%",5} {"3P%",5}");
+        foreach (var (p, t) in totals.Where(kv => kv.Value.g >= 50).OrderByDescending(kv => (double)kv.Value.pts / kv.Value.g).Take(15))
+        {
+            Console.WriteLine($"{p.Name,-24} {teamOf[p].Abbreviation,-4} {p.PrimaryPosition,-3} {p.CurrentAbility,3} {t.g,3} {t.min / t.g,5:F1} {(double)t.pts / t.g,5:F1} {(double)t.reb / t.g,5:F1} {(double)t.ast / t.g,5:F1} {(t.fga > 0 ? 100.0 * t.fgm / t.fga : 0),5:F1} {(t.tpa > 0 ? 100.0 * t.tpm / t.tpa : 0),5:F1}");
+        }
+        Console.WriteLine();
+    }
+
+    private static int RunGame(League league, ulong seed, bool log)
+    {
+        var home = league.Teams[0];
+        var away = league.Teams[15];
+        var sim = new GameSimulator();
+        var r = sim.Simulate(home, away, league.Rules, seed, keepLog: log);
+        PrintBox(r);
+        if (log) foreach (var line in r.PlayLog) Console.WriteLine(line);
+        return 0;
+    }
+
+    public static void PrintBox(GameResult r)
+    {
+        Console.WriteLine(r.Summary());
+        Console.WriteLine($"{"",-10} {string.Join(" ", r.Away.PointsByPeriod.Select(p => $"{p,3}"))} | {r.Away.Points,3}   ({r.Away.Team.Abbreviation})");
+        Console.WriteLine($"{"",-10} {string.Join(" ", r.Home.PointsByPeriod.Select(p => $"{p,3}"))} | {r.Home.Points,3}   ({r.Home.Team.Abbreviation})\n");
+        foreach (var box in new[] { r.Away, r.Home })
+        {
+            Console.WriteLine($"--- {box.Team.FullName} ({box.Possessions} poss) ---");
+            Console.WriteLine($"{"Player",-24} {"MIN",5} {"PTS",3} {"FG",5} {"3P",5} {"FT",5} {"REB",3} {"AST",3} {"ST",2} {"BL",2} {"TO",2} {"PF",2} {"+/-",4}");
+            foreach (var l in box.Lines.Where(l => l.Seconds > 0).OrderByDescending(l => l.Started).ThenByDescending(l => l.Seconds))
+                Console.WriteLine(l);
+            Console.WriteLine($"{"TOTAL",-24} {"",5} {box.Points,3} {box.FGM,2}-{box.FGA,-2} {box.ThreePM,2}-{box.ThreePA,-2} {box.FTM,2}-{box.FTA,-2} {box.OReb + box.DReb,3} {box.Assists,3} {box.Steals,2} {box.Blocks,2} {box.Turnovers,2} {box.Fouls,2}\n");
+        }
+    }
+
+    private static int ShowRoster(League league, string abbr)
+    {
+        var team = league.Teams.FirstOrDefault(t => t.Abbreviation.Equals(abbr, StringComparison.OrdinalIgnoreCase));
+        if (team == null) { Console.Error.WriteLine($"No team {abbr}"); return 1; }
+        var today = new DateOnly(2026, 10, 1);
+        Console.WriteLine($"{team.FullName} ({team.Conference}, {team.Division})  payroll ${team.Roster.Sum(p => p.Contract!.Salary) / 1_000_000.0:F1}M");
+        Console.WriteLine($"{"Player",-24} {"Pos",-5} {"Age",3} {"Ht",5} {"CA",4} {"PA",4} {"OVR",5} {"Sho",4} {"Ply",4} {"Def",4} {"Men",4} {"Phy",4} {"Salary",8}");
+        foreach (var p in team.Roster.OrderByDescending(p => p.Overall))
+        {
+            var a = p.Attributes;
+            string pos = p.PrimaryPosition + (p.SecondaryPosition is { } s2 ? "/" + s2 : "");
+            Console.WriteLine($"{p.Name,-24} {pos,-5} {p.Age(today),3} {p.HeightCm,5} {p.CurrentAbility,4} {p.PotentialAbility,4} {p.Overall,5:F1} {a.Average(AttrGroup.Shooting),4:F1} {a.Average(AttrGroup.Playmaking),4:F1} {a.Average(AttrGroup.Defense),4:F1} {a.Average(AttrGroup.Mental),4:F1} {a.Average(AttrGroup.Physical),4:F1} {"$" + (p.Contract!.Salary / 1_000_000.0).ToString("F1") + "M",8}");
+        }
+        return 0;
+    }
+}
