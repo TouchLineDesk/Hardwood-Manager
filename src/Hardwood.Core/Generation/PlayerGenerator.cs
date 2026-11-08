@@ -18,6 +18,8 @@ public sealed class PlayerGenerator
         _nextId = firstId;
     }
 
+    public int NextId => _nextId;
+
     /// <summary>Mean visible attribute implied by a CA value. CA 100 → ~11, CA 180 → ~16.6.</summary>
     public static double MeanAttributeFor(int ca) => 4.0 + ca / 200.0 * 14.0;
 

@@ -39,11 +39,42 @@ public sealed class Tactic
 public sealed class League
 {
     public required string Name { get; init; }
-    public int Season { get; init; }
+    /// <summary>The year the current season starts (2026 for 2026-27).</summary>
+    public int Season { get; set; }
     public List<Team> Teams { get; } = new();
     public Rules Rules { get; init; } = Rules.Nba;
+    public Finance Finance { get; init; } = Finance.HardCapDefault;
+    /// <summary>Players without a team (free agents, undrafted), still in the world.</summary>
+    public List<Player> FreeAgents { get; } = new();
+    /// <summary>Retired players, kept for history.</summary>
+    public List<Player> Retired { get; } = new();
+    public List<SeasonSummary> History { get; } = new();
+    public int NextPlayerId { get; set; } = 1;
 
     public Team TeamById(int id) => Teams.First(t => t.Id == id);
+    public IEnumerable<Player> AllActivePlayers => Teams.SelectMany(t => t.Roster);
+}
+
+/// <summary>League money rules. The prototype uses a hard cap; later models (soft cap, tax, aprons) plug in here.</summary>
+public sealed record Finance(long HardCap, long MinSalary, int RosterMax, int RosterMin, long RookieScaleFirstPick)
+{
+    public static readonly Finance HardCapDefault = new(
+        HardCap: 165_000_000,
+        MinSalary: 1_200_000,
+        RosterMax: 15,
+        RosterMin: 13,
+        RookieScaleFirstPick: 11_000_000);
+}
+
+/// <summary>One finished season, kept in league history.</summary>
+public sealed class SeasonSummary
+{
+    public int Season { get; init; }
+    public int ChampionTeamId { get; init; }
+    public int RunnerUpTeamId { get; init; }
+    public List<(int teamId, int wins, int losses)> Records { get; init; } = new();
+    public int? MvpPlayerId { get; init; }
+    public int? ScoringLeaderPlayerId { get; init; }
 }
 
 /// <summary>Rules set, selectable per competition.</summary>

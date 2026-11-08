@@ -1,0 +1,279 @@
+using Hardwood.Core.Model;
+using Hardwood.Core.Season;
+using Microsoft.Data.Sqlite;
+
+namespace Hardwood.Core.Persistence;
+
+/// <summary>
+/// One SQLite file per save. Holds the league, every team and player (active, free agent, retired),
+/// contracts, season history and per-season player stats. The schema is plain so the editor and
+/// external tools can read it.
+/// </summary>
+public sealed class SaveFile
+{
+    public const int SchemaVersion = 1;
+    private readonly string _path;
+
+    public SaveFile(string path) => _path = path;
+
+    private SqliteConnection Open()
+    {
+        var conn = new SqliteConnection($"Data Source={_path}");
+        conn.Open();
+        using var pragma = conn.CreateCommand();
+        pragma.CommandText = "PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL;";
+        pragma.ExecuteNonQuery();
+        return conn;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null)
+    {
+        using var conn = Open();
+        CreateSchema(conn);
+        using var tx = conn.BeginTransaction();
+
+        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record;");
+
+        Exec(conn, "INSERT INTO meta(key, value) VALUES('schema_version', $v), ('saved_at', $t)",
+            ("$v", SchemaVersion.ToString()), ("$t", DateTime.UtcNow.ToString("O")));
+
+        Exec(conn, """
+            INSERT INTO league(id, name, season, rules_name, periods, minutes_per_period, shot_clock, fouls_out, bonus_threshold, three_distance,
+                               hard_cap, min_salary, roster_max, roster_min, rookie_scale_first, next_player_id)
+            VALUES(1, $name, $season, $rn, $per, $mpp, $sc, $fo, $bt, $td, $cap, $min, $rmax, $rmin, $rs, $npid)
+            """,
+            ("$name", league.Name), ("$season", league.Season), ("$rn", league.Rules.Name), ("$per", league.Rules.Periods),
+            ("$mpp", league.Rules.MinutesPerPeriod), ("$sc", league.Rules.ShotClockSeconds), ("$fo", league.Rules.FoulsToFoulOut),
+            ("$bt", league.Rules.TeamFoulBonusThreshold), ("$td", league.Rules.ThreePointDistanceM),
+            ("$cap", league.Finance.HardCap), ("$min", league.Finance.MinSalary), ("$rmax", league.Finance.RosterMax),
+            ("$rmin", league.Finance.RosterMin), ("$rs", league.Finance.RookieScaleFirstPick), ("$npid", league.NextPlayerId));
+
+        foreach (var t in league.Teams)
+        {
+            Exec(conn, """
+                INSERT INTO team(id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage)
+                VALUES($id, $city, $name, $abbr, $conf, $div, $cap, $pace, $three, $crash, $agg, $star)
+                """,
+                ("$id", t.Id), ("$city", t.City), ("$name", t.Name), ("$abbr", t.Abbreviation), ("$conf", (int)t.Conference),
+                ("$div", t.Division), ("$cap", t.ArenaCapacity), ("$pace", t.Tactic.Pace), ("$three", t.Tactic.ThreePointEmphasis),
+                ("$crash", t.Tactic.CrashGlass), ("$agg", t.Tactic.DefensiveAggression), ("$star", t.Tactic.StarUsage));
+        }
+
+        foreach (var t in league.Teams) foreach (var p in t.Roster) InsertPlayer(conn, p, t.Id, "active");
+        foreach (var p in league.FreeAgents) InsertPlayer(conn, p, null, "free_agent");
+        foreach (var p in league.Retired) InsertPlayer(conn, p, null, "retired");
+
+        foreach (var h in league.History)
+        {
+            Exec(conn, "INSERT INTO season_history(season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id) VALUES($s, $c, $r, $m, $l)",
+                ("$s", h.Season), ("$c", h.ChampionTeamId), ("$r", h.RunnerUpTeamId), ("$m", (object?)h.MvpPlayerId ?? DBNull.Value), ("$l", (object?)h.ScoringLeaderPlayerId ?? DBNull.Value));
+            foreach (var (teamId, w, l) in h.Records)
+                Exec(conn, "INSERT INTO season_record(season, team_id, wins, losses) VALUES($s, $t, $w, $l)", ("$s", h.Season), ("$t", teamId), ("$w", w), ("$l", l));
+        }
+
+        if (seasonStats != null)
+        {
+            foreach (var s in seasonStats)
+            {
+                Exec(conn, """
+                    INSERT OR REPLACE INTO player_stats(player_id, season, team_id, games, starts, minutes, points, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, plus_minus)
+                    VALUES($pid, $season, $tid, $g, $gs, $min, $pts, $fgm, $fga, $tpm, $tpa, $ftm, $fta, $oreb, $dreb, $ast, $stl, $blk, $tov, $pf, $pm)
+                    """,
+                    ("$pid", s.PlayerId), ("$season", s.Season), ("$tid", s.TeamId), ("$g", s.Games), ("$gs", s.Starts), ("$min", s.Minutes),
+                    ("$pts", s.Points), ("$fgm", s.FGM), ("$fga", s.FGA), ("$tpm", s.ThreePM), ("$tpa", s.ThreePA), ("$ftm", s.FTM), ("$fta", s.FTA),
+                    ("$oreb", s.OReb), ("$dreb", s.DReb), ("$ast", s.Assists), ("$stl", s.Steals), ("$blk", s.Blocks), ("$tov", s.Turnovers), ("$pf", s.Fouls), ("$pm", s.PlusMinus));
+            }
+        }
+
+        tx.Commit();
+    }
+
+    private static void InsertPlayer(SqliteConnection conn, Player p, int? teamId, string status)
+    {
+        var attrs = string.Join(",", AttrInfo.All.Select(a => p.Attributes[a]));
+        var h = p.Hidden; var t = p.Tendencies;
+        Exec(conn, """
+            INSERT INTO player(id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos,
+                               ca, pa, team_id, status, attributes,
+                               professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
+                               t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble)
+            VALUES($id, $fn, $ln, $bd, $nat, $h, $ws, $w, $pp, $sp, $ca, $pa, $tid, $status, $attrs,
+                   $prof, $amb, $loy, $temp, $pres, $adapt, $cons, $big, $inj, $ego,
+                   $t3, $tdr, $tpo, $tiso, $tpf, $tcr, $tga)
+            """,
+            ("$id", p.Id), ("$fn", p.FirstName), ("$ln", p.LastName), ("$bd", p.BirthDate.ToString("yyyy-MM-dd")), ("$nat", p.Nationality),
+            ("$h", p.HeightCm), ("$ws", p.WingspanCm), ("$w", p.WeightKg), ("$pp", (int)p.PrimaryPosition), ("$sp", p.SecondaryPosition is { } s ? (int)s : DBNull.Value),
+            ("$ca", p.CurrentAbility), ("$pa", p.PotentialAbility), ("$tid", (object?)teamId ?? DBNull.Value), ("$status", status), ("$attrs", attrs),
+            ("$prof", h.Professionalism), ("$amb", h.Ambition), ("$loy", h.Loyalty), ("$temp", h.Temperament), ("$pres", h.Pressure), ("$adapt", h.Adaptability),
+            ("$cons", h.Consistency), ("$big", h.BigGames), ("$inj", h.InjuryProneness), ("$ego", h.Ego),
+            ("$t3", t.ThreePointRate), ("$tdr", t.DriveRate), ("$tpo", t.PostUpRate), ("$tiso", t.IsolationRate), ("$tpf", t.PassFirst), ("$tcr", t.CrashGlass), ("$tga", t.GambleSteals));
+
+        if (p.Contract is { } c)
+            Exec(conn, "INSERT INTO contract(player_id, years, salary, start_season, team_option, player_option) VALUES($pid, $y, $s, $ss, $to, $po)",
+                ("$pid", p.Id), ("$y", c.Years), ("$s", c.Salary), ("$ss", c.StartSeason), ("$to", c.TeamOption ? 1 : 0), ("$po", c.PlayerOption ? 1 : 0));
+    }
+
+    // ------------------------------------------------------------------------------------------
+    public League Load()
+    {
+        using var conn = Open();
+        League league;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT name, season, rules_name, periods, minutes_per_period, shot_clock, fouls_out, bonus_threshold, three_distance, hard_cap, min_salary, roster_max, roster_min, rookie_scale_first, next_player_id FROM league WHERE id = 1";
+            using var r = cmd.ExecuteReader();
+            if (!r.Read()) throw new InvalidOperationException("Save file has no league");
+            league = new League
+            {
+                Name = r.GetString(0),
+                Season = r.GetInt32(1),
+                Rules = new Rules(r.GetString(2), r.GetInt32(3), r.GetInt32(4), r.GetInt32(5), r.GetInt32(6), r.GetInt32(7), r.GetDouble(8)),
+                Finance = new Finance(r.GetInt64(9), r.GetInt64(10), r.GetInt32(11), r.GetInt32(12), r.GetInt64(13)),
+                NextPlayerId = r.GetInt32(14),
+            };
+        }
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage FROM team ORDER BY id";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                league.Teams.Add(new Team
+                {
+                    Id = r.GetInt32(0), City = r.GetString(1), Name = r.GetString(2), Abbreviation = r.GetString(3),
+                    Conference = (Conference)r.GetInt32(4), Division = r.GetString(5), ArenaCapacity = r.GetInt32(6),
+                    Tactic = new Tactic { Pace = r.GetDouble(7), ThreePointEmphasis = r.GetInt32(8), CrashGlass = r.GetInt32(9), DefensiveAggression = r.GetInt32(10), StarUsage = r.GetInt32(11) },
+                });
+            }
+        }
+
+        var contracts = new Dictionary<int, Contract>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT player_id, years, salary, start_season, team_option, player_option FROM contract";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                contracts[r.GetInt32(0)] = new Contract { Years = r.GetInt32(1), Salary = r.GetInt64(2), StartSeason = r.GetInt32(3), TeamOption = r.GetInt32(4) == 1, PlayerOption = r.GetInt32(5) == 1 };
+        }
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = """
+                SELECT id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos, ca, pa, team_id, status, attributes,
+                       professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
+                       t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble
+                FROM player ORDER BY id
+                """;
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                var p = new Player
+                {
+                    Id = r.GetInt32(0), FirstName = r.GetString(1), LastName = r.GetString(2),
+                    BirthDate = DateOnly.Parse(r.GetString(3)), Nationality = r.GetString(4),
+                    HeightCm = r.GetInt32(5), WingspanCm = r.GetInt32(6), WeightKg = r.GetInt32(7),
+                    PrimaryPosition = (Position)r.GetInt32(8),
+                    SecondaryPosition = r.IsDBNull(9) ? null : (Position)r.GetInt32(9),
+                    CurrentAbility = r.GetInt32(10), PotentialAbility = r.GetInt32(11),
+                    TeamId = r.IsDBNull(12) ? null : r.GetInt32(12),
+                };
+                var values = r.GetString(14).Split(',');
+                int i = 0;
+                foreach (var a in AttrInfo.All) p.Attributes[a] = int.Parse(values[i++]);
+                var h = p.Hidden;
+                h.Professionalism = r.GetInt32(15); h.Ambition = r.GetInt32(16); h.Loyalty = r.GetInt32(17); h.Temperament = r.GetInt32(18);
+                h.Pressure = r.GetInt32(19); h.Adaptability = r.GetInt32(20); h.Consistency = r.GetInt32(21); h.BigGames = r.GetInt32(22);
+                h.InjuryProneness = r.GetInt32(23); h.Ego = r.GetInt32(24);
+                var t = p.Tendencies;
+                t.ThreePointRate = r.GetInt32(25); t.DriveRate = r.GetInt32(26); t.PostUpRate = r.GetInt32(27); t.IsolationRate = r.GetInt32(28);
+                t.PassFirst = r.GetInt32(29); t.CrashGlass = r.GetInt32(30); t.GambleSteals = r.GetInt32(31);
+                if (contracts.TryGetValue(p.Id, out var c)) p.Contract = c;
+
+                switch (r.GetString(13))
+                {
+                    case "active": league.TeamById(p.TeamId!.Value).Roster.Add(p); break;
+                    case "free_agent": league.FreeAgents.Add(p); break;
+                    default: league.Retired.Add(p); break;
+                }
+            }
+        }
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id FROM season_history ORDER BY season";
+            using var r = cmd.ExecuteReader();
+            var summaries = new List<SeasonSummary>();
+            while (r.Read())
+                summaries.Add(new SeasonSummary
+                {
+                    Season = r.GetInt32(0), ChampionTeamId = r.GetInt32(1), RunnerUpTeamId = r.GetInt32(2),
+                    MvpPlayerId = r.IsDBNull(3) ? null : r.GetInt32(3), ScoringLeaderPlayerId = r.IsDBNull(4) ? null : r.GetInt32(4),
+                });
+            league.History.AddRange(summaries);
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT season, team_id, wins, losses FROM season_record";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                league.History.First(h => h.Season == r.GetInt32(0)).Records.Add((r.GetInt32(1), r.GetInt32(2), r.GetInt32(3)));
+        }
+        return league;
+    }
+
+    public List<PlayerSeasonStats> LoadStats(int? season = null)
+    {
+        using var conn = Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT player_id, season, team_id, games, starts, minutes, points, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, plus_minus FROM player_stats" + (season is null ? "" : " WHERE season = $s");
+        if (season is { } s) cmd.Parameters.AddWithValue("$s", s);
+        using var r = cmd.ExecuteReader();
+        var list = new List<PlayerSeasonStats>();
+        while (r.Read())
+        {
+            list.Add(new PlayerSeasonStats
+            {
+                PlayerId = r.GetInt32(0), Season = r.GetInt32(1), TeamId = r.GetInt32(2), Games = r.GetInt32(3), Starts = r.GetInt32(4), Minutes = r.GetDouble(5),
+                Points = r.GetInt32(6), FGM = r.GetInt32(7), FGA = r.GetInt32(8), ThreePM = r.GetInt32(9), ThreePA = r.GetInt32(10), FTM = r.GetInt32(11), FTA = r.GetInt32(12),
+                OReb = r.GetInt32(13), DReb = r.GetInt32(14), Assists = r.GetInt32(15), Steals = r.GetInt32(16), Blocks = r.GetInt32(17), Turnovers = r.GetInt32(18), Fouls = r.GetInt32(19), PlusMinus = r.GetInt32(20),
+            });
+        }
+        return list;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    private static void CreateSchema(SqliteConnection conn)
+    {
+        Exec(conn, """
+            CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE IF NOT EXISTS league(id INTEGER PRIMARY KEY, name TEXT, season INTEGER, rules_name TEXT, periods INTEGER, minutes_per_period INTEGER,
+                shot_clock INTEGER, fouls_out INTEGER, bonus_threshold INTEGER, three_distance REAL,
+                hard_cap INTEGER, min_salary INTEGER, roster_max INTEGER, roster_min INTEGER, rookie_scale_first INTEGER, next_player_id INTEGER);
+            CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY, city TEXT, name TEXT, abbr TEXT, conference INTEGER, division TEXT, arena_capacity INTEGER,
+                pace REAL, three_emphasis INTEGER, crash_glass INTEGER, def_aggression INTEGER, star_usage INTEGER);
+            CREATE TABLE IF NOT EXISTS player(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, nationality TEXT,
+                height_cm INTEGER, wingspan_cm INTEGER, weight_kg INTEGER, primary_pos INTEGER, secondary_pos INTEGER,
+                ca INTEGER, pa INTEGER, team_id INTEGER, status TEXT, attributes TEXT,
+                professionalism INTEGER, ambition INTEGER, loyalty INTEGER, temperament INTEGER, pressure INTEGER, adaptability INTEGER,
+                consistency INTEGER, big_games INTEGER, injury_proneness INTEGER, ego INTEGER,
+                t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER);
+            CREATE INDEX IF NOT EXISTS ix_player_team ON player(team_id);
+            CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER);
+            CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER);
+            CREATE TABLE IF NOT EXISTS season_record(season INTEGER, team_id INTEGER, wins INTEGER, losses INTEGER, PRIMARY KEY(season, team_id));
+            CREATE TABLE IF NOT EXISTS player_stats(player_id INTEGER, season INTEGER, team_id INTEGER, games INTEGER, starts INTEGER, minutes REAL,
+                points INTEGER, fgm INTEGER, fga INTEGER, tpm INTEGER, tpa INTEGER, ftm INTEGER, fta INTEGER, oreb INTEGER, dreb INTEGER,
+                ast INTEGER, stl INTEGER, blk INTEGER, tov INTEGER, pf INTEGER, plus_minus INTEGER, PRIMARY KEY(player_id, season));
+            """);
+    }
+
+    private static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        foreach (var (name, value) in args) cmd.Parameters.AddWithValue(name, value ?? DBNull.Value);
+        cmd.ExecuteNonQuery();
+    }
+}

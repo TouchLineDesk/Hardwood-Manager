@@ -2,7 +2,7 @@
 
 A basketball management simulation in the spirit of Football Manager: a living world of pro leagues, continental cups, FIBA windows, the World Cup and the Olympics, with drafts, salary caps, tactics and player development.
 
-**Status:** prototype phase 1 — a headless simulation core with a procedurally generated 30-team closed-franchise league and a possession-level stat-based match engine. No UI yet.
+**Status:** prototype phase 2 — a headless simulation core with a procedurally generated 30-team closed-franchise league, a possession-level stat-based match engine, multi-season careers (development, aging, retirement, hard-cap contracts, draft, free agency) and SQLite save files. No UI yet.
 
 ## Locked decisions
 
@@ -13,6 +13,10 @@ A basketball management simulation in the spirit of Football Manager: a living w
 | Reference league | Closed franchise (NABL-style: draft, cap, trades) |
 | Ratings | 36 visible attributes on 1–20; Current/Potential Ability on 1–200 |
 | Data | Procedurally generated default world; editable database and editor later |
+| Persistence | One SQLite file per save |
+| Cap model (reference league) | Hard cap, roster-minimum exception for minimum deals |
+| Development | CA grows toward PA by age curve, minutes played and training quality; attributes anchored to CA |
+| Offseason | Retirements, 2-round draft of generated rookies (2nd round unguaranteed), contract expiry, AI re-signing, free agency |
 
 ## Layout
 
@@ -21,7 +25,9 @@ src/Hardwood.Core/        headless simulation core (no UI dependencies)
   Model/                  Player, Team, League, Rules, attributes
   Generation/             PlayerGenerator, WorldGenerator, name pools
   Engine/                 GameSimulator (possession pipeline), EngineConfig (all tunables), BoxScore
-  Season/                 ScheduleBuilder, Standings, SeasonSimulator (play-in + playoffs), LeagueAverages
+  Season/                 ScheduleBuilder, Standings, SeasonSimulator (play-in + playoffs), LeagueAverages,
+                          PlayerSeasonStats, Development (progression/aging/retirement), ContractMarket, Offseason, Career
+  Persistence/            SaveFile (SQLite schema, save/load, per-season stats)
 src/Hardwood.Cli/         console runner
 tests/Hardwood.Tests/     xUnit tests, including a calibration check
 ```
@@ -33,6 +39,8 @@ dotnet build
 dotnet run --project src/Hardwood.Cli -- season --seed 2026      # full season, standings, playoffs, leaders, calibration table
 dotnet run --project src/Hardwood.Cli -- game --seed 7 --log     # one game with box score and play log
 dotnet run --project src/Hardwood.Cli -- roster --team BOS       # a generated roster
+dotnet run --project src/Hardwood.Cli -- sim-years --years 20 --save dynasty.save   # 20 seasons: champions, MVPs, draft, league health
+dotnet run --project src/Hardwood.Cli -- load --save dynasty.save                    # reopen a save and list its history
 dotnet test
 ```
 
@@ -49,6 +57,10 @@ Each possession is resolved from the ten players on the floor:
 7. Fatigue drains on the floor and recovers on the bench; substitutions happen at dead balls on energy and foul trouble.
 
 Every number is in `EngineConfig`. The `season` command prints league averages against real-world targets so each change can be checked.
+
+## Season-to-season loop
+
+`Career.PlaySeason` builds the schedule, plays the season, aggregates stats, then runs `Offseason`: progression and aging for every player (minutes played matter), retirements, contract tick-down, a two-round draft of generated prospects, re-signing under the hard cap, free agency, roster and cap compliance, and the season counter. Each season is saved to the SQLite file. A 20-season run takes about 75 seconds and holds a stable steady state: league-average CA about 112, average age about 25.5 with a realistic veteran tail, payrolls at the cap.
 
 ## Design document
 

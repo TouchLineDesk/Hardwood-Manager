@@ -52,9 +52,16 @@ public sealed class EngineConfig
     public double TransitionSeconds { get; set; } = 7.0;
     public double EnergyDrainPerPossession { get; set; } = 0.0045;
     public double EnergyRecoverPerPossession { get; set; } = 0.0055;
-    public double SubOutEnergy { get; set; } = 0.74;
-    public double SubInMinEnergy { get; set; } = 0.88;
+    public double SubOutEnergy { get; set; } = 0.70;
+    public double SubInMinEnergy { get; set; } = 0.85;
     public int RotationSize { get; set; } = 10;
+    /// <summary>Target minutes per rotation slot (starters first, best to worst), summing to 240.</summary>
+    public double[] TargetMinutesBySlot { get; set; } = { 36, 34, 32, 30, 27, 24, 20, 16, 12, 9 };
+    public double RegulationMinutes { get; set; } = 48;
+    /// <summary>How far ahead of his minutes pace a player may run before he is pulled.</summary>
+    public double MinutesSlackSeconds { get; set; } = 120;
+    /// <summary>Fourth-quarter margin (at 0:00, growing 1.5/min earlier) at which the deep bench comes in.</summary>
+    public int BlowoutMargin { get; set; } = 18;
 
     // --- Overtime
     public int OvertimeMinutes { get; set; } = 5;

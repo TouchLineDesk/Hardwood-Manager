@@ -3,6 +3,7 @@ using Hardwood.Core;
 using Hardwood.Core.Engine;
 using Hardwood.Core.Generation;
 using Hardwood.Core.Model;
+using Hardwood.Core.Persistence;
 using Hardwood.Core.Season;
 
 namespace Hardwood.Cli;
@@ -29,8 +30,10 @@ public static class Program
             case "season": return RunSeason(league, seed, today);
             case "game": return RunGame(league, seed, args.Contains("--log"));
             case "roster": return ShowRoster(league, ArgValue(args, "--team") ?? "BOS");
+            case "sim-years": return SimYears(league, seed, int.Parse(ArgValue(args, "--years") ?? "10"), ArgValue(args, "--save") ?? "hardwood.save");
+            case "load": return LoadSave(ArgValue(args, "--save") ?? "hardwood.save");
             default:
-                Console.Error.WriteLine("Usage: hardwood season|game|roster [--seed N] [--log] [--team ABBR]");
+                Console.Error.WriteLine("Usage: hardwood season|game|roster|sim-years|load [--seed N] [--log] [--team ABBR] [--years N] [--save FILE]");
                 return 1;
         }
     }
@@ -122,6 +125,53 @@ public static class Program
                 Console.WriteLine(l);
             Console.WriteLine($"{"TOTAL",-24} {"",5} {box.Points,3} {box.FGM,2}-{box.FGA,-2} {box.ThreePM,2}-{box.ThreePA,-2} {box.FTM,2}-{box.FTA,-2} {box.OReb + box.DReb,3} {box.Assists,3} {box.Steals,2} {box.Blocks,2} {box.Turnovers,2} {box.Fouls,2}\n");
         }
+    }
+
+    private static int SimYears(League league, ulong seed, int years, string savePath)
+    {
+        if (File.Exists(savePath)) File.Delete(savePath);
+        var save = new SaveFile(savePath);
+        var career = new Career(new Rng(seed ^ 0x5EA50), save);
+        Console.WriteLine($"Simulating {years} seasons of {league.Name} from {league.Season}-{league.Season + 1}, saving to {savePath}\n");
+        Console.WriteLine($"{"Season",-9} {"Champion",-24} {"Runner-up",-24} {"Rec",-6} {"MVP",-26} {"Scoring leader",-30} {"Lg CA",5} {"Ret",3} {"Draft #1",-26}");
+
+        var sw = Stopwatch.StartNew();
+        for (int y = 0; y < years; y++)
+        {
+            var played = career.PlaySeason(league);
+            var h = league.History.Last();
+            var champ = league.TeamById(h.ChampionTeamId);
+            var ru = league.TeamById(h.RunnerUpTeamId);
+            var rec = played.Outcome.Standings[champ];
+            var all = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).ToDictionary(p => p.Id);
+            string Name(int? id, Dictionary<int, PlayerSeasonStats> st) => id is { } i && all.TryGetValue(i, out var p) ? $"{p.Name} ({st[i].Ppg:F1})" : "-";
+            double lgCa = league.AllActivePlayers.Average(p => p.CurrentAbility);
+            var first = played.Offseason.Draft.First();
+            Console.WriteLine($"{played.Season}-{(played.Season + 1) % 100:00} {champ.FullName,-24} {ru.FullName,-24} {rec.Wins + "-" + rec.Losses,-6} {Name(h.MvpPlayerId, played.Stats),-26} {Name(h.ScoringLeaderPlayerId, played.Stats),-30} {lgCa,5:F1} {played.Offseason.Retired.Count,3} {first.Player.Name + " (" + first.Team.Abbreviation + ")",-26}");
+        }
+        sw.Stop();
+        Console.WriteLine($"\n{years} seasons in {sw.Elapsed.TotalSeconds:F1}s. Save file: {new FileInfo(savePath).Length / 1024} KB");
+
+        // Age and ability profile of the league after the run.
+        var today = new DateOnly(league.Season, 10, 1);
+        var active = league.AllActivePlayers.ToList();
+        Console.WriteLine($"\nActive players: {active.Count}  avg age {active.Average(p => p.Age(today)):F1}  avg CA {active.Average(p => p.CurrentAbility):F1}  max CA {active.Max(p => p.CurrentAbility)}  free agents {league.FreeAgents.Count}  retired {league.Retired.Count}");
+        Console.WriteLine("Age distribution: " + string.Join("  ", active.GroupBy(p => p.Age(today) / 3 * 3).OrderBy(g => g.Key).Select(g => $"{g.Key}-{g.Key + 2}:{g.Count()}")));
+        var best = active.OrderByDescending(p => p.CurrentAbility).First();
+        Console.WriteLine($"Best player: {best} age {best.Age(today)} on {league.TeamById(best.TeamId!.Value).FullName}");
+        Console.WriteLine("Payrolls: " + string.Join(" ", league.Teams.OrderByDescending(ContractMarket.Payroll).Take(5).Select(t => $"{t.Abbreviation} ${ContractMarket.Payroll(t) / 1e6:F0}M")) + $"  (cap ${league.Finance.HardCap / 1e6:F0}M)");
+        Console.WriteLine("Titles: " + string.Join(", ", league.History.GroupBy(x => x.ChampionTeamId).OrderByDescending(g => g.Count()).Select(g => $"{league.TeamById(g.Key).Abbreviation} {g.Count()}")));
+        return 0;
+    }
+
+    private static int LoadSave(string savePath)
+    {
+        if (!File.Exists(savePath)) { Console.Error.WriteLine($"No save at {savePath}"); return 1; }
+        var league = new SaveFile(savePath).Load();
+        Console.WriteLine($"Loaded {league.Name}, season {league.Season}-{league.Season + 1}: {league.Teams.Count} teams, {league.AllActivePlayers.Count()} active players, {league.History.Count} seasons of history");
+        foreach (var h in league.History)
+            Console.WriteLine($"  {h.Season}-{(h.Season + 1) % 100:00}: {league.TeamById(h.ChampionTeamId).FullName} over {league.TeamById(h.RunnerUpTeamId).FullName}");
+        return 0;
     }
 
     private static int ShowRoster(League league, string abbr)

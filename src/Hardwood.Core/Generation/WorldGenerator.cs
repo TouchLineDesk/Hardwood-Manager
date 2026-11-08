@@ -1,4 +1,5 @@
 using Hardwood.Core.Model;
+using Hardwood.Core.Season;
 
 namespace Hardwood.Core.Generation;
 
@@ -16,6 +17,8 @@ public sealed class WorldGenerator
     {
         var league = new League { Name = leagueName, Season = season, Rules = Rules.Nba };
         var players = new PlayerGenerator(_rng);
+        try
+        {
 
         for (int i = 0; i < NamePool.Franchises.Length; i++)
         {
@@ -35,13 +38,15 @@ public sealed class WorldGenerator
 
             // Team quality: a normal around league average. +-1 SD ≈ a 10-CA swing on the whole roster.
             double quality = _rng.NextGaussian(0, 8);
-            BuildRoster(team, players, quality, today);
+            BuildRoster(team, players, quality, today, league);
             league.Teams.Add(team);
         }
+        }
+        finally { league.NextPlayerId = players.NextId; }
         return league;
     }
 
-    private void BuildRoster(Team team, PlayerGenerator gen, double quality, DateOnly today)
+    private void BuildRoster(Team team, PlayerGenerator gen, double quality, DateOnly today, League league)
     {
         // CA by roster slot (sorted best to worst), then shifted by team quality.
         int[] slotCa = { 158, 145, 135, 128, 122, 115, 110, 105, 100, 95, 90, 85, 80, 75, 70 };
@@ -62,7 +67,7 @@ public sealed class WorldGenerator
             p.Contract = new Contract
             {
                 Years = _rng.Next(1, 5),
-                Salary = SalaryFor(ca, age),
+                Salary = ContractMarket.MarketSalary(ca, age, league.Finance),
                 StartSeason = today.Year,
             };
             team.Roster.Add(p);
@@ -81,11 +86,4 @@ public sealed class WorldGenerator
         return (int)Math.Round(Math.Clamp(_rng.NextGaussian(mean, 3.5), 19, 37));
     }
 
-    private static long SalaryFor(int ca, int age)
-    {
-        // Smooth curve: CA 70 → ~$1.2M, CA 120 → ~$12M, CA 160 → ~$40M, with a hard ceiling.
-        double m = Math.Pow(Math.Max(0, ca - 55) / 100.0, 2.4) * 48.0 + 1.1;
-        if (age < 23) m *= 0.55; // rookie-scale discount
-        return (long)Math.Round(Math.Min(m, 52.0) * 1_000_000 / 10_000) * 10_000;
-    }
 }

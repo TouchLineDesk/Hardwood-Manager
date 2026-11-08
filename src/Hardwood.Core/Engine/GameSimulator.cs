@@ -39,6 +39,9 @@ public sealed class GameSimulator
         public bool IsHome { get; }
         public Player[] OnCourt { get; } = new Player[5];
         public List<Player> Rotation { get; } = new();   // ordered by quality
+        public List<Player> Starters { get; } = new();
+        /// <summary>Target playing time in seconds for a regulation game, by rotation slot.</summary>
+        public Dictionary<Player, double> TargetSeconds { get; } = new();
         public Dictionary<Player, double> Energy { get; } = new();
         public Dictionary<Player, double> Form { get; } = new();
         public int TeamFouls { get; set; }
@@ -64,7 +67,19 @@ public sealed class GameSimulator
             }
             foreach (var p in available) { if (starters.Count >= 5) break; if (!starters.Contains(p)) starters.Add(p); }
             for (int i = 0; i < 5; i++) { OnCourt[i] = starters[i]; Box.LineFor(starters[i]).Started = true; }
-            Rotation.AddRange(available.Take(Math.Max(cfg.RotationSize, 5)));
+            Starters.AddRange(starters);
+            // Rotation: starters first, then the best of the rest.
+            Rotation.AddRange(starters.OrderByDescending(p => p.Overall));
+            Rotation.AddRange(available.Where(p => !starters.Contains(p)).Take(Math.Max(cfg.RotationSize, 5) - 5));
+
+            // Minutes targets by rotation slot, scaled to the game length.
+            double scale = cfg.RegulationMinutes / 48.0;
+            for (int i = 0; i < Rotation.Count; i++)
+            {
+                double minutes = i < cfg.TargetMinutesBySlot.Length ? cfg.TargetMinutesBySlot[i] : 0;
+                TargetSeconds[Rotation[i]] = minutes * 60 * scale;
+            }
+            foreach (var p in available) TargetSeconds.TryAdd(p, 0);
         }
 
         public PlayerLine Line(Player p) => Box.LineFor(p);
@@ -85,6 +100,7 @@ public sealed class GameSimulator
 
         private int _period;
         private double _clock;        // seconds remaining in period
+        private double _elapsed;      // seconds played so far in the game
         private Side _offense, _defense;
         private bool _transition;     // next possession starts in transition (after live-ball turnover)
 
@@ -156,6 +172,7 @@ public sealed class GameSimulator
             // Last possession of a period: use whatever time is left.
             seconds = Math.Min(seconds, _clock);
             _clock -= seconds;
+            _elapsed += seconds;
 
             DrainEnergy(off, seconds); DrainEnergy(def, seconds);
             int pointsBefore = Score(off);
@@ -475,6 +492,7 @@ public sealed class GameSimulator
             seconds = Math.Min(_clock, seconds);
             if (seconds <= 0) return;
             _clock -= seconds;
+            _elapsed += seconds;
             DrainEnergy(_home, seconds);
             DrainEnergy(_away, seconds);
         }
@@ -496,26 +514,70 @@ public sealed class GameSimulator
             }
         }
 
+        private bool IsClosingTime() =>
+            _period >= _rules.Periods && _clock < 360 && Math.Abs(Score(_home) - Score(_away)) <= 8;
+
+        /// <summary>Garbage time: the game is decided, so the deep bench plays.</summary>
+        private bool IsBlowout()
+        {
+            int margin = Math.Abs(Score(_home) - Score(_away));
+            if (_period < _rules.Periods) return _period == _rules.Periods - 1 && _clock < 180 && margin >= 28;
+            return margin >= _cfg.BlowoutMargin + (int)(_clock / 60.0 * 1.5);
+        }
+
         private void CheckSubstitutions(Side side, bool force)
         {
-            bool closing = _period >= _rules.Periods && _clock < 300 && Math.Abs(Score(_home) - Score(_away)) <= 10;
+            double regulation = _rules.GameMinutes * 60.0;
+            double progress = Math.Min(1.0, _elapsed / regulation);
+            bool closing = IsClosingTime();
+
+            if (IsBlowout())
+            {
+                // Rest the rotation: anyone in the top rotation slots who is still out there comes off for the deep bench.
+                for (int i = 0; i < 5; i++)
+                {
+                    var p = side.OnCourt[i];
+                    if (side.Rotation.IndexOf(p) is >= 0 and < 8) ReplacePlayer(side, p, force: true, progress, deepBench: true);
+                }
+                return;
+            }
+
+            if (closing)
+            {
+                // Closing lineup: get the starters back on the floor if they have legs.
+                foreach (var starter in side.Starters)
+                {
+                    if (Array.IndexOf(side.OnCourt, starter) >= 0 || side.Line(starter).FouledOut || side.Energy[starter] < 0.45) continue;
+                    // Replace the weakest non-starter on the floor.
+                    var weakest = side.OnCourt.Where(p => !side.Starters.Contains(p)).OrderBy(p => p.Overall).FirstOrDefault();
+                    if (weakest == null) break;
+                    side.OnCourt[Array.IndexOf(side.OnCourt, weakest)] = starter;
+                }
+                return;
+            }
+
             for (int i = 0; i < 5; i++)
             {
                 var p = side.OnCourt[i];
                 var line = side.Line(p);
                 bool foulTrouble = (_period <= 2 && line.Fouls >= 3) || (_period == 3 && line.Fouls >= 4);
-                double threshold = closing ? _cfg.SubOutEnergy - 0.12 : _cfg.SubOutEnergy;
-                if (side.Energy[p] < threshold || foulTrouble || (force && side.Energy[p] < _cfg.SubOutEnergy + 0.08))
-                    ReplacePlayer(side, p, force: false);
+                double aheadOfPace = line.Seconds - side.TargetSeconds[p] * progress;
+                bool overMinutes = aheadOfPace > _cfg.MinutesSlackSeconds && progress < 0.97;
+                bool tired = side.Energy[p] < _cfg.SubOutEnergy;
+                if (tired || foulTrouble || overMinutes || (force && side.Energy[p] < _cfg.SubOutEnergy + 0.08))
+                    ReplacePlayer(side, p, force: false, progress);
             }
         }
 
-        private void ReplacePlayer(Side side, Player outgoing, bool force)
+        private void ReplacePlayer(Side side, Player outgoing, bool force, double progress = 0, bool deepBench = false)
         {
             int slot = Array.IndexOf(side.OnCourt, outgoing);
             if (slot < 0) return;
 
-            IEnumerable<Player> candidates = side.Rotation
+            IEnumerable<Player> pool = deepBench
+                ? side.Team.Roster.Where(p => side.Rotation.IndexOf(p) is < 0 or >= 8)
+                : side.Rotation;
+            IEnumerable<Player> candidates = pool
                 .Where(p => Array.IndexOf(side.OnCourt, p) < 0 && !side.Line(p).FouledOut);
             if (!force) candidates = candidates.Where(p => side.Energy[p] >= _cfg.SubInMinEnergy || side.Energy[p] > side.Energy[outgoing] + 0.15);
 
@@ -524,10 +586,10 @@ public sealed class GameSimulator
                 list = side.Team.Roster.Where(p => Array.IndexOf(side.OnCourt, p) < 0 && !side.Line(p).FouledOut).ToList();
             if (list.Count == 0) return;
 
-            // Prefer positional fit, then quality, then energy.
+            // Prefer the player furthest behind his minutes target, with positional fit and quality as tie-breakers.
+            double regulation = _rules.GameMinutes * 60.0;
             var pick = list
-                .OrderByDescending(p => PositionFit(p, outgoing))
-                .ThenByDescending(p => p.Overall * 0.6 + side.Energy[p] * 10)
+                .OrderByDescending(p => (side.TargetSeconds[p] * progress - side.Line(p).Seconds) / 60.0 + PositionFit(p, outgoing) * 2.0 + p.Overall * 0.4)
                 .First();
             side.OnCourt[slot] = pick;
         }
