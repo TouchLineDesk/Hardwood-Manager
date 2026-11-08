@@ -1,0 +1,126 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Dense, data-first dark theme. -->
+  <Styles.Resources>
+    <ResourceDictionary>
+      <Color x:Key="HwBg">#0F1216</Color>
+      <Color x:Key="HwPanel">#161B22</Color>
+      <Color x:Key="HwPanelAlt">#1C232C</Color>
+      <Color x:Key="HwBorder">#2A323D</Color>
+      <Color x:Key="HwText">#E6EAF0</Color>
+      <Color x:Key="HwMuted">#8B96A5</Color>
+      <Color x:Key="HwAccent">#F0A33A</Color>
+      <Color x:Key="HwGood">#3FB950</Color>
+      <Color x:Key="HwBad">#F85149</Color>
+      <Color x:Key="HwInfo">#58A6FF</Color>
+      <SolidColorBrush x:Key="HwBgBrush" Color="{StaticResource HwBg}"/>
+      <SolidColorBrush x:Key="HwPanelBrush" Color="{StaticResource HwPanel}"/>
+      <SolidColorBrush x:Key="HwPanelAltBrush" Color="{StaticResource HwPanelAlt}"/>
+      <SolidColorBrush x:Key="HwBorderBrush" Color="{StaticResource HwBorder}"/>
+      <SolidColorBrush x:Key="HwTextBrush" Color="{StaticResource HwText}"/>
+      <SolidColorBrush x:Key="HwMutedBrush" Color="{StaticResource HwMuted}"/>
+      <SolidColorBrush x:Key="HwAccentBrush" Color="{StaticResource HwAccent}"/>
+      <SolidColorBrush x:Key="HwGoodBrush" Color="{StaticResource HwGood}"/>
+      <SolidColorBrush x:Key="HwBadBrush" Color="{StaticResource HwBad}"/>
+      <SolidColorBrush x:Key="HwInfoBrush" Color="{StaticResource HwInfo}"/>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource HwBgBrush}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{StaticResource HwTextBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="22"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Margin" Value="0,0,0,8"/>
+  </Style>
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontSize" Value="15"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Margin" Value="0,10,0,6"/>
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{StaticResource HwMutedBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.accent">
+    <Setter Property="Foreground" Value="{StaticResource HwAccentBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.good">
+    <Setter Property="Foreground" Value="{StaticResource HwGoodBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.bad">
+    <Setter Property="Foreground" Value="{StaticResource HwBadBrush}"/>
+  </Style>
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Padding" Value="12"/>
+  </Style>
+  <Style Selector="Button.nav">
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Padding" Value="12,8"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Foreground" Value="{StaticResource HwTextBrush}"/>
+  </Style>
+  <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
+  </Style>
+  <Style Selector="Button.nav.active">
+    <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource HwAccentBrush}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{StaticResource HwAccentBrush}"/>
+    <Setter Property="Foreground" Value="#111"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Padding" Value="16,8"/>
+    <Setter Property="CornerRadius" Value="4"/>
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FFB95A"/>
+  </Style>
+  <Style Selector="DataGrid">
+    <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
+    <Setter Property="RowBackground" Value="{StaticResource HwPanelBrush}"/>
+    <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+    <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="RowHeight" Value="26"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="CanUserReorderColumns" Value="True"/>
+    <Setter Property="CanUserResizeColumns" Value="True"/>
+    <Setter Property="CanUserSortColumns" Value="True"/>
+    <Setter Property="IsReadOnly" Value="True"/>
+    <Setter Property="SelectionMode" Value="Single"/>
+  </Style>
+  <Style Selector="DataGridColumnHeader">
+    <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource HwMutedBrush}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Padding" Value="4,4"/>
+  </Style>
+  <Style Selector="DataGridRow:nth-child(2n)">
+    <Setter Property="Background" Value="#191F27"/>
+  </Style>
+  <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+    <Setter Property="Fill" Value="#2B3A4F"/>
+  </Style>
+  <Style Selector="DataGridCell">
+    <Setter Property="Padding" Value="6,0"/>
+  </Style>
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
+  </Style>
+  <Style Selector="Slider">
+    <Setter Property="Margin" Value="0,-6,0,-6"/>
+  </Style>
+</Styles>

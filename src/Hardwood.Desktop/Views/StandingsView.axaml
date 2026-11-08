@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.StandingsView"
+             x:DataType="vm:StandingsViewModel">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="Standings" Classes="h1"/>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Note}" Classes="muted" Margin="0,0,0,8"/>
+    <Grid ColumnDefinitions="*,*">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Eastern Conference" Classes="h2" Margin="0,0,0,6"/>
+        <DataGrid ItemsSource="{Binding East}" CanUserSortColumns="False">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
+            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="64"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="66"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="66"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="66"/>
+            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="66"/>
+            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="66"/>
+            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="66"/>
+            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="66"/>
+            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="66"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+      <DockPanel Grid.Column="1">
+        <TextBlock DockPanel.Dock="Top" Text="Western Conference" Classes="h2" Margin="0,0,0,6"/>
+        <DataGrid ItemsSource="{Binding West}" CanUserSortColumns="False">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
+            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="64"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="66"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="66"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="66"/>
+            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="66"/>
+            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="66"/>
+            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="66"/>
+            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="66"/>
+            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="66"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="History" Classes="h1"/>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" Classes="muted" Margin="0,0,0,8"/>
+    <DataGrid ItemsSource="{Binding Rows}">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="96"/>
+        <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="200"/>
+        <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="200"/>
+        <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="180"/>
+        <DataGridTextColumn Header="Scoring leader" Binding="{Binding ScoringLeader}" Width="180"/>
+        <DataGridTextColumn Header="Your record" Binding="{Binding OurRecord}" Width="*"/>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

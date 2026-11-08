@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.ScheduleView"
+             x:DataType="vm:ScheduleViewModel">
+  <Grid ColumnDefinitions="3*,2*">
+    <DockPanel>
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+        <StackPanel>
+          <TextBlock Text="Schedule &amp; Results" Classes="h1" Margin="0"/>
+          <TextBlock Text="{Binding Summary}" Classes="muted"/>
+        </StackPanel>
+        <Button Grid.Column="1" Content="Open box score" Command="{Binding OpenBoxCommand}" CommandParameter="{Binding Selected}" VerticalAlignment="Top"/>
+      </Grid>
+      <DataGrid ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="110"/>
+          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="200"/>
+          <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="66"/>
+          <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="100"/>
+          <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="70"/>
+          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="*"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+    <StackPanel Grid.Column="1" Spacing="10">
+      <TextBlock Text="Around the league (yesterday)" Classes="h2" Margin="0"/>
+      <Border Classes="panel" MaxHeight="300">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding LeagueScores}">
+            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,2" FontFamily="Consolas,Menlo,monospace"/></DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+      <TextBlock Text="Playoffs" Classes="h2" Margin="0" IsVisible="{Binding ShowPlayoffs}"/>
+      <DataGrid ItemsSource="{Binding Series}" IsVisible="{Binding ShowPlayoffs}" MaxHeight="420">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Round" Binding="{Binding Round}" Width="150"/>
+          <DataGridTextColumn Header="Matchup" Binding="{Binding Matchup}" Width="*"/>
+          <DataGridTextColumn Header="Series" Binding="{Binding Score}" Width="110"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </StackPanel>
+  </Grid>
+</UserControl>

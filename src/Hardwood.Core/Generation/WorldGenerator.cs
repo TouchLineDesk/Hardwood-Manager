@@ -72,6 +72,14 @@ public sealed class WorldGenerator
             };
             team.Roster.Add(p);
         }
+
+        // Scale salaries so every team opens between 82% and 98% of the hard cap, like a real league in-season.
+        long cap = league.Finance.HardCap;
+        long payroll = team.Roster.Sum(p => p.Contract!.Salary);
+        double target = cap * (0.82 + _rng.NextDouble() * 0.16);
+        double factor = target / payroll;
+        foreach (var p in team.Roster)
+            p.Contract!.Salary = Math.Max(league.Finance.MinSalary, (long)Math.Round(p.Contract.Salary * factor / 10_000) * 10_000);
     }
 
     private int AgeForSlot(int slot)

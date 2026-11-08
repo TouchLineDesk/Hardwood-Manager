@@ -1,0 +1,191 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Hardwood.Core.Model;
+using Hardwood.Core.Season;
+
+namespace Hardwood.Desktop.ViewModels;
+
+public sealed class ExpiringRow
+{
+    public required Player Player { get; init; }
+    public string Name => Player.Name;
+    public string Pos => Player.PrimaryPosition.ToString();
+    public int Age { get; init; }
+    public int CA => Player.CurrentAbility;
+    public int PA => Player.PotentialAbility;
+    public string LastSeason { get; init; } = "";
+    public string Ask { get; init; } = "";
+    public string Fits { get; init; } = "";
+}
+
+public sealed class ProspectRow
+{
+    public required Player Player { get; init; }
+    public int Rank { get; init; }
+    public string Name => Player.Name;
+    public string Pos => Player.PrimaryPosition.ToString();
+    public int Age { get; init; }
+    public string Height => $"{Player.HeightCm} cm";
+    public int CA => Player.CurrentAbility;
+    public int PA => Player.PotentialAbility;
+    public double Sho => Math.Round(Player.Attributes.Average(AttrGroup.Shooting), 1);
+    public double Ply => Math.Round(Player.Attributes.Average(AttrGroup.Playmaking), 1);
+    public double Def => Math.Round(Player.Attributes.Average(AttrGroup.Defense), 1);
+    public double Phy => Math.Round(Player.Attributes.Average(AttrGroup.Physical), 1);
+    public string Need { get; init; } = "";
+}
+
+public sealed class PickRow
+{
+    public required DraftPick Pick { get; init; }
+    public string Where => $"R{Pick.Round} #{Pick.Pick}";
+    public string Team => Pick.Team.Abbreviation;
+    public string Player => Pick.Player.Name;
+    public string Pos => Pick.Player.PrimaryPosition.ToString();
+    public string Ability => $"{Pick.Player.CurrentAbility}/{Pick.Player.PotentialAbility}";
+    public bool Ours { get; init; }
+}
+
+public sealed partial class OffseasonViewModel : PageViewModel
+{
+    public override string Title => "Offseason";
+    [ObservableProperty] private string _headline = "";
+    [ObservableProperty] private string _instructions = "";
+    [ObservableProperty] private bool _inOffseason;
+    [ObservableProperty] private bool _isReSigning;
+    [ObservableProperty] private bool _isDraft;
+    [ObservableProperty] private bool _isFreeAgency;
+    [ObservableProperty] private string _status = "";
+    [ObservableProperty] private string _capText = "";
+
+    public ObservableCollection<ExpiringRow> Expiring { get; } = new();
+    [ObservableProperty] private ExpiringRow? _selectedExpiring;
+
+    public ObservableCollection<ProspectRow> Prospects { get; } = new();
+    [ObservableProperty] private ProspectRow? _selectedProspect;
+    public ObservableCollection<PickRow> Picks { get; } = new();
+    [ObservableProperty] private string _clockText = "";
+    [ObservableProperty] private bool _onTheClock;
+
+    public ObservableCollection<PlayerRow> FreeAgents { get; } = new();
+    [ObservableProperty] private PlayerRow? _selectedFreeAgent;
+    public ObservableCollection<PlayerRow> Roster { get; } = new();
+    [ObservableProperty] private PlayerRow? _selectedRosterPlayer;
+
+    public OffseasonViewModel(MainViewModel shell) : base(shell) { }
+
+    public override void Refresh()
+    {
+        var s = Session; var o = s.Offseason;
+        InOffseason = s.Phase == SessionPhase.Offseason && o != null;
+        if (!InOffseason)
+        {
+            Headline = "The offseason has not started.";
+            Instructions = s.Phase == SessionPhase.Postseason ? "The playoffs are under way. Once a champion is crowned, contract decisions, the lottery, the draft and free agency happen here."
+                                                             : "Play the season out. After the Finals you will make contract decisions, draft, and sign free agents here.";
+            IsReSigning = IsDraft = IsFreeAgency = false;
+            return;
+        }
+        var team = s.HumanTeam; var fin = s.League.Finance;
+        IsReSigning = o!.Phase == OffseasonPhase.ReSigning;
+        IsDraft = o.Phase == OffseasonPhase.Draft;
+        IsFreeAgency = o.Phase == OffseasonPhase.FreeAgency;
+        long committed = o.CommittedPayroll(team);
+        CapText = $"Roster {team.Roster.Count} · committed ${committed / 1e6:F1}M" + (IsReSigning ? $" + ${o.ReservedForDraft(team) / 1e6:F1}M reserved for your pick" : "") + $" · hard cap ${fin.HardCap / 1e6:F0}M · room ${(fin.HardCap - committed - o.ReservedForDraft(team)) / 1e6:F1}M";
+
+        Expiring.Clear(); Prospects.Clear(); Picks.Clear(); FreeAgents.Clear(); Roster.Clear();
+        switch (o.Phase)
+        {
+            case OffseasonPhase.ReSigning:
+                Headline = $"Summer {o.Season + 1}: contract decisions";
+                var exp = o.Expiring[team.Id];
+                Instructions = exp.Count == 0 ? "No contracts expired. Continue to the draft when ready."
+                    : "Re-sign or release each expiring player. Anyone undecided when you continue becomes a free agent.";
+                foreach (var p in exp)
+                {
+                    s.Stats.TryGetValue(p.Id, out var st);
+                    Expiring.Add(new ExpiringRow
+                    {
+                        Player = p, Age = p.Age(o.Date), Ask = $"${o.Ask(p) / 1e6:F1}M",
+                        LastSeason = st != null ? $"{st.Ppg:F1} pts, {st.Rpg:F1} reb, {st.Apg:F1} ast in {st.Mpg:F1} min" : "did not play",
+                        Fits = o.CanAfford(team, o.Ask(p)) ? "Yes" : "Over cap",
+                    });
+                }
+                break;
+
+            case OffseasonPhase.Draft:
+                OnTheClock = o.OnTheClock == team;
+                Headline = $"Draft {o.Season + 1} · round {o.CurrentRound}, pick {o.NextPickIndex + 1}";
+                ClockText = OnTheClock ? "You are on the clock." : o.DraftComplete ? "Draft complete." : $"{o.OnTheClock?.FullName} is on the clock.";
+                Instructions = OnTheClock ? "Select a prospect and make your pick. First-round picks sign rookie-scale deals; second-rounders are unguaranteed and go to the free-agent pool."
+                                          : "Continue to run the draft to your next pick.";
+                int rank = 1;
+                foreach (var p in o.Prospects)
+                    Prospects.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(o.Date), Need = team.Roster.Count(x => x.PrimaryPosition == p.PrimaryPosition) <= 1 ? "Need" : "" });
+                foreach (var d in o.Report.Draft.OrderByDescending(d => d.Pick)) Picks.Add(new PickRow { Pick = d, Ours = d.Team == team });
+                SelectedProspect = Prospects.FirstOrDefault();
+                break;
+
+            case OffseasonPhase.FreeAgency:
+                Headline = $"Free agency {o.Season + 1}";
+                Instructions = $"Sign players until your roster has {fin.RosterMin} to {fin.RosterMax} players under the ${fin.HardCap / 1e6:F0}M hard cap. Below {fin.RosterMin} players you may add minimum deals regardless of room. Waive to make space. When you start the new season, anything illegal is fixed automatically (cheapest fixes first).";
+                foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
+                foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
+                break;
+        }
+    }
+
+    [RelayCommand]
+    public void ReSign()
+    {
+        if (SelectedExpiring == null) return;
+        var ok = Session.Offseason!.ReSign(Session.HumanTeam, SelectedExpiring.Player);
+        Status = ok ? $"Re-signed {SelectedExpiring.Name}." : $"{SelectedExpiring.Name}'s ask does not fit under the cap.";
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void Release()
+    {
+        if (SelectedExpiring == null) return;
+        Session.Offseason!.Release(Session.HumanTeam, SelectedExpiring.Player);
+        Status = $"Released {SelectedExpiring.Name}.";
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void MakePick()
+    {
+        if (SelectedProspect == null || !OnTheClock) return;
+        var pick = Session.MakePick(SelectedProspect.Player);
+        Status = $"Pick {pick.Pick}: {pick.Player.Name}.";
+        Shell.AfterTick();
+        if (Session.Phase != SessionPhase.Offseason) Shell.Navigate("Inbox");
+    }
+
+    [RelayCommand]
+    public void SignFreeAgent()
+    {
+        if (SelectedFreeAgent == null) return;
+        var p = SelectedFreeAgent.Player;
+        var ok = Session.Offseason!.SignFreeAgent(Session.HumanTeam, p);
+        Status = ok ? $"Signed {p.Name} for ${p.Contract!.Salary / 1e6:F1}M × {p.Contract.Years}." : "Doesn't fit: not enough room or roster is full.";
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void WaivePlayer()
+    {
+        if (SelectedRosterPlayer == null) return;
+        Session.Offseason!.Waive(Session.HumanTeam, SelectedRosterPlayer.Player);
+        Status = $"Waived {SelectedRosterPlayer.Name}.";
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void OpenPlayer(Player? p)
+    {
+        if (p != null) Shell.ShowPlayer(p);
+    }
+}

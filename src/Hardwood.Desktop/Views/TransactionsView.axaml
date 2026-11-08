@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.TransactionsView"
+             x:DataType="vm:TransactionsViewModel">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <TextBlock Text="Transactions" Classes="h1" Margin="0"/>
+      <TextBlock Text="{Binding CapText}" Classes="muted"/>
+      <TextBlock Text="{Binding DeadlineText}" Classes="muted"/>
+    </StackPanel>
+    <TabControl>
+      <TabItem Header="Trade builder">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Trade partner" VerticalAlignment="Center" Classes="muted"/>
+            <ComboBox ItemsSource="{Binding Partners}" SelectedItem="{Binding Partner}" Width="230">
+              <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="{Binding PartnerDirection}" VerticalAlignment="Center" Classes="muted"/>
+          </StackPanel>
+          <Grid Grid.Row="1" ColumnDefinitions="*,*">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Top" Text="You send" Classes="h2" Margin="0,0,0,6"/>
+              <DataGrid ItemsSource="{Binding Ours}" IsReadOnly="False">
+                <DataGrid.Columns>
+                  <DataGridCheckBoxColumn Header="" Binding="{Binding Included}" Width="66"/>
+                  <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Their value" Binding="{Binding Value}" Width="90" IsReadOnly="True"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+            <DockPanel Grid.Column="1">
+              <TextBlock DockPanel.Dock="Top" Text="You receive" Classes="h2" Margin="0,0,0,6"/>
+              <DataGrid ItemsSource="{Binding Theirs}" IsReadOnly="False">
+                <DataGrid.Columns>
+                  <DataGridCheckBoxColumn Header="" Binding="{Binding Included}" Width="66"/>
+                  <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Their value" Binding="{Binding Value}" Width="90" IsReadOnly="True"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+          </Grid>
+          <Border Grid.Row="2" Classes="panel">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <StackPanel>
+                <TextBlock Text="{Binding Verdict}" FontWeight="SemiBold" FontSize="14"/>
+                <TextBlock Text="{Binding VerdictDetail}" Classes="muted" TextWrapping="Wrap"/>
+              </StackPanel>
+              <Button Grid.Column="1" Content="Clear" Command="{Binding ClearTradeCommand}" VerticalAlignment="Center"/>
+              <Button Grid.Column="2" Classes="primary" Content="Propose trade" Command="{Binding ProposeCommand}" IsEnabled="{Binding CanPropose}" VerticalAlignment="Center"/>
+            </Grid>
+          </Border>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Free agents">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button Classes="primary" Content="Sign selected" Command="{Binding SignCommand}"/>
+            <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="66"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="66"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="66"/>
+              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="66"/>
+              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="66"/>
+              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="66"/>
+              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="66"/>
+              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Waive">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Text="Select a player in 'You send' on the trade builder and use the button below to release him outright." Classes="muted"/>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding Ours}" x:Name="WaiveGrid">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="66"/>
+              <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112"/>
+              <DataGridTemplateColumn Header="" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:TradePiece">
+                    <Button Content="Waive" Command="{Binding Owner.WaiveCommand}" CommandParameter="{Binding}" Padding="8,2"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</UserControl>

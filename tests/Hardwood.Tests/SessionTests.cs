@@ -142,9 +142,15 @@ public class SessionTests
         robbery.ToPlayers.Add(b.Roster.OrderByDescending(p => p.CurrentAbility).First());
         Assert.False(engine.Evaluate(robbery).Accepted);
 
+        // Our best player for their player of similar salary but clearly lower ability: cap-neutral, value-positive for them.
+        var star = a.Roster.OrderByDescending(p => p.CurrentAbility).First();
+        var filler = b.Roster.Where(p => p.CurrentAbility < star.CurrentAbility - 15)
+            .OrderBy(p => Math.Abs(p.Contract!.Salary - star.Contract!.Salary)).First();
         var overpay = new TradeProposal { From = a, To = b };
-        overpay.FromPlayers.Add(a.Roster.OrderByDescending(p => p.CurrentAbility).First());
-        overpay.ToPlayers.Add(b.Roster.OrderBy(p => p.CurrentAbility).First());
+        overpay.FromPlayers.Add(star);
+        overpay.ToPlayers.Add(filler);
+        // Make the test independent of exactly how far each side sits from the cap.
+        foreach (var p in a.Roster.Concat(b.Roster)) if (p.Contract != null) p.Contract.Salary = (long)(p.Contract.Salary * 0.7);
         var eval = engine.Evaluate(overpay);
         Assert.True(eval.Legal, eval.LegalityNote);
         Assert.True(eval.Accepted);

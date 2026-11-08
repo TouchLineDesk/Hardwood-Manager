@@ -1,0 +1,90 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.RotationView"
+             x:DataType="vm:RotationViewModel">
+  <Grid ColumnDefinitions="3*,2*">
+    <DockPanel>
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+        <StackPanel>
+          <TextBlock Text="Rotation" Classes="h1" Margin="0"/>
+          <TextBlock Text="Starters by position, then minutes for everyone who plays. The engine follows these targets and adjusts for fatigue and foul trouble." Classes="muted" TextWrapping="Wrap"/>
+        </StackPanel>
+        <Button Grid.Column="1" Content="Suggest rotation" Command="{Binding AutoRotationCommand}" VerticalAlignment="Top"/>
+      </Grid>
+      <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10">
+        <ItemsControl ItemsSource="{Binding Starters}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:StarterSlot">
+              <StackPanel Margin="4,0" Spacing="4">
+                <TextBlock Text="{Binding Label}" Classes="muted" FontWeight="SemiBold"/>
+                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
+        <TextBlock Text="{Binding TotalText}" FontWeight="SemiBold" Classes.good="{Binding TotalOk}" Classes.bad="{Binding !TotalOk}"/>
+        <TextBlock Text="{Binding Status}" Classes="bad"/>
+      </StackPanel>
+      <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="False" CanUserSortColumns="False">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
+          <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="66" IsReadOnly="True"/>
+          <DataGridCheckBoxColumn Header="Starter" Binding="{Binding IsStarter}" Width="80" IsReadOnly="True"/>
+          <DataGridTemplateColumn Header="Minutes" Width="*">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:RotationRow">
+                <Grid ColumnDefinitions="*,40" Margin="4,0">
+                  <Slider Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Minutes}" IsEnabled="{Binding Healthy}"/>
+                  <TextBlock Grid.Column="1" Text="{Binding MinutesText}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                </Grid>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Health" Binding="{Binding Health}" Width="100" IsReadOnly="True"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+
+    <StackPanel Grid.Column="1" Spacing="10">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="Tactics" Classes="h1" Margin="0"/>
+        <Button Grid.Column="1" Content="Reset" Command="{Binding ResetTacticsCommand}"/>
+      </Grid>
+      <Border Classes="panel">
+        <StackPanel Spacing="14">
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Pace" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding PaceText}" Classes="muted"/></Grid>
+            <Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
+            <TextBlock Text="Possessions per 48 minutes. Faster pace means more shots for both teams and more fatigue." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Three-point emphasis" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding ThreeText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Offensive glass" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding CrashText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>
+            <TextBlock Text="Crashing wins second chances but gives up transition points." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Defensive aggression" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding AggressionText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding Aggression}"/>
+            <TextBlock Text="Gambling forces more turnovers at the cost of fouls and open looks." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Star usage" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding StarText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}"/>
+            <TextBlock Text="How much the offence runs through your best creators." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Grid>
+</UserControl>

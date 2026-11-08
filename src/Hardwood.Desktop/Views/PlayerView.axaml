@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.PlayerView"
+             x:DataType="vm:PlayerViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="10">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="{Binding Name}" Classes="h1" Margin="0"/>
+          <TextBlock Text="{Binding Headline}" Classes="accent"/>
+        </StackPanel>
+        <Button Grid.Column="1" Content="Back to roster" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
+      </Grid>
+      <Border Classes="panel">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding Bio}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding Contract}" Classes="muted" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding InjuryText}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding Tendencies}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        </StackPanel>
+      </Border>
+      <ItemsControl ItemsSource="{Binding Groups}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:AttrGroupVm">
+            <Border Classes="panel" Margin="0,0,10,10" Width="250">
+              <StackPanel>
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Average}" Classes="muted"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Cells}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AttrCell">
+                      <Grid ColumnDefinitions="*,32" Margin="0,1">
+                        <TextBlock Text="{Binding Name}" FontSize="12.5"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="{Binding Color}"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Text="Season by season" Classes="h2"/>
+      <DataGrid ItemsSource="{Binding Seasons}" Height="200">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="96"/>
+          <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="64"/>
+          <DataGridTextColumn Header="GP" Binding="{Binding GP}" Width="66"/>
+          <DataGridTextColumn Header="MPG" Binding="{Binding MPG}" Width="66"/>
+          <DataGridTextColumn Header="PPG" Binding="{Binding PPG}" Width="66"/>
+          <DataGridTextColumn Header="RPG" Binding="{Binding RPG}" Width="66"/>
+          <DataGridTextColumn Header="APG" Binding="{Binding APG}" Width="66"/>
+          <DataGridTextColumn Header="FG%" Binding="{Binding FG}" Width="66"/>
+          <DataGridTextColumn Header="3P%" Binding="{Binding TP}" Width="66"/>
+          <DataGridTextColumn Header="FT%" Binding="{Binding FT}" Width="66"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

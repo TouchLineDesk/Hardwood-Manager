@@ -2,7 +2,7 @@
 
 A basketball management simulation in the spirit of Football Manager: a living world of pro leagues, continental cups, FIBA windows, the World Cup and the Olympics, with drafts, salary caps, tactics and player development.
 
-**Status:** prototype phase 2 — a headless simulation core with a procedurally generated 30-team closed-franchise league, a possession-level stat-based match engine, multi-season careers (development, aging, retirement, hard-cap contracts, draft, free agency) and SQLite save files. No UI yet.
+**Status:** phase 3 — a playable Windows desktop game. Pick a franchise, set your rotation and tactics, advance day by day through an 82-game season and the playoffs, then run your offseason: contract decisions, the lottery and draft, free agency and trades. Injuries, AI trades and a living 30-team league around you. Multi-season careers save to a single SQLite file.
 
 ## Locked decisions
 
@@ -17,6 +17,29 @@ A basketball management simulation in the spirit of Football Manager: a living w
 | Cap model (reference league) | Hard cap, roster-minimum exception for minimum deals |
 | Development | CA grows toward PA by age curve, minutes played and training quality; attributes anchored to CA |
 | Offseason | Retirements, 2-round draft of generated rookies (2nd round unguaranteed), contract expiry, AI re-signing, free agency |
+| Phase 3 | Avalonia desktop shell, day-by-day Continue, human rotation/tactics and offseason control, injuries, NBA-style lottery, trade AI by team direction, exact scouting for now, Windows x64 build |
+
+## Play it
+
+**Windows:** download the latest build from the repository's Releases page (or build it yourself below), run `HardwoodManager.exe`, choose a seed and a franchise, and press *Start career*. Saves go to `Documents\Hardwood Manager\career.hwsave` by default.
+
+**From source (any OS):**
+
+```bash
+dotnet run --project src/Hardwood.Desktop
+```
+
+**Publish a Windows build:**
+
+```bash
+dotnet publish src/Hardwood.Desktop -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/win-x64
+```
+
+### Screens
+
+Inbox · Roster (any team) · Player profile · Rotation & Tactics (starters, minutes targets, five sliders) · Schedule & Results with box scores and play-by-play · Standings · League Leaders · Transactions (trade builder with AI valuation, free agents, waivers) · Offseason (re-sign/release, draft room with lottery results, free agency) · History.
+
+Top bar: *Continue* advances one day; *Sim to next game* and *Sim week* skip ahead. During the offseason, *Continue* moves to the next phase. The game saves after every day; the offseason is finished in one sitting (closing mid-offseason returns you to the Finals).
 
 ## Layout
 
@@ -25,10 +48,12 @@ src/Hardwood.Core/        headless simulation core (no UI dependencies)
   Model/                  Player, Team, League, Rules, attributes
   Generation/             PlayerGenerator, WorldGenerator, name pools
   Engine/                 GameSimulator (possession pipeline), EngineConfig (all tunables), BoxScore
-  Season/                 ScheduleBuilder, Standings, SeasonSimulator (play-in + playoffs), LeagueAverages,
-                          PlayerSeasonStats, Development (progression/aging/retirement), ContractMarket, Offseason, Career
-  Persistence/            SaveFile (SQLite schema, save/load, per-season stats)
-src/Hardwood.Cli/         console runner
+  Season/                 ScheduleBuilder, Standings, SeasonSimulator, Postseason (day-by-day bracket), LeagueAverages,
+                          PlayerSeasonStats, Development, ContractMarket, DraftLottery, Offseason (phased), Trades, GameSession, Career
+  Engine/InjuryEngine     injury rolls and catalogue
+  Persistence/            SaveFile (league tables) + SessionStore (calendar, results, box scores, inbox, bracket)
+src/Hardwood.Desktop/     Avalonia desktop app (dark, data-first): ViewModels/ + Views/
+src/Hardwood.Cli/         console runner (headless seasons, calibration)
 tests/Hardwood.Tests/     xUnit tests, including a calibration check
 ```
 
@@ -65,3 +90,9 @@ Every number is in `EngineConfig`. The `season` command prints league averages a
 ## Design document
 
 The full game design document lives in the project's Claude doc (Hardwood Manager — Game Design Document).
+
+## Screenshots
+
+![Inbox](docs/screen-inbox.png)
+![Rotation and tactics](docs/screen-rotation.png)
+![Draft room](docs/screen-draft.png)

@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.BoxScoreView"
+             x:DataType="vm:BoxScoreViewModel">
+  <UserControl.Resources>
+    <DataTemplate x:Key="BoxGrid" x:DataType="vm:BoxLineRow"/>
+  </UserControl.Resources>
+  <ScrollViewer>
+    <StackPanel Spacing="10">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0"/>
+          <TextBlock Text="{Binding Periods}" FontFamily="Consolas,Menlo,monospace" Classes="muted"/>
+        </StackPanel>
+        <Button Grid.Column="1" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
+      </Grid>
+
+      <TextBlock Text="{Binding AwayName}" Classes="h2"/>
+      <TextBlock Text="{Binding AwayTotals}" Classes="muted" FontSize="11.5"/>
+      <DataGrid ItemsSource="{Binding Away}" Height="300">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+          <DataGridCheckBoxColumn Header="St" Binding="{Binding Started}" Width="66"/>
+          <DataGridTextColumn Header="MIN" Binding="{Binding Min}" Width="66"/>
+          <DataGridTextColumn Header="PTS" Binding="{Binding Pts}" Width="66"/>
+          <DataGridTextColumn Header="FG" Binding="{Binding FG}" Width="66"/>
+          <DataGridTextColumn Header="3P" Binding="{Binding TP}" Width="66"/>
+          <DataGridTextColumn Header="FT" Binding="{Binding FT}" Width="66"/>
+          <DataGridTextColumn Header="REB" Binding="{Binding Reb}" Width="66"/>
+          <DataGridTextColumn Header="AST" Binding="{Binding Ast}" Width="66"/>
+          <DataGridTextColumn Header="STL" Binding="{Binding Stl}" Width="66"/>
+          <DataGridTextColumn Header="BLK" Binding="{Binding Blk}" Width="66"/>
+          <DataGridTextColumn Header="TO" Binding="{Binding Tov}" Width="66"/>
+          <DataGridTextColumn Header="PF" Binding="{Binding PF}" Width="66"/>
+          <DataGridTextColumn Header="+/-" Binding="{Binding PM}" Width="66"/>
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <TextBlock Text="{Binding HomeName}" Classes="h2"/>
+      <TextBlock Text="{Binding HomeTotals}" Classes="muted" FontSize="11.5"/>
+      <DataGrid ItemsSource="{Binding Home}" Height="300">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+          <DataGridCheckBoxColumn Header="St" Binding="{Binding Started}" Width="66"/>
+          <DataGridTextColumn Header="MIN" Binding="{Binding Min}" Width="66"/>
+          <DataGridTextColumn Header="PTS" Binding="{Binding Pts}" Width="66"/>
+          <DataGridTextColumn Header="FG" Binding="{Binding FG}" Width="66"/>
+          <DataGridTextColumn Header="3P" Binding="{Binding TP}" Width="66"/>
+          <DataGridTextColumn Header="FT" Binding="{Binding FT}" Width="66"/>
+          <DataGridTextColumn Header="REB" Binding="{Binding Reb}" Width="66"/>
+          <DataGridTextColumn Header="AST" Binding="{Binding Ast}" Width="66"/>
+          <DataGridTextColumn Header="STL" Binding="{Binding Stl}" Width="66"/>
+          <DataGridTextColumn Header="BLK" Binding="{Binding Blk}" Width="66"/>
+          <DataGridTextColumn Header="TO" Binding="{Binding Tov}" Width="66"/>
+          <DataGridTextColumn Header="PF" Binding="{Binding PF}" Width="66"/>
+          <DataGridTextColumn Header="+/-" Binding="{Binding PM}" Width="66"/>
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <TextBlock Text="Play by play" Classes="h2" IsVisible="{Binding HasLog}"/>
+      <Border Classes="panel" IsVisible="{Binding HasLog}" MaxHeight="400">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Log}">
+            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="Consolas,Menlo,monospace" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

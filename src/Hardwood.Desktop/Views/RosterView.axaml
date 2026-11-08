@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.RosterView"
+             x:DataType="vm:RosterViewModel">
+  <DockPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <StackPanel>
+        <TextBlock Text="Roster" Classes="h1" Margin="0"/>
+        <TextBlock Text="{Binding Summary}" Classes="muted"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <TextBlock Text="Team" VerticalAlignment="Center" Classes="muted"/>
+        <ComboBox ItemsSource="{Binding Teams}" SelectedItem="{Binding Team}" Width="220">
+          <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Content="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Selected}"/>
+      </StackPanel>
+    </Grid>
+    <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+        <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+        <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+        <DataGridTextColumn Header="Ht" Binding="{Binding Height}" Width="66"/>
+        <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="66"/>
+        <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="66"/>
+        <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="66"/>
+        <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="66"/>
+        <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="66"/>
+        <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="66"/>
+        <DataGridTextColumn Header="Men" Binding="{Binding Men}" Width="66"/>
+        <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="66"/>
+        <DataGridTextColumn Header="MPG" Binding="{Binding Mpg}" Width="66"/>
+        <DataGridTextColumn Header="PPG" Binding="{Binding Ppg}" Width="66"/>
+        <DataGridTextColumn Header="RPG" Binding="{Binding Rpg}" Width="66"/>
+        <DataGridTextColumn Header="APG" Binding="{Binding Apg}" Width="66"/>
+        <DataGridTextColumn Header="FG%" Binding="{Binding FgPct}" Width="66"/>
+        <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="82"/>
+        <DataGridTextColumn Header="Contract" Binding="{Binding Years}" Width="92"/>
+        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

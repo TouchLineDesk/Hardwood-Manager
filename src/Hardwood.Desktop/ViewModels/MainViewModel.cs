@@ -1,0 +1,212 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Hardwood.Core.Model;
+using Hardwood.Core.Season;
+
+namespace Hardwood.Desktop.ViewModels;
+
+public abstract class ViewModelBase : ObservableObject { }
+
+/// <summary>A page inside the shell. Refresh() is called after every simulated day.</summary>
+public abstract class PageViewModel : ViewModelBase
+{
+    public MainViewModel Shell { get; }
+    public GameSession Session => Shell.Session!;
+    public abstract string Title { get; }
+    protected PageViewModel(MainViewModel shell) => Shell = shell;
+    public abstract void Refresh();
+}
+
+public sealed partial class NavItem : ObservableObject
+{
+    public required string Name { get; init; }
+    public required Func<PageViewModel> Factory { get; init; }
+    public IRelayCommand? Command { get; set; }
+    [ObservableProperty] private bool _isActive;
+    [ObservableProperty] private string _badge = "";
+}
+
+public sealed partial class MainViewModel : ViewModelBase
+{
+    [ObservableProperty] private GameSession? _session;
+    [ObservableProperty] private ViewModelBase? _currentPage;
+    [ObservableProperty] private string _dateText = "";
+    [ObservableProperty] private string _teamText = "";
+    [ObservableProperty] private string _recordText = "";
+    [ObservableProperty] private string _phaseText = "";
+    [ObservableProperty] private string _continueText = "Continue";
+    [ObservableProperty] private string _nextGameText = "";
+    [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private bool _hasSession;
+
+    public ObservableCollection<NavItem> Nav { get; } = new();
+    private readonly Dictionary<string, PageViewModel> _pages = new();
+
+    public MainViewModel()
+    {
+        CurrentPage = new StartViewModel(this);
+    }
+
+    public void AttachSession(GameSession session)
+    {
+        Session = session;
+        HasSession = true;
+        _pages.Clear();
+        Nav.Clear();
+        foreach (var (name, factory) in new (string, Func<PageViewModel>)[]
+        {
+            ("Inbox", () => new InboxViewModel(this)),
+            ("Roster", () => new RosterViewModel(this)),
+            ("Rotation & Tactics", () => new RotationViewModel(this)),
+            ("Schedule & Results", () => new ScheduleViewModel(this)),
+            ("Standings", () => new StandingsViewModel(this)),
+            ("League Leaders", () => new LeadersViewModel(this)),
+            ("Transactions", () => new TransactionsViewModel(this)),
+            ("Offseason", () => new OffseasonViewModel(this)),
+            ("History", () => new HistoryViewModel(this)),
+        })
+        {
+            var item = new NavItem { Name = name, Factory = factory };
+            item.Command = new RelayCommand(() => Navigate(item.Name));
+            Nav.Add(item);
+        }
+        Navigate("Inbox");
+        RefreshHeader();
+    }
+
+    public PageViewModel Page(string name)
+    {
+        if (!_pages.TryGetValue(name, out var page))
+        {
+            page = Nav.First(n => n.Name == name).Factory();
+            _pages[name] = page;
+            page.Refresh();
+        }
+        return page;
+    }
+
+    [RelayCommand]
+    public void Navigate(string name)
+    {
+        var page = Page(name);
+        page.Refresh();
+        CurrentPage = page;
+        foreach (var n in Nav) n.IsActive = n.Name == name;
+    }
+
+    public void ShowPlayer(Player player)
+    {
+        var vm = new PlayerViewModel(this, player);
+        CurrentPage = vm;
+        foreach (var n in Nav) n.IsActive = false;
+    }
+
+    public void ShowBoxScore(Core.Engine.GameResult result)
+    {
+        CurrentPage = new BoxScoreViewModel(this, result);
+        foreach (var n in Nav) n.IsActive = false;
+    }
+
+    [RelayCommand]
+    public async Task Continue()
+    {
+        if (Session == null || IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            if (Session.Phase == SessionPhase.Offseason)
+            {
+                Session.AdvanceOffseason();
+                Navigate(Session.Phase == SessionPhase.Offseason ? "Offseason" : "Inbox");
+            }
+            else
+            {
+                await Task.Run(() => Session.AdvanceDay());
+                if (Session.Phase == SessionPhase.Offseason) Navigate("Offseason");
+            }
+            AfterTick();
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    public async Task SimToNextGame()
+    {
+        if (Session == null || IsBusy || Session.Phase == SessionPhase.Offseason) return;
+        IsBusy = true;
+        try
+        {
+            await Task.Run(() => Session.AdvanceToNextGame());
+            if (Session.Phase == SessionPhase.Offseason) Navigate("Offseason");
+            AfterTick();
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    public async Task SimWeek()
+    {
+        if (Session == null || IsBusy || Session.Phase == SessionPhase.Offseason) return;
+        IsBusy = true;
+        try
+        {
+            await Task.Run(() => { for (int i = 0; i < 7 && Session.Phase != SessionPhase.Offseason; i++) Session.AdvanceDay(); });
+            if (Session.Phase == SessionPhase.Offseason) Navigate("Offseason");
+            AfterTick();
+        }
+        finally { IsBusy = false; }
+    }
+
+    public void AfterTick()
+    {
+        foreach (var p in _pages.Values) p.Refresh();
+        if (CurrentPage is PageViewModel cp && !_pages.ContainsValue(cp)) cp.Refresh();
+        RefreshHeader();
+    }
+
+    public void RefreshHeader()
+    {
+        if (Session == null) return;
+        var s = Session;
+        DateText = s.Today.ToString("ddd, MMM d yyyy");
+        TeamText = s.HumanTeam.FullName;
+        var rec = s.Standings[s.HumanTeam];
+        RecordText = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
+        PhaseText = s.Phase switch
+        {
+            SessionPhase.Preseason => $"Preseason · opens {s.OpeningNight:MMM d}",
+            SessionPhase.RegularSeason => $"Regular season {s.League.Season}-{(s.League.Season + 1) % 100:00}",
+            SessionPhase.Postseason => $"Playoffs · {s.Postseason?.Stage}",
+            SessionPhase.Offseason => $"Offseason · {s.Offseason?.Phase}",
+            _ => "",
+        };
+        ContinueText = s.Phase == SessionPhase.Offseason
+            ? s.Offseason?.Phase switch
+            {
+                OffseasonPhase.ReSigning => "Continue to draft",
+                OffseasonPhase.Draft => "Continue to free agency",
+                OffseasonPhase.FreeAgency => "Start new season",
+                _ => "Continue",
+            } ?? "Continue"
+            : "Continue (1 day)";
+        var next = s.NextHumanGame;
+        NextGameText = s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs
+            ? $"Series vs {(hs.Higher == s.HumanTeam ? hs.Lower : hs.Higher).Abbreviation}: {hs.Score}"
+            : next != null ? $"Next: {(next.Home == s.HumanTeam ? "vs" : "at")} {(next.Home == s.HumanTeam ? next.Away : next.Home).Abbreviation}, {next.Date:MMM d}"
+            : "";
+        var inbox = Nav.FirstOrDefault(n => n.Name == "Inbox");
+        if (inbox != null) { int unread = s.Inbox.Count(m => !m.Read); inbox.Badge = unread > 0 ? unread.ToString() : ""; }
+        var off = Nav.FirstOrDefault(n => n.Name == "Offseason");
+        if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
+    }
+
+    [RelayCommand]
+    public void BackToStart()
+    {
+        Session = null;
+        HasSession = false;
+        Nav.Clear();
+        CurrentPage = new StartViewModel(this);
+    }
+}

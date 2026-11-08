@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.LeadersView"
+             x:DataType="vm:LeadersViewModel">
+  <DockPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <StackPanel>
+        <TextBlock Text="League Leaders" Classes="h1" Margin="0"/>
+        <TextBlock Text="{Binding Note}" Classes="muted"/>
+      </StackPanel>
+      <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" Width="150" VerticalAlignment="Top"/>
+    </Grid>
+    <DataGrid ItemsSource="{Binding Rows}">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
+        <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="180"/>
+        <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="64"/>
+        <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+        <DataGridTextColumn Header="GP" Binding="{Binding GP}" Width="66"/>
+        <DataGridTextColumn Header="MPG" Binding="{Binding MPG}" Width="66"/>
+        <DataGridTextColumn Header="PPG" Binding="{Binding PPG}" Width="66"/>
+        <DataGridTextColumn Header="RPG" Binding="{Binding RPG}" Width="66"/>
+        <DataGridTextColumn Header="APG" Binding="{Binding APG}" Width="66"/>
+        <DataGridTextColumn Header="SPG" Binding="{Binding SPG}" Width="66"/>
+        <DataGridTextColumn Header="BPG" Binding="{Binding BPG}" Width="66"/>
+        <DataGridTextColumn Header="FG%" Binding="{Binding FG}" Width="66"/>
+        <DataGridTextColumn Header="3P%" Binding="{Binding TP}" Width="66"/>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

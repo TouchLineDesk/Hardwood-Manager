@@ -1,0 +1,146 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Hardwood.Core.Engine;
+using Hardwood.Core.Season;
+
+namespace Hardwood.Desktop.ViewModels;
+
+public sealed class GameRow
+{
+    public required ScheduledGame Game { get; init; }
+    public GameResult? Result { get; init; }
+    public string Date => Game.Date.ToString("ddd MMM d");
+    public string Opponent { get; init; } = "";
+    public string Score { get; init; } = "";
+    public string Outcome { get; init; } = "";
+    public string Record { get; init; } = "";
+    public string TopPerformer { get; init; } = "";
+    public bool Played => Result != null;
+    public bool HasBox => Result != null && Result.Home.Lines.Count > 0;
+}
+
+public sealed class SeriesRow
+{
+    public required string Round { get; init; }
+    public required string Matchup { get; init; }
+    public required string Score { get; init; }
+    public bool Involved { get; init; }
+}
+
+public sealed partial class ScheduleViewModel : PageViewModel
+{
+    public override string Title => "Schedule & Results";
+    public ObservableCollection<GameRow> Games { get; } = new();
+    public ObservableCollection<SeriesRow> Series { get; } = new();
+    public ObservableCollection<string> LeagueScores { get; } = new();
+    [ObservableProperty] private GameRow? _selected;
+    [ObservableProperty] private string _summary = "";
+    [ObservableProperty] private bool _showPlayoffs;
+
+    public ScheduleViewModel(MainViewModel shell) : base(shell) { }
+
+    [RelayCommand]
+    public void OpenBox(GameRow? row)
+    {
+        if (row?.Result != null && row.HasBox) Shell.ShowBoxScore(row.Result);
+    }
+
+    public override void Refresh()
+    {
+        var s = Session; var us = s.HumanTeam;
+        Games.Clear();
+        int w = 0, l = 0;
+        foreach (var g in s.Schedule.Where(g => g.Home == us || g.Away == us))
+        {
+            s.Results.TryGetValue(g.Index, out var r);
+            var opp = g.Home == us ? g.Away : g.Home;
+            string score = "", outcome = "", top = "";
+            if (r != null)
+            {
+                var ours = r.Home.Team == us ? r.Home : r.Away;
+                var theirs = ours == r.Home ? r.Away : r.Home;
+                bool won = ours.Points > theirs.Points;
+                if (won) w++; else l++;
+                score = $"{ours.Points}-{theirs.Points}" + (r.Overtimes > 0 ? $" ({r.Overtimes}OT)" : "");
+                outcome = won ? "W" : "L";
+                var best = ours.Lines.OrderByDescending(x => x.Points).FirstOrDefault();
+                top = best != null ? $"{best.Player.LastName} {best.Points} pts, {best.Rebounds} reb, {best.Assists} ast" : "";
+            }
+            Games.Add(new GameRow
+            {
+                Game = g, Result = r, Opponent = $"{(g.Home == us ? "vs" : "at")} {opp.FullName}",
+                Score = score, Outcome = outcome, Record = r != null ? $"{w}-{l}" : "", TopPerformer = top,
+            });
+        }
+        var next = Games.FirstOrDefault(g => !g.Played);
+        Selected = next ?? Games.LastOrDefault();
+
+        Series.Clear();
+        ShowPlayoffs = s.Postseason != null;
+        if (s.Postseason != null)
+            foreach (var se in s.Postseason.Series)
+                Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{se.Higher.FullName} vs {se.Lower.FullName}", Score = se.Complete ? $"{se.Winner!.Abbreviation} wins {se.Score}" : se.Score, Involved = se.Higher == us || se.Lower == us });
+
+        LeagueScores.Clear();
+        var yesterday = s.Today.AddDays(-1);
+        foreach (var g in s.Schedule.Where(g => g.Date == yesterday && s.Results.ContainsKey(g.Index)))
+            LeagueScores.Add(s.Results[g.Index].Summary());
+        if (s.Postseason != null)
+            foreach (var se in s.Postseason.Series)
+            foreach (var r in se.Games.Where(r => r.Date == yesterday)) LeagueScores.Add($"{se.Round}: {r.Summary()}");
+
+        var rec = s.Standings[us];
+        Summary = $"{rec.Wins}-{rec.Losses} · home {rec.HomeWins}-{rec.HomeLosses} · {rec.PointsFor / Math.Max(1.0, rec.Games):F1} for, {rec.PointsAgainst / Math.Max(1.0, rec.Games):F1} against";
+    }
+}
+
+public sealed class BoxLineRow
+{
+    public required PlayerLine Line { get; init; }
+    public string Name => Line.Player.Name + (Line.Started ? "" : "");
+    public string Pos => Line.Player.PrimaryPosition.ToString();
+    public string Min => Line.Minutes.ToString("0.0");
+    public int Pts => Line.Points;
+    public string FG => $"{Line.FGM}-{Line.FGA}";
+    public string TP => $"{Line.ThreePM}-{Line.ThreePA}";
+    public string FT => $"{Line.FTM}-{Line.FTA}";
+    public int Reb => Line.Rebounds;
+    public int Ast => Line.Assists;
+    public int Stl => Line.Steals;
+    public int Blk => Line.Blocks;
+    public int Tov => Line.Turnovers;
+    public int PF => Line.Fouls;
+    public string PM => Line.PlusMinus.ToString("+#;-#;0");
+    public bool Started => Line.Started;
+}
+
+public sealed partial class BoxScoreViewModel : PageViewModel
+{
+    public GameResult Result { get; }
+    public override string Title => Result.Summary();
+    public string Headline => Result.Summary();
+    public string Periods { get; }
+    public string AwayName => Result.Away.Team.FullName;
+    public string HomeName => Result.Home.Team.FullName;
+    public string AwayTotals => Totals(Result.Away);
+    public string HomeTotals => Totals(Result.Home);
+    public ObservableCollection<BoxLineRow> Away { get; } = new();
+    public ObservableCollection<BoxLineRow> Home { get; } = new();
+    public ObservableCollection<string> Log { get; } = new();
+    public bool HasLog => Log.Count > 0;
+
+    public BoxScoreViewModel(MainViewModel shell, GameResult result) : base(shell)
+    {
+        Result = result;
+        Periods = $"{result.Away.Team.Abbreviation}  {string.Join("  ", result.Away.PointsByPeriod)}  |  {result.Away.Points}\n{result.Home.Team.Abbreviation}  {string.Join("  ", result.Home.PointsByPeriod)}  |  {result.Home.Points}";
+        foreach (var l in result.Away.Lines.Where(l => l.Seconds > 0).OrderByDescending(l => l.Started).ThenByDescending(l => l.Seconds)) Away.Add(new BoxLineRow { Line = l });
+        foreach (var l in result.Home.Lines.Where(l => l.Seconds > 0).OrderByDescending(l => l.Started).ThenByDescending(l => l.Seconds)) Home.Add(new BoxLineRow { Line = l });
+        foreach (var line in result.PlayLog) Log.Add(line);
+    }
+
+    private static string Totals(TeamBox b) => $"FG {b.FGM}-{b.FGA} ({(b.FGA > 0 ? 100.0 * b.FGM / b.FGA : 0):F1}%) · 3P {b.ThreePM}-{b.ThreePA} · FT {b.FTM}-{b.FTA} · Reb {b.OReb + b.DReb} ({b.OReb} off) · Ast {b.Assists} · Stl {b.Steals} · Blk {b.Blocks} · TO {b.Turnovers} · Poss {b.Possessions}";
+
+    [RelayCommand] public void Back() => Shell.Navigate("Schedule & Results");
+    public override void Refresh() { }
+}
