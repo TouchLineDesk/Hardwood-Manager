@@ -41,10 +41,78 @@ public sealed class GameSimulator
         return result;
     }
 
+    /// <summary>Begin a game that the caller steps through; call <see cref="LiveGame.Finish"/> or step to the end, then read Result.</summary>
+    public LiveGame StartLive(Team home, Team away, Rules rules, ulong seed, DateOnly? date = null)
+    {
+        var rng = new Rng(seed);
+        var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date };
+        var h = new Side(home, result.Home, rng, _cfg, isHome: true, date);
+        var a = new Side(away, result.Away, rng, _cfg, isHome: false, date);
+        var game = new GameState(h, a, rules, rng, _cfg, result, log: true);
+        return new LiveGame(game, result, rng, _cfg, date);
+    }
+
+    /// <summary>A game in progress. Step one possession at a time; tactics and depth-chart changes on the Team objects take effect immediately.</summary>
+    public sealed class LiveGame
+    {
+        private readonly GameState _game;
+        private readonly Rng _rng;
+        private readonly EngineConfig _cfg;
+        private readonly DateOnly? _date;
+        private bool _finalised;
+
+        internal LiveGame(GameState game, GameResult result, Rng rng, EngineConfig cfg, DateOnly? date)
+        {
+            _game = game; Result = result; _rng = rng; _cfg = cfg; _date = date;
+        }
+
+        public GameResult Result { get; }
+        public bool Complete => _game.Complete;
+        public int Period => _game.Period;
+        public double Clock => _game.Clock;
+        public string ClockText => $"{(int)(_game.Clock / 60):0}:{(int)(_game.Clock % 60):00}";
+        public string PeriodText => _game.Period <= _regulationPeriods ? $"Q{_game.Period}" : $"OT{_game.Period - _regulationPeriods}";
+        private readonly int _regulationPeriods = 4;
+        public int HomeScore => _game.HomeScore;
+        public int AwayScore => _game.AwayScore;
+        public IReadOnlyList<Player> HomeOnCourt => _game.HomeOnCourt;
+        public IReadOnlyList<Player> AwayOnCourt => _game.AwayOnCourt;
+        public IReadOnlyList<string> Log => Result.PlayLog;
+
+        /// <summary>Play one possession. Returns false when the game is over (and finalises injuries).</summary>
+        public bool Step()
+        {
+            bool more = _game.Step();
+            if (!more) Finalise();
+            return more;
+        }
+
+        public void Finish() { while (Step()) { } }
+
+        public void RequestLineup(Team team, IEnumerable<Player> five) => _game.RequestLineup(team == Result.Home.Team, five);
+        public void RefreshTargets(Team team) => _game.RefreshTargets(team == Result.Home.Team);
+
+        private void Finalise()
+        {
+            if (_finalised) return;
+            _finalised = true;
+            if (_date is { } d)
+            {
+                var injuries = new InjuryEngine(_cfg);
+                foreach (var box in new[] { Result.Home, Result.Away })
+                foreach (var line in box.Lines)
+                {
+                    var inj = injuries.Roll(line.Player, line, d, _rng, box.Team);
+                    if (inj != null) Result.Injuries.Add((line.Player, inj));
+                }
+            }
+        }
+    }
+
     // ------------------------------------------------------------------------------------------
     // Per-team live state
     // ------------------------------------------------------------------------------------------
-    private sealed class Side
+    internal sealed class Side
     {
         public Team Team { get; }
         public TeamBox Box { get; }
@@ -58,6 +126,8 @@ public sealed class GameSimulator
         public Dictionary<Player, double> Form { get; } = new();
         public int TeamFouls { get; set; }
         public int Possessions { get; set; }
+        /// <summary>While the game clock (elapsed seconds) is below this, the coach's hand-picked five stays out there barring fouls.</summary>
+        public double ManualHoldUntil { get; set; } = -1;
 
         public Side(Team team, TeamBox box, Rng rng, EngineConfig cfg, bool isHome, DateOnly? date)
         {
@@ -130,7 +200,7 @@ public sealed class GameSimulator
     // ------------------------------------------------------------------------------------------
     // Game state machine
     // ------------------------------------------------------------------------------------------
-    private sealed class GameState
+    internal sealed class GameState
     {
         private readonly Side _home, _away;
         private readonly Rules _rules;
@@ -154,29 +224,45 @@ public sealed class GameSimulator
 
         private int Score(Side s) => s.Box.Points;
 
-        public void Run()
+        public bool Complete { get; private set; }
+        public int Period => _period;
+        public double Clock => _clock;
+        public int HomeScore => Score(_home);
+        public int AwayScore => Score(_away);
+        public IReadOnlyList<Player> HomeOnCourt => _home.OnCourt;
+        public IReadOnlyList<Player> AwayOnCourt => _away.OnCourt;
+        public int LogCount => _result.PlayLog.Count;
+
+        private bool _periodOpen;
+        private int _periodHomeStart, _periodAwayStart;
+        private Player[]? _homeRequest, _awayRequest;
+
+        public void Run() { while (Step()) { } }
+
+        /// <summary>Play one possession (opening a period or closing one when the clock runs out). Returns false once the game is over.</summary>
+        public bool Step()
         {
-            for (_period = 1; _period <= _rules.Periods; _period++)
-                PlayPeriod(_rules.MinutesPerPeriod * 60);
+            if (Complete) return false;
+            if (!_periodOpen) OpenPeriod();
 
-            while (Score(_home) == Score(_away))
-            {
-                _period++;
-                _result.Overtimes++;
-                PlayPeriod(_cfg.OvertimeMinutes * 60);
-            }
+            ApplyLineupRequest(_home, ref _homeRequest);
+            ApplyLineupRequest(_away, ref _awayRequest);
 
-            _home.Box.PointsByPeriod = _homeByPeriod.ToArray();
-            _away.Box.PointsByPeriod = _awayByPeriod.ToArray();
-            _home.Box.Possessions = _home.Possessions;
-            _away.Box.Possessions = _away.Possessions;
+            RunPossession();
+            (_offense, _defense) = (_defense, _offense);
+
+            if (_clock <= 0) ClosePeriod();
+            return !Complete;
         }
 
-        private void PlayPeriod(int seconds)
+        private void OpenPeriod()
         {
+            if (_period == 0) _period = 1;
+            int seconds = _period <= _rules.Periods ? _rules.MinutesPerPeriod * 60 : _cfg.OvertimeMinutes * 60;
+            if (_period > _rules.Periods) _result.Overtimes++;
             _clock = seconds;
             _home.TeamFouls = 0; _away.TeamFouls = 0;
-            int hStart = Score(_home), aStart = Score(_away);
+            _periodHomeStart = Score(_home); _periodAwayStart = Score(_away);
 
             // Alternate opening possession by period (jump ball simplified).
             if (_period % 2 == 1) { _offense = _home; _defense = _away; } else { _offense = _away; _defense = _home; }
@@ -185,16 +271,65 @@ public sealed class GameSimulator
             // Fresh legs at period start: substitute tired players at the break.
             CheckSubstitutions(_home, force: true);
             CheckSubstitutions(_away, force: true);
+            _periodOpen = true;
+        }
 
-            while (_clock > 0)
-            {
-                RunPossession();
-                (_offense, _defense) = (_defense, _offense);
-            }
-
-            _homeByPeriod.Add(Score(_home) - hStart);
-            _awayByPeriod.Add(Score(_away) - aStart);
+        private void ClosePeriod()
+        {
+            _homeByPeriod.Add(Score(_home) - _periodHomeStart);
+            _awayByPeriod.Add(Score(_away) - _periodAwayStart);
+            _home.Box.PointsByPeriod = _homeByPeriod.ToArray();
+            _away.Box.PointsByPeriod = _awayByPeriod.ToArray();
             Log($"End of period {_period}: {_away.Team.Abbreviation} {Score(_away)} - {_home.Team.Abbreviation} {Score(_home)}");
+            _periodOpen = false;
+
+            bool regulationDone = _period >= _rules.Periods;
+            if (regulationDone && Score(_home) != Score(_away))
+            {
+                _home.Box.PointsByPeriod = _homeByPeriod.ToArray();
+                _away.Box.PointsByPeriod = _awayByPeriod.ToArray();
+                _home.Box.Possessions = _home.Possessions;
+                _away.Box.Possessions = _away.Possessions;
+                Complete = true;
+                return;
+            }
+            _period++;
+        }
+
+        /// <summary>Ask for a specific five at the next dead ball. Players who are hurt, fouled out or not on the roster are ignored.</summary>
+        public void RequestLineup(bool home, IEnumerable<Player> five)
+        {
+            var side = home ? _home : _away;
+            var chosen = five.Where(p => side.Dressed.Contains(p) && !side.Line(p).FouledOut).Distinct().Take(5).ToArray();
+            if (home) _homeRequest = chosen; else _awayRequest = chosen;
+        }
+
+        /// <summary>Re-read the team's depth chart for minutes targets (tactics are read live every possession).</summary>
+        public void RefreshTargets(bool home)
+        {
+            var side = home ? _home : _away;
+            var chart = side.Team.DepthChart;
+            if (chart == null || chart.MinutesTargets.Count == 0) return;
+            double scale = _cfg.RegulationMinutes / 48.0;
+            foreach (var p in side.Dressed) side.TargetSeconds[p] = chart.MinutesTargets.GetValueOrDefault(p.Id) * 60 * scale;
+            side.Rotation.Clear();
+            side.Rotation.AddRange(side.Dressed.Where(p => side.TargetSeconds[p] > 0).OrderByDescending(p => side.TargetSeconds[p]));
+            if (side.Rotation.Count < 8) side.Rotation.AddRange(side.Dressed.Where(p => !side.Rotation.Contains(p)).Take(8 - side.Rotation.Count));
+        }
+
+        private void ApplyLineupRequest(Side side, ref Player[]? request)
+        {
+            if (request == null) return;
+            var want = request;
+            request = null;
+            if (want.Length == 0) return;
+            // Put the requested players in; fill any remaining spots with whoever was already out there.
+            var current = side.OnCourt.ToList();
+            var next = new List<Player>(want);
+            foreach (var p in current) { if (next.Count >= 5) break; if (!next.Contains(p)) next.Add(p); }
+            for (int i = 0; i < 5 && i < next.Count; i++) side.OnCourt[i] = next[i];
+            side.ManualHoldUntil = _elapsed + _cfg.ManualLineupHoldSeconds;
+            Log($"Lineup change: {string.Join(", ", want.Select(p => p.LastName))}");
         }
 
         // --------------------------------------------------------------------------------------
@@ -569,6 +704,7 @@ public sealed class GameSimulator
 
         private void CheckSubstitutions(Side side, bool force)
         {
+            if (_elapsed < side.ManualHoldUntil) return; // the coach picked this five; leave it alone for a while
             double regulation = _rules.GameMinutes * 60.0;
             double progress = Math.Min(1.0, _elapsed / regulation);
             bool closing = IsClosingTime();

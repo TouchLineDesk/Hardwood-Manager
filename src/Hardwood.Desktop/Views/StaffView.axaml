@@ -17,10 +17,10 @@
           </Grid>
           <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="190">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="160"/>
+              <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
-              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="52"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64"/>
+              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="64"/>
               <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="76"/>
               <DataGridTextColumn Header="Deal" Binding="{Binding Contract}" Width="*"/>
             </DataGrid.Columns>
@@ -34,15 +34,15 @@
           </Grid>
           <DataGrid ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="190">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="160"/>
+              <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
-              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="52"/>
-              <DataGridTextColumn Header="Coa" Binding="{Binding Coaching}" Width="48"/>
-              <DataGridTextColumn Header="Dev" Binding="{Binding Development}" Width="48"/>
-              <DataGridTextColumn Header="Fit" Binding="{Binding Fitness}" Width="48"/>
-              <DataGridTextColumn Header="Med" Binding="{Binding Medical}" Width="48"/>
-              <DataGridTextColumn Header="Sco" Binding="{Binding Scouting}" Width="48"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64"/>
+              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="64"/>
+              <DataGridTextColumn Header="Coa" Binding="{Binding Coaching}" Width="58"/>
+              <DataGridTextColumn Header="Dev" Binding="{Binding Development}" Width="58"/>
+              <DataGridTextColumn Header="Fit" Binding="{Binding Fitness}" Width="58"/>
+              <DataGridTextColumn Header="Med" Binding="{Binding Medical}" Width="58"/>
+              <DataGridTextColumn Header="Sco" Binding="{Binding Scouting}" Width="58"/>
               <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
@@ -62,8 +62,8 @@
       <DataGrid ItemsSource="{Binding Players}" IsReadOnly="False" Height="380" CanUserSortColumns="False">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="52" IsReadOnly="True"/>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64" IsReadOnly="True"/>
           <DataGridTextColumn Header="CA / PA" Binding="{Binding Ability}" Width="90" IsReadOnly="True"/>
           <DataGridTemplateColumn Header="Focus" Width="200">
             <DataGridTemplateColumn.CellTemplate>

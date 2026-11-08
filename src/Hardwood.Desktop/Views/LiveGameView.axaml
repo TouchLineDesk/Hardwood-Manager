@@ -1,0 +1,103 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.LiveGameView"
+             x:DataType="vm:LiveGameViewModel">
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
+    <!-- Scoreboard -->
+    <Border Grid.ColumnSpan="2" Classes="panel" Margin="0,0,0,10">
+      <Grid ColumnDefinitions="*,Auto,*,Auto">
+        <StackPanel>
+          <TextBlock Text="{Binding Headline}" Classes="muted"/>
+          <StackPanel Orientation="Horizontal" Spacing="18">
+            <TextBlock Text="{Binding AwayName}" FontSize="26" FontWeight="Bold"/>
+            <TextBlock Text="{Binding AwayScore}" FontSize="26" FontWeight="Bold" Classes="accent"/>
+            <TextBlock Text="–" FontSize="26" Classes="muted"/>
+            <TextBlock Text="{Binding HomeScore}" FontSize="26" FontWeight="Bold" Classes="accent"/>
+            <TextBlock Text="{Binding HomeName}" FontSize="26" FontWeight="Bold"/>
+            <TextBlock Text="{Binding Clock}" FontSize="22" VerticalAlignment="Center" Margin="20,0,0,0"/>
+          </StackPanel>
+          <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace"/>
+        </StackPanel>
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
+          <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
+          <Button Classes="primary" Content="{Binding PlayPauseText}" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="90"/>
+          <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Play by play -->
+    <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="0,0,10,0" Padding="8">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
+        <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
+          <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2"/></DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- Bench and controls -->
+    <ScrollViewer Grid.Row="1" Grid.Column="1">
+      <StackPanel Spacing="10">
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Your five" FontWeight="SemiBold"/>
+              <Button Grid.Column="1" Content="Apply lineup" Command="{Binding ApplyLineupCommand}" Padding="10,3"/>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Lineup}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LineupSlot">
+                  <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch" Margin="0,2">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                  </ComboBox>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="panel">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Your players tonight" FontWeight="SemiBold"/>
+            <ItemsControl ItemsSource="{Binding OurPlayers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OnCourtRow">
+                  <Grid ColumnDefinitions="14,150,*" Margin="0,1">
+                    <Ellipse Width="8" Height="8" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Line}" Classes="muted" FontSize="11.5"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Opponent on the floor" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <ItemsControl ItemsSource="{Binding TheirFloor}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OnCourtRow">
+                  <Grid ColumnDefinitions="164,*" Margin="0,1">
+                    <TextBlock Text="{Binding Name}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="muted" FontSize="11.5"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="panel">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Tactics (live)" FontWeight="SemiBold"/>
+            <TextBlock Text="Pace" Classes="muted" FontSize="11.5"/><Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
+            <TextBlock Text="Three-point emphasis" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
+            <TextBlock Text="Offensive glass" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>
+            <TextBlock Text="Defensive aggression" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding Aggression}"/>
+            <TextBlock Text="Star usage" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

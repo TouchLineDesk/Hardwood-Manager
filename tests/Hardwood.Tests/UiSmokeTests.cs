@@ -54,6 +54,23 @@ public class UiSmokeTests
             rot.ThreeEmphasis = 80;
             Assert.Equal(80, session.HumanTeam.Tactic.ThreePointEmphasis);
 
+            // Live game through the view model: play a few possessions, change the five, finish, continue.
+            while (!session.HumanPlaysToday) session.AdvanceDay();
+            vm.AfterTick();
+            var (live, others) = session.BeginLiveDay();
+            var liveVm = new LiveGameViewModel(vm, live!, others);
+            vm.CurrentPage = liveVm;
+            window.UpdateLayout();
+            for (int i = 0; i < 30; i++) live!.Step();
+            liveVm.Refresh();
+            liveVm.Lineup[0].Selected = liveVm.OurPlayers.Last().Player;
+            liveVm.ApplyLineup();
+            liveVm.SimToEnd();
+            Assert.True(liveVm.Complete);
+            liveVm.Continue();
+            Assert.IsType<BoxScoreViewModel>(vm.CurrentPage);
+            window.UpdateLayout();
+
             // Play into the season and open the box score of the first game.
             for (int i = 0; i < 12; i++) session.AdvanceDay();
             vm.AfterTick();

@@ -50,7 +50,7 @@ public sealed partial class AwardsViewModel : PageViewModel
         var current = Season;
         Seasons.Clear();
         foreach (var h in Session.League.History.OrderByDescending(h => h.Season)) Seasons.Add($"{h.Season}-{(h.Season + 1) % 100:00}");
-        if (Session.Midseason != null) Seasons.Insert(0, $"{Session.League.Season}-{(Session.League.Season + 1) % 100:00} (in progress)");
+        if (Session.Midseason != null && Session.Phase != SessionPhase.Offseason) Seasons.Insert(0, $"{Session.League.Season}-{(Session.League.Season + 1) % 100:00} (in progress)");
         Season = Seasons.Contains(current ?? "") ? current : Seasons.FirstOrDefault();
         FillHall();
         Show();
@@ -62,7 +62,8 @@ public sealed partial class AwardsViewModel : PageViewModel
         var s = Session;
         var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).ToDictionary(p => p.Id);
         string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
-        string TeamOf(int? id) => id is { } i && all.TryGetValue(i, out var p) && p.TeamId is { } t ? s.League.TeamById(t).Abbreviation : "";
+        string TeamOf(int? id) => id is { } i && s.Stats.TryGetValue(i, out var st) ? s.League.TeamById(st.TeamId).Abbreviation
+            : id is { } j && all.TryGetValue(j, out var p) && p.TeamId is { } t ? s.League.TeamById(t).Abbreviation : "FA";
 
         if (Season == null) { Headline = "No awards yet"; Summary = "Awards are voted after the regular season; All-Stars are named in February."; AllLeague = ""; AllStars = ""; return; }
         SeasonAwards? a; SeasonSummary? summary = null;

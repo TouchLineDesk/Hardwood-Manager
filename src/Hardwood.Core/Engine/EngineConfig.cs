@@ -62,6 +62,8 @@ public sealed class EngineConfig
     public double MinutesSlackSeconds { get; set; } = 120;
     /// <summary>Fourth-quarter margin (at 0:00, growing 1.5/min earlier) at which the deep bench comes in.</summary>
     public int BlowoutMargin { get; set; } = 18;
+    /// <summary>How long a hand-picked live lineup is protected from automatic substitutions (game seconds).</summary>
+    public double ManualLineupHoldSeconds { get; set; } = 240;
 
     // --- Injuries: per player-game probability at 30 minutes for an average player (≈ 7 injuries per team per season)
     public double InjuryBaseRate { get; set; } = 0.011;

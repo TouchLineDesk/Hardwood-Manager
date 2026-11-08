@@ -126,30 +126,103 @@ public sealed class GameSession
     /// <summary>Advance one day. Returns the games played today.</summary>
     public List<GameResult> AdvanceDay()
     {
-        if (Phase == SessionPhase.Offseason) return new List<GameResult>();
-        var played = new List<GameResult>();
+        var live = BeginDay(liveHumanGame: false);
+        return EndDay(live.played);
+    }
 
+    /// <summary>True when the human team plays today and the game could be followed live.</summary>
+    public bool HumanPlaysToday =>
+        (Phase == SessionPhase.RegularSeason || (Phase == SessionPhase.Preseason && Today >= OpeningNight)) && GamesOn(Today).Any(g => g.Home == HumanTeam || g.Away == HumanTeam)
+        || (Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam));
+
+    /// <summary>
+    /// Start today with the human game held back as a <see cref="GameSimulator.LiveGame"/>. Everyone else's games are played.
+    /// Call <see cref="FinishLiveDay"/> once the live game is complete. Returns a null live game when the human team is idle.
+    /// </summary>
+    public (GameSimulator.LiveGame? live, List<GameResult> played) BeginLiveDay() => BeginDay(liveHumanGame: true);
+
+    private Series? _liveSeries;
+    private ScheduledGame? _liveScheduled;
+
+    private (GameSimulator.LiveGame? live, List<GameResult> played) BeginDay(bool liveHumanGame)
+    {
+        var played = new List<GameResult>();
+        GameSimulator.LiveGame? live = null;
+        _liveSeries = null; _liveScheduled = null;
+        if (Phase == SessionPhase.Offseason) return (null, played);
         if (Phase == SessionPhase.Preseason && Today >= OpeningNight) Phase = SessionPhase.RegularSeason;
 
         if (Phase == SessionPhase.RegularSeason)
         {
             foreach (var g in GamesOn(Today))
             {
-                var r = _sim.Simulate(g.Home, g.Away, League.Rules, _rng.NextULong(), keepLog: g.Home == HumanTeam || g.Away == HumanTeam, date: Today);
-                Results[g.Index] = r;
-                Standings.Record(r);
-                foreach (var box in new[] { r.Home, r.Away })
-                foreach (var l in box.Lines)
+                bool human = g.Home == HumanTeam || g.Away == HumanTeam;
+                if (human && liveHumanGame)
                 {
-                    if (l.Seconds <= 0) continue;
-                    if (!Stats.TryGetValue(l.Player.Id, out var s))
-                        Stats[l.Player.Id] = s = new PlayerSeasonStats { PlayerId = l.Player.Id, TeamId = box.Team.Id, Season = League.Season };
-                    s.Add(l);
+                    _liveScheduled = g;
+                    live = _sim.StartLive(g.Home, g.Away, League.Rules, _rng.NextULong(), Today);
+                    continue;
                 }
+                var r = _sim.Simulate(g.Home, g.Away, League.Rules, _rng.NextULong(), keepLog: human, date: Today);
+                RecordRegularSeasonGame(g, r);
                 played.Add(r);
-                ReportGame(r);
             }
+        }
+        else if (Phase == SessionPhase.Postseason && Postseason != null)
+        {
+            var mine = liveHumanGame ? Postseason.Active.FirstOrDefault(se => se.Higher == HumanTeam || se.Lower == HumanTeam) : null;
+            _stageBefore = Postseason.Stage;
+            played = Postseason.PlayDayExcept(_sim, _rng, Today, mine != null ? HumanTeam : null);
+            foreach (var r in played) if (r.Home.Team == HumanTeam || r.Away.Team == HumanTeam) ReportGame(r, HumanSeries);
+            if (mine != null)
+            {
+                _liveSeries = mine;
+                var (home, away) = Postseason.NextMatchup(mine);
+                live = _sim.StartLive(home, away, League.Rules, _rng.NextULong(), Today);
+            }
+        }
+        return (live, played);
+    }
 
+    private string _stageBefore = "";
+
+    /// <summary>Record the finished live game and close the day.</summary>
+    public List<GameResult> FinishLiveDay(GameSimulator.LiveGame? live, List<GameResult> played)
+    {
+        if (live != null)
+        {
+            if (!live.Complete) live.Finish();
+            if (_liveScheduled != null) RecordRegularSeasonGame(_liveScheduled, live.Result);
+            else if (_liveSeries != null)
+            {
+                Postseason!.RecordGame(_liveSeries, live.Result);
+                ReportGame(live.Result, _liveSeries);
+            }
+            played.Add(live.Result);
+        }
+        if (Phase == SessionPhase.Postseason && Postseason != null) Postseason.AfterDay();
+        return EndDay(played);
+    }
+
+    private void RecordRegularSeasonGame(ScheduledGame g, GameResult r)
+    {
+        Results[g.Index] = r;
+        Standings.Record(r);
+        foreach (var box in new[] { r.Home, r.Away })
+        foreach (var l in box.Lines)
+        {
+            if (l.Seconds <= 0) continue;
+            if (!Stats.TryGetValue(l.Player.Id, out var s))
+                Stats[l.Player.Id] = s = new PlayerSeasonStats { PlayerId = l.Player.Id, TeamId = box.Team.Id, Season = League.Season };
+            s.Add(l);
+        }
+        ReportGame(r);
+    }
+
+    private List<GameResult> EndDay(List<GameResult> played)
+    {
+        if (Phase == SessionPhase.RegularSeason)
+        {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
                 AiTrades();
 
@@ -180,10 +253,7 @@ public sealed class GameSession
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
         {
-            var before = Postseason.Stage;
-            played = Postseason.PlayDay(_sim, _rng, Today);
-            foreach (var r in played) if (r.Home.Team == HumanTeam || r.Away.Team == HumanTeam) ReportGame(r, HumanSeries);
-            if (Postseason.Stage != before && !Postseason.Complete)
+            if (Postseason.Stage != _stageBefore && !Postseason.Complete)
                 Post($"{Postseason.Stage} begins", string.Join("\n", Postseason.Active.Select(s => $"{s.Higher.FullName} vs {s.Lower.FullName}")), "League");
             if (Postseason.Complete)
             {

@@ -35,6 +35,18 @@ public class ScreenshotTests
             vm.AfterTick();
 
             int n = 1;
+            // Live game mid-way through.
+            while (!session.HumanPlaysToday) session.AdvanceDay();
+            vm.AfterTick();
+            var (live, others) = session.BeginLiveDay();
+            var liveVm = new LiveGameViewModel(vm, live!, others);
+            vm.CurrentPage = liveVm;
+            for (int i = 0; i < 120; i++) live!.Step();
+            liveVm.Refresh();
+            liveVm.PlayPause();
+            Snap(window, Path.Combine(dir, $"{n++:00}-live-game.png"));
+            liveVm.SimToEnd();
+            liveVm.Continue();
             foreach (var nav in vm.Nav.ToList())
             {
                 vm.Navigate(nav.Name);
@@ -52,6 +64,8 @@ public class ScreenshotTests
             int guard = 0;
             while (session.Phase != SessionPhase.Offseason && guard++ < 400) session.AdvanceDay();
             vm.AfterTick();
+            vm.Navigate("Awards");
+            Snap(window, Path.Combine(dir, $"{n++:00}-awards.png"));
             vm.Navigate("Offseason");
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-resign.png"));
             session.AdvanceOffseason(); vm.AfterTick();

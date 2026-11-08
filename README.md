@@ -2,7 +2,7 @@
 
 A basketball management simulation in the spirit of Football Manager: a living world of pro leagues, continental cups, FIBA windows, the World Cup and the Olympics, with drafts, salary caps, tactics and player development.
 
-**Status:** phase 3 — a playable Windows desktop game. Pick a franchise, set your rotation and tactics, advance day by day through an 82-game season and the playoffs, then run your offseason: contract decisions, the lottery and draft, free agency and trades. Injuries, AI trades and a living 30-team league around you. Multi-season careers save to a single SQLite file.
+**Status:** phase 4 — a playable Windows desktop game. Pick a franchise, hire your staff, set your rotation and tactics, and advance day by day through an 82-game season and the playoffs — watching your own games live with pause-anytime substitutions, or simming them. Then run your offseason: contract decisions, the lottery and draft (picks are tradable, with protections), free agency, trades. Awards voting, an All-Star Game, a Hall of Fame and retired numbers give careers weight. Injuries, AI trades, scouting fog and a living 30-team league around you. Multi-season careers save to a single SQLite file, at any point.
 
 ## Locked decisions
 
@@ -17,7 +17,8 @@ A basketball management simulation in the spirit of Football Manager: a living w
 | Cap model (reference league) | Hard cap, roster-minimum exception for minimum deals |
 | Development | CA grows toward PA by age curve, minutes played and training quality; attributes anchored to CA |
 | Offseason | Retirements, 2-round draft of generated rookies (2nd round unguaranteed), contract expiry, AI re-signing, free agency |
-| Phase 3 | Avalonia desktop shell, day-by-day Continue, human rotation/tactics and offseason control, injuries, NBA-style lottery, trade AI by team direction, exact scouting for now, Windows x64 build |
+| Phase 3 | Avalonia desktop shell, day-by-day Continue, human rotation/tactics and offseason control, injuries, NBA-style lottery, trade AI by team direction, Windows x64 build |
+| Phase 4 | Tradable draft picks with protections, mid-offseason saves, voting-model awards + All-Star Game + Hall of Fame, staff with real effects, training focus, scouting fog, live play-by-play with pause |
 
 ## Play it
 
@@ -37,9 +38,9 @@ dotnet publish src/Hardwood.Desktop -c Release -r win-x64 --self-contained true 
 
 ### Screens
 
-Inbox · Roster (any team) · Player profile · Rotation & Tactics (starters, minutes targets, five sliders) · Schedule & Results with box scores and play-by-play · Standings · League Leaders · Transactions (trade builder with AI valuation, free agents, waivers) · Offseason (re-sign/release, draft room with lottery results, free agency) · History.
+Inbox · Roster (any team, with scouting ranges on outsiders) · Player profile (attributes, season lines, honours) · Rotation & Tactics (starters, minutes targets, five sliders) · Staff & Training (hire and release, market, intensity, per-player focus) · Live game (play-by-play, pause, change your five and tactics, speed, sim to end) · Schedule & Results with box scores · Standings · League Leaders · Transactions (trade builder with players and picks, AI verdict and sweetener hints; free agents; waivers) · Offseason (re-sign/release, draft room with lottery results, free agency) · Awards (voting tables, All-League, All-Star, Hall of Fame) · History.
 
-Top bar: *Continue* advances one day; *Sim to next game* and *Sim week* skip ahead. During the offseason, *Continue* moves to the next phase. The game saves after every day; the offseason is finished in one sitting (closing mid-offseason returns you to the Finals).
+Top bar: *Continue* advances one day — if your team plays and *Watch my games* is ticked, you go to the live game instead; *Sim to next game* and *Sim week* skip ahead. During the offseason, *Continue* moves to the next phase. The game saves after every day and every offseason decision.
 
 ## Layout
 
@@ -93,6 +94,8 @@ The full game design document lives in the project's Claude doc (Hardwood Manage
 
 ## Screenshots
 
+![Live game](docs/screen-live.png)
+![Awards](docs/screen-awards.png)
 ![Inbox](docs/screen-inbox.png)
 ![Rotation and tactics](docs/screen-rotation.png)
 ![Draft room](docs/screen-draft.png)

@@ -55,24 +55,39 @@ public sealed class Postseason
     }
 
     /// <summary>Play one day: one game in every active series; build the next stage when a stage finishes.</summary>
-    public List<GameResult> PlayDay(GameSimulator sim, Rng rng, DateOnly date)
+    public List<GameResult> PlayDay(GameSimulator sim, Rng rng, DateOnly date) => PlayDayExcept(sim, rng, date, null);
+
+    /// <summary>Play every active series except the one involving <paramref name="skip"/> (played live by the caller).</summary>
+    public List<GameResult> PlayDayExcept(GameSimulator sim, Rng rng, DateOnly date, Team? skip)
     {
         var results = new List<GameResult>();
         if (Complete) return results;
 
         foreach (var s in Active.ToList())
         {
-            var home = s.HigherHostsNext ? s.Higher : s.Lower;
-            var away = s.HigherHostsNext ? s.Lower : s.Higher;
+            if (skip != null && (s.Higher == skip || s.Lower == skip)) continue;
+            var (home, away) = NextMatchup(s);
             var r = sim.Simulate(home, away, _league.Rules, rng.NextULong(), date: date);
-            s.Games.Add(r);
-            if (r.Winner.Team == s.Higher) s.HigherWins++; else s.LowerWins++;
+            RecordGame(s, r);
             results.Add(r);
         }
 
-        if (Active.Any()) return results;
-        AdvanceStage();
+        if (skip == null) AfterDay();
         return results;
+    }
+
+    public (Team home, Team away) NextMatchup(Series s) => s.HigherHostsNext ? (s.Higher, s.Lower) : (s.Lower, s.Higher);
+
+    public void RecordGame(Series s, GameResult r)
+    {
+        s.Games.Add(r);
+        if (r.Winner.Team == s.Higher) s.HigherWins++; else s.LowerWins++;
+    }
+
+    /// <summary>Once every series has played today, advance the stage if the round is finished.</summary>
+    public void AfterDay()
+    {
+        if (!Active.Any() && !Complete) AdvanceStage();
     }
 
     private void AdvanceStage()

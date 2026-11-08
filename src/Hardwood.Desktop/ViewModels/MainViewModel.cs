@@ -39,6 +39,13 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _nextGameText = "";
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _hasSession;
+    [ObservableProperty] private bool _inSeason;
+    /// <summary>Watch the human team's games live instead of simming them instantly.</summary>
+    [ObservableProperty] private bool _liveGames = true;
+    [ObservableProperty] private bool _inLiveGame;
+    public bool ShowSimButtons => InSeason && !InLiveGame;
+    partial void OnInSeasonChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
+    partial void OnInLiveGameChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
 
     public ObservableCollection<NavItem> Nav { get; } = new();
     private readonly Dictionary<string, PageViewModel> _pages = new();
@@ -91,6 +98,7 @@ public sealed partial class MainViewModel : ViewModelBase
     [RelayCommand]
     public void Navigate(string name)
     {
+        if (InLiveGame) return; // finish the game first
         var page = Page(name);
         page.Refresh();
         CurrentPage = page;
@@ -106,6 +114,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void ShowBoxScore(Core.Engine.GameResult result)
     {
+        InLiveGame = false;
         CurrentPage = new BoxScoreViewModel(this, result);
         foreach (var n in Nav) n.IsActive = false;
     }
@@ -121,6 +130,18 @@ public sealed partial class MainViewModel : ViewModelBase
             {
                 Session.AdvanceOffseason();
                 Navigate(Session.Phase == SessionPhase.Offseason ? "Offseason" : "Inbox");
+            }
+            else if (LiveGames && Session.HumanPlaysToday)
+            {
+                var (live, played) = await Task.Run(() => Session.BeginLiveDay());
+                if (live != null)
+                {
+                    InLiveGame = true;
+                    CurrentPage = new LiveGameViewModel(this, live, played);
+                    foreach (var n in Nav) n.IsActive = false;
+                    return;
+                }
+                Session.FinishLiveDay(null, played);
             }
             else
             {
@@ -171,6 +192,8 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         if (Session == null) return;
         var s = Session;
+        InSeason = s.Phase != SessionPhase.Offseason;
+        if (s.Phase == SessionPhase.Offseason) InLiveGame = false;
         DateText = s.Today.ToString("ddd, MMM d yyyy");
         TeamText = s.HumanTeam.FullName;
         var rec = s.Standings[s.HumanTeam];
