@@ -11,6 +11,8 @@ public sealed class SeasonOutcome
     public List<GameResult> RegularSeason { get; } = new();
     public List<(string Round, SeriesResult Series)> Playoffs { get; } = new();
     public Team? Champion { get; set; }
+    /// <summary>Mid-season All-Star selections and result, if the season produced them.</summary>
+    public SeasonAwards? Midseason { get; set; }
 }
 
 /// <summary>Runs a regular season, a play-in, and a 16-team best-of-seven playoff bracket.</summary>
@@ -39,8 +41,16 @@ public sealed class SeasonSimulator
         var outcome = new SeasonOutcome { Standings = standings };
 
         int i = 0;
+        var allStarDate = new DateOnly(league.Season + 1, 2, 14);
+        bool allStarDone = false;
         foreach (var g in schedule)
         {
+            if (!allStarDone && g.Date >= allStarDate)
+            {
+                var stats = PlayerSeasonStats.Aggregate(outcome.RegularSeason, league.Season);
+                outcome.Midseason = new AwardsEngine(league, standings, stats, _rng).AllStar(league.Season, _sim, allStarDate);
+                allStarDone = true;
+            }
             var r = _sim.Simulate(g.Home, g.Away, league.Rules, _rng.NextULong(), date: g.Date);
             standings.Record(r);
             outcome.RegularSeason.Add(r);

@@ -15,9 +15,10 @@ public static class SessionStore
         using var tx = conn.BeginTransaction();
         SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM box_line; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM depth_chart; DELETE FROM offseason; DELETE FROM offseason_expiring; DELETE FROM offseason_pick;");
 
-        SaveFile.Exec(conn, "INSERT INTO session(id, human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage) VALUES(1, $t, $d, $p, $s, $r, $m, $ps)",
+        SaveFile.Exec(conn, "INSERT INTO session(id, human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage, midseason_json) VALUES(1, $t, $d, $p, $s, $r, $m, $ps, $mid)",
             ("$t", s.HumanTeam.Id), ("$d", s.Today.ToString("yyyy-MM-dd")), ("$p", (int)s.Phase), ("$s", (long)s.Seed), ("$r", (long)s.NextRngSeed),
-            ("$m", s.Inbox.Count == 0 ? 1 : s.Inbox.Max(m => m.Id) + 1), ("$ps", (object?)s.Postseason?.Stage ?? DBNull.Value));
+            ("$m", s.Inbox.Count == 0 ? 1 : s.Inbox.Max(m => m.Id) + 1), ("$ps", (object?)s.Postseason?.Stage ?? DBNull.Value),
+            ("$mid", s.Midseason != null ? SaveFile.ToJson(s.Midseason) : DBNull.Value));
 
         foreach (var g in s.Schedule)
         {
@@ -81,17 +82,18 @@ public static class SessionStore
         using var conn = file.OpenConnection();
         CreateSchema(conn);
 
-        int humanId; DateOnly today; SessionPhase phase; ulong seed, rngSeed; int nextMsg; string? stage;
+        int humanId; DateOnly today; SessionPhase phase; ulong seed, rngSeed; int nextMsg; string? stage; SeasonAwards? midseason = null;
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage FROM session WHERE id = 1";
+            cmd.CommandText = "SELECT human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage, midseason_json FROM session WHERE id = 1";
             using var r = cmd.ExecuteReader();
             if (!r.Read()) throw new InvalidOperationException("Save has no session (it was made by the headless simulator).");
             humanId = r.GetInt32(0); today = DateOnly.Parse(r.GetString(1)); phase = (SessionPhase)r.GetInt32(2);
             seed = (ulong)r.GetInt64(3); rngSeed = (ulong)r.GetInt64(4); nextMsg = r.GetInt32(5); stage = r.IsDBNull(6) ? null : r.GetString(6);
+            if (!r.IsDBNull(7)) midseason = SaveFile.FromJson<SeasonAwards>(r.GetString(7));
         }
 
-        var session = new GameSession(league, league.TeamById(humanId), seed, file, rngState: rngSeed);
+        var session = new GameSession(league, league.TeamById(humanId), seed, file, rngState: rngSeed) { Midseason = midseason };
         var players = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(file.LoadedProspects).ToDictionary(p => p.Id);
 
         var boxes = new Dictionary<int, Dictionary<int, List<PlayerLine>>>(); // game -> team -> lines
@@ -220,7 +222,7 @@ public static class SessionStore
     private static void CreateSchema(SqliteConnection conn)
     {
         SaveFile.Exec(conn, """
-            CREATE TABLE IF NOT EXISTS session(id INTEGER PRIMARY KEY, human_team_id INTEGER, today TEXT, phase INTEGER, seed INTEGER, rng_seed INTEGER, next_message_id INTEGER, postseason_stage TEXT);
+            CREATE TABLE IF NOT EXISTS session(id INTEGER PRIMARY KEY, human_team_id INTEGER, today TEXT, phase INTEGER, seed INTEGER, rng_seed INTEGER, next_message_id INTEGER, postseason_stage TEXT, midseason_json TEXT);
             CREATE TABLE IF NOT EXISTS schedule(idx INTEGER PRIMARY KEY, date TEXT, home_id INTEGER, away_id INTEGER, home_pts INTEGER, away_pts INTEGER, overtimes INTEGER);
             CREATE TABLE IF NOT EXISTS box_line(game_idx INTEGER, team_id INTEGER, player_id INTEGER, started INTEGER, seconds REAL, pts INTEGER, fgm INTEGER, fga INTEGER, tpm INTEGER, tpa INTEGER,
                 ftm INTEGER, fta INTEGER, oreb INTEGER, dreb INTEGER, ast INTEGER, stl INTEGER, blk INTEGER, tov INTEGER, pf INTEGER, pm INTEGER);

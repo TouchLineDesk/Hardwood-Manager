@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.AwardsView"
+             x:DataType="vm:AwardsViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="10">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0"/>
+          <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap"/>
+        </StackPanel>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding Seasons}" SelectedItem="{Binding Season}" Width="200" VerticalAlignment="Top"/>
+      </Grid>
+
+      <Grid ColumnDefinitions="*,*">
+        <StackPanel Margin="0,0,6,0">
+          <TextBlock Text="Most Valuable Player" Classes="h2"/>
+          <DataGrid ItemsSource="{Binding Mvp}" MaxHeight="300" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="36"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="58"/>
+              <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="66"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Text="Defensive Player of the Year" Classes="h2"/>
+          <DataGrid ItemsSource="{Binding Dpoy}" MaxHeight="220" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="36"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="58"/>
+              <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="66"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+          <TextBlock Text="Rookie of the Year" Classes="h2"/>
+          <DataGrid ItemsSource="{Binding Roy}" MaxHeight="220" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="36"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="58"/>
+              <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="66"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Text="Sixth Man of the Year" Classes="h2"/>
+          <DataGrid ItemsSource="{Binding SixthMan}" MaxHeight="220" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="36"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="58"/>
+              <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="66"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </Grid>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="6">
+          <TextBlock Text="All-League teams" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding AllLeague}" TextWrapping="Wrap"/>
+          <TextBlock Text="All-Star Game" FontWeight="SemiBold" Margin="0,8,0,0"/>
+          <TextBlock Text="{Binding AllStars}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="Hall of Fame" Classes="h2"/>
+      <TextBlock Text="{Binding HallNote}" Classes="muted"/>
+      <DataGrid ItemsSource="{Binding Hall}" MaxHeight="300">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Inducted" Binding="{Binding Year}" Width="80"/>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+          <DataGridTextColumn Header="Career" Binding="{Binding Career}" Width="260"/>
+          <DataGridTextColumn Header="Honours" Binding="{Binding Honours}" Width="*"/>
+          <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="66"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

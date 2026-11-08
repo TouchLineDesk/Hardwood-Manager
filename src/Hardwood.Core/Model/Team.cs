@@ -21,6 +21,9 @@ public sealed class Team
     /// <summary>Human-set rotation. When null or empty the engine picks starters and minutes itself.</summary>
     public DepthChart? DepthChart { get; set; }
 
+    /// <summary>Player ids whose numbers hang in the rafters.</summary>
+    public List<int> RetiredNumbers { get; } = new();
+
     /// <summary>Players fit to play on a given day.</summary>
     public IEnumerable<Player> Available(DateOnly on) => Roster.Where(p => p.IsAvailable(on));
 
@@ -67,6 +70,8 @@ public sealed class League
     public int NextPlayerId { get; set; } = 1;
     /// <summary>Every future draft pick in the world (both rounds, several years ahead).</summary>
     public List<DraftPickAsset> Picks { get; } = new();
+    public Dictionary<int, Season.CareerTotals> Careers { get; } = new();
+    public List<Season.HallOfFamer> HallOfFame { get; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;
 
@@ -106,6 +111,8 @@ public sealed class SeasonSummary
     public List<(int teamId, int wins, int losses)> Records { get; init; } = new();
     public int? MvpPlayerId { get; init; }
     public int? ScoringLeaderPlayerId { get; init; }
+    public int? FinalsMvpPlayerId { get; set; }
+    public Season.SeasonAwards? Awards { get; set; }
 }
 
 /// <summary>Rules set, selectable per competition.</summary>

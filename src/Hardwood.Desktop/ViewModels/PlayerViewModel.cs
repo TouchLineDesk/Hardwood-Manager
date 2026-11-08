@@ -49,6 +49,7 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string Contract { get; private set; } = "";
     public string InjuryText { get; private set; } = "";
     public string Tendencies { get; private set; } = "";
+    public string Honours { get; private set; } = "";
     public List<AttrGroupVm> Groups { get; private set; } = new();
     public ObservableCollection<SeasonLine> Seasons { get; } = new();
 
@@ -64,6 +65,22 @@ public sealed partial class PlayerViewModel : PageViewModel
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
             : p.InjuryHistory.Count > 0 ? $"Healthy · {p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}" : "Healthy";
+        var career = s.League.Careers.GetValueOrDefault(p.Id);
+        var hall = s.League.HallOfFame.FirstOrDefault(h => h.PlayerId == p.Id);
+        var retiredBy = s.League.Teams.Where(x => x.RetiredNumbers.Contains(p.Id)).Select(x => x.FullName).ToList();
+        var bits = new List<string>();
+        if (p.RookieSeason is { } rs) bits.Add($"Rookie season {rs}-{(rs + 1) % 100:00}");
+        if (career != null)
+        {
+            bits.Add($"Career: {career.Seasons} seasons, {career.Games} games, {career.Points:N0} pts ({career.Ppg:F1} ppg)");
+            var h = new[] { (career.Mvps, "MVP"), (career.Titles, "title"), (career.FinalsMvps, "Finals MVP"), (career.AllLeague, "All-League"), (career.AllStars, "All-Star"), (career.Dpoys, "DPOY"), (career.Roys, "ROY"), (career.SixthMen, "Sixth Man") }
+                .Where(x => x.Item1 > 0).Select(x => $"{x.Item1}× {x.Item2}").ToList();
+            if (h.Count > 0) bits.Add(string.Join(", ", h));
+        }
+        if (hall != null) bits.Add($"Hall of Fame ({hall.Year})");
+        if (retiredBy.Count > 0) bits.Add($"Number retired by {string.Join(", ", retiredBy)}");
+        Honours = bits.Count == 0 ? "" : string.Join(" · ", bits);
+
         var t = p.Tendencies;
         Tendencies = $"Three-point rate {t.ThreePointRate} · drives {t.DriveRate} · post-ups {t.PostUpRate} · isolation {t.IsolationRate} · pass-first {t.PassFirst} · crash glass {t.CrashGlass}";
 

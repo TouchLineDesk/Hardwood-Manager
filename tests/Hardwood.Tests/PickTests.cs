@@ -135,3 +135,61 @@ public class PickTests
         finally { if (File.Exists(path)) File.Delete(path); }
     }
 }
+
+public class AwardsTests
+{
+    [Fact]
+    public void Awards_are_computed_and_persist_across_a_reload()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hw-aw-{Guid.NewGuid():N}.save");
+        try
+        {
+            var s = GameSession.NewGame(21, humanTeamId: 3, path);
+            int guard = 0;
+            while (s.Phase != SessionPhase.Offseason && guard++ < 400) s.AdvanceDay();
+            Assert.NotNull(s.Midseason);
+            Assert.Equal(12, s.Midseason!.AllStarsEast.Count);
+            Assert.Equal(12, s.Midseason.AllStarsWest.Count);
+            Assert.False(string.IsNullOrEmpty(s.Midseason.AllStarGame));
+
+            var summary = s.League.History.Single();
+            var a = summary.Awards!;
+            Assert.NotNull(a.Mvp);
+            Assert.True(a.MvpVoting[0].Share > a.MvpVoting[^1].Share);
+            Assert.True(Math.Abs(a.MvpVoting.Sum(v => v.Share) - 1.0) < 0.01);
+            Assert.NotNull(a.Dpoy);
+            Assert.Equal(3, a.AllLeague.Count);
+            Assert.All(a.AllLeague, t => Assert.Equal(5, t.Count));
+            Assert.Equal(15, a.AllLeague.SelectMany(t => t).Distinct().Count());
+            Assert.NotNull(a.CoachOfYearTeamId);
+            Assert.NotNull(summary.FinalsMvpPlayerId);
+            Assert.True(s.League.Careers.Count > 400);
+            Assert.Contains(s.Inbox, m => m.Title.StartsWith("MVP:"));
+            Assert.Contains(s.Inbox, m => m.Title == "All-Star Game");
+
+            var loaded = GameSession.Load(path);
+            var la = loaded.League.History.Single().Awards!;
+            Assert.Equal(a.Mvp, la.Mvp);
+            Assert.Equal(a.MvpVoting.Count, la.MvpVoting.Count);
+            Assert.Equal(a.AllLeague[0], la.AllLeague[0]);
+            Assert.Equal(s.League.Careers.Count, loaded.League.Careers.Count);
+            var anyCareer = s.League.Careers.Values.First(c => c.Games > 0);
+            Assert.Equal(anyCareer.Points, loaded.League.Careers[anyCareer.PlayerId].Points);
+            Assert.Equal(anyCareer.GamesByTeam.Count, loaded.League.Careers[anyCareer.PlayerId].GamesByTeam.Count);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public void Hall_of_fame_fills_over_a_long_headless_run()
+    {
+        var league = new WorldGenerator(new Rng(77)).Generate("L", 2026, new DateOnly(2026, 10, 1));
+        var career = new Career(new Rng(9));
+        for (int i = 0; i < 12; i++) career.PlaySeason(league);
+        Assert.True(league.HallOfFame.Count >= 1, $"HOF count {league.HallOfFame.Count}");
+        Assert.True(league.HallOfFame.Count <= 40, $"HOF count {league.HallOfFame.Count}");
+        Assert.All(league.History, h => Assert.NotNull(h.Awards));
+        // Rookie of the Year exists from season 2 on (season 1 has no drafted rookies).
+        Assert.All(league.History.Skip(1), h => Assert.NotNull(h.Awards!.Roy));
+    }
+}

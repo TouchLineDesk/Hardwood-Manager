@@ -11,6 +11,10 @@ namespace Hardwood.Core.Persistence;
 /// </summary>
 public sealed class SaveFile
 {
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOpts = new() { IncludeFields = true };
+    internal static string ToJson<T>(T value) => System.Text.Json.JsonSerializer.Serialize(value, JsonOpts);
+    internal static T? FromJson<T>(string json) => System.Text.Json.JsonSerializer.Deserialize<T>(json, JsonOpts);
+
     public const int SchemaVersion = 2;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
@@ -38,7 +42,7 @@ public sealed class SaveFile
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
 
-        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury; DELETE FROM draft_pick;");
+        Exec(conn, "DELETE FROM meta; DELETE FROM player_stats WHERE 0; DELETE FROM league; DELETE FROM team; DELETE FROM player; DELETE FROM contract; DELETE FROM season_history; DELETE FROM season_record; DELETE FROM injury; DELETE FROM draft_pick; DELETE FROM career; DELETE FROM hall_of_fame; DELETE FROM retired_number;");
 
         Exec(conn, "INSERT INTO meta(key, value) VALUES('schema_version', $v), ('saved_at', $t)",
             ("$v", SchemaVersion.ToString()), ("$t", DateTime.UtcNow.ToString("O")));
@@ -76,11 +80,20 @@ public sealed class SaveFile
 
         foreach (var h in league.History)
         {
-            Exec(conn, "INSERT INTO season_history(season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id) VALUES($s, $c, $r, $m, $l)",
-                ("$s", h.Season), ("$c", h.ChampionTeamId), ("$r", h.RunnerUpTeamId), ("$m", (object?)h.MvpPlayerId ?? DBNull.Value), ("$l", (object?)h.ScoringLeaderPlayerId ?? DBNull.Value));
+            Exec(conn, "INSERT INTO season_history(season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id, finals_mvp_player_id, awards_json) VALUES($s, $c, $r, $m, $l, $f, $a)",
+                ("$s", h.Season), ("$c", h.ChampionTeamId), ("$r", h.RunnerUpTeamId), ("$m", (object?)h.MvpPlayerId ?? DBNull.Value), ("$l", (object?)h.ScoringLeaderPlayerId ?? DBNull.Value),
+                ("$f", (object?)h.FinalsMvpPlayerId ?? DBNull.Value), ("$a", h.Awards != null ? ToJson(h.Awards) : DBNull.Value));
             foreach (var (teamId, w, l) in h.Records)
                 Exec(conn, "INSERT INTO season_record(season, team_id, wins, losses) VALUES($s, $t, $w, $l)", ("$s", h.Season), ("$t", teamId), ("$w", w), ("$l", l));
         }
+
+        foreach (var c in league.Careers.Values)
+            Exec(conn, "INSERT INTO career(player_id, json) VALUES($p, $j)", ("$p", c.PlayerId), ("$j", ToJson(c)));
+        foreach (var h in league.HallOfFame)
+            Exec(conn, "INSERT INTO hall_of_fame(player_id, year, score) VALUES($p, $y, $s)", ("$p", h.PlayerId), ("$y", h.Year), ("$s", h.Score));
+        foreach (var t in league.Teams)
+        foreach (var pid in t.RetiredNumbers)
+            Exec(conn, "INSERT INTO retired_number(team_id, player_id) VALUES($t, $p)", ("$t", t.Id), ("$p", pid));
 
         if (seasonStats != null)
         {
@@ -107,17 +120,18 @@ public sealed class SaveFile
             INSERT INTO player(id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos,
                                ca, pa, team_id, status, attributes,
                                professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
-                               t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble)
+                               t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season)
             VALUES($id, $fn, $ln, $bd, $nat, $h, $ws, $w, $pp, $sp, $ca, $pa, $tid, $status, $attrs,
                    $prof, $amb, $loy, $temp, $pres, $adapt, $cons, $big, $inj, $ego,
-                   $t3, $tdr, $tpo, $tiso, $tpf, $tcr, $tga)
+                   $t3, $tdr, $tpo, $tiso, $tpf, $tcr, $tga, $rook)
             """,
             ("$id", p.Id), ("$fn", p.FirstName), ("$ln", p.LastName), ("$bd", p.BirthDate.ToString("yyyy-MM-dd")), ("$nat", p.Nationality),
             ("$h", p.HeightCm), ("$ws", p.WingspanCm), ("$w", p.WeightKg), ("$pp", (int)p.PrimaryPosition), ("$sp", p.SecondaryPosition is { } s ? (int)s : DBNull.Value),
             ("$ca", p.CurrentAbility), ("$pa", p.PotentialAbility), ("$tid", (object?)teamId ?? DBNull.Value), ("$status", status), ("$attrs", attrs),
             ("$prof", h.Professionalism), ("$amb", h.Ambition), ("$loy", h.Loyalty), ("$temp", h.Temperament), ("$pres", h.Pressure), ("$adapt", h.Adaptability),
             ("$cons", h.Consistency), ("$big", h.BigGames), ("$inj", h.InjuryProneness), ("$ego", h.Ego),
-            ("$t3", t.ThreePointRate), ("$tdr", t.DriveRate), ("$tpo", t.PostUpRate), ("$tiso", t.IsolationRate), ("$tpf", t.PassFirst), ("$tcr", t.CrashGlass), ("$tga", t.GambleSteals));
+            ("$t3", t.ThreePointRate), ("$tdr", t.DriveRate), ("$tpo", t.PostUpRate), ("$tiso", t.IsolationRate), ("$tpf", t.PassFirst), ("$tcr", t.CrashGlass), ("$tga", t.GambleSteals),
+            ("$rook", (object?)p.RookieSeason ?? DBNull.Value));
 
         foreach (var inj in p.InjuryHistory)
             Exec(conn, "INSERT INTO injury(player_id, name, severity, occurred, return_date, attr_loss, current) VALUES($pid, $n, $sev, $occ, $ret, $loss, $cur)",
@@ -187,7 +201,7 @@ public sealed class SaveFile
             cmd.CommandText = """
                 SELECT id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos, ca, pa, team_id, status, attributes,
                        professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
-                       t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble
+                       t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season
                 FROM player ORDER BY id
                 """;
             using var r = cmd.ExecuteReader();
@@ -213,6 +227,7 @@ public sealed class SaveFile
                 var t = p.Tendencies;
                 t.ThreePointRate = r.GetInt32(25); t.DriveRate = r.GetInt32(26); t.PostUpRate = r.GetInt32(27); t.IsolationRate = r.GetInt32(28);
                 t.PassFirst = r.GetInt32(29); t.CrashGlass = r.GetInt32(30); t.GambleSteals = r.GetInt32(31);
+                p.RookieSeason = r.IsDBNull(32) ? null : r.GetInt32(32);
                 if (contracts.TryGetValue(p.Id, out var c)) p.Contract = c;
 
                 switch (r.GetString(13))
@@ -245,7 +260,7 @@ public sealed class SaveFile
 
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id FROM season_history ORDER BY season";
+            cmd.CommandText = "SELECT season, champion_team_id, runner_up_team_id, mvp_player_id, scoring_leader_player_id, finals_mvp_player_id, awards_json FROM season_history ORDER BY season";
             using var r = cmd.ExecuteReader();
             var summaries = new List<SeasonSummary>();
             while (r.Read())
@@ -253,8 +268,28 @@ public sealed class SaveFile
                 {
                     Season = r.GetInt32(0), ChampionTeamId = r.GetInt32(1), RunnerUpTeamId = r.GetInt32(2),
                     MvpPlayerId = r.IsDBNull(3) ? null : r.GetInt32(3), ScoringLeaderPlayerId = r.IsDBNull(4) ? null : r.GetInt32(4),
+                    FinalsMvpPlayerId = r.IsDBNull(5) ? null : r.GetInt32(5),
+                    Awards = r.IsDBNull(6) ? null : FromJson<SeasonAwards>(r.GetString(6)),
                 });
             league.History.AddRange(summaries);
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT player_id, json FROM career";
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) { var c = FromJson<CareerTotals>(r.GetString(1)); if (c != null) league.Careers[r.GetInt32(0)] = c; }
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT player_id, year, score FROM hall_of_fame ORDER BY year";
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) league.HallOfFame.Add(new HallOfFamer(r.GetInt32(0), r.GetInt32(1), r.GetDouble(2)));
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT team_id, player_id FROM retired_number";
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) league.TeamById(r.GetInt32(0)).RetiredNumbers.Add(r.GetInt32(1));
         }
         using (var cmd = conn.CreateCommand())
         {
@@ -302,12 +337,15 @@ public sealed class SaveFile
                 ca INTEGER, pa INTEGER, team_id INTEGER, status TEXT, attributes TEXT,
                 professionalism INTEGER, ambition INTEGER, loyalty INTEGER, temperament INTEGER, pressure INTEGER, adaptability INTEGER,
                 consistency INTEGER, big_games INTEGER, injury_proneness INTEGER, ego INTEGER,
-                t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER);
+                t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER, rookie_season INTEGER);
             CREATE INDEX IF NOT EXISTS ix_player_team ON player(team_id);
             CREATE TABLE IF NOT EXISTS injury(player_id INTEGER, name TEXT, severity INTEGER, occurred TEXT, return_date TEXT, attr_loss INTEGER, current INTEGER);
             CREATE INDEX IF NOT EXISTS ix_injury_player ON injury(player_id);
             CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER);
-            CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER);
+            CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER, finals_mvp_player_id INTEGER, awards_json TEXT);
+            CREATE TABLE IF NOT EXISTS career(player_id INTEGER PRIMARY KEY, json TEXT);
+            CREATE TABLE IF NOT EXISTS hall_of_fame(player_id INTEGER PRIMARY KEY, year INTEGER, score REAL);
+            CREATE TABLE IF NOT EXISTS retired_number(team_id INTEGER, player_id INTEGER, PRIMARY KEY(team_id, player_id));
             CREATE TABLE IF NOT EXISTS season_record(season INTEGER, team_id INTEGER, wins INTEGER, losses INTEGER, PRIMARY KEY(season, team_id));
             CREATE TABLE IF NOT EXISTS player_stats(player_id INTEGER, season INTEGER, team_id INTEGER, games INTEGER, starts INTEGER, minutes REAL,
                 points INTEGER, fgm INTEGER, fga INTEGER, tpm INTEGER, tpa INTEGER, ftm INTEGER, fta INTEGER, oreb INTEGER, dreb INTEGER,

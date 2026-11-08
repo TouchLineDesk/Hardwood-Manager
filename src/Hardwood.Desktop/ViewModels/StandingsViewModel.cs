@@ -127,6 +127,7 @@ public sealed class HistoryRow
     public string RunnerUp { get; init; } = "";
     public string Mvp { get; init; } = "";
     public string ScoringLeader { get; init; } = "";
+    public string FinalsMvp { get; init; } = "";
     public string OurRecord { get; init; } = "";
 }
 
@@ -153,6 +154,7 @@ public sealed partial class HistoryViewModel : PageViewModel
                 RunnerUp = s.League.TeamById(h.RunnerUpTeamId).FullName,
                 Mvp = h.MvpPlayerId is { } m && all.TryGetValue(m, out var mp) ? mp.Name : "-",
                 ScoringLeader = h.ScoringLeaderPlayerId is { } l && all.TryGetValue(l, out var lp) ? lp.Name : "-",
+                FinalsMvp = h.FinalsMvpPlayerId is { } f && all.TryGetValue(f, out var fp) ? fp.Name : "-",
                 OurRecord = our.teamId == 0 ? "" : $"{our.wins}-{our.losses}" + (h.ChampionTeamId == s.HumanTeam.Id ? " · Champions" : h.RunnerUpTeamId == s.HumanTeam.Id ? " · Finals" : ""),
             });
         }

@@ -12,7 +12,8 @@
         <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="200"/>
         <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="200"/>
         <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="180"/>
-        <DataGridTextColumn Header="Scoring leader" Binding="{Binding ScoringLeader}" Width="180"/>
+        <DataGridTextColumn Header="Finals MVP" Binding="{Binding FinalsMvp}" Width="170"/>
+        <DataGridTextColumn Header="Scoring leader" Binding="{Binding ScoringLeader}" Width="170"/>
         <DataGridTextColumn Header="Your record" Binding="{Binding OurRecord}" Width="*"/>
       </DataGrid.Columns>
     </DataGrid>

@@ -20,6 +20,8 @@ public sealed class OffseasonReport
     public List<(Player player, Team team, long salary, int years)> FreeAgentSignings { get; } = new();
     public List<(Player player, Team team)> Waived { get; } = new();
     public List<Player> LeftUnsigned { get; } = new();
+    public List<Player> HallOfFame { get; } = new();
+    public List<(Player player, Team team)> RetiredNumbers { get; } = new();
 }
 
 /// <summary>
@@ -253,6 +255,7 @@ public sealed class Offseason
             int ca = u < 0.05 ? _rng.Next(105, 125) : u < 0.30 ? _rng.Next(85, 105) : _rng.Next(55, 88);
             var p = gen.Generate(positions[_rng.Next(5)], ca, age, Date);
             p.PotentialAbility = Math.Clamp(p.PotentialAbility + _rng.Next(0, 25), p.CurrentAbility, 200);
+            p.RookieSeason = Season + 1;
             prospects.Add(p);
         }
         _league.NextPlayerId = gen.NextId;
@@ -413,24 +416,59 @@ public sealed class Offseason
     }
 
     // ------------------------------------------------------------------------------------------
+    public SeasonSummary? Summary { get; private set; }
+
     private void RecordHistory()
     {
         var finals = _outcome.Playoffs.Last().Series;
         var scoring = _stats.Values.Where(s => s.Games >= 50).OrderByDescending(s => s.Ppg).FirstOrDefault();
-        var teamWins = _league.Teams.ToDictionary(t => t.Id, t => _outcome.Standings[t].Wins);
-        var mvp = _stats.Values.Where(s => s.Games >= 55 && teamWins[s.TeamId] >= 41)
-            .OrderByDescending(s => s.Ppg + s.Rpg * 1.2 + s.Apg * 1.5 + s.PlusMinus / 20.0).FirstOrDefault();
+        var awards = new AwardsEngine(_league, _outcome.Standings, _stats, _rng).EndOfSeason(_league.Season, _outcome.Midseason);
 
-        _league.History.Add(new SeasonSummary
+        // Finals MVP: best scorer on the champions across the Finals games.
+        int? finalsMvp = null;
+        if (finals.Games.Count > 0)
+        {
+            var totals = finals.Games.SelectMany(g => new[] { g.Home, g.Away }).Where(b => b.Team == finals.Winner).SelectMany(b => b.Lines)
+                .GroupBy(l => l.Player.Id).Select(g => (id: g.Key, score: g.Sum(l => l.Points + l.Rebounds * 0.7 + l.Assists * 0.9)))
+                .OrderByDescending(x => x.score).FirstOrDefault();
+            if (totals.id != 0) finalsMvp = totals.id;
+        }
+
+        Summary = new SeasonSummary
         {
             Season = _league.Season,
             ChampionTeamId = finals.Winner.Id,
             RunnerUpTeamId = finals.Loser.Id,
             Records = _league.Teams.Select(t => (t.Id, _outcome.Standings[t].Wins, _outcome.Standings[t].Losses)).ToList(),
             ScoringLeaderPlayerId = scoring?.PlayerId,
-            MvpPlayerId = mvp?.PlayerId,
-        });
+            MvpPlayerId = awards.Mvp,
+            FinalsMvpPlayerId = finalsMvp,
+            Awards = awards,
+        };
+        _league.History.Add(Summary);
+        AccumulateCareers(Summary);
     }
+
+    private void AccumulateCareers(SeasonSummary summary)
+    {
+        foreach (var s in _stats.Values)
+        {
+            if (!_league.Careers.TryGetValue(s.PlayerId, out var c)) _league.Careers[s.PlayerId] = c = new CareerTotals { PlayerId = s.PlayerId };
+            c.Seasons++; c.Games += s.Games; c.Points += s.Points; c.Rebounds += s.OReb + s.DReb; c.Assists += s.Assists;
+            c.Steals += s.Steals; c.Blocks += s.Blocks; c.Minutes += s.Minutes;
+            c.GamesByTeam[s.TeamId] = c.GamesByTeam.GetValueOrDefault(s.TeamId) + s.Games;
+        }
+        var a = summary.Awards!;
+        void Bump(int? id, Action<CareerTotals> act) { if (id is { } i && _league.Careers.TryGetValue(i, out var c)) act(c); }
+        Bump(a.Mvp, c => c.Mvps++); Bump(a.Dpoy, c => c.Dpoys++); Bump(a.Roy, c => c.Roys++); Bump(a.SixthMan, c => c.SixthMen++);
+        Bump(summary.FinalsMvpPlayerId, c => c.FinalsMvps++);
+        foreach (var id in a.AllLeague.SelectMany(t => t)) Bump(id, c => c.AllLeague++);
+        foreach (var id in a.AllStarsEast.Concat(a.AllStarsWest)) Bump(id, c => c.AllStars++);
+        var champ = _league.TeamById(summary.ChampionTeamId);
+        foreach (var p in champ.Roster) Bump(p.Id, c => c.Titles++);
+    }
+
+    public double HallOfFameThreshold { get; set; } = 60;
 
     private void Retire(Team team, Player p)
     {
@@ -438,6 +476,22 @@ public sealed class Offseason
         p.TeamId = null; p.Contract = null;
         _league.Retired.Add(p);
         Report.Retired.Add(p);
+        ConsiderHallOfFame(p);
+    }
+
+    private void ConsiderHallOfFame(Player p)
+    {
+        if (!_league.Careers.TryGetValue(p.Id, out var c)) return;
+        if (c.HallScore < HallOfFameThreshold) return;
+        _league.HallOfFame.Add(new HallOfFamer(p.Id, Season + 1, Math.Round(c.HallScore, 1)));
+        Report.HallOfFame.Add(p);
+        // A franchise retires the number of a Hall of Famer who gave it at least six seasons' worth of games.
+        var home = c.GamesByTeam.OrderByDescending(kv => kv.Value).First();
+        if (home.Value >= 6 * 60)
+        {
+            var team = _league.TeamById(home.Key);
+            if (!team.RetiredNumbers.Contains(p.Id)) { team.RetiredNumbers.Add(p.Id); Report.RetiredNumbers.Add((p, team)); }
+        }
     }
 
     private static int PositionNeed(Team team, Player p)

@@ -60,6 +60,9 @@ public sealed class Player
     public int? TeamId { get; set; }
     public Contract? Contract { get; set; }
 
+    /// <summary>First season (start year) the player was eligible as a rookie; null for players generated already in the league.</summary>
+    public int? RookieSeason { get; set; }
+
     public Injury? Injury { get; set; }
     public List<Injury> InjuryHistory { get; } = new();
     public bool IsAvailable(DateOnly on) => Injury == null || !Injury.IsOut(on);

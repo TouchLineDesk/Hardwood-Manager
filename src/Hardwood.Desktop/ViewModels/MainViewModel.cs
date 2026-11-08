@@ -64,6 +64,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("League Leaders", () => new LeadersViewModel(this)),
             ("Transactions", () => new TransactionsViewModel(this)),
             ("Offseason", () => new OffseasonViewModel(this)),
+            ("Awards", () => new AwardsViewModel(this)),
             ("History", () => new HistoryViewModel(this)),
         })
         {

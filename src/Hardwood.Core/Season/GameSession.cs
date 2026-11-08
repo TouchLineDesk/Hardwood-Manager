@@ -41,6 +41,9 @@ public sealed class GameSession
     public Postseason? Postseason { get; private set; }
     public Offseason? Offseason { get; private set; }
     public List<TradeProposal> TradesThisSeason { get; } = new();
+    /// <summary>All-Star selections and game result for the current season, once February arrives.</summary>
+    public SeasonAwards? Midseason { get; set; }
+    public DateOnly AllStarDate => new(League.Season + 1, 2, 14);
     /// <summary>A fresh seed for the RNG on reload, so a loaded game doesn't replay the same future.</summary>
     public ulong NextRngSeed => _rng.NextULong();
     public bool TradeDeadlinePassed => Phase != SessionPhase.RegularSeason && Phase != SessionPhase.Preseason || Today > TradeDeadline;
@@ -127,6 +130,17 @@ public sealed class GameSession
 
             if (Today == TradeDeadline)
                 Post("Trade deadline has passed", "No more trades until the season ends.", "League");
+
+            if (Today == AllStarDate && Midseason == null)
+            {
+                Midseason = new AwardsEngine(League, Standings, Stats, _rng).AllStar(League.Season, _sim, Today);
+                var all = League.AllActivePlayers.ToDictionary(p => p.Id);
+                string Names(IEnumerable<int> ids) => string.Join(", ", ids.Select(id => all.TryGetValue(id, out var p) ? $"{p.Name} ({League.TeamById(p.TeamId!.Value).Abbreviation})" : "?"));
+                var ours = Midseason.AllStarsEast.Concat(Midseason.AllStarsWest).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => all[id].Name).ToList();
+                Post("All-Star Game", $"{Midseason.AllStarGame}. Game MVP: {(Midseason.AllStarMvpId is { } m && all.TryGetValue(m, out var mp) ? mp.Name : "-")}."
+                    + (ours.Count > 0 ? $"\n\nYour All-Stars: {string.Join(", ", ours)}." : "\n\nNo one from your team was selected.")
+                    + $"\n\nEast: {Names(Midseason.AllStarsEast)}\n\nWest: {Names(Midseason.AllStarsWest)}", "League");
+            }
 
             if (Schedule.All(g => Results.ContainsKey(g.Index)))
             {
@@ -231,7 +245,7 @@ public sealed class GameSession
     // ------------------------------------------------------------------------------------------
     private void BeginOffseason()
     {
-        var outcome = new SeasonOutcome { Standings = Standings };
+        var outcome = new SeasonOutcome { Standings = Standings, Midseason = Midseason };
         outcome.RegularSeason.AddRange(Results.Values);
         Postseason!.FillOutcome(outcome);
 
@@ -239,6 +253,8 @@ public sealed class GameSession
         Offseason = new Offseason(League, outcome, Stats, _rng);
         Offseason.Begin();
         Offseason.AiReSignAll(exceptTeamId: HumanTeam.Id);
+
+        AnnounceAwards(Offseason.Summary!);
 
         var retired = Offseason.Report.Retired.Where(p => p.InjuryHistory != null).ToList();
         var ours = Offseason.Report.Retired.Where(p => HumanTeamHad(p)).ToList();
@@ -252,6 +268,29 @@ public sealed class GameSession
             expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${Offseason.Ask(p) / 1e6:F1}M)"))}. Re-sign or release each one, then continue to the draft.", "Roster");
         var dev = Offseason.Report.Development.Where(d => d.Player.TeamId == HumanTeam.Id && Math.Abs(d.NewCa - d.OldCa) >= 6).OrderByDescending(d => d.NewCa - d.OldCa).ToList();
         if (dev.Count > 0) Post("Player development", string.Join("\n", dev.Select(d => $"{d.Player.Name}: {(d.NewCa > d.OldCa ? "+" : "")}{d.NewCa - d.OldCa} ability")), "Roster");
+    }
+
+    private void AnnounceAwards(SeasonSummary summary)
+    {
+        var a = summary.Awards;
+        if (a == null) return;
+        var all = League.AllActivePlayers.Concat(League.FreeAgents).Concat(League.Retired).ToDictionary(p => p.Id);
+        string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
+        string Voting(List<VoteLine> v) => string.Join("\n", v.Take(5).Select((l, i) => $"{i + 1}. {l.Name} ({l.Team}) {l.Share * 100:F0}% — {l.StatLine}"));
+        Post($"MVP: {Name(a.Mvp)}", Voting(a.MvpVoting), "Awards");
+        if (a.RoyVoting.Count > 0) Post($"Rookie of the Year: {Name(a.Roy)}", Voting(a.RoyVoting), "Awards");
+        Post($"Defensive Player of the Year: {Name(a.Dpoy)}", Voting(a.DpoyVoting), "Awards");
+        if (a.SixthManVoting.Count > 0) Post($"Sixth Man of the Year: {Name(a.SixthMan)}", Voting(a.SixthManVoting), "Awards");
+        if (a.CoachOfYearTeamId is { } coy)
+            Post($"Coach of the Year: {League.TeamById(coy).FullName}", a.CoachOfYearNote + (coy == HumanTeam.Id ? "\n\nThat's you." : ""), "Awards");
+        Post("All-League teams", string.Join("\n\n", a.AllLeague.Select((t, i) => $"{(i == 0 ? "First" : i == 1 ? "Second" : "Third")} team: {string.Join(", ", t.Select(id => Name(id)))}")), "Awards");
+        if (summary.FinalsMvpPlayerId is { } fm) Post($"Finals MVP: {Name(fm)}", $"{League.TeamById(summary.ChampionTeamId).FullName} win the title.", "Awards");
+        var ours = a.AllLeague.SelectMany(t => t).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => Name(id)).ToList();
+        if (ours.Count > 0) Post("Your All-League honourees", string.Join(", ", ours), "Awards");
+        foreach (var h in Offseason!.Report.HallOfFame)
+            Post($"Hall of Fame: {h.Name}", $"Inducted after a {League.Careers[h.Id].Seasons}-season career: {League.Careers[h.Id].Points:N0} points, {League.Careers[h.Id].Mvps} MVP{(League.Careers[h.Id].Mvps == 1 ? "" : "s")}, {League.Careers[h.Id].Titles} title{(League.Careers[h.Id].Titles == 1 ? "" : "s")}, {League.Careers[h.Id].AllStars} All-Star selections.", "Awards");
+        foreach (var (p, t) in Offseason.Report.RetiredNumbers)
+            Post($"{t.FullName} retire {p.LastName}'s number", $"{p.Name}'s jersey goes to the rafters.", "Awards");
     }
 
     private bool HumanTeamHad(Player p) => Stats.TryGetValue(p.Id, out var s) && s.TeamId == HumanTeam.Id;
@@ -297,6 +336,7 @@ public sealed class GameSession
         Phase = SessionPhase.Preseason;
         Today = OpeningNight.AddDays(-7);
         HumanTeam.DepthChart = null;
+        Midseason = null;
         BuildSeason();
         var last = League.History.Last();
         Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
