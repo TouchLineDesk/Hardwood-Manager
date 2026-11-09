@@ -43,6 +43,8 @@ public sealed class SeasonSimulator
         int i = 0;
         var allStarDate = new DateOnly(league.Season + 1, 2, 14);
         bool allStarDone = false;
+        DateOnly? nextWeekly = null;
+        var running = new Dictionary<int, PlayerSeasonStats>();
         foreach (var g in schedule)
         {
             if (!allStarDone && g.Date >= allStarDate)
@@ -51,9 +53,24 @@ public sealed class SeasonSimulator
                 outcome.Midseason = new AwardsEngine(league, standings, stats, _rng).AllStar(league.Season, _sim, allStarDate);
                 allStarDone = true;
             }
+            // Weekly: players' moods and team chemistry move (decision #64).
+            if (nextWeekly == null) nextWeekly = g.Date.AddDays(7);
+            else if (g.Date >= nextWeekly)
+            {
+                People.PeopleEngine.Weekly(league, g.Date, t => standings[t].Games > 0 ? standings[t].WinPct : 0.5, running, null);
+                nextWeekly = nextWeekly.Value.AddDays(7);
+            }
             var r = _sim.Simulate(g.Home, g.Away, league.Rules, _rng.NextULong(), date: g.Date);
             standings.Record(r);
             outcome.RegularSeason.Add(r);
+            foreach (var box in new[] { r.Home, r.Away })
+            foreach (var l in box.Lines)
+            {
+                if (l.Seconds <= 0) continue;
+                if (!running.TryGetValue(l.Player.Id, out var ps))
+                    running[l.Player.Id] = ps = new PlayerSeasonStats { PlayerId = l.Player.Id, TeamId = box.Team.Id, Season = league.Season };
+                ps.Add(l);
+            }
             if (++i % 100 == 0) progress?.Invoke(i, schedule.Count);
         }
 

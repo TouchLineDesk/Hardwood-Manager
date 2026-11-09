@@ -22,6 +22,7 @@
               <TextBlock Text="{Binding Bio}" TextWrapping="Wrap"/>
               <TextBlock Text="{Binding Contract}" Classes="muted" TextWrapping="Wrap"/>
               <TextBlock Text="{Binding InjuryText}" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding MoodText}" Classes="muted" TextWrapping="Wrap"/>
               <TextBlock Text="{Binding Honours}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding Honours, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
               <TextBlock Text="{Binding Tendencies}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
             </StackPanel>

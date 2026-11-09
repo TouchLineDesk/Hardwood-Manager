@@ -28,6 +28,11 @@ public sealed class Team
     /// <summary>Player ids whose numbers hang in the rafters.</summary>
     public List<int> RetiredNumbers { get; } = new();
 
+    /// <summary>Team chemistry 0-100 (60 = normal): how well this group plays together. See People.PeopleEngine.</summary>
+    public double Chemistry { get; set; } = 60;
+    /// <summary>Weeks each current player has been on the team (continuity feeds chemistry).</summary>
+    public Dictionary<int, int> WeeksTogether { get; set; } = new();
+
     public List<Staff> Staff { get; } = new();
     public TrainingPlan Training { get; set; } = new();
 

@@ -7,14 +7,15 @@ namespace Hardwood.Core.Engine;
 public sealed class EngineConfig
 {
     // --- Make probability: logit = ZoneBase + SkillBeta*(skill-11) - ContestBeta*(contest-11) - FatigueBeta*(1-energy) + Home*home
-    // Lowered 0.05 across the board with player roles and AI tactics (Nov 9): roles and fitting systems steer shots to players' strengths (FG% +1 pt).
+    // Lowered 0.065 across the board (Nov 9): roles and fitting systems steer shots to players' strengths, and the
+    // players taking most shots are usually the happiest (morale); together FG% +1.2 pts before this.
     public double[] ZoneBaseLogit { get; set; } =
     {
-        0.28,   // Rim           ≈ 65% after shooter selection bias
-        -0.43,  // ShortMid      ≈ 44%
-        -0.55,  // LongMid       ≈ 41%
-        -0.57,  // CornerThree   ≈ 39%
-        -0.75,  // AboveBreak3   ≈ 35%
+        0.265,  // Rim           ≈ 65% after shooter selection bias
+        -0.445, // ShortMid      ≈ 44%
+        -0.565, // LongMid       ≈ 41%
+        -0.585, // CornerThree   ≈ 39%
+        -0.765, // AboveBreak3   ≈ 35%
     };
     public double SkillBeta { get; set; } = 0.060;
     public double ContestBeta { get; set; } = 0.060;
@@ -49,6 +50,14 @@ public sealed class EngineConfig
     public double BlockSkillBeta { get; set; } = 0.012;
 
     /// <summary>How strongly shots go to the players best at creating them (exponent on usage). Higher = stars take more shots.</summary>
+    // Players as people (decision #64): a delighted player (morale 100) shoots this much better (logit) than a
+    // content one (60), a miserable one (20) this much worse; same scale for team chemistry. Kept small: winning makes
+    // players happy, so a bigger effect fed dynasties (balance audit, Nov 9: 3 champions in 10 years at 0.04/0.03).
+    public double MoraleLogit { get; set; } = 0.02;
+    public double ChemistryLogit { get; set; } = 0.015;
+    /// <summary>Turnover probability change per 40 points of chemistry above/below 60.</summary>
+    public double ChemistryTurnover { get; set; } = 0.002;
+
     // Tactics (decisions #58-61).
     /// <summary>Logit added to every shot per unit of system fit above 0.5 (offense), and subtracted per unit of scheme fit (defense).</summary>
     public double SystemFitLogit { get; set; } = 0.16;

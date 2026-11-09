@@ -72,6 +72,17 @@ public sealed class Player
     /// <summary>First season (start year) the player was eligible as a rookie; null for players generated already in the league.</summary>
     public int? RookieSeason { get; set; }
 
+    /// <summary>Happiness 0-100 (60 = content). Moves weekly toward what his situation warrants; see People.PeopleEngine.</summary>
+    public double Morale { get; set; } = 60;
+    /// <summary>Consecutive weekly checks spent very unhappy (feeds trade requests).</summary>
+    public int UnhappyWeeks { get; set; }
+    /// <summary>He has asked to be traded.</summary>
+    public bool TradeRequested { get; set; }
+    /// <summary>Last time his coach spoke to him one-on-one (talks have a cooldown).</summary>
+    public DateOnly? LastTalk { get; set; }
+    /// <summary>After a broken promise he won't believe another until this date.</summary>
+    public DateOnly? DistrustUntil { get; set; }
+
     public Injury? Injury { get; set; }
     public List<Injury> InjuryHistory { get; } = new();
     public bool IsAvailable(DateOnly on) => Injury == null || !Injury.IsOut(on);

@@ -34,6 +34,7 @@ public sealed class PlayerRow
     public long SalaryValue => Player.Contract?.Salary ?? 0;
     public string Years => Player.Contract is { } c ? (c.Years <= 0 ? "Expiring" : $"{c.Years} yr") : "-";
     public string Status { get; init; } = "";
+    public string Mood => Player.TeamId == null ? "" : Hardwood.Core.People.PeopleEngine.Mood(Player.Morale) + (Player.TradeRequested ? " (wants out)" : "");
     public double Mpg { get; init; }
     public double Ppg { get; init; }
     public double Rpg { get; init; }
