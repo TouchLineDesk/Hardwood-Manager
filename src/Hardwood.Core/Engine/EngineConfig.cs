@@ -19,6 +19,12 @@ public sealed class EngineConfig
     public double ContestBeta { get; set; } = 0.060;
     public double FatigueBeta { get; set; } = 0.55;
     public double HomeLogit { get; set; } = 0.07;
+    /// <summary>
+    /// Score effects: make-probability logit change per point of lead (minus when ahead, plus when behind; capped at 25).
+    /// Real leads shrink (the leader relaxes and rests starters, the trailer pushes); without this, single games were
+    /// ~45% more random than the NBA's ±12-13 points around expectation (balance audit, Nov 9).
+    /// </summary>
+    public double ScoreEffectPerPoint { get; set; } = 0.010;
     /// <summary>Per-game, per-player random form; scaled by (21 - Consistency).</summary>
     public double FormSd { get; set; } = 0.035;
 
@@ -40,6 +46,9 @@ public sealed class EngineConfig
     public double BlockRateRim { get; set; } = 0.30;
     public double BlockRateMid { get; set; } = 0.07;
     public double BlockSkillBeta { get; set; } = 0.012;
+
+    /// <summary>How strongly shots go to the players best at creating them (exponent on usage). Higher = stars take more shots.</summary>
+    public double UsageSharpness { get; set; } = 2.2; // 1.6 left the best player near 24 ppg; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
     public double[] AssistedShareByZone { get; set; } = { 0.52, 0.42, 0.45, 0.88, 0.74 };

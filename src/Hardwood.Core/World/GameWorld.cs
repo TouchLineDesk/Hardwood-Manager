@@ -443,25 +443,42 @@ public sealed class GameWorld
         foreach (var team in comp.Clubs)
         {
             var club = comp.Profile.Clubs.FirstOrDefault(c => c.Abbr == team.Abbreviation) ?? new ClubSeed(team.City, team.Name, team.Abbreviation);
+            var locals = comp.Profile.LocalNationalities.Length > 0 ? comp.Profile.LocalNationalities : new[] { club.Country ?? "" };
+            var departed = new List<(int ca, bool import)>();
             foreach (var p in team.Roster.ToList())
             {
                 double mpg = Mpg(p.Id);
+                int caBefore = p.CurrentAbility;
                 dev.Develop(p, date, mpg);
                 bool expiring = p.Contract == null || --p.Contract.Years <= 0;
                 if (dev.ShouldRetire(p, date, mpg) || (expiring && p.Age(date) >= 33 && _rng.Chance(0.5)))
                 {
                     team.Roster.Remove(p); p.TeamId = null; p.Contract = null; Nabl.Retired.Add(p);
+                    departed.Add((caBefore, !locals.Contains(p.Nationality)));
                     continue;
                 }
                 if (expiring)
                     p.Contract = new Contract { Years = _rng.Next(1, 4), Salary = Salary(p, comp.Profile, date), StartSeason = newYear };
             }
+            // Replace each departure with a player of similar level, as a club signing a replacement would: imports for
+            // imports (within the foreign limit), sometimes a younger prospect a little below that level. (Refilling with
+            // weak teenagers drained every overseas league by 5-10 CA a decade; balance audit, Nov 9.)
+            foreach (var (ca, import) in departed.OrderByDescending(d => d.ca))
+            {
+                if (team.Roster.Count >= RosterSize) break;
+                bool prospect = _rng.Chance(0.35);
+                int age = prospect ? _rng.Next(18, 22) : _rng.Next(23, 31);
+                int target = (int)Math.Round(ca - (prospect ? 8 : 2) + _rng.NextGaussian(0, 5));
+                bool asImport = import && Imports(team, comp.Profile, club.Country) < comp.Profile.ForeignLimit;
+                var signing = NewPlayer(team, comp.Profile, club, team.Roster.Count, 0, date, gen, _rng, foreignSlot: asImport, ageOverride: age, caOverride: target);
+                signing.Contract!.StartSeason = newYear;
+                team.Roster.Add(signing);
+            }
             double quality = (Strength(team) - 110) * 0.5;
             while (team.Roster.Count < RosterSize)
             {
-                int slot = team.Roster.Count;
                 int age = _rng.Next(18, 22);
-                var young = NewPlayer(team, comp.Profile, club, Math.Max(slot, 9), quality - 10, date, gen, _rng, foreignSlot: false, ageOverride: age);
+                var young = NewPlayer(team, comp.Profile, club, Math.Max(team.Roster.Count, 9), quality - 10, date, gen, _rng, foreignSlot: false, ageOverride: age);
                 young.Contract!.StartSeason = newYear;
                 team.Roster.Add(young);
             }
