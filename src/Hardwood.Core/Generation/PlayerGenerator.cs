@@ -23,7 +23,13 @@ public sealed class PlayerGenerator
     /// <summary>Mean visible attribute implied by a CA value. CA 100 → ~11, CA 180 → ~16.6.</summary>
     public static double MeanAttributeFor(int ca) => 4.0 + ca / 200.0 * 14.0;
 
-    public Player Generate(Position pos, int currentAbility, int age, DateOnly today)
+    public Player Generate(Position pos, int currentAbility, int age, DateOnly today) => Generate(pos, currentAbility, age, today, null, null);
+
+    /// <summary>
+    /// Generate a player of a given heritage (and optionally a fixed nationality), e.g. a local player for a Spanish club.
+    /// Without a heritage, one is drawn with the North American intake weights.
+    /// </summary>
+    public Player Generate(Position pos, int currentAbility, int age, DateOnly today, Heritage? heritageOverride, string? nationality)
     {
         int ca = Math.Clamp(currentAbility, 20, 200);
         int pa = PotentialFor(ca, age);
@@ -34,14 +40,14 @@ public sealed class PlayerGenerator
         // Heritage draws come from a per-player stream so the main sequence (and every rating,
         // result and trade that follows from a seed) is the same as before heritage existed.
         var side = Heritages.StreamFor(_rng.Seed, id);
-        var heritage = Heritages.Pick(side);
+        var heritage = heritageOverride ?? Heritages.Pick(side);
 
         var player = new Player
         {
             Id = id,
             FirstName = _rng.Pick(heritage.FirstNames),
             LastName = _rng.Pick(heritage.LastNames),
-            Nationality = side.Pick(heritage.Nationalities),
+            Nationality = nationality ?? side.Pick(heritage.Nationalities),
             Ethnicity = Heritages.PickEthnicity(heritage, side),
             BirthDate = birth,
             HeightCm = height,

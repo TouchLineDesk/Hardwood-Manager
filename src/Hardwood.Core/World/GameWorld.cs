@@ -1,0 +1,480 @@
+using Hardwood.Core.Engine;
+using Hardwood.Core.Generation;
+using Hardwood.Core.Model;
+using Hardwood.Core.Season;
+
+namespace Hardwood.Core.World;
+
+/// <summary>A competition outside the NABL, with its clubs (if it owns any), simulation depth, current season and history.</summary>
+public sealed class WorldCompetition
+{
+    public required CompetitionProfile Profile { get; init; }
+    /// <summary>Clubs this competition owns (domestic leagues and the guest pool). A continental competition owns none.</summary>
+    public List<Team> Clubs { get; } = new();
+    /// <summary>Run every game through the full match engine (decision #40); otherwise games get a quick result.</summary>
+    public bool FullSim { get; set; }
+    public CompetitionSeason Season { get; set; } = new();
+    public List<ChampionRecord> History { get; } = new();
+
+    public string Key => Profile.Key;
+    public bool Plays => Profile.Kind != CompetitionKind.GuestPool;
+    public override string ToString() => Profile.Name;
+}
+
+/// <summary>
+/// Everything in the world beyond the NABL (decision #38–40): five competitions with their own clubs, players,
+/// rules, money and calendar. The NABL itself is still run by <see cref="GameSession"/>; the world plays its games
+/// on the same dates as the session advances, through the full engine or a quick result model.
+/// </summary>
+public sealed class GameWorld
+{
+    /// <summary>Overseas team ids start here (the NABL uses 1–30).</summary>
+    public const int FirstTeamId = 1001;
+    /// <summary>Roster size for every club outside the NABL.</summary>
+    public const int RosterSize = 13;
+
+    private readonly Rng _rng;
+    private readonly Dictionary<int, Team> _teams = new();
+
+    public League Nabl { get; }
+    public List<WorldCompetition> Competitions { get; } = new();
+    /// <summary>Headlines (champions, Final Four) since the session last read them.</summary>
+    public List<(string Title, string Body)> News { get; } = new();
+
+    public GameWorld(League nabl, ulong rngSeed)
+    {
+        Nabl = nabl;
+        _rng = new Rng(rngSeed);
+    }
+
+    /// <summary>A seed to restore the world's random stream from (saved with the game).</summary>
+    public ulong NextRngSeed() => _rng.NextULong();
+
+    public WorldCompetition this[string key] => Competitions.First(c => c.Key == key);
+    public IEnumerable<WorldCompetition> Playing => Competitions.Where(c => c.Plays);
+    public IEnumerable<Team> Clubs => Competitions.SelectMany(c => c.Clubs);
+    public IEnumerable<Player> Players => Clubs.SelectMany(t => t.Roster);
+    public Team? TeamById(int id) => _teams.GetValueOrDefault(id);
+    /// <summary>The domestic league (or guest pool) a club belongs to.</summary>
+    public WorldCompetition HomeOf(Team t) => Competitions.First(c => c.Clubs.Contains(t));
+
+    public void Index()
+    {
+        _teams.Clear();
+        foreach (var t in Clubs) _teams[t.Id] = t;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Generation
+
+    /// <summary>
+    /// Build the world around an NABL league: clubs, players (ids continue after the NABL's), and the first season's
+    /// fixtures. Uses its own random stream, so the NABL built from a seed is unchanged.
+    /// </summary>
+    public static GameWorld Generate(League nabl, ulong seed, IEnumerable<string> fullSim, DateOnly today)
+    {
+        var world = new GameWorld(nabl, seed ^ 0x574F524C44UL);
+        var rng = world._rng;
+        var gen = new PlayerGenerator(new Rng(seed ^ 0x504C415945525321UL), nabl.NextPlayerId);
+        var full = new HashSet<string>(fullSim);
+        int block = 0;
+        foreach (var profile in Hardwood.Core.World.Competitions.All)
+        {
+            var comp = new WorldCompetition { Profile = profile, FullSim = full.Contains(profile.Key) };
+            world.Competitions.Add(comp);
+            if (profile.Clubs.Length == 0) continue;
+            int id = FirstTeamId + 1000 * block++;
+            foreach (var seedClub in profile.Clubs)
+            {
+                var team = NewClub(id++, seedClub, profile, rng);
+                double quality = rng.NextGaussian(0, 7);
+                for (int s = 0; s < RosterSize; s++) team.Roster.Add(NewPlayer(team, profile, seedClub, s, quality, today, gen, rng, foreignSlot: false));
+                ApplyForeignMix(team, profile, seedClub, quality, today, gen, rng);
+                comp.Clubs.Add(team);
+            }
+        }
+        nabl.NextPlayerId = gen.NextId;
+        world.Index();
+        world.StartSeason(nabl.Season);
+        return world;
+    }
+
+    private static readonly int[] SlotCa = { 138, 130, 124, 118, 113, 108, 103, 98, 93, 88, 83, 78, 72 };
+
+    private static Team NewClub(int id, ClubSeed c, CompetitionProfile profile, Rng rng)
+    {
+        var (primary, secondary) = Colours(rng);
+        return new Team
+        {
+            Id = id, City = c.City, Name = c.Name, Abbreviation = c.Abbr, Conference = Conference.East, Division = profile.Short,
+            ArenaCapacity = rng.Next(5000, 16000), PrimaryColor = primary, SecondaryColor = secondary, LogoStyle = rng.Next(0, 5),
+            // European and Asian basketball is slower than the NABL: ~72 possessions in 40 minutes.
+            Tactic = new Tactic { Pace = Math.Round(rng.NextGaussian(86, 3), 1) },
+        };
+    }
+
+    /// <summary>Local players of a club's country; imports get a heritage drawn from the worldwide mix (mostly American).</summary>
+    private static Player NewPlayer(Team team, CompetitionProfile profile, ClubSeed club, int slot, double quality, DateOnly today,
+                                    PlayerGenerator gen, Rng rng, bool foreignSlot, int? ageOverride = null, int? caOverride = null)
+    {
+        var pos = (Position)(slot % 5);
+        int ca = caOverride ?? (int)Math.Round(SlotCa[Math.Min(slot, SlotCa.Length - 1)] + profile.StrengthOffset + quality + rng.NextGaussian(0, 5));
+        ca = Math.Clamp(ca, 45, 185);
+        int age = ageOverride ?? (int)Math.Round(Math.Clamp(rng.NextGaussian(slot < 9 ? 27 : 23.5, 3.5), 18, 36));
+        string country = club.Country ?? profile.Country;
+        Player p;
+        if (foreignSlot)
+        {
+            Heritage h;
+            do h = Heritages.Pick(rng); while (LocalHeritage(country) is { } local && h.Key == local.Key);
+            p = gen.Generate(pos, ca, age, today, h, null);
+        }
+        else
+        {
+            var local = LocalHeritage(country) ?? Heritages.All[0];
+            string nat = country == "Australia" && rng.Chance(0.12) ? "New Zealand" : country;
+            p = gen.Generate(pos, ca, age, today, local, nat);
+        }
+        p.TeamId = team.Id;
+        p.Contract = new Contract { Years = rng.Next(1, 5), Salary = Salary(p, profile, today), StartSeason = today.Year };
+        return p;
+    }
+
+    /// <summary>Swap some local players for imports, up to the league's limit (imports take the top slots in China and Australia).</summary>
+    private static void ApplyForeignMix(Team team, CompetitionProfile profile, ClubSeed club, double quality, DateOnly today, PlayerGenerator gen, Rng rng)
+    {
+        int imports = profile.ImportsAreStars ? profile.ForeignLimit : Math.Max(0, profile.ForeignLimit - rng.Next(0, 2));
+        var slots = profile.ImportsAreStars
+            ? Enumerable.Range(0, imports).ToList()
+            : Enumerable.Range(0, 10).OrderBy(_ => rng.NextDouble()).Take(imports).ToList();
+        foreach (var s in slots)
+        {
+            var old = team.Roster[s];
+            // Stars imported into weaker leagues are good players by that league's standard.
+            int? ca = profile.ImportsAreStars ? old.CurrentAbility + 12 : null;
+            team.Roster[s] = NewPlayer(team, profile, club, s, quality, today, gen, rng, foreignSlot: true, caOverride: ca);
+        }
+    }
+
+    private static Heritage? LocalHeritage(string country) => country switch
+    {
+        "Spain" => Heritages.All.First(h => h.Key == "spain"),
+        "Turkey" or "Israel" => Heritages.All.First(h => h.Key == "turkey"),
+        "Australia" => Heritages.All.First(h => h.Key == "australia"),
+        "China" => Heritages.All.First(h => h.Key == "china"),
+        "Greece" => Heritages.All.First(h => h.Key == "greece"),
+        "Serbia" => Heritages.All.First(h => h.Key == "balkan"),
+        "Italy" => Heritages.All.First(h => h.Key == "italy"),
+        "France" => Heritages.All.First(h => h.Key == "france"),
+        "Germany" => Heritages.All.First(h => h.Key == "germany"),
+        "Lithuania" => Heritages.All.First(h => h.Key == "easterneurope"),
+        _ => null,
+    };
+
+    public static long Salary(Player p, CompetitionProfile profile, DateOnly on)
+    {
+        var nabl = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), Finance.HardCapDefault);
+        return Math.Max(60_000, (long)Math.Round(nabl * profile.SalaryScale / 10_000) * 10_000);
+    }
+
+    /// <summary>Non-local players at a club (the domestic foreign-player limit counts these).</summary>
+    public static int Imports(Team t, CompetitionProfile home, string? clubCountry = null)
+    {
+        var locals = home.LocalNationalities.Length > 0 ? home.LocalNationalities : new[] { clubCountry ?? "" };
+        return t.Roster.Count(p => !locals.Contains(p.Nationality));
+    }
+
+    private static (string, string) Colours(Rng rng)
+    {
+        double hue = rng.NextDouble() * 360, sat = 0.55 + rng.NextDouble() * 0.35, val = 0.45 + rng.NextDouble() * 0.35;
+        string primary = Hsv(hue, sat, val);
+        string secondary = rng.Next(0, 3) switch
+        {
+            0 => "#F4F4F4",
+            1 => "#E8B530",
+            _ => Hsv((hue + 150 + rng.NextDouble() * 60) % 360, 0.6, 0.85),
+        };
+        return (primary, secondary);
+    }
+
+    private static string Hsv(double h, double s, double v)
+    {
+        double c = v * s, x = c * (1 - Math.Abs(h / 60 % 2 - 1)), m = v - c;
+        var (r, g, b) = h switch { < 60 => (c, x, 0.0), < 120 => (x, c, 0.0), < 180 => (0.0, c, x), < 240 => (0.0, x, c), < 300 => (x, 0.0, c), _ => (c, 0.0, x) };
+        return $"#{(int)((r + m) * 255):X2}{(int)((g + m) * 255):X2}{(int)((b + m) * 255):X2}";
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Seasons
+
+    /// <summary>Set up every competition's season starting in <paramref name="year"/>: participants and regular-season fixtures.</summary>
+    public void StartSeason(int year)
+    {
+        foreach (var comp in Playing)
+        {
+            var participants = comp.Profile.Kind == CompetitionKind.Continental ? ContinentalEntrants(comp) : comp.Clubs.Select(t => t.Id).ToList();
+            comp.Season = new CompetitionSeason { Year = year, Participants = participants };
+            comp.Season.Fixtures = RoundRobin(participants, comp.Profile, year);
+        }
+    }
+
+    /// <summary>Clubs entering a continental competition: the top of each domestic league's last table (or the strongest clubs), plus the guest pool.</summary>
+    private List<int> ContinentalEntrants(WorldCompetition comp)
+    {
+        var ids = new List<int>();
+        foreach (var (key, n) in comp.Profile.Entrants)
+        {
+            var source = this[key];
+            if (source.Profile.Kind == CompetitionKind.GuestPool) { ids.AddRange(source.Clubs.Take(n).Select(t => t.Id)); continue; }
+            var table = source.Season.Fixtures.Any(f => f.Played) ? source.Season.Table().Select(r => r.TeamId).ToList()
+                : source.Clubs.OrderByDescending(Strength).Select(t => t.Id).ToList();
+            ids.AddRange(table.Take(n));
+        }
+        return ids;
+    }
+
+    private List<Fixture> RoundRobin(List<int> ids, CompetitionProfile p, int year)
+    {
+        var teams = ids.ToList();
+        if (teams.Count % 2 == 1) teams.Add(-1); // bye
+        int n = teams.Count;
+        var rounds = new List<List<(int h, int a)>>();
+        for (int pass = 0; pass < p.RoundRobins; pass++)
+        {
+            var rot = teams.ToList();
+            for (int r = 0; r < n - 1; r++)
+            {
+                var round = new List<(int, int)>();
+                for (int i = 0; i < n / 2; i++)
+                {
+                    int a = rot[i], b = rot[n - 1 - i];
+                    if (a < 0 || b < 0) continue;
+                    bool flip = (r + i + pass) % 2 == 1;
+                    round.Add(flip ? (b, a) : (a, b));
+                }
+                rounds.Add(round);
+                rot.Insert(1, rot[^1]); rot.RemoveAt(rot.Count - 1);
+            }
+        }
+
+        var fixtures = new List<Fixture>();
+        var day = new DateOnly(year, p.Start.Month, p.Start.Day);
+        int idx = 0;
+        foreach (var round in rounds)
+        {
+            while (!p.RoundDays.Contains(day.DayOfWeek)) day = day.AddDays(1);
+            foreach (var (h, a) in round)
+                fixtures.Add(new Fixture { Index = idx++, Date = p.TwoDayRounds && _rng.Chance(0.5) ? day.AddDays(1) : day, HomeId = h, AwayId = a });
+            day = day.AddDays(1);
+        }
+        return fixtures;
+    }
+
+    /// <summary>Play every game dated on or before <paramref name="date"/> in every competition, scheduling playoffs as they come.</summary>
+    public void PlayThrough(DateOnly date, GameSimulator sim)
+    {
+        foreach (var comp in Playing) PlayCompetition(comp, date, sim);
+    }
+
+    /// <summary>Play out every competition's season to the end (used before the yearly rollover).</summary>
+    public void FinishSeasons(GameSimulator sim) => PlayThrough(DateOnly.MaxValue, sim);
+
+    private void PlayCompetition(WorldCompetition comp, DateOnly until, GameSimulator sim)
+    {
+        var s = comp.Season;
+        while (!s.IsComplete)
+        {
+            var next = s.Fixtures.Where(f => !f.Played).OrderBy(f => f.Date).FirstOrDefault();
+            if (next == null || next.Date > until)
+            {
+                if (!Advance(comp)) return;      // nothing new to schedule
+                continue;
+            }
+            var day = next.Date;
+            foreach (var f in s.Fixtures.Where(f => !f.Played && f.Date == day).ToList()) Play(comp, f, sim);
+        }
+    }
+
+    private void Play(WorldCompetition comp, Fixture f, GameSimulator sim)
+    {
+        var home = _teams[f.HomeId]; var away = _teams[f.AwayId];
+        var stats = comp.Season.Stats;
+        if (comp.FullSim)
+        {
+            var r = sim.Simulate(home, away, comp.Profile.Rules, _rng.NextULong(), false, f.Date);
+            f.HomePts = r.Home.Points; f.AwayPts = r.Away.Points;
+            foreach (var box in new[] { r.Home, r.Away })
+            foreach (var l in box.Lines.Where(l => l.Seconds > 0))
+            {
+                var st = stats.TryGetValue(l.Player.Id, out var x) ? x : stats[l.Player.Id] = new StatLine();
+                st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
+                st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
+            }
+        }
+        else
+        {
+            var (hp, ap) = QuickSim.Play(home, away, f.Date, _rng, stats);
+            f.HomePts = hp; f.AwayPts = ap;
+        }
+        if (f.SeriesId is { } sid)
+        {
+            var series = comp.Season.Series.First(x => x.Id == sid);
+            if (f.WinnerId == series.HighId) series.HighWins++; else series.LowWins++;
+        }
+    }
+
+    /// <summary>Move the competition forward when nothing is left to play: seed the playoffs, add the next game of each series, or crown a champion.</summary>
+    private bool Advance(WorldCompetition comp)
+    {
+        var s = comp.Season;
+        var p = comp.Profile;
+        if (s.Fixtures.Any(f => !f.Played)) return false;
+
+        if (s.Stage == CompetitionSeason.RegularSeason)
+        {
+            if (p.Playoffs.Length == 0) { Crown(comp, s.Table()[0].TeamId, s.Table()[1].TeamId); return true; }
+            var seeds = s.Table().Take(p.Playoffs[0].Teams).Select(r => r.TeamId).ToList();
+            var order = BracketOrder(seeds.Count);
+            for (int i = 0; i < order.Count; i += 2)
+                s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = p.Playoffs[0].Name, BestOf = p.Playoffs[0].BestOf, HighId = seeds[order[i]], LowId = seeds[order[i + 1]] });
+            s.Stage = p.Playoffs[0].Name;
+            ScheduleNextGames(comp);
+            return true;
+        }
+
+        var active = s.Series.Where(x => x.Round == s.Stage).ToList();
+        if (active.Any(x => !x.Complete)) { ScheduleNextGames(comp); return true; }
+
+        int ri = active[0].RoundIndex;
+        if (ri == p.Playoffs.Length - 1)
+        {
+            var final = active[0];
+            Crown(comp, final.WinnerId!.Value, final.LoserId!.Value);
+            return true;
+        }
+        var nextRound = p.Playoffs[ri + 1];
+        // Bracket: winners of adjacent series meet; the better regular-season seed is "high".
+        var table = s.Table().Select(r => r.TeamId).ToList();
+        for (int i = 0; i < active.Count; i += 2)
+        {
+            int a = active[i].WinnerId!.Value, b = active[i + 1].WinnerId!.Value;
+            bool aHigh = table.IndexOf(a) < table.IndexOf(b);
+            s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = ri + 1, Round = nextRound.Name, BestOf = nextRound.BestOf, HighId = aHigh ? a : b, LowId = aHigh ? b : a });
+        }
+        s.Stage = nextRound.Name;
+        if (p.FinalFour && ri + 1 == p.Playoffs.Length - 2)
+            News.Add(($"{p.Name} Final Four set", string.Join(", ", s.Series.Where(x => x.RoundIndex == ri + 1).SelectMany(x => new[] { x.HighId, x.LowId }).Select(id => _teams[id].FullName)) + " will meet for the title."));
+        ScheduleNextGames(comp);
+        return true;
+    }
+
+    /// <summary>Add the next game for every series in the current round that needs one.</summary>
+    private void ScheduleNextGames(WorldCompetition comp)
+    {
+        var s = comp.Season;
+        var p = comp.Profile;
+        var lastPlayed = s.Fixtures.Where(f => f.Played).Select(f => f.Date).DefaultIfEmpty(new DateOnly(s.Year, p.Start.Month, p.Start.Day)).Max();
+        foreach (var series in s.Series.Where(x => x.Round == s.Stage && !x.Complete))
+        {
+            if (s.Fixtures.Any(f => f.SeriesId == series.Id && !f.Played)) continue;
+            int gameNo = series.HighWins + series.LowWins + 1;
+            var prev = s.Fixtures.Where(f => f.SeriesId == series.Id).Select(f => f.Date).DefaultIfEmpty(lastPlayed).Max();
+            DateOnly date;
+            if (p.FinalFour && series.BestOf == 1)
+            {
+                // Final Four weekend in late May: semi-finals on Friday, the final on Sunday.
+                var friday = new DateOnly(s.Year + 1, 5, 20);
+                while (friday.DayOfWeek != DayOfWeek.Friday) friday = friday.AddDays(1);
+                date = series.RoundIndex == p.Playoffs.Length - 1 ? friday.AddDays(2) : friday;
+                if (date <= prev) date = prev.AddDays(2);
+            }
+            else
+            {
+                date = prev.AddDays(1);
+                while (!p.PlayoffDays.Contains(date.DayOfWeek)) date = date.AddDays(1);
+            }
+            bool highHome = series.BestOf switch { 3 => gameNo != 2, 5 => gameNo is 1 or 2 or 5, 7 => gameNo is 1 or 2 or 5 or 7, _ => true };
+            s.Fixtures.Add(new Fixture
+            {
+                Index = s.Fixtures.Count, Date = date, Stage = series.Round, SeriesId = series.Id,
+                HomeId = highHome ? series.HighId : series.LowId, AwayId = highHome ? series.LowId : series.HighId,
+            });
+        }
+    }
+
+    private void Crown(WorldCompetition comp, int champion, int runnerUp)
+    {
+        var s = comp.Season;
+        s.ChampionId = champion; s.RunnerUpId = runnerUp; s.Stage = CompetitionSeason.Complete;
+        var c = _teams[champion]; var r = _teams[runnerUp];
+        comp.History.Add(new ChampionRecord(s.Year, champion, runnerUp, c.FullName, r.FullName));
+        News.Add(($"{c.FullName} win the {comp.Profile.Name}", $"{c.FullName} beat {r.FullName} to win the {s.Year}-{(s.Year + 1) % 100:00} {comp.Profile.Name}."));
+    }
+
+    /// <summary>Seed order for a bracket of n (power of two) so that 1 and 2 can only meet in the final.</summary>
+    private static List<int> BracketOrder(int n)
+    {
+        var order = new List<int> { 0 };
+        while (order.Count < n)
+        {
+            int m = order.Count * 2;
+            order = order.SelectMany(x => new[] { x, m - 1 - x }).ToList();
+        }
+        return order;
+    }
+
+    /// <summary>A club's strength: the weighted ability of its best eight players.</summary>
+    public static double Strength(Team t) => QuickSim.Strength(t);
+
+    // ------------------------------------------------------------------------------------------
+    // Yearly turnover
+
+    /// <summary>
+    /// Between seasons: finish what's left, then age and develop every player outside the NABL, retire the old,
+    /// renew or end contracts, refill rosters with young local players (within the foreign limit), and start the next season.
+    /// </summary>
+    public void Rollover(int newYear, GameSimulator sim)
+    {
+        FinishSeasons(sim);
+        var date = new DateOnly(newYear, 7, 1);
+        var dev = new DevelopmentEngine(_rng);
+        var gen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
+        foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0))
+        foreach (var team in comp.Clubs)
+        {
+            var club = comp.Profile.Clubs.FirstOrDefault(c => c.Abbr == team.Abbreviation) ?? new ClubSeed(team.City, team.Name, team.Abbreviation);
+            foreach (var p in team.Roster.ToList())
+            {
+                double mpg = Mpg(p.Id);
+                dev.Develop(p, date, mpg);
+                bool expiring = p.Contract == null || --p.Contract.Years <= 0;
+                if (dev.ShouldRetire(p, date, mpg) || (expiring && p.Age(date) >= 33 && _rng.Chance(0.5)))
+                {
+                    team.Roster.Remove(p); p.TeamId = null; p.Contract = null; Nabl.Retired.Add(p);
+                    continue;
+                }
+                if (expiring)
+                    p.Contract = new Contract { Years = _rng.Next(1, 4), Salary = Salary(p, comp.Profile, date), StartSeason = newYear };
+            }
+            double quality = (Strength(team) - 110) * 0.5;
+            while (team.Roster.Count < RosterSize)
+            {
+                int slot = team.Roster.Count;
+                int age = _rng.Next(18, 22);
+                var young = NewPlayer(team, comp.Profile, club, Math.Max(slot, 9), quality - 10, date, gen, _rng, foreignSlot: false, ageOverride: age);
+                young.Contract!.StartSeason = newYear;
+                team.Roster.Add(young);
+            }
+        }
+        Nabl.NextPlayerId = gen.NextId;
+        StartSeason(newYear);
+    }
+
+    private double Mpg(int playerId)
+    {
+        int g = 0; double min = 0;
+        foreach (var c in Playing)
+            if (c.Season.Stats.TryGetValue(playerId, out var st)) { g += st.G; min += st.Min; }
+        return g == 0 ? 0 : min / g;
+    }
+}

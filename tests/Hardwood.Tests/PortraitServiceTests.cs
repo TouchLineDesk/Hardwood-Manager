@@ -11,6 +11,7 @@ using Xunit.Abstractions;
 
 namespace Hardwood.Tests;
 
+[Collection(SharedUiState.Name)]
 public class PortraitServiceTests
 {
     private readonly ITestOutputHelper _out;

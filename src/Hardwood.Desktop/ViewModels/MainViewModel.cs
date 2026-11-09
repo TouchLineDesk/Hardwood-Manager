@@ -81,6 +81,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Staff & Training", () => new StaffViewModel(this)),
             ("Schedule & Results", () => new ScheduleViewModel(this)),
             ("Standings", () => new StandingsViewModel(this)),
+            ("World", () => new WorldViewModel(this)),
             ("League Leaders", () => new LeadersViewModel(this)),
             ("Transactions", () => new TransactionsViewModel(this)),
             ("Offseason", () => new OffseasonViewModel(this)),

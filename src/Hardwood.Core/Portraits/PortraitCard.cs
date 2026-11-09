@@ -26,10 +26,10 @@ public sealed record PortraitCard(int PlayerId, int CurrentAbility, int Potentia
 
     /// <summary>
     /// Cards for every player who shows a portrait: rostered players (with their team's crest),
-    /// free agents and draft prospects (no crest). Retired players keep their last card.
+    /// free agents and draft prospects (no crest), and players of clubs outside the NABL (with their club's crest). Retired players keep their last card.
     /// Players without a face are skipped (they keep the procedural avatar).
     /// </summary>
-    public static List<PortraitCard> For(League league, IEnumerable<Player>? prospects)
+    public static List<PortraitCard> For(League league, IEnumerable<Player>? prospects, IEnumerable<Team>? worldClubs = null)
     {
         var cards = new List<PortraitCard>();
         foreach (var t in league.Teams)
@@ -40,6 +40,13 @@ public sealed record PortraitCard(int PlayerId, int CurrentAbility, int Potentia
         }
         foreach (var p in league.FreeAgents.Concat(prospects ?? Enumerable.Empty<Player>()))
             if (p.FaceFile != null) cards.Add(new(p.Id, p.CurrentAbility, p.PotentialAbility, null, p.Draft, p.FaceFile));
+        // Clubs outside the NABL come last, so your own league's cards are drawn first.
+        foreach (var t in worldClubs ?? Enumerable.Empty<Team>())
+        {
+            var crest = CrestSpec.Of(t);
+            foreach (var p in t.Roster)
+                if (p.FaceFile != null) cards.Add(new(p.Id, p.CurrentAbility, p.PotentialAbility, crest, p.Draft, p.FaceFile));
+        }
         return cards;
     }
 }

@@ -17,6 +17,7 @@ public class TestAppBuilder
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
 
+[Collection(SharedUiState.Name)]
 public class UiSmokeTests
 {
     [AvaloniaFact]

@@ -339,7 +339,8 @@ public sealed class GameSimulator
             off.Possessions++;
 
             double pace = (off.Team.Tactic.Pace + def.Team.Tactic.Pace) / 2.0;
-            double meanSeconds = _rules.GameMinutes * 60.0 / (2.0 * pace);
+            // Pace is possessions per 48 minutes (Tactic.Pace), so a 40-minute FIBA game has 5/6 as many possessions.
+            double meanSeconds = 48 * 60.0 / (2.0 * pace);
             double seconds = _transition
                 ? Math.Clamp(_rng.NextGaussian(_cfg.TransitionSeconds, 2.0), 2, 12)
                 : Math.Clamp(_rng.NextGaussian(meanSeconds, _cfg.SecondsPerPossessionSd), 3, _rules.ShotClockSeconds);

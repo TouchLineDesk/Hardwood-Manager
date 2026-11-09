@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.WorldView"
+             x:DataType="vm:WorldViewModel">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="World" Classes="h1"/>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+      <ComboBox ItemsSource="{Binding Competitions}" SelectedItem="{Binding Selected}" MinWidth="240">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompetitionChoice"><TextBlock Text="{Binding Name}"/></DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <StackPanel VerticalAlignment="Center">
+        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold"/>
+        <TextBlock Text="{Binding Note}" Classes="muted" FontSize="11.5"/>
+      </StackPanel>
+    </StackPanel>
+    <Grid ColumnDefinitions="3*,2*" RowDefinitions="*,Auto">
+      <DockPanel Margin="0,0,12,0">
+        <TextBlock DockPanel.Dock="Top" Text="Table" Classes="h2" Margin="0,0,0,6"/>
+        <DataGrid ItemsSource="{Binding Table}" CanUserSortColumns="False" RowHeight="26">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
+            <DataGridTemplateColumn Header="" Width="32">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLogo Team="{Binding Team}" Width="20" Height="20" ShowText="False" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Club" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="48"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="48"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="64"/>
+            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="66"/>
+            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="104"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+      <ScrollViewer Grid.Column="1">
+        <StackPanel Spacing="10">
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Playoffs" Classes="h2" Margin="0"/>
+              <TextBlock Text="{Binding Playoffs}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+            </StackPanel>
+          </Border>
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Latest results" Classes="h2" Margin="0"/>
+              <TextBlock Text="{Binding Results}" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel>
+          </Border>
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Coming up" Classes="h2" Margin="0"/>
+              <TextBlock Text="{Binding Upcoming}" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel>
+          </Border>
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Champions" Classes="h2" Margin="0"/>
+              <TextBlock Text="{Binding Champions}" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+      <DockPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,0">
+        <TextBlock DockPanel.Dock="Top" Text="Scoring leaders" Classes="h2" Margin="0,0,0,6"/>
+        <DataGrid ItemsSource="{Binding Leaders}" CanUserSortColumns="False" RowHeight="24" MaxHeight="290">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
+            <DataGridTextColumn Header="Player" Binding="{Binding Player}" Width="*"/>
+            <DataGridTextColumn Header="Club" Binding="{Binding Team}" Width="72"/>
+            <DataGridTextColumn Header="G" Binding="{Binding G}" Width="52"/>
+            <DataGridTextColumn Header="PPG" Binding="{Binding Ppg}" Width="68"/>
+            <DataGridTextColumn Header="RPG" Binding="{Binding Rpg}" Width="68"/>
+            <DataGridTextColumn Header="APG" Binding="{Binding Apg}" Width="68"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

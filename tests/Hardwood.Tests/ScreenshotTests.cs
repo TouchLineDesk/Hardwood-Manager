@@ -10,6 +10,7 @@ using Xunit;
 namespace Hardwood.Tests;
 
 /// <summary>Writes PNGs of each screen when HW_SCREENSHOT_DIR is set; otherwise skipped. Used for visual review.</summary>
+[Collection(SharedUiState.Name)]
 public class ScreenshotTests
 {
     [AvaloniaFact]
