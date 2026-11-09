@@ -74,9 +74,10 @@ public class CardRendererTests
             DraftRecord? draft = c.GetProperty("draft").ValueKind == JsonValueKind.Null ? null :
                 new DraftRecord(c.GetProperty("draft")[0].GetInt32(), c.GetProperty("draft")[1].GetInt32(), c.GetProperty("draft")[2].GetInt32());
             var card = new PortraitCard(c.GetProperty("id").GetInt32(), c.GetProperty("ca").GetInt32(), c.GetProperty("pa").GetInt32(), crest, draft, "proof");
+            using var own = c.TryGetProperty("face", out var fp) ? SKBitmap.Decode(fp.GetString()) : null;
             foreach (var size in new[] { 256, 512 })
             {
-                using var img = CardRenderer.Render(card, face, size);
+                using var img = CardRenderer.Render(card, own ?? face, size);
                 using var data = img.Encode(SKEncodedImageFormat.Png, 100);
                 File.WriteAllBytes(Path.Combine(dir, "cs", size == 512 ? $"{card.PlayerId}-512.png" : $"{card.PlayerId}.png"), data.ToArray());
             }
