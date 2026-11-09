@@ -39,6 +39,19 @@ public sealed class Avatar : Control
     }
     private static int Pick(int id, int salt, int n) => (int)(Hash(id, salt) % (uint)n);
 
+    // Redraw when the game finishes drawing new portraits.
+    private void OnPortraitsChanged() => InvalidateVisual();
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Portraits.Changed += OnPortraitsChanged;
+    }
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        Portraits.Changed -= OnPortraitsChanged;
+        base.OnDetachedFromVisualTree(e);
+    }
+
     public override void Render(DrawingContext ctx)
     {
         var p = Player;

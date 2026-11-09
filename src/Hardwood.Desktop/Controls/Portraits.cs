@@ -7,13 +7,17 @@ namespace Hardwood.Desktop.Controls;
 /// <c>&lt;save folder&gt;\&lt;save name&gt;-portraits\&lt;playerId&gt;.png</c>, e.g.
 /// <c>Documents\Hardwood Manager\career-portraits\123.png</c>.
 /// When a file exists the app shows it; otherwise the procedural avatar is drawn.
-/// The cache is cleared on every page change, so new or rebuilt portraits appear without a restart.
+/// The game draws these itself (see <see cref="Hardwood.Desktop.Portraits.PortraitService"/>); as each batch is
+/// written, <see cref="Invalidate"/> drops those players from the cache and on-screen avatars and cards redraw.
 /// </summary>
 public static class Portraits
 {
     private static readonly Dictionary<int, Bitmap?> Cache = new();
 
     public static string? Folder { get; private set; }
+
+    /// <summary>Raised (on the UI thread) when portraits on disk changed; avatars and cards redraw.</summary>
+    public static event Action? Changed;
 
     /// <summary>Folder used for a save path (created on demand by the card pipeline, not by the app).</summary>
     public static string FolderFor(string savePath) =>
@@ -30,6 +34,18 @@ public static class Portraits
     {
         foreach (var bmp in Cache.Values) bmp?.Dispose();
         Cache.Clear();
+    }
+
+    /// <summary>Drop these players' cached images (their files were just redrawn) and tell the UI to redraw.</summary>
+    public static void Invalidate(IEnumerable<int> playerIds)
+    {
+        bool any = false;
+        foreach (var id in playerIds)
+        {
+            any = true;
+            if (Cache.Remove(id, out var bmp)) bmp?.Dispose();
+        }
+        if (any) Changed?.Invoke();
     }
 
     public static Bitmap? Get(int playerId)

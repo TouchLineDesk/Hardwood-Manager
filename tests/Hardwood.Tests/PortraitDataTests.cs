@@ -35,10 +35,25 @@ public class PortraitDataTests
     [Fact]
     public void Every_ethnicity_maps_to_a_face_pack_folder()
     {
-        string[] folders = { "African", "Asian", "Caucasian", "Central European", "EECA", "Italmed", "MENA", "MESA", "SAMed", "Scandinavian", "Seasian", "South American" };
+        string[] folders = { "African", "Asian", "Caucasian", "Central European", "EECA", "Italmed", "MENA", "MESA", "SAMed", "Scandinavian", "Seasian", "South American", "SpanMed", "YugoGreek" };
         Assert.Equal(folders.OrderBy(x => x), Enum.GetValues<Ethnicity>().Select(EthnicityInfo.FolderName).OrderBy(x => x));
         foreach (var e in Enum.GetValues<Ethnicity>())
             Assert.Equal(e, EthnicityInfo.FromFolderName(EthnicityInfo.FolderName(e)));
+    }
+
+    [Fact]
+    public void Older_saves_move_spanish_greek_and_balkan_players_to_the_new_groups_until_they_have_a_face()
+    {
+        var spaniard = new Player { Id = 1, FirstName = "A", LastName = "B", Nationality = "Spain", Ethnicity = Ethnicity.Italmed };
+        var greek = new Player { Id = 2, FirstName = "A", LastName = "B", Nationality = "Greece", Ethnicity = Ethnicity.Italmed };
+        var serb = new Player { Id = 3, FirstName = "A", LastName = "B", Nationality = "Serbia", Ethnicity = Ethnicity.CentralEuropean };
+        var faced = new Player { Id = 4, FirstName = "A", LastName = "B", Nationality = "Spain", Ethnicity = Ethnicity.Italmed, FaceFile = "Italmed/Italmed9.png" };
+        var african = new Player { Id = 5, FirstName = "A", LastName = "B", Nationality = "Spain", Ethnicity = Ethnicity.African };
+        Assert.True(Heritages.Reconcile(spaniard)); Assert.Equal(Ethnicity.SpanMed, spaniard.Ethnicity);
+        Assert.True(Heritages.Reconcile(greek)); Assert.Equal(Ethnicity.YugoGreek, greek.Ethnicity);
+        Assert.True(Heritages.Reconcile(serb)); Assert.Equal(Ethnicity.YugoGreek, serb.Ethnicity);
+        Assert.False(Heritages.Reconcile(faced)); Assert.Equal(Ethnicity.Italmed, faced.Ethnicity);     // has a face: untouched
+        Assert.False(Heritages.Reconcile(african)); Assert.Equal(Ethnicity.African, african.Ethnicity); // still valid for Spain
     }
 
     [Fact]

@@ -1,0 +1,49 @@
+using System.Text.Json;
+
+namespace Hardwood.Desktop;
+
+/// <summary>App-wide settings (not per save), stored in %APPDATA%\Hardwood Manager\settings.json.</summary>
+public sealed class AppSettings
+{
+    /// <summary>Folder of the FMNEWGAN face pack (one subfolder per ethnicity). Defaults to Desktop\FMNEWGANv2.</summary>
+    public string FaceFolder { get; set; } = DefaultFaceFolder();
+
+    /// <summary>Let the game draw player card portraits automatically.</summary>
+    public bool AutoPortraits { get; set; } = true;
+
+    public static string DefaultFaceFolder() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "FMNEWGANv2");
+
+    private static readonly JsonSerializerOptions Opts = new() { WriteIndented = true };
+
+    /// <summary>Overridable for tests.</summary>
+    public static string FilePath { get; set; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Hardwood Manager", "settings.json");
+
+    private static AppSettings? _current;
+    public static AppSettings Current => _current ??= Load();
+
+    public static AppSettings Load()
+    {
+        try
+        {
+            if (File.Exists(FilePath))
+                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Opts) ?? new AppSettings();
+        }
+        catch (Exception) { /* a broken settings file falls back to defaults */ }
+        return new AppSettings();
+    }
+
+    public void Save()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, Opts));
+        }
+        catch (Exception) { /* settings are a convenience; never crash over them */ }
+    }
+
+    /// <summary>Tests: use these settings instead of the file.</summary>
+    public static void Use(AppSettings? settings) => _current = settings;
+}

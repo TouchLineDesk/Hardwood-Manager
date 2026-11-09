@@ -38,6 +38,19 @@ public sealed class PlayerCard : Control
     private static FormattedText Text(string s, Typeface tf, double size, IBrush brush) =>
         new(s, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, tf, size, brush);
 
+    // Redraw when the game finishes drawing new portraits.
+    private void OnPortraitsChanged() => InvalidateVisual();
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Portraits.Changed += OnPortraitsChanged;
+    }
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        Portraits.Changed -= OnPortraitsChanged;
+        base.OnDetachedFromVisualTree(e);
+    }
+
     public override void Render(DrawingContext ctx)
     {
         var p = Player;

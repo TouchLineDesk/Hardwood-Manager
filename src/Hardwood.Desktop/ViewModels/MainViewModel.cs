@@ -43,6 +43,8 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Watch the human team's games live instead of simming them instantly.</summary>
     [ObservableProperty] private bool _liveGames = true;
     [ObservableProperty] private bool _inLiveGame;
+    /// <summary>Progress of the automatic portrait drawing (empty when up to date).</summary>
+    [ObservableProperty] private string _portraitStatus = "";
     public bool ShowSimButtons => InSeason && !InLiveGame;
     partial void OnInSeasonChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
     partial void OnInLiveGameChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
@@ -53,6 +55,14 @@ public sealed partial class MainViewModel : ViewModelBase
     public MainViewModel()
     {
         CurrentPage = new StartViewModel(this);
+        Portraits.PortraitService.Instance.StatusChanged += () => PortraitStatus = Portraits.PortraitService.Instance.Status;
+    }
+
+    /// <summary>Bring player card portraits up to date (cheap when nothing changed). Skipped while a sim runs on another thread.</summary>
+    public void RequestPortraits()
+    {
+        if (IsBusy) return;
+        Portraits.PortraitService.Instance.Request(Session);
     }
 
     public void AttachSession(GameSession session)
@@ -60,6 +70,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Session = session;
         HasSession = true;
         Controls.Portraits.UseSave(session.Save?.Path);
+        Portraits.PortraitService.Instance.Request(session);
         _pages.Clear();
         Nav.Clear();
         foreach (var (name, factory) in new (string, Func<PageViewModel>)[]
@@ -101,6 +112,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         if (InLiveGame) return; // finish the game first
         Controls.Portraits.Reload(); // pick up portraits rebuilt on disk
+        RequestPortraits();
         var page = Page(name);
         page.Refresh();
         CurrentPage = page;
@@ -152,7 +164,7 @@ public sealed partial class MainViewModel : ViewModelBase
             }
             AfterTick();
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; RequestPortraits(); }
     }
 
     [RelayCommand]
@@ -166,7 +178,7 @@ public sealed partial class MainViewModel : ViewModelBase
             if (Session.Phase == SessionPhase.Offseason) Navigate("Offseason");
             AfterTick();
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; RequestPortraits(); }
     }
 
     [RelayCommand]
@@ -180,7 +192,7 @@ public sealed partial class MainViewModel : ViewModelBase
             if (Session.Phase == SessionPhase.Offseason) Navigate("Offseason");
             AfterTick();
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; RequestPortraits(); }
     }
 
     public void AfterTick()
@@ -188,6 +200,7 @@ public sealed partial class MainViewModel : ViewModelBase
         foreach (var p in _pages.Values) p.Refresh();
         if (CurrentPage is PageViewModel cp && !_pages.ContainsValue(cp)) cp.Refresh();
         RefreshHeader();
+        RequestPortraits();
     }
 
     public void RefreshHeader()
