@@ -13,7 +13,7 @@ public static class SessionStore
         using var conn = file.OpenConnection();
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
-        SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM box_line; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM depth_chart; DELETE FROM offseason; DELETE FROM offseason_expiring; DELETE FROM offseason_pick;");
+        SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM box_line; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM depth_chart; DELETE FROM offseason; DELETE FROM offseason_expiring; DELETE FROM offseason_pick; DELETE FROM offseason_mle;");
 
         SaveFile.Exec(conn, "INSERT INTO session(id, human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage, midseason_json) VALUES(1, $t, $d, $p, $s, $r, $m, $ps, $mid)",
             ("$t", s.HumanTeam.Id), ("$d", s.Today.ToString("yyyy-MM-dd")), ("$p", (int)s.Phase), ("$s", (long)s.Seed), ("$r", (long)s.NextRngSeed),
@@ -49,6 +49,8 @@ public static class SessionStore
             foreach (var kv in o.Expiring)
             foreach (var p in kv.Value)
                 SaveFile.Exec(conn, "INSERT INTO offseason_expiring(team_id, player_id) VALUES($t, $p)", ("$t", kv.Key), ("$p", p.Id));
+            foreach (var teamId in o.MidLevelUsed)
+                SaveFile.Exec(conn, "INSERT INTO offseason_mle(team_id) VALUES($t)", ("$t", teamId));
             foreach (var d in o.Report.Draft)
                 SaveFile.Exec(conn, "INSERT INTO offseason_pick(pick, round, team_id, player_id, original_team_id) VALUES($k, $r, $t, $p, $o)",
                     ("$k", d.Pick), ("$r", d.Round), ("$t", d.Team.Id), ("$p", d.Player.Id), ("$o", (object?)d.OriginalTeam?.Id ?? DBNull.Value));
@@ -204,6 +206,12 @@ public static class SessionStore
                             picksMade.Add(new DraftPick(r3.GetInt32(1), r3.GetInt32(0), league.TeamById(r3.GetInt32(2)), p, r3.IsDBNull(4) ? null : league.TeamById(r3.GetInt32(4))));
                 }
                 session.RestoreOffseason(oPhase, order, owners, file.LoadedProspects, nextPick, expiring, picksMade);
+                using (var c4 = conn.CreateCommand())
+                {
+                    c4.CommandText = "SELECT team_id FROM offseason_mle";
+                    using var r4 = c4.ExecuteReader();
+                    while (r4.Read()) session.Offseason?.MidLevelUsed.Add(r4.GetInt32(0));
+                }
             }
         }
 
@@ -233,6 +241,7 @@ public static class SessionStore
             CREATE TABLE IF NOT EXISTS offseason(id INTEGER PRIMARY KEY, phase INTEGER, season INTEGER, draft_order TEXT, pick_owners TEXT, next_pick INTEGER);
             CREATE TABLE IF NOT EXISTS offseason_expiring(team_id INTEGER, player_id INTEGER);
             CREATE TABLE IF NOT EXISTS offseason_pick(pick INTEGER PRIMARY KEY, round INTEGER, team_id INTEGER, player_id INTEGER, original_team_id INTEGER);
+            CREATE TABLE IF NOT EXISTS offseason_mle(team_id INTEGER PRIMARY KEY);
             """);
     }
 }

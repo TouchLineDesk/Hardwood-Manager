@@ -102,7 +102,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
         IsDraft = o.Phase == OffseasonPhase.Draft;
         IsFreeAgency = o.Phase == OffseasonPhase.FreeAgency;
         long committed = o.CommittedPayroll(team);
-        CapText = $"Roster {team.Roster.Count} · committed ${committed / 1e6:F1}M" + (IsReSigning ? $" + ${o.ReservedForDraft(team) / 1e6:F1}M reserved for your pick" : "") + $" · hard cap ${fin.HardCap / 1e6:F0}M · room ${(fin.HardCap - committed - o.ReservedForDraft(team)) / 1e6:F1}M";
+        CapText = $"Roster {team.Roster.Count} · " + fin.Describe(committed + o.ReservedForDraft(team))
+                  + (IsReSigning && o.ReservedForDraft(team) > 0 ? $" (incl. ${o.ReservedForDraft(team) / 1e6:F1}M reserved for your pick)" : "")
+                  + (IsFreeAgency && fin.SoftCap ? (o.MidLevelUsed.Contains(team.Id) ? " · mid-level used" : $" · mid-level exception ${fin.MidLevel / 1e6:F1}M available") : "");
 
         Expiring.Clear(); Prospects.Clear(); Picks.Clear(); FreeAgents.Clear(); Roster.Clear();
         switch (o.Phase)
@@ -111,7 +113,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 Headline = $"Summer {o.Season + 1}: contract decisions";
                 var exp = o.Expiring[team.Id];
                 Instructions = exp.Count == 0 ? "No contracts expired. Continue to the draft when ready."
-                    : "Re-sign or release each expiring player. Anyone undecided when you continue becomes a free agent.";
+                    : "Re-sign or release each expiring player. Anyone undecided when you continue becomes a free agent."
+                      + (fin.SoftCap ? $" Bird rights: you may re-sign your own players over the ${fin.SalaryCap / 1e6:F0}M cap, up to the ${fin.Apron / 1e6:F0}M apron. Above ${fin.TaxLine / 1e6:F0}M you pay luxury tax." : "");
                 foreach (var p in exp)
                 {
                     s.Stats.TryGetValue(p.Id, out var st);
@@ -119,7 +122,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
                     {
                         Player = p, Age = p.Age(o.Date), Ask = $"${o.Ask(p) / 1e6:F1}M",
                         LastSeason = st != null ? $"{st.Ppg:F1} pts, {st.Rpg:F1} reb, {st.Apg:F1} ast in {st.Mpg:F1} min" : "did not play",
-                        Fits = o.CanAfford(team, o.Ask(p)) ? "Yes" : "Over cap",
+                        Fits = !o.CanAfford(team, o.Ask(p)) ? (fin.SoftCap ? "Over apron" : "Over cap")
+                             : fin.SoftCap && committed + o.ReservedForDraft(team) + o.Ask(p) > fin.SalaryCap ? "Yes (Bird rights)" : "Yes",
                     });
                 }
                 SelectedExpiring = Expiring.FirstOrDefault();
@@ -142,7 +146,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
 
             case OffseasonPhase.FreeAgency:
                 Headline = $"Free agency {o.Season + 1}";
-                Instructions = $"Sign players until your roster has {fin.RosterMin} to {fin.RosterMax} players under the ${fin.HardCap / 1e6:F0}M hard cap. Below {fin.RosterMin} players you may add minimum deals regardless of room. Waive to make space. When you start the new season, anything illegal is fixed automatically (cheapest fixes first).";
+                Instructions = fin.SoftCap
+                    ? $"Sign players until your roster has {fin.RosterMin} to {fin.RosterMax}. Three ways to sign another team's free agent: cap room under the ${fin.SalaryCap / 1e6:F0}M cap; "
+                      + $"the mid-level exception (once a summer, up to ${fin.MidLevel / 1e6:F1}M, even over the cap); or a minimum deal (players asking up to ${fin.MinSalary * 2 / 1e6:F1}M take one). "
+                      + $"Nobody may pass the ${fin.Apron / 1e6:F0}M apron. When you start the new season, anything illegal is fixed automatically (cheapest fixes first)."
+                    : $"Sign players until your roster has {fin.RosterMin} to {fin.RosterMax} players under the ${fin.HardCap / 1e6:F0}M hard cap. Below {fin.RosterMin} players you may add minimum deals regardless of room. Waive to make space. When you start the new season, anything illegal is fixed automatically (cheapest fixes first).";
                 foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
                 foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
                 SelectedFreeAgent = FreeAgents.FirstOrDefault();
@@ -155,7 +163,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
     {
         if (SelectedExpiring == null) return;
         var ok = Session.Offseason!.ReSign(Session.HumanTeam, SelectedExpiring.Player);
-        Status = ok ? $"Re-signed {SelectedExpiring.Name}." : $"{SelectedExpiring.Name}'s ask does not fit under the cap.";
+        Status = ok ? $"Re-signed {SelectedExpiring.Name}." : $"{SelectedExpiring.Name}'s ask would take you over the {(Session.League.Finance.SoftCap ? "apron" : "cap")}.";
         Shell.AfterTick();
     }
 
@@ -183,8 +191,15 @@ public sealed partial class OffseasonViewModel : PageViewModel
     {
         if (SelectedFreeAgent == null) return;
         var p = SelectedFreeAgent.Player;
-        var ok = Session.Offseason!.SignFreeAgent(Session.HumanTeam, p);
-        Status = ok ? $"Signed {p.Name} for ${p.Contract!.Salary / 1e6:F1}M × {p.Contract.Years}." : "Doesn't fit: not enough room or roster is full.";
+        var o = Session.Offseason!;
+        var team = Session.HumanTeam;
+        var (route, _) = o.SigningOption(team, ContractMarket.MarketSalary(p.CurrentAbility, p.Age(o.Date), Session.League.Finance));
+        var ok = o.SignFreeAgent(team, p);
+        string how = route switch { SigningRoute.MidLevel => " with your mid-level exception", SigningRoute.Minimum => " on a minimum deal", _ => "" };
+        Status = ok ? $"Signed {p.Name} for ${p.Contract!.Salary / 1e6:F1}M × {p.Contract.Years}{how}."
+            : team.Roster.Count >= Session.League.Finance.RosterMax ? "Your roster is full. Waive someone first."
+            : Session.League.Finance.SoftCap ? $"{p.Name} doesn't fit: not enough cap room, his ask is above the mid-level exception{(o.MidLevelUsed.Contains(team.Id) ? " (already used)" : "")}, and he won't take a minimum deal."
+            : "Doesn't fit: not enough room.";
         Shell.AfterTick();
     }
 

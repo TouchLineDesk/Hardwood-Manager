@@ -95,7 +95,7 @@ public class SessionTests
             Assert.Equal(SessionPhase.Preseason, loaded.Phase);
             Assert.Equal(2027, loaded.League.Season);
             Assert.InRange(loaded.HumanTeam.Roster.Count, 13, 15);
-            Assert.True(ContractMarket.Payroll(loaded.HumanTeam) <= loaded.League.Finance.HardCap + loaded.League.Finance.MinSalary * 2);
+            Assert.True(ContractMarket.Payroll(loaded.HumanTeam) <= loaded.League.Finance.Apron + loaded.League.Finance.MinSalary * 2);
             Assert.Empty(loaded.Results);
 
             // Reload in the new preseason and keep playing a week.

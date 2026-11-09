@@ -101,7 +101,7 @@ public sealed partial class RosterViewModel : PageViewModel
         }
         var fin = Session.League.Finance;
         long payroll = ContractMarket.Payroll(team);
-        Summary = $"{team.Roster.Count} players · payroll ${payroll / 1e6:F1}M · room ${(fin.HardCap - payroll) / 1e6:F1}M · hard cap ${fin.HardCap / 1e6:F0}M"
+        Summary = $"{team.Roster.Count} players · " + fin.Describe(payroll)
                   + (team == Session.HumanTeam ? "" : $" · {Session.Trades.Direction(team)} · scouting knowledge {StaffEffects.ScoutingKnowledge(Session.HumanTeam) * 100:F0}% (ranges show what your scouts believe)");
     }
 }

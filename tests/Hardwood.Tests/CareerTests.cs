@@ -69,16 +69,16 @@ public class CareerTests
         var fin = league.Finance;
         var team = league.Teams[4];
         while (team.Roster.Count > fin.RosterMin - 4) off.Waive(team, team.Roster.OrderBy(p => p.Contract!.Salary).First());
-        // Spread salary so payroll sits just under the cap with only 9 players.
-        long each = (fin.HardCap - fin.MinSalary / 2) / team.Roster.Count;
+        // Spread salary so payroll sits just under the apron with only 9 players.
+        long each = (fin.Apron - fin.MinSalary / 2) / team.Roster.Count;
         foreach (var p in team.Roster) p.Contract!.Salary = each;
 
         off.Complete();
         Assert.True(team.Roster.Count >= fin.RosterMin, $"roster {team.Roster.Count}");
-        Assert.True(ContractMarket.Payroll(team) <= fin.HardCap + fin.MinSalary * 2,
-            $"payroll {ContractMarket.Payroll(team):N0} vs cap {fin.HardCap:N0} + 2 x {fin.MinSalary:N0}");
+        Assert.True(ContractMarket.Payroll(team) <= fin.Apron + fin.MinSalary * 2,
+            $"payroll {ContractMarket.Payroll(team):N0} vs apron {fin.Apron:N0} + 2 x {fin.MinSalary:N0}");
         foreach (var t in league.Teams)
-            Assert.True(ContractMarket.Payroll(t) <= fin.HardCap + fin.MinSalary * 2, t.FullName);
+            Assert.True(ContractMarket.Payroll(t) <= fin.Apron + fin.MinSalary * 2, t.FullName);
     }
 
     [Fact]
@@ -93,8 +93,8 @@ public class CareerTests
             Assert.InRange(t.Roster.Count, league.Finance.RosterMin, league.Finance.RosterMax);
             Assert.All(t.Roster, p => Assert.NotNull(p.Contract));
             Assert.All(t.Roster, p => Assert.Equal(t.Id, p.TeamId));
-            // Roster-minimum signings may nudge over the cap; nothing beyond one minimum deal.
-            Assert.True(ContractMarket.Payroll(t) <= league.Finance.HardCap + league.Finance.MinSalary * 2);
+            // Nobody passes the apron (roster-minimum signings may nudge over it by two minimum deals at most).
+            Assert.True(ContractMarket.Payroll(t) <= league.Finance.Apron + league.Finance.MinSalary * 2);
         }
         var ids = league.AllActivePlayers.Select(p => p.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
