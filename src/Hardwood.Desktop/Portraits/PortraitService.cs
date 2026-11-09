@@ -78,9 +78,10 @@ public sealed class PortraitService
         // players on its next save (every day and every offseason step).
         var league = session.League;
         var prospects = session.Phase == SessionPhase.Offseason ? session.Offseason?.Prospects : null;
-        var shown = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Concat(prospects ?? new List<Player>()).ToList();
+        var world = session.World;
+        var shown = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Concat(prospects ?? new List<Player>()).Concat(world.Players).ToList();
         lib.AssignMissing(shown.Concat(league.Retired), shown);
-        var cards = PortraitCard.For(league, prospects);
+        var cards = PortraitCard.For(league, prospects, world.Clubs);
         var folder = Controls.Portraits.FolderFor(savePath);
 
         var progress = new Progress<(int done, int total, int[] ids)>(p =>

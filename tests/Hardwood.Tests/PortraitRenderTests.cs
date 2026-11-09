@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Hardwood.Tests;
 
+[Collection(SharedUiState.Name)]
 public class PortraitRenderTests
 {
     [AvaloniaFact]

@@ -28,6 +28,11 @@ public sealed class GameSession
     private int _nextMessageId = 1;
 
     public League League { get; }
+    /// <summary>Every competition outside the NABL (decision #38), played on the same calendar.</summary>
+    public World.GameWorld World { get; }
+    /// <summary>Leagues that get the full match engine when the player doesn't choose (the Euro Elite League).</summary>
+    public static readonly string[] DefaultFullSim = { Hardwood.Core.World.Competitions.Elite };
+    private readonly bool _worldGenerated;
     public Team HumanTeam { get; private set; }
     public DateOnly Today { get; private set; }
     public SessionPhase Phase { get; private set; }
@@ -52,9 +57,13 @@ public sealed class GameSession
     public DateOnly TradeDeadline => new(League.Season + 1, 2, 6);
     public ulong Seed { get; }
 
-    public GameSession(League league, Team humanTeam, ulong seed, SaveFile? save = null, EngineConfig? engine = null, ulong? rngState = null)
+    public GameSession(League league, Team humanTeam, ulong seed, SaveFile? save = null, EngineConfig? engine = null, ulong? rngState = null,
+                       World.GameWorld? world = null)
     {
         League = league; HumanTeam = humanTeam; Seed = seed; Save = save;
+        // A save from before the world existed (or a test) gets one built around its NABL; it catches up on load.
+        _worldGenerated = world == null;
+        World = world ?? Hardwood.Core.World.GameWorld.Generate(league, seed, DefaultFullSim, new DateOnly(league.Season, 10, 1));
         _rng = new Rng(rngState ?? (seed ^ 0x5E5510));
         _sim = new GameSimulator(engine);
         Standings = new Standings(league);
@@ -64,10 +73,12 @@ public sealed class GameSession
     }
 
     /// <summary>Start a new career from a generated world.</summary>
-    public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026)
+    public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026, IEnumerable<string>? fullSim = null)
     {
         var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", season, new DateOnly(season, 10, 1));
-        var session = new GameSession(league, league.TeamById(humanTeamId), seed, savePath != null ? new SaveFile(savePath) : null);
+        var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? DefaultFullSim, new DateOnly(season, 10, 1));
+        var session = new GameSession(league, league.TeamById(humanTeamId), seed, savePath != null ? new SaveFile(savePath) : null, world: world);
+        session.PlayWorld(session.Today.AddDays(-1));
         session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName}. Preseason runs until {session.OpeningNight:MMM d}: set your rotation and tactics, then press Continue.", "Board");
         session.SaveNow();
         return session;
@@ -219,8 +230,23 @@ public sealed class GameSession
         ReportGame(r);
     }
 
+    /// <summary>Play the world's games up to and including <paramref name="date"/> and post its headlines.</summary>
+    public void PlayWorld(DateOnly date)
+    {
+        World.PlayThrough(date, _sim);
+        foreach (var (title, body) in World.News) Post(title, body, "World");
+        World.News.Clear();
+    }
+
+    /// <summary>After loading a save made before the world existed: play the world's season up to yesterday.</summary>
+    internal void CatchUpWorld()
+    {
+        if (_worldGenerated) PlayWorld(Today.AddDays(-1));
+    }
+
     private List<GameResult> EndDay(List<GameResult> played)
     {
+        PlayWorld(Today);
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -431,7 +457,11 @@ public sealed class GameSession
     private void StartNewSeason()
     {
         Phase = SessionPhase.Preseason;
+        World.Rollover(League.Season, _sim);
+        foreach (var (title, body) in World.News) Post(title, body, "World");
+        World.News.Clear();
         Today = OpeningNight.AddDays(-7);
+        PlayWorld(Today.AddDays(-1));
         HumanTeam.DepthChart = null;
         Midseason = null;
         BuildSeason();
@@ -445,15 +475,19 @@ public sealed class GameSession
     public void SaveNow()
     {
         if (Save == null) return;
-        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null);
+        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players);
         Save.SaveSession(this);
+        Save.SaveWorld(World);
     }
 
     public static GameSession Load(string path)
     {
         var save = new SaveFile(path);
         var league = save.Load();
-        return save.LoadSession(league);
+        var world = save.LoadWorld(league, save.LoadedOverseas);
+        var session = save.LoadSession(league, world);
+        session.CatchUpWorld();
+        return session;
     }
 
     /// <summary>Used by SaveFile to restore state; not for gameplay.</summary>

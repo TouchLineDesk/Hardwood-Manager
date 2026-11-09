@@ -19,6 +19,8 @@ public sealed class SaveFile
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
+    /// <summary>Players of clubs outside the NABL found in the last Load; <see cref="WorldStore"/> puts them on their clubs.</summary>
+    public List<Player> LoadedOverseas { get; } = new();
 
     public SaveFile(string path) => _path = path;
 
@@ -40,7 +42,7 @@ public sealed class SaveFile
     }
 
     // ------------------------------------------------------------------------------------------
-    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null, IEnumerable<Player>? prospects = null)
+    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null, IEnumerable<Player>? prospects = null, IEnumerable<Player>? overseas = null)
     {
         using var conn = Open();
         CreateSchema(conn);
@@ -83,6 +85,7 @@ public sealed class SaveFile
         foreach (var p in league.FreeAgents) InsertPlayer(conn, p, null, "free_agent");
         foreach (var p in league.Retired) InsertPlayer(conn, p, null, "retired");
         if (prospects != null) foreach (var p in prospects) InsertPlayer(conn, p, null, "prospect");
+        if (overseas != null) foreach (var p in overseas) InsertPlayer(conn, p, p.TeamId, "overseas");
 
         foreach (var h in league.History)
         {
@@ -272,12 +275,13 @@ public sealed class SaveFile
                     case "active": league.TeamById(p.TeamId!.Value).Roster.Add(p); break;
                     case "free_agent": league.FreeAgents.Add(p); break;
                     case "prospect": LoadedProspects.Add(p); break;
+                    case "overseas": LoadedOverseas.Add(p); break;
                     default: league.Retired.Add(p); break;
                 }
             }
         }
 
-        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(LoadedProspects).ToDictionary(p => p.Id);
+        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(LoadedProspects).Concat(LoadedOverseas).ToDictionary(p => p.Id);
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "SELECT player_id, name, severity, occurred, return_date, attr_loss, current FROM injury ORDER BY occurred";

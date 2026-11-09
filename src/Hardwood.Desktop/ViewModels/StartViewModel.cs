@@ -20,6 +20,14 @@ public sealed class TeamChoice
     public string Star { get; init; } = "";
 }
 
+/// <summary>A league outside the NABL and whether it runs the full match engine in the new career (decision #40).</summary>
+public sealed partial class LeagueChoice : ObservableObject
+{
+    public required string Key { get; init; }
+    public required string Name { get; init; }
+    [ObservableProperty] private bool _fullSim;
+}
+
 public sealed partial class StartViewModel : ViewModelBase
 {
     private readonly MainViewModel _shell;
@@ -33,6 +41,10 @@ public sealed partial class StartViewModel : ViewModelBase
     [ObservableProperty] private string _faceFolderStatus = "";
 
     public ObservableCollection<TeamChoice> Teams { get; } = new();
+    /// <summary>Leagues that can run the full match engine; the rest give quick results.</summary>
+    public ObservableCollection<LeagueChoice> Leagues { get; } = new(
+        Hardwood.Core.World.Competitions.All.Where(c => c.Kind != Hardwood.Core.World.CompetitionKind.GuestPool)
+            .Select(c => new LeagueChoice { Key = c.Key, Name = c.Name, FullSim = GameSession.DefaultFullSim.Contains(c.Key) }));
     private League? _preview;
 
     public StartViewModel(MainViewModel shell)
@@ -100,7 +112,7 @@ public sealed partial class StartViewModel : ViewModelBase
         try
         {
             if (File.Exists(SavePath)) File.Delete(SavePath);
-            var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath);
+            var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath, fullSim: Leagues.Where(l => l.FullSim).Select(l => l.Key).ToList());
             _shell.AttachSession(session);
         }
         catch (Exception ex) { Status = ex.Message; }

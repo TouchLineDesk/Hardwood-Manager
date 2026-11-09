@@ -77,7 +77,7 @@ public static class SessionStore
         }
     }
 
-    public static GameSession LoadSession(this SaveFile file, League league)
+    public static GameSession LoadSession(this SaveFile file, League league, World.GameWorld? world = null)
     {
         using var conn = file.OpenConnection();
         CreateSchema(conn);
@@ -93,7 +93,7 @@ public static class SessionStore
             if (!r.IsDBNull(7)) midseason = SaveFile.FromJson<SeasonAwards>(r.GetString(7));
         }
 
-        var session = new GameSession(league, league.TeamById(humanId), seed, file, rngState: rngSeed) { Midseason = midseason };
+        var session = new GameSession(league, league.TeamById(humanId), seed, file, rngState: rngSeed, world: world) { Midseason = midseason };
         var players = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(file.LoadedProspects).ToDictionary(p => p.Id);
 
         var boxes = new Dictionary<int, Dictionary<int, List<PlayerLine>>>(); // game -> team -> lines
