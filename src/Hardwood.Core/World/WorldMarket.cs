@@ -156,7 +156,7 @@ public static class WorldMarket
         foreach (var p in world.Players.Where(p => p.DraftRightsTeamId == null && p.CurrentAbility >= GameWorld.NablCalibre + 8 && p.Age(off.Date) <= 30)
                                        .OrderByDescending(p => ContractMarket.Value(p, off.Date)).ToList())
         {
-            if (made >= 3) break;
+            if (made >= 2) break;
             if (!rng.Chance(0.35)) continue;
             var team = off.League.Teams.Where(t => t.Id != humanTeamId)
                 .Select(t => (t, terms: Terms(world, off, t, p)))

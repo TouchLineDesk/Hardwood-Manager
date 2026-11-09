@@ -298,7 +298,10 @@ public sealed class Offseason
             double u = _rng.NextDouble();
             int ca = u < 0.05 ? _rng.Next(105, 125) : u < 0.30 ? _rng.Next(85, 105) : _rng.Next(55, 88);
             var p = gen.Generate(positions[_rng.Next(5)], ca, age, Date);
-            p.PotentialAbility = Math.Clamp(p.PotentialAbility + _rng.Next(0, 25), p.CurrentAbility, 200);
+            // Prospects get the generator's potential less a little: the NABL also gains about ten players a summer from
+            // overseas, so its own classes must hold fewer future stars or the league's talent creeps up (issue #9).
+            // (A +0-25 potential bonus here gave ~6 future stars a class against ~3 the league can hold.)
+            p.PotentialAbility = Math.Clamp(p.PotentialAbility - _rng.Next(0, 9), p.CurrentAbility, 200);
             p.RookieSeason = Season + 1;
             prospects.Add(p);
         }

@@ -99,7 +99,7 @@ public static class BalanceAudit
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
-        var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>();
+        var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
 
         for (int s = 0; s < seasons; s++)
@@ -130,6 +130,7 @@ public static class BalanceAudit
             buyouts.Add(world.BuyoutMoves.Count);
             stashes.Add(world.Stashes.Count);
             signedAbroad.Add(world.SignedAbroad.Count);
+            cameOver.Add(world.LeftClub.Count(x => x.player.TeamId is { } id && league.Teams.Any(t => t.Id == id)) + world.BuyoutMoves.Count);
             var games = played.Outcome.RegularSeason;
             var boxes = games.SelectMany(g => new[] { g.Home, g.Away }).ToList();
             pts.Add(boxes.Average(b => b.Points));
@@ -206,6 +207,7 @@ public static class BalanceAudit
         m.Add(new("Player movement", "International share of draft picks", "0.00", intlPicks, 0.15, 0.40, "NBA drafts 2015-25"));
         m.Add(new("Player movement", "Draft picks stashed overseas", "0.0", stashes, 1, 8, "NBA ~2-6"));
         m.Add(new("Player movement", "Overseas players bought out by NABL teams", "0.0", buyouts, 0.5, 8, "NBA a few a summer"));
+        m.Add(new("Player movement", "Overseas players joining NABL teams (free agency + buyouts)", "0.0", cameOver, 3, 15, "rough estimate: NBA ~5-15 a summer incl. players returning from abroad"));
         m.Add(new("Player movement", "Free agents signed by overseas clubs", "0", signedAbroad, null, null, ""));
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)

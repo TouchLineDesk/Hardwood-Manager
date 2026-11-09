@@ -138,6 +138,9 @@ public sealed class GameWorld
             string nat = country == "Australia" && rng.Chance(0.12) ? "New Zealand" : country;
             p = gen.Generate(pos, ca, age, today, local, nat);
         }
+        // Same for potential: players who'll become NABL stars arrive through the NABL draft, not as overseas free
+        // agents. (Overseas players grew to 175-184 and then walked in as free agents; issue #9.)
+        if (p.PotentialAbility > 150) p.PotentialAbility = Math.Max(p.CurrentAbility, 150 + (int)Math.Round((p.PotentialAbility - 150) * 0.4));
         p.TeamId = team.Id;
         p.Contract = NewContract(p, profile, rng.Next(1, 5), today, today.Year);
         return p;
@@ -457,7 +460,7 @@ public sealed class GameWorld
     public int SummerEnded { get; set; }
 
     /// <summary>NABL-level ability: overseas players at least this good test the open market when their deals end.</summary>
-    public const int NablCalibre = 130;
+    public const int NablCalibre = 135;
 
     /// <summary>
     /// Start of summer (the NABL offseason begins): finish every season, age and develop every player outside the NABL,
@@ -493,9 +496,9 @@ public sealed class GameWorld
                     continue;
                 }
                 if (!expiring) continue;
-                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.35);
+                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.2);
                 bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
-                if (!testsMarket && clubWants && _rng.Chance(0.92))
+                if (!testsMarket && clubWants && _rng.Chance(0.95))
                     p.Contract = NewContract(p, comp.Profile, _rng.Next(1, 4), date, summerYear);
                 else
                 {
@@ -572,7 +575,7 @@ public sealed class GameWorld
                 }
                 bool prospect = _rng.Chance(0.35);
                 int age = prospect ? _rng.Next(18, 22) : _rng.Next(23, 31);
-                int target = (int)Math.Round(need.Ca - (prospect ? 8 : 2) + _rng.NextGaussian(0, 5));
+                int target = (int)Math.Round(need.Ca - (prospect ? 6 : 0) + _rng.NextGaussian(0, 5));
                 bool asImport = need.Import && importRoom;
                 var signing = NewPlayer(team, comp.Profile, club, team.Roster.Count, 0, date, gen, _rng, foreignSlot: asImport, ageOverride: age, caOverride: target);
                 signing.Contract!.StartSeason = newYear;
