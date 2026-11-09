@@ -487,6 +487,12 @@ public sealed class GameSession
         var world = save.LoadWorld(league, save.LoadedOverseas);
         var session = save.LoadSession(league, world);
         session.CatchUpWorld();
+        if (save.UpgradedFrom is { } old)
+        {
+            session.Post("Save upgraded", $"This career was saved by an older version of the game (save format {old}) and has been upgraded to format {SaveFile.SchemaVersion}. "
+                + $"An untouched copy of the old save was kept at:\n{save.BackupPath}", "Board");
+            session.SaveNow();
+        }
         return session;
     }
 
