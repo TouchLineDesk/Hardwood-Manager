@@ -46,9 +46,29 @@ public sealed class DepthChart
     public Dictionary<int, double> MinutesTargets { get; set; } = new();
 }
 
-/// <summary>Minimal tactic set for the prototype; the full system/role model comes in the vertical slice.</summary>
+/// <summary>
+/// A team's tactics: an offensive system and a defensive scheme (decisions #58-59), fine-tuned by the sliders; player
+/// roles (#60); who guards the other team's best scorer and whether to double him (#59); saved presets and a late-game
+/// switch (#61). Players without an assigned role play their best natural one.
+/// </summary>
 public sealed class Tactic
 {
+    /// <summary>True for teams run by the computer: the coach picks system, scheme and matchups before each game.</summary>
+    public bool Auto { get; set; } = true;
+    public OffensiveSystem System { get; set; } = OffensiveSystem.Balanced;
+    public DefensiveScheme Scheme { get; set; } = DefensiveScheme.Man;
+    /// <summary>Role per player id. Missing = the player's best natural role (<see cref="Roles.Best"/>).</summary>
+    public Dictionary<int, Role> Roles { get; set; } = new();
+    /// <summary>Player id who guards the other team's best scorer when both are on the floor (null = normal matchups).</summary>
+    public int? StarStopperId { get; set; }
+    /// <summary>Send a second defender at the other team's best scorer: he shoots less and worse, his teammates get open looks.</summary>
+    public bool DoubleStar { get; set; }
+    public List<TacticPreset> Presets { get; set; } = new();
+    /// <summary>Preset used in the last five minutes of the fourth quarter and overtime when the score is within six (null = keep the current tactics).</summary>
+    public string? LateGamePreset { get; set; }
+
+    public Role RoleOf(Player p) => Roles.TryGetValue(p.Id, out var r) ? r : Hardwood.Core.Model.Roles.Best(p);
+
     /// <summary>Target pace, possessions per 48 minutes.</summary>
     public double Pace { get; set; } = 99;
     /// <summary>0 = never shoot threes, 100 = three-point heavy. Shifts the shot mix.</summary>

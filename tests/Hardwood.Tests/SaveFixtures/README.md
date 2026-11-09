@@ -10,6 +10,7 @@ today's code, plays a few days and saves again, so an old career can never silen
 | career-v4.hwsave | 4 | commit 44d78a1 (PR #2: portrait faces) |
 | career-v5.hwsave | 5 | scaffolding branch (world beyond the NABL) |
 | career-v6.hwsave | 6 | player-movement branch (buyout clauses, draft rights abroad) |
+| career-v7.hwsave | 7 | tactics branch (systems, schemes, roles, matchups, presets) |
 
 Each is `GameSession.NewGame(seed 2026, team 5)` advanced 12 days. **When the save format changes:** bump
 `SaveFile.SchemaVersion`, make a save with the *previous* version's code, add it here as `career-v<N>.hwsave`, and

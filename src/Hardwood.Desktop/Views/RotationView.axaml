@@ -3,7 +3,7 @@
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              x:Class="Hardwood.Desktop.Views.RotationView"
              x:DataType="vm:RotationViewModel">
-  <Grid ColumnDefinitions="3*,2*">
+  <Grid>
     <DockPanel>
       <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
         <StackPanel>
@@ -52,39 +52,5 @@
       </DataGrid>
     </DockPanel>
 
-    <StackPanel Grid.Column="1" Spacing="10">
-      <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Text="Tactics" Classes="h1" Margin="0"/>
-        <Button Grid.Column="1" Content="Reset" Command="{Binding ResetTacticsCommand}"/>
-      </Grid>
-      <Border Classes="panel">
-        <StackPanel Spacing="14">
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Pace" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding PaceText}" Classes="muted"/></Grid>
-            <Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
-            <TextBlock Text="Possessions per 48 minutes. Faster pace means more shots for both teams and more fatigue." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Three-point emphasis" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding ThreeText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Offensive glass" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding CrashText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>
-            <TextBlock Text="Crashing wins second chances but gives up transition points." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Defensive aggression" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding AggressionText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding Aggression}"/>
-            <TextBlock Text="Gambling forces more turnovers at the cost of fouls and open looks." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Star usage" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding StarText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}"/>
-            <TextBlock Text="How much the offence runs through your best creators." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
-          </StackPanel>
-        </StackPanel>
-      </Border>
-    </StackPanel>
   </Grid>
 </UserControl>

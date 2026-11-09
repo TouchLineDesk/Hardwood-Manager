@@ -93,6 +93,15 @@
         <Border Classes="panel">
           <StackPanel Spacing="8">
             <TextBlock Text="Tactics (live)" FontWeight="SemiBold"/>
+            <TextBlock Text="Offense" Classes="muted" FontSize="11.5"/>
+            <ComboBox ItemsSource="{Binding SystemChoices}" SelectedItem="{Binding OffenseChoice}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:SystemOption"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Defense" Classes="muted" FontSize="11.5"/>
+            <ComboBox ItemsSource="{Binding SchemeChoices}" SelectedItem="{Binding DefenseChoice}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:SystemOption"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <CheckBox Content="Double their best scorer" IsChecked="{Binding DoubleStar}"/>
             <TextBlock Text="Pace" Classes="muted" FontSize="11.5"/><Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
             <TextBlock Text="Three-point emphasis" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
             <TextBlock Text="Offensive glass" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>

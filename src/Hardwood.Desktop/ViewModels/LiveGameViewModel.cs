@@ -60,6 +60,21 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public double CrashGlass { get => Us.Tactic.CrashGlass; set { Us.Tactic.CrashGlass = (int)value; OnPropertyChanged(); } }
     public double Aggression { get => Us.Tactic.DefensiveAggression; set { Us.Tactic.DefensiveAggression = (int)value; OnPropertyChanged(); } }
     public double StarUsage { get => Us.Tactic.StarUsage; set { Us.Tactic.StarUsage = (int)value; OnPropertyChanged(); } }
+    public List<SystemOption> SystemChoices { get; } = Enum.GetValues<Hardwood.Core.Model.OffensiveSystem>()
+        .Select(x => new SystemOption { Name = Hardwood.Core.Model.Systems.Name(x), Description = "", Fit = 0.5, System = x }).ToList();
+    public List<SystemOption> SchemeChoices { get; } = Enum.GetValues<Hardwood.Core.Model.DefensiveScheme>()
+        .Select(x => new SystemOption { Name = Hardwood.Core.Model.Systems.Name(x), Description = "", Fit = 0.5, Scheme = x }).ToList();
+    public SystemOption? OffenseChoice
+    {
+        get => SystemChoices.FirstOrDefault(o => o.System == Us.Tactic.System);
+        set { if (value?.System is { } x) { Us.Tactic.System = x; OnPropertyChanged(); } }
+    }
+    public SystemOption? DefenseChoice
+    {
+        get => SchemeChoices.FirstOrDefault(o => o.Scheme == Us.Tactic.Scheme);
+        set { if (value?.Scheme is { } x) { Us.Tactic.Scheme = x; OnPropertyChanged(); } }
+    }
+    public bool DoubleStar { get => Us.Tactic.DoubleStar; set { Us.Tactic.DoubleStar = value; OnPropertyChanged(); } }
 
     private readonly int[] _speedsMs = { 700, 250, 60 };
     private int _speed = 1;

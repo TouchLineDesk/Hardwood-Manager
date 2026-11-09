@@ -17,11 +17,12 @@ public sealed class SaveFile
 
     /// <summary>
     /// Save format. 2: phase 5 · 3: ethnicity, draft record · 4: portrait face · 5: the world beyond the NABL ·
-    /// 6: player movement (overseas buyout clauses, draft rights held while a player is stashed abroad).
+    /// 6: player movement (overseas buyout clauses, draft rights held while a player is stashed abroad) ·
+    /// 7: full team tactics (system, scheme, roles, matchups, presets) as JSON.
     /// Bump it whenever the format changes, add a sample save of the old format to tests/Hardwood.Tests/SaveFixtures,
     /// and make sure Load upgrades it (SaveCompatibilityTests loads every sample).
     /// </summary>
-    public const int SchemaVersion = 6;
+    public const int SchemaVersion = 7;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
@@ -108,13 +109,13 @@ public sealed class SaveFile
         foreach (var t in league.Teams)
         {
             Exec(conn, """
-                INSERT INTO team(id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage, primary_color, secondary_color, logo_style)
-                VALUES($id, $city, $name, $abbr, $conf, $div, $cap, $pace, $three, $crash, $agg, $star, $pc, $sc, $ls)
+                INSERT INTO team(id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage, primary_color, secondary_color, logo_style, tactic_json)
+                VALUES($id, $city, $name, $abbr, $conf, $div, $cap, $pace, $three, $crash, $agg, $star, $pc, $sc, $ls, $tac)
                 """,
                 ("$id", t.Id), ("$city", t.City), ("$name", t.Name), ("$abbr", t.Abbreviation), ("$conf", (int)t.Conference),
                 ("$div", t.Division), ("$cap", t.ArenaCapacity), ("$pace", t.Tactic.Pace), ("$three", t.Tactic.ThreePointEmphasis),
                 ("$crash", t.Tactic.CrashGlass), ("$agg", t.Tactic.DefensiveAggression), ("$star", t.Tactic.StarUsage),
-                ("$pc", t.PrimaryColor), ("$sc", t.SecondaryColor), ("$ls", t.LogoStyle));
+                ("$pc", t.PrimaryColor), ("$sc", t.SecondaryColor), ("$ls", t.LogoStyle), ("$tac", ToJson(t.Tactic)));
         }
 
         foreach (var t in league.Teams) foreach (var p in t.Roster) InsertPlayer(conn, p, t.Id, "active");
@@ -244,7 +245,7 @@ public sealed class SaveFile
 
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage, primary_color, secondary_color, logo_style FROM team ORDER BY id";
+            cmd.CommandText = "SELECT id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage, primary_color, secondary_color, logo_style, tactic_json FROM team ORDER BY id";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -252,7 +253,8 @@ public sealed class SaveFile
                 {
                     Id = r.GetInt32(0), City = r.GetString(1), Name = r.GetString(2), Abbreviation = r.GetString(3),
                     Conference = (Conference)r.GetInt32(4), Division = r.GetString(5), ArenaCapacity = r.GetInt32(6),
-                    Tactic = new Tactic { Pace = r.GetDouble(7), ThreePointEmphasis = r.GetInt32(8), CrashGlass = r.GetInt32(9), DefensiveAggression = r.GetInt32(10), StarUsage = r.GetInt32(11) },
+                    Tactic = (r.IsDBNull(15) ? null : FromJson<Tactic>(r.GetString(15)))
+                             ?? new Tactic { Pace = r.GetDouble(7), ThreePointEmphasis = r.GetInt32(8), CrashGlass = r.GetInt32(9), DefensiveAggression = r.GetInt32(10), StarUsage = r.GetInt32(11) },
                     PrimaryColor = r.IsDBNull(12) ? "#1D3FA3" : r.GetString(12), SecondaryColor = r.IsDBNull(13) ? "#F0A33A" : r.GetString(13), LogoStyle = r.IsDBNull(14) ? 0 : r.GetInt32(14),
                 });
             }
@@ -451,7 +453,7 @@ public sealed class SaveFile
                 hard_cap INTEGER, min_salary INTEGER, roster_max INTEGER, roster_min INTEGER, rookie_scale_first INTEGER, next_player_id INTEGER, next_pick_id INTEGER);
             CREATE TABLE IF NOT EXISTS draft_pick(id INTEGER PRIMARY KEY, year INTEGER, round INTEGER, original_team_id INTEGER, owner_team_id INTEGER, protected_top INTEGER);
             CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY, city TEXT, name TEXT, abbr TEXT, conference INTEGER, division TEXT, arena_capacity INTEGER,
-                pace REAL, three_emphasis INTEGER, crash_glass INTEGER, def_aggression INTEGER, star_usage INTEGER, primary_color TEXT, secondary_color TEXT, logo_style INTEGER);
+                pace REAL, three_emphasis INTEGER, crash_glass INTEGER, def_aggression INTEGER, star_usage INTEGER, primary_color TEXT, secondary_color TEXT, logo_style INTEGER, tactic_json TEXT);
             CREATE TABLE IF NOT EXISTS player(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, nationality TEXT,
                 height_cm INTEGER, wingspan_cm INTEGER, weight_kg INTEGER, primary_pos INTEGER, secondary_pos INTEGER,
                 ca INTEGER, pa INTEGER, team_id INTEGER, status TEXT, attributes TEXT,
@@ -501,6 +503,15 @@ public sealed class SaveFile
             while (r.Read()) contractCols.Add(r.GetString(1));
         }
         if (contractCols.Count > 0 && !contractCols.Contains("buyout")) Exec(conn, "ALTER TABLE contract ADD COLUMN buyout INTEGER");
+        // v7: full tactics as JSON on each team.
+        var teamCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(team)";
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) teamCols.Add(r.GetString(1));
+        }
+        if (teamCols.Count > 0 && !teamCols.Contains("tactic_json")) Exec(conn, "ALTER TABLE team ADD COLUMN tactic_json TEXT");
     }
 
     internal static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)
