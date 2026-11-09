@@ -406,6 +406,18 @@ public sealed class Offseason
                     : team.Roster.OrderBy(p => ContractMarket.Value(p, Date)).First();
                 Waive(team, cut);
             }
+
+            // Leave room for the minimum signings still needed to reach the roster minimum: those may take a team
+            // over the cap by at most two minimum deals. If they would go further, release the worst-value contract
+            // (an expensive player replaced by a minimum deal lowers the payroll).
+            long allowance = fin.HardCap + fin.MinSalary * 2;
+            while (ContractMarket.Payroll(team) + Math.Max(0, fin.RosterMin - team.Roster.Count) * fin.MinSalary > allowance)
+            {
+                var cut = team.Roster.Where(p => (p.Contract?.Salary ?? 0) > fin.MinSalary)
+                    .OrderBy(p => ContractMarket.Value(p, Date) - (p.Contract?.Salary ?? 0) / 1e6 * 1.5).FirstOrDefault();
+                if (cut == null) break;
+                Waive(team, cut);
+            }
         }
         AiFreeAgency(null);
         AiHireStaff(null);
