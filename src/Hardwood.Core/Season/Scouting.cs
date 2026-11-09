@@ -48,7 +48,7 @@ public static class Scouting
     }
 
     public static Range Ability(Player p, double knowledge) => Scale(p.CurrentAbility, knowledge, p.Id, 100);
-    public static Range Potential(Player p, double knowledge) => Scale(p.PotentialAbility, Math.Max(0, knowledge - 0.1), p.Id, 101);
+    public static Range Potential(Player p, double knowledge) => knowledge >= 0.999 ? new Range(p.PotentialAbility, p.PotentialAbility) : Scale(p.PotentialAbility, Math.Max(0, knowledge - 0.1), p.Id, 101);
 
     private static Range Scale(int value, double knowledge, int id, int salt)
     {

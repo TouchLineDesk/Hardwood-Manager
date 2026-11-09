@@ -21,6 +21,15 @@ public sealed partial class InboxViewModel : PageViewModel
     public ObservableCollection<InboxItem> Items { get; } = new();
     [ObservableProperty] private InboxItem? _selected;
     [ObservableProperty] private string _summary = "";
+    public Avalonia.Media.IBrush TeamBrush => new Avalonia.Media.LinearGradientBrush
+    {
+        StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative), EndPoint = new Avalonia.RelativePoint(1, 0, Avalonia.RelativeUnit.Relative),
+        GradientStops =
+        {
+            new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse(Session.HumanTeam.PrimaryColor), 0),
+            new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse("#161B22"), 1),
+        },
+    };
 
     public InboxViewModel(MainViewModel shell) : base(shell) { }
 

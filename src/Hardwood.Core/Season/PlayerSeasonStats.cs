@@ -11,6 +11,8 @@ public sealed class PlayerSeasonStats
     public int Season { get; set; }
     public int Games, Starts, Points, FGM, FGA, ThreePM, ThreePA, FTM, FTA, OReb, DReb, Assists, Steals, Blocks, Turnovers, Fouls, PlusMinus;
     public double Minutes;
+    public int[] ZoneAttempts = new int[5];
+    public int[] ZoneMakes = new int[5];
 
     public double Mpg => Games == 0 ? 0 : Minutes / Games;
     public double Ppg => Games == 0 ? 0 : (double)Points / Games;
@@ -28,6 +30,7 @@ public sealed class PlayerSeasonStats
         Points += l.Points; FGM += l.FGM; FGA += l.FGA; ThreePM += l.ThreePM; ThreePA += l.ThreePA;
         FTM += l.FTM; FTA += l.FTA; OReb += l.OReb; DReb += l.DReb; Assists += l.Assists;
         Steals += l.Steals; Blocks += l.Blocks; Turnovers += l.Turnovers; Fouls += l.Fouls; PlusMinus += l.PlusMinus;
+        for (int z = 0; z < 5; z++) { ZoneAttempts[z] += l.ZoneAttempts[z]; ZoneMakes[z] += l.ZoneMakes[z]; }
     }
 
     public static Dictionary<int, PlayerSeasonStats> Aggregate(IEnumerable<GameResult> games, int season)

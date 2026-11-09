@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.BoxScoreView"
              x:DataType="vm:BoxScoreViewModel">
   <UserControl.Resources>
@@ -8,14 +9,22 @@
   </UserControl.Resources>
   <ScrollViewer>
     <StackPanel Spacing="10">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel>
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,14,0">
+          <c:TeamLogo Team="{Binding AwayTeam}" Width="52" Height="52" ShowText="False"/>
+          <c:TeamLogo Team="{Binding HomeTeam}" Width="52" Height="52" ShowText="False"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1">
           <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0"/>
           <TextBlock Text="{Binding Periods}" FontFamily="Consolas,Menlo,monospace" Classes="muted"/>
         </StackPanel>
-        <Button Grid.Column="1" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
+        <Button Grid.Column="2" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
       </Grid>
 
+      <Grid ColumnDefinitions="*,*" IsVisible="{Binding HasLog}">
+        <Border Classes="panel" Padding="6" Margin="0,0,6,0"><StackPanel><TextBlock Text="{Binding AwayName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding AwayZoneAttempts}" Makes="{Binding AwayZoneMakes}" Height="230"/></StackPanel></Border>
+        <Border Grid.Column="1" Classes="panel" Padding="6" Margin="6,0,0,0"><StackPanel><TextBlock Text="{Binding HomeName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding HomeZoneAttempts}" Makes="{Binding HomeZoneMakes}" Height="230"/></StackPanel></Border>
+      </Grid>
       <TextBlock Text="{Binding AwayName}" Classes="h2"/>
       <TextBlock Text="{Binding AwayTotals}" Classes="muted" FontSize="11.5"/>
       <DataGrid ItemsSource="{Binding Away}" Height="300">

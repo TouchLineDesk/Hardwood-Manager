@@ -2,7 +2,7 @@
 
 A basketball management simulation in the spirit of Football Manager: a living world of pro leagues, continental cups, FIBA windows, the World Cup and the Olympics, with drafts, salary caps, tactics and player development.
 
-**Status:** phase 4 — a playable Windows desktop game. Pick a franchise, hire your staff, set your rotation and tactics, and advance day by day through an 82-game season and the playoffs — watching your own games live with pause-anytime substitutions, or simming them. Then run your offseason: contract decisions, the lottery and draft (picks are tradable, with protections), free agency, trades. Awards voting, an All-Star Game, a Hall of Fame and retired numbers give careers weight. Injuries, AI trades, scouting fog and a living 30-team league around you. Multi-season careers save to a single SQLite file, at any point.
+**Status:** phase 5 — visual overhaul: procedural team crests in brand colours, 2K-style player cards with gem tiers (Bronze → Galaxy Opal) and procedural portraits, competition badges, radar/shot/trend/standings-race charts. Phase 4 — a playable Windows desktop game. Pick a franchise, hire your staff, set your rotation and tactics, and advance day by day through an 82-game season and the playoffs — watching your own games live with pause-anytime substitutions, or simming them. Then run your offseason: contract decisions, the lottery and draft (picks are tradable, with protections), free agency, trades. Awards voting, an All-Star Game, a Hall of Fame and retired numbers give careers weight. Injuries, AI trades, scouting fog and a living 30-team league around you. Multi-season careers save to a single SQLite file, at any point.
 
 ## Locked decisions
 
@@ -19,6 +19,7 @@ A basketball management simulation in the spirit of Football Manager: a living w
 | Offseason | Retirements, 2-round draft of generated rookies (2nd round unguaranteed), contract expiry, AI re-signing, free agency |
 | Phase 3 | Avalonia desktop shell, day-by-day Continue, human rotation/tactics and offseason control, injuries, NBA-style lottery, trade AI by team direction, Windows x64 build |
 | Phase 4 | Tradable draft picks with protections, mid-offseason saves, voting-model awards + All-Star Game + Hall of Fame, staff with real effects, training focus, scouting fog, live play-by-play with pause |
+| Phase 5 | Procedural vector art: team crests and palettes, player cards with CA-based gem tiers and procedural avatars, competition badges, radar / shot / trend / race charts; roster card view |
 
 ## Play it
 
@@ -94,6 +95,10 @@ The full game design document lives in the project's Claude doc (Hardwood Manage
 
 ## Screenshots
 
+![Roster cards](docs/screen-roster-cards.png)
+![Player profile](docs/screen-player.png)
+![Card and crest gallery](docs/gallery.png)
+![Standings race](docs/screen-standings.png)
 ![Live game](docs/screen-live.png)
 ![Awards](docs/screen-awards.png)
 ![Inbox](docs/screen-inbox.png)

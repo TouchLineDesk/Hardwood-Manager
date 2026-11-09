@@ -12,6 +12,7 @@ public sealed class GameRow
     public GameResult? Result { get; init; }
     public string Date => Game.Date.ToString("ddd MMM d");
     public string Opponent { get; init; } = "";
+    public Hardwood.Core.Model.Team? OpponentTeam { get; init; }
     public string Score { get; init; } = "";
     public string Outcome { get; init; } = "";
     public string Record { get; init; } = "";
@@ -69,7 +70,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
             }
             Games.Add(new GameRow
             {
-                Game = g, Result = r, Opponent = $"{(g.Home == us ? "vs" : "at")} {opp.FullName}",
+                Game = g, Result = r, Opponent = $"{(g.Home == us ? "vs" : "at")} {opp.FullName}", OpponentTeam = opp,
                 Score = score, Outcome = outcome, Record = r != null ? $"{w}-{l}" : "", TopPerformer = top,
             });
         }
@@ -123,12 +124,24 @@ public sealed partial class BoxScoreViewModel : PageViewModel
     public string Periods { get; }
     public string AwayName => Result.Away.Team.FullName;
     public string HomeName => Result.Home.Team.FullName;
+    public Hardwood.Core.Model.Team AwayTeam => Result.Away.Team;
+    public Hardwood.Core.Model.Team HomeTeam => Result.Home.Team;
     public string AwayTotals => Totals(Result.Away);
     public string HomeTotals => Totals(Result.Home);
     public ObservableCollection<BoxLineRow> Away { get; } = new();
     public ObservableCollection<BoxLineRow> Home { get; } = new();
     public ObservableCollection<string> Log { get; } = new();
     public bool HasLog => Log.Count > 0;
+    public int[] AwayZoneAttempts => Sum(Result.Away, l => l.ZoneAttempts);
+    public int[] AwayZoneMakes => Sum(Result.Away, l => l.ZoneMakes);
+    public int[] HomeZoneAttempts => Sum(Result.Home, l => l.ZoneAttempts);
+    public int[] HomeZoneMakes => Sum(Result.Home, l => l.ZoneMakes);
+    private static int[] Sum(TeamBox b, Func<PlayerLine, int[]> f)
+    {
+        var r = new int[5];
+        foreach (var l in b.Lines) { var z = f(l); for (int i = 0; i < 5; i++) r[i] += z[i]; }
+        return r;
+    }
 
     public BoxScoreViewModel(MainViewModel shell, GameResult result) : base(shell)
     {

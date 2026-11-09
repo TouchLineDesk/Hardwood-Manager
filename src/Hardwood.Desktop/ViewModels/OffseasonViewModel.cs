@@ -50,6 +50,15 @@ public sealed class PickRow
 
 public sealed partial class OffseasonViewModel : PageViewModel
 {
+    public Player? SelectedProspectPlayer => SelectedProspect?.Player;
+    public double ProspectKnowledge => SelectedProspect?.Knowledge ?? 1.0;
+    public Player? SelectedFreeAgentPlayer => SelectedFreeAgent?.Player;
+    public double FreeAgentKnowledge => SelectedFreeAgent?.Knowledge ?? 1.0;
+    public Player? SelectedExpiringPlayer => SelectedExpiring?.Player;
+    public Hardwood.Core.Model.Team HumanTeam => Session.HumanTeam;
+    partial void OnSelectedProspectChanged(ProspectRow? value) { OnPropertyChanged(nameof(SelectedProspectPlayer)); OnPropertyChanged(nameof(ProspectKnowledge)); }
+    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); }
+    partial void OnSelectedExpiringChanged(ExpiringRow? value) => OnPropertyChanged(nameof(SelectedExpiringPlayer));
     public override string Title => "Offseason";
     [ObservableProperty] private string _headline = "";
     [ObservableProperty] private string _instructions = "";
@@ -113,6 +122,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                         Fits = o.CanAfford(team, o.Ask(p)) ? "Yes" : "Over cap",
                     });
                 }
+                SelectedExpiring = Expiring.FirstOrDefault();
                 break;
 
             case OffseasonPhase.Draft:
@@ -135,6 +145,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 Instructions = $"Sign players until your roster has {fin.RosterMin} to {fin.RosterMax} players under the ${fin.HardCap / 1e6:F0}M hard cap. Below {fin.RosterMin} players you may add minimum deals regardless of room. Waive to make space. When you start the new season, anything illegal is fixed automatically (cheapest fixes first).";
                 foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
                 foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
+                SelectedFreeAgent = FreeAgents.FirstOrDefault();
                 break;
         }
     }

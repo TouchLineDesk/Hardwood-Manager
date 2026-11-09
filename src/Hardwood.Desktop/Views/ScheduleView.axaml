@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.ScheduleView"
              x:DataType="vm:ScheduleViewModel">
   <Grid ColumnDefinitions="3*,2*">
@@ -12,9 +13,14 @@
         </StackPanel>
         <Button Grid.Column="1" Content="Open box score" Command="{Binding OpenBoxCommand}" CommandParameter="{Binding Selected}" VerticalAlignment="Top"/>
       </Grid>
-      <DataGrid ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped">
+      <DataGrid ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" RowHeight="28">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="110"/>
+          <DataGridTemplateColumn Header="" Width="34">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:GameRow"><c:TeamLogo Team="{Binding OpponentTeam}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="200"/>
           <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="66"/>
           <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="100"/>
@@ -32,7 +38,10 @@
           </ItemsControl>
         </ScrollViewer>
       </Border>
-      <TextBlock Text="Playoffs" Classes="h2" Margin="0" IsVisible="{Binding ShowPlayoffs}"/>
+      <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowPlayoffs}">
+        <c:CompetitionBadge Kind="Playoffs" Width="36" Height="36"/>
+        <TextBlock Text="Playoffs" Classes="h2" Margin="0" VerticalAlignment="Center"/>
+      </StackPanel>
       <DataGrid ItemsSource="{Binding Series}" IsVisible="{Binding ShowPlayoffs}" MaxHeight="420">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Round" Binding="{Binding Round}" Width="150"/>

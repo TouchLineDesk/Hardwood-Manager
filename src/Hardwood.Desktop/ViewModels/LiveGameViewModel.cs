@@ -37,6 +37,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public string Headline => $"{_live.Result.Away.Team.FullName} at {_live.Result.Home.Team.FullName}";
     public string AwayName => _live.Result.Away.Team.Abbreviation;
     public string HomeName => _live.Result.Home.Team.Abbreviation;
+    public Team AwayTeam => _live.Result.Away.Team;
+    public Team HomeTeam => _live.Result.Home.Team;
 
     [ObservableProperty] private int _awayScore;
     [ObservableProperty] private int _homeScore;

@@ -28,6 +28,9 @@ public sealed partial class StandingsViewModel : PageViewModel
     public ObservableCollection<StandingRow> East { get; } = new();
     public ObservableCollection<StandingRow> West { get; } = new();
     [ObservableProperty] private string _note = "";
+    public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Race { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
+    public string[] RaceLabels { get; private set; } = Array.Empty<string>();
+    public bool HasRace => RaceLabels.Length >= 3;
 
     public StandingsViewModel(MainViewModel shell) : base(shell) { }
 
@@ -36,6 +39,37 @@ public sealed partial class StandingsViewModel : PageViewModel
         Fill(East, Conference.East);
         Fill(West, Conference.West);
         Note = "Top 6 qualify directly; 7-10 play in.";
+        BuildRace();
+    }
+
+    /// <summary>Games above .500 by week for the human team's conference; your team is emphasised.</summary>
+    private void BuildRace()
+    {
+        var s = Session; var conf = s.HumanTeam.Conference;
+        var played = s.Schedule.Where(g => s.Results.ContainsKey(g.Index)).OrderBy(g => g.Date).ToList();
+        if (played.Count < 15) { Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>(); OnPropertyChanged(nameof(HasRace)); return; }
+        var start = played.First().Date; var end = played.Last().Date;
+        var weeks = new List<DateOnly>();
+        for (var d = start.AddDays(6); d <= end; d = d.AddDays(7)) weeks.Add(d);
+        if (weeks.Count == 0 || weeks.Last() < end) weeks.Add(end);
+        var teams = s.League.Teams.Where(t => t.Conference == conf).ToList();
+        var list = new List<Hardwood.Desktop.Controls.LineSeries>();
+        foreach (var t in teams)
+        {
+            var values = new double[weeks.Count];
+            int w = 0, l = 0, k = 0;
+            foreach (var g in played)
+            {
+                if (g.Home != t && g.Away != t) { }
+                else if (s.Results[g.Index].Winner.Team == t) w++; else l++;
+                while (k < weeks.Count && g.Date > weeks[k]) { values[k] = w - l; k++; }
+            }
+            for (; k < weeks.Count; k++) values[k] = w - l;
+            list.Add(new Hardwood.Desktop.Controls.LineSeries { Name = t.Abbreviation, Values = values, Color = Avalonia.Media.Color.Parse(t.PrimaryColor), Emphasis = t == s.HumanTeam });
+        }
+        Race = list;
+        RaceLabels = weeks.Select(d => d.ToString("MMM d")).ToArray();
+        OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
     }
 
     private void Fill(ObservableCollection<StandingRow> list, Conference conf)

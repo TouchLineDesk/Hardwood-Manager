@@ -66,12 +66,13 @@ public sealed class SaveFile
         foreach (var t in league.Teams)
         {
             Exec(conn, """
-                INSERT INTO team(id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage)
-                VALUES($id, $city, $name, $abbr, $conf, $div, $cap, $pace, $three, $crash, $agg, $star)
+                INSERT INTO team(id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage, primary_color, secondary_color, logo_style)
+                VALUES($id, $city, $name, $abbr, $conf, $div, $cap, $pace, $three, $crash, $agg, $star, $pc, $sc, $ls)
                 """,
                 ("$id", t.Id), ("$city", t.City), ("$name", t.Name), ("$abbr", t.Abbreviation), ("$conf", (int)t.Conference),
                 ("$div", t.Division), ("$cap", t.ArenaCapacity), ("$pace", t.Tactic.Pace), ("$three", t.Tactic.ThreePointEmphasis),
-                ("$crash", t.Tactic.CrashGlass), ("$agg", t.Tactic.DefensiveAggression), ("$star", t.Tactic.StarUsage));
+                ("$crash", t.Tactic.CrashGlass), ("$agg", t.Tactic.DefensiveAggression), ("$star", t.Tactic.StarUsage),
+                ("$pc", t.PrimaryColor), ("$sc", t.SecondaryColor), ("$ls", t.LogoStyle));
         }
 
         foreach (var t in league.Teams) foreach (var p in t.Roster) InsertPlayer(conn, p, t.Id, "active");
@@ -113,12 +114,13 @@ public sealed class SaveFile
             foreach (var s in seasonStats)
             {
                 Exec(conn, """
-                    INSERT OR REPLACE INTO player_stats(player_id, season, team_id, games, starts, minutes, points, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, plus_minus)
-                    VALUES($pid, $season, $tid, $g, $gs, $min, $pts, $fgm, $fga, $tpm, $tpa, $ftm, $fta, $oreb, $dreb, $ast, $stl, $blk, $tov, $pf, $pm)
+                    INSERT OR REPLACE INTO player_stats(player_id, season, team_id, games, starts, minutes, points, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, plus_minus, zones)
+                    VALUES($pid, $season, $tid, $g, $gs, $min, $pts, $fgm, $fga, $tpm, $tpa, $ftm, $fta, $oreb, $dreb, $ast, $stl, $blk, $tov, $pf, $pm, $z)
                     """,
                     ("$pid", s.PlayerId), ("$season", s.Season), ("$tid", s.TeamId), ("$g", s.Games), ("$gs", s.Starts), ("$min", s.Minutes),
                     ("$pts", s.Points), ("$fgm", s.FGM), ("$fga", s.FGA), ("$tpm", s.ThreePM), ("$tpa", s.ThreePA), ("$ftm", s.FTM), ("$fta", s.FTA),
-                    ("$oreb", s.OReb), ("$dreb", s.DReb), ("$ast", s.Assists), ("$stl", s.Steals), ("$blk", s.Blocks), ("$tov", s.Turnovers), ("$pf", s.Fouls), ("$pm", s.PlusMinus));
+                    ("$oreb", s.OReb), ("$dreb", s.DReb), ("$ast", s.Assists), ("$stl", s.Steals), ("$blk", s.Blocks), ("$tov", s.Turnovers), ("$pf", s.Fouls), ("$pm", s.PlusMinus),
+                    ("$z", string.Join(",", s.ZoneAttempts) + "|" + string.Join(",", s.ZoneMakes)));
             }
         }
 
@@ -193,7 +195,7 @@ public sealed class SaveFile
 
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage FROM team ORDER BY id";
+            cmd.CommandText = "SELECT id, city, name, abbr, conference, division, arena_capacity, pace, three_emphasis, crash_glass, def_aggression, star_usage, primary_color, secondary_color, logo_style FROM team ORDER BY id";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -202,6 +204,7 @@ public sealed class SaveFile
                     Id = r.GetInt32(0), City = r.GetString(1), Name = r.GetString(2), Abbreviation = r.GetString(3),
                     Conference = (Conference)r.GetInt32(4), Division = r.GetString(5), ArenaCapacity = r.GetInt32(6),
                     Tactic = new Tactic { Pace = r.GetDouble(7), ThreePointEmphasis = r.GetInt32(8), CrashGlass = r.GetInt32(9), DefensiveAggression = r.GetInt32(10), StarUsage = r.GetInt32(11) },
+                    PrimaryColor = r.IsDBNull(12) ? "#1D3FA3" : r.GetString(12), SecondaryColor = r.IsDBNull(13) ? "#F0A33A" : r.GetString(13), LogoStyle = r.IsDBNull(14) ? 0 : r.GetInt32(14),
                 });
             }
         }
@@ -351,18 +354,28 @@ public sealed class SaveFile
     {
         using var conn = Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT player_id, season, team_id, games, starts, minutes, points, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, plus_minus FROM player_stats" + (season is null ? "" : " WHERE season = $s");
+        cmd.CommandText = "SELECT player_id, season, team_id, games, starts, minutes, points, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, plus_minus, zones FROM player_stats" + (season is null ? "" : " WHERE season = $s");
         if (season is { } s) cmd.Parameters.AddWithValue("$s", s);
         using var r = cmd.ExecuteReader();
         var list = new List<PlayerSeasonStats>();
         while (r.Read())
         {
-            list.Add(new PlayerSeasonStats
+            var st = new PlayerSeasonStats
             {
                 PlayerId = r.GetInt32(0), Season = r.GetInt32(1), TeamId = r.GetInt32(2), Games = r.GetInt32(3), Starts = r.GetInt32(4), Minutes = r.GetDouble(5),
                 Points = r.GetInt32(6), FGM = r.GetInt32(7), FGA = r.GetInt32(8), ThreePM = r.GetInt32(9), ThreePA = r.GetInt32(10), FTM = r.GetInt32(11), FTA = r.GetInt32(12),
                 OReb = r.GetInt32(13), DReb = r.GetInt32(14), Assists = r.GetInt32(15), Steals = r.GetInt32(16), Blocks = r.GetInt32(17), Turnovers = r.GetInt32(18), Fouls = r.GetInt32(19), PlusMinus = r.GetInt32(20),
-            });
+            };
+            if (!r.IsDBNull(21))
+            {
+                var parts = r.GetString(21).Split('|');
+                if (parts.Length == 2)
+                {
+                    st.ZoneAttempts = parts[0].Split(',').Select(int.Parse).ToArray();
+                    st.ZoneMakes = parts[1].Split(',').Select(int.Parse).ToArray();
+                }
+            }
+            list.Add(st);
         }
         return list;
     }
@@ -377,7 +390,7 @@ public sealed class SaveFile
                 hard_cap INTEGER, min_salary INTEGER, roster_max INTEGER, roster_min INTEGER, rookie_scale_first INTEGER, next_player_id INTEGER, next_pick_id INTEGER);
             CREATE TABLE IF NOT EXISTS draft_pick(id INTEGER PRIMARY KEY, year INTEGER, round INTEGER, original_team_id INTEGER, owner_team_id INTEGER, protected_top INTEGER);
             CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY, city TEXT, name TEXT, abbr TEXT, conference INTEGER, division TEXT, arena_capacity INTEGER,
-                pace REAL, three_emphasis INTEGER, crash_glass INTEGER, def_aggression INTEGER, star_usage INTEGER);
+                pace REAL, three_emphasis INTEGER, crash_glass INTEGER, def_aggression INTEGER, star_usage INTEGER, primary_color TEXT, secondary_color TEXT, logo_style INTEGER);
             CREATE TABLE IF NOT EXISTS player(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, nationality TEXT,
                 height_cm INTEGER, wingspan_cm INTEGER, weight_kg INTEGER, primary_pos INTEGER, secondary_pos INTEGER,
                 ca INTEGER, pa INTEGER, team_id INTEGER, status TEXT, attributes TEXT,
@@ -397,7 +410,7 @@ public sealed class SaveFile
             CREATE TABLE IF NOT EXISTS season_record(season INTEGER, team_id INTEGER, wins INTEGER, losses INTEGER, PRIMARY KEY(season, team_id));
             CREATE TABLE IF NOT EXISTS player_stats(player_id INTEGER, season INTEGER, team_id INTEGER, games INTEGER, starts INTEGER, minutes REAL,
                 points INTEGER, fgm INTEGER, fga INTEGER, tpm INTEGER, tpa INTEGER, ftm INTEGER, fta INTEGER, oreb INTEGER, dreb INTEGER,
-                ast INTEGER, stl INTEGER, blk INTEGER, tov INTEGER, pf INTEGER, plus_minus INTEGER, PRIMARY KEY(player_id, season));
+                ast INTEGER, stl INTEGER, blk INTEGER, tov INTEGER, pf INTEGER, plus_minus INTEGER, zones TEXT, PRIMARY KEY(player_id, season));
             """);
     }
 

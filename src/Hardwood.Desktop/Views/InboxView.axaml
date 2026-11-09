@@ -1,11 +1,19 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.InboxView"
              x:DataType="vm:InboxViewModel">
   <DockPanel>
-    <TextBlock DockPanel.Dock="Top" Text="Inbox" Classes="h1"/>
-    <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" Classes="muted" Margin="0,0,0,10" TextWrapping="Wrap"/>
+    <Border DockPanel.Dock="Top" CornerRadius="8" Margin="0,0,0,12" Padding="14,10" Background="{Binding TeamBrush}">
+      <Grid ColumnDefinitions="Auto,*">
+        <c:TeamLogo Team="{Binding Session.HumanTeam}" Width="56" Height="56" Margin="0,0,14,0"/>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Session.HumanTeam.FullName}" FontSize="22" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Text="{Binding Summary}" Foreground="#E6EAF0" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Grid>
+    </Border>
     <Grid ColumnDefinitions="2*,3*">
       <Border Classes="panel" Padding="0">
         <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" Background="Transparent">

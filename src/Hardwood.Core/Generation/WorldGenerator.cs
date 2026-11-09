@@ -34,6 +34,9 @@ public sealed class WorldGenerator
                 Conference = east ? Conference.East : Conference.West,
                 Division = divs[(i % 15) / 5],
                 ArenaCapacity = _rng.Next(17000, 21000),
+                PrimaryColor = NamePool.Identity[i].Primary,
+                SecondaryColor = NamePool.Identity[i].Secondary,
+                LogoStyle = NamePool.Identity[i].Style,
             };
 
             // Team quality: a normal around league average. +-1 SD ≈ a 10-CA swing on the whole roster.

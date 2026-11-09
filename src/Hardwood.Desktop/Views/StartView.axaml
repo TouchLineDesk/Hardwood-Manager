@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.StartView"
              x:DataType="vm:StartViewModel">
   <Grid ColumnDefinitions="*,2*" Margin="40">
@@ -36,9 +37,14 @@
     <Border Grid.Column="1" Classes="panel" Padding="0">
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="Choose your franchise" Classes="h2" Margin="12,10,12,6"/>
-        <DataGrid ItemsSource="{Binding Teams}" SelectedItem="{Binding SelectedTeam}" BorderThickness="0">
+        <DataGrid ItemsSource="{Binding Teams}" SelectedItem="{Binding SelectedTeam}" BorderThickness="0" RowHeight="40">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="64"/>
+            <DataGridTemplateColumn Header="" Width="48">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:TeamChoice"><c:TeamLogo Team="{Binding Team}" Width="32" Height="32" ShowText="False" Margin="4,2"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="200"/>
             <DataGridTextColumn Header="Conference" Binding="{Binding Conference}" Width="150"/>
             <DataGridTextColumn Header="Outlook" Binding="{Binding Strength}" Width="150"/>
             <DataGridTextColumn Header="Core ability" Binding="{Binding CoreCa, StringFormat={}{0:F0}}" Width="90"/>

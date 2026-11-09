@@ -42,6 +42,9 @@ public sealed partial class TransactionsViewModel : PageViewModel
     // Free agents
     public ObservableCollection<PlayerRow> FreeAgents { get; } = new();
     [ObservableProperty] private PlayerRow? _selectedFreeAgent;
+    public Player? SelectedFreeAgentPlayer => SelectedFreeAgent?.Player;
+    public double FreeAgentKnowledge => SelectedFreeAgent?.Knowledge ?? 1.0;
+    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); }
     [ObservableProperty] private string _faStatus = "";
     [ObservableProperty] private string _capText = "";
 
@@ -69,6 +72,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         var s = Session; var fin = s.League.Finance;
         FreeAgents.Clear();
         foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
+        SelectedFreeAgent ??= FreeAgents.FirstOrDefault();
         long payroll = ContractMarket.Payroll(s.HumanTeam);
         CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · payroll ${payroll / 1e6:F1}M · room ${(fin.HardCap - payroll) / 1e6:F1}M";
         DeadlineText = s.Phase == SessionPhase.Offseason ? "Offseason: trades are open."

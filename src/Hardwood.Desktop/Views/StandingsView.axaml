@@ -1,43 +1,58 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.StandingsView"
              x:DataType="vm:StandingsViewModel">
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="Standings" Classes="h1"/>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Note}" Classes="muted" Margin="0,0,0,8"/>
+    <StackPanel DockPanel.Dock="Bottom" IsVisible="{Binding HasRace}" Margin="0,10,0,0">
+      <TextBlock Text="Conference race: games above .500 by week (your team highlighted)" Classes="h2" Margin="0,0,0,6"/>
+      <Border Classes="panel" Padding="6"><c:LineChart Series="{Binding Race}" XLabels="{Binding RaceLabels}" ZeroLine="True" Height="220"/></Border>
+    </StackPanel>
     <Grid ColumnDefinitions="*,*">
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="Eastern Conference" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding East}" CanUserSortColumns="False">
+        <DataGrid ItemsSource="{Binding East}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
-            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="64"/>
-            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="66"/>
-            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="66"/>
-            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="66"/>
-            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="66"/>
-            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="66"/>
-            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="66"/>
-            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="66"/>
-            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="66"/>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
+            <DataGridTemplateColumn Header="" Width="34">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="40"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="40"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="56"/>
+            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="46"/>
+            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="58"/>
+            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="62"/>
+            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="50"/>
+            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="72"/>
           </DataGrid.Columns>
         </DataGrid>
       </DockPanel>
       <DockPanel Grid.Column="1">
         <TextBlock DockPanel.Dock="Top" Text="Western Conference" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding West}" CanUserSortColumns="False">
+        <DataGrid ItemsSource="{Binding West}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
-            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="64"/>
-            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="66"/>
-            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="66"/>
-            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="66"/>
-            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="66"/>
-            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="66"/>
-            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="66"/>
-            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="66"/>
-            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="66"/>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
+            <DataGridTemplateColumn Header="" Width="34">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="40"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="40"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="56"/>
+            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="46"/>
+            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="58"/>
+            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="62"/>
+            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="50"/>
+            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="72"/>
           </DataGrid.Columns>
         </DataGrid>
       </DockPanel>

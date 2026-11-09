@@ -70,6 +70,9 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-resign.png"));
             session.AdvanceOffseason(); vm.AfterTick();
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-draft.png"));
+            while (session.Offseason!.Phase == OffseasonPhase.Draft && !session.Offseason.DraftComplete) session.MakePick(session.Offseason.Prospects.First());
+            vm.AfterTick();
+            Snap(window, Path.Combine(dir, $"{n++:00}-offseason-fa.png"));
         }
         finally { if (File.Exists(path)) File.Delete(path); }
     }

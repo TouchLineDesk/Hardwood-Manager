@@ -46,6 +46,9 @@ public sealed partial class PlayerViewModel : PageViewModel
     }
 
     public string Name => Player.Name;
+    public Hardwood.Core.Model.Team? TeamObj => Player.TeamId is { } id ? Session.League.TeamById(id) : null;
+    public double Knowledge => Core.Season.Scouting.Knowledge(Session.HumanTeam, Player);
+    public string TierLine { get; private set; } = "";
     public string Headline { get; private set; } = "";
     public string Bio { get; private set; } = "";
     public string Contract { get; private set; } = "";
@@ -53,6 +56,14 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string Tendencies { get; private set; } = "";
     public string Honours { get; private set; } = "";
     public List<AttrGroupVm> Groups { get; private set; } = new();
+    public double[] RadarValues { get; private set; } = Array.Empty<double>();
+    public int[] ZoneAttempts { get; private set; } = new int[5];
+    public int[] ZoneMakes { get; private set; } = new int[5];
+    public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Trend { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
+    public string[] TrendLabels { get; private set; } = Array.Empty<string>();
+    public bool HasTrend => TrendLabels.Length >= 2;
+    public bool HasShots => ZoneAttempts.Sum() > 0;
+    public string[] RadarLabels { get; } = { "Inside", "Mid-range", "Three", "Playmaking", "Perimeter D", "Interior D", "Rebounding", "Athleticism" };
     public ObservableCollection<SeasonLine> Seasons { get; } = new();
 
     [RelayCommand] public void Back() => Shell.Navigate("Roster");
@@ -62,6 +73,8 @@ public sealed partial class PlayerViewModel : PageViewModel
         var p = Player; var s = Session;
         var team = p.TeamId is { } id ? s.League.TeamById(id).FullName : "Free agent";
         Headline = $"{p.PrimaryPosition}{(p.SecondaryPosition is { } sp ? "/" + sp : "")} · {team}";
+        var tier = Tier.ForCa(p.CurrentAbility);
+        TierLine = tier.Next is { } nx ? $"{tier.Name} card · {nx.MinCa - p.CurrentAbility} ability from {nx.Name}" : $"{tier.Name} card · the top tier";
         double k = Scouting.Knowledge(s.HumanTeam, p);
         Bio = $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {Scouting.Potential(p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
         Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M per year, {(c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} remaining")}{(c.TeamOption ? ", team option" : "")}" : "No contract";
@@ -88,6 +101,14 @@ public sealed partial class PlayerViewModel : PageViewModel
         Tendencies = $"Three-point rate {t.ThreePointRate} · drives {t.DriveRate} · post-ups {t.PostUpRate} · isolation {t.IsolationRate} · pass-first {t.PassFirst} · crash glass {t.CrashGlass}";
 
         double know = Scouting.Knowledge(s.HumanTeam, p);
+        var a = p.Attributes;
+        double Avg(params Attr[] xs) => xs.Average(x => know >= 0.999 ? a[x] : Scouting.Attribute(p, x, know).Mid);
+        RadarValues = new[]
+        {
+            Avg(Attr.CloseShot, Attr.Layup, Attr.Dunk), Avg(Attr.MidRange, Attr.ShotCreation), Avg(Attr.ThreePoint, Attr.CatchAndShoot),
+            Avg(Attr.BallHandling, Attr.Passing, Attr.CourtVision), Avg(Attr.PerimeterDefense, Attr.Steal), Avg(Attr.InteriorDefense, Attr.Block, Attr.HelpDefense),
+            Avg(Attr.DefensiveRebounding, Attr.OffensiveRebounding), Avg(Attr.Speed, Attr.Acceleration, Attr.Vertical, Attr.Strength),
+        };
         Groups = Enum.GetValues<AttrGroup>().Select(g => new AttrGroupVm
         {
             Name = g.ToString(),
@@ -103,6 +124,17 @@ public sealed partial class PlayerViewModel : PageViewModel
         var all = new List<Core.Season.PlayerSeasonStats>();
         if (s.Save != null) all.AddRange(s.Save.LoadStats().Where(x => x.PlayerId == p.Id && x.Season != s.League.Season));
         if (s.Stats.TryGetValue(p.Id, out var cur)) all.Add(cur);
+        var ordered = all.OrderBy(x => x.Season).ToList();
+        TrendLabels = ordered.Select(x => $"{x.Season % 100:00}-{(x.Season + 1) % 100:00}").ToArray();
+        Trend = new[]
+        {
+            new Hardwood.Desktop.Controls.LineSeries { Name = "PPG", Values = ordered.Select(x => Math.Round(x.Ppg, 1)).ToArray(), Color = Avalonia.Media.Color.Parse("#F0A33A"), Emphasis = true },
+            new Hardwood.Desktop.Controls.LineSeries { Name = "RPG", Values = ordered.Select(x => Math.Round(x.Rpg, 1)).ToArray(), Color = Avalonia.Media.Color.Parse("#58A6FF") },
+            new Hardwood.Desktop.Controls.LineSeries { Name = "APG", Values = ordered.Select(x => Math.Round(x.Apg, 1)).ToArray(), Color = Avalonia.Media.Color.Parse("#3FB950") },
+        };
+        var shotSrc = cur ?? ordered.LastOrDefault();
+        ZoneAttempts = shotSrc?.ZoneAttempts ?? new int[5];
+        ZoneMakes = shotSrc?.ZoneMakes ?? new int[5];
         foreach (var st in all.OrderByDescending(x => x.Season))
             Seasons.Add(new SeasonLine
             {

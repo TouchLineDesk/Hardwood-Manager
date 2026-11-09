@@ -40,6 +40,11 @@ public sealed class PlayerRow
     public double Apg { get; init; }
     public string FgPct { get; init; } = "";
     public string Team { get; init; } = "";
+    public Hardwood.Core.Model.Team? TeamObj { get; init; }
+    public string TierName => Tier.ForCa(Player.CurrentAbility).Name;
+    public string CardFooter { get; init; } = "";
+    /// <summary>Set by the hosting page so a card click opens the player.</summary>
+    public IRelayCommand? Open { get; set; }
 
     public static PlayerRow From(Player p, GameSession s, string? team = null, bool prospect = false)
     {
@@ -51,6 +56,9 @@ public sealed class PlayerRow
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",
             Team = team ?? (p.TeamId is { } id ? s.League.TeamById(id).Abbreviation : "FA"),
+            TeamObj = p.TeamId is { } tid ? s.League.TeamById(tid) : null,
+            CardFooter = st is { Games: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min"
+                       : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {(c.Years <= 0 ? "expiring" : c.Years + " yr")}" : $"Age {p.Age(s.Today)}",
         };
     }
 }
@@ -63,6 +71,9 @@ public sealed partial class RosterViewModel : PageViewModel
     [ObservableProperty] private Team? _team;
     [ObservableProperty] private PlayerRow? _selected;
     [ObservableProperty] private string _summary = "";
+    [ObservableProperty] private bool _cardView = true;
+    public bool TableView => !CardView;
+    partial void OnCardViewChanged(bool value) => OnPropertyChanged(nameof(TableView));
 
     public RosterViewModel(MainViewModel shell) : base(shell)
     {
@@ -82,7 +93,12 @@ public sealed partial class RosterViewModel : PageViewModel
     {
         var team = Team ?? Session.HumanTeam;
         Rows.Clear();
-        foreach (var p in team.Roster.OrderByDescending(p => p.Overall)) Rows.Add(PlayerRow.From(p, Session, team.Abbreviation));
+        foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility))
+        {
+            var row = PlayerRow.From(p, Session, team.Abbreviation);
+            row.Open = new RelayCommand(() => Shell.ShowPlayer(row.Player));
+            Rows.Add(row);
+        }
         var fin = Session.League.Finance;
         long payroll = ContractMarket.Payroll(team);
         Summary = $"{team.Roster.Count} players · payroll ${payroll / 1e6:F1}M · room ${(fin.HardCap - payroll) / 1e6:F1}M · hard cap ${fin.HardCap / 1e6:F0}M"

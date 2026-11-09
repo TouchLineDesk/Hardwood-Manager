@@ -1,26 +1,45 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.PlayerView"
              x:DataType="vm:PlayerViewModel">
   <ScrollViewer>
     <StackPanel Spacing="10">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock Text="{Binding Name}" Classes="h1" Margin="0"/>
-          <TextBlock Text="{Binding Headline}" Classes="accent"/>
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <c:PlayerCard Player="{Binding Player}" Team="{Binding TeamObj}" Knowledge="{Binding Knowledge}" Width="200" Height="290" Margin="0,0,16,0"/>
+        <StackPanel Grid.Column="1" Spacing="6">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <c:TeamLogo Team="{Binding TeamObj}" Width="44" Height="44"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding Name}" Classes="h1" Margin="0"/>
+              <TextBlock Text="{Binding Headline}" Classes="accent"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Text="{Binding TierLine}" Classes="muted"/>
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding Bio}" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding Contract}" Classes="muted" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding InjuryText}" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding Honours}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding Honours, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+              <TextBlock Text="{Binding Tendencies}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+            </StackPanel>
+          </Border>
+          <c:RadarChart Values="{Binding RadarValues}" Labels="{Binding RadarLabels}" Height="230" Width="300" HorizontalAlignment="Left"/>
         </StackPanel>
-        <Button Grid.Column="1" Content="Back to roster" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
+        <Button Grid.Column="2" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
       </Grid>
-      <Border Classes="panel">
-        <StackPanel Spacing="4">
-          <TextBlock Text="{Binding Bio}" TextWrapping="Wrap"/>
-          <TextBlock Text="{Binding Contract}" Classes="muted" TextWrapping="Wrap"/>
-          <TextBlock Text="{Binding InjuryText}" TextWrapping="Wrap"/>
-          <TextBlock Text="{Binding Honours}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding Honours, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-          <TextBlock Text="{Binding Tendencies}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+      <Grid ColumnDefinitions="*,*">
+        <StackPanel Margin="0,0,6,0" IsVisible="{Binding HasShots}">
+          <TextBlock Text="Shot chart (this season)" Classes="h2"/>
+          <Border Classes="panel" Padding="6"><c:ShotChart Attempts="{Binding ZoneAttempts}" Makes="{Binding ZoneMakes}" Height="300"/></Border>
         </StackPanel>
-      </Border>
+        <StackPanel Grid.Column="1" Margin="6,0,0,0" IsVisible="{Binding HasTrend}">
+          <TextBlock Text="Career trend (points, rebounds, assists per game)" Classes="h2"/>
+          <Border Classes="panel" Padding="6"><c:LineChart Series="{Binding Trend}" XLabels="{Binding TrendLabels}" Height="300"/></Border>
+        </StackPanel>
+      </Grid>
       <ItemsControl ItemsSource="{Binding Groups}">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
