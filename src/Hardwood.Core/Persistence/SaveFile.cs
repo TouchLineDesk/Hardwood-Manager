@@ -15,12 +15,15 @@ public sealed class SaveFile
     internal static string ToJson<T>(T value) => System.Text.Json.JsonSerializer.Serialize(value, JsonOpts);
     internal static T? FromJson<T>(string json) => System.Text.Json.JsonSerializer.Deserialize<T>(json, JsonOpts);
 
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
 
     public SaveFile(string path) => _path = path;
+
+    /// <summary>Location of the save on disk.</summary>
+    public string Path => _path;
 
     /// <summary>Open a connection for extension stores (sessions). Caller disposes.</summary>
     public SqliteConnection OpenConnection() => Open();
@@ -32,6 +35,7 @@ public sealed class SaveFile
         using var pragma = conn.CreateCommand();
         pragma.CommandText = "PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL;";
         pragma.ExecuteNonQuery();
+        Migrate(conn);
         return conn;
     }
 
@@ -135,10 +139,12 @@ public sealed class SaveFile
             INSERT INTO player(id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos,
                                ca, pa, team_id, status, attributes,
                                professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
-                               t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season)
+                               t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season,
+                               ethnicity, draft_year, draft_round, draft_pick)
             VALUES($id, $fn, $ln, $bd, $nat, $h, $ws, $w, $pp, $sp, $ca, $pa, $tid, $status, $attrs,
                    $prof, $amb, $loy, $temp, $pres, $adapt, $cons, $big, $inj, $ego,
-                   $t3, $tdr, $tpo, $tiso, $tpf, $tcr, $tga, $rook)
+                   $t3, $tdr, $tpo, $tiso, $tpf, $tcr, $tga, $rook,
+                   $eth, $dy, $dr, $dp)
             """,
             ("$id", p.Id), ("$fn", p.FirstName), ("$ln", p.LastName), ("$bd", p.BirthDate.ToString("yyyy-MM-dd")), ("$nat", p.Nationality),
             ("$h", p.HeightCm), ("$ws", p.WingspanCm), ("$w", p.WeightKg), ("$pp", (int)p.PrimaryPosition), ("$sp", p.SecondaryPosition is { } s ? (int)s : DBNull.Value),
@@ -146,7 +152,9 @@ public sealed class SaveFile
             ("$prof", h.Professionalism), ("$amb", h.Ambition), ("$loy", h.Loyalty), ("$temp", h.Temperament), ("$pres", h.Pressure), ("$adapt", h.Adaptability),
             ("$cons", h.Consistency), ("$big", h.BigGames), ("$inj", h.InjuryProneness), ("$ego", h.Ego),
             ("$t3", t.ThreePointRate), ("$tdr", t.DriveRate), ("$tpo", t.PostUpRate), ("$tiso", t.IsolationRate), ("$tpf", t.PassFirst), ("$tcr", t.CrashGlass), ("$tga", t.GambleSteals),
-            ("$rook", (object?)p.RookieSeason ?? DBNull.Value));
+            ("$rook", (object?)p.RookieSeason ?? DBNull.Value),
+            ("$eth", EthnicityInfo.FolderName(p.Ethnicity)),
+            ("$dy", (object?)p.Draft?.Year ?? DBNull.Value), ("$dr", (object?)p.Draft?.Round ?? DBNull.Value), ("$dp", (object?)p.Draft?.Pick ?? DBNull.Value));
 
         foreach (var inj in p.InjuryHistory)
             Exec(conn, "INSERT INTO injury(player_id, name, severity, occurred, return_date, attr_loss, current) VALUES($pid, $n, $sev, $occ, $ret, $loss, $cur)",
@@ -223,7 +231,8 @@ public sealed class SaveFile
             cmd.CommandText = """
                 SELECT id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos, ca, pa, team_id, status, attributes,
                        professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
-                       t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season
+                       t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season,
+                       ethnicity, draft_year, draft_round, draft_pick
                 FROM player ORDER BY id
                 """;
             using var r = cmd.ExecuteReader();
@@ -250,6 +259,9 @@ public sealed class SaveFile
                 t.ThreePointRate = r.GetInt32(25); t.DriveRate = r.GetInt32(26); t.PostUpRate = r.GetInt32(27); t.IsolationRate = r.GetInt32(28);
                 t.PassFirst = r.GetInt32(29); t.CrashGlass = r.GetInt32(30); t.GambleSteals = r.GetInt32(31);
                 p.RookieSeason = r.IsDBNull(32) ? null : r.GetInt32(32);
+                p.Ethnicity = (r.IsDBNull(33) ? null : EthnicityInfo.FromFolderName(r.GetString(33)))
+                              ?? Generation.Heritages.Backfill(p.Id, p.Nationality);
+                if (!r.IsDBNull(34)) p.Draft = new DraftRecord(r.GetInt32(34), r.GetInt32(35), r.GetInt32(36));
                 if (contracts.TryGetValue(p.Id, out var c)) p.Contract = c;
 
                 switch (r.GetString(13))
@@ -396,7 +408,8 @@ public sealed class SaveFile
                 ca INTEGER, pa INTEGER, team_id INTEGER, status TEXT, attributes TEXT,
                 professionalism INTEGER, ambition INTEGER, loyalty INTEGER, temperament INTEGER, pressure INTEGER, adaptability INTEGER,
                 consistency INTEGER, big_games INTEGER, injury_proneness INTEGER, ego INTEGER,
-                t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER, rookie_season INTEGER);
+                t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER, rookie_season INTEGER,
+                ethnicity TEXT, draft_year INTEGER, draft_round INTEGER, draft_pick INTEGER);
             CREATE INDEX IF NOT EXISTS ix_player_team ON player(team_id);
             CREATE TABLE IF NOT EXISTS injury(player_id INTEGER, name TEXT, severity INTEGER, occurred TEXT, return_date TEXT, attr_loss INTEGER, current INTEGER);
             CREATE INDEX IF NOT EXISTS ix_injury_player ON injury(player_id);
@@ -412,6 +425,24 @@ public sealed class SaveFile
                 points INTEGER, fgm INTEGER, fga INTEGER, tpm INTEGER, tpa INTEGER, ftm INTEGER, fta INTEGER, oreb INTEGER, dreb INTEGER,
                 ast INTEGER, stl INTEGER, blk INTEGER, tov INTEGER, pf INTEGER, plus_minus INTEGER, zones TEXT, PRIMARY KEY(player_id, season));
             """);
+    }
+
+    /// <summary>
+    /// Brings an older save's player table up to date (v3 added ethnicity and draft columns).
+    /// Missing ethnicity is backfilled on load from nationality and player id.
+    /// </summary>
+    private static void Migrate(SqliteConnection conn)
+    {
+        var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(player)";
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) cols.Add(r.GetString(1));
+        }
+        if (cols.Count == 0) return; // new file; CreateSchema makes the table
+        foreach (var (name, type) in new[] { ("ethnicity", "TEXT"), ("draft_year", "INTEGER"), ("draft_round", "INTEGER"), ("draft_pick", "INTEGER") })
+            if (!cols.Contains(name)) Exec(conn, $"ALTER TABLE player ADD COLUMN {name} {type}");
     }
 
     internal static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)

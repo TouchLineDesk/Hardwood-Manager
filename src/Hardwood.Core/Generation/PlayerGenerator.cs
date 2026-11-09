@@ -30,12 +30,19 @@ public sealed class PlayerGenerator
 
         var birth = today.AddYears(-age).AddDays(-_rng.Next(0, 365));
         var (height, wingspan, weight) = Body(pos);
+        int id = _nextId++;
+        // Heritage draws come from a per-player stream so the main sequence (and every rating,
+        // result and trade that follows from a seed) is the same as before heritage existed.
+        var side = Heritages.StreamFor(_rng.Seed, id);
+        var heritage = Heritages.Pick(side);
 
         var player = new Player
         {
-            Id = _nextId++,
-            FirstName = _rng.Pick(NamePool.FirstNames),
-            LastName = _rng.Pick(NamePool.LastNames),
+            Id = id,
+            FirstName = _rng.Pick(heritage.FirstNames),
+            LastName = _rng.Pick(heritage.LastNames),
+            Nationality = side.Pick(heritage.Nationalities),
+            Ethnicity = Heritages.PickEthnicity(heritage, side),
             BirthDate = birth,
             HeightCm = height,
             WingspanCm = wingspan,
