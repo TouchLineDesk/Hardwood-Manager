@@ -91,8 +91,11 @@ public class SessionTests
             foreach (var fa in loaded.League.FreeAgents.OrderByDescending(p => p.CurrentAbility).ToList())
                 if (loaded.HumanTeam.Roster.Count >= 15) break; else loaded.Offseason.SignFreeAgent(loaded.HumanTeam, fa);
 
+            Assert.Equal(2027, loaded.World.SummerStarted); // the world's summer began with the NABL's
             loaded.AdvanceOffseason(); // complete → new season
             Assert.Equal(SessionPhase.Preseason, loaded.Phase);
+            Assert.Equal(2027, loaded.World.SummerEnded);
+            Assert.All(loaded.World.Clubs, t => Assert.True(t.Roster.Count >= Hardwood.Core.World.GameWorld.RosterSize, t.FullName));
             Assert.Equal(2027, loaded.League.Season);
             Assert.InRange(loaded.HumanTeam.Roster.Count, 13, 15);
             Assert.True(ContractMarket.Payroll(loaded.HumanTeam) <= loaded.League.Finance.Apron + loaded.League.Finance.MinSalary * 2);

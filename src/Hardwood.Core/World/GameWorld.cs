@@ -119,7 +119,10 @@ public sealed class GameWorld
     {
         var pos = (Position)(slot % 5);
         int ca = caOverride ?? (int)Math.Round(SlotCa[Math.Min(slot, SlotCa.Length - 1)] + profile.StrengthOffset + quality + rng.NextGaussian(0, 5));
-        ca = Math.Clamp(ca, 45, 185);
+        // The best players outside the NABL are NABL starters, not NABL stars: compress the top end (a 165 became a 150
+        // and, once free to move, walked into the NABL as a star; movement audit, Nov 9).
+        if (ca > 140) ca = 140 + (int)Math.Round((ca - 140) * 0.4);
+        ca = Math.Clamp(ca, 45, 160);
         int age = ageOverride ?? (int)Math.Round(Math.Clamp(rng.NextGaussian(slot < 9 ? 27 : 23.5, 3.5), 18, 36));
         string country = club.Country ?? profile.Country;
         Player p;
@@ -136,7 +139,7 @@ public sealed class GameWorld
             p = gen.Generate(pos, ca, age, today, local, nat);
         }
         p.TeamId = team.Id;
-        p.Contract = new Contract { Years = rng.Next(1, 5), Salary = Salary(p, profile, today), StartSeason = today.Year };
+        p.Contract = NewContract(p, profile, rng.Next(1, 5), today, today.Year);
         return p;
     }
 
@@ -170,6 +173,25 @@ public sealed class GameWorld
         "Lithuania" => Heritages.All.First(h => h.Key == "easterneurope"),
         _ => null,
     };
+
+    /// <summary>An overseas contract. Every one carries a buyout clause (decision #53).</summary>
+    public static Contract NewContract(Player p, CompetitionProfile profile, int years, DateOnly on, int startSeason)
+    {
+        long salary = Salary(p, profile, on);
+        return new Contract { Years = years, Salary = salary, StartSeason = startSeason, Buyout = BuyoutFor(p, salary, years, on) };
+    }
+
+    /// <summary>
+    /// Buyout clause: what it costs to take a player out of his contract early. Scales with salary and years left,
+    /// and is steeper for young players clubs want to keep. Real EuroLeague-level buyouts run from a few hundred
+    /// thousand to several million dollars.
+    /// </summary>
+    public static long BuyoutFor(Player p, long salary, int yearsLeft, DateOnly on)
+    {
+        int age = p.Age(on);
+        double youth = age <= 21 ? 2.0 : age <= 24 ? 1.5 : 1.0;
+        return Math.Max(250_000, (long)Math.Round(salary * Math.Max(1, yearsLeft) * 0.8 * youth / 10_000) * 10_000);
+    }
 
     public static long Salary(Player p, CompetitionProfile profile, DateOnly on)
     {
@@ -427,65 +449,162 @@ public sealed class GameWorld
     public static double Strength(Team t) => QuickSim.Strength(t);
 
     // ------------------------------------------------------------------------------------------
-    // Yearly turnover
+    // Yearly turnover: the summer has a start and an end so players can move between leagues in between.
+
+    /// <summary>Summer (calendar year) whose start has run; the save keeps it so a reload mid-summer is consistent.</summary>
+    public int SummerStarted { get; set; }
+    /// <summary>Summer whose end has run (overseas rosters filled, next season started).</summary>
+    public int SummerEnded { get; set; }
+
+    /// <summary>NABL-level ability: overseas players at least this good test the open market when their deals end.</summary>
+    public const int NablCalibre = 130;
 
     /// <summary>
-    /// Between seasons: finish what's left, then age and develop every player outside the NABL, retire the old,
-    /// renew or end contracts, refill rosters with young local players (within the foreign limit), and start the next season.
+    /// Start of summer (the NABL offseason begins): finish every season, age and develop every player outside the NABL,
+    /// retire the old, and settle expiring contracts. Clubs keep most of their players; players good enough for the
+    /// NABL usually test the market, and players a club no longer wants are released. Everyone who leaves joins the
+    /// shared free-agent pool, where NABL teams can sign them (decision #41).
     /// </summary>
-    public void Rollover(int newYear, GameSimulator sim)
+    public void BeginSummer(int summerYear, GameSimulator sim, List<Player> freeAgents)
     {
+        if (SummerStarted == summerYear) return;
         FinishSeasons(sim);
-        var date = new DateOnly(newYear, 7, 1);
+        var date = new DateOnly(summerYear, 7, 1);
+        LeftClub.Clear(); SignedAbroad.Clear(); BuyoutMoves.Clear(); Stashes.Clear(); Departed.Clear();
+        // Draft rights lapse once a player is 27 (he's no longer a prospect the team is waiting on).
+        foreach (var p in Players.Concat(Nabl.FreeAgents)) if (p.DraftRightsTeamId != null && p.Age(date) >= 27) p.DraftRightsTeamId = null;
         var dev = new DevelopmentEngine(_rng);
-        var gen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
         foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0))
         foreach (var team in comp.Clubs)
         {
-            var club = comp.Profile.Clubs.FirstOrDefault(c => c.Abbr == team.Abbreviation) ?? new ClubSeed(team.City, team.Name, team.Abbreviation);
-            var locals = comp.Profile.LocalNationalities.Length > 0 ? comp.Profile.LocalNationalities : new[] { club.Country ?? "" };
-            var departed = new List<(int ca, bool import)>();
+            double clubLevel = team.Roster.Count == 0 ? 0 : team.Roster.OrderByDescending(p => p.CurrentAbility).Take(9).Average(p => p.CurrentAbility);
             foreach (var p in team.Roster.ToList())
             {
                 double mpg = Mpg(p.Id);
-                int caBefore = p.CurrentAbility;
                 dev.Develop(p, date, mpg);
                 bool expiring = p.Contract == null || --p.Contract.Years <= 0;
+                if (p.Contract != null && !expiring) p.Contract.Buyout = BuyoutFor(p, p.Contract.Salary, p.Contract.Years, date);
+                var locals = LocalsOf(comp.Profile, ClubOf(comp, team));
+                var departure = new Departure(p.CurrentAbility, !locals.Contains(p.Nationality));
                 if (dev.ShouldRetire(p, date, mpg) || (expiring && p.Age(date) >= 33 && _rng.Chance(0.5)))
                 {
+                    DepartedFrom(team).Add(departure);
                     team.Roster.Remove(p); p.TeamId = null; p.Contract = null; Nabl.Retired.Add(p);
-                    departed.Add((caBefore, !locals.Contains(p.Nationality)));
                     continue;
                 }
-                if (expiring)
-                    p.Contract = new Contract { Years = _rng.Next(1, 4), Salary = Salary(p, comp.Profile, date), StartSeason = newYear };
+                if (!expiring) continue;
+                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.35);
+                bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
+                if (!testsMarket && clubWants && _rng.Chance(0.92))
+                    p.Contract = NewContract(p, comp.Profile, _rng.Next(1, 4), date, summerYear);
+                else
+                {
+                    team.Roster.Remove(p); p.TeamId = null; p.Contract = null;
+                    freeAgents.Add(p);
+                    LeftClub.Add((p, team));
+                    DepartedFrom(team).Add(departure);
+                }
             }
-            // Replace each departure with a player of similar level, as a club signing a replacement would: imports for
-            // imports (within the foreign limit), sometimes a younger prospect a little below that level. (Refilling with
-            // weak teenagers drained every overseas league by 5-10 CA a decade; balance audit, Nov 9.)
-            foreach (var (ca, import) in departed.OrderByDescending(d => d.ca))
+        }
+        SummerStarted = summerYear;
+    }
+
+    /// <summary>A player a club lost this summer: his level and whether he filled an import slot. Clubs replace like for like.</summary>
+    public sealed record Departure(int Ca, bool Import);
+    /// <summary>Who each club lost at the start of this summer (saved, so a reload mid-summer replaces them properly).</summary>
+    public Dictionary<int, List<Departure>> Departed { get; } = new();
+    private List<Departure> DepartedFrom(Team t) => Departed.TryGetValue(t.Id, out var l) ? l : Departed[t.Id] = new();
+
+    /// <summary>Players who left their overseas club at the start of this summer (for headlines and the audit).</summary>
+    public List<(Player player, Team from)> LeftClub { get; } = new();
+    /// <summary>NABL teams buying players out of overseas contracts this summer (player, club, NABL team, buyout).</summary>
+    public List<(Player player, Team club, Team team, long buyout)> BuyoutMoves { get; } = new();
+    /// <summary>NABL draft picks sent overseas this summer, rights kept (player, club, NABL team).</summary>
+    public List<(Player player, Team club, Team team)> Stashes { get; } = new();
+    /// <summary>Free agents overseas clubs signed at the end of this summer.</summary>
+    public List<(Player player, Team to)> SignedAbroad { get; } = new();
+
+    /// <summary>
+    /// End of summer (after NABL free agency): overseas clubs fill their rosters from the shared free-agent pool,
+    /// imports within each league's limit (decision #56) and at the club's level, then with new players if the pool
+    /// runs dry; then the next season starts. Players nobody signs stay in the pool.
+    /// </summary>
+    public void EndSummer(int newYear, GameSimulator sim, List<Player> freeAgents)
+    {
+        if (SummerEnded == newYear) return;
+        if (SummerStarted != newYear) BeginSummer(newYear, sim, freeAgents);
+        SummerEnded = newYear;
+        var date = new DateOnly(newYear, 8, 15);
+        var gen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
+        // Each club replaces the players it lost like for like: an import for an import (within the foreign limit),
+        // at about the same level. Clubs take turns, best first, one replacement at a time, so the pool spreads out.
+        // The pool is tried first; if nobody there fits, the club finds a new player (sometimes a younger prospect).
+        // (Refilling with weak teenagers drained every overseas league by 5-10 CA a decade; balance audit, Nov 9.)
+        var clubs = Competitions.Where(c => c.Clubs.Count > 0).SelectMany(c => c.Clubs.Select(t => (comp: c, team: t))).ToList();
+        var needs = clubs.ToDictionary(x => x.team.Id, x => new Queue<Departure>(
+            (Departed.TryGetValue(x.team.Id, out var d) ? d : new List<Departure>()).OrderByDescending(d => d.Ca)));
+        bool any = true;
+        while (any)
+        {
+            any = false;
+            foreach (var (comp, team) in clubs.OrderByDescending(x => Strength(x.team)))
             {
-                if (team.Roster.Count >= RosterSize) break;
+                if (team.Roster.Count >= RosterSize) continue;
+                var club = ClubOf(comp, team);
+                var locals = LocalsOf(comp.Profile, club);
+                var need = needs[team.Id].Count > 0 ? needs[team.Id].Dequeue() : new Departure(ExpectedCa(comp.Profile, team, team.Roster.Count), false);
+                any = true;
+                int imports = team.Roster.Count(p => !locals.Contains(p.Nationality));
+                bool importRoom = imports < comp.Profile.ForeignLimit;
+                var pick = freeAgents
+                    .Where(p => p.Age(date) <= 33 && p.CurrentAbility >= need.Ca - 8 && p.CurrentAbility <= need.Ca + 8)
+                    .Where(p => locals.Contains(p.Nationality) || (importRoom && need.Import))
+                    .OrderBy(p => Math.Abs(p.CurrentAbility - need.Ca) + _rng.NextDouble() * 6)
+                    .FirstOrDefault();
+                if (pick != null && _rng.Chance(0.7))
+                {
+                    freeAgents.Remove(pick);
+                    pick.TeamId = team.Id;
+                    pick.Contract = NewContract(pick, comp.Profile, _rng.Next(1, 4), date, newYear);
+                    team.Roster.Add(pick);
+                    SignedAbroad.Add((pick, team));
+                    continue;
+                }
                 bool prospect = _rng.Chance(0.35);
                 int age = prospect ? _rng.Next(18, 22) : _rng.Next(23, 31);
-                int target = (int)Math.Round(ca - (prospect ? 8 : 2) + _rng.NextGaussian(0, 5));
-                bool asImport = import && Imports(team, comp.Profile, club.Country) < comp.Profile.ForeignLimit;
+                int target = (int)Math.Round(need.Ca - (prospect ? 8 : 2) + _rng.NextGaussian(0, 5));
+                bool asImport = need.Import && importRoom;
                 var signing = NewPlayer(team, comp.Profile, club, team.Roster.Count, 0, date, gen, _rng, foreignSlot: asImport, ageOverride: age, caOverride: target);
                 signing.Contract!.StartSeason = newYear;
                 team.Roster.Add(signing);
             }
-            double quality = (Strength(team) - 110) * 0.5;
-            while (team.Roster.Count < RosterSize)
-            {
-                int age = _rng.Next(18, 22);
-                var young = NewPlayer(team, comp.Profile, club, Math.Max(team.Roster.Count, 9), quality - 10, date, gen, _rng, foreignSlot: false, ageOverride: age);
-                young.Contract!.StartSeason = newYear;
-                team.Roster.Add(young);
-            }
         }
+        Departed.Clear();
         Nabl.NextPlayerId = gen.NextId;
         StartSeason(newYear);
     }
+
+    /// <summary>Whole summer in one go (no NABL market in between): used by tests and tools that only need the world to roll on.</summary>
+    public void Rollover(int newYear, GameSimulator sim)
+    {
+        var pool = new List<Player>();
+        BeginSummer(newYear, sim, pool);
+        EndSummer(newYear, sim, pool);
+        foreach (var p in pool) { p.TeamId = null; Nabl.FreeAgents.Add(p); }
+    }
+
+    /// <summary>The ability a club expects for its next roster spot: its league's slot table, shifted by how strong the club is.</summary>
+    private static int ExpectedCa(CompetitionProfile profile, Team team, int slot)
+    {
+        double quality = team.Roster.Count >= 5 ? Strength(team) - (SlotCa.Take(8).Zip(new[] { .18, .16, .14, .13, .12, .10, .09, .08 }, (c, w) => c * w).Sum() + profile.StrengthOffset) : 0;
+        return (int)Math.Round(SlotCa[Math.Min(slot, SlotCa.Length - 1)] + profile.StrengthOffset + Math.Clamp(quality, -15, 15));
+    }
+
+    private static ClubSeed ClubOf(WorldCompetition comp, Team team) =>
+        comp.Profile.Clubs.FirstOrDefault(c => c.Abbr == team.Abbreviation) ?? new ClubSeed(team.City, team.Name, team.Abbreviation);
+
+    private static string[] LocalsOf(CompetitionProfile profile, ClubSeed club) =>
+        profile.LocalNationalities.Length > 0 ? profile.LocalNationalities : new[] { club.Country ?? "" };
 
     private double Mpg(int playerId)
     {

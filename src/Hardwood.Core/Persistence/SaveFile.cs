@@ -16,11 +16,12 @@ public sealed class SaveFile
     internal static T? FromJson<T>(string json) => System.Text.Json.JsonSerializer.Deserialize<T>(json, JsonOpts);
 
     /// <summary>
-    /// Save format. 2: phase 5 · 3: ethnicity, draft record · 4: portrait face · 5: the world beyond the NABL.
+    /// Save format. 2: phase 5 · 3: ethnicity, draft record · 4: portrait face · 5: the world beyond the NABL ·
+    /// 6: player movement (overseas buyout clauses, draft rights held while a player is stashed abroad).
     /// Bump it whenever the format changes, add a sample save of the old format to tests/Hardwood.Tests/SaveFixtures,
     /// and make sure Load upgrades it (SaveCompatibilityTests loads every sample).
     /// </summary>
-    public const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
@@ -178,11 +179,11 @@ public sealed class SaveFile
                                ca, pa, team_id, status, attributes,
                                professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
                                t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season,
-                               ethnicity, draft_year, draft_round, draft_pick, face_file)
+                               ethnicity, draft_year, draft_round, draft_pick, face_file, draft_rights_team_id)
             VALUES($id, $fn, $ln, $bd, $nat, $h, $ws, $w, $pp, $sp, $ca, $pa, $tid, $status, $attrs,
                    $prof, $amb, $loy, $temp, $pres, $adapt, $cons, $big, $inj, $ego,
                    $t3, $tdr, $tpo, $tiso, $tpf, $tcr, $tga, $rook,
-                   $eth, $dy, $dr, $dp, $face)
+                   $eth, $dy, $dr, $dp, $face, $rights)
             """,
             ("$id", p.Id), ("$fn", p.FirstName), ("$ln", p.LastName), ("$bd", p.BirthDate.ToString("yyyy-MM-dd")), ("$nat", p.Nationality),
             ("$h", p.HeightCm), ("$ws", p.WingspanCm), ("$w", p.WeightKg), ("$pp", (int)p.PrimaryPosition), ("$sp", p.SecondaryPosition is { } s ? (int)s : DBNull.Value),
@@ -193,7 +194,7 @@ public sealed class SaveFile
             ("$rook", (object?)p.RookieSeason ?? DBNull.Value),
             ("$eth", EthnicityInfo.FolderName(p.Ethnicity)),
             ("$dy", (object?)p.Draft?.Year ?? DBNull.Value), ("$dr", (object?)p.Draft?.Round ?? DBNull.Value), ("$dp", (object?)p.Draft?.Pick ?? DBNull.Value),
-            ("$face", (object?)p.FaceFile ?? DBNull.Value));
+            ("$face", (object?)p.FaceFile ?? DBNull.Value), ("$rights", (object?)p.DraftRightsTeamId ?? DBNull.Value));
 
         foreach (var inj in p.InjuryHistory)
             Exec(conn, "INSERT INTO injury(player_id, name, severity, occurred, return_date, attr_loss, current) VALUES($pid, $n, $sev, $occ, $ret, $loss, $cur)",
@@ -201,8 +202,8 @@ public sealed class SaveFile
                 ("$loss", inj.AttributeLoss), ("$cur", ReferenceEquals(inj, p.Injury) ? 1 : 0));
 
         if (p.Contract is { } c)
-            Exec(conn, "INSERT INTO contract(player_id, years, salary, start_season, team_option, player_option) VALUES($pid, $y, $s, $ss, $to, $po)",
-                ("$pid", p.Id), ("$y", c.Years), ("$s", c.Salary), ("$ss", c.StartSeason), ("$to", c.TeamOption ? 1 : 0), ("$po", c.PlayerOption ? 1 : 0));
+            Exec(conn, "INSERT INTO contract(player_id, years, salary, start_season, team_option, player_option, buyout) VALUES($pid, $y, $s, $ss, $to, $po, $bo)",
+                ("$pid", p.Id), ("$y", c.Years), ("$s", c.Salary), ("$ss", c.StartSeason), ("$to", c.TeamOption ? 1 : 0), ("$po", c.PlayerOption ? 1 : 0), ("$bo", c.Buyout));
     }
 
     // ------------------------------------------------------------------------------------------
@@ -260,10 +261,14 @@ public sealed class SaveFile
         var contracts = new Dictionary<int, Contract>();
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT player_id, years, salary, start_season, team_option, player_option FROM contract";
+            cmd.CommandText = "SELECT player_id, years, salary, start_season, team_option, player_option, buyout FROM contract";
             using var r = cmd.ExecuteReader();
             while (r.Read())
-                contracts[r.GetInt32(0)] = new Contract { Years = r.GetInt32(1), Salary = r.GetInt64(2), StartSeason = r.GetInt32(3), TeamOption = r.GetInt32(4) == 1, PlayerOption = r.GetInt32(5) == 1 };
+                contracts[r.GetInt32(0)] = new Contract
+                {
+                    Years = r.GetInt32(1), Salary = r.GetInt64(2), StartSeason = r.GetInt32(3), TeamOption = r.GetInt32(4) == 1, PlayerOption = r.GetInt32(5) == 1,
+                    Buyout = r.IsDBNull(6) ? 0 : r.GetInt64(6),
+                };
         }
 
         using (var cmd = conn.CreateCommand())
@@ -272,7 +277,7 @@ public sealed class SaveFile
                 SELECT id, first_name, last_name, birth_date, nationality, height_cm, wingspan_cm, weight_kg, primary_pos, secondary_pos, ca, pa, team_id, status, attributes,
                        professionalism, ambition, loyalty, temperament, pressure, adaptability, consistency, big_games, injury_proneness, ego,
                        t_three, t_drive, t_post, t_iso, t_pass_first, t_crash, t_gamble, rookie_season,
-                       ethnicity, draft_year, draft_round, draft_pick, face_file
+                       ethnicity, draft_year, draft_round, draft_pick, face_file, draft_rights_team_id
                 FROM player ORDER BY id
                 """;
             using var r = cmd.ExecuteReader();
@@ -302,6 +307,7 @@ public sealed class SaveFile
                 p.Ethnicity = (r.IsDBNull(33) ? null : EthnicityInfo.FromFolderName(r.GetString(33)))
                               ?? Generation.Heritages.Backfill(p.Id, p.Nationality);
                 p.FaceFile = r.IsDBNull(37) ? null : r.GetString(37);
+                p.DraftRightsTeamId = r.IsDBNull(38) ? null : r.GetInt32(38);
                 Generation.Heritages.Reconcile(p);
                 if (!r.IsDBNull(34)) p.Draft = new DraftRecord(r.GetInt32(34), r.GetInt32(35), r.GetInt32(36));
                 if (contracts.TryGetValue(p.Id, out var c)) p.Contract = c;
@@ -452,11 +458,11 @@ public sealed class SaveFile
                 professionalism INTEGER, ambition INTEGER, loyalty INTEGER, temperament INTEGER, pressure INTEGER, adaptability INTEGER,
                 consistency INTEGER, big_games INTEGER, injury_proneness INTEGER, ego INTEGER,
                 t_three INTEGER, t_drive INTEGER, t_post INTEGER, t_iso INTEGER, t_pass_first INTEGER, t_crash INTEGER, t_gamble INTEGER, rookie_season INTEGER,
-                ethnicity TEXT, draft_year INTEGER, draft_round INTEGER, draft_pick INTEGER, face_file TEXT);
+                ethnicity TEXT, draft_year INTEGER, draft_round INTEGER, draft_pick INTEGER, face_file TEXT, draft_rights_team_id INTEGER);
             CREATE INDEX IF NOT EXISTS ix_player_team ON player(team_id);
             CREATE TABLE IF NOT EXISTS injury(player_id INTEGER, name TEXT, severity INTEGER, occurred TEXT, return_date TEXT, attr_loss INTEGER, current INTEGER);
             CREATE INDEX IF NOT EXISTS ix_injury_player ON injury(player_id);
-            CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER);
+            CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER, buyout INTEGER);
             CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER, finals_mvp_player_id INTEGER, awards_json TEXT);
             CREATE TABLE IF NOT EXISTS career(player_id INTEGER PRIMARY KEY, json TEXT);
             CREATE TABLE IF NOT EXISTS staff(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, role INTEGER, coaching INTEGER, development INTEGER, fitness INTEGER, medical INTEGER, scouting INTEGER, reputation INTEGER, team_id INTEGER, salary INTEGER, years INTEGER);
@@ -484,8 +490,17 @@ public sealed class SaveFile
             while (r.Read()) cols.Add(r.GetString(1));
         }
         if (cols.Count == 0) return; // new file; CreateSchema makes the table
-        foreach (var (name, type) in new[] { ("ethnicity", "TEXT"), ("draft_year", "INTEGER"), ("draft_round", "INTEGER"), ("draft_pick", "INTEGER"), ("face_file", "TEXT") })
+        foreach (var (name, type) in new[] { ("ethnicity", "TEXT"), ("draft_year", "INTEGER"), ("draft_round", "INTEGER"), ("draft_pick", "INTEGER"), ("face_file", "TEXT"), ("draft_rights_team_id", "INTEGER") })
             if (!cols.Contains(name)) Exec(conn, $"ALTER TABLE player ADD COLUMN {name} {type}");
+        // v6: overseas buyout clauses on contracts.
+        var contractCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(contract)";
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) contractCols.Add(r.GetString(1));
+        }
+        if (contractCols.Count > 0 && !contractCols.Contains("buyout")) Exec(conn, "ALTER TABLE contract ADD COLUMN buyout INTEGER");
     }
 
     internal static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)

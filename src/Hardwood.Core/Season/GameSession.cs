@@ -373,6 +373,13 @@ public sealed class GameSession
         Phase = SessionPhase.Offseason;
         Offseason = new Offseason(League, outcome, Stats, _rng);
         Offseason.Begin();
+        // The world's summer starts too: overseas contracts end and some players enter the shared free-agent pool.
+        World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);
+        Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
+        var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre).OrderByDescending(x => x.player.CurrentAbility).Take(8).ToList();
+        if (abroad.Count > 0)
+            Post("Overseas free agents", "These players' overseas contracts have ended and they're free to sign anywhere:\n"
+                + string.Join("\n", abroad.Select(x => $"{x.player.Name} ({x.player.PrimaryPosition}, {x.player.Age(Offseason.Date)}, {x.player.CurrentAbility} CA), last with {x.from.FullName}")), "World");
         Offseason.AiReSignAll(exceptTeamId: HumanTeam.Id);
 
         AnnounceAwards(Offseason.Summary!);
@@ -432,7 +439,10 @@ public sealed class GameSession
                 break;
             case OffseasonPhase.Draft:
                 Offseason.AdvanceToFreeAgency();
+                Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, HumanTeam.Id);
                 Offseason.AiFreeAgency(HumanTeam.Id);
+                foreach (var (title, body) in World.News) Post(title, body, "World");
+                World.News.Clear();
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
                 Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
                 break;
@@ -442,6 +452,32 @@ public sealed class GameSession
                 break;
         }
         SaveNow();
+    }
+
+    /// <summary>Buy an overseas player out of his contract and sign him; also brings over a stashed pick. Null = done, else why not.</summary>
+    public string? BuyOut(Player p)
+    {
+        if (Offseason == null) return "Players can only move in the summer.";
+        var terms = Hardwood.Core.World.WorldMarket.Terms(World, Offseason, HumanTeam, p);
+        if (!terms.Possible) return terms.Note;
+        var club = Hardwood.Core.World.WorldMarket.ClubOf(World, p);
+        if (!Hardwood.Core.World.WorldMarket.BuyOut(World, Offseason, HumanTeam, p)) return "The move fell through.";
+        Post($"{p.Name} signs", $"{p.Name} leaves {club?.FullName} and joins you. {terms.Note} He signs for ${terms.NablSalary / 1e6:F1}M a year.", "Roster");
+        SaveNow();
+        return null;
+    }
+
+    /// <summary>Send one of this year's draft picks to play overseas, keeping his rights. Null = done, else why not.</summary>
+    public string? Stash(Player p)
+    {
+        if (Offseason == null) return "Picks can only be stashed in the summer.";
+        if (Hardwood.Core.World.WorldMarket.CannotStash(Offseason, HumanTeam, p) is { } why) return why;
+        if (!Hardwood.Core.World.WorldMarket.Stash(World, Offseason, HumanTeam, p, new Rng(World.NextRngSeed())))
+            return "No overseas club has room for him under its import limit.";
+        var club = Hardwood.Core.World.WorldMarket.ClubOf(World, p)!;
+        Post($"{p.Name} stashed", $"{p.Name} will play for {club.FullName}. You keep his rights and can bring him over in a later summer (buyout ${p.Contract!.Buyout / 1e6:F2}M).", "Roster");
+        SaveNow();
+        return null;
     }
 
     /// <summary>Human draft pick; then AI picks run until the human is on the clock again or the draft ends.</summary>
@@ -457,7 +493,7 @@ public sealed class GameSession
     private void StartNewSeason()
     {
         Phase = SessionPhase.Preseason;
-        World.Rollover(League.Season, _sim);
+        World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
         foreach (var (title, body) in World.News) Post(title, body, "World");
         World.News.Clear();
         Today = OpeningNight.AddDays(-7);
@@ -521,6 +557,7 @@ public sealed class GameSession
     {
         Phase = SessionPhase.Offseason;
         Offseason = Offseason.Restore(League, _rng, phase, draftOrder, pickOwners, prospects, nextPick, expiring, picksMade);
+        Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
     }
 
     public string DescribeSide(IEnumerable<Player> players, IEnumerable<DraftPickAsset> picks)

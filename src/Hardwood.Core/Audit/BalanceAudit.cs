@@ -99,6 +99,7 @@ public static class BalanceAudit
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
+        var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
 
         for (int s = 0; s < seasons; s++)
@@ -117,7 +118,18 @@ public static class BalanceAudit
                 (worldCa.TryGetValue(c.Profile.Name, out var l) ? l : worldCa[c.Profile.Name] = new()).Add(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility));
 
             progress?.Invoke($"Season {year}-{(year + 1) % 100:00}");
-            var played = career.PlaySeason(league);
+            // The world: its seasons end before the NABL summer starts; measure them, then the summer moves players.
+            world.FinishSeasons(sim);
+            foreach (var c in world.Playing)
+            {
+                var regular = c.Season.Fixtures.Where(f => f.Played && f.Stage == CompetitionSeason.RegularSeason).ToList();
+                if (regular.Count > 0) (worldPts.TryGetValue(c.Profile.Name, out var l) ? l : worldPts[c.Profile.Name] = new()).Add(regular.Average(f => (f.HomePts!.Value + f.AwayPts!.Value) / 2.0));
+                if (c.Season.ChampionId is { } id) (report.WorldChampions.TryGetValue(c.Profile.Name, out var w) ? w : report.WorldChampions[c.Profile.Name] = new()).Add($"{year}: {world.TeamById(id)?.Abbreviation}");
+            }
+            var played = career.PlaySeason(league, world: world, worldSim: sim);
+            buyouts.Add(world.BuyoutMoves.Count);
+            stashes.Add(world.Stashes.Count);
+            signedAbroad.Add(world.SignedAbroad.Count);
             var games = played.Outcome.RegularSeason;
             var boxes = games.SelectMany(g => new[] { g.Home, g.Away }).ToList();
             pts.Add(boxes.Average(b => b.Points));
@@ -145,16 +157,7 @@ public static class BalanceAudit
             retiredAge.Add(off.Retired.Select(p => (double)p.Age(new DateOnly(year + 1, 7, 1))).DefaultIfEmpty(0).Average());
             var draft = off.Draft.OrderBy(d => d.Pick).ToList();
             if (draft.Count > 0) { firstPick.Add(draft[0].Player.CurrentAbility); rookieTop5.Add(draft.Take(5).Average(d => d.Player.CurrentAbility)); }
-
-            // The world: finish its season, measure, then roll it over to the year the NABL just started.
-            world.FinishSeasons(sim);
-            foreach (var c in world.Playing)
-            {
-                var regular = c.Season.Fixtures.Where(f => f.Played && f.Stage == CompetitionSeason.RegularSeason).ToList();
-                if (regular.Count > 0) (worldPts.TryGetValue(c.Profile.Name, out var l) ? l : worldPts[c.Profile.Name] = new()).Add(regular.Average(f => (f.HomePts!.Value + f.AwayPts!.Value) / 2.0));
-                if (c.Season.ChampionId is { } id) (report.WorldChampions.TryGetValue(c.Profile.Name, out var w) ? w : report.WorldChampions[c.Profile.Name] = new()).Add($"{year}: {world.TeamById(id)?.Abbreviation}");
-            }
-            world.Rollover(league.Season, sim);
+            intlPicks.Add(draft.Count == 0 ? 0 : draft.Count(d => WorldMarket.IsInternational(d.Player)) / (double)draft.Count);
         }
 
         var m = report.Metrics;
@@ -198,6 +201,12 @@ public static class BalanceAudit
         m.Add(new("NABL money", "Average payroll as share of the cap", "0.00", payroll, fin.SoftCap ? 0.95 : 0.80, fin.SoftCap ? 1.25 : 1.00, fin.SoftCap ? "NBA ~1.05-1.15" : "hard-cap league"));
         m.Add(new("NABL money", "Teams paying luxury tax", "0.0", taxTeams, fin.SoftCap ? 0 : null, fin.SoftCap ? 10 : null, "NBA ~5-8"));
         m.Add(new("NABL money", "Free agents available at season start", "0", faPool, null, null, ""));
+        // Movement (decisions #53-56). NBA: roughly 2-6 draft-and-stash picks a year; a few overseas players bought out
+        // each summer; international players are about a quarter to a third of draftees.
+        m.Add(new("Player movement", "International share of draft picks", "0.00", intlPicks, 0.15, 0.40, "NBA drafts 2015-25"));
+        m.Add(new("Player movement", "Draft picks stashed overseas", "0.0", stashes, 1, 8, "NBA ~2-6"));
+        m.Add(new("Player movement", "Overseas players bought out by NABL teams", "0.0", buyouts, 0.5, 8, "NBA a few a summer"));
+        m.Add(new("Player movement", "Free agents signed by overseas clubs", "0", signedAbroad, null, null, ""));
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)
         {

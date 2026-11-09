@@ -121,6 +121,17 @@ public class UiSmokeTests
             Assert.True(off.IsFreeAgency);
             window.UpdateLayout();
             if (off.FreeAgents.Count > 0 && session.HumanTeam.Roster.Count < 15) { off.SelectedFreeAgent = off.FreeAgents.First(); off.SignFreeAgent(); }
+            // Overseas buyouts and draft rights (stage 2): the lists fill, and acting on them never throws.
+            Assert.NotEmpty(off.Overseas);
+            Assert.NotEmpty(off.Rights); // this year's picks
+            off.SelectedOverseas = off.Overseas.First();
+            window.UpdateLayout();
+            off.BuyOut();
+            Assert.False(string.IsNullOrEmpty(off.Status));
+            off.SelectedRights = off.Rights.FirstOrDefault(r => !r.Abroad);
+            off.Stash();
+            Assert.False(string.IsNullOrEmpty(off.Status));
+            window.UpdateLayout();
 
             session.AdvanceOffseason();
             vm.AfterTick();

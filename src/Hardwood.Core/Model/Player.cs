@@ -45,6 +45,8 @@ public sealed class Player
 
     /// <summary>Draft the player entered the league through; null if undrafted or generated already in the league.</summary>
     public DraftRecord? Draft { get; set; }
+    /// <summary>NABL team holding this player's draft rights while he plays abroad ("stashed"); null otherwise.</summary>
+    public int? DraftRightsTeamId { get; set; }
 
     /// <summary>Height in centimetres.</summary>
     public int HeightCm { get; init; }
@@ -102,4 +104,6 @@ public sealed class Contract
     public int StartSeason { get; set; }
     public bool TeamOption { get; set; }
     public bool PlayerOption { get; set; }
+    /// <summary>Overseas contracts: the buyout an NABL team (plus the player) must pay to sign him before it ends. 0 = none.</summary>
+    public long Buyout { get; set; }
 }

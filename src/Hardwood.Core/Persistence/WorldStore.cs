@@ -17,6 +17,9 @@ public static class WorldStore
         using var tx = conn.BeginTransaction();
         SaveFile.Exec(conn, "DELETE FROM world_meta; DELETE FROM world_comp; DELETE FROM world_team;");
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('rng_seed', $v)", ("$v", ((long)world.NextRngSeed()).ToString()));
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_started', $v)", ("$v", world.SummerStarted.ToString()));
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_ended', $v)", ("$v", world.SummerEnded.ToString()));
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('departed', $v)", ("$v", SaveFile.ToJson(world.Departed)));
         int order = 0;
         foreach (var c in world.Competitions)
         {
@@ -82,8 +85,24 @@ public static class WorldStore
                 teams[t.Id] = t;
             }
         }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'summer_started'";
+            if (cmd.ExecuteScalar() is string v && int.TryParse(v, out var y)) world.SummerStarted = y;
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'summer_ended'";
+            if (cmd.ExecuteScalar() is string e && int.TryParse(e, out var ye)) world.SummerEnded = ye;
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'departed'";
+            if (cmd.ExecuteScalar() is string dj && SaveFile.FromJson<Dictionary<int, List<GameWorld.Departure>>>(dj) is { } departed)
+                foreach (var (k, list) in departed) world.Departed[k] = list;
+        }
+        var asOf = new DateOnly(nabl.Season, 10, 1);
         foreach (var p in overseasPlayers)
-            if (p.TeamId is { } id && teams.TryGetValue(id, out var t)) t.Roster.Add(p);
+            if (p.TeamId is { } id && teams.TryGetValue(id, out var t))
+            {
+                t.Roster.Add(p);
+                // Saves from before format 6 have no buyout clauses: write them in now.
+                if (p.Contract is { Buyout: 0 } c) c.Buyout = GameWorld.BuyoutFor(p, c.Salary, c.Years, asOf);
+            }
         world.Index();
         return world;
     }
