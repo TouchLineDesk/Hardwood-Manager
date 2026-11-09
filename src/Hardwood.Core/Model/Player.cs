@@ -40,6 +40,8 @@ public sealed class Player
     public string Nationality { get; init; } = "USA";
     /// <summary>Appearance group; picks the portrait face folder.</summary>
     public Ethnicity Ethnicity { get; set; } = Ethnicity.African;
+    /// <summary>Portrait face, relative to the face pack root (e.g. "African/African123.png"); chosen once, never re-picked. Null until assigned.</summary>
+    public string? FaceFile { get; set; }
 
     /// <summary>Draft the player entered the league through; null if undrafted or generated already in the league.</summary>
     public DraftRecord? Draft { get; set; }

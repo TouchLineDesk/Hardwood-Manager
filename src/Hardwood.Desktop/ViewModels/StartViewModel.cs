@@ -28,6 +28,9 @@ public sealed partial class StartViewModel : ViewModelBase
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private TeamChoice? _selectedTeam;
     [ObservableProperty] private string _loadPath = DefaultSavePath();
+    /// <summary>FMNEWGAN face pack folder for automatic player card portraits (app setting).</summary>
+    [ObservableProperty] private string _faceFolder = AppSettings.Current.FaceFolder;
+    [ObservableProperty] private string _faceFolderStatus = "";
 
     public ObservableCollection<TeamChoice> Teams { get; } = new();
     private League? _preview;
@@ -36,6 +39,25 @@ public sealed partial class StartViewModel : ViewModelBase
     {
         _shell = shell;
         Preview();
+        UpdateFaceStatus();
+    }
+
+    partial void OnFaceFolderChanged(string value)
+    {
+        AppSettings.Current.FaceFolder = value;
+        AppSettings.Current.Save();
+        Portraits.PortraitService.Instance.ResetLibrary();
+        UpdateFaceStatus();
+    }
+
+    private void UpdateFaceStatus()
+    {
+        if (Core.Portraits.FaceLibrary.LooksLikePack(FaceFolder))
+        {
+            int folders = Enum.GetValues<Ethnicity>().Count(e => Directory.Exists(Path.Combine(FaceFolder, EthnicityInfo.FolderName(e))));
+            FaceFolderStatus = $"Face pack found ({folders} of 12 ethnicity folders). Player cards are drawn automatically as you play.";
+        }
+        else FaceFolderStatus = "No face pack here. Players keep the drawn avatar until you point this at your FMNEWGANv2 folder.";
     }
 
     public static string DefaultSavePath()

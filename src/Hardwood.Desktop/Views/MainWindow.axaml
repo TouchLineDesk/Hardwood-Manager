@@ -29,6 +29,7 @@
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <CheckBox Content="Watch my games" IsChecked="{Binding LiveGames}" IsVisible="{Binding InSeason}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="{Binding PortraitStatus}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,14,0"/>
             <TextBlock Text="{Binding DateText}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
             <Button Content="Sim week" Command="{Binding SimWeekCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>
             <Button Content="Sim to next game" Command="{Binding SimToNextGameCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>
