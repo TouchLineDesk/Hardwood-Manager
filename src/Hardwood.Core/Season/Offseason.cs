@@ -287,6 +287,7 @@ public sealed class Offseason
         var fin = _league.Finance;
         var pick = new DraftPick(round, overall, team, prospect, OriginalTeamAt(NextPickIndex));
         Report.Draft.Add(pick);
+        prospect.Draft = new DraftRecord(Date.Year, round, overall);
         if (round == 1)
         {
             long salary = (long)(fin.RookieScaleFirstPick * Math.Pow(0.93, overall - 1));

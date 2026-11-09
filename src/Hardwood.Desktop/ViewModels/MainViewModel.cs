@@ -59,6 +59,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         Session = session;
         HasSession = true;
+        Controls.Portraits.UseSave(session.Save?.Path);
         _pages.Clear();
         Nav.Clear();
         foreach (var (name, factory) in new (string, Func<PageViewModel>)[]
@@ -99,6 +100,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public void Navigate(string name)
     {
         if (InLiveGame) return; // finish the game first
+        Controls.Portraits.Reload(); // pick up portraits rebuilt on disk
         var page = Page(name);
         page.Refresh();
         CurrentPage = page;

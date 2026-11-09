@@ -38,6 +38,11 @@ public sealed class Player
 
     public DateOnly BirthDate { get; init; }
     public string Nationality { get; init; } = "USA";
+    /// <summary>Appearance group; picks the portrait face folder.</summary>
+    public Ethnicity Ethnicity { get; set; } = Ethnicity.African;
+
+    /// <summary>Draft the player entered the league through; null if undrafted or generated already in the league.</summary>
+    public DraftRecord? Draft { get; set; }
 
     /// <summary>Height in centimetres.</summary>
     public int HeightCm { get; init; }
@@ -83,6 +88,9 @@ public sealed class Player
 
     public override string ToString() => $"{Name} ({PrimaryPosition}, {HeightCm}cm, CA {CurrentAbility}/{PotentialAbility})";
 }
+
+/// <summary>Draft year (the summer it happened), round and overall pick.</summary>
+public sealed record DraftRecord(int Year, int Round, int Pick);
 
 public sealed class Contract
 {

@@ -74,8 +74,18 @@ public sealed class PlayerCard : Control
             // Avatar circle
             double av = Compact ? h * 0.42 : h * 0.36;
             double acx = w / 2, acy = Compact ? h * 0.30 : h * 0.28;
-            ctx.DrawEllipse(new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)), new Pen(new SolidColorBrush(accent), 2), new Point(acx, acy), av / 2 + 3, av / 2 + 3);
-            DrawAvatar(ctx, p, Team, new Rect(acx - av / 2, acy - av / 2, av, av));
+            if (Portraits.Get(p.Id) != null)
+            {
+                // Rendered portrait: a rounded square, slightly larger than the avatar disc.
+                double ps = av + 8;
+                ctx.DrawRectangle(null, new Pen(new SolidColorBrush(accent), 2), new RoundedRect(new Rect(acx - ps / 2 - 1, acy - ps / 2 - 1, ps + 2, ps + 2), ps * 0.08));
+                DrawAvatar(ctx, p, Team, new Rect(acx - ps / 2, acy - ps / 2, ps, ps));
+            }
+            else
+            {
+                ctx.DrawEllipse(new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)), new Pen(new SolidColorBrush(accent), 2), new Point(acx, acy), av / 2 + 3, av / 2 + 3);
+                DrawAvatar(ctx, p, Team, new Rect(acx - av / 2, acy - av / 2, av, av));
+            }
 
             // Ability badge (top left) and tier gem (top right)
             var k = Knowledge;

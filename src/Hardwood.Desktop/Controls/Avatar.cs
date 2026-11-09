@@ -5,7 +5,8 @@ using Hardwood.Core.Model;
 
 namespace Hardwood.Desktop.Controls;
 
-/// <summary>Stylised procedural portrait: features are drawn from a hash of the player id so each face is stable.</summary>
+/// <summary>Stylised procedural portrait: features are drawn from a hash of the player id so each face is stable.
+/// If a rendered portrait exists for the player (see <see cref="Portraits"/>), that image is shown instead.</summary>
 public sealed class Avatar : Control
 {
     public static readonly StyledProperty<Player?> PlayerProperty = AvaloniaProperty.Register<Avatar, Player?>(nameof(Player));
@@ -46,6 +47,15 @@ public sealed class Avatar : Control
         if (s < 8) return;
         double cx = Bounds.Width / 2, cy = Bounds.Height / 2;
         int id = p.Id;
+
+        // A rendered portrait (player card) wins over the procedural face.
+        if (Portraits.Get(id) is { } portrait)
+        {
+            var box = new Rect(cx - s / 2, cy - s / 2, s, s);
+            using (ctx.PushClip(new RoundedRect(box, s * 0.08)))
+                ctx.DrawImage(portrait, new Rect(portrait.Size), box);
+            return;
+        }
 
         var skin = Skins[Pick(id, 1, Skins.Length)];
         var hair = Hairs[Pick(id, 2, Hairs.Length)];
