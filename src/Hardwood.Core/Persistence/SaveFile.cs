@@ -15,7 +15,12 @@ public sealed class SaveFile
     internal static string ToJson<T>(T value) => System.Text.Json.JsonSerializer.Serialize(value, JsonOpts);
     internal static T? FromJson<T>(string json) => System.Text.Json.JsonSerializer.Deserialize<T>(json, JsonOpts);
 
-    public const int SchemaVersion = 4;
+    /// <summary>
+    /// Save format. 2: phase 5 · 3: ethnicity, draft record · 4: portrait face · 5: the world beyond the NABL.
+    /// Bump it whenever the format changes, add a sample save of the old format to tests/Hardwood.Tests/SaveFixtures,
+    /// and make sure Load upgrades it (SaveCompatibilityTests loads every sample).
+    /// </summary>
+    public const int SchemaVersion = 5;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
@@ -23,6 +28,36 @@ public sealed class SaveFile
     public List<Player> LoadedOverseas { get; } = new();
 
     public SaveFile(string path) => _path = path;
+
+    /// <summary>Format version of the save on disk before this load upgraded it (null if it was already current or new).</summary>
+    public int? UpgradedFrom { get; private set; }
+    /// <summary>Where the untouched copy of an upgraded save was put.</summary>
+    public string? BackupPath { get; private set; }
+
+    /// <summary>
+    /// Before opening a save made by an older version (which upgrades it in place), copy it next to itself as
+    /// <c>&lt;name&gt;.v&lt;version&gt;-backup&lt;ext&gt;</c>, once per version. Older versions of the game can still open that copy.
+    /// </summary>
+    public void BackupBeforeUpgrade()
+    {
+        if (!File.Exists(_path)) return;
+        int? version = null;
+        var cs = new SqliteConnectionStringBuilder { DataSource = _path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString();
+        using (var conn = new SqliteConnection(cs))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT value FROM meta WHERE key = 'schema_version'";
+            try { if (cmd.ExecuteScalar() is string v && int.TryParse(v, out var n)) version = n; }
+            catch (SqliteException) { return; } // not a save we understand; Load will report it
+        }
+        if (version is not { } old || old >= SchemaVersion) return;
+        var dir = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(_path))!;
+        var backup = System.IO.Path.Combine(dir, $"{System.IO.Path.GetFileNameWithoutExtension(_path)}.v{old}-backup{System.IO.Path.GetExtension(_path)}");
+        if (!File.Exists(backup)) File.Copy(_path, backup);
+        UpgradedFrom = old;
+        BackupPath = backup;
+    }
 
     /// <summary>Location of the save on disk.</summary>
     public string Path => _path;
@@ -173,6 +208,7 @@ public sealed class SaveFile
     // ------------------------------------------------------------------------------------------
     public League Load()
     {
+        BackupBeforeUpgrade();
         using var conn = Open();
         League league;
         using (var cmd = conn.CreateCommand())
