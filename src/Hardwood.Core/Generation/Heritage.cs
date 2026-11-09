@@ -48,7 +48,7 @@ public static class Heritages
         new("balkan", 3, new[] { "Serbia", "Croatia", "Slovenia", "Bosnia and Herzegovina", "Montenegro" },
             new[] { "Luka","Nikola","Bogdan","Goran","Dario","Jusuf","Ante","Marko","Ivan","Dragan","Vasilije","Filip","Stefan","Aleksa","Nemanja" },
             new[] { "Petrovic","Jokovic","Markovic","Nikolic","Stojanovic","Bogdanovic","Saric","Hezonja","Zubac","Vucevic","Jovic","Micic","Ilic","Kalinic","Radovic" },
-            new[] { (Ethnicity.CentralEuropean, 1.0) }),
+            new[] { (Ethnicity.YugoGreek, 1.0) }),
         new("france", 4, new[] { "France" },
             new[] { "Evan","Rudy","Nicolas","Theo","Killian","Victor","Mathias","Bilal","Moussa","Sekou","Frank","Timothe","Elie","Guerschon","Yakuba" },
             new[] { "Fournier","Batum","Gobert","Yabusele","Maledon","Hayes","Okobo","Lessort","Poirier","Cordinier","Diallo","Traore","Lefevre","Moreau","Girard" },
@@ -60,7 +60,7 @@ public static class Heritages
         new("spain", 2, new[] { "Spain" },
             new[] { "Santi","Ricky","Sergio","Juan","Pau","Alex","Willy","Dario","Jaime","Usman" },
             new[] { "Hernangomez","Rubio","Llull","Abalde","Brizuela","Garuba","Aldama","Fernandez","Claver","Sastre","Navarro","Rodriguez" },
-            new[] { (Ethnicity.Italmed, 0.88), (Ethnicity.African, 0.12) }),
+            new[] { (Ethnicity.SpanMed, 0.88), (Ethnicity.African, 0.12) }),
         new("italy", 1, new[] { "Italy" },
             new[] { "Danilo","Marco","Nicolo","Simone","Achille","Matteo","Giampaolo","Alessandro","Luigi","Stefano" },
             new[] { "Gallinari","Belinelli","Melli","Fontecchio","Polonara","Spissu","Ricci","Mannion","Tonut","Procida" },
@@ -68,7 +68,7 @@ public static class Heritages
         new("greece", 1.5, new[] { "Greece" },
             new[] { "Giannis","Kostas","Thanasis","Nikos","Vassilis","Georgios","Dimitris","Panagiotis","Ioannis","Kostis" },
             new[] { "Antetokounmpo","Papanikolaou","Sloukas","Calathes","Mitoglou","Larentzakis","Papagiannis","Bochoridis","Papadopoulos","Kalaitzakis" },
-            new[] { (Ethnicity.Italmed, 0.85), (Ethnicity.African, 0.15) }),
+            new[] { (Ethnicity.YugoGreek, 0.85), (Ethnicity.African, 0.15) }),
         new("australia", 2.5, new[] { "Australia", "New Zealand" },
             new[] { "Josh","Patty","Ben","Dyson","Jock","Matisse","Joe","Xavier","Will","Jack" },
             new[] { "Giddey","Mills","Exum","Ingles","Dellavedova","Baynes","Landale","Bogut","Kay","Thybulle","Daniels","Green" },
@@ -131,6 +131,21 @@ public static class Heritages
         Span<double> w = stackalloc double[h.Ethnicities.Length];
         for (int i = 0; i < w.Length; i++) w[i] = h.Ethnicities[i].Weight;
         return h.Ethnicities[rng.WeightedIndex(w)].Ethnicity;
+    }
+
+    /// <summary>
+    /// Brings an older save's player in line with the current heritage table: when his stored ethnicity is one his
+    /// nationality can no longer have (e.g. a Spanish player saved as Italmed before SpanMed existed) and he has no
+    /// portrait face yet, he moves to his heritage's main group. Players who already have a face keep everything.
+    /// Returns true if the player changed.
+    /// </summary>
+    public static bool Reconcile(Player p)
+    {
+        if (p.FaceFile != null) return false;
+        var h = All.FirstOrDefault(x => x.Nationalities.Contains(p.Nationality));
+        if (h == null || h.Ethnicities.Any(e => e.Ethnicity == p.Ethnicity)) return false;
+        p.Ethnicity = h.Ethnicities[0].Ethnicity;
+        return true;
     }
 
     /// <summary>

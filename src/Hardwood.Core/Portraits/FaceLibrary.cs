@@ -30,7 +30,7 @@ public sealed class FaceLibrary
         !string.IsNullOrWhiteSpace(root) && Directory.Exists(root) &&
         Enum.GetValues<Ethnicity>().Any(e => Directory.Exists(Path.Combine(root, EthnicityInfo.FolderName(e))));
 
-    /// <summary>Scan the pack (only the 12 ethnicity folders, *.png). Missing folders are simply empty.</summary>
+    /// <summary>Scan the pack (only the ethnicity folders, *.png). Missing folders are simply empty.</summary>
     public static FaceLibrary Scan(string root)
     {
         var faces = new Dictionary<Ethnicity, string[]>();

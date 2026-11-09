@@ -263,6 +263,7 @@ public sealed class SaveFile
                 p.Ethnicity = (r.IsDBNull(33) ? null : EthnicityInfo.FromFolderName(r.GetString(33)))
                               ?? Generation.Heritages.Backfill(p.Id, p.Nationality);
                 p.FaceFile = r.IsDBNull(37) ? null : r.GetString(37);
+                Generation.Heritages.Reconcile(p);
                 if (!r.IsDBNull(34)) p.Draft = new DraftRecord(r.GetInt32(34), r.GetInt32(35), r.GetInt32(36));
                 if (contracts.TryGetValue(p.Id, out var c)) p.Contract = c;
 

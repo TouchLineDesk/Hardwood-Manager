@@ -19,6 +19,10 @@ public enum Ethnicity
     Scandinavian,
     Seasian,
     SouthAmerican,
+    /// <summary>Spanish / Iberian Mediterranean (pack folder "SpanMed").</summary>
+    SpanMed,
+    /// <summary>Former Yugoslavia and Greece (pack folder "YugoGreek").</summary>
+    YugoGreek,
 }
 
 public static class EthnicityInfo

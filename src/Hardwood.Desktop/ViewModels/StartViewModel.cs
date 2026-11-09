@@ -55,7 +55,7 @@ public sealed partial class StartViewModel : ViewModelBase
         if (Core.Portraits.FaceLibrary.LooksLikePack(FaceFolder))
         {
             int folders = Enum.GetValues<Ethnicity>().Count(e => Directory.Exists(Path.Combine(FaceFolder, EthnicityInfo.FolderName(e))));
-            FaceFolderStatus = $"Face pack found ({folders} of 12 ethnicity folders). Player cards are drawn automatically as you play.";
+            FaceFolderStatus = $"Face pack found ({folders} of {Enum.GetValues<Ethnicity>().Length} ethnicity folders). Player cards are drawn automatically as you play.";
         }
         else FaceFolderStatus = "No face pack here. Players keep the drawn avatar until you point this at your FMNEWGANv2 folder.";
     }
