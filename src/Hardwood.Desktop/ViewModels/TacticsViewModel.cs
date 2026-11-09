@@ -71,8 +71,8 @@ public sealed partial class TacticsViewModel : PageViewModel
     public ObservableCollection<SystemOption> Schemes { get; } = new();
     [ObservableProperty] private SystemOption? _selectedSystem;
     [ObservableProperty] private SystemOption? _selectedScheme;
-    partial void OnSelectedSystemChanged(SystemOption? v) { if (!_loading && v?.System is { } s) { Tac.System = s; Changed(); } }
-    partial void OnSelectedSchemeChanged(SystemOption? v) { if (!_loading && v?.Scheme is { } d) { Tac.Scheme = d; Changed(); } }
+    partial void OnSelectedSystemChanged(SystemOption? value) { if (!_loading && value?.System is { } s) { Tac.System = s; Changed(); } }
+    partial void OnSelectedSchemeChanged(SystemOption? value) { if (!_loading && value?.Scheme is { } d) { Tac.Scheme = d; Changed(); } }
 
     // Fine-tuning sliders (moved from the Rotation page).
     [ObservableProperty] private double _pace;
@@ -86,11 +86,11 @@ public sealed partial class TacticsViewModel : PageViewModel
     public string CrashText => Describe(CrashGlass, "Get back", "Balanced", "Crash the glass");
     public string AggressionText => Describe(Aggression, "Contain", "Balanced", "Gamble");
     public string StarText2 => Describe(StarUsage, "Share the ball", "Balanced", "Feed the stars");
-    partial void OnPaceChanged(double v) { OnPropertyChanged(nameof(PaceText)); ApplySliders(); }
-    partial void OnThreeEmphasisChanged(double v) { OnPropertyChanged(nameof(ThreeText)); ApplySliders(); }
-    partial void OnCrashGlassChanged(double v) { OnPropertyChanged(nameof(CrashText)); ApplySliders(); }
-    partial void OnAggressionChanged(double v) { OnPropertyChanged(nameof(AggressionText)); ApplySliders(); }
-    partial void OnStarUsageChanged(double v) { OnPropertyChanged(nameof(StarText2)); ApplySliders(); }
+    partial void OnPaceChanged(double value) { OnPropertyChanged(nameof(PaceText)); ApplySliders(); }
+    partial void OnThreeEmphasisChanged(double value) { OnPropertyChanged(nameof(ThreeText)); ApplySliders(); }
+    partial void OnCrashGlassChanged(double value) { OnPropertyChanged(nameof(CrashText)); ApplySliders(); }
+    partial void OnAggressionChanged(double value) { OnPropertyChanged(nameof(AggressionText)); ApplySliders(); }
+    partial void OnStarUsageChanged(double value) { OnPropertyChanged(nameof(StarText2)); ApplySliders(); }
     private static string Describe(double v, string low, string mid, string high) => v < 35 ? low : v > 65 ? high : mid;
 
     public ObservableCollection<RoleRow> RoleRows { get; } = new();
@@ -98,15 +98,15 @@ public sealed partial class TacticsViewModel : PageViewModel
     public ObservableCollection<StopperOption> Stoppers { get; } = new();
     [ObservableProperty] private StopperOption? _selectedStopper;
     [ObservableProperty] private bool _doubleStar;
-    partial void OnSelectedStopperChanged(StopperOption? v) { if (!_loading) { Tac.StarStopperId = v?.Player?.Id; Changed(); } }
-    partial void OnDoubleStarChanged(bool v) { if (!_loading) { Tac.DoubleStar = v; Changed(); } }
+    partial void OnSelectedStopperChanged(StopperOption? value) { if (!_loading) { Tac.StarStopperId = value?.Player?.Id; Changed(); } }
+    partial void OnDoubleStarChanged(bool value) { if (!_loading) { Tac.DoubleStar = value; Changed(); } }
 
     public ObservableCollection<string> Presets { get; } = new();
     public ObservableCollection<string> LateGameOptions { get; } = new();
     [ObservableProperty] private string? _selectedPreset;
     [ObservableProperty] private string _newPresetName = "";
     [ObservableProperty] private string? _lateGame;
-    partial void OnLateGameChanged(string? v) { if (!_loading) { Tac.LateGamePreset = v is null or NoPreset ? null : v; Changed(); } }
+    partial void OnLateGameChanged(string? value) { if (!_loading) { Tac.LateGamePreset = value is null or NoPreset ? null : value; Changed(); } }
     private const string NoPreset = "Keep current tactics";
 
     [ObservableProperty] private string _opponentHeadline = "";

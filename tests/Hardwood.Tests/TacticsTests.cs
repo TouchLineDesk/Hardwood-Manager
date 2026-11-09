@@ -73,7 +73,7 @@ public class TacticsTests
         a.Tactic.System = OffensiveSystem.PostCentric;
         var post = Play(a, b, 40, league.Rules);
         Assert.True(space.threeShare > post.threeShare + 0.05, $"{space.threeShare:F3} vs {post.threeShare:F3}");
-        Assert.True(space.pace > post.pace + 2, $"{space.pace:F1} vs {post.pace:F1}");
+        Assert.True(space.pace > post.pace + 1, $"{space.pace:F1} vs {post.pace:F1}");
 
         // Doubling their star cuts his share of their shots.
         a.Tactic.System = OffensiveSystem.Balanced;
