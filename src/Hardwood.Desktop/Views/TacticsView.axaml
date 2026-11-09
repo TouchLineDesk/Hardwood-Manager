@@ -1,0 +1,132 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.TacticsView"
+             x:DataType="vm:TacticsViewModel">
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+      <StackPanel>
+        <TextBlock Text="Tactics" Classes="h1" Margin="0"/>
+        <TextBlock Text="{Binding FitSummary}" Classes="muted" TextWrapping="Wrap"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+        <TextBlock Text="{Binding Status}" Classes="muted" VerticalAlignment="Center" MaxWidth="420" TextWrapping="Wrap"/>
+        <Button Content="Assistant: set up for me" Command="{Binding AssistantSetupCommand}"/>
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,0,0,10">
+      <!-- Offense and defense -->
+      <StackPanel Spacing="10" Margin="0,0,10,0">
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Offensive system" Classes="h2" Margin="0"/>
+            <ComboBox ItemsSource="{Binding Systems}" SelectedItem="{Binding SelectedSystem}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SystemOption">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding FitText}" Classes="muted" Margin="12,0,0,0"/></Grid>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="{Binding SelectedSystem.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Defensive scheme" Classes="h2" Margin="0"/>
+            <ComboBox ItemsSource="{Binding Schemes}" SelectedItem="{Binding SelectedScheme}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SystemOption">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding FitText}" Classes="muted" Margin="12,0,0,0"/></Grid>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="{Binding SelectedScheme.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="Their best scorer" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <ComboBox ItemsSource="{Binding Stoppers}" SelectedItem="{Binding SelectedStopper}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:StopperOption"><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <CheckBox Content="Double-team him (he shoots less and worse; his teammates get open looks)" IsChecked="{Binding DoubleStar}"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <!-- Sliders -->
+      <Border Grid.Column="1" Classes="panel" Margin="0,0,10,0">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Fine-tuning" Classes="h2" Margin="0"/><Button Grid.Column="1" Content="Reset" Command="{Binding ResetSlidersCommand}"/></Grid>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Pace" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding PaceText}" Classes="muted"/></Grid>
+            <Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Three-point emphasis" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding ThreeText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Offensive glass" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding CrashText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Defensive aggression" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding AggressionText}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding Aggression}"/>
+          </StackPanel>
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Star usage" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding StarText2}" Classes="muted"/></Grid>
+            <Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Opponent and presets -->
+      <StackPanel Grid.Column="2" Spacing="10">
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding OpponentHeadline}" Classes="h2" Margin="0"/>
+            <TextBlock Text="{Binding ScoutingReport}" TextWrapping="Wrap" FontSize="12"/>
+            <Button Content="Use the assistant's game plan" Command="{Binding UseSuggestionCommand}"/>
+          </StackPanel>
+        </Border>
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Presets" Classes="h2" Margin="0"/>
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" HorizontalAlignment="Stretch" PlaceholderText="Saved presets"/>
+              <Button Grid.Column="1" Content="Load" Command="{Binding LoadPresetCommand}" Margin="6,0,0,0"/>
+              <Button Grid.Column="2" Content="Delete" Command="{Binding DeletePresetCommand}" Margin="6,0,0,0"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding NewPresetName}" Watermark="Name, e.g. Small ball"/>
+              <Button Grid.Column="1" Content="Save current" Command="{Binding SavePresetCommand}" Margin="6,0,0,0"/>
+            </Grid>
+            <TextBlock Text="Late-game tactics (last 5 minutes, within 6 points)" FontWeight="SemiBold" Margin="0,4,0,0"/>
+            <ComboBox ItemsSource="{Binding LateGameOptions}" SelectedItem="{Binding LateGame}" HorizontalAlignment="Stretch"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+
+    <!-- Roles -->
+    <DockPanel Grid.Row="2">
+      <TextBlock DockPanel.Dock="Top" Text="Roles" Classes="h2" Margin="0,0,0,4"/>
+      <DataGrid ItemsSource="{Binding RoleRows}" CanUserSortColumns="False">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="70" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Min" Binding="{Binding MinutesText}" Width="70" IsReadOnly="True"/>
+          <DataGridTemplateColumn Header="Role" Width="260">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:RoleRow">
+                <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch" Margin="2">
+                  <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:RoleChoice"><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Best fit" Binding="{Binding Best}" Width="240" IsReadOnly="True"/>
+          <DataGridTextColumn Header="What he does" Binding="{Binding Summary}" Width="*" IsReadOnly="True"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+  </Grid>
+</UserControl>

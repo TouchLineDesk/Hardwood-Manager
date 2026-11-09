@@ -77,7 +77,8 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             ("Inbox", () => new InboxViewModel(this)),
             ("Roster", () => new RosterViewModel(this)),
-            ("Rotation & Tactics", () => new RotationViewModel(this)),
+            ("Rotation", () => new RotationViewModel(this)),
+            ("Tactics", () => new TacticsViewModel(this)),
             ("Staff & Training", () => new StaffViewModel(this)),
             ("Schedule & Results", () => new ScheduleViewModel(this)),
             ("Standings", () => new StandingsViewModel(this)),

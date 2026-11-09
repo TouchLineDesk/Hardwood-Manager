@@ -15,6 +15,7 @@ public sealed class GameSimulator
 
     public GameResult Simulate(Team home, Team away, Rules rules, ulong seed, bool keepLog = false, DateOnly? date = null)
     {
+        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date);
         var rng = new Rng(seed);
         var result = new GameResult
         {
@@ -44,6 +45,7 @@ public sealed class GameSimulator
     /// <summary>Begin a game that the caller steps through; call <see cref="LiveGame.Finish"/> or step to the end, then read Result.</summary>
     public LiveGame StartLive(Team home, Team away, Rules rules, ulong seed, DateOnly? date = null)
     {
+        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date);
         var rng = new Rng(seed);
         var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date };
         var h = new Side(home, result.Home, rng, _cfg, isHome: true, date);
@@ -128,9 +130,21 @@ public sealed class GameSimulator
         public int Possessions { get; set; }
         /// <summary>While the game clock (elapsed seconds) is below this, the coach's hand-picked five stays out there barring fouls.</summary>
         public double ManualHoldUntil { get; set; } = -1;
+        /// <summary>The tactics in force this possession (the team's, or its late-game preset).</summary>
+        public Tactic Tac { get; set; } = new();
+        private Tactic? _clutch;
+        public Tactic ClutchTactic(TacticPreset preset)
+        {
+            var t = Team.Tactic;
+            _clutch ??= new Tactic();
+            _clutch.Roles = t.Roles; _clutch.StarStopperId = t.StarStopperId;
+            preset.ApplyTo(_clutch);
+            return _clutch;
+        }
 
         public Side(Team team, TeamBox box, Rng rng, EngineConfig cfg, bool isHome, DateOnly? date)
         {
+            Tac = team.Tactic;
             Team = team; Box = box; IsHome = isHome;
             // Injured players are not dressed. Below eight healthy bodies, the hurt ones play anyway (the sim must still run).
             var healthy = (date is { } d ? team.Roster.Where(p => p.IsAvailable(d)) : team.Roster).OrderByDescending(p => p.Overall).ToList();
@@ -337,8 +351,11 @@ public sealed class GameSimulator
         {
             var off = _offense; var def = _defense;
             off.Possessions++;
+            SetTactics(off); SetTactics(def);
+            _offStar = Star(off); _defStar = Star(def);
+            _fitLogit = FitFor(off, def);
 
-            double pace = (off.Team.Tactic.Pace + def.Team.Tactic.Pace) / 2.0;
+            double pace = (off.Tac.Pace + def.Tac.Pace) / 2.0 + Tactics.PaceShift(off.Tac.System);
             // Pace is possessions per 48 minutes (Tactic.Pace), so a 40-minute FIBA game has 5/6 as many possessions.
             double meanSeconds = 48 * 60.0 / (2.0 * pace);
             double seconds = _transition
@@ -439,8 +456,9 @@ public sealed class GameSimulator
         {
             double security = off.OnCourt.Average(p => (p.Attributes[Attr.BallHandling] + p.Attributes[Attr.Decisions]) / 2.0);
             double pressure = def.OnCourt.Average(p => (p.Attributes[Attr.Steal] + p.Attributes[Attr.PerimeterDefense]) / 2.0)
-                              + (def.Team.Tactic.DefensiveAggression - 50) / 25.0;
-            double p = _cfg.TurnoverBase - _cfg.TurnoverSkillBeta * (security - pressure);
+                              + (def.Tac.DefensiveAggression - 50) / 25.0;
+            double p = _cfg.TurnoverBase - _cfg.TurnoverSkillBeta * (security - pressure)
+                       + Tactics.TurnoverShift(off.Tac, def.Tac);
             p = Math.Clamp(p, 0.04, 0.25);
             if (!_rng.Chance(p)) return false;
 
@@ -463,19 +481,52 @@ public sealed class GameSimulator
 
         private Player PickShooter(Side off, bool transition)
         {
-            double star = off.Team.Tactic.StarUsage / 50.0; // 1.0 = neutral
+            double star = off.Tac.StarUsage / 50.0 * Tactics.SharpnessFactor(off.Tac.System); // 1.0 = neutral
             var weights = new double[5];
             for (int i = 0; i < 5; i++)
             {
                 var p = off.OnCourt[i];
-                var a = p.Attributes;
-                double usage = a[Attr.ShotCreation] * 1.2 + a[Attr.ThreePoint] * 0.5 + a[Attr.CloseShot] * 0.5 + a[Attr.BallHandling] * 0.4
-                               + (100 - p.Tendencies.PassFirst) * 0.08;
-                if (transition) usage += a[Attr.Speed] * 0.5;
-                // Star usage sharpens or flattens the distribution.
-                weights[i] = Math.Pow(Math.Max(1, usage), _cfg.UsageSharpness * star) * (0.75 + 0.25 * off.Energy[p]);
+                double usage = BaseUsage(p, transition);
+                // Star usage sharpens or flattens the distribution; roles and the system tilt it.
+                weights[i] = Math.Pow(Math.Max(1, usage), _cfg.UsageSharpness * star) * (0.75 + 0.25 * off.Energy[p])
+                             * Roles.Info(off.Tac.RoleOf(p)).Usage * Tactics.SystemUsage(off.Tac.System, p);
+                if (p == _offStar && _defense.Tac.DoubleStar) weights[i] *= _cfg.DoubleStarUsage;
             }
             return off.OnCourt[_rng.WeightedIndex(weights)];
+        }
+
+        private static double BaseUsage(Player p, bool transition = false)
+        {
+            var a = p.Attributes;
+            double usage = a[Attr.ShotCreation] * 1.2 + a[Attr.ThreePoint] * 0.5 + a[Attr.CloseShot] * 0.5 + a[Attr.BallHandling] * 0.4
+                           + (100 - p.Tendencies.PassFirst) * 0.08;
+            if (transition) usage += a[Attr.Speed] * 0.5;
+            return usage;
+        }
+
+        /// <summary>The scorer the other team keys on: the highest-usage player on the floor.</summary>
+        private static Player Star(Side s) => s.OnCourt.MaxBy(p => BaseUsage(p))!;
+        private Player? _offStar, _defStar;
+        private readonly Dictionary<(long, long, int), double> _fitCache = new();
+
+        /// <summary>Tactics fit for these two fives and their tactics, cached (lineups repeat all game).</summary>
+        private double FitFor(Side off, Side def)
+        {
+            static long Key(Player[] five) { long k = 0; foreach (var p in five) k += (long)p.Id * 2654435761L; return k; }
+            int tac = (int)off.Tac.System * 16 + (int)def.Tac.Scheme;
+            var key = (Key(off.OnCourt), Key(def.OnCourt), tac);
+            if (!_fitCache.TryGetValue(key, out var v)) _fitCache[key] = v = Tactics.FitLogit(off.Tac, def.Tac, off.OnCourt, def.OnCourt, _cfg);
+            return v;
+        }
+        private double _fitLogit;
+
+        private void SetTactics(Side s)
+        {
+            var t = s.Team.Tactic;
+            if (t.LateGamePreset is { } name && _period >= _rules.Periods && _clock <= 300 && Math.Abs(HomeScore - AwayScore) <= 6
+                && t.Presets.FirstOrDefault(p => p.Name == name) is { } preset)
+                s.Tac = s.ClutchTactic(preset);
+            else s.Tac = t;
         }
 
         /// <summary>Set for a possession that must end in a three (down three at the end of the game).</summary>
@@ -489,7 +540,7 @@ public sealed class GameSimulator
             if (_wantTwo) return _rng.Chance(0.6) ? ShotZone.Rim : ShotZone.ShortMid;
             var t = shooter.Tendencies;
             var baseW = _cfg.ZoneBaseWeight;
-            double threeEmphasis = off.Team.Tactic.ThreePointEmphasis / 50.0;
+            double threeEmphasis = off.Tac.ThreePointEmphasis / 50.0;
             var w = new double[5];
             double threeFactor = (t.ThreePointRate / 35.0) * threeEmphasis;
             double driveFactor = (t.DriveRate + t.PostUpRate) / 40.0;
@@ -500,13 +551,20 @@ public sealed class GameSimulator
             w[(int)ShotZone.LongMid] = baseW[2] * Math.Max(0.3, midFactor);
             w[(int)ShotZone.CornerThree] = baseW[3] * threeFactor * (transition ? 1.2 : 1.0);
             w[(int)ShotZone.AboveBreakThree] = baseW[4] * threeFactor * (transition ? 1.3 : 1.0);
+            var roleMix = Roles.Info(off.Tac.RoleOf(shooter)).ZoneMix;
+            var sysMix = Tactics.SystemZoneMix(off.Tac.System);
+            var defMix = Tactics.SchemeZoneMix(_defense.Tac.Scheme);
+            for (int i = 0; i < 5; i++) w[i] *= roleMix[i] * sysMix[i] * defMix[i];
             return (ShotZone)_rng.WeightedIndex(w);
         }
 
         private Player PickDefender(Side def, Player? shooter, ShotZone zone)
         {
-            // Nearest-position defender most of the time, otherwise anyone (help, switches).
-            if (shooter != null && _rng.Chance(0.7))
+            // The star stopper takes the other team's best scorer.
+            if (shooter != null && shooter == _offStar && def.Tac.StarStopperId is { } sid && def.OnCourt.FirstOrDefault(p => p.Id == sid) is { } stopper && _rng.Chance(0.85))
+                return stopper;
+            // Nearest-position defender most of the time, otherwise anyone (help, switches; switching teams more often).
+            if (shooter != null && _rng.Chance(def.Tac.Scheme == DefensiveScheme.SwitchEverything ? 0.45 : 0.7))
             {
                 var same = def.OnCourt.Where(p => p.PrimaryPosition == shooter.PrimaryPosition || p.SecondaryPosition == shooter.PrimaryPosition).ToList();
                 if (same.Count > 0) return _rng.Pick(same);
@@ -528,6 +586,10 @@ public sealed class GameSimulator
             double help = def.OnCourt.Average(p => (double)p.Attributes[Attr.HelpDefense]);
             double length = (defender.WingspanCm - 210) / 10.0; // ±1 per 10 cm
             double c = individual * 0.7 + help * 0.3 + length * 0.4;
+            // Roles: rim protectors on the floor protect the rim; 3-and-D wings and glue guys contest their man harder.
+            if (zone == ShotZone.Rim) c += Math.Min(1.5, def.OnCourt.Sum(p => Roles.Info(def.Tac.RoleOf(p)).RimDefense));
+            else c += Roles.Info(def.Tac.RoleOf(defender)).PerimeterDefense;
+            c += Tactics.SchemeContest(def.Tac.Scheme, zone);
             // Tired defenders contest worse.
             c -= (1 - def.Energy[defender]) * 4.0;
             return c;
@@ -560,6 +622,9 @@ public sealed class GameSimulator
 
             double contest = Contest(def, defender, zone);
             if (transition) contest -= 2.5; // open looks in transition
+            // Doubling the star: he faces two defenders; whoever he finds is open.
+            if (def.Tac.DoubleStar && _offStar != null && off.OnCourt.Contains(_offStar))
+                contest += shooter == _offStar ? _cfg.DoubleStarContest : -_cfg.DoubleStarOpenLook;
             double logit = _cfg.ZoneBaseLogit[z]
                            + _cfg.SkillBeta * (Skill(shooter, zone) - 11)
                            - _cfg.ContestBeta * (contest - 11)
@@ -567,7 +632,11 @@ public sealed class GameSimulator
                            + (off.IsHome ? _cfg.HomeLogit : 0)
                            + off.Form[shooter]
                            // Score effects: a team well ahead eases off, a team well behind pushes, so big leads shrink.
-                           - _cfg.ScoreEffectPerPoint * Math.Clamp(Score(off) - Score(def), -25, 25);
+                           - _cfg.ScoreEffectPerPoint * Math.Clamp(Score(off) - Score(def), -25, 25)
+                           // Tactics: how well both sides' players suit their system and scheme, and how the two match up.
+                           + _fitLogit
+                           // A player in a role he suits plays a little better.
+                           + _cfg.RoleFitLogit * (Roles.Stars(shooter, off.Tac.RoleOf(shooter)) - 3);
             double pMake = Sigmoid(logit);
 
             // Blocks (only on missed shots inside the arc)
@@ -626,11 +695,12 @@ public sealed class GameSimulator
             if (zone.IsThree()) line.ThreePM++;
 
             // Assist
-            double assistedShare = _cfg.AssistedShareByZone[(int)zone] * (transition ? 1.1 : 1.0);
+            double assistedShare = _cfg.AssistedShareByZone[(int)zone] * (transition ? 1.1 : 1.0) * Tactics.AssistFactor(off.Tac.System);
             if (_rng.Chance(assistedShare))
             {
                 var others = off.OnCourt.Where(p => p != shooter).ToArray();
-                var w = others.Select(p => Math.Pow(p.Attributes[Attr.Passing] * 0.6 + p.Attributes[Attr.CourtVision] * 0.4, 2.2) * (0.6 + p.Tendencies.PassFirst / 100.0)).ToArray();
+                var w = others.Select(p => Math.Pow(p.Attributes[Attr.Passing] * 0.6 + p.Attributes[Attr.CourtVision] * 0.4, 2.2) * (0.6 + p.Tendencies.PassFirst / 100.0)
+                                             * Roles.Info(off.Tac.RoleOf(p)).Playmaking).ToArray();
                 var passer = others[_rng.WeightedIndex(w)];
                 off.Line(passer).Assists++;
             }
@@ -643,7 +713,7 @@ public sealed class GameSimulator
 
             double offStrength = off.OnCourt.Sum(p => p.Attributes[Attr.OffensiveRebounding] * (0.5 + p.Tendencies.CrashGlass / 100.0) + (p.HeightCm - 200) * 0.08);
             double defStrength = def.OnCourt.Sum(p => p.Attributes[Attr.DefensiveRebounding] + (p.HeightCm - 200) * 0.08);
-            double crash = (off.Team.Tactic.CrashGlass - 50) / 50.0 * 0.05;
+            double crash = (off.Tac.CrashGlass - 50) / 50.0 * 0.05;
             double longRebound = zone.IsThree() ? 0.02 : 0.0; // long misses slightly favour the offence
             double pOff = _cfg.OffensiveReboundBase + _cfg.ReboundSkillBeta * (offStrength - defStrength) / 5.0 + crash + longRebound;
             pOff = Math.Clamp(pOff, 0.12, 0.42);

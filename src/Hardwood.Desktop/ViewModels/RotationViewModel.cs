@@ -33,36 +33,17 @@ public sealed partial class StarterSlot : ObservableObject
 
 public sealed partial class RotationViewModel : PageViewModel
 {
-    public override string Title => "Rotation & Tactics";
+    public override string Title => "Rotation";
     public ObservableCollection<RotationRow> Rows { get; } = new();
     public ObservableCollection<StarterSlot> Starters { get; } = new();
     [ObservableProperty] private string _totalText = "";
     [ObservableProperty] private bool _totalOk;
     [ObservableProperty] private string _status = "";
 
-    // Tactics
-    [ObservableProperty] private double _pace;
-    [ObservableProperty] private double _threeEmphasis;
-    [ObservableProperty] private double _crashGlass;
-    [ObservableProperty] private double _aggression;
-    [ObservableProperty] private double _starUsage;
-    public string PaceText => $"{Pace:0} possessions / 48";
-    public string ThreeText => Describe(ThreeEmphasis, "Inside-out", "Balanced", "Let it fly");
-    public string CrashText => Describe(CrashGlass, "Get back", "Balanced", "Crash the glass");
-    public string AggressionText => Describe(Aggression, "Contain", "Balanced", "Gamble");
-    public string StarText => Describe(StarUsage, "Share the ball", "Balanced", "Feed the stars");
-
     private bool _loading;
 
     public RotationViewModel(MainViewModel shell) : base(shell) { }
 
-    partial void OnPaceChanged(double v) { OnPropertyChanged(nameof(PaceText)); Apply(); }
-    partial void OnThreeEmphasisChanged(double v) { OnPropertyChanged(nameof(ThreeText)); Apply(); }
-    partial void OnCrashGlassChanged(double v) { OnPropertyChanged(nameof(CrashText)); Apply(); }
-    partial void OnAggressionChanged(double v) { OnPropertyChanged(nameof(AggressionText)); Apply(); }
-    partial void OnStarUsageChanged(double v) { OnPropertyChanged(nameof(StarText)); Apply(); }
-
-    private static string Describe(double v, string low, string mid, string high) => v < 35 ? low : v > 65 ? high : mid;
 
     public override void Refresh()
     {
@@ -94,8 +75,6 @@ public sealed partial class RotationViewModel : PageViewModel
             Starters.Add(slot);
         }
 
-        var t = team.Tactic;
-        Pace = t.Pace; ThreeEmphasis = t.ThreePointEmphasis; CrashGlass = t.CrashGlass; Aggression = t.DefensiveAggression; StarUsage = t.StarUsage;
         _loading = false;
         Recalc();
     }
@@ -159,13 +138,6 @@ public sealed partial class RotationViewModel : PageViewModel
         Session.SaveNow();
     }
 
-    private void Apply()
-    {
-        if (_loading) return;
-        var t = Session.HumanTeam.Tactic;
-        t.Pace = Pace; t.ThreePointEmphasis = (int)ThreeEmphasis; t.CrashGlass = (int)CrashGlass; t.DefensiveAggression = (int)Aggression; t.StarUsage = (int)StarUsage;
-    }
-
     [RelayCommand]
     public void AutoRotation()
     {
@@ -173,10 +145,4 @@ public sealed partial class RotationViewModel : PageViewModel
         Refresh();
     }
 
-    [RelayCommand]
-    public void ResetTactics()
-    {
-        Session.HumanTeam.Tactic = new Tactic();
-        Refresh();
-    }
 }

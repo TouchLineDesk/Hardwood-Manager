@@ -7,13 +7,14 @@ namespace Hardwood.Core.Engine;
 public sealed class EngineConfig
 {
     // --- Make probability: logit = ZoneBase + SkillBeta*(skill-11) - ContestBeta*(contest-11) - FatigueBeta*(1-energy) + Home*home
+    // Lowered 0.05 across the board with player roles and AI tactics (Nov 9): roles and fitting systems steer shots to players' strengths (FG% +1 pt).
     public double[] ZoneBaseLogit { get; set; } =
     {
-        0.33,   // Rim           ≈ 65% after shooter selection bias
-        -0.38,  // ShortMid      ≈ 44%
-        -0.50,  // LongMid       ≈ 41%
-        -0.52,  // CornerThree   ≈ 39%
-        -0.70,  // AboveBreak3   ≈ 35%
+        0.28,   // Rim           ≈ 65% after shooter selection bias
+        -0.43,  // ShortMid      ≈ 44%
+        -0.55,  // LongMid       ≈ 41%
+        -0.57,  // CornerThree   ≈ 39%
+        -0.75,  // AboveBreak3   ≈ 35%
     };
     public double SkillBeta { get; set; } = 0.060;
     public double ContestBeta { get; set; } = 0.060;
@@ -48,6 +49,16 @@ public sealed class EngineConfig
     public double BlockSkillBeta { get; set; } = 0.012;
 
     /// <summary>How strongly shots go to the players best at creating them (exponent on usage). Higher = stars take more shots.</summary>
+    // Tactics (decisions #58-61).
+    /// <summary>Logit added to every shot per unit of system fit above 0.5 (offense), and subtracted per unit of scheme fit (defense).</summary>
+    public double SystemFitLogit { get; set; } = 0.16;
+    public double SchemeFitLogit { get; set; } = 0.16;
+    /// <summary>Logit per role-suitability star above 3 for the shooter.</summary>
+    public double RoleFitLogit { get; set; } = 0.015;
+    /// <summary>Doubled star: his shot share is multiplied by this; he faces this much extra contest; his teammates this much less.</summary>
+    public double DoubleStarUsage { get; set; } = 0.65;
+    public double DoubleStarContest { get; set; } = 2.0;
+    public double DoubleStarOpenLook { get; set; } = 1.2;
     public double UsageSharpness { get; set; } = 2.0; // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone

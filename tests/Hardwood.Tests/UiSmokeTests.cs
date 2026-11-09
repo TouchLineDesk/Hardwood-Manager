@@ -48,12 +48,33 @@ public class UiSmokeTests
             }
 
             // Rotation page: change a starter and some minutes; the chart must follow.
-            vm.Navigate("Rotation & Tactics");
+            vm.Navigate("Rotation");
             var rot = (RotationViewModel)vm.CurrentPage!;
             rot.Rows[0].Minutes = 38;
             Assert.Equal(38, session.HumanTeam.DepthChart!.MinutesTargets[rot.Rows[0].Player.Id]);
-            rot.ThreeEmphasis = 80;
+
+            // Tactics page: system, scheme, a slider, a role, the stopper, a preset and the late-game switch.
+            vm.Navigate("Tactics");
+            var tac = (TacticsViewModel)vm.CurrentPage!;
+            window.UpdateLayout();
+            tac.ThreeEmphasis = 80;
             Assert.Equal(80, session.HumanTeam.Tactic.ThreePointEmphasis);
+            tac.SelectedSystem = tac.Systems.First(o => o.System == Hardwood.Core.Model.OffensiveSystem.Motion);
+            tac.SelectedScheme = tac.Schemes.First(o => o.Scheme == Hardwood.Core.Model.DefensiveScheme.Zone23);
+            Assert.Equal(Hardwood.Core.Model.OffensiveSystem.Motion, session.HumanTeam.Tactic.System);
+            Assert.Equal(Hardwood.Core.Model.DefensiveScheme.Zone23, session.HumanTeam.Tactic.Scheme);
+            var roleRow = tac.RoleRows[0];
+            roleRow.Selected = roleRow.Choices.First(c => c.Role == Hardwood.Core.Model.Role.GlueGuy);
+            Assert.Equal(Hardwood.Core.Model.Role.GlueGuy, session.HumanTeam.Tactic.RoleOf(roleRow.Player));
+            tac.SelectedStopper = tac.Stoppers[1];
+            Assert.Equal(tac.Stoppers[1].Player!.Id, session.HumanTeam.Tactic.StarStopperId);
+            tac.NewPresetName = "Small ball";
+            tac.SavePreset();
+            tac.LateGame = "Small ball";
+            Assert.Equal("Small ball", session.HumanTeam.Tactic.LateGamePreset);
+            Assert.False(string.IsNullOrEmpty(tac.ScoutingReport));
+            tac.UseSuggestion();
+            window.UpdateLayout();
 
             // Live game through the view model: play a few possessions, change the five, finish, continue.
             while (!session.HumanPlaysToday) session.AdvanceDay();

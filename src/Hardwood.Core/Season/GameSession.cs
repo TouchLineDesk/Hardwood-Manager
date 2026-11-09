@@ -69,6 +69,9 @@ public sealed class GameSession
         Standings = new Standings(league);
         Today = OpeningNight.AddDays(-7);
         Phase = SessionPhase.Preseason;
+        // The human team is run by hand. A new career (or a save from before tactics were saved) starts from the
+        // assistant's setup: the system and scheme that suit the roster, everyone in his best role.
+        if (HumanTeam.Tactic.Auto) CoachAi.AssistantSetup(HumanTeam);
         BuildSeason();
     }
 
