@@ -74,7 +74,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
         SelectedFreeAgent ??= FreeAgents.FirstOrDefault();
         long payroll = ContractMarket.Payroll(s.HumanTeam);
-        CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · payroll ${payroll / 1e6:F1}M · room ${(fin.HardCap - payroll) / 1e6:F1}M";
+        CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · " + fin.Describe(payroll);
         DeadlineText = s.Phase == SessionPhase.Offseason ? "Offseason: trades are open."
             : s.TradeDeadlinePassed ? "The trade deadline has passed; trades reopen after the Finals."
             : $"Trade deadline: {s.TradeDeadline:MMM d}.";
@@ -91,9 +91,12 @@ public sealed partial class TransactionsViewModel : PageViewModel
         var s = Session; var fin = s.League.Finance; var team = s.HumanTeam;
         if (team.Roster.Count >= fin.RosterMax) { FaStatus = "Roster is full. Waive someone first."; return; }
         long ask = ContractMarket.MarketSalary(row.Player.CurrentAbility, row.Player.Age(s.Today), fin);
-        long room = fin.HardCap - ContractMarket.Payroll(team);
-        bool minDeal = team.Roster.Count < fin.RosterMin && ask <= fin.MinSalary * 2;
-        if (ask > room && !minDeal) { FaStatus = $"{row.Player.Name} asks ${ask / 1e6:F1}M; you have ${room / 1e6:F1}M of room."; return; }
+        long payroll = ContractMarket.Payroll(team);
+        long room = fin.SalaryCap - payroll;
+        // In season: cap room, or a minimum deal (players asking up to twice the minimum take one; under the soft cap
+        // anyone may add one up to the apron, under a hard cap only a team below the roster minimum).
+        bool minDeal = ask <= fin.MinSalary * 2 && (team.Roster.Count < fin.RosterMin || (fin.SoftCap && payroll + fin.MinSalary <= fin.Apron));
+        if (ask > room && !minDeal) { FaStatus = $"{row.Player.Name} asks ${ask / 1e6:F1}M; you have ${Math.Max(0, room) / 1e6:F1}M of cap room and he won't take a minimum deal."; return; }
         var p = row.Player;
         p.Contract = new Contract { Years = p.Age(s.Today) <= 26 ? 3 : 2, Salary = ask > room ? fin.MinSalary : ask, StartSeason = s.League.Season };
         p.TeamId = team.Id;

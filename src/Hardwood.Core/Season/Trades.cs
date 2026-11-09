@@ -144,10 +144,19 @@ public sealed class TradeEngine
             int size = team.Roster.Count - outgoing.Count + incoming.Count;
             if (size > fin.RosterMax) return (false, $"{team.Abbreviation} would have {size} players (max {fin.RosterMax}).");
             if (size < fin.RosterMin - 2) return (false, $"{team.Abbreviation} would have {size} players (too few).");
-            long payroll = ContractMarket.Payroll(team) - outgoing.Sum(p => p.Contract?.Salary ?? 0) + incoming.Sum(p => p.Contract?.Salary ?? 0);
-            if (payroll > fin.HardCap) return (false, $"{team.Abbreviation} would be ${(payroll - fin.HardCap) / 1e6:F1}M over the hard cap.");
+            long sent = outgoing.Sum(p => p.Contract?.Salary ?? 0), received = incoming.Sum(p => p.Contract?.Salary ?? 0);
+            long payroll = ContractMarket.Payroll(team) - sent + received;
+            if (!fin.SoftCap)
+            {
+                if (payroll > fin.HardCap) return (false, $"{team.Abbreviation} would be ${(payroll - fin.HardCap) / 1e6:F1}M over the hard cap.");
+                continue;
+            }
+            if (payroll > fin.Apron) return (false, $"{team.Abbreviation} would be ${(payroll - fin.Apron) / 1e6:F1}M over the apron (${fin.Apron / 1e6:F0}M).");
+            // Salary matching: a team over the cap after the deal may take back at most 125% of what it sends, plus $100K.
+            if (payroll > fin.SalaryCap && received > sent * 1.25 + 100_000)
+                return (false, $"{team.Abbreviation} is over the cap, so it can take back at most ${(sent * 1.25 + 100_000) / 1e6:F1}M in salary (125% of the ${sent / 1e6:F1}M it sends).");
         }
-        return (true, "Legal under the hard cap and roster limits.");
+        return (true, fin.SoftCap ? "Legal: salaries match and both teams stay under the apron." : "Legal under the hard cap and roster limits.");
     }
 
     /// <summary>Evaluate from the AI side (the "To" team receives FromPlayers and gives ToPlayers).</summary>

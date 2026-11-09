@@ -101,9 +101,39 @@ public sealed class League
     public IEnumerable<Player> AllActivePlayers => Teams.SelectMany(t => t.Roster);
 }
 
-/// <summary>League money rules. The prototype uses a hard cap; later models (soft cap, tax, aprons) plug in here.</summary>
+/// <summary>
+/// League money rules. Since Nov 9 2026 (decision #52) the NABL uses an NBA-style soft cap: <see cref="HardCap"/> is the
+/// salary cap (the name is kept for save compatibility). Signing another team's free agent needs cap room, the
+/// mid-level exception, or a minimum deal; a team may re-sign its own players over the cap (Bird rights); nobody may
+/// pass the apron. The tax line, apron and exception are derived from the cap with the NBA's 2025-26 ratios.
+/// </summary>
 public sealed record Finance(long HardCap, long MinSalary, int RosterMax, int RosterMin, long RookieScaleFirstPick)
 {
+    /// <summary>Soft cap with Bird rights (true) or a strict hard cap (false).</summary>
+    public bool SoftCap { get; init; } = true;
+    /// <summary>The salary cap: room under it is what lets a team sign other teams' free agents.</summary>
+    public long SalaryCap => HardCap;
+    /// <summary>Luxury tax line (NBA: 1.215 × cap). AI teams stay under it unless contending.</summary>
+    public long TaxLine => Round(HardCap * 1.215);
+    /// <summary>Absolute payroll ceiling (NBA second apron: 1.344 × cap). With a hard cap, the cap itself.</summary>
+    public long Apron => SoftCap ? Round(HardCap * 1.344) : HardCap;
+    /// <summary>Mid-level exception: once per offseason, a team over the cap may sign one free agent up to this (NBA: 0.091 × cap).</summary>
+    public long MidLevel => Round(HardCap * 0.091);
+    /// <summary>Tax owed per dollar over the tax line (shown to the player; AI teams avoid it).</summary>
+    public double TaxRate => 1.5;
+    public long TaxBill(long payroll) => payroll > TaxLine ? (long)((payroll - TaxLine) * TaxRate) : 0;
+
+    /// <summary>One line for the UI: payroll against the cap, tax line and apron.</summary>
+    public string Describe(long payroll)
+    {
+        static string M(long v) => $"${v / 1e6:F1}M";
+        if (!SoftCap) return $"payroll {M(payroll)} · hard cap {M(HardCap)} · room {M(HardCap - payroll)}";
+        string vsCap = payroll <= SalaryCap ? $"cap room {M(SalaryCap - payroll)}" : $"{M(payroll - SalaryCap)} over the cap";
+        string tax = payroll > TaxLine ? $" · luxury tax {M(TaxBill(payroll))}" : "";
+        return $"payroll {M(payroll)} · {vsCap} · cap {M(SalaryCap)} · tax line {M(TaxLine)} · apron {M(Apron)}{tax}";
+    }
+    private static long Round(double v) => (long)Math.Round(v / 100_000) * 100_000;
+
     public static readonly Finance HardCapDefault = new(
         HardCap: 165_000_000,
         MinSalary: 1_200_000,

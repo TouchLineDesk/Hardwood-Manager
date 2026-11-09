@@ -52,7 +52,7 @@ public sealed partial class InboxViewModel : PageViewModel
         int rank = s.Standings.Conference(s.HumanTeam.Conference).FindIndex(r => r.Team == s.HumanTeam) + 1;
         var hurt = s.HumanTeam.Roster.Where(p => !p.IsAvailable(s.Today)).ToList();
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.HumanTeam.Conference}" : "")
-                  + $" · Payroll ${ContractMarket.Payroll(s.HumanTeam) / 1e6:F1}M of ${s.League.Finance.HardCap / 1e6:F0}M"
+                  + $" · Payroll ${ContractMarket.Payroll(s.HumanTeam) / 1e6:F1}M (cap ${s.League.Finance.SalaryCap / 1e6:F0}M)"
                   + (hurt.Count > 0 ? $" · Injured: {string.Join(", ", hurt.Select(p => $"{p.LastName} ({p.Injury!.DaysOut(s.Today)}d)"))}" : "");
     }
 

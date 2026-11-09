@@ -434,7 +434,7 @@ public sealed class GameSession
                 Offseason.AdvanceToFreeAgency();
                 Offseason.AiFreeAgency(HumanTeam.Id);
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
-                Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players and ${Offseason.Room(HumanTeam) / 1e6:F1}M of room; rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
+                Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
                 break;
             case OffseasonPhase.FreeAgency:
                 Offseason.Complete();

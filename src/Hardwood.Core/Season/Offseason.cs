@@ -7,6 +7,9 @@ public sealed record DraftPick(int Round, int Pick, Team Team, Player Player, Te
 
 public enum OffseasonPhase { NotStarted, ReSigning, Draft, FreeAgency, Complete }
 
+/// <summary>How a free agent is signed: cap room, the mid-level exception, or a minimum deal.</summary>
+public enum SigningRoute { None, CapRoom, MidLevel, Minimum }
+
 public sealed class OffseasonReport
 {
     public int Season { get; init; }
@@ -203,9 +206,24 @@ public sealed class Offseason
         return total;
     }
 
-    public bool CanAfford(Team team, long salary) => CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.HardCap;
+    /// <summary>
+    /// Can the team re-sign one of its own players at this salary? With the soft cap (Bird rights) it may go over the
+    /// salary cap, up to the apron; with a hard cap it must stay under the cap.
+    /// </summary>
+    public bool CanAfford(Team team, long salary) => CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.Apron;
 
-    /// <summary>Re-sign an expiring player at his ask. Returns false if it doesn't fit under the cap.</summary>
+    /// <summary>
+    /// The most an AI front office will commit: contenders and teams keeping a star go up to the apron, everyone else
+    /// stays under the luxury tax line. (With a hard cap, the cap.)
+    /// </summary>
+    private long AiPayrollLimit(Team team, bool star)
+    {
+        var fin = _league.Finance;
+        if (!fin.SoftCap) return fin.HardCap;
+        return star || LastWinPct(team) >= 0.55 ? fin.Apron : fin.TaxLine;
+    }
+
+    /// <summary>Re-sign an expiring player at his ask (Bird rights: allowed over the cap, up to the apron).</summary>
     public bool ReSign(Team team, Player p, int? years = null)
     {
         if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return false;
@@ -243,7 +261,9 @@ public sealed class Offseason
             double value = ContractMarket.Value(p, Date);
             double wantToKeep = Math.Clamp((value - 72) / 50.0, 0.05, value >= 140 ? 0.98 : 0.95);
             double wantToStay = Math.Min(0.98, 0.6 + p.Hidden.Loyalty / 20.0 * 0.35 + (winPct >= 0.55 ? 0.15 : winPct >= 0.45 ? 0.05 : 0));
-            if (CanAfford(team, Ask(p)) && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
+            long ask = Ask(p);
+            bool withinBudget = CommittedPayroll(team) + ReservedForDraft(team) + ask <= AiPayrollLimit(team, star: value >= 140);
+            if (CanAfford(team, ask) && withinBudget && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
             else Release(team, p);
         }
     }
@@ -340,20 +360,37 @@ public sealed class Offseason
         Phase = OffseasonPhase.FreeAgency;
     }
 
-    public long Room(Team team) => _league.Finance.HardCap - ContractMarket.Payroll(team);
+    /// <summary>Cap room: how far the payroll is under the salary cap.</summary>
+    public long Room(Team team) => _league.Finance.SalaryCap - ContractMarket.Payroll(team);
 
-    /// <summary>Sign a free agent at market salary. Below the roster minimum a minimum deal is allowed regardless of room.</summary>
+    /// <summary>Teams that have used their mid-level exception this offseason.</summary>
+    public HashSet<int> MidLevelUsed { get; } = new();
+
+    /// <summary>
+    /// How a team could sign a free agent asking <paramref name="ask"/>: with cap room; with the mid-level exception
+    /// (soft cap, once per offseason, up to the apron); or on a minimum deal (players asking up to twice the minimum
+    /// accept one; a team below the roster minimum may always add one). Returns the route and the salary.
+    /// </summary>
+    public (SigningRoute Route, long Salary) SigningOption(Team team, long ask)
+    {
+        var fin = _league.Finance;
+        long payroll = ContractMarket.Payroll(team);
+        if (ask <= Room(team)) return (SigningRoute.CapRoom, ask);
+        if (fin.SoftCap && !MidLevelUsed.Contains(team.Id) && ask <= fin.MidLevel && payroll + ask <= fin.Apron) return (SigningRoute.MidLevel, ask);
+        bool mustFill = team.Roster.Count < fin.RosterMin;
+        if (ask <= fin.MinSalary * 2 && (mustFill || (fin.SoftCap && payroll + fin.MinSalary <= fin.Apron))) return (SigningRoute.Minimum, fin.MinSalary);
+        return (SigningRoute.None, 0);
+    }
+
+    /// <summary>Sign a free agent at market salary, using cap room, the mid-level exception or a minimum deal.</summary>
     public bool SignFreeAgent(Team team, Player p, int? years = null)
     {
         if (!_league.FreeAgents.Contains(p) || team.Roster.Count >= _league.Finance.RosterMax) return false;
         var fin = _league.Finance;
         long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
-        long room = Room(team);
-        bool mustFill = team.Roster.Count < fin.RosterMin;
-        long salary;
-        if (ask <= room) salary = ask;
-        else if (mustFill && ask <= fin.MinSalary * 2) salary = fin.MinSalary;
-        else return false;
+        var (route, salary) = SigningOption(team, ask);
+        if (route == SigningRoute.None) return false;
+        if (route == SigningRoute.MidLevel) MidLevelUsed.Add(team.Id);
 
         p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = salary, StartSeason = Season + 1 };
         p.TeamId = team.Id;
@@ -375,12 +412,18 @@ public sealed class Offseason
     public void AiFreeAgency(int? humanTeamId)
     {
         var fin = _league.Finance;
+        // Would this AI team make this signing? It must be possible, and (except minimum deals) within its budget.
+        bool AiCan(Team t, long ask, bool star)
+        {
+            var (route, salary) = SigningOption(t, ask);
+            return route != SigningRoute.None && (route == SigningRoute.Minimum || ContractMarket.Payroll(t) + salary <= AiPayrollLimit(t, star));
+        }
         // The best free agents choose where to go: among teams that can pay them, they lean toward winners.
         foreach (var p in _league.FreeAgents.Where(p => ContractMarket.Value(p, Date) >= 120).OrderByDescending(p => ContractMarket.Value(p, Date)).ToList())
         {
             long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
             var choice = _league.Teams
-                .Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax && ask <= Room(t))
+                .Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax && AiCan(t, ask, star: false) && SigningOption(t, ask).Route != SigningRoute.Minimum)
                 .OrderByDescending(t => LastWinPct(t) + _rng.NextDouble() * 0.35 + PositionNeed(t, p) * 0.05)
                 .FirstOrDefault();
             if (choice != null) SignFreeAgent(choice, p);
@@ -392,11 +435,9 @@ public sealed class Offseason
             bool any = false;
             foreach (var team in teams)
             {
-                long room = Room(team);
-                bool mustFill = team.Roster.Count < fin.RosterMin;
                 var pick = _league.FreeAgents
                     .Select(p => (p, ask: ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin)))
-                    .Where(x => x.ask <= room || (mustFill && x.ask <= fin.MinSalary * 2))
+                    .Where(x => AiCan(team, x.ask, star: false))
                     .OrderByDescending(x => ContractMarket.Value(x.p, Date) + PositionNeed(team, x.p) * 5)
                     .FirstOrDefault();
                 if (pick.p == null) continue;
@@ -415,22 +456,23 @@ public sealed class Offseason
         if (Phase < OffseasonPhase.FreeAgency) { AdvanceToDraft(); AdvanceToFreeAgency(); }
         var fin = _league.Finance;
 
-        // Every team, human included, must be legal: trim over the roster max, get under the cap, reach the minimum.
+        // Every team, human included, must be legal: trim over the roster max, get under the apron (the cap itself
+        // under a hard cap), reach the minimum.
         foreach (var team in _league.Teams)
         {
             while (team.Roster.Count > fin.RosterMax ||
-                   (ContractMarket.Payroll(team) > fin.HardCap && team.Roster.Count > fin.RosterMin))
+                   (ContractMarket.Payroll(team) > fin.Apron && team.Roster.Count > fin.RosterMin))
             {
-                var cut = ContractMarket.Payroll(team) > fin.HardCap
+                var cut = ContractMarket.Payroll(team) > fin.Apron
                     ? team.Roster.OrderBy(p => ContractMarket.Value(p, Date) - (p.Contract?.Salary ?? 0) / 1e6 * 1.5).First()
                     : team.Roster.OrderBy(p => ContractMarket.Value(p, Date)).First();
                 Waive(team, cut);
             }
 
             // Leave room for the minimum signings still needed to reach the roster minimum: those may take a team
-            // over the cap by at most two minimum deals. If they would go further, release the worst-value contract
-            // (an expensive player replaced by a minimum deal lowers the payroll).
-            long allowance = fin.HardCap + fin.MinSalary * 2;
+            // over the apron (the cap, under a hard cap) by at most two minimum deals. If they would go further,
+            // release the worst-value contract (an expensive player replaced by a minimum deal lowers the payroll).
+            long allowance = fin.Apron + fin.MinSalary * 2;
             while (ContractMarket.Payroll(team) + Math.Max(0, fin.RosterMin - team.Roster.Count) * fin.MinSalary > allowance)
             {
                 var cut = team.Roster.Where(p => (p.Contract?.Salary ?? 0) > fin.MinSalary)

@@ -48,7 +48,7 @@ public sealed class EngineConfig
     public double BlockSkillBeta { get; set; } = 0.012;
 
     /// <summary>How strongly shots go to the players best at creating them (exponent on usage). Higher = stars take more shots.</summary>
-    public double UsageSharpness { get; set; } = 2.2; // 1.6 left the best player near 24 ppg; audit Nov 9
+    public double UsageSharpness { get; set; } = 2.0; // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
     public double[] AssistedShareByZone { get; set; } = { 0.52, 0.42, 0.45, 0.88, 0.74 };

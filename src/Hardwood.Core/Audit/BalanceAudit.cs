@@ -97,7 +97,7 @@ public static class BalanceAudit
         var meanCa = new List<double>(); var stars = new List<double>(); var meanAge = new List<double>();
         var devYoung = new List<double>(); var devPrime = new List<double>(); var devOld = new List<double>();
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
-        var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>();
+        var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
 
@@ -109,8 +109,9 @@ public static class BalanceAudit
             meanCa.Add(players.Average(p => p.CurrentAbility));
             stars.Add(players.Count(p => p.CurrentAbility >= 160));
             meanAge.Add(players.Average(p => p.Age(start)));
-            overCap.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > fin.HardCap + fin.MinSalary * 2));
-            payroll.Add(league.Teams.Average(t => ContractMarket.Payroll(t)) / fin.HardCap);
+            overCap.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > fin.Apron + fin.MinSalary * 2));
+            payroll.Add(league.Teams.Average(t => ContractMarket.Payroll(t)) / fin.SalaryCap);
+            taxTeams.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > fin.TaxLine));
             faPool.Add(league.FreeAgents.Count);
             foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
                 (worldCa.TryGetValue(c.Profile.Name, out var l) ? l : worldCa[c.Profile.Name] = new()).Add(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility));
@@ -193,8 +194,9 @@ public static class BalanceAudit
         m.Add(new("NABL development", "Average retirement age", "0.0", retiredAge, 32, 37, "NBA ~33-35"));
         m.Add(new("NABL draft", "No. 1 pick ability (CA)", "0", firstPick, null, null, ""));
         m.Add(new("NABL draft", "Top-5 picks average ability (CA)", "0", rookieTop5, null, null, ""));
-        m.Add(new("NABL money", "Teams over the cap allowance at season start", "0", overCap, 0, 0, "must be 0 (hard cap)"));
-        m.Add(new("NABL money", "Average payroll as share of the cap", "0.00", payroll, 0.80, 1.00, "hard-cap league"));
+        m.Add(new("NABL money", "Teams over the apron at season start", "0", overCap, 0, 0, "must be 0"));
+        m.Add(new("NABL money", "Average payroll as share of the cap", "0.00", payroll, fin.SoftCap ? 0.95 : 0.80, fin.SoftCap ? 1.25 : 1.00, fin.SoftCap ? "NBA ~1.05-1.15" : "hard-cap league"));
+        m.Add(new("NABL money", "Teams paying luxury tax", "0.0", taxTeams, fin.SoftCap ? 0 : null, fin.SoftCap ? 10 : null, "NBA ~5-8"));
         m.Add(new("NABL money", "Free agents available at season start", "0", faPool, null, null, ""));
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)

@@ -15,7 +15,7 @@ public class BalanceAuditTests
         var r = BalanceAudit.Run(7, 2);
         Assert.Equal(2, r.Champions.Count);
         Assert.True(r.Metrics.Count >= 30);
-        Assert.Equal(0, r["Teams over the cap allowance at season start"].PerSeason.Max());
+        Assert.Equal(0, r["Teams over the apron at season start"].PerSeason.Max());
         Assert.InRange(r["Points per team per game"].Mean, 100, 130);
         Assert.All(r.Metrics.Where(m => m.Name.EndsWith("points per team per game")), m => Assert.InRange(m.Mean, 65, 110));
         var md = r.ToMarkdown();
