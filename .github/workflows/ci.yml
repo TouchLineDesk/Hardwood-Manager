@@ -1,0 +1,51 @@
+# Builds the game and runs every test on each push and pull request,
+# so nothing is merged broken. Results show as a check on each PR.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore Hardwood.sln
+      - name: Build
+        run: dotnet build Hardwood.sln --no-restore -c Release
+      - name: Test
+        run: dotnet test tests/Hardwood.Tests --no-build -c Release --logger "trx;LogFileName=results.trx" --results-directory test-results
+      - name: Keep test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+  windows-build:
+    # The game ships for Windows; make sure it still publishes.
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publish Windows build
+        run: dotnet publish src/Hardwood.Desktop -c Release -r win-x64 --self-contained true -o publish
+      - name: Keep the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: HardwoodManager-win-x64
+          path: publish
+          retention-days: 14
