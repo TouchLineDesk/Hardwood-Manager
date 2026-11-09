@@ -232,11 +232,15 @@ public sealed class Offseason
         if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return false;
         long ask = Ask(p);
         if (!CanAfford(team, ask)) return false;
+        if (WontReSign(p)) return false;
         p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = ask, StartSeason = Season + 1 };
         list.Remove(p);
         Report.ReSigned.Add((p, team));
         return true;
     }
+
+    /// <summary>A very unhappy player won't sign a new deal with the team that made him unhappy.</summary>
+    public static bool WontReSign(Player p) => p.Morale < 25 || p.TradeRequested;
 
     public void Release(Team team, Player p)
     {
@@ -263,7 +267,8 @@ public sealed class Offseason
         {
             double value = ContractMarket.Value(p, Date);
             double wantToKeep = Math.Clamp((value - 72) / 50.0, 0.05, value >= 140 ? 0.98 : 0.95);
-            double wantToStay = Math.Min(0.98, 0.6 + p.Hidden.Loyalty / 20.0 * 0.35 + (winPct >= 0.55 ? 0.15 : winPct >= 0.45 ? 0.05 : 0));
+            double wantToStay = Math.Min(0.98, 0.6 + p.Hidden.Loyalty / 20.0 * 0.35 + (winPct >= 0.55 ? 0.15 : winPct >= 0.45 ? 0.05 : 0))
+                                * Math.Clamp(0.55 + p.Morale / 130.0, 0.4, 1.0); // happy players stay
             long ask = Ask(p);
             bool withinBudget = CommittedPayroll(team) + ReservedForDraft(team) + ask <= AiPayrollLimit(team, star: value >= 140);
             if (CanAfford(team, ask) && withinBudget && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
@@ -508,6 +513,8 @@ public sealed class Offseason
         foreach (var p in _league.AllActivePlayers)
             if (p.Injury != null && p.Injury.ReturnDate <= new DateOnly(Season + 1, 10, 15)) p.Injury = null;
 
+        // New season, fresh start: moods settle and trade requests lapse (unhappy players have had their chance to leave).
+        People.PeopleEngine.Summer(_league);
         _league.Season = Season + 1;
         _league.EnsurePicks();
         Phase = OffseasonPhase.Complete;

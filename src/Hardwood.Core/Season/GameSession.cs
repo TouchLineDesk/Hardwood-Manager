@@ -250,6 +250,8 @@ public sealed class GameSession
     private List<GameResult> EndDay(List<GameResult> played)
     {
         PlayWorld(Today);
+        if ((Phase == SessionPhase.RegularSeason || Phase == SessionPhase.Postseason) && Today.DayOfWeek == DayOfWeek.Monday)
+            WeeklyPeople();
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -362,6 +364,41 @@ public sealed class GameSession
             SaveNow();
         }
         return eval;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Players as people (decision #64)
+
+    /// <summary>Promises the coach has made his players (more minutes, or a trade).</summary>
+    public List<People.Promise> Promises { get; } = new();
+
+    private void WeeklyPeople()
+    {
+        var events = People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, HumanTeam.Id, Promises);
+        foreach (var e in events)
+        {
+            string title = e.Kind switch
+            {
+                People.PeopleEventKind.TradeRequest => $"{e.Player.Name} requests a trade",
+                People.PeopleEventKind.WantsTalk => $"{e.Player.Name} wants a word",
+                People.PeopleEventKind.PromiseKept => $"Promise kept: {e.Player.Name}",
+                People.PeopleEventKind.PromiseBroken => $"Promise broken: {e.Player.Name}",
+                _ => e.Player.Name,
+            };
+            Post(title, e.Text, "Squad");
+        }
+    }
+
+    /// <summary>Hold a one-on-one conversation with one of your players. Returns his reply (or why you can't talk now).</summary>
+    public People.TalkResult Talk(Player p, People.TalkTopic topic)
+    {
+        if (p.TeamId != HumanTeam.Id) return new("He isn't one of your players.", 0, false);
+        if (People.Talks.Unavailable(p, Today) is { } why) return new(why, 0, false);
+        Stats.TryGetValue(p.Id, out var st);
+        double wp = Standings[HumanTeam].Games > 0 ? Standings[HumanTeam].WinPct : 0.5;
+        var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng);
+        SaveNow();
+        return r;
     }
 
     // ------------------------------------------------------------------------------------------
@@ -517,6 +554,7 @@ public sealed class GameSession
         Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players);
         Save.SaveSession(this);
         Save.SaveWorld(World);
+        Save.SavePeople(this);
     }
 
     public static GameSession Load(string path)
@@ -525,6 +563,7 @@ public sealed class GameSession
         var league = save.Load();
         var world = save.LoadWorld(league, save.LoadedOverseas);
         var session = save.LoadSession(league, world);
+        save.LoadPeople(session);
         session.CatchUpWorld();
         if (save.UpgradedFrom is { } old)
         {

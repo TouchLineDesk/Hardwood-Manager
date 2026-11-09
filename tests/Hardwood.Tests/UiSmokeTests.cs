@@ -76,6 +76,18 @@ public class UiSmokeTests
             tac.UseSuggestion();
             window.UpdateLayout();
 
+            // Squad page: chemistry, moods, and a talk.
+            vm.Navigate("Squad");
+            var squad = (SquadViewModel)vm.CurrentPage!;
+            window.UpdateLayout();
+            Assert.False(string.IsNullOrEmpty(squad.ChemistryHeadline));
+            Assert.Equal(session.HumanTeam.Roster.Count, squad.Players.Count);
+            squad.Selected = squad.Players[0];
+            Assert.NotEmpty(squad.Topics);
+            squad.Topics[0].Command.Execute(null);
+            Assert.False(string.IsNullOrEmpty(squad.Reply));
+            window.UpdateLayout();
+
             // Live game through the view model: play a few possessions, change the five, finish, continue.
             while (!session.HumanPlaysToday) session.AdvanceDay();
             vm.AfterTick();

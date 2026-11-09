@@ -38,6 +38,7 @@
         <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
         <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
         <DataGridTextColumn Header="Ht" Binding="{Binding Height}" Width="66"/>
+        <DataGridTextColumn Header="Mood" Binding="{Binding Mood}" Width="110"/>
         <DataGridTextColumn Header="Tier" Binding="{Binding TierName}" Width="96"/>
         <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
         <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>

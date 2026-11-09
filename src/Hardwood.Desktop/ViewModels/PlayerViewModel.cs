@@ -53,6 +53,7 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string Bio { get; private set; } = "";
     public string Contract { get; private set; } = "";
     public string InjuryText { get; private set; } = "";
+    public string MoodText { get; private set; } = "";
     public string Tendencies { get; private set; } = "";
     public string Honours { get; private set; } = "";
     public List<AttrGroupVm> Groups { get; private set; } = new();
@@ -81,6 +82,8 @@ public sealed partial class PlayerViewModel : PageViewModel
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
             : p.InjuryHistory.Count > 0 ? $"Healthy · {p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}" : "Healthy";
+        MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested ? " · has asked to be traded" : "")
+            + (p.TeamId == s.HumanTeam.Id ? " · talk to him on the Squad page" : "");
         var career = s.League.Careers.GetValueOrDefault(p.Id);
         var hall = s.League.HallOfFame.FirstOrDefault(h => h.PlayerId == p.Id);
         var retiredBy = s.League.Teams.Where(x => x.RetiredNumbers.Contains(p.Id)).Select(x => x.FullName).ToList();

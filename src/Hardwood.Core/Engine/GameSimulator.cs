@@ -126,6 +126,9 @@ public sealed class GameSimulator
         public Dictionary<Player, double> TargetSeconds { get; } = new();
         public Dictionary<Player, double> Energy { get; } = new();
         public Dictionary<Player, double> Form { get; } = new();
+        /// <summary>Team chemistry's effect on shot quality (logit) and turnovers, fixed for the game.</summary>
+        public double ChemLogit { get; }
+        public double ChemTurnover { get; }
         public int TeamFouls { get; set; }
         public int Possessions { get; set; }
         /// <summary>While the game clock (elapsed seconds) is below this, the coach's hand-picked five stays out there barring fouls.</summary>
@@ -155,8 +158,10 @@ public sealed class GameSimulator
                 Box.Lines.Add(new PlayerLine { Player = p });
                 Energy[p] = 1.0;
                 double sd = cfg.FormSd * (21 - p.Hidden.Consistency) / 10.0;
-                Form[p] = rng.NextGaussian(0, sd);
+                Form[p] = rng.NextGaussian(0, sd) + (p.Morale - People.PeopleEngine.Neutral) / 40.0 * cfg.MoraleLogit;
             }
+            ChemLogit = (team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryLogit;
+            ChemTurnover = -(team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryTurnover;
             // Players not dressed still get a (zero-minute) line so stats lookups never miss.
             foreach (var p in team.Roster.Except(available)) { Box.Lines.Add(new PlayerLine { Player = p }); Energy[p] = 1.0; Form[p] = 0; }
 
@@ -458,7 +463,7 @@ public sealed class GameSimulator
             double pressure = def.OnCourt.Average(p => (p.Attributes[Attr.Steal] + p.Attributes[Attr.PerimeterDefense]) / 2.0)
                               + (def.Tac.DefensiveAggression - 50) / 25.0;
             double p = _cfg.TurnoverBase - _cfg.TurnoverSkillBeta * (security - pressure)
-                       + Tactics.TurnoverShift(off.Tac, def.Tac);
+                       + Tactics.TurnoverShift(off.Tac, def.Tac) + off.ChemTurnover;
             p = Math.Clamp(p, 0.04, 0.25);
             if (!_rng.Chance(p)) return false;
 
@@ -634,7 +639,7 @@ public sealed class GameSimulator
                            // Score effects: a team well ahead eases off, a team well behind pushes, so big leads shrink.
                            - _cfg.ScoreEffectPerPoint * Math.Clamp(Score(off) - Score(def), -25, 25)
                            // Tactics: how well both sides' players suit their system and scheme, and how the two match up.
-                           + _fitLogit
+                           + _fitLogit + off.ChemLogit
                            // A player in a role he suits plays a little better.
                            + _cfg.RoleFitLogit * (Roles.Stars(shooter, off.Tac.RoleOf(shooter)) - 3);
             double pMake = Sigmoid(logit);

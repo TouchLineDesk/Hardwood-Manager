@@ -79,6 +79,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Roster", () => new RosterViewModel(this)),
             ("Rotation", () => new RotationViewModel(this)),
             ("Tactics", () => new TacticsViewModel(this)),
+            ("Squad", () => new SquadViewModel(this)),
             ("Staff & Training", () => new StaffViewModel(this)),
             ("Schedule & Results", () => new ScheduleViewModel(this)),
             ("Standings", () => new StandingsViewModel(this)),

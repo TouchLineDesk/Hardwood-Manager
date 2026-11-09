@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.SquadView"
+             x:DataType="vm:SquadViewModel">
+  <Grid ColumnDefinitions="11*,6*">
+    <DockPanel Margin="0,0,12,0">
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+        <TextBlock Text="Squad" Classes="h1" Margin="0"/>
+        <TextBlock Text="{Binding ChemistryHeadline}" Classes="h2" Margin="0"/>
+        <ItemsControl ItemsSource="{Binding ChemistryFactors}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FactorRow">
+              <Grid ColumnDefinitions="40,*">
+                <TextBlock Text="{Binding EffectText}" FontWeight="SemiBold" Classes.good="{Binding Positive}" Classes.bad="{Binding !Positive}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Reason}" Classes="muted"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+      <DataGrid ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}" IsReadOnly="True">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+          <DataGridTextColumn Header="Mood" Binding="{Binding Mood}" Width="110"/>
+          <DataGridTextColumn Header="Morale" Binding="{Binding Morale}" Width="84"/>
+          <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120"/>
+          <DataGridTextColumn Header="Biggest worry" Binding="{Binding MainReason}" Width="*"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+
+    <StackPanel Grid.Column="1" Spacing="10">
+      <Border Classes="panel">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{Binding PlayerHeadline}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+          <ItemsControl ItemsSource="{Binding PlayerFactors}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FactorRow">
+                <Grid ColumnDefinitions="40,*">
+                  <TextBlock Text="{Binding EffectText}" FontWeight="SemiBold" Classes.good="{Binding Positive}" Classes.bad="{Binding !Positive}"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Reason}" TextWrapping="Wrap"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+      <Border Classes="panel">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Talk to him" Classes="h2" Margin="0"/>
+          <ItemsControl ItemsSource="{Binding Topics}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TalkButton">
+                <Button Content="{Binding Label}" Command="{Binding Command}" Margin="0,0,6,6"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding Reply}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding TalkNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Classes="panel">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Your promises" Classes="h2" Margin="0"/>
+          <TextBlock Text="{Binding PromisesText}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Grid>
+</UserControl>

@@ -164,7 +164,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
                     {
                         Player = p, Age = p.Age(o.Date), Ask = $"${o.Ask(p) / 1e6:F1}M",
                         LastSeason = st != null ? $"{st.Ppg:F1} pts, {st.Rpg:F1} reb, {st.Apg:F1} ast in {st.Mpg:F1} min" : "did not play",
-                        Fits = !o.CanAfford(team, o.Ask(p)) ? (fin.SoftCap ? "Over apron" : "Over cap")
+                        Fits = Offseason.WontReSign(p) ? "Won't re-sign (unhappy)"
+                             : !o.CanAfford(team, o.Ask(p)) ? (fin.SoftCap ? "Over apron" : "Over cap")
                              : fin.SoftCap && committed + o.ReservedForDraft(team) + o.Ask(p) > fin.SalaryCap ? "Yes (Bird rights)" : "Yes",
                     });
                 }
@@ -234,7 +235,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
     {
         if (SelectedExpiring == null) return;
         var ok = Session.Offseason!.ReSign(Session.HumanTeam, SelectedExpiring.Player);
-        Status = ok ? $"Re-signed {SelectedExpiring.Name}." : $"{SelectedExpiring.Name}'s ask would take you over the {(Session.League.Finance.SoftCap ? "apron" : "cap")}.";
+        Status = ok ? $"Re-signed {SelectedExpiring.Name}."
+            : Offseason.WontReSign(SelectedExpiring.Player) ? $"{SelectedExpiring.Name} is too unhappy here to sign a new deal."
+            : $"{SelectedExpiring.Name}'s ask would take you over the {(Session.League.Finance.SoftCap ? "apron" : "cap")}.";
         Shell.AfterTick();
     }
 
