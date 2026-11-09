@@ -52,6 +52,36 @@ public class CareerTests
     }
 
     [Fact]
+    public void A_short_roster_near_the_cap_ends_at_most_two_minimum_deals_over()
+    {
+        // The known bug: a team near the cap that needs 3+ minimum signings to reach the roster minimum
+        // used to end the offseason three or more minimum deals over the hard cap.
+        var league = NewLeague();
+        var rng = new Rng(11);
+        var schedule = ScheduleBuilder.Build(league, new DateOnly(2026, 10, 21), rng);
+        var outcome = new SeasonSimulator(rng).Run(league, schedule);
+        var stats = new Dictionary<int, PlayerSeasonStats>();
+        var off = new Offseason(league, outcome, stats, rng);
+        off.Begin();
+        off.AdvanceToDraft();
+        off.AdvanceToFreeAgency();
+
+        var fin = league.Finance;
+        var team = league.Teams[4];
+        while (team.Roster.Count > fin.RosterMin - 4) off.Waive(team, team.Roster.OrderBy(p => p.Contract!.Salary).First());
+        // Spread salary so payroll sits just under the cap with only 9 players.
+        long each = (fin.HardCap - fin.MinSalary / 2) / team.Roster.Count;
+        foreach (var p in team.Roster) p.Contract!.Salary = each;
+
+        off.Complete();
+        Assert.True(team.Roster.Count >= fin.RosterMin, $"roster {team.Roster.Count}");
+        Assert.True(ContractMarket.Payroll(team) <= fin.HardCap + fin.MinSalary * 2,
+            $"payroll {ContractMarket.Payroll(team):N0} vs cap {fin.HardCap:N0} + 2 x {fin.MinSalary:N0}");
+        foreach (var t in league.Teams)
+            Assert.True(ContractMarket.Payroll(t) <= fin.HardCap + fin.MinSalary * 2, t.FullName);
+    }
+
+    [Fact]
     public void Offseason_keeps_rosters_legal()
     {
         var league = NewLeague();
