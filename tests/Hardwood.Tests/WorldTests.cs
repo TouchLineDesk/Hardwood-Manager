@@ -137,6 +137,21 @@ public class WorldTests
     }
 
     [Fact]
+    public void Overseas_leagues_hold_their_level_over_the_years()
+    {
+        var (_, world) = Build(31);
+        var sim = new GameSimulator();
+        double Mean(WorldCompetition c) => c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
+        var start = world.Competitions.Where(c => c.Clubs.Count > 0).ToDictionary(c => c.Key, Mean);
+        for (int y = 2027; y <= 2032; y++) world.Rollover(y, sim);
+        foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
+            Assert.True(Math.Abs(Mean(c) - start[c.Key]) <= 6, $"{c.Profile.Name}: {start[c.Key]:F1} -> {Mean(c):F1}");
+        // Imports are replaced by imports, so clubs keep using their foreign slots.
+        foreach (var c in world.Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic))
+            Assert.True(c.Clubs.Average(t => GameWorld.Imports(t, c.Profile)) >= c.Profile.ForeignLimit * 0.5, c.Profile.Name);
+    }
+
+    [Fact]
     public void A_career_saves_and_loads_the_world_and_older_saves_get_one()
     {
         var dir = Path.Combine(Path.GetTempPath(), $"hw-world-{Guid.NewGuid():N}");

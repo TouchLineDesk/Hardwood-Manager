@@ -227,12 +227,22 @@ public sealed class Offseason
         Report.ToFreeAgency.Add((p, team));
     }
 
+    /// <summary>Last season's win percentage (0.5 if unknown).</summary>
+    private double LastWinPct(Team team) => _outcome.Standings[team] is { Games: > 0 } r ? r.WinPct : 0.5;
+
+    /// <summary>
+    /// AI re-signing. Best players are decided first, so cap room goes to them; teams all but always keep stars, and
+    /// players are keener to stay on a winning team. (Without this, stars drained from contenders to the teams with
+    /// the most cap room every summer and the league flattened out; balance audit, Nov 9.)
+    /// </summary>
     public void AiReSign(Team team)
     {
-        foreach (var p in Expiring[team.Id].ToList())
+        double winPct = LastWinPct(team);
+        foreach (var p in Expiring[team.Id].OrderByDescending(x => ContractMarket.Value(x, Date)).ToList())
         {
-            double wantToKeep = Math.Clamp((ContractMarket.Value(p, Date) - 72) / 50.0, 0.05, 0.95);
-            double wantToStay = 0.6 + p.Hidden.Loyalty / 20.0 * 0.35;
+            double value = ContractMarket.Value(p, Date);
+            double wantToKeep = Math.Clamp((value - 72) / 50.0, 0.05, value >= 140 ? 0.98 : 0.95);
+            double wantToStay = Math.Min(0.98, 0.6 + p.Hidden.Loyalty / 20.0 * 0.35 + (winPct >= 0.55 ? 0.15 : winPct >= 0.45 ? 0.05 : 0));
             if (CanAfford(team, Ask(p)) && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
             else Release(team, p);
         }
@@ -365,6 +375,16 @@ public sealed class Offseason
     public void AiFreeAgency(int? humanTeamId)
     {
         var fin = _league.Finance;
+        // The best free agents choose where to go: among teams that can pay them, they lean toward winners.
+        foreach (var p in _league.FreeAgents.Where(p => ContractMarket.Value(p, Date) >= 120).OrderByDescending(p => ContractMarket.Value(p, Date)).ToList())
+        {
+            long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
+            var choice = _league.Teams
+                .Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax && ask <= Room(t))
+                .OrderByDescending(t => LastWinPct(t) + _rng.NextDouble() * 0.35 + PositionNeed(t, p) * 0.05)
+                .FirstOrDefault();
+            if (choice != null) SignFreeAgent(choice, p);
+        }
         for (int round = 0; round < 6; round++)
         {
             var teams = _league.Teams.Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax)

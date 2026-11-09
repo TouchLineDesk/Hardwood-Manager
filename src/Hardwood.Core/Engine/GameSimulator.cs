@@ -347,6 +347,31 @@ public sealed class GameSimulator
             bool wasTransition = _transition;
             _transition = false;
 
+            // End of the fourth quarter (and overtime): game management. A team behind by 1-6 in the last 40 seconds
+            // fouls straight away to stop the clock; otherwise the team ahead runs the clock. A team that is tied or
+            // behind by one to three holds for the last shot so the other side can't answer, and down three it needs a
+            // three. Without this, close games rarely ended tied and overtime was a third as common as in the NBA.
+            _needThree = false;
+            _wantTwo = false;
+            bool intentionalFoul = false;
+            if (_period >= _rules.Periods && _clock <= 40 && !wasTransition && Score(off) - Score(def) is >= 1 and <= 6 && _clock > 2)
+            {
+                intentionalFoul = true;
+                seconds = Math.Min(_clock - 1, 2 + _rng.NextDouble() * 3);
+            }
+            else if (_period >= _rules.Periods && _clock <= _rules.ShotClockSeconds + 2 && !wasTransition)
+            {
+                int diff = Score(off) - Score(def);
+                if (diff is >= 1 and <= 6)
+                    seconds = Math.Min(_clock, _rules.ShotClockSeconds - _rng.NextDouble() * 3);
+                else if (diff is >= -3 and <= 0)
+                {
+                    seconds = Math.Clamp(_clock - _rng.NextDouble() * 2.5, Math.Min(_clock, 1), _rules.ShotClockSeconds);
+                    _needThree = diff == -3;
+                    _wantTwo = diff == -2 && _rng.Chance(0.75); // down two: usually play for the tie
+                }
+            }
+
             // Last possession of a period: use whatever time is left.
             seconds = Math.Min(seconds, _clock);
             _clock -= seconds;
@@ -357,6 +382,16 @@ public sealed class GameSimulator
 
             bool possessionLive = true;
             int chanceIndex = 0; // 0 = first shot, 1+ = after offensive rebound
+            if (intentionalFoul)
+            {
+                // Foul the best free-throw shooter's teammate if possible: in practice, whoever has the ball. Two shots.
+                var fouler = PickDefender(def, null, ShotZone.ShortMid);
+                CommitFoul(def, fouler);
+                var target = off.OnCourt[_rng.Next(5)];
+                ShootFreeThrows(off, def, target, 2);
+                Log($"{fouler.LastName} fouls {target.LastName} to stop the clock");
+                possessionLive = false;
+            }
             while (possessionLive)
             {
                 // 1. Turnover
@@ -438,13 +473,20 @@ public sealed class GameSimulator
                                + (100 - p.Tendencies.PassFirst) * 0.08;
                 if (transition) usage += a[Attr.Speed] * 0.5;
                 // Star usage sharpens or flattens the distribution.
-                weights[i] = Math.Pow(Math.Max(1, usage), 1.6 * star) * (0.75 + 0.25 * off.Energy[p]);
+                weights[i] = Math.Pow(Math.Max(1, usage), _cfg.UsageSharpness * star) * (0.75 + 0.25 * off.Energy[p]);
             }
             return off.OnCourt[_rng.WeightedIndex(weights)];
         }
 
+        /// <summary>Set for a possession that must end in a three (down three at the end of the game).</summary>
+        private bool _needThree;
+        /// <summary>Set for a possession going for a tying two (down two at the end of the game).</summary>
+        private bool _wantTwo;
+
         private ShotZone PickZone(Side off, Player shooter, bool transition)
         {
+            if (_needThree) return _rng.Chance(0.35) ? ShotZone.CornerThree : ShotZone.AboveBreakThree;
+            if (_wantTwo) return _rng.Chance(0.6) ? ShotZone.Rim : ShotZone.ShortMid;
             var t = shooter.Tendencies;
             var baseW = _cfg.ZoneBaseWeight;
             double threeEmphasis = off.Team.Tactic.ThreePointEmphasis / 50.0;
@@ -523,7 +565,9 @@ public sealed class GameSimulator
                            - _cfg.ContestBeta * (contest - 11)
                            - _cfg.FatigueBeta * (1 - off.Energy[shooter])
                            + (off.IsHome ? _cfg.HomeLogit : 0)
-                           + off.Form[shooter];
+                           + off.Form[shooter]
+                           // Score effects: a team well ahead eases off, a team well behind pushes, so big leads shrink.
+                           - _cfg.ScoreEffectPerPoint * Math.Clamp(Score(off) - Score(def), -25, 25);
             double pMake = Sigmoid(logit);
 
             // Blocks (only on missed shots inside the arc)
