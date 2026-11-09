@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.Model;
 using Hardwood.Core.Season;
+using Hardwood.Core.World;
 
 namespace Hardwood.Desktop.ViewModels;
 
@@ -48,16 +49,57 @@ public sealed class PickRow
     public bool Ours { get; init; }
 }
 
+/// <summary>A player under contract overseas whom an NABL team could buy out (decision #53).</summary>
+public sealed class OverseasRow
+{
+    public required Player Player { get; init; }
+    public string Name => Player.Name;
+    public string Pos => Player.PrimaryPosition.ToString();
+    public int Age { get; init; }
+    public double Knowledge { get; init; }
+    public string CA => Scouting.Ability(Player, Knowledge).ToString();
+    public string PA => Scouting.Potential(Player, Knowledge).ToString();
+    public string Club { get; init; } = "";
+    public string Salary => Player.Contract is { } c ? $"${c.Salary / 1e6:F2}M × {c.Years}" : "-";
+    public string Buyout => Player.Contract is { } c ? $"${c.Buyout / 1e6:F2}M" : "-";
+    public string Terms { get; init; } = "";
+}
+
+/// <summary>A draft pick this team holds the rights to: this year's picks (which can be stashed) and players stashed abroad.</summary>
+public sealed class RightsRow
+{
+    public required Player Player { get; init; }
+    public string Name => Player.Name;
+    public string Pos => Player.PrimaryPosition.ToString();
+    public int Age { get; init; }
+    public string Ability => $"{Player.CurrentAbility}/{Player.PotentialAbility}";
+    public string Where { get; init; } = "";
+    public string Next { get; init; } = "";
+    public bool Abroad { get; init; }
+}
+
 public sealed partial class OffseasonViewModel : PageViewModel
 {
     public Player? SelectedProspectPlayer => SelectedProspect?.Player;
     public double ProspectKnowledge => SelectedProspect?.Knowledge ?? 1.0;
-    public Player? SelectedFreeAgentPlayer => SelectedFreeAgent?.Player;
-    public double FreeAgentKnowledge => SelectedFreeAgent?.Knowledge ?? 1.0;
+    /// <summary>The player shown on the free-agency card: the last one selected in any of the three lists.</summary>
+    public Player? SelectedFreeAgentPlayer => _cardPlayer;
+    public double FreeAgentKnowledge => _cardKnowledge;
     public Player? SelectedExpiringPlayer => SelectedExpiring?.Player;
     public Hardwood.Core.Model.Team HumanTeam => Session.HumanTeam;
     partial void OnSelectedProspectChanged(ProspectRow? value) { OnPropertyChanged(nameof(SelectedProspectPlayer)); OnPropertyChanged(nameof(ProspectKnowledge)); }
-    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); }
+    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { if (value != null) ShowCard(value.Player, value.Knowledge); }
+    partial void OnSelectedOverseasChanged(OverseasRow? value) { if (value != null) ShowCard(value.Player, value.Knowledge); }
+    partial void OnSelectedRightsChanged(RightsRow? value) { if (value != null) ShowCard(value.Player, Scouting.Knowledge(Session.HumanTeam, value.Player)); }
+    private void ShowCard(Player p, double knowledge) { _cardPlayer = p; _cardKnowledge = knowledge; OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); }
+    private Player? _cardPlayer; private double _cardKnowledge = 1.0;
+
+    /// <summary>Overseas players good enough to interest an NABL team, with what a buyout would take.</summary>
+    public ObservableCollection<OverseasRow> Overseas { get; } = new();
+    [ObservableProperty] private OverseasRow? _selectedOverseas;
+    /// <summary>This year's picks (stashable) and players abroad whose rights you hold.</summary>
+    public ObservableCollection<RightsRow> Rights { get; } = new();
+    [ObservableProperty] private RightsRow? _selectedRights;
     partial void OnSelectedExpiringChanged(ExpiringRow? value) => OnPropertyChanged(nameof(SelectedExpiringPlayer));
     public override string Title => "Offseason";
     [ObservableProperty] private string _headline = "";
@@ -106,7 +148,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                   + (IsReSigning && o.ReservedForDraft(team) > 0 ? $" (incl. ${o.ReservedForDraft(team) / 1e6:F1}M reserved for your pick)" : "")
                   + (IsFreeAgency && fin.SoftCap ? (o.MidLevelUsed.Contains(team.Id) ? " · mid-level used" : $" · mid-level exception ${fin.MidLevel / 1e6:F1}M available") : "");
 
-        Expiring.Clear(); Prospects.Clear(); Picks.Clear(); FreeAgents.Clear(); Roster.Clear();
+        Expiring.Clear(); Prospects.Clear(); Picks.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear(); Rights.Clear();
         switch (o.Phase)
         {
             case OffseasonPhase.ReSigning:
@@ -153,6 +195,35 @@ public sealed partial class OffseasonViewModel : PageViewModel
                     : $"Sign players until your roster has {fin.RosterMin} to {fin.RosterMax} players under the ${fin.HardCap / 1e6:F0}M hard cap. Below {fin.RosterMin} players you may add minimum deals regardless of room. Waive to make space. When you start the new season, anything illegal is fixed automatically (cheapest fixes first).";
                 foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
                 foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
+                foreach (var p in s.World.Players.Where(p => p.CurrentAbility >= 95 || p.DraftRightsTeamId == team.Id).OrderByDescending(p => p.CurrentAbility).Take(200))
+                {
+                    var club = WorldMarket.ClubOf(s.World, p);
+                    var terms = WorldMarket.Terms(s.World, o, team, p);
+                    Overseas.Add(new OverseasRow
+                    {
+                        Player = p, Age = p.Age(o.Date), Knowledge = Scouting.Knowledge(team, p),
+                        Club = club == null ? "" : $"{club.FullName} ({s.World.HomeOf(club).Profile.Short})",
+                        Terms = terms.Possible ? $"Yes: ${terms.NablSalary / 1e6:F1}M a year. {terms.Note}" : terms.Note,
+                    });
+                }
+                foreach (var d in o.Report.Draft.Where(d => d.Team == team && (d.Player.TeamId == team.Id || s.League.FreeAgents.Contains(d.Player))))
+                    Rights.Add(new RightsRow
+                    {
+                        Player = d.Player, Age = d.Player.Age(o.Date), Abroad = false,
+                        Where = d.Player.TeamId == team.Id ? $"R{d.Round} #{d.Pick}, on your roster" : $"R{d.Round} #{d.Pick}, unsigned",
+                        Next = WorldMarket.CannotStash(o, team, d.Player) ?? "Can be stashed abroad",
+                    });
+                foreach (var p in WorldMarket.RightsHeld(s.World, s.League, team))
+                {
+                    var club = WorldMarket.ClubOf(s.World, p);
+                    Rights.Add(new RightsRow
+                    {
+                        Player = p, Age = p.Age(o.Date), Abroad = true,
+                        Where = club != null ? $"Abroad: {club.FullName}" : "Free agent (only you can sign him)",
+                        Next = club != null ? WorldMarket.Terms(s.World, o, team, p) is var t && t.Possible ? $"Can bring over: {t.Note}" : WorldMarket.Terms(s.World, o, team, p).Note
+                                            : "Sign him from the free-agent list",
+                    });
+                }
                 SelectedFreeAgent = FreeAgents.FirstOrDefault();
                 break;
         }
@@ -200,6 +271,34 @@ public sealed partial class OffseasonViewModel : PageViewModel
             : team.Roster.Count >= Session.League.Finance.RosterMax ? "Your roster is full. Waive someone first."
             : Session.League.Finance.SoftCap ? $"{p.Name} doesn't fit: not enough cap room, his ask is above the mid-level exception{(o.MidLevelUsed.Contains(team.Id) ? " (already used)" : "")}, and he won't take a minimum deal."
             : "Doesn't fit: not enough room.";
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void BuyOut()
+    {
+        var p = SelectedOverseas?.Player ?? (SelectedRights is { Abroad: true } r ? r.Player : null);
+        if (p == null) return;
+        var why = Session.BuyOut(p);
+        Status = why == null ? $"{p.Name} is bought out and signed: ${p.Contract!.Salary / 1e6:F1}M × {p.Contract.Years}." : why;
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void BringOver()
+    {
+        if (SelectedRights is not { Abroad: true } r) { Status = "Select a player abroad whose rights you hold."; return; }
+        var why = Session.BuyOut(r.Player);
+        Status = why == null ? $"{r.Player.Name} comes over: ${r.Player.Contract!.Salary / 1e6:F1}M × {r.Player.Contract.Years}." : why;
+        Shell.AfterTick();
+    }
+
+    [RelayCommand]
+    public void Stash()
+    {
+        if (SelectedRights is not { Abroad: false } r) { Status = "Select one of this year's picks to stash."; return; }
+        var why = Session.Stash(r.Player);
+        Status = why ?? $"{r.Player.Name} will play abroad. You keep his rights.";
         Shell.AfterTick();
     }
 

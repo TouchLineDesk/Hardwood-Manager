@@ -20,7 +20,7 @@ public sealed class Career
         _engine = engine ?? EngineConfig.Default;
     }
 
-    public SeasonPlayed PlaySeason(League league, Action<int, int>? progress = null)
+    public SeasonPlayed PlaySeason(League league, Action<int, int>? progress = null, World.GameWorld? world = null, Engine.GameSimulator? worldSim = null)
     {
         int season = league.Season;
         var opening = new DateOnly(season, 10, 21);
@@ -29,7 +29,7 @@ public sealed class Career
         var outcome = sim.Run(league, schedule, progress);
         var stats = PlayerSeasonStats.Aggregate(outcome.RegularSeason, season);
 
-        var offseason = Offseason.RunAll(league, outcome, stats, _rng);
+        var offseason = Offseason.RunAll(league, outcome, stats, _rng, world, worldSim);
         _save?.Save(league, stats.Values);
         return new SeasonPlayed(season, outcome, stats, offseason);
     }

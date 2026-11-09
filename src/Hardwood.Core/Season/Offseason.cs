@@ -91,14 +91,17 @@ public sealed class Offseason
     }
 
     /// <summary>Headless: every team is AI.</summary>
-    public static OffseasonReport RunAll(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng)
+    public static OffseasonReport RunAll(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng,
+                                         World.GameWorld? world = null, Engine.GameSimulator? worldSim = null)
     {
         var o = new Offseason(league, outcome, stats, rng);
         o.Begin();
+        if (world != null) { world.BeginSummer(o.Season + 1, worldSim ?? new Engine.GameSimulator(), league.FreeAgents); World.WorldMarket.Attach(world, o, worldSim); }
         o.AiReSignAll();
         o.AdvanceToDraft();
         o.AutoDraftUntil(null);
         o.AdvanceToFreeAgency();
+        if (world != null) World.WorldMarket.AiMoves(world, o, null);
         o.AiFreeAgency(null);
         o.Complete();
         return o.Report;
@@ -216,7 +219,7 @@ public sealed class Offseason
     /// The most an AI front office will commit: contenders and teams keeping a star go up to the apron, everyone else
     /// stays under the luxury tax line. (With a hard cap, the cap.)
     /// </summary>
-    private long AiPayrollLimit(Team team, bool star)
+    public long AiPayrollLimit(Team team, bool star)
     {
         var fin = _league.Finance;
         if (!fin.SoftCap) return fin.HardCap;
@@ -246,7 +249,7 @@ public sealed class Offseason
     }
 
     /// <summary>Last season's win percentage (0.5 if unknown).</summary>
-    private double LastWinPct(Team team) => _outcome.Standings[team] is { Games: > 0 } r ? r.WinPct : 0.5;
+    public double LastWinPct(Team team) => _outcome.Standings[team] is { Games: > 0 } r ? r.WinPct : 0.5;
 
     /// <summary>
     /// AI re-signing. Best players are decided first, so cap room goes to them; teams all but always keep stars, and
@@ -386,6 +389,7 @@ public sealed class Offseason
     public bool SignFreeAgent(Team team, Player p, int? years = null)
     {
         if (!_league.FreeAgents.Contains(p) || team.Roster.Count >= _league.Finance.RosterMax) return false;
+        if (p.DraftRightsTeamId is { } rights && rights != team.Id) return false; // another team holds his draft rights
         var fin = _league.Finance;
         long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
         var (route, salary) = SigningOption(team, ask);
@@ -394,6 +398,7 @@ public sealed class Offseason
 
         p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = salary, StartSeason = Season + 1 };
         p.TeamId = team.Id;
+        p.DraftRightsTeamId = null;
         team.Roster.Add(p);
         _league.FreeAgents.Remove(p);
         Report.FreeAgentSignings.Add((p, team, salary, p.Contract.Years));
@@ -484,6 +489,9 @@ public sealed class Offseason
         AiFreeAgency(null);
         AiHireStaff(null);
 
+        // The rest of the world signs from the pool before the leftovers retire (decision #41).
+        BeforeFreeAgentCleanup?.Invoke(this);
+
         foreach (var p in _league.FreeAgents.ToList())
         {
             if (p.CurrentAbility < 80 || p.Age(Date) >= 35) { _league.FreeAgents.Remove(p); _league.Retired.Add(p); Report.LeftUnsigned.Add(p); }
@@ -504,6 +512,10 @@ public sealed class Offseason
 
     // ------------------------------------------------------------------------------------------
     public SeasonSummary? Summary { get; private set; }
+
+    /// <summary>Runs at the end of free agency, before unsigned players retire: overseas clubs sign from the pool here.</summary>
+    public Action<Offseason>? BeforeFreeAgentCleanup { get; set; }
+    public League League => _league;
 
     private void RecordHistory()
     {

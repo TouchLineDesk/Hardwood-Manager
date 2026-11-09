@@ -77,26 +77,73 @@
 
     <!-- Free agency -->
     <Grid IsVisible="{Binding IsFreeAgency}" ColumnDefinitions="3*,2*">
-      <Grid RowDefinitions="Auto,*">
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <Button Classes="primary" Content="Sign selected" Command="{Binding SignFreeAgentCommand}"/>
-          <TextBlock Text="Free agents" Classes="h2" Margin="0" VerticalAlignment="Center"/>
-        </StackPanel>
-        <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
-            <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-            <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
-            <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-            <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
-            <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
-            <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
-            <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
-            <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="*"/>
-          </DataGrid.Columns>
-        </DataGrid>
-      </Grid>
+      <TabControl>
+        <TabItem Header="Free agents">
+          <Grid RowDefinitions="Auto,*">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Classes="primary" Content="Sign selected" Command="{Binding SignFreeAgentCommand}"/>
+              <TextBlock Text="Free agents" Classes="h2" Margin="0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+                <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
+                <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
+                <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
+                <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
+                <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
+                <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
+                <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Overseas (buyouts)">
+          <Grid RowDefinitions="Auto,Auto,*">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Classes="primary" Content="Buy out selected" Command="{Binding BuyOutCommand}"/>
+              <TextBlock Text="Players under contract abroad" Classes="h2" Margin="0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75" Margin="0,4,0,6"
+                       Text="Every overseas contract has a buyout clause. You pay up to the NABL allowance; the player pays the rest himself, but only if the move is worth it to him."/>
+            <DataGrid Grid.Row="2" ItemsSource="{Binding Overseas}" SelectedItem="{Binding SelectedOverseas}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
+                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
+                <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="80"/>
+                <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="80"/>
+                <DataGridTextColumn Header="Club" Binding="{Binding Club}" Width="200"/>
+                <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="100"/>
+                <DataGridTextColumn Header="Buyout" Binding="{Binding Buyout}" Width="80"/>
+                <DataGridTextColumn Header="Can you sign him?" Binding="{Binding Terms}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Draft rights">
+          <Grid RowDefinitions="Auto,Auto,*">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Content="Stash abroad" Command="{Binding StashCommand}"/>
+              <Button Classes="primary" Content="Bring over" Command="{Binding BringOverCommand}"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75" Margin="0,4,0,6"
+                       Text="Stash one of this year's picks with an overseas club to let him develop; you keep his rights and can bring him over in a later summer (paying his buyout)."/>
+            <DataGrid Grid.Row="2" ItemsSource="{Binding Rights}" SelectedItem="{Binding SelectedRights}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
+                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
+                <DataGridTextColumn Header="CA/PA" Binding="{Binding Ability}" Width="80"/>
+                <DataGridTextColumn Header="Where" Binding="{Binding Where}" Width="240"/>
+                <DataGridTextColumn Header="Options" Binding="{Binding Next}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Grid>
+        </TabItem>
+      </TabControl>
       <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
         <c:PlayerCard Player="{Binding SelectedFreeAgentPlayer}" Knowledge="{Binding FreeAgentKnowledge}" Width="200" Height="290" HorizontalAlignment="Left" Margin="0,0,0,10"/>
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10">
