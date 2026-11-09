@@ -13,6 +13,8 @@ namespace Hardwood.Cli;
 ///   hardwood season [--seed N]          generate a league, play 82 games + playoffs, print standings, leaders, averages
 ///   hardwood game [--seed N] [--log]     generate a league, play one game, print the box score (and play log)
 ///   hardwood roster [--seed N] [--team ABBR]
+///   hardwood audit [--seed N] [--seasons N] [--out report.md] [--full-sim]
+///                                        play N seasons (NABL + world) and check the results against real basketball
 /// </summary>
 public static class Program
 {
@@ -25,6 +27,18 @@ public static class Program
         var world = new WorldGenerator(new Rng(seed));
         var league = world.Generate("North American Basketball League", 2026, today);
 
+        if (cmd == "audit")
+        {
+            int seasons = int.Parse(ArgValue(args, "--seasons") ?? "10");
+            var full = args.Contains("--full-sim") ? Hardwood.Core.World.Competitions.All.Select(c => c.Key) : null;
+            var report = Hardwood.Core.Audit.BalanceAudit.Run(seed, seasons, full, msg => Console.Error.WriteLine(msg));
+            var md = report.ToMarkdown();
+            if (ArgValue(args, "--out") is { } outFile) { File.WriteAllText(outFile, md); Console.WriteLine($"Wrote {outFile}"); }
+            else Console.WriteLine(md);
+            Console.WriteLine(report.Flags.Any() ? $"{report.Flags.Count()} metric(s) out of range: {string.Join(", ", report.Flags.Select(f => f.Name))}" : "All checked metrics in range.");
+            return 0;
+        }
+
         switch (cmd)
         {
             case "season": return RunSeason(league, seed, today);
@@ -33,7 +47,7 @@ public static class Program
             case "sim-years": return SimYears(league, seed, int.Parse(ArgValue(args, "--years") ?? "10"), ArgValue(args, "--save") ?? "hardwood.save");
             case "load": return LoadSave(ArgValue(args, "--save") ?? "hardwood.save");
             default:
-                Console.Error.WriteLine("Usage: hardwood season|game|roster|sim-years|load [--seed N] [--log] [--team ABBR] [--years N] [--save FILE]");
+                Console.Error.WriteLine("Usage: hardwood season|game|roster|sim-years|load|audit [--seed N] [--log] [--team ABBR] [--years N] [--save FILE] [--seasons N] [--out FILE] [--full-sim]");
                 return 1;
         }
     }
