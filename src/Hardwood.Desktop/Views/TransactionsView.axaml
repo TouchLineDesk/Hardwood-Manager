@@ -11,7 +11,51 @@
       <TextBlock Text="{Binding DeadlineText}" Classes="muted"/>
     </StackPanel>
     <TabControl>
-      <TabItem Header="Trade builder">
+      <TabItem Header="Free agents">
+        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,360">
+          <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,6"/>
+          <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
+            <ContentControl Content="{Binding Talk}"/>
+          </ScrollViewer>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
+              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
+              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
+              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
+              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="80"/>
+              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Waive">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Text="Select a player in 'You send' on the trade builder and use the button below to release him outright." Classes="muted"/>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding Ours}" x:Name="WaiveGrid">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
+              <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112"/>
+              <DataGridTemplateColumn Header="" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:TradePiece">
+                    <Button Content="Waive" Command="{Binding Owner.WaiveCommand}" CommandParameter="{Binding}" Padding="8,2"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Trade builder" IsVisible="{Binding TradesOpen}">
         <Grid RowDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock Text="Trade partner" VerticalAlignment="Center" Classes="muted"/>
@@ -78,51 +122,6 @@
               <Button Grid.Column="2" Classes="primary" Content="Propose trade" Command="{Binding ProposeCommand}" IsEnabled="{Binding CanPropose}" VerticalAlignment="Center"/>
             </Grid>
           </Border>
-        </Grid>
-      </TabItem>
-      <TabItem Header="Free agents">
-        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <Button Classes="primary" Content="Sign selected" Command="{Binding SignCommand}"/>
-            <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center"/>
-          </StackPanel>
-          <c:PlayerCard Grid.Column="1" Grid.RowSpan="2" Player="{Binding SelectedFreeAgentPlayer}" Knowledge="{Binding FreeAgentKnowledge}" Width="200" Height="290" Margin="12,0,0,0" VerticalAlignment="Top"/>
-          <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
-              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
-              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
-              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
-              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="80"/>
-              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-            </DataGrid.Columns>
-          </DataGrid>
-        </Grid>
-      </TabItem>
-      <TabItem Header="Waive">
-        <Grid RowDefinitions="Auto,*">
-          <TextBlock Text="Select a player in 'You send' on the trade builder and use the button below to release him outright." Classes="muted"/>
-          <DataGrid Grid.Row="1" ItemsSource="{Binding Ours}" x:Name="WaiveGrid">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-              <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112"/>
-              <DataGridTemplateColumn Header="" Width="*">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate x:DataType="vm:TradePiece">
-                    <Button Content="Waive" Command="{Binding Owner.WaiveCommand}" CommandParameter="{Binding}" Padding="8,2"/>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-            </DataGrid.Columns>
-          </DataGrid>
         </Grid>
       </TabItem>
     </TabControl>

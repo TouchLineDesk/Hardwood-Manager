@@ -9,6 +9,13 @@
       <StackPanel Spacing="12" Margin="0,0,12,0">
         <!-- Employed: owner, goals, confidence -->
         <Border Classes="panel" IsVisible="{Binding Employed}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="DollarSign" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Club finances" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="{Binding Finances}" TextWrapping="Wrap"/>
+            <TextBlock Text="Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin." Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+          </StackPanel>
+        </Border>
+        <Border Classes="panel" IsVisible="{Binding Employed}">
           <Grid ColumnDefinitions="Auto,*">
             <c:TeamLogo Team="{Binding Team}" Width="72" Height="72" VerticalAlignment="Top" Margin="0,0,14,0"/>
             <StackPanel Grid.Column="1" Spacing="6">

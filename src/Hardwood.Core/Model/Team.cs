@@ -32,6 +32,8 @@ public sealed class Team
     public Jobs.Coach? Coach { get; set; }
     /// <summary>The club's owner: how patient and how ambitious (decision #71).</summary>
     public Jobs.Owner Owner { get; set; } = new();
+    /// <summary>Revenue, budgets, balance and fan base (decision #88).</summary>
+    public ClubFinance Money { get; set; } = new();
     /// <summary>Name of the computer head coach (for news, vacancies and the coaching carousel).</summary>
     public string CoachName { get; set; } = "";
 
@@ -100,7 +102,7 @@ public sealed class League
     public int Season { get; set; }
     public List<Team> Teams { get; } = new();
     public Rules Rules { get; init; } = Rules.Nba;
-    public Finance Finance { get; init; } = Finance.HardCapDefault;
+    public Finance Finance { get; set; } = Finance.HardCapDefault;
     /// <summary>Players without a team (free agents, undrafted), still in the world.</summary>
     public List<Player> FreeAgents { get; } = new();
     /// <summary>Retired players, kept for history.</summary>
@@ -141,6 +143,11 @@ public sealed class League
 /// </summary>
 public sealed record Finance(long HardCap, long MinSalary, int RosterMax, int RosterMin, long RookieScaleFirstPick)
 {
+    /// <summary>
+    /// The open market (decision #80, from Nov 9 2026): no cap, no draft, no Bird rights. Every club spends within the
+    /// wage budget its owner sets from its revenue. The cap fields below are kept only for old code paths and saves.
+    /// </summary>
+    public bool OpenMarket { get; init; } = true;
     /// <summary>Soft cap with Bird rights (true) or a strict hard cap (false).</summary>
     public bool SoftCap { get; init; } = true;
     /// <summary>The salary cap: room under it is what lets a team sign other teams' free agents.</summary>
@@ -159,6 +166,7 @@ public sealed record Finance(long HardCap, long MinSalary, int RosterMax, int Ro
     public string Describe(long payroll)
     {
         static string M(long v) => $"${v / 1e6:F1}M";
+        if (OpenMarket) return $"wages {M(payroll)}";
         if (!SoftCap) return $"payroll {M(payroll)} · hard cap {M(HardCap)} · room {M(HardCap - payroll)}";
         string vsCap = payroll <= SalaryCap ? $"cap room {M(SalaryCap - payroll)}" : $"{M(payroll - SalaryCap)} over the cap";
         string tax = payroll > TaxLine ? $" · luxury tax {M(TaxBill(payroll))}" : "";

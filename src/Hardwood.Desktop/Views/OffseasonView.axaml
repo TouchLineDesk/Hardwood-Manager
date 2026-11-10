@@ -6,108 +6,52 @@
              x:DataType="vm:OffseasonViewModel">
   <DockPanel>
     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="2">
-      <StackPanel Orientation="Horizontal" Spacing="12">
-        <c:CompetitionBadge Kind="Draft" Width="40" Height="40" IsVisible="{Binding IsDraft}"/>
-        <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0" VerticalAlignment="Center"/>
-      </StackPanel>
+      <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0"/>
       <TextBlock Text="{Binding Instructions}" Classes="muted" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding CapText}" IsVisible="{Binding InOffseason}" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding Status}" Classes="accent"/>
     </StackPanel>
 
-    <!-- Re-signing -->
-    <Grid IsVisible="{Binding IsReSigning}" RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Classes="primary" Content="Re-sign at ask" Command="{Binding ReSignCommand}"/>
-        <Button Content="Release" Command="{Binding ReleaseCommand}"/>
-      </StackPanel>
-      <c:PlayerCard Grid.Column="1" Grid.RowSpan="2" Player="{Binding SelectedExpiringPlayer}" Team="{Binding HumanTeam}" Width="200" Height="290" Margin="12,0,0,0" VerticalAlignment="Top"/>
-      <DataGrid Grid.Row="1" ItemsSource="{Binding Expiring}" SelectedItem="{Binding SelectedExpiring}">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-          <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-          <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
-          <DataGridTextColumn Header="Last season" Binding="{Binding LastSeason}" Width="*"/>
-          <DataGridTextColumn Header="Asks" Binding="{Binding Ask}" Width="82"/>
-          <DataGridTextColumn Header="Fits cap" Binding="{Binding Fits}" Width="82"/>
-        </DataGrid.Columns>
-      </DataGrid>
-    </Grid>
-
-    <!-- Draft -->
-    <Grid IsVisible="{Binding IsDraft}" ColumnDefinitions="3*,2*">
-      <Grid RowDefinitions="Auto,*">
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <Button Classes="primary" Content="Make this pick" Command="{Binding MakePickCommand}" IsEnabled="{Binding OnTheClock}"/>
-          <TextBlock Text="{Binding ClockText}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-        </StackPanel>
-        <DataGrid Grid.Row="1" ItemsSource="{Binding Prospects}" SelectedItem="{Binding SelectedProspect}">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
-            <DataGridTextColumn Header="Prospect" Binding="{Binding Name}" Width="160"/>
-            <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-            <DataGridTextColumn Header="Ht" Binding="{Binding Height}" Width="66"/>
-            <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-            <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
-            <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
-            <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
-            <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
-            <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="80"/>
-            <DataGridTextColumn Header="" Binding="{Binding Need}" Width="*"/>
-          </DataGrid.Columns>
-        </DataGrid>
-      </Grid>
-      <DockPanel Grid.Column="1">
-        <c:PlayerCard DockPanel.Dock="Top" Player="{Binding SelectedProspectPlayer}" Knowledge="{Binding ProspectKnowledge}" Width="200" Height="290" HorizontalAlignment="Left" Margin="0,0,0,10"/>
-        <TextBlock DockPanel.Dock="Top" Text="Picks so far" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding Picks}" CanUserSortColumns="False">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Pick" Binding="{Binding Where}" Width="72"/>
-            <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="74"/>
-            <DataGridTextColumn Header="Player" Binding="{Binding Player}" Width="*"/>
-            <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-            <DataGridTextColumn Header="CA/PA" Binding="{Binding Ability}" Width="76"/>
-          </DataGrid.Columns>
-        </DataGrid>
-      </DockPanel>
-    </Grid>
-
-    <!-- Free agency -->
-    <Grid IsVisible="{Binding IsFreeAgency}" ColumnDefinitions="3*,2*">
-      <TabControl>
-        <TabItem Header="Free agents">
-          <Grid RowDefinitions="Auto,*">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button Classes="primary" Content="Sign selected" Command="{Binding SignFreeAgentCommand}"/>
-              <TextBlock Text="Free agents" Classes="h2" Margin="0" VerticalAlignment="Center"/>
-            </StackPanel>
-            <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
-                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-                <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
-                <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-                <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
-                <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
-                <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
-                <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
-                <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="*"/>
-              </DataGrid.Columns>
-            </DataGrid>
-          </Grid>
+    <Grid ColumnDefinitions="3*,2*" IsVisible="{Binding InOffseason}">
+      <TabControl SelectedIndex="{Binding Tab}">
+        <TabItem Header="Contracts up" IsEnabled="{Binding ShowContracts}">
+          <DataGrid ItemsSource="{Binding Expiring}" SelectedItem="{Binding SelectedExpiring}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="64"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="64"/>
+              <DataGridTextColumn Header="Last season" Binding="{Binding LastSeason}" Width="*"/>
+              <DataGridTextColumn Header="Asks" Binding="{Binding Ask}" Width="110"/>
+              <DataGridTextColumn Header="" Binding="{Binding Fits}" Width="100"/>
+            </DataGrid.Columns>
+          </DataGrid>
         </TabItem>
-        <TabItem Header="Overseas (buyouts)">
+        <TabItem Header="Free agents" IsEnabled="{Binding ShowFreeAgency}">
+          <DataGrid ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="190"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
+              <DataGridTextColumn Header="Asks" Binding="{Binding Asks}" Width="112"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
+              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="84"/>
+              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="84"/>
+              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="84"/>
+              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </TabItem>
+        <TabItem Header="Overseas (buyouts)" IsVisible="{Binding ShowBuyouts}">
           <Grid RowDefinitions="Auto,Auto,*">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Button Classes="primary" Content="Buy out selected" Command="{Binding BuyOutCommand}"/>
               <TextBlock Text="Players under contract abroad" Classes="h2" Margin="0" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75" Margin="0,4,0,6"
-                       Text="Every overseas contract has a buyout clause. You pay up to the NABL allowance; the player pays the rest himself, but only if the move is worth it to him."/>
+                       Text="Every overseas contract has a buyout clause. You pay up to the NABL allowance; the player pays the rest himself, but only if the move is worth it to him. (The full transfer market comes next.)"/>
             <DataGrid Grid.Row="2" ItemsSource="{Binding Overseas}" SelectedItem="{Binding SelectedOverseas}">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
@@ -123,44 +67,25 @@
             </DataGrid>
           </Grid>
         </TabItem>
-        <TabItem Header="Draft rights">
-          <Grid RowDefinitions="Auto,Auto,*">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button Content="Stash abroad" Command="{Binding StashCommand}"/>
-              <Button Classes="primary" Content="Bring over" Command="{Binding BringOverCommand}"/>
-            </StackPanel>
-            <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75" Margin="0,4,0,6"
-                       Text="Stash one of this year's picks with an overseas club to let him develop; you keep his rights and can bring him over in a later summer (paying his buyout)."/>
-            <DataGrid Grid.Row="2" ItemsSource="{Binding Rights}" SelectedItem="{Binding SelectedRights}">
+        <TabItem Header="Your roster">
+          <Grid RowDefinitions="Auto,*">
+            <Button Content="Release selected" Command="{Binding WaivePlayerCommand}" Margin="0,0,0,6"/>
+            <DataGrid Grid.Row="1" ItemsSource="{Binding Roster}" SelectedItem="{Binding SelectedRosterPlayer}">
               <DataGrid.Columns>
-                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
-                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
-                <DataGridTextColumn Header="CA/PA" Binding="{Binding Ability}" Width="80"/>
-                <DataGridTextColumn Header="Where" Binding="{Binding Where}" Width="240"/>
-                <DataGridTextColumn Header="Options" Binding="{Binding Next}" Width="*"/>
+                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64"/>
+                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
+                <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="72"/>
+                <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="100"/>
+                <DataGridTextColumn Header="Yrs" Binding="{Binding Years}" Width="*"/>
               </DataGrid.Columns>
             </DataGrid>
           </Grid>
         </TabItem>
       </TabControl>
-      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
-        <c:PlayerCard Player="{Binding SelectedFreeAgentPlayer}" Knowledge="{Binding FreeAgentKnowledge}" Width="200" Height="290" HorizontalAlignment="Left" Margin="0,0,0,10"/>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10">
-          <Button Content="Waive selected" Command="{Binding WaivePlayerCommand}"/>
-          <TextBlock Text="Your roster" Classes="h2" Margin="0" VerticalAlignment="Center"/>
-        </StackPanel>
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Roster}" SelectedItem="{Binding SelectedRosterPlayer}">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-            <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-            <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-            <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="82"/>
-            <DataGridTextColumn Header="Yrs" Binding="{Binding Years}" Width="*"/>
-          </DataGrid.Columns>
-        </DataGrid>
-      </Grid>
+      <ScrollViewer Grid.Column="1" Margin="12,0,0,0">
+        <ContentControl Content="{Binding Talk}"/>
+      </ScrollViewer>
     </Grid>
   </DockPanel>
 </UserControl>

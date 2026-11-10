@@ -1,3 +1,4 @@
+using Hardwood.Core.Model;
 using Hardwood.Core.Jobs;
 using Hardwood.Core.Season;
 using Microsoft.Data.Sqlite;
@@ -22,6 +23,7 @@ public static class CareerStore
         var clubs = s.League.Teams.Concat(s.World.Clubs).DistinctBy(t => t.Id).ToList();
         Put("owners", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Owner)));
         Put("coaches", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.CoachName)));
+        Put("money", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Money)));
         tx.Commit();
     }
 
@@ -41,10 +43,13 @@ public static class CareerStore
             foreach (var t in clubs) if (owners.TryGetValue(t.Id, out var o)) t.Owner = o;
         if (Get("coaches") is { } cj && SaveFile.FromJson<Dictionary<int, string>>(cj) is { } names)
             foreach (var t in clubs) if (names.TryGetValue(t.Id, out var n)) t.CoachName = n;
+        if (Get("money") is { } mj && SaveFile.FromJson<Dictionary<int, ClubFinance>>(mj) is { } money)
+            foreach (var t in clubs) if (money.TryGetValue(t.Id, out var m) && m != null) t.Money = m;
         if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
         if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
+        s.World.ManagedClubId = s.Employed && s.Abroad ? s.HumanTeam.Id : null;
     }
 
     private static void CreateSchema(SqliteConnection conn) =>

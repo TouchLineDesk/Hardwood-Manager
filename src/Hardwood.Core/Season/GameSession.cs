@@ -82,6 +82,10 @@ public sealed partial class GameSession
         if (HumanTeam.Tactic.Auto) CoachAi.AssistantSetup(HumanTeam);
         Jobs.Board.EnsureOwnersAndCoaches(League, seed);
         Jobs.Board.EnsureOwnersAndCoaches(World.Clubs, seed);
+        // Club money (decision #88): new careers, and saves from before the money model, get budgets now.
+        var moneyRng = new Rng(seed ^ 0x4D4F4E4559UL);
+        Budgets.Initialize(League.Teams, 1, moneyRng);
+        foreach (var c in World.Competitions.Where(c => c.Clubs.Count > 0)) Budgets.Initialize(c.Clubs, c.Profile.SalaryScale, moneyRng);
         HumanTeam.Coach = Coach;
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
@@ -381,6 +385,7 @@ public sealed partial class GameSession
 
     private void AiTrades()
     {
+        if (League.Finance.OpenMarket) return; // no trades on the open market: the transfer market replaces them
         var engine = new TradeEngine(League, Today, Standings);
         var done = engine.AiTradeRound(_rng, ControlledTeamId ?? -1);
         TradesThisSeason.AddRange(done);
@@ -396,8 +401,8 @@ public sealed partial class GameSession
 
     public TradeEvaluation ProposeTrade(TradeProposal proposal)
     {
-        if (Abroad)
-            return new TradeEvaluation(false, "Clubs outside the NABL don't trade players.", 0, 0, 0, false, "Clubs outside the NABL don't trade players.");
+        if (Abroad || League.Finance.OpenMarket)
+            return new TradeEvaluation(false, "There are no trades on the open market: players move by transfer.", 0, 0, 0, false, "There are no trades on the open market: players move by transfer.");
         if (TradeDeadlinePassed && Phase != SessionPhase.Offseason && Phase != SessionPhase.Preseason)
             return new TradeEvaluation(false, "The trade deadline has passed.", 0, 0, 0, false, "The trade deadline has passed.");
         var eval = Trades.Evaluate(proposal);
@@ -641,6 +646,8 @@ public sealed partial class GameSession
     // ------------------------------------------------------------------------------------------
     private void BeginOffseason()
     {
+        World.ManagedClubId = Employed && Abroad ? HumanTeam.Id : null;
+        NewWindow();
         var outcome = new SeasonOutcome { Standings = Standings, Midseason = Midseason };
         outcome.RegularSeason.AddRange(Results.Values);
         Postseason!.FillOutcome(outcome);
@@ -662,23 +669,28 @@ public sealed partial class GameSession
         if (Abroad)
         {
             _summerRoster = HumanTeam.Roster.Select(p => p.Id).ToList();
-            Post("Summer", $"The NABL offseason is under way. At the {HumanTeam.FullName} your sporting director handles contracts this summer: "
-                + "expiring deals are renewed or let go, and the squad is topped up before the new season. Continue to move through the summer.", "Roster");
+            var waiting = MyExpiring;
+            Post("Summer: contract decisions", (waiting.Count == 0 ? "No contracts expire this summer." :
+                    $"{waiting.Count} contract{(waiting.Count == 1 ? " is" : "s are")} up: {string.Join(", ", waiting.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F2}M)"))}. Talk to them on the Offseason page, or let them go.")
+                + $"\n\nFree agents can be signed all summer within your budget ({Budgets.Describe(HumanTeam)}). Anyone you haven't renewed leaves when the summer ends, and if the squad is short of {Hardwood.Core.World.GameWorld.ManagedMinimum}, your sporting director makes up the numbers.", "Roster");
             return;
         }
 
         var retired = Offseason.Report.Retired.Where(p => p.InjuryHistory != null).ToList();
         var ours = Offseason.Report.Retired.Where(p => HumanTeamHad(p)).ToList();
         if (ours.Count > 0) Post("Retirements", string.Join(", ", ours.Select(p => p.Name)) + (ours.Count == 1 ? " has" : " have") + " retired.", "Roster");
-        var lottery = Offseason.Report.Lottery!;
-        int ourPick = lottery.Order.IndexOf(HumanTeam) + 1;
-        Post("Draft lottery results",
-            $"You pick {Ordinal(ourPick)} in the first round." + (lottery.Jumps.Count > 0 ? "\n" + string.Join("\n", lottery.Jumps.Select(j => $"{j.team.Abbreviation} moved from {Ordinal(j.preLotterySlot)} to {Ordinal(j.pick)}")) : ""), "League");
+        if (Offseason.Report.Lottery is { } lottery)
+        {
+            int ourPick = lottery.Order.IndexOf(HumanTeam) + 1;
+            Post("Draft lottery results",
+                $"You pick {Ordinal(ourPick)} in the first round." + (lottery.Jumps.Count > 0 ? "\n" + string.Join("\n", lottery.Jumps.Select(j => $"{j.team.Abbreviation} moved from {Ordinal(j.preLotterySlot)} to {Ordinal(j.pick)}")) : ""), "League");
+        }
         var staffGone = Offseason.Report.StaffReleased.Where(x => x.team == HumanTeam).Select(x => $"{x.staff.Name} ({Staff.RoleName(x.staff.Role).ToLower()})").ToList();
         if (staffGone.Count > 0) Post("Staff contracts expired", $"{string.Join(", ", staffGone)} left at the end of their deals. Hire replacements from the staff market.", "Staff");
         var expiring = Offseason.Expiring[HumanTeam.Id];
         Post("Contract decisions",
-            expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${Offseason.Ask(p) / 1e6:F1}M)"))}. Re-sign or release each one, then continue to the draft.", "Roster");
+            (expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F1}M)"))}. Talk to each one or release him, then continue to free agency.")
+            + $"\n\nThe owner has set next season's budget: {Budgets.Describe(HumanTeam)}.", "Roster");
         var dev = Offseason.Report.Development.Where(d => d.Player.TeamId == HumanTeam.Id && Math.Abs(d.NewCa - d.OldCa) >= 6).OrderByDescending(d => d.NewCa - d.OldCa).ToList();
         if (dev.Count > 0) Post("Player development", string.Join("\n", dev.Select(d => $"{d.Player.Name}: {(d.NewCa > d.OldCa ? "+" : "")}{d.NewCa - d.OldCa} ability")), "Roster");
     }
@@ -716,6 +728,22 @@ public sealed partial class GameSession
         {
             case OffseasonPhase.ReSigning:
                 Offseason.AdvanceToDraft();
+                if (League.Finance.OpenMarket)
+                {
+                    // No draft: free agency opens at once (the graduates are in the pool).
+                    NewWindow();
+                    Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
+                    Offseason.AiFreeAgency(ControlledTeamId);
+                    foreach (var (title, body) in World.News) Post(title, body, "World");
+                    World.News.Clear();
+                    if (Employed)
+                    {
+                        var grads = League.FreeAgents.Where(p => p.RookieSeason == League.Season + 1).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
+                        Post("Free agency is open", $"Make offers to free agents on the Offseason page. {Budgets.Describe(HumanTeam)}."
+                            + (grads.Count > 0 ? $"\n\nThe best of this year's college graduates still available: {string.Join(", ", grads.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : ""), "Roster");
+                    }
+                    break;
+                }
                 Offseason.AutoDraftUntil(ControlledTeamId);
                 if (Offseason.DraftComplete) AdvanceOffseason();
                 else Post("You're on the clock", $"Pick {Offseason.NextPickIndex + 1} (round {Offseason.CurrentRound}). {Offseason.Prospects.Count} prospects remain.", "Draft");
@@ -727,7 +755,7 @@ public sealed partial class GameSession
                 foreach (var (title, body) in World.News) Post(title, body, "World");
                 World.News.Clear();
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
-                if (InNabl) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
+                if (InNabl && !League.Finance.OpenMarket) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
                 break;
             case OffseasonPhase.FreeAgency:
                 Offseason.Complete();
@@ -793,6 +821,7 @@ public sealed partial class GameSession
 
     private void StartNewSeason()
     {
+        NewWindow();
         Phase = SessionPhase.Preseason;
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
         foreach (var (title, body) in World.News) Post(title, body, "World");

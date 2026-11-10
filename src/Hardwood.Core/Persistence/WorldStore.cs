@@ -20,6 +20,8 @@ public static class WorldStore
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_started', $v)", ("$v", world.SummerStarted.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_ended', $v)", ("$v", world.SummerEnded.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('departed', $v)", ("$v", SaveFile.ToJson(world.Departed)));
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
+            ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));
         int order = 0;
         foreach (var c in world.Competitions)
         {
@@ -104,6 +106,14 @@ public static class WorldStore
                 if (p.Contract is { Buyout: 0 } c) c.Buyout = GameWorld.BuyoutFor(p, c.Salary, c.Years, asOf);
             }
         world.Index();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'awaiting'";
+            if (cmd.ExecuteScalar() is string aj && SaveFile.FromJson<Dictionary<int, List<int>>>(aj) is { } awaiting)
+                foreach (var (teamId, ids) in awaiting)
+                    if (world.TeamById(teamId) is { } club)
+                        world.AwaitingDecision[teamId] = club.Roster.Where(p => ids.Contains(p.Id)).ToList();
+        }
         return world;
     }
 

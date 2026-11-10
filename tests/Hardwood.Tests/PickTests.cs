@@ -9,7 +9,7 @@ namespace Hardwood.Tests;
 public class PickTests
 {
     private static League NewLeague(ulong seed = 31) =>
-        new WorldGenerator(new Rng(seed)).Generate("L", 2026, new DateOnly(2026, 10, 1));
+        Legacy.Rules(new WorldGenerator(new Rng(seed)).Generate("L", 2026, new DateOnly(2026, 10, 1)));
 
     [Fact]
     public void World_starts_with_seven_years_of_picks_per_team()
@@ -87,7 +87,7 @@ public class PickTests
     }
 
     [Fact]
-    public void Mid_offseason_save_and_reload_resumes_the_draft()
+    public void Mid_offseason_save_and_reload_resumes_the_summer()
     {
         var path = Path.Combine(Path.GetTempPath(), $"hw-off-{Guid.NewGuid():N}.save");
         try
@@ -97,31 +97,17 @@ public class PickTests
             while (s.Phase != SessionPhase.Offseason && guard++ < 400) s.AdvanceDay();
             Assert.Equal(SessionPhase.Offseason, s.Phase);
 
-            // Reload during re-signing.
+            // Reload during re-signing: same expiring players, same graduate class waiting.
             var r1 = GameSession.Load(path);
             Assert.Equal(SessionPhase.Offseason, r1.Phase);
             Assert.Equal(OffseasonPhase.ReSigning, r1.Offseason!.Phase);
             Assert.Equal(s.Offseason!.Expiring[7].Count, r1.Offseason.Expiring[7].Count);
             Assert.Equal(s.Offseason.Prospects.Count, r1.Offseason.Prospects.Count);
-            Assert.Equal(s.Offseason.DraftOrder.Select(t => t.Id), r1.Offseason.DraftOrder.Select(t => t.Id));
+            Assert.Equal(s.HumanTeam.Money.WageBudget, r1.HumanTeam.Money.WageBudget);
 
-            foreach (var p in r1.Offseason.Expiring[7].ToList()) r1.Offseason.Release(r1.HumanTeam, p);
-            r1.AdvanceOffseason(); // to draft, AI picks until we're up
-            Assert.Equal(OffseasonPhase.Draft, r1.Offseason.Phase);
-            int picksBefore = r1.Offseason.Report.Draft.Count;
-            Assert.Equal(r1.HumanTeam, r1.Offseason.OnTheClock);
-
-            // Reload during the draft: we are still on the clock with the same board.
-            var r2 = GameSession.Load(path);
-            Assert.Equal(OffseasonPhase.Draft, r2.Offseason!.Phase);
-            Assert.Equal(picksBefore, r2.Offseason.Report.Draft.Count);
-            Assert.Equal(r1.Offseason.NextPickIndex, r2.Offseason.NextPickIndex);
-            Assert.Equal(r2.HumanTeam, r2.Offseason.OnTheClock);
-            Assert.Equal(r1.Offseason.Prospects.Count, r2.Offseason.Prospects.Count);
-
-            r2.MakePick(r2.Offseason.Prospects.First());
-            while (r2.Offseason.Phase == OffseasonPhase.Draft && !r2.Offseason.DraftComplete) r2.MakePick(r2.Offseason.Prospects.First());
-            Assert.Equal(OffseasonPhase.FreeAgency, r2.Offseason.Phase);
+            foreach (var p in r1.MyExpiring.ToList()) r1.ReleaseExpiring(p);
+            r1.AdvanceOffseason(); // straight to free agency
+            Assert.Equal(OffseasonPhase.FreeAgency, r1.Offseason.Phase);
 
             // Reload in free agency, finish, and the new season starts.
             var r3 = GameSession.Load(path);
@@ -130,7 +116,7 @@ public class PickTests
             Assert.Equal(SessionPhase.Preseason, r3.Phase);
             Assert.Equal(2027, r3.League.Season);
             Assert.InRange(r3.HumanTeam.Roster.Count, 13, 15);
-            Assert.Equal(30 * 2 * League.PickYearsAhead, r3.League.Picks.Count);
+            Assert.Empty(r3.League.Picks); // no draft picks on the open market
         }
         finally { if (File.Exists(path)) File.Delete(path); }
     }
@@ -183,7 +169,7 @@ public class AwardsTests
     [Fact]
     public void Hall_of_fame_fills_over_a_long_headless_run()
     {
-        var league = new WorldGenerator(new Rng(77)).Generate("L", 2026, new DateOnly(2026, 10, 1));
+        var league = Legacy.Rules(new WorldGenerator(new Rng(77)).Generate("L", 2026, new DateOnly(2026, 10, 1)));
         var career = new Career(new Rng(9));
         for (int i = 0; i < 12; i++) career.PlaySeason(league);
         Assert.True(league.HallOfFame.Count >= 1, $"HOF count {league.HallOfFame.Count}");

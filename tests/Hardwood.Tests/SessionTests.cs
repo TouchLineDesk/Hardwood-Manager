@@ -71,25 +71,29 @@ public class SessionTests
             Assert.True(loaded.Postseason!.Complete);
             Assert.Equal(OffseasonPhase.ReSigning, loaded.Offseason!.Phase);
 
-            // Re-sign everyone we can, release the rest.
-            var off = loaded.Offseason;
-            foreach (var p in off.Expiring[loaded.HumanTeam.Id].ToList())
-                if (!off.ReSign(loaded.HumanTeam, p)) off.Release(loaded.HumanTeam, p);
-
-            loaded.AdvanceOffseason(); // to draft
-            int picksMade = 0;
-            while (loaded.Offseason.Phase == OffseasonPhase.Draft && !loaded.Offseason.DraftComplete)
+            // Contract talks (decision #89): offer each expiring player his ask; release whoever won't sign.
+            Assert.True(loaded.HumanTeam.Money.Ready);
+            foreach (var p in loaded.MyExpiring.ToList())
             {
-                Assert.Equal(loaded.HumanTeam, loaded.Offseason.OnTheClock);
-                loaded.MakePick(loaded.Offseason.Prospects.First());
-                picksMade++;
+                var ask = loaded.DemandOf(p);
+                if (!loaded.Offer(p, ask.Wage, ask.Years).Accepted) loaded.ReleaseExpiring(p);
             }
-            Assert.Equal(2, picksMade);
-            Assert.Equal(OffseasonPhase.FreeAgency, loaded.Offseason.Phase);
+            Assert.Empty(loaded.MyExpiring);
 
-            // Sign free agents until the roster is full or nothing fits.
-            foreach (var fa in loaded.League.FreeAgents.OrderByDescending(p => p.CurrentAbility).ToList())
-                if (loaded.HumanTeam.Roster.Count >= 15) break; else loaded.Offseason.SignFreeAgent(loaded.HumanTeam, fa);
+            loaded.AdvanceOffseason(); // no draft on the open market: straight to free agency
+            Assert.Equal(OffseasonPhase.FreeAgency, loaded.Offseason.Phase);
+            Assert.Empty(loaded.League.Picks);
+            var grads = loaded.League.FreeAgents.Where(p => p.RookieSeason == 2027).ToList();
+            Assert.NotEmpty(grads);
+            Assert.All(grads, p => Assert.Equal(23, p.Age(loaded.Offseason.Date))); // pro at 23 (decision #75)
+
+            // Sign free agents through talks until the roster is full or the budget runs out.
+            foreach (var fa in loaded.League.FreeAgents.OrderByDescending(p => p.CurrentAbility).Take(40).ToList())
+            {
+                if (loaded.HumanTeam.Roster.Count >= 15) break;
+                var ask = loaded.DemandOf(fa);
+                loaded.Offer(fa, ask.Wage, ask.Years);
+            }
 
             Assert.Equal(2027, loaded.World.SummerStarted); // the world's summer began with the NABL's
             loaded.AdvanceOffseason(); // complete → new season
@@ -98,7 +102,7 @@ public class SessionTests
             Assert.All(loaded.World.Clubs, t => Assert.True(t.Roster.Count >= Hardwood.Core.World.GameWorld.RosterSize, t.FullName));
             Assert.Equal(2027, loaded.League.Season);
             Assert.InRange(loaded.HumanTeam.Roster.Count, 13, 15);
-            Assert.True(ContractMarket.Payroll(loaded.HumanTeam) <= loaded.League.Finance.Apron + loaded.League.Finance.MinSalary * 2);
+            Assert.True(loaded.HumanTeam.Money.WageBudget > 0);
             Assert.Empty(loaded.Results);
 
             // Reload in the new preseason and keep playing a week.

@@ -32,6 +32,8 @@ public sealed class GameWorld
     public const int FirstTeamId = 1001;
     /// <summary>Roster size for every club outside the NABL.</summary>
     public const int RosterSize = 13;
+    /// <summary>The fewest players your club abroad may start a season with (the sporting director fills to this).</summary>
+    public const int ManagedMinimum = 10;
 
     private readonly Rng _rng;
     private readonly Dictionary<int, Team> _teams = new();
@@ -494,6 +496,15 @@ public sealed class GameWorld
     /// <summary>Summer whose end has run (overseas rosters filled, next season started).</summary>
     public int SummerEnded { get; set; }
 
+    /// <summary>The club abroad you coach (set by the session): its contracts are yours to decide, not the computer's.</summary>
+    public int? ManagedClubId { get; set; }
+    /// <summary>Your club abroad's expiring players this summer, waiting for you to renew or release them (saved).</summary>
+    public Dictionary<int, List<Player>> AwaitingDecision { get; } = new();
+
+    /// <summary>A contract abroad at an agreed wage (with its buyout clause, decision #53).</summary>
+    public static Contract ContractAt(Player p, long wage, int years, DateOnly on, int startSeason) =>
+        new() { Years = years, Salary = wage, StartSeason = startSeason, Buyout = BuyoutFor(p, wage, years, on) };
+
     /// <summary>NABL-level ability: overseas players at least this good test the open market when their deals end.</summary>
     public const int NablCalibre = 135;
 
@@ -511,6 +522,15 @@ public sealed class GameWorld
         LeftClub.Clear(); SignedAbroad.Clear(); BuyoutMoves.Clear(); Stashes.Clear(); Departed.Clear();
         // Draft rights lapse once a player is 27 (he's no longer a prospect the team is waiting on).
         foreach (var p in Players.Concat(Nabl.FreeAgents)) if (p.DraftRightsTeamId != null && p.Age(date) >= 27) p.DraftRightsTeamId = null;
+        // The books close abroad too: budgets for next season from revenue, fans and results (decision #88).
+        foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0))
+        {
+            var table = comp.Plays && comp.Season.Fixtures.Any(f => f.Played) ? comp.Season.Table().ToDictionary(r => r.TeamId) : new();
+            Budgets.Initialize(comp.Clubs, comp.Profile.SalaryScale, _rng);
+            Budgets.Summer(comp.Clubs, comp.Profile.SalaryScale,
+                t => table.TryGetValue(t.Id, out var r) && r.Games > 0 ? r.Pct : 0.5,
+                t => comp.Season.ChampionId == t.Id || Competitions.Any(c => c.Profile.Kind == CompetitionKind.Continental && c.Season.ChampionId == t.Id));
+        }
         var dev = new DevelopmentEngine(_rng);
         foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0))
         foreach (var team in comp.Clubs)
@@ -531,6 +551,13 @@ public sealed class GameWorld
                     continue;
                 }
                 if (!expiring) continue;
+                if (team.Id == ManagedClubId)
+                {
+                    // Your club: the player waits for your decision (renew or release) during the summer.
+                    if (p.Contract != null) p.Contract.Years = 0;
+                    (AwaitingDecision.TryGetValue(team.Id, out var waiting) ? waiting : AwaitingDecision[team.Id] = new()).Add(p);
+                    continue;
+                }
                 bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.2);
                 bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
                 if (!testsMarket && clubWants && _rng.Chance(0.95))
@@ -573,6 +600,15 @@ public sealed class GameWorld
         if (SummerStarted != newYear) BeginSummer(newYear, sim, freeAgents);
         SummerEnded = newYear;
         var date = new DateOnly(newYear, 8, 15);
+        // Your club abroad: anyone you didn't renew leaves now.
+        foreach (var (teamId, waiting) in AwaitingDecision)
+            if (TeamById(teamId) is { } club)
+                foreach (var p in waiting.Where(p => club.Roster.Contains(p)).ToList())
+                {
+                    club.Roster.Remove(p); p.TeamId = null; p.Contract = null; freeAgents.Add(p);
+                    LeftClub.Add((p, club));
+                }
+        AwaitingDecision.Clear();
         var gen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
         // Each club replaces the players it lost like for like: an import for an import (within the foreign limit),
         // at about the same level. Clubs take turns, best first, one replacement at a time, so the pool spreads out.
@@ -587,7 +623,9 @@ public sealed class GameWorld
             any = false;
             foreach (var (comp, team) in clubs.OrderByDescending(x => Strength(x.team)))
             {
-                if (team.Roster.Count >= RosterSize) continue;
+                // You build your own squad; the sporting director only makes up the numbers if you leave it short.
+                if (team.Roster.Count >= (team.Id == ManagedClubId ? ManagedMinimum : RosterSize)) continue;
+                if (team.Id == ManagedClubId) needs[team.Id].Clear();
                 var club = ClubOf(comp, team);
                 var locals = LocalsOf(comp.Profile, club);
                 var need = needs[team.Id].Count > 0 ? needs[team.Id].Dequeue() : new Departure(ExpectedCa(comp.Profile, team, team.Roster.Count), false);
