@@ -21,7 +21,8 @@ public class PortraitDataTests
         var players = league.AllActivePlayers.ToList();
         foreach (var p in players)
         {
-            var h = Heritages.All.Single(x => x.Nationalities.Contains(p.Nationality));
+            // NABL intake comes from the weighted heritages; a country may also have its own (weight 0) list for its home league.
+            var h = Heritages.All.Single(x => x.Weight > 0 && x.Nationalities.Contains(p.Nationality));
             Assert.Contains(p.FirstName, h.FirstNames);
             Assert.Contains(p.LastName, h.LastNames);
             Assert.Contains(h.Ethnicities, e => e.Ethnicity == p.Ethnicity);
