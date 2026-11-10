@@ -17,7 +17,9 @@ public sealed class StaffRow
     public int Fitness => Staff.Fitness;
     public int Medical => Staff.Medical;
     public int Scouting => Staff.Scouting;
-    public string Salary => $"${Staff.Salary / 1e6:F2}M";
+    /// <summary>What he'd cost you (market staff abroad are paid on your league's scale when hired).</summary>
+    public long Pay { get; init; } = -1;
+    public string Salary => (Pay >= 0 ? Pay : Staff.Salary) is var v && v >= 1_000_000 ? $"${v / 1e6:F2}M" : $"${v / 1e3:F0}K";
     public string Contract => Staff.ContractYears > 0 ? $"{Staff.ContractYears} yr" : "expiring";
 }
 
@@ -88,7 +90,7 @@ public sealed partial class StaffViewModel : PageViewModel
     {
         Market.Clear();
         foreach (var st in Session.League.FreeStaff.Where(st => RoleFilter == "All roles" || Staff.RoleName(st.Role) == RoleFilter).OrderByDescending(st => st.KeyAttribute))
-            Market.Add(new StaffRow { Staff = st, Age = st.Age(Session.Today) });
+            Market.Add(new StaffRow { Staff = st, Age = st.Age(Session.Today), Pay = Session.StaffPayFor(st) });
     }
 
     private void UpdateEffects()

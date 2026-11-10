@@ -23,6 +23,12 @@ public sealed partial class GameSession
         : InNabl ? (Offseason is { Phase: OffseasonPhase.ReSigning } o && o.Expiring.TryGetValue(HumanTeam.Id, out var l) ? l : Array.Empty<Player>())
         : World.AwaitingDecision.TryGetValue(HumanTeam.Id, out var w) ? w : Array.Empty<Player>();
 
+    /// <summary>The fewest players your league lets you carry.</summary>
+    public int MyRosterMin => InNabl ? League.Finance.RosterMin : GameWorld.RosterSize - 2;
+
+    /// <summary>Over the wage budget by more than a rounding margin (1%), as the owner sees it.</summary>
+    public bool OverWageBudget => HumanTeam.Money.Ready && MyCommittedWages > HumanTeam.Money.WageBudget * 1.01;
+
     /// <summary>Wages already committed for the season a new contract would start in.</summary>
     public long MyCommittedWages => HumanTeam.Roster.Where(p => !MyExpiring.Contains(p)).Sum(p => p.Contract?.Salary ?? 0);
 
@@ -87,9 +93,13 @@ public sealed partial class GameSession
         if (CannotTalk(p) is { } why) return new TalkReply(false, false, demand, why);
         years = Math.Clamp(years, 1, 5);
         long budget = HumanTeam.Money.WageBudget;
-        if (MyCommittedWages + wage > budget && wage > (long)(League.Finance.MinSalary * MySalaryScale))
+        // Over the budget only for a minimum deal that fills the roster to the league's minimum (critic review #3:
+        // renewals and minimum deals let the strong club creep over its budget every summer).
+        bool fillsRoster = wage <= (long)(League.Finance.MinSalary * MySalaryScale) && HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) < MyRosterMin;
+        if (MyCommittedWages + wage > budget && !fillsRoster)
             return new TalkReply(false, false, demand,
-                $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget.");
+                $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget."
+                + (MyExpiring.Contains(p) ? " Free up wages first (sell or release someone), or let him go." : ""));
 
         var (opening, round) = _talks[p.Id];
         var reply = ContractTalks.Respond(p, opening, wage, years, ref round);

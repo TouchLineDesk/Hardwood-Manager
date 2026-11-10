@@ -167,6 +167,14 @@ public sealed partial class GameSession
         ReportGame(r);
     }
 
+    /// <summary>Older saves paid staff abroad a sixth of NABL wages whatever the league; put them on the league's scale.</summary>
+    private void FixStaffPay()
+    {
+        if (!Employed || !Abroad || HumanTeam.Staff.Count == 0) return;
+        double limit = Budgets.StaffScale(MySalaryScale) * 1.5;
+        if (HumanTeam.Staff.Any(st => st.Salary > Generation.StaffGenerator.SalaryFor(st) * limit + 1000)) Budgets.ScaleStaff(HumanTeam, MySalaryScale);
+    }
+
     /// <summary>A club abroad without staff (the world doesn't give them any) gets a full team when you take over.</summary>
     private void EnsureStaff(Team t)
     {
@@ -176,10 +184,10 @@ public sealed partial class GameSession
         foreach (var role in Enum.GetValues<StaffRole>())
         {
             var st = gen.Generate(League, role, Today, quality);
-            st.Salary = st.Salary / 6; // overseas wages
             st.TeamId = t.Id;
             t.Staff.Add(st);
         }
+        Budgets.ScaleStaff(t, MySalaryScale);
     }
 
     /// <summary>Overseas clubs change coaches too; while you're out of work, their openings are yours to apply for.</summary>

@@ -138,6 +138,10 @@ public sealed partial class GameSession
     // ------------------------------------------------------------------------------------------
     // Staff
     // ------------------------------------------------------------------------------------------
+    /// <summary>What a staff member would be paid at your club: NABL wages at home, your league's scale abroad.</summary>
+    public long StaffPayFor(Staff st) => !Abroad ? st.Salary
+        : Math.Max(1_000, (long)Math.Round(Generation.StaffGenerator.SalaryFor(st) * Budgets.StaffScale(MySalaryScale) / 1000) * 1000);
+
     public bool HireStaff(Staff st)
     {
         if (!League.FreeStaff.Remove(st)) return false;
@@ -145,6 +149,7 @@ public sealed partial class GameSession
         if (existing != null) { HumanTeam.Staff.Remove(existing); existing.TeamId = null; League.FreeStaff.Add(existing); }
         st.TeamId = HumanTeam.Id;
         st.ContractYears = Math.Max(1, st.ContractYears);
+        st.Salary = StaffPayFor(st);
         HumanTeam.Staff.Add(st);
         Post($"Hired {st.Name}", $"{st.Name} joins as {Staff.RoleName(st.Role).ToLower()} on a {st.ContractYears}-year deal at ${st.Salary / 1e6:F2}M." + (existing != null ? $" {existing.Name} has been let go." : ""), "Staff");
         SaveNow();
@@ -700,6 +705,7 @@ public sealed partial class GameSession
                 People.PeopleEventKind.WantsTalk => $"{e.Player.Name} wants a word",
                 People.PeopleEventKind.PromiseKept => $"Promise kept: {e.Player.Name}",
                 People.PeopleEventKind.PromiseBroken => $"Promise broken: {e.Player.Name}",
+                People.PeopleEventKind.Settled => $"{e.Player.Name} settles",
                 _ => e.Player.Name,
             };
             Post(title, e.Text, "Squad");
@@ -963,6 +969,7 @@ public sealed partial class GameSession
         save.LoadPeople(session);
         save.LoadCareer(session);
         session.CatchUpWorld();
+        session.FixStaffPay();
         if (save.UpgradedFrom is { } old)
         {
             session.Post("Save upgraded", $"This career was saved by an older version of the game (save format {old}) and has been upgraded to format {SaveFile.SchemaVersion}. "

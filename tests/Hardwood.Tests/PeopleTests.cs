@@ -35,10 +35,38 @@ public class PeopleTests
         Assert.True(star.Morale < 40, $"star {star.Morale:F0}");
         Assert.True(regular.Morale >= 50, $"regular {regular.Morale:F0}");
         Assert.Contains(PeopleEngine.Factors(star, team, 0.5, stats[star.Id], league.Finance, On), f => f.reason.StartsWith("Wants more minutes"));
-        // Long enough that unhappy, an ambitious star asks out.
-        Weeks(league, 6, stats);
+        // Unhappy for a month, an ambitious star asks out.
         Assert.True(star.TradeRequested);
         Assert.True(Offseason.WontReSign(star));
+    }
+
+    [Fact]
+    public void Every_unhappy_spell_resolves_within_about_three_months()
+    {
+        // Critic review #3: the same players were unhappy all season. Now, after about a month, a player either asks
+        // out or makes his peace; a trade request stands about two months, then he withdraws it.
+        var league = NewLeague();
+        var team = league.Teams[0];
+        var byAbility = team.Roster.OrderByDescending(p => p.CurrentAbility).ToList();
+        var ego = byAbility[0]; var quiet = byAbility[1];
+        ego.Hidden.Ego = 17; ego.Hidden.Ambition = 17;
+        quiet.Hidden.Ego = 5; quiet.Hidden.Ambition = 6;
+        var stats = new Dictionary<int, PlayerSeasonStats> { [ego.Id] = Played(ego, team, 15, 6), [quiet.Id] = Played(quiet, team, 15, 6) };
+        int longest = 0;
+        bool quietSettled = false, egoAsked = false;
+        for (int w = 0; w < 24; w++)
+        {
+            var events = PeopleEngine.Weekly(league, On.AddDays(7 * w), _ => 0.3, stats, team.Id);
+            egoAsked |= ego.TradeRequested;
+            quietSettled |= events.Any(e => e.Player == quiet && e.Kind == PeopleEventKind.Settled);
+            longest = Math.Max(longest, team.Roster.Max(p => p.UnhappyWeeks));
+        }
+        Assert.True(egoAsked);
+        Assert.True(quietSettled);
+        Assert.False(ego.TradeRequested);                               // withdrawn by now
+        Assert.True(longest <= PeopleEngine.DecideWeeks + PeopleEngine.RequestWeeks + 1, $"longest unhappy spell {longest} weeks");
+        Assert.True(quiet.Morale >= 38, $"quiet {quiet.Morale:F0}");
+        Assert.True(ego.Morale >= 38, $"ego {ego.Morale:F0}");
     }
 
     [Fact]

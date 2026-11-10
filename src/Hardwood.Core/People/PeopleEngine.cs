@@ -81,7 +81,30 @@ public static class PeopleEngine
         if (p.Injury != null && !p.IsAvailable(today)) f.Add(("Frustrated by his injury", -3));
         if (p.TradeRequested) f.Add(("Wants out", -8));
         if (team.Coach is { MoraleBonus: var mb } && Math.Abs(mb) >= 1) f.Add((mb > 0 ? "Plays for his coach" : "Not inspired by the coach", mb));
+        if (p.BoostUntil is { } until && until > today && p.MoodBoost != 0) f.Add((p.BoostReason ?? "Settled", p.MoodBoost));
         return f;
+    }
+
+    /// <summary>Give a player a lasting lift (replaces a smaller one).</summary>
+    public static void Boost(Player p, double amount, DateOnly until, string reason, DateOnly today)
+    {
+        bool active = p.BoostUntil is { } u && u > today;
+        if (active && p.MoodBoost >= amount && p.BoostUntil >= until) return;
+        p.MoodBoost = active ? Math.Max(amount, p.MoodBoost) : amount;
+        p.BoostUntil = active && p.BoostUntil > until ? p.BoostUntil : until;
+        p.BoostReason = reason;
+    }
+
+    /// <summary>Weeks of unhappiness before a player either asks out or makes his peace (critic review #3: the same players were unhappy all season).</summary>
+    public const int DecideWeeks = 4;
+    /// <summary>Weeks a trade request can stand before it resolves one way or the other.</summary>
+    public const int RequestWeeks = 8;
+
+    /// <summary>A boost that lifts his target to about "content" (48), whatever is still bothering him.</summary>
+    private static double SettleBoost(Player p, Team team, double wp, PlayerSeasonStats? st, Finance finance, DateOnly today, double salaryScale)
+    {
+        var without = Factors(p, team, wp, st, finance, today, salaryScale).Where(x => x.reason != p.BoostReason || p.BoostUntil is not { } u || u <= today);
+        return Math.Clamp(50 - Target(without) + (p.TradeRequested ? 8 : 0), 10, 34);
     }
 
     public static double Target(IEnumerable<(string reason, double effect)> factors) => Math.Clamp(Neutral + factors.Sum(x => x.effect), 5, 98);
@@ -159,12 +182,31 @@ public static class PeopleEngine
                 double rate = 0.2 + (21 - p.Hidden.Temperament) / 100.0;
                 p.Morale = Math.Clamp(p.Morale + (target - p.Morale) * rate, 0, 100);
 
-                p.UnhappyWeeks = p.Morale < 38 ? p.UnhappyWeeks + 1 : 0;
-                if (!p.TradeRequested && p.UnhappyWeeks >= 3 && (p.Hidden.Ego + p.Hidden.Ambition >= 23 || p.Morale < 28))
+                bool settled = p.BoostUntil is { } bu && bu > today && p.BoostReason is "Has accepted his situation" or "Withdrew his trade request";
+                p.UnhappyWeeks = p.TradeRequested || (p.Morale < 38 && !settled) ? p.UnhappyWeeks + 1 : 0;
+                var season = new DateOnly(today.Month >= 8 ? today.Year + 1 : today.Year, 6, 30); // the boost lasts the season
+                // Every unhappy spell resolves (critic review #3): after about a month he either asks out (egos, ambition,
+                // or real misery) or makes his peace with it; a trade request stands about two months before it resolves.
+                if (!p.TradeRequested && p.UnhappyWeeks >= DecideWeeks && (p.Hidden.Ego + p.Hidden.Ambition >= 22 || p.Morale < 26))
                 {
                     p.TradeRequested = true;
                     if (human) events.Add(new(p, team, PeopleEventKind.TradeRequest,
-                        $"{p.Name} has asked to be traded. Talk to him on the Squad page: promise to move him, refuse, or try to convince him to stay."));
+                        $"{p.Name} has asked to be traded. Talk to him on the Squad page (promise to move him, refuse, or convince him to stay), "
+                        + $"or sell him on the Transactions page. If nothing changes he'll decide within about {RequestWeeks} weeks whether to knuckle down."));
+                }
+                else if (!p.TradeRequested && p.UnhappyWeeks >= DecideWeeks)
+                {
+                    Boost(p, SettleBoost(p, team, wp, st, finance, today, salaryScale), season, "Has accepted his situation", today);
+                    p.UnhappyWeeks = 0; p.Morale = Math.Max(p.Morale, 40);
+                    if (human) events.Add(new(p, team, PeopleEventKind.Settled,
+                        $"{p.Name} has accepted his situation for now and will keep working. It still matters: fix the cause (minutes, role, contract) and he'll be happier still."));
+                }
+                else if (p.TradeRequested && p.UnhappyWeeks >= DecideWeeks + RequestWeeks && !(promises?.Any(x => x.PlayerId == p.Id && x.Kind == "trade") ?? false))
+                {
+                    p.TradeRequested = false; p.UnhappyWeeks = 0; p.Morale = Math.Max(p.Morale, 40);
+                    Boost(p, SettleBoost(p, team, wp, st, finance, today, salaryScale), season, "Withdrew his trade request", today);
+                    if (human) events.Add(new(p, team, PeopleEventKind.Settled,
+                        $"{p.Name} has withdrawn his trade request and will see out the season. He hasn't forgotten; expect the question again in the summer."));
                 }
                 else if (human && p.Morale < 38 && !p.TradeRequested && (p.LastTalk == null || today.DayNumber - p.LastTalk.Value.DayNumber >= 21)
                          && today.DayNumber % 14 < 7 /* not every week */)
@@ -207,6 +249,7 @@ public static class PeopleEngine
             if (mpg >= pr.TargetMpg - 3)
             {
                 p.Morale = Math.Min(100, p.Morale + 8);
+                Boost(p, 10, today.AddDays(56), "Trusts you after a kept promise", today);
                 yield return new(p, team, PeopleEventKind.PromiseKept, $"You kept your word to {p.Name}: {mpg:0} minutes a game over his last {games}. He appreciates it.");
             }
             else
@@ -225,9 +268,10 @@ public static class PeopleEngine
             p.Morale += (Neutral - p.Morale) * 0.5;
             p.UnhappyWeeks = 0;
             p.TradeRequested = false;
+            p.MoodBoost = 0; p.BoostUntil = null; p.BoostReason = null;
         }
     }
 
     /// <summary>A player joining a new team gets a fresh start.</summary>
-    public static void Joined(Player p) { p.Morale = Math.Max(p.Morale, 58); p.TradeRequested = false; p.UnhappyWeeks = 0; }
+    public static void Joined(Player p) { p.Morale = Math.Max(p.Morale, 58); p.TradeRequested = false; p.UnhappyWeeks = 0; p.MoodBoost = 0; p.BoostUntil = null; p.BoostReason = null; }
 }

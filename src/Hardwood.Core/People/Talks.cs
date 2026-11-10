@@ -116,6 +116,8 @@ public static class Talks
         // Man management: good talkers get more out of a good conversation and lose less in a bad one.
         if (coach != null) r = r with { MoraleChange = Math.Round(r.MoraleChange * coach.TalkMultiplier(r.MoraleChange >= 0), 1) };
         p.Morale = Math.Clamp(p.Morale + r.MoraleChange, 0, 100);
+        // A conversation that lands lasts a few weeks rather than fading within days (critic review #3).
+        if (r.Positive && r.MoraleChange >= 3) PeopleEngine.Boost(p, Math.Min(10, r.MoraleChange * 0.8), today.AddDays(28), "Encouraged by your talk", today);
         p.LastTalk = today;
         return r;
     }
