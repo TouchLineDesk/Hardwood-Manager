@@ -26,7 +26,7 @@
           <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="34"/>
           <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="112"/>
           <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="64"/>
-          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="1.2*" MinWidth="230"/>
+          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="1.2*" MinWidth="250"/>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>

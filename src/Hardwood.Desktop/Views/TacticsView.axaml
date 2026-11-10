@@ -110,12 +110,12 @@
     <!-- Roles -->
     <DockPanel Grid.Row="2">
       <TextBlock DockPanel.Dock="Top" Text="Roles" Classes="h2" Margin="0,0,0,4"/>
-      <DataGrid ItemsSource="{Binding RoleRows}" CanUserSortColumns="False">
+      <DataGrid ItemsSource="{Binding RoleRows}" CanUserSortColumns="False" RowHeight="NaN">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160" IsReadOnly="True"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64" IsReadOnly="True"/>
           <DataGridTextColumn Header="Min" Binding="{Binding MinutesText}" Width="52" IsReadOnly="True"/>
-          <DataGridTemplateColumn Header="Role" Width="260">
+          <DataGridTemplateColumn Header="Role" Width="272">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:RoleRow">
                 <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch" Margin="2">

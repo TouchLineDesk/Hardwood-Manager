@@ -57,10 +57,11 @@ public class LayoutCheckTests
         AppSettings.Use(new AppSettings { FaceFolder = oldSettings.FaceFolder, LogoFolder = oldSettings.LogoFolder, AutoPortraits = false });
         var gate = new List<string>();
         var lines = new List<string>();
+        MainWindow? window = null;
         try
         {
             var vm = new MainViewModel();
-            var window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
+            window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
             window.Show();
             var start = (StartViewModel)vm.CurrentPage!;
             start.SavePath = path; start.SeedText = "2026";
@@ -108,6 +109,9 @@ public class LayoutCheckTests
         }
         finally
         {
+            // Close the window and let its last render finish here, not in the next test's session.
+            window?.Close();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             if (File.Exists(AppSettings.FilePath)) File.Delete(AppSettings.FilePath);
             AppSettings.FilePath = oldPath;
             AppSettings.Use(oldSettings);
@@ -158,6 +162,7 @@ public class LayoutCheckTests
             settings.Size = "not a size";
             Assert.Equal("120%", settings.Size);
             window.Close();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         }
         finally
         {

@@ -12,6 +12,8 @@ namespace Hardwood.Tests;
 /// <list type="bullet">
 /// <item>trimmed: a TextBlock showing "…" because its text didn't fit;</item>
 /// <item>overflowing: single-line text wider than its own box;</item>
+/// <item>too tall: wrapped text with more lines than its box shows;</item>
+/// <item>cut by row: text spilling out of its table cell;</item>
 /// <item>clipped: text cut by a clipping parent (a table cell, a fixed-size panel). Text inside a scroll viewer that
 /// is merely scrolled out of view doesn't count; it can be scrolled to.</item>
 /// </list>
@@ -53,6 +55,18 @@ public static class LayoutCheck
                 continue;
             }
 
+            // Wrapped text taller than the box it was given (a fixed-height table row): the extra lines are lost.
+            if (tb.TextWrapping != TextWrapping.NoWrap && tb.MaxLines == 0)
+            {
+                double fullH = WrappedHeight(tb, text, tb.Bounds.Width - tb.Padding.Left - tb.Padding.Right);
+                double boxH = tb.Bounds.Height - tb.Padding.Top - tb.Padding.Bottom;
+                if (fullH > boxH + Math.Max(Slack, tb.FontSize / 2))
+                {
+                    problems.Add(new Problem("too tall", Short(text), where, fullH - boxH));
+                    continue;
+                }
+            }
+
             // Where does the ink actually sit in window coordinates?
             var origin = tb.TranslatePoint(new Point(tb.Padding.Left, 0), root);
             if (origin == null) continue;
@@ -61,6 +75,19 @@ public static class LayoutCheck
             else if (tb.TextAlignment == TextAlignment.Center) origin = origin.Value.WithX(origin.Value.X + (inner - inkW) / 2);
             var ink = new Rect(origin.Value, new Size(inkW, Math.Min(layout.Height, tb.Bounds.Height)));
             if (ink.Width <= 0 || ink.Height <= 0) continue;
+
+            // A table cell is narrower or shorter than its text: the row hides the rest (rows don't clip themselves;
+            // the rows panel does, so the generic check below can't see it).
+            if (tb.FindAncestorOfType<DataGridCell>() is { } cell && cell.TranslatePoint(new Point(0, 0), root) is { } ctl)
+            {
+                var seen = ink.Intersect(new Rect(ctl, cell.Bounds.Size));
+                double missW = ink.Width - seen.Width, missH = ink.Height - seen.Height;
+                if (seen.Width > 0 && (missW > Slack || missH > Math.Max(Slack, ink.Height / 4)))
+                {
+                    problems.Add(new Problem("cut by row", Short(text), where, Math.Max(missW, missH)));
+                    continue;
+                }
+            }
 
             foreach (var anc in tb.GetVisualAncestors().OfType<Visual>())
             {
@@ -90,6 +117,15 @@ public static class LayoutCheck
         var tf = new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch);
         using var layout = new Avalonia.Media.TextFormatting.TextLayout(text, tf, tb.FontSize, null, letterSpacing: tb.LetterSpacing);
         return layout.WidthIncludingTrailingWhitespace;
+    }
+
+    /// <summary>How tall the text is when wrapped to <paramref name="width"/> with no height limit.</summary>
+    public static double WrappedHeight(TextBlock tb, string text, double width)
+    {
+        var tf = new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch);
+        using var layout = new Avalonia.Media.TextFormatting.TextLayout(text, tf, tb.FontSize, null, textWrapping: tb.TextWrapping,
+            maxWidth: Math.Max(1, width), lineHeight: tb.LineHeight, letterSpacing: tb.LetterSpacing);
+        return layout.Height;
     }
 
     private static string Short(string s)
