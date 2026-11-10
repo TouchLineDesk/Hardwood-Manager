@@ -1,0 +1,50 @@
+using Hardwood.Core.Jobs;
+using Hardwood.Core.Season;
+using Microsoft.Data.Sqlite;
+
+namespace Hardwood.Core.Persistence;
+
+/// <summary>
+/// Save format 9: your coach, every club's owner and computer coach, and your job (board confidence, expectations,
+/// open jobs). Saves from before format 9 get a default coach, generated owners and a fresh job at their club.
+/// </summary>
+public static class CareerStore
+{
+    public static void SaveCareer(this SaveFile file, GameSession s)
+    {
+        using var conn = file.OpenConnection();
+        CreateSchema(conn);
+        using var tx = conn.BeginTransaction();
+        SaveFile.Exec(conn, "DELETE FROM career_meta;");
+        void Put(string k, string v) => SaveFile.Exec(conn, "INSERT INTO career_meta(key, value) VALUES($k, $v)", ("$k", k), ("$v", v));
+        Put("coach", SaveFile.ToJson(s.Coach));
+        Put("job", SaveFile.ToJson(s.Job));
+        Put("owners", SaveFile.ToJson(s.League.Teams.ToDictionary(t => t.Id, t => t.Owner)));
+        Put("coaches", SaveFile.ToJson(s.League.Teams.ToDictionary(t => t.Id, t => t.CoachName)));
+        tx.Commit();
+    }
+
+    public static void LoadCareer(this SaveFile file, GameSession s)
+    {
+        using var conn = file.OpenConnection();
+        CreateSchema(conn);
+        string? Get(string key)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT value FROM career_meta WHERE key = $k";
+            cmd.Parameters.AddWithValue("$k", key);
+            return cmd.ExecuteScalar() as string;
+        }
+        if (Get("owners") is { } oj && SaveFile.FromJson<Dictionary<int, Owner>>(oj) is { } owners)
+            foreach (var t in s.League.Teams) if (owners.TryGetValue(t.Id, out var o)) t.Owner = o;
+        if (Get("coaches") is { } cj && SaveFile.FromJson<Dictionary<int, string>>(cj) is { } names)
+            foreach (var t in s.League.Teams) if (names.TryGetValue(t.Id, out var n)) t.CoachName = n;
+        if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
+        if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
+        foreach (var t in s.League.Teams) t.Coach = null;
+        if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
+    }
+
+    private static void CreateSchema(SqliteConnection conn) =>
+        SaveFile.Exec(conn, "CREATE TABLE IF NOT EXISTS career_meta(key TEXT PRIMARY KEY, value TEXT);");
+}

@@ -83,6 +83,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Rotation", "Repeat", () => new RotationViewModel(this)),
             ("Tactics", "ClipboardList", () => new TacticsViewModel(this)),
             ("Squad", "HeartHandshake", () => new SquadViewModel(this)),
+            ("Board", "Shield", () => new BoardViewModel(this)),
             ("Staff & Training", "Dumbbell", () => new StaffViewModel(this)),
             ("Schedule & Results", "CalendarDays", () => new ScheduleViewModel(this)),
             ("Standings", "ListOrdered", () => new StandingsViewModel(this)),
@@ -210,6 +211,11 @@ public sealed partial class MainViewModel : ViewModelBase
         RequestPortraits();
     }
 
+    [ObservableProperty] private string _jobText = "";
+    [ObservableProperty] private Avalonia.Media.IBrush _jobBrush = Avalonia.Media.Brushes.Gray;
+
+    [RelayCommand] private void GoBoard() => Navigate("Board");
+
     public void RefreshHeader()
     {
         if (Session == null) return;
@@ -217,7 +223,10 @@ public sealed partial class MainViewModel : ViewModelBase
         InSeason = s.Phase != SessionPhase.Offseason;
         if (s.Phase == SessionPhase.Offseason) InLiveGame = false;
         DateText = s.Today.ToString("ddd, MMM d yyyy");
-        TeamText = s.HumanTeam.FullName;
+        TeamText = s.Employed ? s.HumanTeam.FullName : $"{s.Coach.Name} · out of work";
+        var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
+        JobText = s.Employed ? $"Board: {jobLabel}" : jobLabel;
+        JobBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(jobColour));
         var rec = s.Standings[s.HumanTeam];
         RecordText = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
         PhaseText = s.Phase switch

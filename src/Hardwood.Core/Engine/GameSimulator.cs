@@ -160,7 +160,7 @@ public sealed class GameSimulator
                 double sd = cfg.FormSd * (21 - p.Hidden.Consistency) / 10.0;
                 Form[p] = rng.NextGaussian(0, sd) + (p.Morale - People.PeopleEngine.Neutral) / 40.0 * cfg.MoraleLogit;
             }
-            ChemLogit = (team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryLogit;
+            ChemLogit = (team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryLogit + (team.Coach?.ShotLogit ?? 0);
             ChemTurnover = -(team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryTurnover;
             // Players not dressed still get a (zero-minute) line so stats lookups never miss.
             foreach (var p in team.Roster.Except(available)) { Box.Lines.Add(new PlayerLine { Player = p }); Energy[p] = 1.0; Form[p] = 0; }
@@ -358,7 +358,7 @@ public sealed class GameSimulator
             off.Possessions++;
             SetTactics(off); SetTactics(def);
             _offStar = Star(off); _defStar = Star(def);
-            _fitLogit = FitFor(off, def);
+            _fitLogit = FitFor(off, def) * (off.Team.Coach?.FitMultiplier ?? 1);
 
             double pace = (off.Tac.Pace + def.Tac.Pace) / 2.0 + Tactics.PaceShift(off.Tac.System);
             // Pace is possessions per 48 minutes (Tactic.Pace), so a 40-minute FIBA game has 5/6 as many possessions.
@@ -595,6 +595,7 @@ public sealed class GameSimulator
             if (zone == ShotZone.Rim) c += Math.Min(1.5, def.OnCourt.Sum(p => Roles.Info(def.Tac.RoleOf(p)).RimDefense));
             else c += Roles.Info(def.Tac.RoleOf(defender)).PerimeterDefense;
             c += Tactics.SchemeContest(def.Tac.Scheme, zone);
+            c += def.Team.Coach?.ContestBonus ?? 0; // the coach's defensive teaching
             // Tired defenders contest worse.
             c -= (1 - def.Energy[defender]) * 4.0;
             return c;
@@ -622,7 +623,7 @@ public sealed class GameSimulator
             int z = (int)zone;
 
             // Shooting foul?
-            double foulRate = _cfg.ShootingFoulRateByZone[z] * (1 + (21 - defender.Attributes[Attr.Discipline]) / 20.0 * 0.5);
+            double foulRate = _cfg.ShootingFoulRateByZone[z] * (1 + (21 - defender.Attributes[Attr.Discipline]) / 20.0 * 0.5) * (def.Team.Coach?.FoulMultiplier ?? 1);
             bool fouled = _rng.Chance(foulRate);
 
             double contest = Contest(def, defender, zone);

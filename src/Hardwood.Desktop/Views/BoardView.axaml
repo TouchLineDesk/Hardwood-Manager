@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.BoardView"
+             x:DataType="vm:BoardViewModel">
+  <ScrollViewer>
+    <Grid ColumnDefinitions="3*,2*">
+      <StackPanel Spacing="12" Margin="0,0,12,0">
+        <!-- Employed: owner, goals, confidence -->
+        <Border Classes="panel" IsVisible="{Binding Employed}">
+          <Grid ColumnDefinitions="Auto,*">
+            <c:TeamLogo Team="{Binding Team}" Width="72" Height="72" VerticalAlignment="Top" Margin="0,0,14,0"/>
+            <StackPanel Grid.Column="1" Spacing="6">
+              <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Shield" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="The owner" Classes="h2" Margin="0"/></StackPanel>
+              <TextBlock Text="{Binding OwnerName}" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding OwnerStyle}" Classes="muted"/>
+              <Grid ColumnDefinitions="80,*,30" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                <TextBlock Text="Patience" Classes="muted"/>
+                <ProgressBar Grid.Column="1" Value="{Binding Patience}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Patience}" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Row="1" Text="Ambition" Classes="muted"/>
+                <ProgressBar Grid.Row="1" Grid.Column="1" Value="{Binding Ambition}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Ambition}" HorizontalAlignment="Right"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Classes="panel" IsVisible="{Binding Employed}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="This season" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="{Binding Goal}" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding Pace}" Classes="muted"/>
+            <ItemsControl ItemsSource="{Binding Demands}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DemandRow">
+                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                    <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding Brush}"/>
+                    <TextBlock Text="{Binding Text}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Board confidence" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <ProgressBar Value="{Binding Confidence}" Maximum="100" Height="10" Foreground="{Binding ConfidenceBrush}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" Margin="10,0,0,0" Foreground="{Binding ConfidenceBrush}" FontWeight="SemiBold"/>
+            </Grid>
+            <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" IsVisible="{Binding HasTrend}"/>
+            <TextBlock Text="Confidence follows your pace against the target each week (faster with impatient owners), and the owner's demands. After the playoffs the board reviews the season against the goal." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Out of work: jobs -->
+        <Border Classes="panel" IsVisible="{Binding !Employed}">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Newspaper" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Out of work: open jobs" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team." Classes="muted" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Status}" Classes="accent"/>
+            <ItemsControl ItemsSource="{Binding Vacancies}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:VacancyRow">
+                  <Border Background="{StaticResource HwPanelAltBrush}" CornerRadius="8" Padding="10" Margin="0,4">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <c:TeamLogo Team="{Binding Team}" Width="44" Height="44" Margin="0,0,10,0"/>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Status}" FontSize="11.5"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button Content="Apply" Command="{Binding Apply}" IsVisible="{Binding CanApply}"/>
+                        <Button Classes="primary" Content="Accept" Command="{Binding Accept}" IsVisible="{Binding HasOffer}"/>
+                        <Button Content="Decline" Command="{Binding Decline}" IsVisible="{Binding HasOffer}"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <!-- Coach profile -->
+      <StackPanel Grid.Column="1" Spacing="12">
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ClipboardList" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Your coach" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="{Binding CoachName}" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding CoachBio}" Classes="muted" TextWrapping="Wrap"/>
+            <Grid ColumnDefinitions="110,*,40" Margin="0,6,0,4">
+              <TextBlock Text="Reputation" FontWeight="SemiBold"/>
+              <ProgressBar Grid.Column="1" Value="{Binding Reputation}" Maximum="100" Height="8" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="2" Text="{Binding Reputation, StringFormat={}{0:0}}" HorizontalAlignment="Right"/>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding CoachAttrs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CoachAttrView">
+                  <Grid ColumnDefinitions="110,*,30" Margin="0,2">
+                    <TextBlock Text="{Binding Label}" Classes="muted"/>
+                    <ProgressBar Grid.Column="1" Value="{Binding Value}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Value}" HorizontalAlignment="Right"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Job history" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <TextBlock Text="{Binding JobHistory}" Classes="muted" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>
