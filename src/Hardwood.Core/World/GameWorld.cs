@@ -711,9 +711,12 @@ public sealed class GameWorld
     /// <summary>How far to lean this summer's signings: a multiple of the gap between the league's home level and where it has drifted.</summary>
     private int AnchorCorrection(WorldCompetition c)
     {
-        var players = c.Clubs.SelectMany(t => t.Roster).ToList();
-        if (players.Count == 0) return 0;
-        double now = players.Average(p => p.CurrentAbility);
+        // The league as it stood before the summer's departures (counting them in): the players left behind are the
+        // better ones, so measuring them alone would read a drained league as healthy.
+        var cas = c.Clubs.SelectMany(t => t.Roster.Select(p => (double)p.CurrentAbility)
+            .Concat(Departed.TryGetValue(t.Id, out var d) ? d.Select(x => (double)x.Ca) : Enumerable.Empty<double>())).ToList();
+        if (cas.Count == 0) return 0;
+        double now = cas.Average();
         if (!Levels.TryGetValue(c.Key, out var home)) Levels[c.Key] = home = Math.Round(now, 1);
         double gap = home - now;
         return (int)Math.Round(Math.Clamp(gap * 3.0, -12, 20));
