@@ -48,9 +48,8 @@ public sealed partial class StartViewModel : ViewModelBase
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private TeamChoice? _selectedTeam;
     [ObservableProperty] private string _loadPath = DefaultSavePath();
-    /// <summary>FMNEWGAN face pack folder for automatic player card portraits (app setting).</summary>
-    [ObservableProperty] private string _faceFolder = AppSettings.Current.FaceFolder;
-    [ObservableProperty] private string _faceFolderStatus = "";
+    /// <summary>Face pack and logo pack folders (app settings).</summary>
+    public GraphicsSettingsViewModel Graphics { get; }
 
     public ObservableCollection<TeamChoice> Teams { get; } = new();
 
@@ -99,26 +98,10 @@ public sealed partial class StartViewModel : ViewModelBase
     {
         foreach (var at in Enum.GetValues<Hardwood.Core.Jobs.CoachAttr>()) CoachAttrs.Add(new CoachAttrRow { Attr = at, Owner = this });
         _shell = shell;
+        Graphics = new GraphicsSettingsViewModel(() => _preview == null
+            ? Enumerable.Empty<(string, IEnumerable<Team>)>()
+            : new[] { ("NABL", (IEnumerable<Team>)_preview.Teams) });
         Preview();
-        UpdateFaceStatus();
-    }
-
-    partial void OnFaceFolderChanged(string value)
-    {
-        AppSettings.Current.FaceFolder = value;
-        AppSettings.Current.Save();
-        Portraits.PortraitService.Instance.ResetLibrary();
-        UpdateFaceStatus();
-    }
-
-    private void UpdateFaceStatus()
-    {
-        if (Core.Portraits.FaceLibrary.LooksLikePack(FaceFolder))
-        {
-            int folders = Enum.GetValues<Ethnicity>().Count(e => Directory.Exists(Path.Combine(FaceFolder, EthnicityInfo.FolderName(e))));
-            FaceFolderStatus = $"Face pack found ({folders} of {Enum.GetValues<Ethnicity>().Length} ethnicity folders). Player cards are drawn automatically as you play.";
-        }
-        else FaceFolderStatus = "No face pack here. Players keep the drawn avatar until you point this at your FMNEWGANv2 folder.";
     }
 
     public static string DefaultSavePath()
@@ -128,7 +111,7 @@ public sealed partial class StartViewModel : ViewModelBase
         return Path.Combine(dir, "career.hwsave");
     }
 
-    partial void OnSeedTextChanged(string value) => Preview();
+    partial void OnSeedTextChanged(string value) { Preview(); Graphics?.UpdateLogoStatus(); }
 
     [RelayCommand]
     public void RandomSeed() => SeedText = Random.Shared.Next(1, 999_999).ToString();

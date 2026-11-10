@@ -32,6 +32,7 @@ public class ScreenshotTests
             start.SelectedTeam = start.Teams.First(t => t.Team.Abbreviation == "BOS");
             start.NewGame();
             var session = vm.Session!;
+            if (Environment.GetEnvironmentVariable("HW_SAMPLE_LOGOS") == "1") SampleLogos(session, Path.Combine(dir, "sample-logos"));
             for (int i = 0; i < 45; i++) session.AdvanceDay();
             vm.AfterTick();
 
@@ -76,6 +77,31 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-fa.png"));
         }
         finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    /// <summary>Screenshots only: a stand-in logo pack (a ringed roundel with the nickname's initial) for half the NABL.</summary>
+    private static void SampleLogos(GameSession session, string folder)
+    {
+        Directory.CreateDirectory(folder);
+        foreach (var t in session.League.Teams.Where((_, i) => i % 2 == 0))
+        {
+            using var bmp = new SkiaSharp.SKBitmap(256, 256);
+            using var c = new SkiaSharp.SKCanvas(bmp);
+            c.Clear(SkiaSharp.SKColors.Transparent);
+            var primary = SkiaSharp.SKColor.Parse(t.PrimaryColor); var secondary = SkiaSharp.SKColor.Parse(t.SecondaryColor);
+            using var p = new SkiaSharp.SKPaint { IsAntialias = true, Color = secondary };
+            c.DrawCircle(128, 128, 124, p);
+            p.Color = primary; c.DrawCircle(128, 128, 104, p);
+            p.Color = SkiaSharp.SKColors.White; p.Style = SkiaSharp.SKPaintStyle.Stroke; p.StrokeWidth = 6; c.DrawCircle(128, 128, 88, p);
+            p.Style = SkiaSharp.SKPaintStyle.Fill;
+            p.TextSize = 130; p.FakeBoldText = true;
+            var letter = t.Name[..1];
+            c.DrawText(letter, 128 - p.MeasureText(letter) / 2, 174, p);
+            using var data = bmp.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            File.WriteAllBytes(Path.Combine(folder, t.FullName + ".png"), data.ToArray());
+        }
+        Hardwood.Desktop.AppSettings.Use(new Hardwood.Desktop.AppSettings { LogoFolder = folder, FaceFolder = Hardwood.Desktop.AppSettings.Current.FaceFolder });
+        Hardwood.Desktop.Graphics.LogoPackService.Reload();
     }
 
     private static void Snap(MainWindow window, string file)

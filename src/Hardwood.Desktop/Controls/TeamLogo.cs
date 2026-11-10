@@ -23,12 +23,37 @@ public sealed class TeamLogo : Control
 
     public static Color Parse(string hex) => Color.Parse(hex);
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Graphics.LogoPackService.Changed += InvalidateVisual;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        Graphics.LogoPackService.Changed -= InvalidateVisual;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>Logo pack image, fitted and centred, keeping its proportions.</summary>
+    private bool DrawPackLogo(DrawingContext ctx, Team team)
+    {
+        if (Graphics.LogoPackService.BitmapFor(team) is not { } bmp) return false;
+        var src = bmp.Size;
+        if (src.Width <= 0 || src.Height <= 0) return false;
+        double scale = Math.Min(Bounds.Width / src.Width, Bounds.Height / src.Height);
+        double w = src.Width * scale, h = src.Height * scale;
+        ctx.DrawImage(bmp, new Rect(0, 0, src.Width, src.Height), new Rect((Bounds.Width - w) / 2, (Bounds.Height - h) / 2, w, h));
+        return true;
+    }
+
     public override void Render(DrawingContext ctx)
     {
         var team = Team;
         if (team == null) return;
         var size = Math.Min(Bounds.Width, Bounds.Height);
         if (size < 8) return;
+        if (DrawPackLogo(ctx, team)) return;
         var cx = Bounds.Width / 2; var cy = Bounds.Height / 2;
         var primary = Parse(team.PrimaryColor);
         var secondary = Parse(team.SecondaryColor);

@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             x:Class="Hardwood.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <ScrollViewer>
+    <ContentControl Content="{Binding Graphics}" MaxWidth="760" HorizontalAlignment="Left"/>
+  </ScrollViewer>
+</UserControl>
