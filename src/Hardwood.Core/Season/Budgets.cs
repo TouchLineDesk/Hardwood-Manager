@@ -69,27 +69,44 @@ public static class Budgets
             var m = t.Money;
             double wp = winPct(t);
             long staff = t.Staff.Sum(s => s.Salary);
-            m.Balance += m.Revenue - ContractMarket.Payroll(t) - staff;
+            m.Balance += m.Income - ContractMarket.Payroll(t) - staff;
             m.FanBase = Math.Clamp(m.FanBase + (wp - 0.5) * 10 + (champion(t) ? 3 : 0) + (50 - m.FanBase) * 0.06, 5, 100);
             m.Revenue = Revenue(t, lr, typical, wp);
+            // The parachute halves each year and stops after two.
+            if (m.ParachuteYears > 0) { m.ParachuteYears--; m.Parachute = m.ParachuteYears > 0 ? m.Parachute / 2 : 0; }
             double share = WageShare(t.Owner);
             if (m.Balance < -m.Revenue * 0.25) share -= 0.06;       // in debt: the owner cuts back
             else if (m.Balance > m.Revenue * 0.5) share += 0.02;    // flush: a little more to spend
-            m.WageBudget = Round(m.Revenue * share);
-            m.TransferBudget = Round(Math.Max(0, m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15));
+            m.WageBudget = Round(m.Income * share);
+            // Deep debt: a transfer embargo until the balance recovers (critic review, Nov 10).
+            m.Embargo = m.Balance < -m.Revenue * 0.5;
+            m.TransferBudget = m.Embargo ? 0 : Round(Math.Max(0, m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15));
             m.Ready = true;
         }
     }
 
     /// <summary>
     /// A club that changed league (promotion or relegation): revenue and budgets for its new league straight away.
-    /// Its balance and fan base carry over; wages it already pays don't change.
+    /// Its balance and fan base carry over. Going down (critic review, Nov 10): every contract has a relegation
+    /// clause that halves the wage (never below what the new league would pay him), and the club gets parachute
+    /// money worth half the revenue it lost, then a quarter, so it can see out its old contracts. Going up, wages stay.
     /// </summary>
-    public static void Rescale(Team t, double salaryScale, double typicalArena)
+    public static void Rescale(Team t, double salaryScale, double typicalArena, double oldScale = 0)
     {
         var m = t.Money;
+        long oldRevenue = m.Ready ? m.Revenue : (oldScale > 0 ? Revenue(t, LeagueRevenue(oldScale), typicalArena, 0.5) : 0);
         m.Revenue = Revenue(t, LeagueRevenue(salaryScale), typicalArena, 0.5);
-        m.WageBudget = Round(m.Revenue * WageShare(t.Owner));
+        if (oldScale > salaryScale)
+        {
+            double ratio = salaryScale / oldScale;
+            foreach (var p in t.Roster)
+                if (p.Contract is { } c)
+                    c.Salary = (long)Math.Round(Math.Max(c.Salary * 0.5, c.Salary * ratio) / 1000) * 1000;
+            m.Parachute = Round(Math.Max(0, oldRevenue - m.Revenue) * 0.5);
+            m.ParachuteYears = m.Parachute > 0 ? 2 : 0;
+        }
+        else if (oldScale > 0 && oldScale < salaryScale) { m.Parachute = 0; m.ParachuteYears = 0; }
+        m.WageBudget = Round(m.Income * WageShare(t.Owner));
         m.TransferBudget = Round(m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15);
         m.Ready = true;
     }
@@ -101,7 +118,8 @@ public static class Budgets
     {
         static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
         long pay = ContractMarket.Payroll(t);
-        return $"wages {M(pay)} of a {M(t.Money.WageBudget)} budget" + (pay > t.Money.WageBudget ? $" ({M(pay - t.Money.WageBudget)} over)" : $" · {M(t.Money.WageBudget - pay)} to spend");
+        return $"wages {M(pay)} of a {M(t.Money.WageBudget)} budget" + (pay > t.Money.WageBudget ? $" ({M(pay - t.Money.WageBudget)} over)" : $" · {M(t.Money.WageBudget - pay)} to spend")
+            + (t.Money.Parachute > 0 ? $" · parachute {M(t.Money.Parachute)}" : "") + (t.Money.Embargo ? " · TRANSFER EMBARGO (debt)" : "");
     }
 
     private static long Round(double v) => (long)Math.Round(v / 100_000) * 100_000;

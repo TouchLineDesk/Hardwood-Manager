@@ -52,6 +52,8 @@ public sealed partial class GameSession
         if (!Employed) return new(BidAnswer.Rejected, 0, "You aren't coaching a club right now.");
         if (!WindowOpen) return new(BidAnswer.Rejected, 0, WindowText);
         if (FindTeam(p.TeamId ?? 0) is not { } seller || seller == HumanTeam) return new(BidAnswer.Rejected, 0, "He isn't at another club.");
+        if (HumanTeam.Money.Embargo)
+            return new(BidAnswer.Rejected, 0, "The club is under a transfer embargo: the debt is more than half a season's revenue. Free agents only, within the wage budget, until it recovers.");
         if (fee > HumanTeam.Money.TransferBudget)
             return new(BidAnswer.Rejected, 0, $"The owner won't fund it: your transfer budget is ${HumanTeam.Money.TransferBudget / 1e6:F2}M.");
         if (TransferMarket.WontJoin(p, ScaleOf(seller), MySalaryScale, Today) is { } why) return new(BidAnswer.Rejected, 0, why);

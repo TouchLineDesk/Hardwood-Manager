@@ -854,6 +854,15 @@ public sealed partial class GameSession
         var last = League.History.Last();
         Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
             $"Last season's NABL champions: {League.TeamById(last.ChampionTeamId).FullName}. " + (NextMyGame is { } g ? $"Your first game is on {g.Date:MMM d}." : $"Opening night is {OpeningNight:MMM d}.") + " Review your rotation before the first game.", "Board");
+        // Money news for your club (critic review, Nov 10): parachute payments and the debt embargo.
+        var m = HumanTeam.Money;
+        if (Employed && m.Embargo)
+        {
+            Job.Confidence = Math.Max(0, Job.Confidence - 8);
+            Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
+        }
+        if (Employed && m.Parachute > 0)
+            Post("Parachute payment", $"After relegation the league pays a parachute of ${m.Parachute / 1e6:F1}M this season ({(m.ParachuteYears > 1 ? "it halves next season, then stops" : "the last one")}). Every contract's relegation clause has cut wages by half. Use the time to bring the payroll down to this level.", "Board");
     }
 
     // ------------------------------------------------------------------------------------------
