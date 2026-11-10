@@ -52,15 +52,15 @@ public sealed class PlayerRow
 
     public static PlayerRow From(Player p, GameSession s, string? team = null, bool prospect = false)
     {
-        s.Stats.TryGetValue(p.Id, out var st);
+        (p.TeamId == s.HumanTeam.Id ? s.MyStats : s.Stats).TryGetValue(p.Id, out var st);
         string status = p.IsAvailable(s.Today) ? "" : $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)";
         return new PlayerRow
         {
             Player = p, Age = p.Age(s.Today), Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",
-            Team = team ?? (p.TeamId is { } id ? s.League.TeamById(id).Abbreviation : "FA"),
-            TeamObj = p.TeamId is { } tid ? s.League.TeamById(tid) : null,
+            Team = team ?? (p.TeamId is { } id ? s.FindTeam(id)!.Abbreviation : "FA"),
+            TeamObj = p.TeamId is { } tid ? s.FindTeam(tid)! : null,
             CardFooter = st is { Games: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min"
                        : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {(c.Years <= 0 ? "expiring" : c.Years + " yr")}" : $"Age {p.Age(s.Today)}",
         };

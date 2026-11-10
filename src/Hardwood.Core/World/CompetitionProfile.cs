@@ -41,6 +41,8 @@ public sealed class CompetitionProfile
     public bool ImportsAreStars { get; init; }
     /// <summary>Salaries as a share of the NABL market for the same player.</summary>
     public double SalaryScale { get; init; } = 0.12;
+    /// <summary>How hard this league's jobs are to get compared with the NABL's (added to a club's prestige).</summary>
+    public double JobPrestige { get; init; } = -10;
 
     public Rules Rules { get; init; } = Rules.Fiba;
 
@@ -84,7 +86,7 @@ public static class Competitions
         new()
         {
             Key = Spain, Name = "Spanish League", Short = "ESP", Country = "Spain", LocalNationalities = new[] { "Spain" },
-            StrengthOffset = 0, ForeignLimit = 5, SalaryScale = 0.11,
+            StrengthOffset = 0, ForeignLimit = 5, SalaryScale = 0.11, JobPrestige = -8,
             Start = (9, 26), RoundDays = new[] { DayOfWeek.Saturday }, TwoDayRounds = true,
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 3, 8), new PlayoffRound("Semi-finals", 5, 4), new PlayoffRound("Final", 5, 2) },
             Clubs = new ClubSeed[]
@@ -100,7 +102,7 @@ public static class Competitions
         new()
         {
             Key = Turkey, Name = "Turkish Super League", Short = "TUR", Country = "Turkey", LocalNationalities = new[] { "Turkey" },
-            StrengthOffset = -3, ForeignLimit = 6, SalaryScale = 0.12,
+            StrengthOffset = -3, ForeignLimit = 6, SalaryScale = 0.12, JobPrestige = -10,
             Start = (10, 3), RoundDays = new[] { DayOfWeek.Saturday }, TwoDayRounds = true,
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 3, 8), new PlayoffRound("Semi-finals", 5, 4), new PlayoffRound("Final", 7, 2) },
             Clubs = new ClubSeed[]
@@ -116,7 +118,7 @@ public static class Competitions
         new()
         {
             Key = Australia, Name = "Australian League", Short = "AUS", Country = "Australia", LocalNationalities = new[] { "Australia", "New Zealand" },
-            StrengthOffset = -10, ForeignLimit = 3, ImportsAreStars = true, SalaryScale = 0.07,
+            StrengthOffset = -10, ForeignLimit = 3, ImportsAreStars = true, SalaryScale = 0.07, JobPrestige = -20,
             RoundRobins = 4, Start = (9, 18), RoundDays = new[] { DayOfWeek.Thursday, DayOfWeek.Sunday },
             PlayoffDays = new[] { DayOfWeek.Thursday, DayOfWeek.Sunday },
             Playoffs = new[] { new PlayoffRound("Semi-finals", 3, 4), new PlayoffRound("Grand Final", 5, 2) },
@@ -131,7 +133,7 @@ public static class Competitions
         new()
         {
             Key = China, Name = "China Pro League", Short = "CPL", Country = "China", LocalNationalities = new[] { "China" },
-            StrengthOffset = -14, ForeignLimit = 2, ImportsAreStars = true, SalaryScale = 0.09,
+            StrengthOffset = -14, ForeignLimit = 2, ImportsAreStars = true, SalaryScale = 0.09, JobPrestige = -16,
             Start = (10, 14), RoundDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Saturday },
             PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Friday, DayOfWeek.Sunday },
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 5, 8), new PlayoffRound("Semi-finals", 5, 4), new PlayoffRound("Finals", 7, 2) },

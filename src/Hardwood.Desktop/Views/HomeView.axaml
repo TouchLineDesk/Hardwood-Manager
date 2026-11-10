@@ -50,7 +50,7 @@
         <!-- Standings -->
         <Border Classes="panel" Margin="0,0,10,0">
           <StackPanel Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ListOrdered" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Conference" Classes="h2" Margin="0"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ListOrdered" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding TableTitle}" Classes="h2" Margin="0"/></StackPanel>
             <ItemsControl ItemsSource="{Binding Table}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:TableRow">

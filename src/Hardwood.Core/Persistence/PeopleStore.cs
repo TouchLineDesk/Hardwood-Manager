@@ -20,9 +20,11 @@ public static class PeopleStore
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
         SaveFile.Exec(conn, "DELETE FROM people_meta;");
-        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents)
+        // Clubs abroad: only the one you coach has moods worth keeping.
+        var abroad = s.Abroad ? new[] { s.HumanTeam } : Array.Empty<Team>();
+        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(abroad.SelectMany(t => t.Roster)).DistinctBy(p => p.Id)
             .ToDictionary(p => p.Id, p => new PlayerMood(Math.Round(p.Morale, 2), p.UnhappyWeeks, p.TradeRequested, p.LastTalk, p.DistrustUntil));
-        var teams = s.League.Teams.ToDictionary(t => t.Id, t => new TeamMood(Math.Round(t.Chemistry, 2), t.WeeksTogether));
+        var teams = s.League.Teams.Concat(abroad).DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => new TeamMood(Math.Round(t.Chemistry, 2), t.WeeksTogether));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('players', $v)", ("$v", SaveFile.ToJson(players)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('teams', $v)", ("$v", SaveFile.ToJson(teams)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('promises', $v)", ("$v", SaveFile.ToJson(s.Promises)));
@@ -42,14 +44,14 @@ public static class PeopleStore
             return cmd.ExecuteScalar() as string;
         }
         if (Get("players") is { } pj && SaveFile.FromJson<Dictionary<int, PlayerMood>>(pj) is { } players)
-            foreach (var p in s.League.AllActivePlayers.Concat(s.League.FreeAgents))
+            foreach (var p in s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.World.Players))
                 if (players.TryGetValue(p.Id, out var m))
                 {
                     p.Morale = m.Morale; p.UnhappyWeeks = m.UnhappyWeeks; p.TradeRequested = m.TradeRequested;
                     p.LastTalk = m.LastTalk; p.DistrustUntil = m.DistrustUntil;
                 }
         if (Get("teams") is { } tj && SaveFile.FromJson<Dictionary<int, TeamMood>>(tj) is { } teams)
-            foreach (var t in s.League.Teams)
+            foreach (var t in s.League.Teams.Concat(s.World.Clubs))
                 if (teams.TryGetValue(t.Id, out var m)) { t.Chemistry = m.Chemistry; t.WeeksTogether = m.WeeksTogether ?? new(); }
         if (Get("promises") is { } prj && SaveFile.FromJson<List<Promise>>(prj) is { } promises)
         {

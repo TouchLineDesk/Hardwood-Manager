@@ -57,7 +57,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [ObservableProperty] private string[]? _trendLabels;
     [ObservableProperty] private bool _hasTrend;
 
-    private double WinPct => Session.Standings[Session.HumanTeam].Games > 0 ? Session.Standings[Session.HumanTeam].WinPct : 0.5;
+    private double WinPct => Session.MyRecord.Games > 0 ? Session.MyRecord.WinPct : 0.5;
 
     public override void Refresh()
     {
@@ -72,8 +72,8 @@ public sealed partial class SquadViewModel : PageViewModel
         Players.Clear();
         foreach (var p in team.Roster.OrderBy(p => p.Morale))
         {
-            Session.Stats.TryGetValue(p.Id, out var st);
-            var worst = PeopleEngine.Factors(p, team, WinPct, st, Session.League.Finance, Session.Today).OrderBy(x => x.effect).FirstOrDefault();
+            Session.MyStats.TryGetValue(p.Id, out var st);
+            var worst = PeopleEngine.Factors(p, team, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect).FirstOrDefault();
             var promise = Session.Promises.FirstOrDefault(x => x.PlayerId == p.Id);
             Players.Add(new MoodRow
             {
@@ -105,9 +105,9 @@ public sealed partial class SquadViewModel : PageViewModel
         // The grid can clear its selection when it first binds: show the unhappiest player rather than nothing.
         var p = Selected?.Player ?? Players.FirstOrDefault()?.Player;
         if (p == null) { PlayerHeadline = ""; return; }
-        Session.Stats.TryGetValue(p.Id, out var st);
+        Session.MyStats.TryGetValue(p.Id, out var st);
         PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()} ({p.Morale:0}/100)" + (p.TradeRequested ? ", wants a trade" : "");
-        foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today).OrderBy(x => x.effect))
+        foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });
         foreach (var topic in Talks.Available(p))
         {

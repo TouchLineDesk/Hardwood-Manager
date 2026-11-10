@@ -79,6 +79,12 @@ public sealed partial class TransactionsViewModel : PageViewModel
             : s.TradeDeadlinePassed ? "The trade deadline has passed; trades reopen after the Finals."
             : $"Trade deadline: {s.TradeDeadline:MMM d}.";
         RebuildTrade();
+        if (s.Abroad)
+        {
+            DeadlineText = "Clubs outside the NABL don't trade players. Your sporting director handles signings in the summer.";
+            CapText = $"Roster {s.HumanTeam.Roster.Count} · wage bill ${payroll / 1e6:F1}M";
+            CanPropose = false;
+        }
     }
 
     public string AskFor(Player p) => $"${ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Session.Today), Session.League.Finance) / 1e6:F1}M";
@@ -89,6 +95,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         var row = SelectedFreeAgent;
         if (row == null) return;
         var s = Session; var fin = s.League.Finance; var team = s.HumanTeam;
+        if (s.Abroad) { FaStatus = "Clubs abroad sign players in the summer (your sporting director handles it for now)."; return; }
         if (team.Roster.Count >= fin.RosterMax) { FaStatus = "Roster is full. Waive someone first."; return; }
         long ask = ContractMarket.MarketSalary(row.Player.CurrentAbility, row.Player.Age(s.Today), fin);
         long payroll = ContractMarket.Payroll(team);
@@ -138,7 +145,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         foreach (var p in Partner.Roster.OrderByDescending(p => p.CurrentAbility))
             Theirs.Add(new TradePiece { Player = p, Owner = this, Age = p.Age(s.Today), Knowledge = know, Value = engine.ValueTo(Partner, p).ToString("0.0") });
         OurPicks.Clear(); TheirPicks.Clear();
-        string Abbr(int id) => s.League.TeamById(id).Abbreviation;
+        string Abbr(int id) => s.FindTeam(id)!.Abbreviation;
         foreach (var pk in s.League.PicksOwnedBy(s.HumanTeam.Id))
             OurPicks.Add(new PickPiece { Pick = pk, Owner = this, Description = pk.Describe(Abbr), Projected = $"~#{engine.ProjectedSlot(pk):0}", Value = engine.PickValueTo(Partner, pk).ToString("0.0") });
         foreach (var pk in s.League.PicksOwnedBy(Partner.Id))
@@ -167,7 +174,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         VerdictDetail = eval.Legal
             ? $"They value what they give at {eval.ValueGivenByTo:0.0} and what they get at {eval.ValueReceivedByTo:0.0} ({eval.GainForTo * 100:+0;-0}%)."
               + (eval.Accepted ? "" : Session.Trades.SuggestSweetener(t) is { } sw ? $" Adding {sw.Name} would get it done."
-                 : Session.Trades.SuggestPickSweetener(t) is { } pk ? $" Adding your {pk.Describe(id => Session.League.TeamById(id).Abbreviation)} pick would get it done." : "")
+                 : Session.Trades.SuggestPickSweetener(t) is { } pk ? $" Adding your {pk.Describe(id => Session.FindTeam(id)!.Abbreviation)} pick would get it done." : "")
             : eval.LegalityNote;
         CanPropose = eval.Accepted && !(Session.TradeDeadlinePassed && Session.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason);
     }

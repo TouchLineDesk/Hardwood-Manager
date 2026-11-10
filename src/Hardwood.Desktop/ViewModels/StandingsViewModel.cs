@@ -19,7 +19,7 @@ public sealed class StandingRow
     public string Home { get; init; } = "";
     public string Last10 { get; init; } = "";
     public bool IsHuman { get; init; }
-    public string Zone => Rank <= 6 ? "Playoffs" : Rank <= 10 ? "Play-in" : "";
+    public string Zone { get; init; } = "";
 }
 
 public sealed partial class StandingsViewModel : PageViewModel
@@ -28,6 +28,8 @@ public sealed partial class StandingsViewModel : PageViewModel
     public ObservableCollection<StandingRow> East { get; } = new();
     public ObservableCollection<StandingRow> West { get; } = new();
     [ObservableProperty] private string _note = "";
+    [ObservableProperty] private string _leftTitle = "Eastern Conference";
+    [ObservableProperty] private string _rightTitle = "Western Conference";
     public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Race { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
     public string[] RaceLabels { get; private set; } = Array.Empty<string>();
     public bool HasRace => RaceLabels.Length >= 3;
@@ -36,6 +38,20 @@ public sealed partial class StandingsViewModel : PageViewModel
 
     public override void Refresh()
     {
+        var s = Session;
+        if (s.HumanLeague is { } hl)
+        {
+            // Abroad: your league on the left, the NABL on the right.
+            int playoff = hl.Profile.Playoffs.Length > 0 ? hl.Profile.Playoffs[0].Teams : 0;
+            FillRecords(East, s.MyStandings.All(), r => r <= playoff ? "Playoffs" : "");
+            FillRecords(West, s.Standings.All(), _ => "");
+            LeftTitle = hl.Profile.Name; RightTitle = "NABL";
+            Note = playoff > 0 ? $"Top {playoff} reach the playoffs ({string.Join(", ", hl.Profile.Playoffs.Select(p => p.Name.ToLower()))})." : "";
+            Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
+            OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
+            return;
+        }
+        LeftTitle = "Eastern Conference"; RightTitle = "Western Conference";
         Fill(East, Conference.East);
         Fill(West, Conference.West);
         Note = "Top 6 qualify directly; 7-10 play in.";
@@ -72,6 +88,26 @@ public sealed partial class StandingsViewModel : PageViewModel
         OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
     }
 
+    /// <summary>A plain table (a league abroad, or the whole NABL).</summary>
+    private void FillRecords(ObservableCollection<StandingRow> list, List<TeamRecord> table, Func<int, string> zone)
+    {
+        list.Clear();
+        var leader = table.FirstOrDefault();
+        int rank = 1;
+        foreach (var r in table)
+        {
+            double gb = leader == null ? 0 : ((leader.Wins - r.Wins) + (r.Losses - leader.Losses)) / 2.0;
+            list.Add(new StandingRow
+            {
+                Rank = rank, Team = r.Team, W = r.Wins, L = r.Losses, Zone = zone(rank),
+                Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
+                Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
+                IsHuman = r.Team == Session.HumanTeam,
+            });
+            rank++;
+        }
+    }
+
     private void Fill(ObservableCollection<StandingRow> list, Conference conf)
     {
         list.Clear();
@@ -85,12 +121,13 @@ public sealed partial class StandingsViewModel : PageViewModel
                 .OrderByDescending(g => g.Index).Take(10).Select(g => Session.Results[g.Index].Winner.Team == r.Team).ToList();
             list.Add(new StandingRow
             {
-                Rank = rank++, Team = r.Team, W = r.Wins, L = r.Losses,
+                Rank = rank, Zone = rank <= 6 ? "Playoffs" : rank <= 10 ? "Play-in" : "", Team = r.Team, W = r.Wins, L = r.Losses,
                 Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
                 Last10 = last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "",
                 IsHuman = r.Team == Session.HumanTeam,
             });
+            rank++;
         }
     }
 }
@@ -144,7 +181,7 @@ public sealed partial class LeadersViewModel : PageViewModel
             var p = players[x.PlayerId];
             Rows.Add(new LeaderRow
             {
-                Rank = rank++, Player = p, Team = s.League.TeamById(x.TeamId).Abbreviation, GP = x.Games,
+                Rank = rank++, Player = p, Team = s.FindTeam(x.TeamId)!.Abbreviation, GP = x.Games,
                 MPG = Math.Round(x.Mpg, 1), PPG = Math.Round(x.Ppg, 1), RPG = Math.Round(x.Rpg, 1), APG = Math.Round(x.Apg, 1),
                 SPG = Math.Round((double)x.Steals / x.Games, 1), BPG = Math.Round((double)x.Blocks / x.Games, 1),
                 FG = $"{x.FgPct * 100:F1}", TP = x.ThreePA > 0 ? $"{x.ThreePct * 100:F1}" : "-", Value = Math.Round(key(x), 3),
@@ -184,8 +221,8 @@ public sealed partial class HistoryViewModel : PageViewModel
             Rows.Add(new HistoryRow
             {
                 Season = $"{h.Season}-{(h.Season + 1) % 100:00}",
-                Champion = s.League.TeamById(h.ChampionTeamId).FullName,
-                RunnerUp = s.League.TeamById(h.RunnerUpTeamId).FullName,
+                Champion = s.FindTeam(h.ChampionTeamId)!.FullName,
+                RunnerUp = s.FindTeam(h.RunnerUpTeamId)!.FullName,
                 Mvp = h.MvpPlayerId is { } m && all.TryGetValue(m, out var mp) ? mp.Name : "-",
                 ScoringLeader = h.ScoringLeaderPlayerId is { } l && all.TryGetValue(l, out var lp) ? lp.Name : "-",
                 FinalsMvp = h.FinalsMvpPlayerId is { } f && all.TryGetValue(f, out var fp) ? fp.Name : "-",

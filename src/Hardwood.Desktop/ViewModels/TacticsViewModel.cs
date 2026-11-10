@@ -164,11 +164,11 @@ public sealed partial class TacticsViewModel : PageViewModel
         foreach (var pr in t.Presets) LateGameOptions.Add(pr.Name);
         LateGame = t.LateGamePreset is { } lg && t.Presets.Any(p => p.Name == lg) ? lg : NoPreset;
 
-        var next = Session.NextHumanGame;
+        var next = Session.NextMyGame;
         if (next != null)
         {
-            var opp = next.Home == team ? next.Away : next.Home;
-            OpponentHeadline = $"Next: {(next.Home == team ? "vs" : "at")} {opp.FullName}, {next.Date:MMM d}";
+            var opp = next.Opponent;
+            OpponentHeadline = $"Next: {(next.Home ? "vs" : "at")} {opp.FullName}, {next.Date:MMM d}" + (next.Competition != Session.League.Name ? $" ({next.Competition})" : "");
             ScoutingReport = CoachAi.ScoutingReport(team, opp, next.Date);
         }
         else { OpponentHeadline = "No game scheduled"; ScoutingReport = ""; }
@@ -223,10 +223,10 @@ public sealed partial class TacticsViewModel : PageViewModel
     [RelayCommand]
     public void UseSuggestion()
     {
-        var next = Session.NextHumanGame;
+        var next = Session.NextMyGame;
         if (next == null) return;
         var team = Session.HumanTeam;
-        var opp = next.Home == team ? next.Away : next.Home;
+        var opp = next.Opponent;
         var rot = CoachAi.Rotation(team, next.Date);
         var oppRot = CoachAi.Rotation(opp, next.Date);
         Tac.System = CoachAi.BestSystem(rot, opp.Tactic.Auto ? CoachAi.BestScheme(oppRot) : opp.Tactic.Scheme);

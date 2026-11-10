@@ -54,11 +54,11 @@ public sealed partial class InboxViewModel : PageViewModel
         foreach (var m in Session.Inbox) Items.Add(new InboxItem { Message = m, IsRead = m.Read });
         Selected = Items.FirstOrDefault(i => i.Message.Id == selectedId) ?? Items.FirstOrDefault();
         var s = Session;
-        var rec = s.Standings[s.HumanTeam];
-        int rank = s.Standings.Conference(s.HumanTeam.Conference).FindIndex(r => r.Team == s.HumanTeam) + 1;
+        var rec = s.MyRecord;
+        int rank = s.MyRank;
         var hurt = s.HumanTeam.Roster.Where(p => !p.IsAvailable(s.Today)).ToList();
-        Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.HumanTeam.Conference}" : "")
-                  + $" · Payroll ${ContractMarket.Payroll(s.HumanTeam) / 1e6:F1}M (cap ${s.League.Finance.SalaryCap / 1e6:F0}M)"
+        Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
+                  + $" · Payroll ${ContractMarket.Payroll(s.HumanTeam) / 1e6:F1}M" + (s.InNabl ? $" (cap ${s.League.Finance.SalaryCap / 1e6:F0}M)" : "")
                   + (hurt.Count > 0 ? $" · Injured: {string.Join(", ", hurt.Select(p => $"{p.LastName} ({p.Injury!.DaysOut(s.Today)}d)"))}" : "");
     }
 

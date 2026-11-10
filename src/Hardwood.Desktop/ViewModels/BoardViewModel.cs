@@ -80,15 +80,15 @@ public sealed partial class BoardViewModel : PageViewModel
         Team = s.Employed ? s.HumanTeam : null;
         if (s.Employed)
         {
-            var t = s.HumanTeam; var o = t.Owner; var rec = s.Standings[t];
+            var t = s.HumanTeam; var o = t.Owner; var rec = s.MyRecord; var ctx = s.ContextOf(t);
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
             var e = job.Current;
             Goal = e == null ? "" : $"{Board.Describe(e.Goal)} · around {e.TargetWins} wins";
-            Pace = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}: on pace for {rec.WinPct * 82:0} wins" : "The season hasn't started.";
+            Pace = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}: on pace for {rec.WinPct * ctx.SeasonGames:0} wins of {ctx.SeasonGames}" : "The season hasn't started.";
             Demands.Clear();
             if (e != null)
                 foreach (var d in e.Demands)
-                    Demands.Add(new DemandRow { Text = Board.Describe(d), Met = Board.Meeting(d, s.League, t, s.Stats, s.Today, rec.Wins, rec.Games) });
+                    Demands.Add(new DemandRow { Text = Board.Describe(d), Met = Board.Meeting(d, ctx, t, s.MyStats, s.Today, rec.Wins, rec.Games) });
             Confidence = job.Confidence;
             var (label, colour) = Mood(job.Confidence);
             ConfidenceText = $"{label} ({job.Confidence:0}/100)";
@@ -108,13 +108,15 @@ public sealed partial class BoardViewModel : PageViewModel
         Vacancies.Clear();
         foreach (var v in job.Vacancies.Where(v => v.Status is "open" or "applied" or "offered"))
         {
-            var t = s.League.TeamById(v.TeamId);
-            double chance = Board.HireChance(coach, s.League, t);
+            var t = s.FindTeam(v.TeamId)!;
+            var vctx = s.ContextOf(t);
+            double chance = Board.HireChance(coach, vctx, t);
+            var vrec = s.League.Teams.Contains(t) ? s.Standings[t] : s.World.LeagueOf(t) is { } lc ? s.TableOf(lc)[t] : new Hardwood.Core.Season.TeamRecord { Team = t };
             int id = v.TeamId;
             Vacancies.Add(new VacancyRow
             {
                 Team = t,
-                Detail = $"Owner: {t.Owner.Name} ({t.Owner.Style.ToLower()}) · {s.Standings[t].Wins}-{s.Standings[t].Losses} · " + (chance >= 0.6 ? "good chance" : chance >= 0.3 ? "worth a try" : "long shot"),
+                Detail = $"{vctx.Name} · owner: {t.Owner.Name} ({t.Owner.Style.ToLower()}) · {vrec.Wins}-{vrec.Losses} · " + (chance >= 0.6 ? "good chance" : chance >= 0.3 ? "worth a try" : "long shot"),
                 Status = v.Status switch { "applied" => $"Applied · decision by {v.DecideOn:MMM d}", "offered" => $"Offer! Answer by {v.DecideOn:MMM d}", _ => $"Open since {v.Opened:MMM d}" },
                 CanApply = v.Status == "open", HasOffer = v.Status == "offered",
                 Apply = new RelayCommand(() => { Status = Session.Apply(id) ?? "Application sent."; Refresh(); Shell.AfterTick(); }),

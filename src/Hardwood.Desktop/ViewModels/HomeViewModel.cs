@@ -59,6 +59,7 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<LineSeries>? _mood;
     [ObservableProperty] private string[]? _moodLabels;
     [ObservableProperty] private bool _hasMood;
+    [ObservableProperty] private string _tableTitle = "Conference";
 
     private static readonly IBrush Good = new SolidColorBrush(Color.Parse("#3FB950"));
     private static readonly IBrush Bad = new SolidColorBrush(Color.Parse("#F85149"));
@@ -67,21 +68,24 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public override void Refresh()
     {
-        var s = Session; var team = Team; var rec = s.Standings[team];
+        var s = Session; var team = Team; var rec = s.MyRecord;
         Glow = ThemeService.Accent;
-        var conf = s.Standings.Conference(team.Conference);
-        int seed = conf.FindIndex(r => r.Team == team) + 1;
+        var conf = s.MyTable;
+        int seed = s.MyRank;
+        TableTitle = s.InNabl ? $"{team.Conference} Conference" : s.HumanLeagueName;
         Headline = team.FullName;
-        Subline = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses} · {Ordinal(seed)} in the {team.Conference} · {(rec.PointDiff >= 0 ? "+" : "")}{rec.PointDiff:0.0} per game" : $"Season {s.League.Season}-{(s.League.Season + 1) % 100:00} · {s.Phase}";
+        Subline = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses} · {Ordinal(seed)} in the {s.MyTableName} · {(rec.PointDiff >= 0 ? "+" : "")}{rec.PointDiff:0.0} per game"
+            : $"{s.HumanLeagueName} · season {s.League.Season}-{(s.League.Season + 1) % 100:00}";
 
-        var next = s.NextHumanGame;
+        var next = s.NextMyGame;
         if (next != null)
         {
-            var opp = next.Home == team ? next.Away : next.Home;
+            var opp = next.Opponent;
             Opponent = opp;
-            var orec = s.Standings[opp];
-            NextGame = $"{(next.Home == team ? "vs" : "at")} {opp.FullName}";
-            NextDetail = $"{next.Date:ddd MMM d}{(next.Date == s.Today ? " (today)" : "")} · they're {orec.Wins}-{orec.Losses}";
+            var orec = s.RecordOf(opp);
+            NextGame = $"{(next.Home ? "vs" : "at")} {opp.FullName}";
+            NextDetail = $"{next.Date:ddd MMM d}{(next.Date == s.Today ? " (today)" : "")}" + (next.Competition != s.HumanLeagueName ? $" · {next.Competition}" : "")
+                + (orec.Games > 0 ? $" · they're {orec.Wins}-{orec.Losses}" : "");
             var report = CoachAi.ScoutingReport(team, opp, next.Date);
             Scouting = report.Split(". ").FirstOrDefault() is { } first ? first.TrimEnd('.') + "." : report;
         }
@@ -118,19 +122,16 @@ public sealed partial class HomeViewModel : PageViewModel
             });
 
         // Form: running point differential over the season's games.
-        var ours = s.Schedule.Where(g => (g.Home == team || g.Away == team) && s.Results.ContainsKey(g.Index)).OrderBy(g => g.Date).ToList();
         double run = 0; var vals = new List<double>();
-        foreach (var g in ours)
+        foreach (var g in s.MyGames().Where(g => g.Played))
         {
-            var r = s.Results[g.Index];
-            int mine = r.Home.Team == team ? r.Home.Points : r.Away.Points, theirs = r.Home.Team == team ? r.Away.Points : r.Home.Points;
-            run += mine - theirs; vals.Add(run);
+            run += g.Us!.Value - g.Them!.Value; vals.Add(run);
         }
         Form = vals.Count > 1 ? new[] { new LineSeries { Name = "Point differential", Values = vals.ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         FormLabels = vals.Count > 1 ? Enumerable.Range(1, vals.Count).Select(x => x % 10 == 0 ? x.ToString() : "").ToArray() : null;
 
         // Team vs league: points scored and allowed per game.
-        var all = s.League.Teams.Select(t => s.Standings[t]).Where(r => r.Games > 0).ToList();
+        var all = s.MyStandings.All().Where(r => r.Games > 0).ToList();
         if (rec.Games > 0 && all.Count > 0)
         {
             double lg = all.Average(r => (double)r.PointsFor / r.Games);
@@ -151,14 +152,16 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             // A contract with N years left covers this season and the next N-1.
             long sum = team.Roster.Where(p => p.Contract is { } c && c.Years > k).Sum(p => p.Contract!.Salary);
-            bars.Add(new Bar { Label = $"{s.League.Season + k}-{(s.League.Season + k + 1) % 100:00}", Value = sum / 1e6, ValueText = $"${sum / 1e6:0}M", Color = k == 0 ? ThemeService.Accent : Color.Parse("#4A5563") });
+            bars.Add(new Bar { Label = $"{s.League.Season + k}-{(s.League.Season + k + 1) % 100:00}", Value = sum / 1e6,
+                ValueText = sum >= 10_000_000 ? $"${sum / 1e6:0}M" : $"${sum / 1e6:0.0}M", Color = k == 0 ? ThemeService.Accent : Color.Parse("#4A5563") });
         }
         Payroll = bars;
-        PayrollLines = new[]
+        // Cap and tax lines are NABL rules; clubs abroad just see their wage bill.
+        PayrollLines = s.InNabl ? new[]
         {
             new RefLine { Label = "Cap", Value = fin.SalaryCap / 1e6, Color = Color.Parse("#58A6FF") },
             new RefLine { Label = "Tax", Value = fin.TaxLine / 1e6, Color = Color.Parse("#F85149") },
-        };
+        } : Array.Empty<RefLine>();
 
         HasMood = s.MoodHistory.Count >= 2;
         Mood = HasMood ? new[]

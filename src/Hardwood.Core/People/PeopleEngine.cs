@@ -47,7 +47,8 @@ public static class PeopleEngine
     }
 
     /// <summary>What's driving a player's mood this week, each with its effect on his target morale.</summary>
-    public static List<(string reason, double effect)> Factors(Player p, Team team, double winPct, PlayerSeasonStats? stats, Finance finance, DateOnly today)
+    public static List<(string reason, double effect)> Factors(Player p, Team team, double winPct, PlayerSeasonStats? stats, Finance finance, DateOnly today,
+                                                               double salaryScale = 1)
     {
         var f = new List<(string, double)>();
         var h = p.Hidden;
@@ -67,7 +68,7 @@ public static class PeopleEngine
         }
         if (p.Contract is { } c && c.Salary > 0)
         {
-            double market = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(today), finance);
+            double market = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(today), finance) * salaryScale;
             double ratio = c.Salary / Math.Max(1.0, market);
             if (ratio < 0.65) f.Add(("Feels underpaid", -8 * (0.5 + h.Ambition / 20.0)));
             else if (ratio > 1.3) f.Add(("Well paid", 3));
@@ -124,10 +125,16 @@ public static class PeopleEngine
     /// promises. Events concern the human team only (AI teams just live with it).
     /// </summary>
     public static List<PeopleEvent> Weekly(League league, DateOnly today, Func<Team, double> winPct,
-        IReadOnlyDictionary<int, PlayerSeasonStats> stats, int? humanTeamId, List<Promise>? promises = null)
+        IReadOnlyDictionary<int, PlayerSeasonStats> stats, int? humanTeamId, List<Promise>? promises = null) =>
+        Weekly(league.Teams, league.Finance, 1, id => league.Teams.FirstOrDefault(t => t.Id == id), today, winPct, stats, humanTeamId, promises);
+
+    /// <summary>The weekly update for any set of clubs (a club abroad judges wages by its league's market: <paramref name="salaryScale"/>).</summary>
+    public static List<PeopleEvent> Weekly(IEnumerable<Team> teams, Finance finance, double salaryScale, Func<int, Team?> teamById, DateOnly today,
+        Func<Team, double> winPct, IReadOnlyDictionary<int, PlayerSeasonStats> stats, int? humanTeamId, List<Promise>? promises = null)
     {
         var events = new List<PeopleEvent>();
-        foreach (var team in league.Teams)
+        var teamList = teams.ToList();
+        foreach (var team in teamList)
         {
             // Continuity: count the weeks each player has been here.
             var ids = team.Roster.Select(p => p.Id).ToHashSet();
@@ -148,7 +155,7 @@ public static class PeopleEngine
             {
                 stats.TryGetValue(p.Id, out var st);
                 if (st != null && st.TeamId != team.Id) st = null; // stats from another team don't count here
-                double target = Target(Factors(p, team, wp, st, league.Finance, today));
+                double target = Target(Factors(p, team, wp, st, finance, today, salaryScale));
                 double rate = 0.2 + (21 - p.Hidden.Temperament) / 100.0;
                 p.Morale = Math.Clamp(p.Morale + (target - p.Morale) * rate, 0, 100);
 
@@ -162,21 +169,22 @@ public static class PeopleEngine
                 else if (human && p.Morale < 38 && !p.TradeRequested && (p.LastTalk == null || today.DayNumber - p.LastTalk.Value.DayNumber >= 21)
                          && today.DayNumber % 14 < 7 /* not every week */)
                 {
-                    var worst = Factors(p, team, wp, st, league.Finance, today).OrderBy(x => x.effect).FirstOrDefault();
+                    var worst = Factors(p, team, wp, st, finance, today, salaryScale).OrderBy(x => x.effect).FirstOrDefault();
                     events.Add(new(p, team, PeopleEventKind.WantsTalk, $"{p.Name} is unhappy and wants to talk. {(worst.reason != null ? worst.reason + "." : "")}"));
                 }
             }
         }
-        if (promises != null) events.AddRange(CheckPromises(league, today, stats, promises));
+        if (promises != null) events.AddRange(CheckPromises(teamList.SelectMany(t => t.Roster), teamById, today, stats, promises));
         return events;
     }
 
-    private static IEnumerable<PeopleEvent> CheckPromises(League league, DateOnly today, IReadOnlyDictionary<int, PlayerSeasonStats> stats, List<Promise> promises)
+    private static IEnumerable<PeopleEvent> CheckPromises(IEnumerable<Player> players, Func<int, Team?> teamById, DateOnly today, IReadOnlyDictionary<int, PlayerSeasonStats> stats, List<Promise> promises)
     {
+        var byId = players.ToDictionary(p => p.Id);
         foreach (var pr in promises.ToList())
         {
-            var p = league.AllActivePlayers.FirstOrDefault(x => x.Id == pr.PlayerId);
-            var team = p?.TeamId is { } tid ? league.TeamById(tid) : null;
+            var p = byId.GetValueOrDefault(pr.PlayerId);
+            var team = p?.TeamId is { } tid ? teamById(tid) : null;
             if (p == null || team == null) { promises.Remove(pr); continue; }
             if (team.Id != pr.TeamId)
             {

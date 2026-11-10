@@ -23,9 +23,27 @@ public sealed class Standings
 {
     private readonly Dictionary<int, TeamRecord> _records;
 
-    public Standings(League league)
+    public Standings(League league) : this(league.Teams) { }
+
+    /// <summary>A table for any set of clubs (an overseas league built from its fixtures).</summary>
+    public Standings(IEnumerable<Team> teams)
     {
-        _records = league.Teams.ToDictionary(t => t.Id, t => new TeamRecord { Team = t });
+        _records = teams.ToDictionary(t => t.Id, t => new TeamRecord { Team = t });
+    }
+
+    public bool Has(Team t) => _records.ContainsKey(t.Id);
+
+    /// <summary>Record a score without a box score (overseas results).</summary>
+    public void Record(Team home, Team away, int homePts, int awayPts)
+    {
+        var h = _records[home.Id]; var a = _records[away.Id];
+        bool homeWon = homePts > awayPts;
+        var (w, l) = homeWon ? (h, a) : (a, h);
+        w.Wins++; l.Losses++;
+        h.PointsFor += homePts; h.PointsAgainst += awayPts; a.PointsFor += awayPts; a.PointsAgainst += homePts;
+        if (homeWon) h.HomeWins++; else h.HomeLosses++;
+        var wh = w.HeadToHead.GetValueOrDefault(l.Team.Id); w.HeadToHead[l.Team.Id] = (wh.w + 1, wh.l);
+        var lh = l.HeadToHead.GetValueOrDefault(w.Team.Id); l.HeadToHead[w.Team.Id] = (lh.w, lh.l + 1);
     }
 
     public TeamRecord this[Team t] => _records[t.Id];
