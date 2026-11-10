@@ -79,16 +79,7 @@
           <Button Content="Load" Command="{Binding LoadGameCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
         </StackPanel>
       </Border>
-      <Border Classes="panel">
-        <StackPanel Spacing="8">
-          <TextBlock Text="Player portraits" Classes="h2" Margin="0"/>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBox Text="{Binding FaceFolder}"/>
-            <Button Grid.Column="1" Content="Browse…" Click="BrowseFaces" Margin="6,0,0,0"/>
-          </Grid>
-          <TextBlock Text="{Binding FaceFolderStatus}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
-        </StackPanel>
-      </Border>
+      <ContentControl Content="{Binding Graphics}"/>
       <TextBlock Text="{Binding Status}" Classes="bad" TextWrapping="Wrap"/>
     </StackPanel>
     </ScrollViewer>

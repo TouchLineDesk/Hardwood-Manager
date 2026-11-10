@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:m="using:Hardwood.Core.Model"
+             x:Class="Hardwood.Desktop.Views.GraphicsSettingsView"
+             x:DataType="vm:GraphicsSettingsViewModel">
+  <StackPanel Spacing="12">
+    <Border Classes="panel">
+      <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Users" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Face pack" Classes="h2" Margin="0"/></StackPanel>
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBox Text="{Binding FaceFolder}"/>
+          <Button Grid.Column="1" Content="Browse…" Click="BrowseFaces" Margin="6,0,0,0"/>
+        </Grid>
+        <TextBlock Text="{Binding FaceFolderStatus}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+      </StackPanel>
+    </Border>
+    <Border Classes="panel">
+      <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Shield" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Logo pack" Classes="h2" Margin="0"/></StackPanel>
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBox Text="{Binding LogoFolder}"/>
+          <Button Grid.Column="1" Content="Browse…" Click="BrowseLogos" Margin="6,0,0,0"/>
+        </Grid>
+        <TextBlock Text="{Binding LogoFolderStatus}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        <ItemsControl ItemsSource="{Binding Sample}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="m:Team">
+              <c:TeamLogo Team="{Binding}" Width="36" Height="36" Margin="0,0,6,6" ToolTip.Tip="{Binding FullName}"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Content="Write team list" Command="{Binding WriteTeamListCommand}"/>
+          <Button Content="Rescan folder" Command="{Binding RescanLogosCommand}"/>
+        </StackPanel>
+        <TextBlock Text="Name each image after the club's full name (PNG or JPG; case, spaces and subfolders don't matter). Packs with other names: add 'Club name = file.png' lines to logos.txt in the folder."
+                   Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        <TextBlock Text="{Binding LogoNote}" TextWrapping="Wrap" FontSize="11.5" IsVisible="{Binding LogoNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

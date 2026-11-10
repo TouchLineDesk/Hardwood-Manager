@@ -290,8 +290,39 @@ public static class CardRenderer
             DrawSpacedFrom(c, text, box.Left + 13, box.Top + 6 + asc, font, spacing, p);
     }
 
+    private static readonly Dictionary<string, SKBitmap?> LogoCache = new();
+
+    /// <summary>A logo-pack image, decoded once per file (null if unreadable).</summary>
+    private static SKBitmap? Logo(string path)
+    {
+        lock (LogoCache)
+        {
+            if (LogoCache.TryGetValue(path, out var b)) return b;
+            try { b = SKBitmap.Decode(path); } catch (Exception) { b = null; }
+            if (LogoCache.Count > 400) LogoCache.Clear();
+            return LogoCache[path] = b;
+        }
+    }
+
+    /// <summary>Logo-pack crest: the image fitted into the crest box (150x175, bottom-left), with the same shadow.</summary>
+    private static bool PackCrest(SKCanvas c, CrestSpec t)
+    {
+        if (t.LogoFile is not { } file || !File.Exists(file) || Logo(file) is not { } bmp || bmp.Width == 0 || bmp.Height == 0) return false;
+        var box = new SKRect(22, W - 22 - 175, 22 + 150, W - 22);
+        float scale = Math.Min(box.Width / bmp.Width, box.Height / bmp.Height);
+        float w = bmp.Width * scale, h = bmp.Height * scale;
+        var dest = new SKRect(box.MidX - w / 2, box.Bottom - h, box.MidX + w / 2, box.Bottom);
+        using var layer = new SKPaint { ImageFilter = SKImageFilter.CreateDropShadow(0, 4, 3, 3, new SKColor(0, 0, 0, A(.55f))) };
+        c.SaveLayer(layer);
+        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+            c.DrawBitmap(bmp, dest, p);
+        c.Restore();
+        return true;
+    }
+
     private static void Crest(SKCanvas c, CrestSpec t, SKTypeface bs)
     {
+        if (PackCrest(c, t)) return;
         // <svg class="crest" viewBox="0 0 48 56"> at left 22, bottom 22, 150x175, using a <symbol viewBox="-2 -2 52 60">
         // (meet: scale 48/52, centred vertically), with drop-shadow(0 4px 6px rgba(0,0,0,.55)).
         const float meet = 48f / 52f, outer = 150f / 48f, k = meet * outer;

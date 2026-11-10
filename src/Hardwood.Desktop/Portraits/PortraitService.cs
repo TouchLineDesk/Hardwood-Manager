@@ -81,7 +81,7 @@ public sealed class PortraitService
         var world = session.World;
         var shown = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Concat(prospects ?? new List<Player>()).Concat(world.Players).ToList();
         lib.AssignMissing(shown.Concat(league.Retired), shown);
-        var cards = PortraitCard.For(league, prospects, world.Clubs);
+        var cards = PortraitCard.For(league, prospects, world.Clubs, Graphics.LogoPackService.FileFor);
         var folder = Controls.Portraits.FolderFor(savePath);
 
         var progress = new Progress<(int done, int total, int[] ids)>(p =>

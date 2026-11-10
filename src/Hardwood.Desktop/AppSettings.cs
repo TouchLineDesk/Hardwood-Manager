@@ -8,6 +8,12 @@ public sealed class AppSettings
     /// <summary>Folder of the FMNEWGAN face pack (one subfolder per ethnicity). Defaults to Desktop\FMNEWGANv2.</summary>
     public string FaceFolder { get; set; } = DefaultFaceFolder();
 
+    /// <summary>Folder of team logo images (a logo pack); empty = drawn crests only. See <see cref="Core.Graphics.LogoPack"/>.</summary>
+    public string LogoFolder { get; set; } = DefaultLogoFolder();
+
+    public static string DefaultLogoFolder() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Hardwood Manager", "Logos");
+
     /// <summary>Let the game draw player card portraits automatically.</summary>
     public bool AutoPortraits { get; set; } = true;
 

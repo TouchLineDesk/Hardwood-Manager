@@ -72,6 +72,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Session = session;
         HasSession = true;
         Controls.Portraits.UseSave(session.Save?.Path);
+        Graphics.LogoPackService.UseTeams(session.League.Teams.Concat(session.World.Clubs));
         Portraits.PortraitService.Instance.Request(session);
         _pages.Clear();
         Nav.Clear();
@@ -93,6 +94,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Offseason", "Sun", () => new OffseasonViewModel(this)),
             ("Awards", "Award", () => new AwardsViewModel(this)),
             ("History", "History", () => new HistoryViewModel(this)),
+            ("Settings", "Settings", () => new SettingsViewModel(this)),
         })
         {
             var item = new NavItem { Name = name, Icon = icon, Factory = factory };
