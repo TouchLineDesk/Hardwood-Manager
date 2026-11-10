@@ -49,9 +49,10 @@
         <Button Command="{Binding GoCommand}" CommandParameter="Inbox"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Inbox" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Inbox"/></StackPanel></Button>
       </StackPanel>
 
-      <Grid ColumnDefinitions="3*,2*,2*">
+      <!-- Three across; when narrow (big text sizes) the standings get their own row and the other two share the next. -->
+      <Grid x:Name="Panels" ColumnDefinitions="3*,2*,2*" RowDefinitions="Auto,Auto">
         <!-- Standings (the wider panel, so full team names fit at 1280 px with the assistant open) -->
-        <Border Classes="panel" Margin="0,0,10,0">
+        <Border x:Name="TablePanel" Classes="panel" Margin="0,0,10,0">
           <StackPanel Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ListOrdered" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding TableTitle}" Classes="h2" Margin="0"/></StackPanel>
             <ItemsControl ItemsSource="{Binding Table}">
@@ -73,7 +74,7 @@
         </Border>
 
         <!-- Squad pulse and injuries -->
-        <StackPanel Grid.Column="1" Spacing="10" Margin="0,0,10,0">
+        <StackPanel x:Name="PulsePanel" Grid.Column="1" Spacing="10" Margin="0,0,10,0">
           <Border Classes="panel">
             <StackPanel Spacing="4">
               <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="HeartHandshake" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Squad pulse" Classes="h2" Margin="0"/></StackPanel>
@@ -109,7 +110,7 @@
         </StackPanel>
 
         <!-- News -->
-        <Border Grid.Column="2" Classes="panel">
+        <Border x:Name="LatestPanel" Grid.Column="2" Classes="panel">
           <StackPanel Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Newspaper" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Latest" Classes="h2" Margin="0"/></StackPanel>
             <ItemsControl ItemsSource="{Binding News}">

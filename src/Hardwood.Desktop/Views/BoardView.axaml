@@ -37,7 +37,7 @@
         <Border Classes="panel" IsVisible="{Binding Employed}">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="This season" Classes="h2" Margin="0"/></StackPanel>
-            <TextBlock Text="{Binding Goal}" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding Goal}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding Pace}" Classes="muted"/>
             <ItemsControl ItemsSource="{Binding Demands}">
               <ItemsControl.ItemTemplate>

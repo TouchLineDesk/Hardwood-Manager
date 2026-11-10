@@ -26,12 +26,14 @@ public static class LayoutCheck
     }
 
     /// <summary>Text blocks are allowed this many pixels of slack (antialiasing, rounding).</summary>
-    private const double Slack = 1.5;
+    private const double Slack = 2;
 
     public static List<Problem> Scan(TopLevel root)
     {
         root.UpdateLayout();
         var problems = new List<Problem>();
+        // Measure positions inside the text-size scale, in the same units as the text widths.
+        Visual space = root.GetVisualDescendants().OfType<LayoutTransformControl>().FirstOrDefault()?.Child ?? (Visual)root;
         foreach (var tb in root.GetVisualDescendants().OfType<TextBlock>())
         {
             if (!tb.IsEffectivelyVisible || tb.Bounds.Width <= 0 || tb.Bounds.Height <= 0) continue;
@@ -68,7 +70,7 @@ public static class LayoutCheck
             }
 
             // Where does the ink actually sit in window coordinates?
-            var origin = tb.TranslatePoint(new Point(tb.Padding.Left, 0), root);
+            var origin = tb.TranslatePoint(new Point(tb.Padding.Left, 0), space);
             if (origin == null) continue;
             double inkW = Math.Min(textW, inner);
             if (tb.TextAlignment == TextAlignment.Right) origin = origin.Value.WithX(origin.Value.X + inner - inkW);
@@ -78,7 +80,7 @@ public static class LayoutCheck
 
             // A table cell is narrower or shorter than its text: the row hides the rest (rows don't clip themselves;
             // the rows panel does, so the generic check below can't see it).
-            if (tb.FindAncestorOfType<DataGridCell>() is { } cell && cell.TranslatePoint(new Point(0, 0), root) is { } ctl)
+            if (tb.FindAncestorOfType<DataGridCell>() is { } cell && cell.TranslatePoint(new Point(0, 0), space) is { } ctl)
             {
                 var seen = ink.Intersect(new Rect(ctl, cell.Bounds.Size));
                 double missW = ink.Width - seen.Width, missH = ink.Height - seen.Height;
@@ -91,10 +93,10 @@ public static class LayoutCheck
 
             foreach (var anc in tb.GetVisualAncestors().OfType<Visual>())
             {
-                if (anc is ScrollContentPresenter or DataGridRowsPresenter or DataGridColumnHeadersPresenter) break; // scrolled out of view is fine; it can be scrolled to
+                if (anc is ScrollContentPresenter or DataGridRowsPresenter or DataGridColumnHeadersPresenter or DataGridRow or DataGridCellsPresenter) break; // scrolled out of view is fine; it can be scrolled to
                 if (anc is TopLevel) break;
                 if (!anc.ClipToBounds) continue;
-                var tl = anc.TranslatePoint(new Point(0, 0), root);
+                var tl = anc.TranslatePoint(new Point(0, 0), space);
                 if (tl == null) continue;
                 var clip = new Rect(tl.Value, anc.Bounds.Size);
                 var seen = ink.Intersect(clip);

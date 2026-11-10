@@ -54,12 +54,12 @@
         <StackPanel>
           <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Training intensity" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding IntensityText}" Classes="muted"/></Grid>
           <Slider Minimum="0" Maximum="100" Value="{Binding Intensity}"/>
-          <TextBlock Text="Harder training grows players faster and wears them down; your strength coach decides how much it costs." Classes="muted" FontSize="11.5"/>
+          <TextBlock Text="Harder training grows players faster and wears them down; your strength coach decides how much it costs." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
 
       <TextBlock Text="Individual focus" Classes="h2"/>
-      <TextBlock Text="Pick what each player works on. Focus tilts skill growth toward one area; young players with headroom benefit most." Classes="muted"/>
+      <TextBlock Text="Pick what each player works on. Focus tilts skill growth toward one area; young players with headroom benefit most." Classes="muted" TextWrapping="Wrap"/>
       <DataGrid ItemsSource="{Binding Players}" IsReadOnly="False" Height="380" CanUserSortColumns="False">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>

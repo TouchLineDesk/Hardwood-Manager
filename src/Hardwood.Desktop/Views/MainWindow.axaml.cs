@@ -12,6 +12,19 @@ public partial class MainWindow : Window
         UiScale.Changed += ApplyScale;
         // The top bar's buttons drop to a second row when they'd otherwise cover the team name (roadmap 1).
         Controls.Reflow.Watch(TopBar, TopLeft, TopRight);
+        PageScroll.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BoundsProperty) FitPage();
+        };
+    }
+
+    /// <summary>The shortest a page gets (in layout units, before the text-size scale); below this it scrolls.</summary>
+    public const double MinPageHeight = 760;
+
+    private void FitPage()
+    {
+        double h = Math.Max(PageScroll.Bounds.Height, MinPageHeight);
+        if (Math.Abs(PageHost.Height - h) > 0.5 || double.IsNaN(PageHost.Height)) PageHost.Height = h;
     }
 
     /// <summary>The text and interface size from Settings, applied to everything in the window.</summary>
