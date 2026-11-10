@@ -39,6 +39,8 @@ public sealed class GameWorld
     private readonly Dictionary<int, Team> _teams = new();
 
     public League Nabl { get; }
+    /// <summary>College basketball (decisions #76, #82-85, #95-98); null in careers from before it existed.</summary>
+    public College.CollegeWorld? College { get; set; }
     public List<WorldCompetition> Competitions { get; } = new();
     /// <summary>Headlines (champions, Final Four) since the session last read them.</summary>
     public List<(string Title, string Body)> News { get; } = new();
@@ -89,6 +91,7 @@ public sealed class GameWorld
     {
         _teams.Clear();
         foreach (var t in Clubs) _teams[t.Id] = t;
+        if (College != null) foreach (var t in College.Programs) _teams[t.Id] = t;
     }
 
     // ------------------------------------------------------------------------------------------
@@ -120,6 +123,9 @@ public sealed class GameWorld
                 comp.Clubs.Add(team);
             }
         }
+        // College: every American player from 14 to 23 (decisions #82-85).
+        world.College = Hardwood.Core.College.CollegeWorld.Generate(gen, new Rng(seed ^ 0x434F4C4C45474555UL), today);
+        nabl.CollegeActive = true;
         nabl.NextPlayerId = gen.NextId;
         world.Index();
         world.StartSeason(nabl.Season);
@@ -327,6 +333,11 @@ public sealed class GameWorld
     public void PlayThrough(DateOnly date, GameSimulator sim)
     {
         foreach (var comp in Playing) PlayCompetition(comp, date, sim);
+        if (College != null)
+        {
+            College.PlayThrough(date, sim, _rng);
+            News.AddRange(College.News); College.News.Clear();
+        }
     }
 
     /// <summary>Play out every competition's season to the end (used before the yearly rollover).</summary>
@@ -521,6 +532,14 @@ public sealed class GameWorld
         FinishSeasons(sim);
         var date = new DateOnly(summerYear, 7, 1);
         LeftClub.Clear(); SignedAbroad.Clear(); BuyoutMoves.Clear(); Stashes.Clear(); Departed.Clear();
+        if (College != null)
+        {
+            // Graduation, growth and the new recruiting class (decisions #84, #98).
+            var cgen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
+            College.Summer(date, freeAgents, cgen, new DevelopmentEngine(_rng), _rng);
+            Nabl.NextPlayerId = cgen.NextId;
+            News.AddRange(College.News); College.News.Clear();
+        }
         // Draft rights lapse once a player is 27 (he's no longer a prospect the team is waiting on).
         foreach (var p in Players.Concat(Nabl.FreeAgents)) if (p.DraftRightsTeamId != null && p.Age(date) >= 27) p.DraftRightsTeamId = null;
         // The books close abroad too: budgets for next season from revenue, fans and results (decision #88).
@@ -633,12 +652,15 @@ public sealed class GameWorld
                 any = true;
                 int imports = team.Roster.Count(p => !locals.Contains(p.Nationality));
                 bool importRoom = imports < comp.Profile.ForeignLimit;
+                // US clubs look harder for a player in the pool (college graduates fill the pyramid, decision #98).
+                int window = comp.Profile.MinAge > 0 ? 12 : 8;
                 var pick = freeAgents
-                    .Where(p => p.Age(date) <= 33 && p.CurrentAbility >= need.Ca - 8 && p.CurrentAbility <= need.Ca + 8)
+                    .Where(p => p.Age(date) <= 33 && p.CurrentAbility >= need.Ca - window && p.CurrentAbility <= need.Ca + window)
+                    .Where(p => p.Age(date) >= comp.Profile.MinAge)
                     .Where(p => locals.Contains(p.Nationality) || (importRoom && need.Import))
                     .OrderBy(p => Math.Abs(p.CurrentAbility - need.Ca) + _rng.NextDouble() * 6)
                     .FirstOrDefault();
-                if (pick != null && _rng.Chance(0.7))
+                if (pick != null && _rng.Chance(comp.Profile.MinAge > 0 ? 0.95 : 0.7))
                 {
                     freeAgents.Remove(pick);
                     pick.TeamId = team.Id;
@@ -660,6 +682,7 @@ public sealed class GameWorld
         Nabl.NextPlayerId = gen.NextId;
         // Promotion and relegation through the USA pyramid, before next season's fixtures (decisions #78-79, #91).
         foreach (var n in UsaPyramid.Promote(this, Nabl, new StaffGenerator(new Rng(_rng.NextULong())), date)) News.Add(n);
+        College?.StartSeason(newYear, _rng);
         StartSeason(newYear);
     }
 

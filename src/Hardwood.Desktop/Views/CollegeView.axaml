@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.CollegeView"
+             x:DataType="vm:CollegeViewModel">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="2">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <c:Icon Kind="GraduationCap" Width="26" Height="26" Foreground="{DynamicResource HwAccentBrush}"/>
+        <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0"/>
+      </StackPanel>
+      <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap"/>
+    </StackPanel>
+    <TabControl IsVisible="{Binding HasCollege}" SelectedIndex="{Binding Tab}">
+      <TabItem Header="Top 25">
+        <DataGrid ItemsSource="{Binding Top25}" CanUserSortColumns="False">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+            <DataGridTemplateColumn Header="" Width="44">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:RankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Program" Binding="{Binding Name}" Width="300"/>
+            <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="80"/>
+            <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="90"/>
+            <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+      <TabItem Header="Conferences">
+        <DockPanel>
+          <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding ConferenceNames}" SelectedItem="{Binding Conference}" MinWidth="260" Margin="0,0,0,6"/>
+          <DataGrid ItemsSource="{Binding ConferenceRows}" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+              <DataGridTemplateColumn Header="" Width="44">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:RankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Program" Binding="{Binding Name}" Width="300"/>
+              <DataGridTextColumn Header="Conference" Binding="{Binding ConfRecord}" Width="110"/>
+              <DataGridTextColumn Header="Overall" Binding="{Binding Record}" Width="90"/>
+              <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="March Madness">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
+          <ListBox ItemsSource="{Binding Bracket}"/>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Prospects">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding Ages}" SelectedItem="{Binding Age}" MinWidth="220"/>
+            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding Position}" MinWidth="80"/>
+            <Button Content="Open player" Command="{Binding OpenProspectCommand}"/>
+            <TextBlock Text="Players turn pro at 23 and join free agency in the summer. Ranges show what your scouts believe." Classes="muted" VerticalAlignment="Center"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Prospects}" SelectedItem="{Binding SelectedProspect}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="66"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+              <DataGridTextColumn Header="Program" Binding="{Binding Program}" Width="270"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="80"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="80"/>
+              <DataGridTextColumn Header="This season" Binding="{Binding Line}" Width="240"/>
+              <DataGridTextColumn Header="" Binding="{Binding Turns}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</UserControl>

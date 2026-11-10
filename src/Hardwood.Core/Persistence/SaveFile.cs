@@ -21,16 +21,19 @@ public sealed class SaveFile
     /// 7: full team tactics (system, scheme, roles, matchups, presets) as JSON ·
     /// 8: players as people (morale, chemistry, promises; people_meta table) ·
     /// 9: your coach, club owners and your job (career_meta table) ·
-    /// 10: the open market: club money (revenue, budgets, balance, fans), your club abroad's contract decisions; no draft picks.
+    /// 10: the open market: club money (revenue, budgets, balance, fans), your club abroad's contract decisions; no draft picks ·
+    /// 11: college basketball (programs, season and history in world_meta; players with status 'college').
     /// Bump it whenever the format changes, add a sample save of the old format to tests/Hardwood.Tests/SaveFixtures,
     /// and make sure Load upgrades it (SaveCompatibilityTests loads every sample).
     /// </summary>
-    public const int SchemaVersion = 10;
+    public const int SchemaVersion = 11;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
     /// <summary>Players of clubs outside the NABL found in the last Load; <see cref="WorldStore"/> puts them on their clubs.</summary>
     public List<Player> LoadedOverseas { get; } = new();
+    /// <summary>College players found in the last Load (format 11+).</summary>
+    public List<Player> LoadedCollege { get; } = new();
     /// <summary>Staff and training plans of clubs abroad (the club you coach there), attached after the world loads.</summary>
     public List<Staff> PendingStaff { get; } = new();
     public Dictionary<int, TrainingPlan> PendingTraining { get; } = new();
@@ -94,7 +97,7 @@ public sealed class SaveFile
 
     // ------------------------------------------------------------------------------------------
     public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null, IEnumerable<Player>? prospects = null, IEnumerable<Player>? overseas = null,
-                     IEnumerable<Team>? worldClubs = null)
+                     IEnumerable<Team>? worldClubs = null, IEnumerable<Player>? college = null)
     {
         using var conn = Open();
         CreateSchema(conn);
@@ -138,6 +141,7 @@ public sealed class SaveFile
         foreach (var p in league.Retired) InsertPlayer(conn, p, null, "retired");
         if (prospects != null) foreach (var p in prospects) InsertPlayer(conn, p, null, "prospect");
         if (overseas != null) foreach (var p in overseas) InsertPlayer(conn, p, p.TeamId, "overseas");
+        if (college != null) foreach (var p in college) InsertPlayer(conn, p, p.TeamId, "college");
 
         foreach (var h in league.History)
         {
@@ -337,6 +341,7 @@ public sealed class SaveFile
                     case "free_agent": league.FreeAgents.Add(p); break;
                     case "prospect": LoadedProspects.Add(p); break;
                     case "overseas": LoadedOverseas.Add(p); break;
+                    case "college": LoadedCollege.Add(p); break;
                     default: league.Retired.Add(p); break;
                 }
             }

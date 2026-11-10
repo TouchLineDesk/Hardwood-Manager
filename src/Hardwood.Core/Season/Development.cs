@@ -101,6 +101,15 @@ public sealed class DevelopmentEngine
         return new DevelopmentReport(p, age, oldCa, newCa, oldPa, p.PotentialAbility, mpg);
     }
 
+    /// <summary>Change a player's ability by <paramref name="caDelta"/> and move his attributes to match (college growth uses this).</summary>
+    public void Nudge(Player p, int caDelta, int age)
+    {
+        if (caDelta == 0) return;
+        p.CurrentAbility = Math.Clamp(p.CurrentAbility + caDelta, 20, 200);
+        if (p.PotentialAbility < p.CurrentAbility) p.PotentialAbility = p.CurrentAbility;
+        ApplyToAttributes(p, caDelta, age);
+    }
+
     private void ApplyToAttributes(Player p, int caDelta, int age)
     {
         var a = p.Attributes;
