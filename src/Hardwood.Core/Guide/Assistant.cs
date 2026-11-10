@@ -147,7 +147,7 @@ public static class Assistant
         if (s.IncomingBids.Count > 0)
             yield return new($"bids-{s.IncomingBids.Count}-{today}", 8, $"Answer {s.IncomingBids.Count} transfer bid{(s.IncomingBids.Count == 1 ? "" : "s")}",
                 $"Another club wants {Names(s.IncomingBids.Select(b => s.League.AllActivePlayers.Concat(team.Roster).FirstOrDefault(p => p.Id == b.PlayerId)).OfType<Player>().Distinct().Take(2))}. Accept, reject, or let it expire; a fee can fund a replacement.", "Transactions");
-        if (team.Money.Ready && s.MyCommittedWages > team.Money.WageBudget)
+        if (s.OverWageBudget)
             yield return new($"budget-{today.Year}", 20, "We're over the wage budget",
                 $"Wages of ${s.MyCommittedWages / 1e6:F1}M against a budget of ${team.Money.WageBudget / 1e6:F1}M. The owner notices; trim the bench or sell before signing anyone.", "Board");
 

@@ -146,6 +146,9 @@ public sealed class TradeEngine
             if (size < fin.RosterMin - 2) return (false, $"{team.Abbreviation} would have {size} players (too few).");
             long sent = outgoing.Sum(p => p.Contract?.Salary ?? 0), received = incoming.Sum(p => p.Contract?.Salary ?? 0);
             long payroll = ContractMarket.Payroll(team) - sent + received;
+            // On the open market the owner's wage budget is the limit: a trade may not add wages beyond it (critic review #3).
+            if (fin.OpenMarket && team.Money.Ready && received > sent && payroll > team.Money.WageBudget * 1.01)
+                return (false, $"{team.Abbreviation} would be ${(payroll - team.Money.WageBudget) / 1e6:F1}M over its wage budget (${team.Money.WageBudget / 1e6:F1}M).");
             if (!fin.SoftCap)
             {
                 if (payroll > fin.HardCap) return (false, $"{team.Abbreviation} would be ${(payroll - fin.HardCap) / 1e6:F1}M over the hard cap.");

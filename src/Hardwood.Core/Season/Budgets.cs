@@ -20,6 +20,19 @@ public static class Budgets
     /// kept every star and won 5-6 titles a decade (balance audit, Nov 9).</remarks>
     public static double WageShare(Jobs.Owner o) => Math.Clamp(0.65 + (o.Ambition - 11) * 0.012, 0.55, 0.74);
 
+    /// <summary>
+    /// What staff are paid in a league, relative to NABL staff (critic review #3: a tier-5 club paid NABL-style staff
+    /// wages out of a $0.8M revenue and lost money every season, even going 32-2).
+    /// </summary>
+    public static double StaffScale(double salaryScale) => salaryScale >= 0.999 ? 1 : Math.Min(1, salaryScale * 1.5);
+
+    /// <summary>Put a club's staff on its league's pay scale.</summary>
+    public static void ScaleStaff(Team t, double salaryScale)
+    {
+        foreach (var st in t.Staff)
+            st.Salary = Math.Max(1_000, (long)Math.Round(Generation.StaffGenerator.SalaryFor(st) * StaffScale(salaryScale) / 1000) * 1000);
+    }
+
     /// <summary>Base revenue of a league's average club: the NABL, or an overseas league by its wage scale.</summary>
     public static long LeagueRevenue(double salaryScale) => salaryScale >= 0.999 ? NablRevenue : (long)(NablRevenue * salaryScale * OverseasFactor);
 
@@ -59,7 +72,10 @@ public static class Budgets
     /// End of a season: the books close (revenue in, wages and staff out), the fan base moves with results, and
     /// the owner sets next season's budgets. Clubs deep in debt are made to cut back.
     /// </summary>
-    public static void Summer(IReadOnlyList<Team> clubs, double salaryScale, Func<Team, double> winPct, Func<Team, bool> champion)
+    /// <param name="endedSeason">The season that just finished: contracts running past it are already committed, and an
+    /// owner who isn't in debt won't set a budget below them (critic review #3: a club whose revenue dipped was "over
+    /// budget" all season on deals it signed within budget the year before). -1 leaves budgets purely to revenue.</param>
+    public static void Summer(IReadOnlyList<Team> clubs, double salaryScale, Func<Team, double> winPct, Func<Team, bool> champion, int endedSeason = -1)
     {
         if (clubs.Count == 0) return;
         double typical = clubs.Average(t => (double)t.ArenaCapacity);
@@ -78,6 +94,11 @@ public static class Budgets
             if (m.Balance < -m.Revenue * 0.25) share -= 0.06;       // in debt: the owner cuts back
             else if (m.Balance > m.Revenue * 0.5) share += 0.02;    // flush: a little more to spend
             m.WageBudget = Round(m.Income * share);
+            if (endedSeason >= 0 && m.Balance >= 0)
+            {
+                long committed = t.Roster.Where(p => p.Contract is { } c && c.StartSeason + c.Years - 1 > endedSeason).Sum(p => p.Contract!.Salary);
+                m.WageBudget = Math.Max(m.WageBudget, (long)Math.Ceiling(committed / 100_000.0) * 100_000);
+            }
             // Deep debt: a transfer embargo until the balance recovers (critic review, Nov 10).
             m.Embargo = m.Balance < -m.Revenue * 0.5;
             m.TransferBudget = m.Embargo ? 0 : Round(Math.Max(0, m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15));
@@ -106,6 +127,7 @@ public static class Budgets
             m.ParachuteYears = m.Parachute > 0 ? 2 : 0;
         }
         else if (oldScale > 0 && oldScale < salaryScale) { m.Parachute = 0; m.ParachuteYears = 0; }
+        if (oldScale > 0 && Math.Abs(oldScale - salaryScale) > 1e-9 && t.Staff.Count > 0) ScaleStaff(t, salaryScale);
         m.WageBudget = Round(m.Income * WageShare(t.Owner));
         m.TransferBudget = Round(m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15);
         m.Ready = true;

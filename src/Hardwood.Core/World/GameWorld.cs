@@ -549,7 +549,8 @@ public sealed class GameWorld
             Budgets.Initialize(comp.Clubs, comp.Profile.SalaryScale, _rng);
             Budgets.Summer(comp.Clubs, comp.Profile.SalaryScale,
                 t => table.TryGetValue(t.Id, out var r) && r.Games > 0 ? r.Pct : 0.5,
-                t => comp.Season.ChampionId == t.Id || Competitions.Any(c => c.Profile.Kind == CompetitionKind.Continental && c.Season.ChampionId == t.Id));
+                t => comp.Season.ChampionId == t.Id || Competitions.Any(c => c.Profile.Kind == CompetitionKind.Continental && c.Season.ChampionId == t.Id),
+                summerYear - 1);
         }
         var dev = new DevelopmentEngine(_rng);
         foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0))

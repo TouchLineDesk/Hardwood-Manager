@@ -82,6 +82,11 @@ public sealed class Player
     public DateOnly? LastTalk { get; set; }
     /// <summary>After a broken promise he won't believe another until this date.</summary>
     public DateOnly? DistrustUntil { get; set; }
+    /// <summary>A lasting lift to his mood after something resolved (he accepted his role, a talk landed, a promise was kept), until <see cref="BoostUntil"/>.</summary>
+    public double MoodBoost { get; set; }
+    public DateOnly? BoostUntil { get; set; }
+    /// <summary>Why the boost exists, shown among his mood factors.</summary>
+    public string? BoostReason { get; set; }
 
     public Injury? Injury { get; set; }
     public List<Injury> InjuryHistory { get; } = new();

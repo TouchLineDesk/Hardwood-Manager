@@ -11,7 +11,8 @@ namespace Hardwood.Core.Persistence;
 /// </summary>
 public static class PeopleStore
 {
-    private sealed record PlayerMood(double Morale, int UnhappyWeeks, bool TradeRequested, DateOnly? LastTalk, DateOnly? DistrustUntil);
+    private sealed record PlayerMood(double Morale, int UnhappyWeeks, bool TradeRequested, DateOnly? LastTalk, DateOnly? DistrustUntil,
+        double MoodBoost = 0, DateOnly? BoostUntil = null, string? BoostReason = null);
     private sealed record TeamMood(double Chemistry, Dictionary<int, int> WeeksTogether);
 
     public static void SavePeople(this SaveFile file, GameSession s)
@@ -23,7 +24,7 @@ public static class PeopleStore
         // Clubs abroad: only the one you coach has moods worth keeping.
         var abroad = s.Abroad ? new[] { s.HumanTeam } : Array.Empty<Team>();
         var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(abroad.SelectMany(t => t.Roster)).DistinctBy(p => p.Id)
-            .ToDictionary(p => p.Id, p => new PlayerMood(Math.Round(p.Morale, 2), p.UnhappyWeeks, p.TradeRequested, p.LastTalk, p.DistrustUntil));
+            .ToDictionary(p => p.Id, p => new PlayerMood(Math.Round(p.Morale, 2), p.UnhappyWeeks, p.TradeRequested, p.LastTalk, p.DistrustUntil, p.MoodBoost, p.BoostUntil, p.BoostReason));
         var teams = s.League.Teams.Concat(abroad).DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => new TeamMood(Math.Round(t.Chemistry, 2), t.WeeksTogether));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('players', $v)", ("$v", SaveFile.ToJson(players)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('teams', $v)", ("$v", SaveFile.ToJson(teams)));
@@ -49,6 +50,7 @@ public static class PeopleStore
                 {
                     p.Morale = m.Morale; p.UnhappyWeeks = m.UnhappyWeeks; p.TradeRequested = m.TradeRequested;
                     p.LastTalk = m.LastTalk; p.DistrustUntil = m.DistrustUntil;
+                    p.MoodBoost = m.MoodBoost; p.BoostUntil = m.BoostUntil; p.BoostReason = m.BoostReason;
                 }
         if (Get("teams") is { } tj && SaveFile.FromJson<Dictionary<int, TeamMood>>(tj) is { } teams)
             foreach (var t in s.League.Teams.Concat(s.World.Clubs))
