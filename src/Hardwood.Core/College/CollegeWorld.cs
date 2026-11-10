@@ -68,7 +68,17 @@ public sealed class CollegeWorld
         new("htl", "Heartland Conference", "HTL", true, 14),
         new("coa", "Coastal Conference", "COA", false, 16), new("fro", "Frontier Conference", "FRO", false, 16),
         new("grc", "Great Rivers Conference", "GRC", false, 16),
+        // Danny (Nov 10, decision #121): more big programs. Older careers keep their eight conferences (see Active).
+        new("mpc", "Mountain Plains Conference", "MPC", true, 14),
+        new("lvc", "Lakes & Valleys Conference", "LVC", false, 16),
     };
+
+    /// <summary>The programs in the original eight conferences: the elite share of each recruiting class is scaled to keep
+    /// the number of NABL-ready graduates as it was, so extra programs add depth for the pyramid rather than more stars.</summary>
+    public const int BasePrograms = 118;
+
+    /// <summary>Conferences this world actually has (a career started before #121 has eight).</summary>
+    public IEnumerable<ConferenceInfo> Active => Conferences.Where(c => ConferenceOf.ContainsValue(c.Key));
 
     public List<Team> Programs { get; } = new();
     public Dictionary<int, string> ConferenceOf { get; } = new();
@@ -93,15 +103,15 @@ public sealed class CollegeWorld
     /// How good a recruit will be at 23. Calibrated so each year's graduates look like the old draft classes at the top
     /// (a handful ready for the NABL, a few dozen for the tiers below) with most heading for the lower leagues or out.
     /// </summary>
-    private static int DestinedAbility(Rng rng)
+    private static int DestinedAbility(Rng rng, double eliteScale = 1)
     {
-        double u = rng.NextDouble();
-        return u < 0.012 ? rng.Next(110, 131) : u < 0.065 ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
+        double u = rng.NextDouble(), elite = 0.012 * eliteScale;
+        return u < elite ? rng.Next(110, 131) : u < 0.065 ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
     }
 
     private Player NewRecruit(PlayerGenerator gen, Rng rng, int age, DateOnly on)
     {
-        int g = DestinedAbility(rng);
+        int g = DestinedAbility(rng, Math.Min(1, BasePrograms / (double)Math.Max(1, Programs.Count)));
         int ca = Math.Max(20, (int)Math.Round(g * Share(age) + rng.NextGaussian(0, 2)));
         var p = gen.Generate((Position)rng.Next(0, 5), ca, age, on, Heritages.All.First(h => h.Key == "us"), "USA");
         p.PotentialAbility = Math.Max(ca, g + (int)Math.Round(Math.Max(0, rng.NextGaussian(g >= 100 ? 10 : 5, 6))));
@@ -292,7 +302,7 @@ public sealed class CollegeWorld
             AddKnockout(s, Invitationals[e], "Invitational", Seeded(field), dates);
         }
         // Conference play: a single round robin, Tuesdays and Saturdays from early January.
-        foreach (var conf in Conferences)
+        foreach (var conf in Active)
         {
             var members = InConference(conf.Key).Select(t => t.Id).ToList();
             var rounds = RoundRobin(members);
@@ -456,7 +466,7 @@ public sealed class CollegeWorld
         if (!s.Games.Any(g => g.Stage == "Conference tournament") && s.Games.Where(g => g.Stage == "Conference").All(g => g.Played) && s.Games.Any(g => g.Stage == "Conference"))
         {
             var dates = new List<DateOnly> { new(s.Year + 1, 3, 10), new(s.Year + 1, 3, 11), new(s.Year + 1, 3, 12) };
-            foreach (var conf in Conferences)
+            foreach (var conf in Active)
             {
                 var table = ConferenceTable(conf.Key).Take(8).Select(r => r.TeamId).ToList();
                 AddKnockout(s, $"{conf.Short} tournament", "Conference tournament", Seeded(table), dates);
@@ -464,9 +474,9 @@ public sealed class CollegeWorld
             return true;
         }
         // Selection Sunday: 68 teams, the First Four, then the bracket.
-        if (!s.Selected && s.Games.Any(g => g.Stage == "Conference tournament") && Conferences.All(c => s.EventWinners.ContainsKey($"{c.Short} tournament")))
+        if (!s.Selected && s.Games.Any(g => g.Stage == "Conference tournament") && Active.All(c => s.EventWinners.ContainsKey($"{c.Short} tournament")))
         {
-            foreach (var conf in Conferences)
+            foreach (var conf in Active)
                 if (s.EventWinners.TryGetValue($"{conf.Short} tournament", out var w)) s.ConferenceChampions[conf.Key] = w;
             Select(rng);
             return true;

@@ -39,7 +39,7 @@ public sealed partial class CollegeViewModel : PageViewModel
     [ObservableProperty] private string _headline = "";
     [ObservableProperty] private string _summary = "";
     public ObservableCollection<RankRow> Top25 { get; } = new();
-    public List<string> ConferenceNames { get; } = CollegeWorld.Conferences.Select(c => c.Name).ToList();
+    public List<string> ConferenceNames { get; private set; } = CollegeWorld.Conferences.Select(c => c.Name).ToList();
     [ObservableProperty] private string _conference = CollegeWorld.Conferences[0].Name;
     public ObservableCollection<RankRow> ConferenceRows { get; } = new();
     public ObservableCollection<string> Bracket { get; } = new();
@@ -57,7 +57,11 @@ public sealed partial class CollegeViewModel : PageViewModel
     partial void OnAgeChanged(string value) => FillProspects();
     partial void OnPositionChanged(string value) => FillProspects();
 
-    public CollegeViewModel(MainViewModel shell) : base(shell) { }
+    public CollegeViewModel(MainViewModel shell) : base(shell)
+    {
+        // Only the conferences this career has (careers from before decision #121 have eight).
+        if (Session.World.College is { } c) ConferenceNames = c.Active.Select(x => x.Name).ToList();
+    }
 
     public override void Refresh()
     {
@@ -71,7 +75,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         var s = c.Season;
         Headline = $"College basketball {s.Year}-{(s.Year + 1) % 100:00}";
         var last = c.History.LastOrDefault();
-        Summary = $"{c.StageText} · {c.Programs.Count} programs in {CollegeWorld.Conferences.Length} conferences"
+        Summary = $"{c.StageText} · {c.Programs.Count} programs in {c.Active.Count()} conferences"
                   + (s.ChampionId is { } ch ? $" · champions: {c.Program(ch)!.FullName}" : last != null ? $" · last champions: {last.Champion}" : "");
         Top25.Clear();
         int rank = 1;

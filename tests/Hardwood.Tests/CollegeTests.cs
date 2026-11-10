@@ -19,12 +19,12 @@ public class CollegeTests
     }
 
     [Fact]
-    public void There_are_118_programs_in_eight_conferences_with_players_from_14_to_22()
+    public void There_are_148_programs_in_ten_conferences_with_players_from_14_to_22()
     {
         var (nabl, world) = NewWorld();
         var c = world.College!;
         Assert.True(nabl.CollegeActive);
-        Assert.Equal(5 * 14 + 3 * 16, c.Programs.Count);
+        Assert.Equal(6 * 14 + 4 * 16, c.Programs.Count); // decision #121: two more conferences
         foreach (var conf in CollegeWorld.Conferences) Assert.Equal(conf.Size, c.InConference(conf.Key).Count());
         Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.RosterSize, t.Roster.Count));
         var on = new DateOnly(2026, 10, 1);
@@ -53,7 +53,7 @@ public class CollegeTests
         Assert.Equal(68, s.Seeds.Count);
         Assert.Equal(67, s.Games.Count(g => g.Event == CollegeWorld.Madness)); // First Four + 63
         Assert.NotNull(s.ChampionId);
-        Assert.Equal(8, s.ConferenceChampions.Count);
+        Assert.Equal(CollegeWorld.Conferences.Length, s.ConferenceChampions.Count);
         Assert.All(s.ConferenceChampions.Values, id => Assert.Contains(id, s.Seeds.Keys)); // automatic bids
         Assert.Equal(8, s.Games.Where(g => g.Stage == "Invitational").Select(g => g.Event).Distinct().Count());
         var records = c.Programs.Select(t => c.Record(t.Id)).Select(r => r.wins + r.losses).ToList();
@@ -113,5 +113,25 @@ public class CollegeTests
             Assert.True(l.Season.Games.Count(g => g.Played) > c.Season.Games.Count(g => g.Played));
         }
         finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public void A_career_from_before_the_new_conferences_keeps_its_eight_and_still_crowns_a_champion()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"hw-college8-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "career.hwsave");
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "SaveFixtures", "career-v11.hwsave"), path);
+        try
+        {
+            var s = GameSession.Load(path);
+            var c = s.World.College!;
+            Assert.Equal(8, c.Active.Count());
+            Assert.Equal(118, c.Programs.Count);
+            s.World.FinishSeasons(new GameSimulator());
+            Assert.NotNull(c.Season.ChampionId);
+            Assert.Equal(8, c.Season.ConferenceChampions.Count);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
     }
 }

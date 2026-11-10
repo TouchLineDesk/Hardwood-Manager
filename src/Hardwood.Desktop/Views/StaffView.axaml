@@ -9,33 +9,34 @@
       <TextBlock Text="{Binding Effects}" Classes="muted" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding Status}" Classes="accent"/>
 
-      <Grid ColumnDefinitions="*,*">
-        <StackPanel Margin="0,0,6,0">
+      <!-- Stacked rather than side by side (critic review #4: half-width tables cut off salary and ratings). -->
+      <StackPanel Spacing="12">
+        <StackPanel>
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="Your staff" Classes="h2"/>
             <Button Grid.Column="1" Content="Release selected" Command="{Binding FireCommand}" VerticalAlignment="Bottom"/>
           </Grid>
-          <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="190">
+          <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="200">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
-              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="170"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64"/>
               <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="64"/>
-              <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="76"/>
+              <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="96"/>
               <DataGridTextColumn Header="Deal" Binding="{Binding Contract}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
-        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+        <StackPanel>
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBlock Text="Staff market" Classes="h2"/>
             <ComboBox Grid.Column="1" ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding RoleFilter}" Width="190" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
             <Button Grid.Column="2" Classes="primary" Content="Hire selected" Command="{Binding HireCommand}" VerticalAlignment="Bottom"/>
           </Grid>
-          <DataGrid ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="190">
+          <DataGrid ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="240">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
-              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="170"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64"/>
               <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="64"/>
               <DataGridTextColumn Header="Coa" Binding="{Binding Coaching}" Width="58"/>
@@ -47,7 +48,7 @@
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
-      </Grid>
+      </StackPanel>
 
       <Border Classes="panel">
         <StackPanel>

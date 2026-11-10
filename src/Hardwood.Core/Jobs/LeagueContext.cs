@@ -9,8 +9,11 @@ namespace Hardwood.Core.Jobs;
 /// and how prestigious the league's jobs are compared with the NABL.
 /// </summary>
 public sealed record LeagueContext(string Name, IReadOnlyList<Team> Teams, int SeasonGames, int PlayoffTeams, bool IsNabl,
-                                   Finance? Finance, double PrestigeOffset)
+                                   Finance? Finance, double PrestigeOffset, int PyramidLevel = 0)
 {
+    /// <summary>The semi-pro and amateur levels of the USA pyramid (4 regional, 5 local): owners there are patient and modest.</summary>
+    public bool Grassroots => PyramidLevel >= 4;
+
     public static LeagueContext Nabl(League league) =>
         new(league.Name, league.Teams, 82, 16, true, league.Finance, 0);
 
@@ -21,7 +24,7 @@ public sealed record LeagueContext(string Name, IReadOnlyList<Team> Teams, int S
         int n = comp.Clubs.Count;
         int games = (n - 1) * p.RoundRobins;
         int playoff = p.Playoffs.Length > 0 ? p.Playoffs[0].Teams : 1;
-        return new(p.Name, comp.Clubs, games, playoff, false, null, p.JobPrestige);
+        return new(p.Name, comp.Clubs, games, playoff, false, null, p.JobPrestige, UsaPyramid.Level(comp.Key));
     }
 
     /// <summary>Where a team sits on a 0 (best) to 1 (worst) scale given its projected rank.</summary>

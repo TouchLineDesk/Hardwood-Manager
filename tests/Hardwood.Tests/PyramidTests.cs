@@ -101,7 +101,9 @@ public class PyramidTests
         Assert.Equal(34, ctx.SeasonGames);
         var best = comp.Clubs.OrderBy(t => Board.ProjectedRank(ctx, t)).First();
         var mid = comp.Clubs.OrderBy(t => Board.ProjectedRank(ctx, t)).ElementAt(6);
-        Assert.Equal(SeasonGoal.Title, Board.SetExpectations(ctx, best, 2026).Goal);
+        // Regional and local owners are modest (critic review #4): the favourite aims for the top three, not the title.
+        Assert.True(ctx.Grassroots);
+        Assert.Equal(SeasonGoal.SecondRound, Board.SetExpectations(ctx, best, 2026).Goal);
         Assert.Equal(SeasonGoal.Playoffs, Board.SetExpectations(ctx, mid, 2026).Goal);
         Assert.Equal("Finish in the top half", Board.Describe(SeasonGoal.Playoffs, ctx));
 
