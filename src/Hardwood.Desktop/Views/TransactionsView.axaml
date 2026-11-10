@@ -11,6 +11,75 @@
       <TextBlock Text="{Binding DeadlineText}" Classes="muted"/>
     </StackPanel>
     <TabControl>
+      <TabItem Header="Transfer market">
+        <Grid ColumnDefinitions="*,380" RowDefinitions="Auto,*">
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding MarketLeagues}" SelectedItem="{Binding MarketLeague}" MinWidth="170"/>
+            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding MarketPosition}" MinWidth="80"/>
+            <TextBlock Text="Min CA" Classes="muted" VerticalAlignment="Center"/>
+            <NumericUpDown Value="{Binding MinAbility}" Minimum="40" Maximum="200" Increment="5" Width="120" FormatString="0"/>
+            <TextBlock Text="{Binding TransferBudgetText}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+          </StackPanel>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="170"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="54"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="80"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="80"/>
+              <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="110"/>
+              <DataGridTextColumn Header="Value" Binding="{Binding Ask}" Width="90"/>
+              <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="80"/>
+              <DataGridTextColumn Header="" Binding="{Binding Status}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
+            <StackPanel Spacing="10">
+              <Border Classes="panel">
+                <StackPanel Spacing="8">
+                  <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ArrowLeftRight" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Make a bid" Classes="h2" Margin="0"/></StackPanel>
+                  <TextBlock Text="{Binding WindowText}" Classes="muted" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding DealText}" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Fee $M" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <NumericUpDown Grid.Column="1" Value="{Binding BidFee}" Increment="0.05" Minimum="0" FormatString="0.00"/>
+                    <Button Grid.Column="2" Classes="primary" Content="Bid" Command="{Binding PlaceBidCommand}" Margin="8,0,0,0"/>
+                  </Grid>
+                  <TextBlock Text="{Binding DealReply}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"/>
+                </StackPanel>
+              </Border>
+              <ContentControl Content="{Binding Talk}"/>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Bids for your players">
+        <Grid RowDefinitions="Auto,*,Auto,*">
+          <TextBlock Text="Clubs bidding for your players. A bid lapses after five days." Classes="muted" Margin="0,0,0,6"/>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding Incoming}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Player}" Width="220"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding From}" Width="200"/>
+              <DataGridTextColumn Header="Bid" Binding="{Binding Fee}" Width="90"/>
+              <DataGridTextColumn Header="Your valuation" Binding="{Binding Value}" Width="120"/>
+              <DataGridTextColumn Header="Expires" Binding="{Binding Expires}" Width="90"/>
+              <DataGridTemplateColumn Header="" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:IncomingRow">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Button Content="Accept" Command="{Binding Accept}" Padding="8,2"/>
+                      <Button Content="Reject" Command="{Binding Reject}" Padding="8,2"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Grid.Row="2" Text="Recent transfers" Classes="h2" Margin="0,12,0,6"/>
+          <ListBox Grid.Row="3" ItemsSource="{Binding RecentTransfers}"/>
+        </Grid>
+      </TabItem>
       <TabItem Header="Free agents">
         <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,360">
           <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,6"/>

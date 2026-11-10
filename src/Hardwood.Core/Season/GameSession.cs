@@ -288,6 +288,7 @@ public sealed partial class GameSession
             if (Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason) WeeklyBoard();
         }
         if (!Employed) DailyJobMarket();
+        DailyTransfers();
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -734,6 +735,8 @@ public sealed partial class GameSession
                     NewWindow();
                     Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
                     Offseason.AiFreeAgency(ControlledTeamId);
+                    AiTransferRound(15); // the summer transfer market (decision #87)
+                    if (Employed && _rng.Chance(0.6)) MaybeBidForYourPlayer();
                     foreach (var (title, body) in World.News) Post(title, body, "World");
                     World.News.Clear();
                     if (Employed)
@@ -822,6 +825,7 @@ public sealed partial class GameSession
     private void StartNewSeason()
     {
         NewWindow();
+        AgreedFees.Clear(); IncomingBids.Clear(); // the summer window shuts
         Phase = SessionPhase.Preseason;
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
         foreach (var (title, body) in World.News) Post(title, body, "World");
