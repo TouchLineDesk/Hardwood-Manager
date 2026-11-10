@@ -7,12 +7,14 @@
   <ScrollViewer>
     <StackPanel Spacing="12">
       <!-- Header -->
-      <Border CornerRadius="10" ClipToBounds="True" Height="132">
+      <Border CornerRadius="10" ClipToBounds="True" MinHeight="132">
         <Grid>
           <c:CourtBackdrop Glow="{Binding Glow}" Intensity="0.8"/>
-          <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,0">
+          <!-- The next-game card drops below the team name when both don't fit (big text sizes). -->
+          <Grid x:Name="Hero" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="20,12" VerticalAlignment="Center">
+            <StackPanel x:Name="HeroLeft" Orientation="Horizontal" VerticalAlignment="Center">
             <c:TeamLogo Team="{Binding Team}" Width="92" Height="92" VerticalAlignment="Center"/>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="18,0">
+            <StackPanel VerticalAlignment="Center" Margin="18,0">
               <TextBlock Text="{Binding Headline}" FontSize="28" FontWeight="Bold"/>
               <TextBlock Text="{Binding Subline}" Classes="muted" FontSize="14"/>
               <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
@@ -20,7 +22,8 @@
                 <TextBlock Text="{Binding ChemistryText}" FontSize="12.5"/>
               </StackPanel>
             </StackPanel>
-            <Border Grid.Column="2" Background="#B0161B22" CornerRadius="8" Padding="14,10" VerticalAlignment="Center" MinWidth="320">
+            </StackPanel>
+            <Border x:Name="HeroRight" Grid.Column="1" HorizontalAlignment="Right" Background="#B0161B22" CornerRadius="8" Padding="14,10" VerticalAlignment="Center" MinWidth="320">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2">
                   <StackPanel Orientation="Horizontal" Spacing="6">
@@ -46,8 +49,8 @@
         <Button Command="{Binding GoCommand}" CommandParameter="Inbox"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Inbox" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Inbox"/></StackPanel></Button>
       </StackPanel>
 
-      <Grid ColumnDefinitions="*,*,*">
-        <!-- Standings -->
+      <Grid ColumnDefinitions="3*,2*,2*">
+        <!-- Standings (the wider panel, so full team names fit at 1280 px with the assistant open) -->
         <Border Classes="panel" Margin="0,0,10,0">
           <StackPanel Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ListOrdered" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding TableTitle}" Classes="h2" Margin="0"/></StackPanel>
@@ -58,7 +61,7 @@
                     <Grid ColumnDefinitions="24,24,*,58,48">
                       <TextBlock Text="{Binding Rank}" Classes="muted"/>
                       <c:TeamLogo Grid.Column="1" Team="{Binding Team}" ShowText="False" Width="18" Height="18" HorizontalAlignment="Left"/>
-                      <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="{Binding Ours, Converter={x:Static vm:HomeConverters.Bold}}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="{Binding Ours, Converter={x:Static vm:HomeConverters.Bold}}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
                       <TextBlock Grid.Column="3" Text="{Binding Record}" HorizontalAlignment="Right"/>
                       <TextBlock Grid.Column="4" Text="{Binding Diff}" Classes="muted" HorizontalAlignment="Right"/>
                     </Grid>

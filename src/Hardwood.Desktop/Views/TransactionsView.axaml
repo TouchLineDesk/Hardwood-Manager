@@ -12,7 +12,7 @@
     </StackPanel>
     <TabControl>
       <TabItem Header="Transfer market">
-        <Grid ColumnDefinitions="*,380" RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,330" RowDefinitions="Auto,*">
           <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
             <ComboBox ItemsSource="{Binding MarketLeagues}" SelectedItem="{Binding MarketLeague}" MinWidth="170"/>
             <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding MarketPosition}" MinWidth="80"/>
@@ -23,15 +23,15 @@
           <DataGrid Grid.Row="1" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="160"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="58"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="58"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="58"/>
-              <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="128"/>
-              <DataGridTextColumn Header="Value" Binding="{Binding Ask}" Width="90"/>
-              <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="80"/>
-              <DataGridTextColumn Header="" Binding="{Binding Status}" Width="*"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="186"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="54"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="46"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="48"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="48"/>
+              <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="108"/>
+              <DataGridTextColumn Header="Value" Binding="{Binding Ask}" Width="78"/>
+              <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="70"/>
+              <DataGridTextColumn Header="" Binding="{Binding Status}" Width="SizeToCells" MinWidth="40"/>
             </DataGrid.Columns>
           </DataGrid>
           <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
@@ -81,24 +81,24 @@
         </Grid>
       </TabItem>
       <TabItem Header="Free agents">
-        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,360">
+        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,330">
           <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,6"/>
           <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
             <ContentControl Content="{Binding Talk}"/>
           </ScrollViewer>
           <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
-              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="80"/>
-              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="80"/>
-              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="80"/>
-              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="80"/>
-              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="46"/>
+              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="52"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="52"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="52"/>
+              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="50"/>
+              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="50"/>
+              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="50"/>
+              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="50"/>
+              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="SizeToCells" MinWidth="60"/>
             </DataGrid.Columns>
           </DataGrid>
         </Grid>

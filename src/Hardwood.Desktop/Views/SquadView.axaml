@@ -4,7 +4,7 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.SquadView"
              x:DataType="vm:SquadViewModel">
-  <Grid ColumnDefinitions="11*,6*">
+  <Grid ColumnDefinitions="*,340">
     <DockPanel Margin="0,0,12,0">
       <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
         <TextBlock Text="Squad" Classes="h1" Margin="0"/>
@@ -14,7 +14,7 @@
             <DataTemplate x:DataType="vm:FactorRow">
               <Grid ColumnDefinitions="40,*">
                 <TextBlock Text="{Binding EffectText}" FontWeight="SemiBold" Classes.good="{Binding Positive}" Classes.bad="{Binding !Positive}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Reason}" Classes="muted"/>
+                <TextBlock Grid.Column="1" Text="{Binding Reason}" Classes="muted" TextWrapping="Wrap"/>
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -45,7 +45,11 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120"/>
-          <DataGridTextColumn Header="Biggest worry" Binding="{Binding MainReason}" Width="*"/>
+          <DataGridTemplateColumn Header="Biggest worry" Width="*" MinWidth="150">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MoodRow"><TextBlock Text="{Binding MainReason}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="6,3"/></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>

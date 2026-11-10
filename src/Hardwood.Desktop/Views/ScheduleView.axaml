@@ -4,37 +4,40 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.ScheduleView"
              x:DataType="vm:ScheduleViewModel">
-  <Grid ColumnDefinitions="3*,2*">
-    <DockPanel>
+  <!-- "Around the league" moves under the results when both can't sit side by side without the table scrolling. -->
+  <Grid x:Name="Page" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+    <DockPanel x:Name="Results">
       <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
         <StackPanel>
           <TextBlock Text="Schedule &amp; Results" Classes="h1" Margin="0"/>
-          <TextBlock Text="{Binding Summary}" Classes="muted"/>
+          <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap"/>
         </StackPanel>
         <Button Grid.Column="1" Content="Open box score" Command="{Binding OpenBoxCommand}" CommandParameter="{Binding Selected}" VerticalAlignment="Top"/>
       </Grid>
       <DataGrid ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" RowHeight="28">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="110"/>
+          <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="104"/>
           <DataGridTemplateColumn Header="" Width="34">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:GameRow"><c:TeamLogo Team="{Binding OpponentTeam}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="200"/>
-          <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="66"/>
-          <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="100"/>
-          <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="70"/>
-          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="*"/>
+          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="*" MinWidth="214"/>
+          <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="34"/>
+          <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="112"/>
+          <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="64"/>
+          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="1.2*" MinWidth="230"/>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>
-    <StackPanel Grid.Column="1" Spacing="10">
+    <StackPanel x:Name="Side" Grid.Column="1" Spacing="10" Width="300" Margin="16,0,0,0">
       <TextBlock Text="Around the league (yesterday)" Classes="h2" Margin="0"/>
-      <Border Classes="panel" MaxHeight="300">
+      <Border Classes="panel" MaxHeight="300" x:Name="Scores">
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding LeagueScores}">
-            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,2" FontFamily="Consolas,Menlo,monospace"/></DataTemplate></ItemsControl.ItemTemplate>
+            <!-- One score per line beside the results; several per line when this panel sits underneath them. -->
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,2,24,2" MinWidth="150" FontFamily="Consolas,Menlo,monospace"/></DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
       </Border>
@@ -42,13 +45,24 @@
         <c:CompetitionBadge Kind="Playoffs" Width="36" Height="36"/>
         <TextBlock Text="Playoffs" Classes="h2" Margin="0" VerticalAlignment="Center"/>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Series}" IsVisible="{Binding ShowPlayoffs}" MaxHeight="420">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="Round" Binding="{Binding Round}" Width="150"/>
-          <DataGridTextColumn Header="Matchup" Binding="{Binding Matchup}" Width="*"/>
-          <DataGridTextColumn Header="Series" Binding="{Binding Score}" Width="110"/>
-        </DataGrid.Columns>
-      </DataGrid>
+      <!-- One card per series: round above, matchup and series score below, so long round names wrap rather than clip. -->
+      <ScrollViewer IsVisible="{Binding ShowPlayoffs}" MaxHeight="440">
+        <ItemsControl ItemsSource="{Binding Series}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SeriesRow">
+              <Border Classes="panel" Padding="10,6" Margin="0,0,0,6" BorderBrush="{Binding Involved, Converter={x:Static c:Converters.AccentIfTrue}}">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding Round}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Matchup}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Score}" Margin="10,0,0,0" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
     </StackPanel>
   </Grid>
 </UserControl>

@@ -100,7 +100,7 @@
               <TextBox Text="{Binding NewPresetName}" Watermark="Name, e.g. Small ball"/>
               <Button Grid.Column="1" Content="Save current" Command="{Binding SavePresetCommand}" Margin="6,0,0,0"/>
             </Grid>
-            <TextBlock Text="Late-game tactics (last 5 minutes, within 6 points)" FontWeight="SemiBold" Margin="0,4,0,0"/>
+            <TextBlock Text="Late-game tactics (last 5 minutes, within 6 points)" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap"/>
             <ComboBox ItemsSource="{Binding LateGameOptions}" SelectedItem="{Binding LateGame}" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Border>
@@ -112,9 +112,9 @@
       <TextBlock DockPanel.Dock="Top" Text="Roles" Classes="h2" Margin="0,0,0,4"/>
       <DataGrid ItemsSource="{Binding RoleRows}" CanUserSortColumns="False">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="70" IsReadOnly="True"/>
-          <DataGridTextColumn Header="Min" Binding="{Binding MinutesText}" Width="70" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Min" Binding="{Binding MinutesText}" Width="52" IsReadOnly="True"/>
           <DataGridTemplateColumn Header="Role" Width="260">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:RoleRow">
@@ -124,8 +124,13 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Best fit" Binding="{Binding Best}" Width="200" IsReadOnly="True"/>
-          <DataGridTextColumn Header="What he does" Binding="{Binding Summary}" Width="*" MinWidth="160" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Best fit" Binding="{Binding Best}" Width="216" IsReadOnly="True"/>
+          <!-- Wraps onto a second line rather than running off the edge of the table. -->
+          <DataGridTemplateColumn Header="What he does" Width="*" MinWidth="200">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:RoleRow"><TextBlock Text="{Binding Summary}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="6,3"/></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>

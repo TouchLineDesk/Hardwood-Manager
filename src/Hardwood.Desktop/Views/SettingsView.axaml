@@ -7,6 +7,17 @@
     <StackPanel MaxWidth="760" HorizontalAlignment="Left" Spacing="16">
       <Border Classes="panel" Padding="16">
         <StackPanel Spacing="8">
+          <TextBlock Text="Text and interface size" Classes="h2"/>
+          <TextBlock Text="Makes all text, tables and charts bigger or smaller. Pages reflow to fit, so nothing is cut off; at larger sizes some tables scroll sideways."
+                     TextWrapping="Wrap" Classes="muted"/>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Size" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding SizeChoices}" SelectedItem="{Binding Size}" MinWidth="180"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="8">
           <TextBlock Text="Your assistant" Classes="h2"/>
           <TextBlock Text="A panel on the right of every page: what to do next, what the page you're on is for, and strategy for your team. 'Grows with me' starts with the basics and moves on to strategy as you play."
                      TextWrapping="Wrap" Classes="muted"/>

@@ -23,6 +23,9 @@ public sealed class AppSettings
     public Core.Guide.GuideLevel GuideLevel { get; set; } = Core.Guide.GuideLevel.Auto;
     public Core.Guide.GuideProgress GuideProgress { get; set; } = new();
 
+    /// <summary>Text and interface size (roadmap 1): 0.9-1.3, applied to the whole window. 1.0 = 100%.</summary>
+    public double UiScale { get; set; } = 1.0;
+
     public static string DefaultFaceFolder() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "FMNEWGANv2");
 

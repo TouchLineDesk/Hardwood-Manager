@@ -4,66 +4,90 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.StandingsView"
              x:DataType="vm:StandingsViewModel">
-  <DockPanel>
-    <TextBlock DockPanel.Dock="Top" Text="Standings" Classes="h1"/>
-    <TextBlock DockPanel.Dock="Top" Text="{Binding Note}" Classes="muted" Margin="0,0,0,8"/>
-    <StackPanel DockPanel.Dock="Bottom" IsVisible="{Binding HasRace}" Margin="0,10,0,0">
-      <TextBlock Text="Conference race: games above .500 by week (your team highlighted)" Classes="h2" Margin="0,0,0,6"/>
-      <Border Classes="panel" Padding="6"><c:LineChart Series="{Binding Race}" XLabels="{Binding RaceLabels}" ZeroLine="True" Height="220"/></Border>
-    </StackPanel>
-    <Grid ColumnDefinitions="*,*">
-      <DockPanel>
+  <!-- Side by side when there's room for both tables in full; otherwise one above the other (roadmap 1: the two
+       tables used to squeeze the team names out entirely at 1480 px with the assistant open). -->
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Spacing="0">
+    <TextBlock Text="Standings" Classes="h1"/>
+    <WrapPanel Margin="0,0,0,8">
+      <TextBlock Text="{Binding Note}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0"/>
+      <Border Background="{x:Static vm:StandingRow.PlayoffBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+      <TextBlock Text="Playoffs" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0"/>
+      <Border Background="{x:Static vm:StandingRow.PlayInBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+      <TextBlock Text="Play-in" Classes="muted" VerticalAlignment="Center"/>
+    </WrapPanel>
+    <Grid x:Name="Tables" ColumnDefinitions="*,*">
+      <DockPanel x:Name="LeftTable" Margin="0,0,8,12">
         <TextBlock DockPanel.Dock="Top" Text="{Binding LeftTitle}" Classes="h2" Margin="0,0,0,6"/>
         <DataGrid ItemsSource="{Binding East}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
-            <DataGridTemplateColumn Header="" Width="34">
+            <DataGridTemplateColumn Header="#" Width="40">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:StandingRow">
+                  <Border Background="{Binding ZoneBrush}" CornerRadius="4" Width="26" Height="20" HorizontalAlignment="Center" ToolTip.Tip="{Binding ZoneTip}">
+                    <TextBlock Text="{Binding Rank}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                  </Border>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="" Width="32">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Team" Width="*">
+            <DataGridTemplateColumn Header="Team" Width="*" MinWidth="150">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="40"/>
-            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="40"/>
-            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="56"/>
-            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="46"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="38"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="38"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="54"/>
+            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="48"/>
             <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="58"/>
-            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="62"/>
-            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="50"/>
-            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="72"/>
+            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="58"/>
+            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="48"/>
           </DataGrid.Columns>
         </DataGrid>
       </DockPanel>
-      <DockPanel Grid.Column="1">
+      <DockPanel x:Name="RightTable" Grid.Column="1" Margin="0,0,0,12">
         <TextBlock DockPanel.Dock="Top" Text="{Binding RightTitle}" Classes="h2" Margin="0,0,0,6"/>
         <DataGrid ItemsSource="{Binding West}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
-            <DataGridTemplateColumn Header="" Width="34">
+            <DataGridTemplateColumn Header="#" Width="40">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:StandingRow">
+                  <Border Background="{Binding ZoneBrush}" CornerRadius="4" Width="26" Height="20" HorizontalAlignment="Center" ToolTip.Tip="{Binding ZoneTip}">
+                    <TextBlock Text="{Binding Rank}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                  </Border>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="" Width="32">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Team" Width="*">
+            <DataGridTemplateColumn Header="Team" Width="*" MinWidth="150">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="40"/>
-            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="40"/>
-            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="56"/>
-            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="46"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="38"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="38"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="54"/>
+            <DataGridTextColumn Header="GB" Binding="{Binding GB}" Width="48"/>
             <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="58"/>
-            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="62"/>
-            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="50"/>
-            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="72"/>
+            <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="58"/>
+            <DataGridTextColumn Header="L10" Binding="{Binding Last10}" Width="48"/>
           </DataGrid.Columns>
         </DataGrid>
       </DockPanel>
     </Grid>
-  </DockPanel>
+    <StackPanel IsVisible="{Binding HasRace}" Margin="0,4,0,0">
+      <TextBlock Text="Conference race: games above .500 by week (your team highlighted)" Classes="h2" Margin="0,0,0,6"/>
+      <Border Classes="panel" Padding="6"><c:LineChart Series="{Binding Race}" XLabels="{Binding RaceLabels}" ZeroLine="True" Height="220"/></Border>
+    </StackPanel>
+  </StackPanel>
+  </ScrollViewer>
 </UserControl>
