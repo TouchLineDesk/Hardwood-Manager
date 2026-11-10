@@ -89,7 +89,7 @@ public sealed partial class GameSession
         HumanTeam.Coach = Coach;
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
-        Job.Current ??= Jobs.Board.SetExpectations(ContextOf(HumanTeam), HumanTeam, league.Season);
+        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, HumanLeague?.Key ?? "nabl", MyLevel, 0);
         BuildSeason();
     }
 
@@ -426,7 +426,7 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower()} (around {e.TargetWins} wins)."
+            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, avoid the relegation places" : Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower())} (around {e.TargetWins} wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
 
@@ -534,7 +534,7 @@ public sealed partial class GameSession
         Job.HiredOn = Today;
         Job.HiredSeason = League.Season;
         Job.History.Clear();
-        Job.Current = Jobs.Board.SetExpectations(ContextOf(team), team, League.Season);
+        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, League.Season, null, World.LeagueOf(team)?.Key ?? "nabl", 0, 0);
         if (Abroad) EnsureStaff(team);
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
@@ -842,7 +842,8 @@ public sealed partial class GameSession
         if (Employed)
         {
             if (Abroad) SummerReport();
-            Job.Current = Jobs.Board.SetExpectations(ContextOf(HumanTeam), HumanTeam, League.Season);
+            Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
+                HumanLeague?.Key ?? "nabl", MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
             Job.WarningLevel = 0;
             PostExpectations();
         }

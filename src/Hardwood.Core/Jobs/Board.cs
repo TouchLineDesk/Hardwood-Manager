@@ -32,6 +32,11 @@ public sealed class Expectations
     public SeasonGoal Goal { get; set; }
     public int TargetWins { get; set; }
     public List<Demand> Demands { get; set; } = new();
+    /// <summary>The club and league the goal was set for (to tell a promotion from a normal summer).</summary>
+    public int TeamId { get; set; }
+    public string League { get; set; } = "";
+    /// <summary>Newly promoted: the aim is to stay up.</summary>
+    public bool Survive { get; set; }
 }
 
 /// <summary>A job you could apply for while out of work (decision #74).</summary>
@@ -131,6 +136,35 @@ public static class Board
     /// Season expectations (decision #72, "both"): a goal from the squad and the payroll, plus the owner's own demands.
     /// </summary>
     public static Expectations SetExpectations(League league, Team team, int season) => SetExpectations(LeagueContext.Nabl(league), team, season);
+
+    /// <summary>
+    /// Next season's goal, reasonably (critic review, Nov 10): a newly promoted club aims to stay up; otherwise the
+    /// goal from the squad moves at most one step from last season's, and the win target at most 8 (of 82) up.
+    /// A 3rd-place finish no longer turns "reach the final" into "win the title" overnight.
+    /// </summary>
+    public static Expectations NextExpectations(LeagueContext ctx, Team team, int season, Expectations? previous, string leagueKey, int level, int previousLevel)
+    {
+        var e = SetExpectations(ctx, team, season);
+        e.TeamId = team.Id; e.League = leagueKey;
+        if (previous == null || previous.TeamId != team.Id) return e;
+        bool promoted = previous.League != leagueKey && level > 0 && previousLevel > 0 && level < previousLevel;
+        if (promoted)
+        {
+            e.Survive = true;
+            e.Goal = SeasonGoal.Develop;
+            e.TargetWins = (int)Math.Round(ctx.SeasonGames * 0.4);
+            e.Demands.Remove(Demand.MakePlayoffs);
+            return e;
+        }
+        if (previous.League != leagueKey) return e;
+        var steps = ctx.IsNabl ? Enum.GetValues<SeasonGoal>().ToList()
+            : new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.Finals, SeasonGoal.Title };
+        int prevIdx = steps.IndexOf(previous.Survive ? SeasonGoal.Develop : previous.Goal), idx = steps.IndexOf(e.Goal);
+        if (prevIdx >= 0 && idx > prevIdx + 1) e.Goal = steps[prevIdx + 1];
+        int maxRise = (int)Math.Round(8 * ctx.SeasonGames / 82.0);
+        if (previous.TargetWins > 0 && e.TargetWins > previous.TargetWins + maxRise) e.TargetWins = previous.TargetWins + maxRise;
+        return e;
+    }
 
     public static Expectations SetExpectations(LeagueContext ctx, Team team, int season)
     {
@@ -272,7 +306,12 @@ public static class Board
         double impatience = 1.3 - team.Owner.Patience / 40.0;
         int diff = (int)achieved - (int)e.Goal;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
-        var lines = new List<string> { $"Goal: {Describe(e.Goal, ctx).ToLower()}. Result: {Describe(achieved, ctx).ToLower()} ({wins}-{losses})." };
+        // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
+        double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
+        delta += Math.Clamp(winsVsTarget * 0.6, -10, 12);
+        if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6); // a strong season with a playoff upset is a disappointment, not a crisis
+        string goalText = e.Survive ? "stay up" : Describe(e.Goal, ctx).ToLower();
+        var lines = new List<string> { $"Goal: {goalText}. Result: {Describe(achieved, ctx).ToLower()} ({wins}-{losses}, target {e.TargetWins} wins)." };
         foreach (var d in e.Demands)
         {
             bool met = Meeting(d, ctx, team, stats, today, wins, wins + losses);

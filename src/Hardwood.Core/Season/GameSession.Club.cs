@@ -32,6 +32,8 @@ public sealed partial class GameSession
 
     /// <summary>Your club's level in the USA pyramid: 1 = NABL, 2-5 the tiers below; 0 for leagues abroad.</summary>
     public int MyLevel => InNabl ? 1 : HumanLeague is { } c ? UsaPyramid.Level(c.Key) : 0;
+    /// <summary>The pyramid level of a league by key (1 = NABL, 0 = outside the USA).</summary>
+    public static int LevelOf(string key) => key == "nabl" ? 1 : UsaPyramid.IsPyramid(key) ? UsaPyramid.Level(key) : 0;
 
     /// <summary>The league a club plays in, as the board sees it.</summary>
     public LeagueContext ContextOf(Team t) =>
