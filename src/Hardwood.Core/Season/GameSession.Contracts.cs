@@ -54,7 +54,9 @@ public sealed partial class GameSession
         bool renewal = MyExpiring.Contains(p);
         if (renewal) return Offseason.WontReSign(p) ? $"{p.Name} is too unhappy here to sign a new deal." : null;
         if (p.TeamId == HumanTeam.Id) return "His contract isn't up yet.";
-        if (!League.FreeAgents.Contains(p)) return $"{p.Name} is under contract elsewhere. (Transfers come with the transfer market.)";
+        if (AgreedFees.ContainsKey(p.Id))
+            return HumanTeam.Roster.Count >= League.Finance.RosterMax ? "Your roster is full. Release someone first." : null;
+        if (!League.FreeAgents.Contains(p)) return $"{p.Name} is under contract elsewhere. Agree a fee with his club first (Transactions page).";
         if (HumanTeam.Roster.Count >= League.Finance.RosterMax) return "Your roster is full. Release someone first.";
         if (Phase == SessionPhase.Offseason && Offseason?.Phase == OffseasonPhase.ReSigning && InNabl)
             return "Free agency opens after the re-signing period. Continue to free agency first.";
@@ -97,6 +99,11 @@ public sealed partial class GameSession
     {
         bool renewal = MyExpiring.Contains(p);
         var team = HumanTeam;
+        if (AgreedFees.TryGetValue(p.Id, out var fee) && FindTeam(p.TeamId ?? 0) is { } seller && seller != team)
+        {
+            CompleteTransfer(p, seller, team, fee, wage, years);
+            return;
+        }
         if (renewal)
         {
             if (InNabl) Offseason!.ReSign(team, p, years, wage);

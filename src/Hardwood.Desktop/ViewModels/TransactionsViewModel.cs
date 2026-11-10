@@ -84,9 +84,10 @@ public sealed partial class TransactionsViewModel : PageViewModel
             : s.TradeDeadlinePassed ? "The trade deadline has passed; trades reopen after the Finals."
             : $"Trade deadline: {s.TradeDeadline:MMM d}.";
         RebuildTrade();
+        FillTransfers();
         if (!TradesOpen)
         {
-            DeadlineText = "Free agents can be signed at any time through contract talks. (Transfers between clubs come with the transfer market.)";
+            DeadlineText = s.WindowText + " Free agents can be signed at any time through contract talks.";
             CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · {Budgets.Describe(s.HumanTeam)}";
             CanPropose = false;
             FaStatus = "Select a free agent to see his ask and make an offer.";
