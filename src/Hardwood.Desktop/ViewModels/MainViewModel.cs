@@ -52,10 +52,13 @@ public sealed partial class MainViewModel : ViewModelBase
     partial void OnInLiveGameChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
 
     public ObservableCollection<NavItem> Nav { get; } = new();
+    /// <summary>The assistant panel (decisions #115-118).</summary>
+    public GuideViewModel Guide { get; }
     private readonly Dictionary<string, PageViewModel> _pages = new();
 
     public MainViewModel()
     {
+        Guide = new GuideViewModel(this);
         CurrentPage = new StartViewModel(this);
         Portraits.PortraitService.Instance.StatusChanged += () => PortraitStatus = Portraits.PortraitService.Instance.Status;
     }
@@ -103,6 +106,7 @@ public sealed partial class MainViewModel : ViewModelBase
             Nav.Add(item);
         }
         ThemeService.Apply(session.HumanTeam);
+        Guide.NewSession();
         Navigate("Home");
         RefreshHeader();
     }
@@ -128,6 +132,7 @@ public sealed partial class MainViewModel : ViewModelBase
         page.Refresh();
         CurrentPage = page;
         foreach (var n in Nav) n.IsActive = n.Name == name;
+        Guide.OnPage(name);
     }
 
     public void ShowPlayer(Player player)
@@ -212,6 +217,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (CurrentPage is PageViewModel cp && !_pages.ContainsValue(cp)) cp.Refresh();
         RefreshHeader();
         RequestPortraits();
+        Guide.OnTick();
     }
 
     [ObservableProperty] private string _jobText = "";

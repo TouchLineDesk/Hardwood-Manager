@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.GuidePanel"
+             x:DataType="vm:GuideViewModel">
+  <Panel>
+    <!-- Collapsed: a thin strip you can click to open -->
+    <Button IsVisible="{Binding ShowStrip}" Command="{Binding ExpandCommand}" Classes="nav" Width="34" VerticalAlignment="Stretch" VerticalContentAlignment="Top"
+            Padding="6,12" ToolTip.Tip="Open your assistant">
+      <StackPanel Spacing="10">
+        <c:Icon Kind="Lightbulb" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
+        <c:Icon Kind="ChevronLeft" Width="16" Height="16"/>
+      </StackPanel>
+    </Button>
+
+    <Border IsVisible="{Binding Expanded}" Width="320" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="1,0,0,0">
+      <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="14,12,8,6">
+          <c:Icon Kind="Lightbulb" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
+          <StackPanel Grid.Column="1" Margin="10,0,0,0">
+            <TextBlock Text="Your assistant" FontWeight="SemiBold" FontSize="14"/>
+            <TextBlock Text="{Binding StageText}" Classes="muted" FontSize="11"/>
+          </StackPanel>
+          <Button Grid.Column="2" Classes="nav" Command="{Binding CollapseCommand}" Padding="6" ToolTip.Tip="Collapse (turn it off in Settings or the top bar)">
+            <c:Icon Kind="ChevronRight" Width="16" Height="16"/>
+          </Button>
+        </Grid>
+        <ScrollViewer>
+          <StackPanel Margin="14,0,14,14" Spacing="12">
+            <TextBlock Text="{Binding Headline}" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13"/>
+
+            <TextBlock Text="WHAT TO DO NEXT" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
+            <ItemsControl ItemsSource="{Binding Tasks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:GuideTaskRow">
+                  <Border Background="{StaticResource HwPanelAltBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                          BorderThickness="3,0,0,0" BorderBrush="{DynamicResource HwAccentBrush}">
+                    <StackPanel Spacing="4">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="12.5"/>
+                        <Button Grid.Column="1" Classes="nav" Padding="2" Command="{Binding Dismiss}" ToolTip.Tip="Hide this">
+                          <c:Icon Kind="X" Width="12" Height="12"/>
+                        </Button>
+                      </Grid>
+                      <TextBlock Text="NEEDS YOU" IsVisible="{Binding Urgent}" Foreground="{DynamicResource HwAccentBrush}" FontSize="9.5" FontWeight="Bold" LetterSpacing="1"/>
+                      <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Classes="muted" FontSize="11.5"/>
+                      <Button Content="{Binding GoText}" Command="{Binding Go}" HorizontalAlignment="Left" Padding="8,2" FontSize="11.5" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding PageTitle, StringFormat='ON THIS PAGE: {0}'}" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
+              <TextBlock Text="{Binding PageTip}" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel>
+
+            <StackPanel Spacing="6" IsVisible="{Binding HasStrategy}">
+              <TextBlock Text="STRATEGY" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
+              <ItemsControl ItemsSource="{Binding Strategy}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,6">
+                      <TextBlock Text="•" Foreground="{DynamicResource HwAccentBrush}" Margin="0,0,6,0"/>
+                      <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" FontSize="12"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Panel>
+</UserControl>

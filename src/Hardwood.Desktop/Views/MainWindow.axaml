@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Hardwood.Desktop.ViewModels"
         xmlns:c="using:Hardwood.Desktop.Controls"
+        xmlns:v="using:Hardwood.Desktop.Views"
         x:Class="Hardwood.Desktop.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="Hardwood Manager" Width="1480" Height="900" MinWidth="1100" MinHeight="700"
@@ -11,9 +12,9 @@
     <ContentControl Content="{Binding CurrentPage}" IsVisible="{Binding !HasSession}"/>
 
     <!-- Shell -->
-    <Grid IsVisible="{Binding HasSession}" RowDefinitions="Auto,*" ColumnDefinitions="210,*">
+    <Grid IsVisible="{Binding HasSession}" RowDefinitions="Auto,*" ColumnDefinitions="210,*,Auto">
       <!-- Top bar -->
-      <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
+      <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
             <c:BallMark Width="34" Height="34" Fill="{DynamicResource HwAccentBrush}"/>
@@ -35,6 +36,12 @@
                 <TextBlock Text="{Binding JobText}" Foreground="{Binding JobBrush}" FontSize="12" FontWeight="SemiBold"/>
               </StackPanel>
             </Button>
+            <ToggleButton Classes="nav" IsChecked="{Binding Guide.On}" Padding="8,3" Margin="0,0,6,0" VerticalAlignment="Center" ToolTip.Tip="Turn your assistant on or off">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:Icon Kind="Lightbulb" Width="15" Height="15" Foreground="{DynamicResource HwAccentBrush}"/>
+                <TextBlock Text="Assistant" FontSize="12" FontWeight="SemiBold"/>
+              </StackPanel>
+            </ToggleButton>
             <TextBlock Text="{Binding PortraitStatus}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,14,0"/>
             <TextBlock Text="{Binding DateText}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
             <Button Content="Sim week" Command="{Binding SimWeekCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>
@@ -76,6 +83,9 @@
       <Border Grid.Row="1" Grid.Column="1" Padding="16">
         <ContentControl Content="{Binding CurrentPage}"/>
       </Border>
+
+      <!-- Assistant (decisions #115-118) -->
+      <v:GuidePanel Grid.Row="1" Grid.Column="2" DataContext="{Binding Guide}"/>
 
       <Border Grid.Row="1" Grid.Column="1" Background="#80000000" IsVisible="{Binding IsBusy}">
         <TextBlock Text="Simulating…" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18"/>
