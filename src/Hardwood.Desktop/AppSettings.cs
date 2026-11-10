@@ -17,6 +17,12 @@ public sealed class AppSettings
     /// <summary>Let the game draw player card portraits automatically.</summary>
     public bool AutoPortraits { get; set; } = true;
 
+    /// <summary>The assistant panel (decisions #115-118): on by default, how much it explains, and what you've learned so far.</summary>
+    public bool GuideOn { get; set; } = true;
+    public bool GuideCollapsed { get; set; }
+    public Core.Guide.GuideLevel GuideLevel { get; set; } = Core.Guide.GuideLevel.Auto;
+    public Core.Guide.GuideProgress GuideProgress { get; set; } = new();
+
     public static string DefaultFaceFolder() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "FMNEWGANv2");
 

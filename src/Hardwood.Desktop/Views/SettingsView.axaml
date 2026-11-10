@@ -4,6 +4,21 @@
              x:Class="Hardwood.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <ScrollViewer>
-    <ContentControl Content="{Binding Graphics}" MaxWidth="760" HorizontalAlignment="Left"/>
+    <StackPanel MaxWidth="760" HorizontalAlignment="Left" Spacing="16">
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Your assistant" Classes="h2"/>
+          <TextBlock Text="A panel on the right of every page: what to do next, what the page you're on is for, and strategy for your team. 'Grows with me' starts with the basics and moves on to strategy as you play."
+                     TextWrapping="Wrap" Classes="muted"/>
+          <CheckBox Content="Show the assistant" IsChecked="{Binding Guide.On}"/>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="How much it explains" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding Guide.LevelChoices}" SelectedItem="{Binding Guide.Level}" MinWidth="180"/>
+          </StackPanel>
+          <Button Content="Show hidden tips again" Command="{Binding Guide.ResetDismissedCommand}" HorizontalAlignment="Left"/>
+        </StackPanel>
+      </Border>
+      <ContentControl Content="{Binding Graphics}"/>
+    </StackPanel>
   </ScrollViewer>
 </UserControl>

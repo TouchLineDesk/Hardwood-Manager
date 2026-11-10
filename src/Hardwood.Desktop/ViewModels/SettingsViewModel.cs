@@ -1,10 +1,12 @@
 namespace Hardwood.Desktop.ViewModels;
 
-/// <summary>In-game Settings page: face and logo packs.</summary>
+/// <summary>In-game Settings page: the assistant, face and logo packs.</summary>
 public sealed class SettingsViewModel : PageViewModel
 {
     public override string Title => "Settings";
     public GraphicsSettingsViewModel Graphics { get; }
+    /// <summary>The assistant's switch and level (decisions #115-118).</summary>
+    public GuideViewModel Guide => Shell.Guide;
 
     public SettingsViewModel(MainViewModel shell) : base(shell) =>
         Graphics = new GraphicsSettingsViewModel(() => Leagues(shell), () => shell.RequestPortraits());
