@@ -216,6 +216,9 @@ public static class Board
     /// Weekly: confidence follows your pace against the target, faster with impatient owners; unmet demands chip away.
     /// Returns a message for the inbox when the board's mood crosses a line, and whether you're sacked mid-season.
     /// </summary>
+    /// <summary>Win share at or above which the board won't sack you (it can still be disappointed).</summary>
+    public const double WinningRecord = 0.58;
+
     public static (string? title, string? body, bool sacked) Weekly(JobState job, League league, Team team, int wins, int losses,
         IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today) =>
         Weekly(job, LeagueContext.Nabl(league), team, wins, losses, stats, today, league.Season);
@@ -241,7 +244,9 @@ public static class Board
         bool honeymoon = today.DayNumber - job.HiredOn.DayNumber < 60;
         // A new coach is only sacked mid-way through his first season if it's a catastrophe.
         double line = job.HiredSeason == season && job.HiredSeason != 0 ? 3 : 12 + (10 - team.Owner.Patience) * 0.8;
-        if (!honeymoon && games >= full * 30 / 82 && job.Confidence < line)
+        // A winning team isn't sacked mid-season, whatever the target (critic review #3).
+        bool winning = wins / (double)games >= WinningRecord;
+        if (!honeymoon && !winning && games >= full * 30 / 82 && job.Confidence < line)
             return ("You have been sacked", $"{team.Owner.Name} has run out of patience. With the team {wins}-{losses} against a target of {e.TargetWins} wins, you have been relieved of your duties.", true);
         int level = job.Confidence < 20 ? 2 : job.Confidence < 35 ? 1 : 0;
         if (level > job.WarningLevel)
@@ -331,7 +336,11 @@ public static class Board
             + achieved switch { SeasonGoal.Title => 10, SeasonGoal.Finals => 6, SeasonGoal.ConferenceFinals => 4, SeasonGoal.SecondRound => 2, SeasonGoal.Playoffs => 1, _ => 0 }) * weight, 0, 100);
         // A new coach gets his first season: a bad one earns a final warning, not the sack.
         bool firstSeason = job.HiredSeason == season;
-        bool sacked = !firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10);
+        // A clearly winning season is never a sacking: the owner is disappointed, not done (critic review #3: 51-31 a year
+        // after 72-10, and 24-22 the season after relegation, were both sacked).
+        bool winning = wins / Math.Max(1.0, wins + losses) >= WinningRecord;
+        if (winning) job.Confidence = Math.Max(job.Confidence, 25);
+        bool sacked = !firstSeason && !winning && job.Confidence < 25 - (team.Owner.Patience - 10);
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         string verdict = sacked ? $"{team.Owner.Name} has decided to make a change. You have been sacked."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{team.Owner.Name} is giving you another season, but expects much better. Consider this a final warning."
