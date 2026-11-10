@@ -716,9 +716,10 @@ public sealed class Offseason
         Report.HallOfFame.Add(p);
         // A franchise retires the number of a Hall of Famer who gave it at least six seasons' worth of games.
         var home = c.GamesByTeam.OrderByDescending(kv => kv.Value).First();
-        if (home.Value >= 6 * 60)
+        // (His franchise may since have been relegated out of the NABL; a club down the pyramid doesn't retire numbers.
+        // Looking it up in the NABL alone crashed the summer, 35 seasons into a 100-season run; critic audit, Nov 10.)
+        if (home.Value >= 6 * 60 && _league.Teams.FirstOrDefault(t => t.Id == home.Key) is { } team)
         {
-            var team = _league.TeamById(home.Key);
             if (!team.RetiredNumbers.Contains(p.Id)) { team.RetiredNumbers.Add(p.Id); Report.RetiredNumbers.Add((p, team)); }
         }
     }
