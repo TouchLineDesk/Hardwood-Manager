@@ -65,6 +65,10 @@ public sealed class CompetitionProfile
 
     /// <summary>Continental competition: how many clubs each domestic league sends (by key), plus the guest pool.</summary>
     public (string LeagueKey, int Clubs)[] Entrants { get; init; } = Array.Empty<(string, int)>();
+    /// <summary>Entrants in careers made before the leagues in <see cref="Entrants"/> existed (used when any of them is missing).</summary>
+    public (string LeagueKey, int Clubs)[] LegacyEntrants { get; init; } = Array.Empty<(string, int)>();
+    /// <summary>Only kept so older careers load: new careers don't create it.</summary>
+    public bool Legacy { get; init; }
 
     public override string ToString() => Name;
 }
@@ -74,10 +78,13 @@ public static class Competitions
 {
     public const string Elite = "eel", Spain = "esp", Turkey = "tur", Australia = "aus", China = "chn", Guests = "eur-guests";
 
-    /// <summary>Every competition outside the NABL: the first world (decision #39) and the USA pyramid (decision #78).</summary>
+    /// <summary>Every competition outside the NABL: the first world (decision #39), the USA pyramid (decision #78) and the wider world (decision #111).</summary>
     public static readonly CompetitionProfile[] All;
 
-    static Competitions() => All = Base.Concat(UsaPyramid.Profiles).ToArray();
+    static Competitions() => All = Base.Concat(UsaPyramid.Profiles).Concat(WorldLeagues.Profiles).ToArray();
+
+    /// <summary>Competitions a new career creates (everything but the legacy guest pool).</summary>
+    public static IEnumerable<CompetitionProfile> Current => All.Where(p => !p.Legacy);
 
     private static readonly CompetitionProfile[] Base =
     {
@@ -88,7 +95,8 @@ public static class Competitions
             PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 5, 8), new PlayoffRound("Final Four semi-finals", 1, 4), new PlayoffRound("Final", 1, 2) },
             FinalFour = true,
-            Entrants = new[] { (Spain, 5), (Turkey, 4), (Guests, 9) },
+            Entrants = WorldLeagues.EliteEntrants,
+            LegacyEntrants = new[] { (Spain, 5), (Turkey, 4), (Guests, 9) },
         },
         new()
         {
@@ -157,7 +165,8 @@ public static class Competitions
         },
         new()
         {
-            Key = Guests, Name = "Other European clubs", Short = "EUR", Kind = CompetitionKind.GuestPool,
+            // The first world's stand-ins for Europe's other leagues (decision #39); replaced by real leagues (decision #111).
+            Key = Guests, Name = "Other European clubs", Short = "EUR", Kind = CompetitionKind.GuestPool, Legacy = true,
             StrengthOffset = 4, ForeignLimit = 6, SalaryScale = 0.14,
             Clubs = new ClubSeed[]
             {
@@ -171,4 +180,20 @@ public static class Competitions
     };
 
     public static CompetitionProfile Get(string key) => All.First(p => p.Key == key);
+
+    /// <summary>Region groups for pickers: club cups, the USA, Europe, the Americas, Asia-Pacific and Africa.</summary>
+    public static readonly string[] Regions = { "Club cups", "USA", "Europe", "Americas", "Asia-Pacific", "Africa" };
+
+    public static string RegionOf(CompetitionProfile p)
+    {
+        if (p.Kind == CompetitionKind.Continental) return "Club cups";
+        if (UsaPyramid.IsPyramid(p.Key)) return "USA";
+        return p.Key switch
+        {
+            Australia or China or WorldLeagues.Japan or WorldLeagues.Korea or WorldLeagues.Philippines => "Asia-Pacific",
+            WorldLeagues.Argentina or WorldLeagues.Brazil or WorldLeagues.PuertoRico or WorldLeagues.Mexico => "Americas",
+            WorldLeagues.Africa => "Africa",
+            _ => "Europe",
+        };
+    }
 }

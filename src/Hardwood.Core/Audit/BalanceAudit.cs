@@ -239,8 +239,8 @@ public static class BalanceAudit
         }
         m.Add(new("Player movement", "Overseas players bought out by NABL teams", "0.0", buyouts, 0.5, 8, "NBA a few a summer"));
         // With no draft, NABL clubs fill more of their rosters from the shared free-agent pool (open market).
-        m.Add(new("Player movement", "Overseas players joining NABL teams (free agency + buyouts)", "0.0", cameOver, 3, fin.OpenMarket ? 30 : 15,
-            fin.OpenMarket ? "open market: more players cross over without a draft" : "rough estimate: NBA ~5-15 a summer incl. players returning from abroad"));
+        m.Add(new("Player movement", "Overseas players joining NABL teams (free agency + buyouts)", "0.0", cameOver, 3, fin.OpenMarket ? 40 : 15,
+            fin.OpenMarket ? "open market, 45 leagues to come from: more players cross over without a draft" : "rough estimate: NBA ~5-15 a summer incl. players returning from abroad"));
         m.Add(new("Player movement", "Free agents signed by overseas clubs", "0", signedAbroad, null, null, ""));
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)

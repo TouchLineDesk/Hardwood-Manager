@@ -7,6 +7,7 @@
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="World" Classes="h1"/>
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+      <ComboBox ItemsSource="{Binding Regions}" SelectedItem="{Binding Region}" MinWidth="140"/>
       <ComboBox ItemsSource="{Binding Competitions}" SelectedItem="{Binding Selected}" MinWidth="240">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompetitionChoice"><TextBlock Text="{Binding Name}"/></DataTemplate>

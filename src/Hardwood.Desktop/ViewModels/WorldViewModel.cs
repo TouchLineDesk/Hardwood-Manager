@@ -35,6 +35,8 @@ public sealed partial class WorldViewModel : PageViewModel
 {
     public override string Title => "World";
     public ObservableCollection<CompetitionChoice> Competitions { get; } = new();
+    public List<string> Regions { get; }
+    [ObservableProperty] private string _region = "";
     [ObservableProperty] private CompetitionChoice? _selected;
     [ObservableProperty] private string _heading = "";
     [ObservableProperty] private string _note = "";
@@ -47,7 +49,18 @@ public sealed partial class WorldViewModel : PageViewModel
 
     public WorldViewModel(MainViewModel shell) : base(shell)
     {
-        foreach (var c in Session.World.Playing) Competitions.Add(new CompetitionChoice(c.Key, c.Profile.Name));
+        Regions = Hardwood.Core.World.Competitions.Regions.Where(r => Session.World.Playing.Any(c => Hardwood.Core.World.Competitions.RegionOf(c.Profile) == r)).ToList();
+        // Open on the region of your own league (or the club cups).
+        var mine = Session.InNabl ? null : Session.World.LeagueOf(Session.HumanTeam);
+        Region = mine != null ? Hardwood.Core.World.Competitions.RegionOf(mine.Profile) : Regions.FirstOrDefault() ?? "";
+        if (mine != null) Selected = Competitions.FirstOrDefault(c => c.Key == mine.Key) ?? Selected;
+    }
+
+    partial void OnRegionChanged(string value)
+    {
+        Competitions.Clear();
+        foreach (var c in Session.World.Playing.Where(c => Hardwood.Core.World.Competitions.RegionOf(c.Profile) == value))
+            Competitions.Add(new CompetitionChoice(c.Key, c.Profile.Name));
         Selected = Competitions.FirstOrDefault();
     }
 
@@ -69,8 +82,9 @@ public sealed partial class WorldViewModel : PageViewModel
 
         Table.Clear();
         int playoffTeams = p.Playoffs.Length > 0 ? p.Playoffs[0].Teams : 0;
-        var eliteKeys = world.Competitions.FirstOrDefault(c => c.Profile.Kind == CompetitionKind.Continental)?.Profile.Entrants
-            .Where(e => e.LeagueKey == p.Key).Select(e => e.Clubs).FirstOrDefault() ?? 0;
+        var elite = world.Competitions.FirstOrDefault(c => c.Key == Hardwood.Core.World.Competitions.Elite)?.Profile;
+        var eliteEntrants = elite == null ? Array.Empty<(string, int)>() : elite.Entrants.All(e => world.Competitions.Any(c => c.Key == e.LeagueKey)) ? elite.Entrants : elite.LegacyEntrants;
+        var eliteKeys = eliteEntrants.Where(e => e.Item1 == p.Key).Select(e => e.Item2).FirstOrDefault();
         int rank = 0;
         foreach (var r in s.Table())
         {

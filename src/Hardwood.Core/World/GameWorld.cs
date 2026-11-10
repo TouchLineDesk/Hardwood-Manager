@@ -108,7 +108,7 @@ public sealed class GameWorld
         var gen = new PlayerGenerator(new Rng(seed ^ 0x504C415945525321UL), nabl.NextPlayerId);
         var full = new HashSet<string>(fullSim);
         int block = 0;
-        foreach (var profile in Hardwood.Core.World.Competitions.All)
+        foreach (var profile in Hardwood.Core.World.Competitions.Current)
         {
             var comp = new WorldCompetition { Profile = profile, FullSim = full.Contains(profile.Key) };
             world.Competitions.Add(comp);
@@ -196,20 +196,11 @@ public sealed class GameWorld
         }
     }
 
-    private static Heritage? LocalHeritage(string country) => country switch
-    {
-        "Spain" => Heritages.All.First(h => h.Key == "spain"),
-        "Turkey" or "Israel" => Heritages.All.First(h => h.Key == "turkey"),
-        "Australia" => Heritages.All.First(h => h.Key == "australia"),
-        "China" => Heritages.All.First(h => h.Key == "china"),
-        "Greece" => Heritages.All.First(h => h.Key == "greece"),
-        "Serbia" => Heritages.All.First(h => h.Key == "balkan"),
-        "Italy" => Heritages.All.First(h => h.Key == "italy"),
-        "France" => Heritages.All.First(h => h.Key == "france"),
-        "Germany" => Heritages.All.First(h => h.Key == "germany"),
-        "Lithuania" => Heritages.All.First(h => h.Key == "easterneurope"),
-        _ => null,
-    };
+    /// <summary>The heritage (names and looks) of a country's own players; null for the USA and unknown countries.</summary>
+    private static Heritage? LocalHeritage(string country) =>
+        country is "" or "USA" ? null
+            // A country's own name list (weight 0) beats a shared regional one.
+            : Heritages.All.Where(h => h.Nationalities.Contains(country)).OrderBy(h => h.Weight > 0).FirstOrDefault();
 
     /// <summary>An overseas contract. Every one carries a buyout clause (decision #53).</summary>
     public static Contract NewContract(Player p, CompetitionProfile profile, int years, DateOnly on, int startSeason)
@@ -269,26 +260,33 @@ public sealed class GameWorld
     /// <summary>Set up every competition's season starting in <paramref name="year"/>: participants and regular-season fixtures.</summary>
     public void StartSeason(int year)
     {
+        var taken = new HashSet<int>();
         foreach (var comp in Playing)
         {
-            var participants = comp.Profile.Kind == CompetitionKind.Continental ? ContinentalEntrants(comp) : comp.Clubs.Select(t => t.Id).ToList();
+            var participants = comp.Profile.Kind == CompetitionKind.Continental ? ContinentalEntrants(comp, taken) : comp.Clubs.Select(t => t.Id).ToList();
             comp.Season = new CompetitionSeason { Year = year, Participants = participants };
             comp.Season.Fixtures = RoundRobin(participants, comp.Profile, year);
         }
     }
 
-    /// <summary>Clubs entering a continental competition: the top of each domestic league's last table (or the strongest clubs), plus the guest pool.</summary>
-    private List<int> ContinentalEntrants(WorldCompetition comp)
+    /// <summary>
+    /// Clubs entering a continental competition: the top of each domestic league's last table (or the strongest clubs),
+    /// skipping clubs already in a bigger cup this season (<paramref name="taken"/>). Careers from before a source league
+    /// existed use the profile's legacy entrants (the guest pool).
+    /// </summary>
+    private List<int> ContinentalEntrants(WorldCompetition comp, HashSet<int> taken)
     {
         var ids = new List<int>();
-        foreach (var (key, n) in comp.Profile.Entrants)
+        var entrants = comp.Profile.Entrants.All(e => Competitions.Any(c => c.Key == e.LeagueKey)) ? comp.Profile.Entrants : comp.Profile.LegacyEntrants;
+        foreach (var (key, n) in entrants)
         {
-            var source = this[key];
+            if (Competitions.FirstOrDefault(c => c.Key == key) is not { } source) continue;
             if (source.Profile.Kind == CompetitionKind.GuestPool) { ids.AddRange(source.Clubs.Take(n).Select(t => t.Id)); continue; }
             var table = source.Season.Fixtures.Any(f => f.Played) ? source.Season.Table().Select(r => r.TeamId).ToList()
                 : source.Clubs.OrderByDescending(Strength).Select(t => t.Id).ToList();
-            ids.AddRange(table.Take(n));
+            ids.AddRange(table.Where(id => !taken.Contains(id)).Take(n));
         }
+        taken.UnionWith(ids);
         return ids;
     }
 
@@ -578,7 +576,8 @@ public sealed class GameWorld
                     (AwaitingDecision.TryGetValue(team.Id, out var waiting) ? waiting : AwaitingDecision[team.Id] = new()).Add(p);
                     continue;
                 }
-                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.2);
+                // 20% when the world had five leagues; the wider world (decision #111) has about 60% more players of NABL calibre.
+                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.12);
                 bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
                 if (!testsMarket && clubWants && _rng.Chance(0.95))
                     p.Contract = NewContract(p, comp.Profile, _rng.Next(1, 4), date, summerYear);
