@@ -135,4 +135,10 @@
   <Style Selector="Slider">
     <Setter Property="Margin" Value="0,-6,0,-6"/>
   </Style>
+  <!-- Progress bars (ratings, confidence, reputation) use the team accent. -->
+  <Style Selector="ProgressBar">
+    <Setter Property="Foreground" Value="{DynamicResource HwAccentBrush}"/>
+    <Setter Property="Background" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="MinHeight" Value="4"/>
+  </Style>
 </Styles>

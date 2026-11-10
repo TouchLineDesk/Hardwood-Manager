@@ -12,6 +12,7 @@ today's code, plays a few days and saves again, so an old career can never silen
 | career-v6.hwsave | 6 | player-movement branch (buyout clauses, draft rights abroad) |
 | career-v7.hwsave | 7 | tactics branch (systems, schemes, roles, matchups, presets) |
 | career-v8.hwsave | 8 | morale branch (morale, chemistry, promises) |
+| career-v9.hwsave | 9 | coach-and-board branch (coach, owners, job) |
 
 Each is `GameSession.NewGame(seed 2026, team 5)` advanced 12 days. **When the save format changes:** bump
 `SaveFile.SchemaVersion`, make a save with the *previous* version's code, add it here as `career-v<N>.hwsave`, and

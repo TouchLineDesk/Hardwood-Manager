@@ -7,9 +7,48 @@
   <Grid>
   <c:CourtBackdrop/>
   <Grid ColumnDefinitions="*,2*" Margin="40">
-    <StackPanel Grid.Column="0" Spacing="14" Margin="0,0,30,0" VerticalAlignment="Center">
+    <ScrollViewer Grid.Column="0" Margin="0,0,30,0">
+    <StackPanel Spacing="14" VerticalAlignment="Center">
       <c:Wordmark Size="64" HorizontalAlignment="Left" Margin="0,0,0,8"/>
       <TextBlock Text="A basketball management universe. Pick a franchise, set your rotation, and build a dynasty one day at a time." Classes="muted" TextWrapping="Wrap"/>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Your coach" Classes="h2" Margin="0"/>
+          <Grid ColumnDefinitions="*,8,*">
+            <TextBox Text="{Binding CoachFirst}" Watermark="First name"/>
+            <TextBox Grid.Column="2" Text="{Binding CoachLast}" Watermark="Last name"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,8,130">
+            <ComboBox ItemsSource="{Binding Nationalities}" SelectedItem="{Binding CoachNationality}" HorizontalAlignment="Stretch"/>
+            <NumericUpDown Grid.Column="2" Value="{Binding CoachAge}" Minimum="28" Maximum="75" FormatString="0" ToolTip.Tip="Age" Watermark="Age"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,8,*">
+            <StackPanel>
+              <TextBlock Text="Playing background" Classes="muted" FontSize="11"/>
+              <ComboBox ItemsSource="{Binding Backgrounds}" SelectedItem="{Binding CoachBackground}" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="Coaching licence" Classes="muted" FontSize="11"/>
+              <ComboBox ItemsSource="{Binding Licences}" SelectedItem="{Binding CoachLicence}" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding CoachAttrs}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CoachAttrRow">
+                <Grid ColumnDefinitions="*,30,34,30" Margin="0,1" ToolTip.Tip="{Binding Tip}">
+                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                  <Button Grid.Column="1" Content="−" Command="{Binding DownCommand}" Padding="0" Width="28" Height="26" FontSize="15" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Value}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Button Grid.Column="3" Content="+" Command="{Binding UpCommand}" Padding="0" Width="28" Height="26" FontSize="15" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding PointsText}" Classes="muted" FontSize="11.5"/>
+          <TextBlock Text="Ratings run 5-20. A better playing background and licence give you more points and a bigger reputation, which opens doors when you look for work." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
 
       <Border Classes="panel">
         <StackPanel Spacing="8">
@@ -52,6 +91,7 @@
       </Border>
       <TextBlock Text="{Binding Status}" Classes="bad" TextWrapping="Wrap"/>
     </StackPanel>
+    </ScrollViewer>
 
     <Border Grid.Column="1" Classes="panel" Padding="0">
       <DockPanel>

@@ -77,7 +77,8 @@ public static class StaffEffects
         var dev = Find(t, StaffRole.DevelopmentCoach);
         var asst = Find(t, StaffRole.AssistantCoach);
         double q = ((dev?.Development ?? 7) * 0.7 + (asst?.Coaching ?? 7) * 0.3);
-        return q + (t.Training.Intensity - 50) / 50.0 * 2.0; // intensity shifts it ±2
+        return q + (t.Training.Intensity - 50) / 50.0 * 2.0 // intensity shifts it ±2
+               + (t.Coach?.TrainingBonus ?? 0);                 // your Development rating (decision #70)
     }
 
     /// <summary>Injury probability multiplier.</summary>

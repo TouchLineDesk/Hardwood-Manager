@@ -29,6 +29,12 @@
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <CheckBox Content="Watch my games" IsChecked="{Binding LiveGames}" IsVisible="{Binding InSeason}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <Button Classes="nav" Command="{Binding GoBoardCommand}" Padding="8,3" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip.Tip="Board confidence: open the Board page">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:Icon Kind="Shield" Width="15" Height="15" Foreground="{Binding JobBrush}"/>
+                <TextBlock Text="{Binding JobText}" Foreground="{Binding JobBrush}" FontSize="12" FontWeight="SemiBold"/>
+              </StackPanel>
+            </Button>
             <TextBlock Text="{Binding PortraitStatus}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,14,0"/>
             <TextBlock Text="{Binding DateText}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
             <Button Content="Sim week" Command="{Binding SimWeekCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>

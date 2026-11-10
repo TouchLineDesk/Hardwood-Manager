@@ -79,6 +79,7 @@ public static class PeopleEngine
         if (Math.Abs(chem) >= 2) f.Add((team.Chemistry >= Neutral ? "Likes the team spirit" : "Unsettled in the locker room", chem));
         if (p.Injury != null && !p.IsAvailable(today)) f.Add(("Frustrated by his injury", -3));
         if (p.TradeRequested) f.Add(("Wants out", -8));
+        if (team.Coach is { MoraleBonus: var mb } && Math.Abs(mb) >= 1) f.Add((mb > 0 ? "Plays for his coach" : "Not inspired by the coach", mb));
         return f;
     }
 
@@ -112,6 +113,7 @@ public static class PeopleEngine
         f.Add((team1 >= 11 ? "Team-first players" : "Too many individuals", (team1 - 11) * 2));
         int egos = rot.Count(p => p.Hidden.Ego >= 15);
         if (egos >= 2) f.Add(($"{egos} big egos competing for shots", -(egos - 1) * 4));
+        if (team.Coach is { ChemistryBonus: var cb } && Math.Abs(cb) >= 1) f.Add((cb > 0 ? "A disciplined locker room" : "A loose locker room", cb));
         int requests = team.Roster.Count(p => p.TradeRequested);
         if (requests > 0) f.Add(("A player wants out", -5 * requests));
         return f;

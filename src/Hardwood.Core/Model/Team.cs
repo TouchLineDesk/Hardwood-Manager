@@ -28,6 +28,13 @@ public sealed class Team
     /// <summary>Player ids whose numbers hang in the rafters.</summary>
     public List<int> RetiredNumbers { get; } = new();
 
+    /// <summary>The human coach while he runs this team (null for computer-run teams: neutral coaching).</summary>
+    public Jobs.Coach? Coach { get; set; }
+    /// <summary>The club's owner: how patient and how ambitious (decision #71).</summary>
+    public Jobs.Owner Owner { get; set; } = new();
+    /// <summary>Name of the computer head coach (for news, vacancies and the coaching carousel).</summary>
+    public string CoachName { get; set; } = "";
+
     /// <summary>Team chemistry 0-100 (60 = normal): how well this group plays together. See People.PeopleEngine.</summary>
     public double Chemistry { get; set; } = 60;
     /// <summary>Weeks each current player has been on the team (continuity feeds chemistry).</summary>

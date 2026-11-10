@@ -39,7 +39,7 @@ public static class Talks
             : null;
 
     public static TalkResult Hold(Player p, Team team, TalkTopic topic, DateOnly today, double winPct, PlayerSeasonStats? stats,
-                                  Finance finance, List<Promise> promises, Rng rng)
+                                  Finance finance, List<Promise> promises, Rng rng, Jobs.Coach? coach = null)
     {
         var h = p.Hidden;
         string name = p.FirstName;
@@ -113,6 +113,8 @@ public static class Talks
                 break;
             }
         }
+        // Man management: good talkers get more out of a good conversation and lose less in a bad one.
+        if (coach != null) r = r with { MoraleChange = Math.Round(r.MoraleChange * coach.TalkMultiplier(r.MoraleChange >= 0), 1) };
         p.Morale = Math.Clamp(p.Morale + r.MoraleChange, 0, 100);
         p.LastTalk = today;
         return r;
