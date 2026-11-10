@@ -21,7 +21,7 @@ public class WorldTests
     public void Generates_five_competitions_with_their_own_clubs_and_unique_ids()
     {
         var (nabl, world) = Build();
-        Assert.Equal(new[] { 0, 18, 16, 10, 20, 9 }, world.Competitions.Select(c => c.Clubs.Count));
+        Assert.Equal(new[] { 0, 18, 16, 10, 20, 9 }, world.Competitions.Take(6).Select(c => c.Clubs.Count)); // then the USA pyramid
         Assert.Equal(18, world[Competitions.Elite].Season.Participants.Count);
 
         var teamIds = nabl.Teams.Select(t => t.Id).Concat(world.Clubs.Select(t => t.Id)).ToList();
@@ -144,10 +144,14 @@ public class WorldTests
         double Mean(WorldCompetition c) => c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
         var start = world.Competitions.Where(c => c.Clubs.Count > 0).ToDictionary(c => c.Key, Mean);
         for (int y = 2027; y <= 2032; y++) world.Rollover(y, sim);
-        foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
+        // (The USA pyramid's leagues swap clubs every summer, so they're checked by level instead.)
+        foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0 && !UsaPyramid.IsPyramid(c.Key)))
             Assert.True(Math.Abs(Mean(c) - start[c.Key]) <= 6, $"{c.Profile.Name}: {start[c.Key]:F1} -> {Mean(c):F1}");
+        double Level(int l) => world.Competitions.Where(c => UsaPyramid.Level(c.Key) == l).SelectMany(c => c.Clubs).SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
+        Assert.True(Level(2) > Level(3) && Level(3) > Level(4) && Level(4) > Level(5), $"{Level(2):F0} {Level(3):F0} {Level(4):F0} {Level(5):F0}");
         // Imports are replaced by imports, so clubs keep using their foreign slots.
-        foreach (var c in world.Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic))
+        // (In the pyramid, clubs carry their imports between levels, so only the leagues abroad are checked.)
+        foreach (var c in world.Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic && !UsaPyramid.IsPyramid(c.Key)))
             Assert.True(c.Clubs.Average(t => GameWorld.Imports(t, c.Profile)) >= c.Profile.ForeignLimit * 0.5, c.Profile.Name);
     }
 
@@ -182,7 +186,7 @@ public class WorldTests
             }
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             var upgraded = GameSession.Load(path);
-            Assert.Equal(5, upgraded.World.Playing.Count());
+            Assert.Equal(Competitions.All.Count(c => c.Kind != CompetitionKind.GuestPool), upgraded.World.Playing.Count());
             Assert.True(upgraded.World.Playing.Sum(c => c.Season.Fixtures.Count(f => f.Played)) > 100); // caught up to today
             var ids = upgraded.League.AllActivePlayers.Concat(upgraded.League.FreeAgents).Concat(upgraded.World.Players).Select(p => p.Id).ToList();
             Assert.Equal(ids.Count, ids.Distinct().Count());

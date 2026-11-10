@@ -537,11 +537,41 @@ public sealed class SaveFile
         if (teamCols.Count > 0 && !teamCols.Contains("tactic_json")) Exec(conn, "ALTER TABLE team ADD COLUMN tactic_json TEXT");
     }
 
+    /// <summary>Prepared statements per connection: a save writes thousands of rows with the same few statements, and
+    /// re-parsing each one was most of a 0.5s daily save once the USA pyramid added ~5,000 players.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<SqliteConnection, Dictionary<string, SqliteCommand>> Prepared = new();
+
     internal static void Exec(SqliteConnection conn, string sql, params (string name, object value)[] args)
     {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
-        foreach (var (name, value) in args) cmd.Parameters.AddWithValue(name, value ?? DBNull.Value);
+        if (args.Length == 0)
+        {
+            using var plain = conn.CreateCommand();
+            plain.CommandText = sql;
+            plain.ExecuteNonQuery();
+            return;
+        }
+        var cache = Prepared.GetOrCreateValue(conn);
+        if (!cache.TryGetValue(sql, out var cmd))
+        {
+            cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            foreach (var (name, _) in args) cmd.Parameters.Add(new SqliteParameter { ParameterName = name });
+            cache[sql] = cmd;
+        }
+        if (cmd.Parameters.Count != args.Length)
+        {
+            cmd.Parameters.Clear();
+            foreach (var (name, _) in args) cmd.Parameters.Add(new SqliteParameter { ParameterName = name });
+        }
+        // A new command picks up the connection's current transaction; copy it (cached commands outlive transactions).
+        using (var probe = conn.CreateCommand()) cmd.Transaction = probe.Transaction;
+        // Same call site, same order: set by position (a name lookup per parameter per row added up).
+        for (int i = 0; i < args.Length; i++)
+        {
+            var prm = cmd.Parameters[i];
+            if (prm.ParameterName != args[i].name) prm = cmd.Parameters[args[i].name];
+            prm.Value = args[i].value ?? DBNull.Value;
+        }
         cmd.ExecuteNonQuery();
     }
 }

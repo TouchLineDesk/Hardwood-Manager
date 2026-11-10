@@ -33,7 +33,7 @@ public class SaveCompatibilityTests
             var s = GameSession.Load(path);
             Assert.Equal(30, s.League.Teams.Count);
             Assert.True(s.League.AllActivePlayers.Count() >= 30 * 13);
-            Assert.Equal(5, s.World.Playing.Count());
+            Assert.True(s.World.Playing.Count() >= 5); // saves from before the world (v2-v4) get today's world, with the USA pyramid
             Assert.True(s.World.Playing.Sum(c => c.Season.Fixtures.Count(f => f.Played)) > 0); // the world caught up
             Assert.Equal(new DateOnly(2026, 10, 26), s.Today);
 

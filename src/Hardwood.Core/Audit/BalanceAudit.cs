@@ -121,7 +121,15 @@ public static class BalanceAudit
             }
             faPool.Add(league.FreeAgents.Count);
             foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
-                (worldCa.TryGetValue(c.Profile.Name, out var l) ? l : worldCa[c.Profile.Name] = new()).Add(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility));
+            {
+                // The USA pyramid swaps clubs between its leagues every summer: measure it by level, not by league.
+                string label = UsaPyramid.Level(c.Key) is var lv and > 0
+                    ? lv switch { 2 => "USA tier 2", 3 => "USA tier 3", 4 => "USA regional leagues", _ => "USA local leagues" } : c.Profile.Name;
+                if (UsaPyramid.Level(c.Key) > 0 && worldCa.TryGetValue(label, out var done) && done.Count > s) continue;
+                var levelPlayers = (UsaPyramid.Level(c.Key) is var lv2 and > 0
+                    ? world.Competitions.Where(x => UsaPyramid.Level(x.Key) == lv2).SelectMany(x => x.Clubs) : c.Clubs).SelectMany(t => t.Roster).ToList();
+                (worldCa.TryGetValue(label, out var l) ? l : worldCa[label] = new()).Add(levelPlayers.Average(p => p.CurrentAbility));
+            }
 
             progress?.Invoke($"Season {year}-{(year + 1) % 100:00}");
             // The world: its seasons end before the NABL summer starts; measure them, then the summer moves players.
@@ -237,7 +245,9 @@ public static class BalanceAudit
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)
         {
-            (double lo, double hi) = name switch { "Australian League" => (78, 96), "China Pro League" => (78, 108), _ => (74, 90) };
+            bool usa = Competitions.All.FirstOrDefault(c => c.Name == name) is { } prof && UsaPyramid.IsPyramid(prof.Key);
+            // The USA pyramid plays NBA rules (48 minutes): G League teams score ~110-120, lower levels less.
+            (double lo, double hi) = usa ? (88, 112) : name switch { "Australian League" => (78, 96), "China Pro League" => (78, 108), _ => (74, 90) };
             m.Add(new("Overseas", $"{name}: points per team per game", "0.0", list, lo, hi, "recent seasons"));
         }
         foreach (var (name, list) in worldCa)

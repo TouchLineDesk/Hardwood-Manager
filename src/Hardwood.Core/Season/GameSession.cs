@@ -426,7 +426,7 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {Jobs.Board.Describe(e.Goal).ToLower()} (around {e.TargetWins} wins)."
+            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower()} (around {e.TargetWins} wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
 
@@ -761,8 +761,17 @@ public sealed partial class GameSession
                 if (InNabl && !League.Finance.OpenMarket) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
                 break;
             case OffseasonPhase.FreeAgency:
+                int levelBefore = MyLevel; string leagueBefore = HumanLeagueName;
                 Offseason.Complete();
                 StartNewSeason();
+                // Promotion and relegation happen at the end of the summer (decision #79).
+                if (Employed && HumanLeagueName != leagueBefore)
+                {
+                    bool up = MyLevel > 0 && MyLevel < levelBefore;
+                    Post(up ? $"Promoted to {HumanLeagueName}!" : $"Relegated to {HumanLeagueName}",
+                        up ? $"The {HumanTeam.FullName} go up from {leagueBefore} to {HumanLeagueName}. The owner has set new budgets and expectations for life at the higher level."
+                           : $"The {HumanTeam.FullName} drop from {leagueBefore} to {HumanLeagueName}. Wages already agreed don't fall with you; the owner expects you to bounce back.", "Board");
+                }
                 break;
         }
         SaveNow();
