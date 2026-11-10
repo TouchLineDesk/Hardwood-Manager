@@ -151,6 +151,7 @@ public sealed class GameWorld
         if (ca > 140) ca = 140 + (int)Math.Round((ca - 140) * 0.4);
         ca = Math.Clamp(ca, 45, 160);
         int age = ageOverride ?? (int)Math.Round(Math.Clamp(rng.NextGaussian(slot < 9 ? 27 : 23.5, 3.5), 18, 36));
+        if (age < profile.MinAge) age = profile.MinAge; // pro at 23+ in the USA (decision #75)
         string country = club.Country ?? profile.Country;
         Player p;
         if (foreignSlot)
@@ -359,7 +360,7 @@ public sealed class GameWorld
         }
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, f.Date, _rng, stats);
+            var (hp, ap) = QuickSim.Play(home, away, f.Date, _rng, stats, comp.Profile.Rules);
             f.HomePts = hp; f.AwayPts = ap;
         }
         AfterResult(comp, f);
@@ -657,6 +658,8 @@ public sealed class GameWorld
         }
         Departed.Clear();
         Nabl.NextPlayerId = gen.NextId;
+        // Promotion and relegation through the USA pyramid, before next season's fixtures (decisions #78-79, #91).
+        foreach (var n in UsaPyramid.Promote(this, Nabl, new StaffGenerator(new Rng(_rng.NextULong())), date)) News.Add(n);
         StartSeason(newYear);
     }
 

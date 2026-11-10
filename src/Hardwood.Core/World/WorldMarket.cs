@@ -29,8 +29,9 @@ public static class WorldMarket
         off.BeforeFreeAgentCleanup = o =>
         {
             world.EndSummer(o.Season + 1, sim ?? new GameSimulator(), o.League.FreeAgents);
+            // (A club may have been promoted into the NABL since it signed him.)
             foreach (var (p, to) in world.SignedAbroad.Where(x => x.player.CurrentAbility >= 100).OrderByDescending(x => x.player.CurrentAbility).Take(6))
-                world.News.Add(($"{p.Name} signs in {world.HomeOf(to).Profile.Short}", $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility} CA) joins {to.FullName}."));
+                world.News.Add(($"{p.Name} signs in {world.Competitions.FirstOrDefault(c => c.Clubs.Contains(to))?.Profile.Short ?? "the NABL"}", $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility} CA) joins {to.FullName}."));
         };
     }
 

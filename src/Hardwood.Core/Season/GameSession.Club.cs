@@ -30,6 +30,9 @@ public sealed partial class GameSession
     public WorldCompetition? HumanLeague => InNabl ? null : World.LeagueOf(HumanTeam);
     public string HumanLeagueName => HumanLeague?.Profile.Name ?? League.Name;
 
+    /// <summary>Your club's level in the USA pyramid: 1 = NABL, 2-5 the tiers below; 0 for leagues abroad.</summary>
+    public int MyLevel => InNabl ? 1 : HumanLeague is { } c ? UsaPyramid.Level(c.Key) : 0;
+
     /// <summary>The league a club plays in, as the board sees it.</summary>
     public LeagueContext ContextOf(Team t) =>
         League.Teams.Contains(t) ? LeagueContext.Nabl(League) : World.LeagueOf(t) is { } c ? LeagueContext.Of(c) : LeagueContext.Nabl(League);

@@ -21,23 +21,26 @@ public static class QuickSim
     }
 
     /// <summary>Play one game. Returns the score and adds each player's line to <paramref name="stats"/>.</summary>
-    public static (int home, int away) Play(Team home, Team away, DateOnly date, Rng rng, Dictionary<int, StatLine> stats)
+    public static (int home, int away) Play(Team home, Team away, DateOnly date, Rng rng, Dictionary<int, StatLine> stats, Rules? rules = null)
     {
-        double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * 0.55 + 2.5, 11);
-        double total = rng.NextGaussian(160, 12);
+        // FIBA's 40 minutes score ~80 a side; NBA rules (48 minutes, the USA pyramid) ~100.
+        bool long48 = (rules?.GameMinutes ?? 40) >= 48;
+        double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * 0.55 * (long48 ? 1.2 : 1) + 2.5, long48 ? 13 : 11);
+        double total = rng.NextGaussian(long48 ? 202 : 160, long48 ? 14 : 12);
         int hp = (int)Math.Round((total + margin) / 2), ap = (int)Math.Round((total - margin) / 2);
         if (hp == ap) { if (rng.Chance(0.5)) hp += rng.Next(1, 6); else ap += rng.Next(1, 6); }
-        Lines(home, date, hp, rng, stats);
-        Lines(away, date, ap, rng, stats);
+        int minutes = rules?.GameMinutes ?? 40;
+        Lines(home, date, hp, rng, stats, minutes);
+        Lines(away, date, ap, rng, stats, minutes);
         return (hp, ap);
     }
 
-    private static void Lines(Team t, DateOnly date, int points, Rng rng, Dictionary<int, StatLine> stats)
+    private static void Lines(Team t, DateOnly date, int points, Rng rng, Dictionary<int, StatLine> stats, int gameMinutes = 40)
     {
         var rotation = t.Available(date).OrderByDescending(p => p.CurrentAbility).Take(Minutes.Length).ToList();
         if (rotation.Count == 0) return;
         var mins = rotation.Select((p, i) => Math.Max(0, Minutes[i] + rng.NextGaussian(0, 3))).ToArray();
-        double scale = 200 / mins.Sum();
+        double scale = gameMinutes * 5 / mins.Sum();
         var weight = rotation.Select((p, i) => mins[i] * scale * Math.Pow(p.CurrentAbility / 100.0, 2) * Math.Exp(rng.NextGaussian(0, 0.25))).ToArray();
         int teamReb = (int)Math.Round(rng.NextGaussian(36, 4)), teamAst = (int)Math.Round(rng.NextGaussian(18, 3));
         var pts = Share(points, weight);

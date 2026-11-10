@@ -114,7 +114,8 @@ public class MovementTests
 
         foreach (var c in world.Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic))
             foreach (var t in c.Clubs)
-                Assert.True(t.Roster.Count(p => !c.Profile.LocalNationalities.Contains(p.Nationality)) <= Math.Max(c.Profile.ForeignLimit, before[t.Id]),
+                // (A club relegated from the NABL arrives with its imports; it isn't made to cut them.)
+                Assert.True(t.Roster.Count(p => !c.Profile.LocalNationalities.Contains(p.Nationality)) <= Math.Max(c.Profile.ForeignLimit, before.TryGetValue(t.Id, out var b) && world.Competitions.First(x => x.Clubs.Contains(t)) == c ? b : 99),
                     $"{t.FullName} has too many imports");
         Assert.All(world.Clubs, t => Assert.True(t.Roster.Count >= GameWorld.RosterSize, t.FullName));
         Assert.Equal(2027, world.SummerEnded);

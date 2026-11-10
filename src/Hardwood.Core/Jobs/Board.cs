@@ -110,6 +110,16 @@ public static class Board
         _ => "Develop the squad and show progress",
     };
 
+    /// <summary>Goal wording for a league: leagues without playoffs are judged on the final table.</summary>
+    public static string Describe(SeasonGoal g, LeagueContext ctx) => ctx.IsNabl || ctx.PlayoffTeams > 1 ? Describe(g) : g switch
+    {
+        SeasonGoal.Title => "Win the league",
+        SeasonGoal.Finals => "Finish in the top two",
+        SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => "Finish in the top three",
+        SeasonGoal.Playoffs or SeasonGoal.PlayIn => "Finish in the top half",
+        _ => "Stay clear of the bottom and show progress",
+    };
+
     public static string Describe(Demand d) => d switch
     {
         Demand.StayUnderTax => "Keep wages within the budget",
@@ -136,8 +146,10 @@ public static class Board
         else
         {
             // Overseas leagues have one table and a short bracket: favourites chase the title, the top half the playoffs.
+            // Without playoffs (the USA pyramid) the goal is a table position: top half instead of "make the playoffs".
+            int topHalf = ctx.PlayoffTeams > 1 ? ctx.PlayoffTeams : Math.Max(3, ctx.Teams.Count / 2);
             goal = r == 1 ? SeasonGoal.Title : r <= 2 ? SeasonGoal.Finals : r <= Math.Max(3, ctx.PlayoffTeams / 2) ? SeasonGoal.SecondRound
-                 : r <= ctx.PlayoffTeams ? SeasonGoal.Playoffs : SeasonGoal.Develop;
+                 : r <= topHalf ? SeasonGoal.Playoffs : SeasonGoal.Develop;
             target = (int)Math.Round(ctx.SeasonGames * (0.73 - ctx.Fraction(r) * 0.46));
         }
         var o = team.Owner;
@@ -229,6 +241,15 @@ public static class Board
     /// <summary>How far a club got in an overseas league's playoffs (title, final, won a round, made them, or not).</summary>
     public static SeasonGoal Achieved(int teamId, World.CompetitionSeason season, World.CompetitionProfile profile)
     {
+        if (profile.Playoffs.Length == 0)
+        {
+            // Judged on the final table.
+            var table = season.Table();
+            int rank = table.FindIndex(r => r.TeamId == teamId) + 1;
+            if (rank <= 0) return SeasonGoal.Develop;
+            return rank == 1 ? SeasonGoal.Title : rank == 2 ? SeasonGoal.Finals : rank <= 3 ? SeasonGoal.SecondRound
+                 : rank <= Math.Max(3, table.Count / 2) ? SeasonGoal.Playoffs : SeasonGoal.Develop;
+        }
         if (season.ChampionId == teamId) return SeasonGoal.Title;
         if (season.RunnerUpId == teamId) return SeasonGoal.Finals;
         var mine = season.Series.Where(x => x.HighId == teamId || x.LowId == teamId).ToList();
@@ -251,7 +272,7 @@ public static class Board
         double impatience = 1.3 - team.Owner.Patience / 40.0;
         int diff = (int)achieved - (int)e.Goal;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
-        var lines = new List<string> { $"Goal: {Describe(e.Goal).ToLower()}. Result: {Describe(achieved).ToLower()} ({wins}-{losses})." };
+        var lines = new List<string> { $"Goal: {Describe(e.Goal, ctx).ToLower()}. Result: {Describe(achieved, ctx).ToLower()} ({wins}-{losses})." };
         foreach (var d in e.Demands)
         {
             bool met = Meeting(d, ctx, team, stats, today, wins, wins + losses);

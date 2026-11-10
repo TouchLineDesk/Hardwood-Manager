@@ -85,7 +85,7 @@ public sealed partial class BoardViewModel : PageViewModel
             var t = s.HumanTeam; var o = t.Owner; var rec = s.MyRecord; var ctx = s.ContextOf(t);
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
             var e = job.Current;
-            Goal = e == null ? "" : $"{Board.Describe(e.Goal)} · around {e.TargetWins} wins";
+            Goal = e == null ? "" : $"{Board.Describe(e.Goal, ctx)} · around {e.TargetWins} wins";
             Pace = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}: on pace for {rec.WinPct * ctx.SeasonGames:0} wins of {ctx.SeasonGames}" : "The season hasn't started.";
             Demands.Clear();
             if (e != null)

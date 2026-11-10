@@ -81,6 +81,19 @@ public static class Budgets
         }
     }
 
+    /// <summary>
+    /// A club that changed league (promotion or relegation): revenue and budgets for its new league straight away.
+    /// Its balance and fan base carry over; wages it already pays don't change.
+    /// </summary>
+    public static void Rescale(Team t, double salaryScale, double typicalArena)
+    {
+        var m = t.Money;
+        m.Revenue = Revenue(t, LeagueRevenue(salaryScale), typicalArena, 0.5);
+        m.WageBudget = Round(m.Revenue * WageShare(t.Owner));
+        m.TransferBudget = Round(m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15);
+        m.Ready = true;
+    }
+
     /// <summary>Wages the club has room for under its budget right now.</summary>
     public static long Room(Team t) => t.Money.WageBudget - ContractMarket.Payroll(t);
 

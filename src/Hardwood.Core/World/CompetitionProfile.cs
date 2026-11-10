@@ -41,6 +41,8 @@ public sealed class CompetitionProfile
     public bool ImportsAreStars { get; init; }
     /// <summary>Salaries as a share of the NABL market for the same player.</summary>
     public double SalaryScale { get; init; } = 0.12;
+    /// <summary>Youngest age a player may turn professional here (23 in the USA, decision #75); 0 = no rule.</summary>
+    public int MinAge { get; init; }
     /// <summary>How hard this league's jobs are to get compared with the NABL's (added to a club's prestige).</summary>
     public double JobPrestige { get; init; } = -10;
 
@@ -72,7 +74,12 @@ public static class Competitions
 {
     public const string Elite = "eel", Spain = "esp", Turkey = "tur", Australia = "aus", China = "chn", Guests = "eur-guests";
 
-    public static readonly CompetitionProfile[] All =
+    /// <summary>Every competition outside the NABL: the first world (decision #39) and the USA pyramid (decision #78).</summary>
+    public static readonly CompetitionProfile[] All;
+
+    static Competitions() => All = Base.Concat(UsaPyramid.Profiles).ToArray();
+
+    private static readonly CompetitionProfile[] Base =
     {
         new()
         {
