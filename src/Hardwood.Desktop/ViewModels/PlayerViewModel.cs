@@ -67,7 +67,9 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string[] RadarLabels { get; } = { "Inside", "Mid-range", "Three", "Playmaking", "Perimeter D", "Interior D", "Rebounding", "Athleticism" };
     public ObservableCollection<SeasonLine> Seasons { get; } = new();
 
-    [RelayCommand] public void Back() => Shell.Navigate("Roster");
+    [RelayCommand] public void Back() => Shell.GoBack();
+    /// <summary>His club (opens its team page), or null for a free agent.</summary>
+    public Hardwood.Core.Model.Team? Club => Player.TeamId is { } id ? Session.FindTeam(id) : null;
 
     public override void Refresh()
     {

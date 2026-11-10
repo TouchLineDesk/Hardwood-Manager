@@ -30,7 +30,7 @@
         <Border Classes="panel" Padding="6" Margin="0,0,6,0"><StackPanel><TextBlock Text="{Binding AwayName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding AwayZoneAttempts}" Makes="{Binding AwayZoneMakes}" Height="230"/></StackPanel></Border>
         <Border Grid.Column="1" Classes="panel" Padding="6" Margin="6,0,0,0"><StackPanel><TextBlock Text="{Binding HomeName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding HomeZoneAttempts}" Makes="{Binding HomeZoneMakes}" Height="230"/></StackPanel></Border>
       </Grid>
-      <TextBlock Text="{Binding AwayName}" Classes="h2"/>
+      <c:TeamLink Team="{Binding AwayTeam}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,6"/>
       <TextBlock Text="{Binding AwayTotals}" Classes="muted" FontSize="11.5"/>
       <DataGrid ItemsSource="{Binding Away}" Height="300">
         <DataGrid.Columns>
@@ -52,7 +52,7 @@
         </DataGrid.Columns>
       </DataGrid>
 
-      <TextBlock Text="{Binding HomeName}" Classes="h2"/>
+      <c:TeamLink Team="{Binding HomeTeam}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,6"/>
       <TextBlock Text="{Binding HomeTotals}" Classes="muted" FontSize="11.5"/>
       <DataGrid ItemsSource="{Binding Home}" Height="300">
         <DataGrid.Columns>

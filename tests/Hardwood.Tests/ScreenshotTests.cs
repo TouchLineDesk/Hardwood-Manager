@@ -64,6 +64,17 @@ public class ScreenshotTests
             var roster = (RosterViewModel)vm.CurrentPage!;
             roster.Open(roster.Rows[0]);
             Snap(window, Path.Combine(dir, $"{n++:00}-player.png"));
+            // Another team's page, and the Leagues page's other tabs.
+            vm.ShowTeam(session.League.Teams.First(t => t != session.HumanTeam));
+            Snap(window, Path.Combine(dir, $"{n++:00}-team-page.png"));
+            vm.Navigate("Leagues");
+            var leagues = (WorldViewModel)vm.CurrentPage!;
+            leagues.Tab = 2;
+            Snap(window, Path.Combine(dir, $"{n++:00}-leagues-stats.png"));
+            leagues.Tab = 3;
+            Snap(window, Path.Combine(dir, $"{n++:00}-leagues-rules.png"));
+            leagues.Tab = 1;
+            Snap(window, Path.Combine(dir, $"{n++:00}-leagues-schedule.png"));
             vm.Navigate("Schedule & Results");
             var sched = (ScheduleViewModel)vm.CurrentPage!;
             sched.OpenBox(sched.Games.First(g => g.Played));

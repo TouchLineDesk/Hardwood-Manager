@@ -22,7 +22,11 @@
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="*"/>
+            <DataGridTemplateColumn Header="Team" Width="*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="40"/>
             <DataGridTextColumn Header="L" Binding="{Binding L}" Width="40"/>
             <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="56"/>
@@ -44,7 +48,11 @@
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="*"/>
+            <DataGridTemplateColumn Header="Team" Width="*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="40"/>
             <DataGridTextColumn Header="L" Binding="{Binding L}" Width="40"/>
             <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="56"/>

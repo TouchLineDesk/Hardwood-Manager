@@ -91,7 +91,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Staff & Training", "Dumbbell", () => new StaffViewModel(this)),
             ("Schedule & Results", "CalendarDays", () => new ScheduleViewModel(this)),
             ("Standings", "ListOrdered", () => new StandingsViewModel(this)),
-            ("World", "Globe", () => new WorldViewModel(this)),
+            ("Leagues", "Globe", () => new WorldViewModel(this)),
             ("College", "GraduationCap", () => new CollegeViewModel(this)),
             ("League Leaders", "ChartColumnIncreasing", () => new LeadersViewModel(this)),
             ("Transactions", "ArrowLeftRight", () => new TransactionsViewModel(this)),
@@ -130,23 +130,43 @@ public sealed partial class MainViewModel : ViewModelBase
         RequestPortraits();
         var page = Page(name);
         page.Refresh();
+        _back.Clear();
         CurrentPage = page;
         foreach (var n in Nav) n.IsActive = n.Name == name;
         Guide.OnPage(name);
     }
 
-    public void ShowPlayer(Player player)
+    // Pages opened from a link (player, team, box score) remember where you came from, so Back returns there.
+    private readonly Stack<ViewModelBase> _back = new();
+
+    private void Open(PageViewModel vm)
     {
-        var vm = new PlayerViewModel(this, player);
+        if (CurrentPage != null && !InLiveGame) _back.Push(CurrentPage);
+        if (_back.Count > 30) { var keep = _back.Take(30).Reverse().ToList(); _back.Clear(); foreach (var k in keep) _back.Push(k); }
+        vm.Refresh();
         CurrentPage = vm;
         foreach (var n in Nav) n.IsActive = false;
     }
 
+    /// <summary>Back to the page before the last link you followed (Home if there's none).</summary>
+    public void GoBack()
+    {
+        if (_back.Count == 0) { Navigate("Home"); return; }
+        var prev = _back.Pop();
+        if (prev is PageViewModel p) p.Refresh();
+        CurrentPage = prev;
+        foreach (var n in Nav) n.IsActive = prev is PageViewModel pv && _pages.TryGetValue(n.Name, out var page) && page == pv;
+    }
+
+    public void ShowPlayer(Player player) => Open(new PlayerViewModel(this, player));
+
+    /// <summary>Any team's page: NABL, a club abroad, or a college program.</summary>
+    public void ShowTeam(Team team) => Open(new TeamViewModel(this, team));
+
     public void ShowBoxScore(Core.Engine.GameResult result)
     {
         InLiveGame = false;
-        CurrentPage = new BoxScoreViewModel(this, result);
-        foreach (var n in Nav) n.IsActive = false;
+        Open(new BoxScoreViewModel(this, result));
     }
 
     [RelayCommand]

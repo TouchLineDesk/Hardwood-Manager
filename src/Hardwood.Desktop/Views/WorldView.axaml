@@ -5,10 +5,10 @@
              x:Class="Hardwood.Desktop.Views.WorldView"
              x:DataType="vm:WorldViewModel">
   <DockPanel>
-    <TextBlock DockPanel.Dock="Top" Text="World" Classes="h1"/>
+    <TextBlock DockPanel.Dock="Top" Text="Leagues" Classes="h1"/>
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
       <ComboBox ItemsSource="{Binding Regions}" SelectedItem="{Binding Region}" MinWidth="140"/>
-      <ComboBox ItemsSource="{Binding Competitions}" SelectedItem="{Binding Selected}" MinWidth="240">
+      <ComboBox ItemsSource="{Binding Competitions}" SelectedItem="{Binding Selected}" MinWidth="260">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompetitionChoice"><TextBlock Text="{Binding Name}"/></DataTemplate>
         </ComboBox.ItemTemplate>
@@ -18,68 +18,129 @@
         <TextBlock Text="{Binding Note}" Classes="muted" FontSize="11.5"/>
       </StackPanel>
     </StackPanel>
-    <Grid ColumnDefinitions="3*,2*" RowDefinitions="*,Auto">
-      <DockPanel Margin="0,0,12,0">
-        <TextBlock DockPanel.Dock="Top" Text="Table" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding Table}" CanUserSortColumns="False" RowHeight="26">
+    <TabControl SelectedIndex="{Binding Tab}">
+      <TabItem Header="Standings">
+        <DataGrid ItemsSource="{Binding Table}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
-            <DataGridTemplateColumn Header="" Width="32">
+            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
+            <DataGridTemplateColumn Header="" Width="34">
               <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLogo Team="{Binding Team}" Width="20" Height="20" ShowText="False" Margin="4,0"/></DataTemplate>
+                <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Club" Binding="{Binding Name}" Width="*"/>
-            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="48"/>
-            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="48"/>
-            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="64"/>
-            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="66"/>
-            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="104"/>
+            <DataGridTemplateColumn Header="Team" Width="*">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLink Team="{Binding Team}" FontWeight="{Binding Mine, Converter={x:Static c:Converters.BoldIf}}" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="90"/>
+            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="50"/>
+            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="50"/>
+            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="70"/>
+            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="70"/>
+            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="130"/>
           </DataGrid.Columns>
         </DataGrid>
-      </DockPanel>
-      <ScrollViewer Grid.Column="1">
-        <StackPanel Spacing="10">
-          <Border Classes="panel">
-            <StackPanel Spacing="4">
-              <TextBlock Text="Playoffs" Classes="h2" Margin="0"/>
-              <TextBlock Text="{Binding Playoffs}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
-            </StackPanel>
-          </Border>
-          <Border Classes="panel">
-            <StackPanel Spacing="4">
-              <TextBlock Text="Latest results" Classes="h2" Margin="0"/>
-              <TextBlock Text="{Binding Results}" TextWrapping="Wrap" FontSize="12"/>
-            </StackPanel>
-          </Border>
-          <Border Classes="panel">
-            <StackPanel Spacing="4">
-              <TextBlock Text="Coming up" Classes="h2" Margin="0"/>
-              <TextBlock Text="{Binding Upcoming}" TextWrapping="Wrap" FontSize="12"/>
-            </StackPanel>
-          </Border>
-          <Border Classes="panel">
-            <StackPanel Spacing="4">
-              <TextBlock Text="Champions" Classes="h2" Margin="0"/>
-              <TextBlock Text="{Binding Champions}" TextWrapping="Wrap" FontSize="12"/>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </ScrollViewer>
-      <DockPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,0">
-        <TextBlock DockPanel.Dock="Top" Text="Scoring leaders" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding Leaders}" CanUserSortColumns="False" RowHeight="24" MaxHeight="290">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
-            <DataGridTextColumn Header="Player" Binding="{Binding Player}" Width="*"/>
-            <DataGridTextColumn Header="Club" Binding="{Binding Team}" Width="72"/>
-            <DataGridTextColumn Header="G" Binding="{Binding G}" Width="52"/>
-            <DataGridTextColumn Header="PPG" Binding="{Binding Ppg}" Width="68"/>
-            <DataGridTextColumn Header="RPG" Binding="{Binding Rpg}" Width="68"/>
-            <DataGridTextColumn Header="APG" Binding="{Binding Apg}" Width="68"/>
-          </DataGrid.Columns>
-        </DataGrid>
-      </DockPanel>
-    </Grid>
+      </TabItem>
+      <TabItem Header="Schedule &amp; results">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding GameFilters}" SelectedItem="{Binding GameFilter}" MinWidth="130"/>
+            <ComboBox ItemsSource="{Binding TeamFilters}" SelectedItem="{Binding TeamFilter}" MinWidth="260"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Games}" CanUserSortColumns="False" RowHeight="28">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="110"/>
+              <DataGridTemplateColumn Header="Home" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:LeagueGameRow">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0"><c:TeamLogo Team="{Binding Home}" Width="20" Height="20" ShowText="False"/><c:TeamLink Team="{Binding Home}"/></StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="90"/>
+              <DataGridTemplateColumn Header="Away" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:LeagueGameRow">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0"><c:TeamLogo Team="{Binding Away}" Width="20" Height="20" ShowText="False"/><c:TeamLink Team="{Binding Away}"/></StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="" Width="64">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:LeagueGameRow"><Button Content="Box" Command="{Binding Open}" IsVisible="{Binding HasBox}" Padding="8,1" FontSize="11"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="200"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Stats">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+            <TextBlock Text="Leaders in" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" MinWidth="130"/>
+            <TextBlock Text="Players with at least 40% of the games played; shooting needs enough attempts." Classes="muted" VerticalAlignment="Center"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Leaders}" CanUserSortColumns="False" RowHeight="28">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
+              <DataGridTemplateColumn Header="Player" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:WorldLeaderRow"><c:PlayerLink Player="{Binding Player}" Text="{Binding Name}" Margin="4,0"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Team" Width="80">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:WorldLeaderRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Club}" Margin="4,0"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="G" Binding="{Binding G}" Width="50"/>
+              <DataGridTextColumn Header="MPG" Binding="{Binding Mpg}" Width="64"/>
+              <DataGridTextColumn Header="PPG" Binding="{Binding Ppg}" Width="64"/>
+              <DataGridTextColumn Header="RPG" Binding="{Binding Rpg}" Width="64"/>
+              <DataGridTextColumn Header="APG" Binding="{Binding Apg}" Width="64"/>
+              <DataGridTextColumn Header="SPG" Binding="{Binding Spg}" Width="64"/>
+              <DataGridTextColumn Header="BPG" Binding="{Binding Bpg}" Width="64"/>
+              <DataGridTextColumn Header="FG%" Binding="{Binding Fg}" Width="70"/>
+              <DataGridTextColumn Header="3P%" Binding="{Binding Tp}" Width="70"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Rules &amp; format">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Rules}" MaxWidth="900" HorizontalAlignment="Left">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RuleRow">
+                <Grid ColumnDefinitions="140,*" Margin="0,0,0,10">
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Playoffs &amp; history">
+        <ScrollViewer>
+          <StackPanel Spacing="12">
+            <Border Classes="panel" IsVisible="{Binding Series, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Playoffs" Classes="h2" Margin="0"/>
+                <TextBlock Text="{Binding Series}" TextWrapping="Wrap" FontSize="12.5"/>
+              </StackPanel>
+            </Border>
+            <Border Classes="panel">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Champions" Classes="h2" Margin="0"/>
+                <TextBlock Text="{Binding Champions}" TextWrapping="Wrap" FontSize="12.5"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </UserControl>

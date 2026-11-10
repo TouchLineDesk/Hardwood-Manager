@@ -163,6 +163,6 @@ public sealed partial class BoxScoreViewModel : PageViewModel
 
     private static string Totals(TeamBox b) => $"FG {b.FGM}-{b.FGA} ({(b.FGA > 0 ? 100.0 * b.FGM / b.FGA : 0):F1}%) · 3P {b.ThreePM}-{b.ThreePA} · FT {b.FTM}-{b.FTA} · Reb {b.OReb + b.DReb} ({b.OReb} off) · Ast {b.Assists} · Stl {b.Steals} · Blk {b.Blocks} · TO {b.Turnovers} · Poss {b.Possessions}";
 
-    [RelayCommand] public void Back() => Shell.Navigate("Schedule & Results");
+    [RelayCommand] public void Back() => Shell.GoBack();
     public override void Refresh() { }
 }

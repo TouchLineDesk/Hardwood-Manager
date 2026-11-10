@@ -22,7 +22,11 @@
                 <DataTemplate x:DataType="vm:RankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Program" Binding="{Binding Name}" Width="300"/>
+            <DataGridTemplateColumn Header="Program" Width="300">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:RankRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="80"/>
             <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="90"/>
             <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>
@@ -40,7 +44,11 @@
                   <DataTemplate x:DataType="vm:RankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="Program" Binding="{Binding Name}" Width="300"/>
+              <DataGridTemplateColumn Header="Program" Width="300">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:RankRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
               <DataGridTextColumn Header="Conference" Binding="{Binding ConfRecord}" Width="110"/>
               <DataGridTextColumn Header="Overall" Binding="{Binding Record}" Width="90"/>
               <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>

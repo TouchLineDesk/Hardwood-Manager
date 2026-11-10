@@ -18,7 +18,7 @@ public class AssistantTests
         Assert.Contains(advice.Tasks, t => t.Key == "visit-Rotation" && t.Page == "Rotation");
         Assert.False(string.IsNullOrWhiteSpace(advice.PageTip));
         foreach (var page in new[] { "Home", "Inbox", "Roster", "Rotation", "Tactics", "Squad", "Board", "Staff & Training", "Schedule & Results",
-                     "Standings", "World", "College", "League Leaders", "Transactions", "Offseason", "Awards", "History", "Settings" })
+                     "Standings", "Leagues", "College", "League Leaders", "Transactions", "Offseason", "Awards", "History", "Settings" })
             Assert.False(string.IsNullOrWhiteSpace(Assistant.PageTip(page, GuideStage.Beginner).Tip), page);
 
         // Seen pages drop off the checklist; dismissed tasks stay hidden.

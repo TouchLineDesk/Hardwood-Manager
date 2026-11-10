@@ -13,7 +13,10 @@
             <c:TeamLogo Team="{Binding TeamObj}" Width="44" Height="44"/>
             <StackPanel VerticalAlignment="Center">
               <TextBlock Text="{Binding Name}" Classes="h1" Margin="0"/>
-              <TextBlock Text="{Binding Headline}" Classes="accent"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding Headline}" Classes="accent"/>
+                <c:TeamLink Team="{Binding Club}" IsVisible="{Binding Club, Converter={x:Static ObjectConverters.IsNotNull}}" Text="Open team page" FontSize="12"/>
+              </StackPanel>
             </StackPanel>
           </StackPanel>
           <TextBlock Text="{Binding TierLine}" Classes="muted"/>
