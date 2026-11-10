@@ -607,7 +607,8 @@ public sealed partial class GameSession
             {
                 v.Status = "filled";
                 t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
-                Post($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.", "League");
+                // Openings you didn't go for are news, not mail (critic review: 146 of these in one spell out of work).
+                PostWorld($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.");
             }
         }
         // Keep the market moving: struggling clubs sometimes change coach mid-season.

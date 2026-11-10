@@ -23,6 +23,13 @@ public class BoardSanityTests
         Assert.Equal(SeasonGoal.Title, job.Current.Goal);
         Board.SeasonReview(job, new Coach(), league, team, SeasonGoal.SecondRound, 70, 12, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2027, 6, 20));
         Assert.True(job.Confidence >= 60, $"confidence {job.Confidence}");
+
+        // A near miss on the win target and an early exit: a warning, not the sack.
+        var near = new JobState { Current = Board.SetExpectations(league, team, 2026), Confidence = 57, HiredSeason = 2025 };
+        near.Current.Goal = SeasonGoal.ConferenceFinals; near.Current.TargetWins = 56;
+        var (_, _, sacked) = Board.SeasonReview(near, new Coach(), league, team, SeasonGoal.Playoffs, 54, 28, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2028, 6, 20));
+        Assert.False(sacked);
+        Assert.True(near.Confidence >= 40, $"confidence {near.Confidence}");
     }
 
     [Fact]

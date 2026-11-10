@@ -309,7 +309,10 @@ public static class Board
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
         double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
         delta += Math.Clamp(winsVsTarget * 0.6, -10, 12);
-        if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6); // a strong season with a playoff upset is a disappointment, not a crisis
+        // A strong season with a playoff upset is a disappointment, not a crisis; a near miss on the win target is a warning.
+        // (Replayed careers, Nov 10: a 54-28 team set "conference finals" was sacked after a first-round exit.)
+        if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
+        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
         string goalText = e.Survive ? "stay up" : Describe(e.Goal, ctx).ToLower();
         var lines = new List<string> { $"Goal: {goalText}. Result: {Describe(achieved, ctx).ToLower()} ({wins}-{losses}, target {e.TargetWins} wins)." };
         foreach (var d in e.Demands)
