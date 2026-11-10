@@ -172,6 +172,12 @@ public static class Board
             if ((int)e.Goal > (int)capGoal) e.Goal = capGoal;
             if (previous.TargetWins > 0) e.TargetWins = Math.Min(e.TargetWins, previous.TargetWins);
         }
+        // ...and a goal that was met isn't cut far below what the club just did (a 64-18 team was set "make the play-in").
+        else if (previous.Achieved is { } done && !previous.Survive && steps.IndexOf(done) > 0)
+        {
+            var floor = steps[Math.Max(0, steps.IndexOf(done) - 1)];
+            if ((int)e.Goal < (int)floor) e.Goal = floor;
+        }
         int maxRise = (int)Math.Round(8 * ctx.SeasonGames / 82.0);
         if (previous.TargetWins > 0 && e.TargetWins > previous.TargetWins + maxRise) e.TargetWins = previous.TargetWins + maxRise;
         return e;

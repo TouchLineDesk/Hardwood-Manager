@@ -341,7 +341,8 @@ public sealed partial class GameSession
     public void PlayWorld(DateOnly date)
     {
         World.PlayThrough(date, _sim);
-        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
+        // Day to day the digest keeps its fortnightly rhythm (review #4: posting whenever there was news made it near-daily).
+        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: date == DateOnly.MaxValue);
         World.News.Clear();
     }
 
