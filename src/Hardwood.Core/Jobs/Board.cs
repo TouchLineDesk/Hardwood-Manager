@@ -207,7 +207,7 @@ public static class Board
     public static bool Meeting(Demand d, LeagueContext ctx, Team team, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int wins, int games) => d switch
     {
         Demand.StayUnderTax => ctx.Finance is { OpenMarket: false } f ? ContractMarket.Payroll(team) <= f.TaxLine
-                               : !team.Money.Ready || ContractMarket.Payroll(team) <= team.Money.WageBudget,
+                               : !team.Money.Ready || ContractMarket.Payroll(team) <= team.Money.WageBudget * 1.01, // a rounding overage isn't defiance
         Demand.PlayYoungsters => team.Roster.Where(p => p.Age(today) <= 23).Sum(p => stats.TryGetValue(p.Id, out var s) && s.TeamId == team.Id ? s.Mpg : 0) >= 25,
         _ => games == 0 || wins / (double)games >= 0.5,
     };
@@ -251,7 +251,10 @@ public static class Board
                 ? ("Your job is under threat", $"{team.Owner.Name} wants to see results immediately. Board confidence: {job.Confidence:0}/100.", false)
                 : ("The owner is concerned", $"{team.Owner.Name} is unhappy with how the season is going ({wins}-{losses}). Board confidence: {job.Confidence:0}/100.", false);
         }
-        if (level < job.WarningLevel) job.WarningLevel = level;
+        // Warnings ease only once confidence has clearly recovered, so a board hovering at a line doesn't warn every week
+        // (critic review #3: 126-135 board messages in three seasons).
+        int eased = job.Confidence < 28 ? 2 : job.Confidence < 43 ? 1 : 0;
+        if (eased < job.WarningLevel) job.WarningLevel = eased;
         return (null, null, false);
     }
 

@@ -7,13 +7,14 @@ namespace Hardwood.Core.Engine;
 public sealed class EngineConfig
 {
     // --- Make probability: logit = ZoneBase + SkillBeta*(skill-11) - ContestBeta*(contest-11) - FatigueBeta*(1-energy) + Home*home
+    // Two-point zones down another 0.02-0.03 (Nov 10): the late-game catch-up push lifted FG% to .486-.488 (critic review #3).
     // Lowered 0.065 across the board (Nov 9): roles and fitting systems steer shots to players' strengths, and the
     // players taking most shots are usually the happiest (morale); together FG% +1.2 pts before this.
     public double[] ZoneBaseLogit { get; set; } =
     {
-        0.265,  // Rim           ≈ 65% after shooter selection bias
-        -0.445, // ShortMid      ≈ 44%
-        -0.565, // LongMid       ≈ 41%
+        0.235,  // Rim           ≈ 65% after shooter selection bias
+        -0.465, // ShortMid      ≈ 44%
+        -0.585, // LongMid       ≈ 41%
         -0.585, // CornerThree   ≈ 39%
         -0.765, // AboveBreak3   ≈ 35%
     };
