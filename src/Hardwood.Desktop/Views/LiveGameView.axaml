@@ -13,12 +13,12 @@
           <!-- Away -->
           <Grid ColumnDefinitions="6,Auto,*,Auto" VerticalAlignment="Center">
             <Border Background="{Binding AwayBrush}" CornerRadius="3"/>
-            <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" Width="60" Height="60" Margin="12,0"/>
+            <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" Width="52" Height="52" Margin="10,0"/>
             <StackPanel Grid.Column="2" VerticalAlignment="Center">
-              <TextBlock Text="{Binding AwayName}" FontSize="22" FontWeight="Bold"/>
+              <TextBlock Text="{Binding AwayName}" FontSize="22" FontWeight="Bold" MinWidth="58"/>
               <TextBlock Text="AWAY" Classes="muted" FontSize="11" LetterSpacing="2"/>
             </StackPanel>
-            <TextBlock Grid.Column="3" Text="{Binding AwayScore}" FontSize="48" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+            <TextBlock Grid.Column="3" Text="{Binding AwayScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
           </Grid>
           <!-- Clock -->
           <Border Grid.Column="1" Background="#C0101318" CornerRadius="8" Padding="16,6" VerticalAlignment="Center" Margin="10,0">
@@ -29,12 +29,12 @@
           </Border>
           <!-- Home -->
           <Grid Grid.Column="2" ColumnDefinitions="Auto,*,Auto,6" VerticalAlignment="Center">
-            <TextBlock Text="{Binding HomeScore}" FontSize="48" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+            <TextBlock Text="{Binding HomeScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-              <TextBlock Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right"/>
+              <TextBlock Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right" MinWidth="58" TextAlignment="Right"/>
               <TextBlock Text="HOME" Classes="muted" FontSize="11" LetterSpacing="2" HorizontalAlignment="Right"/>
             </StackPanel>
-            <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" Width="60" Height="60" Margin="12,0"/>
+            <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" Width="52" Height="52" Margin="10,0"/>
             <Border Grid.Column="3" Background="{Binding HomeBrush}" CornerRadius="3"/>
           </Grid>
           <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">

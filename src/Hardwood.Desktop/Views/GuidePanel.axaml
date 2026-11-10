@@ -14,7 +14,7 @@
       </StackPanel>
     </Button>
 
-    <Border IsVisible="{Binding Expanded}" Width="320" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="1,0,0,0">
+    <Border IsVisible="{Binding Expanded}" Width="270" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="1,0,0,0">
       <DockPanel>
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="14,12,8,6">
           <c:Icon Kind="Lightbulb" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
