@@ -181,7 +181,7 @@ public sealed partial class GameSession
     private void MaybePostDigest(bool now = false)
     {
         if (WorldDigest.Count == 0) return;
-        if (!now && Today.DayNumber - LastDigest.DayNumber < 7 && WorldDigest.Count < 40) return;
+        if (!now && Today.DayNumber - LastDigest.DayNumber < 14 && WorldDigest.Count < 40) return; // fortnightly (review #4)
         var lines = WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : ""));
         Post($"Around the world: {WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}",
             string.Join("\n", lines) + "\n\nTables, results and leaders are on the Leagues page.", "World");
@@ -341,7 +341,8 @@ public sealed partial class GameSession
     public void PlayWorld(DateOnly date)
     {
         World.PlayThrough(date, _sim);
-        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
+        // Day to day the digest keeps its fortnightly rhythm (review #4: posting whenever there was news made it near-daily).
+        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: date == DateOnly.MaxValue);
         World.News.Clear();
     }
 
@@ -400,7 +401,7 @@ public sealed partial class GameSession
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
         {
-            if (Postseason.Stage != _stageBefore && !Postseason.Complete)
+            if (Postseason.Stage != _stageBefore && !Postseason.Complete && Postseason.Active.Any(x => x.Higher == HumanTeam || x.Lower == HumanTeam))
                 Post($"{Postseason.Stage} begins", string.Join("\n", Postseason.Active.Select(s => $"{s.Higher.FullName} vs {s.Lower.FullName}")), "League");
             if (Postseason.Complete)
             {
@@ -453,13 +454,26 @@ public sealed partial class GameSession
         var them = us == r.Home ? r.Away : r.Home;
         bool won = us.Points > them.Points;
         var top = us.Lines.OrderByDescending(l => l.Points).First();
-        string seriesNote = series != null ? $" Series: {series.Score}." : "";
         string title = $"{(won ? "W" : "L")} {us.Points}-{them.Points} {(us == r.Home ? "vs" : "at")} {them.Team.Abbreviation}";
         string line = $"{top.Player.Name} led with {Count(top.Points, "point")}, {Count(top.Rebounds, "rebound")} and {Count(top.Assists, "assist")}.";
         // Regular-season results go into one weekly message (critic review #2: up to 216 result messages in three
         // seasons buried everything else); playoff games still arrive one by one.
-        if (series == null && Phase != SessionPhase.Postseason) WeekResults.Add($"{r.Date ?? Today:ddd MMM d}  {title}  · {line}");
-        else Post(title, line + seriesNote, "Game");
+        // Playoff games arrive as one message when the series ends (critic review #4: up to 48 playoff messages in three seasons).
+        if (series == null) WeekResults.Add($"{r.Date ?? Today:ddd MMM d}  {title}  · {line}");
+        else if (series.Complete)
+        {
+            bool weWon = series.Winner == HumanTeam;
+            var opp = series.Higher == HumanTeam ? series.Lower : series.Higher;
+            int ours = series.Higher == HumanTeam ? series.HigherWins : series.LowerWins, theirs = series.Higher == HumanTeam ? series.LowerWins : series.HigherWins;
+            var lines = series.Games.Select((g, i) =>
+            {
+                var u = g.Home.Team == HumanTeam ? g.Home : g.Away; var t = u == g.Home ? g.Away : g.Home;
+                var best = u.Lines.OrderByDescending(l => l.Points).First();
+                return $"Game {i + 1}: {(u.Points > t.Points ? "W" : "L")} {u.Points}-{t.Points} {(u == g.Home ? "vs" : "at")} {t.Team.Abbreviation} · {best.Player.Name} {best.Points}";
+            });
+            Post($"{series.Round}: {(weWon ? "won" : "lost")} {ours}-{theirs} {(weWon ? "against" : "to")} {opp.Abbreviation}",
+                string.Join("\n", lines) + "\n\nBox scores are on the Schedule & Results page.", "Game");
+        }
         foreach (var (p, inj) in r.Injuries.Where(x => x.player.TeamId == HumanTeam.Id))
             Post($"{p.Name} injured: {inj.Name}", $"Out approximately {inj.DaysOut(Today)} days (expected return {inj.ReturnDate:MMM d}).{(inj.AttributeLoss > 0 ? " The medical staff expect some lasting loss of athleticism." : "")}", "Medical");
     }
@@ -785,20 +799,20 @@ public sealed partial class GameSession
         var all = League.AllActivePlayers.Concat(League.FreeAgents).Concat(League.Retired).ToDictionary(p => p.Id);
         string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
         string Voting(List<VoteLine> v) => string.Join("\n", v.Take(5).Select((l, i) => $"{i + 1}. {l.Name} ({l.Team}) {l.Share * 100:F0}% — {l.StatLine}"));
-        Post($"MVP: {Name(a.Mvp)}", Voting(a.MvpVoting), "Awards");
-        if (a.RoyVoting.Count > 0) Post($"Rookie of the Year: {Name(a.Roy)}", Voting(a.RoyVoting), "Awards");
-        Post($"Defensive Player of the Year: {Name(a.Dpoy)}", Voting(a.DpoyVoting), "Awards");
-        if (a.SixthManVoting.Count > 0) Post($"Sixth Man of the Year: {Name(a.SixthMan)}", Voting(a.SixthManVoting), "Awards");
-        if (a.CoachOfYearTeamId is { } coy)
-            Post($"Coach of the Year: {League.TeamById(coy).FullName}", a.CoachOfYearNote + (coy == HumanTeam.Id ? "\n\nThat's you." : ""), "Awards");
-        Post("All-League teams", string.Join("\n\n", a.AllLeague.Select((t, i) => $"{(i == 0 ? "First" : i == 1 ? "Second" : "Third")} team: {string.Join(", ", t.Select(id => Name(id)))}")), "Awards");
-        if (summary.FinalsMvpPlayerId is { } fm) Post($"Finals MVP: {Name(fm)}", $"{League.TeamById(summary.ChampionTeamId).FullName} win the title.", "Awards");
+        // One message for the season's awards (critic review #4: seven separate award messages a summer).
+        var parts = new List<string> { $"MVP: {Name(a.Mvp)}\n{Voting(a.MvpVoting)}" };
+        if (a.RoyVoting.Count > 0) parts.Add($"Rookie of the Year: {Name(a.Roy)}\n{Voting(a.RoyVoting)}");
+        parts.Add($"Defensive Player of the Year: {Name(a.Dpoy)}\n{Voting(a.DpoyVoting)}");
+        if (a.SixthManVoting.Count > 0) parts.Add($"Sixth Man of the Year: {Name(a.SixthMan)}\n{Voting(a.SixthManVoting)}");
+        if (a.CoachOfYearTeamId is { } coy) parts.Add($"Coach of the Year: {League.TeamById(coy).FullName}. {a.CoachOfYearNote}" + (coy == HumanTeam.Id ? " That's you." : ""));
+        parts.Add(string.Join("\n", a.AllLeague.Select((t, i) => $"All-League {(i == 0 ? "first" : i == 1 ? "second" : "third")} team: {string.Join(", ", t.Select(id => Name(id)))}")));
+        if (summary.FinalsMvpPlayerId is { } fm) parts.Add($"Finals MVP: {Name(fm)} ({League.TeamById(summary.ChampionTeamId).FullName}).");
         var ours = a.AllLeague.SelectMany(t => t).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => Name(id)).ToList();
-        if (ours.Count > 0) Post("Your All-League honourees", string.Join(", ", ours), "Awards");
-        foreach (var h in Offseason!.Report.HallOfFame)
-            Post($"Hall of Fame: {h.Name}", $"Inducted after a {League.Careers[h.Id].Seasons}-season career: {League.Careers[h.Id].Points:N0} points, {League.Careers[h.Id].Mvps} MVP{(League.Careers[h.Id].Mvps == 1 ? "" : "s")}, {League.Careers[h.Id].Titles} title{(League.Careers[h.Id].Titles == 1 ? "" : "s")}, {League.Careers[h.Id].AllStars} All-Star selections.", "Awards");
-        foreach (var (p, t) in Offseason.Report.RetiredNumbers)
-            Post($"{t.FullName} retire {p.LastName}'s number", $"{p.Name}'s jersey goes to the rafters.", "Awards");
+        if (ours.Count > 0) parts.Insert(0, $"Your All-League honourees: {string.Join(", ", ours)}.");
+        Post($"Season awards: {Name(a.Mvp)} is MVP", string.Join("\n\n", parts), "Awards");
+        var honours = Offseason!.Report.HallOfFame.Select(h => $"Hall of Fame: {h.Name}, inducted after a {League.Careers[h.Id].Seasons}-season career: {League.Careers[h.Id].Points:N0} points, {League.Careers[h.Id].Mvps} MVP{(League.Careers[h.Id].Mvps == 1 ? "" : "s")}, {League.Careers[h.Id].Titles} title{(League.Careers[h.Id].Titles == 1 ? "" : "s")}, {League.Careers[h.Id].AllStars} All-Star selections.")
+            .Concat(Offseason.Report.RetiredNumbers.Select(x => $"{x.Item2.FullName} retire {x.Item1.Name}'s number.")).ToList();
+        if (honours.Count > 0) Post(honours.Count == 1 ? honours[0].Split(',')[0].Split(" retire ")[0] : $"Hall of Fame and retired numbers ({honours.Count})", string.Join("\n", honours), "Awards");
     }
 
     private bool HumanTeamHad(Player p) => Stats.TryGetValue(p.Id, out var s) && s.TeamId == HumanTeam.Id;

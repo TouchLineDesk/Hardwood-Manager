@@ -59,4 +59,21 @@ public class BoardSanityTests
         // A new club (or the first season) takes the squad's goal as it is.
         Assert.Equal(SeasonGoal.Title, Board.NextExpectations(ctx, best, 2027, null, "nabl", 1, 0).Goal);
     }
+
+    [Fact]
+    public void A_missed_goal_is_not_raised_the_next_season()
+    {
+        // Critic review #4: Japan's goal climbed to "reach the Finals" after a 5th-place finish.
+        var league = NewLeague();
+        Board.EnsureOwnersAndCoaches(league, 3);
+        var ctx = LeagueContext.Nabl(league);
+        var best = league.Teams.OrderBy(t => Board.ProjectedRank(league, t)).First();
+        var missed = new Expectations { TeamId = best.Id, League = "nabl", Goal = SeasonGoal.SecondRound, TargetWins = 50, Achieved = SeasonGoal.Playoffs };
+        var next = Board.NextExpectations(ctx, best, 2027, missed, "nabl", 1, 1);
+        Assert.True(next.Goal <= SeasonGoal.SecondRound, $"{next.Goal}");
+        Assert.True(next.TargetWins <= 50);
+        // Met it: one step up is allowed.
+        var met = new Expectations { TeamId = best.Id, League = "nabl", Goal = SeasonGoal.SecondRound, TargetWins = 50, Achieved = SeasonGoal.SecondRound };
+        Assert.Equal(SeasonGoal.ConferenceFinals, Board.NextExpectations(ctx, best, 2027, met, "nabl", 1, 1).Goal);
+    }
 }

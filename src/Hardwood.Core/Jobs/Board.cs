@@ -37,6 +37,8 @@ public sealed class Expectations
     public string League { get; set; } = "";
     /// <summary>Newly promoted: the aim is to stay up.</summary>
     public bool Survive { get; set; }
+    /// <summary>What the club actually achieved (set at the season review), so next season's goal can follow it.</summary>
+    public SeasonGoal? Achieved { get; set; }
 }
 
 /// <summary>A job you could apply for while out of work (decision #74).</summary>
@@ -161,6 +163,21 @@ public static class Board
             : new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.Finals, SeasonGoal.Title };
         int prevIdx = steps.IndexOf(previous.Survive ? SeasonGoal.Develop : previous.Goal), idx = steps.IndexOf(e.Goal);
         if (prevIdx >= 0 && idx > prevIdx + 1) e.Goal = steps[prevIdx + 1];
+        // A goal that was missed isn't raised (critic review #4: Japan's goal climbed to "reach the Finals" after a 5th-place
+        // finish). The board asks for the same again, or one step past what the club really managed.
+        if (previous.Achieved is { } got && !previous.Survive && (int)got < (int)previous.Goal)
+        {
+            int cap = Math.Max(steps.IndexOf(got) + 1, 0);
+            var capGoal = steps[Math.Min(Math.Min(cap, prevIdx < 0 ? cap : prevIdx), steps.Count - 1)];
+            if ((int)e.Goal > (int)capGoal) e.Goal = capGoal;
+            if (previous.TargetWins > 0) e.TargetWins = Math.Min(e.TargetWins, previous.TargetWins);
+        }
+        // ...and a goal that was met isn't cut far below what the club just did (a 64-18 team was set "make the play-in").
+        else if (previous.Achieved is { } done && !previous.Survive && steps.IndexOf(done) > 0)
+        {
+            var floor = steps[Math.Max(0, steps.IndexOf(done) - 1)];
+            if ((int)e.Goal < (int)floor) e.Goal = floor;
+        }
         int maxRise = (int)Math.Round(8 * ctx.SeasonGames / 82.0);
         if (previous.TargetWins > 0 && e.TargetWins > previous.TargetWins + maxRise) e.TargetWins = previous.TargetWins + maxRise;
         return e;
@@ -185,6 +202,13 @@ public static class Board
             goal = r == 1 ? SeasonGoal.Title : r <= 2 ? SeasonGoal.Finals : r <= Math.Max(3, ctx.PlayoffTeams / 2) ? SeasonGoal.SecondRound
                  : r <= topHalf ? SeasonGoal.Playoffs : SeasonGoal.Develop;
             target = (int)Math.Round(ctx.SeasonGames * (0.73 - ctx.Fraction(r) * 0.46));
+            // Local and regional owners are modest (critic review #4: a 17-13 first season at tier 5 left the board at 20
+            // with a "win the title" goal): favourites aim for the top three, the rest for the top half.
+            if (ctx.Grassroots)
+            {
+                goal = r <= 3 ? SeasonGoal.SecondRound : r <= topHalf ? SeasonGoal.Playoffs : SeasonGoal.Develop;
+                target = (int)Math.Round(ctx.SeasonGames * (0.62 - ctx.Fraction(r) * 0.36));
+            }
         }
         var o = team.Owner;
         var e = new Expectations { Season = season, Goal = goal, TargetWins = target };
@@ -229,7 +253,7 @@ public static class Board
         var e = job.Current;
         int games = wins + losses;
         if (e == null || games < 5) return (null, null, false);
-        double impatience = 1.3 - team.Owner.Patience / 40.0;
+        double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
         double full = Math.Max(1, ctx.SeasonGames);
         double projected = wins / (double)games * full;
         // Confidence drifts toward a level set by the pace: on target ≈ 62, 10 wins short (of 82) ≈ 42, 20 short ≈ 22.
@@ -311,7 +335,8 @@ public static class Board
         int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season)
     {
         var e = job.Current ?? SetExpectations(ctx, team, season);
-        double impatience = 1.3 - team.Owner.Patience / 40.0;
+        e.Achieved = achieved;
+        double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
         int diff = (int)achieved - (int)e.Goal;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).

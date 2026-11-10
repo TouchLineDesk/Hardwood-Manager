@@ -39,11 +39,12 @@ public static class Tactics
     private static readonly double[] One = { 1, 1, 1, 1, 1 };
     public static double[] SystemZoneMix(OffensiveSystem s) => s switch
     {
-        OffensiveSystem.PickAndRoll => new[] { 1.3, 1.05, 0.9, 0.95, 1.0 },
+        OffensiveSystem.PickAndRoll => new[] { 1.35, 1.0, 0.8, 1.05, 1.0 },   // review #4: rolls and kick-outs, fewer long twos
         OffensiveSystem.Motion => new[] { 1.0, 0.95, 0.85, 1.3, 1.05 },
         OffensiveSystem.PostCentric => new[] { 1.25, 1.35, 0.9, 0.8, 0.75 },
-        OffensiveSystem.PaceAndSpace => new[] { 1.1, 0.8, 0.65, 1.25, 1.25 },
-        OffensiveSystem.Isolation => new[] { 1.1, 1.15, 1.1, 0.9, 1.0 },  // retuned Nov 10: it was 8 win-% points worse than anything else
+        OffensiveSystem.PaceAndSpace => new[] { 1.05, 0.85, 0.75, 1.18, 1.15 }, // review #4: was a near-free 6-7 win-% edge
+        OffensiveSystem.Balanced => new[] { 1.03, 1.0, 0.92, 1.04, 1.0 }, // review #4: a touch more modern than the raw average
+        OffensiveSystem.Isolation => new[] { 1.18, 1.1, 0.95, 0.9, 1.0 },  // review #4: drives over long twos (it was the weakest again)
         _ => One,
     };
 
@@ -72,7 +73,7 @@ public static class Tactics
     };
 
     public static double TurnoverShift(Tactic off, Tactic def) =>
-        (off.System switch { OffensiveSystem.Motion => 0.006, OffensiveSystem.Isolation => -0.01, OffensiveSystem.PostCentric => 0.003, _ => 0 })
+        (off.System switch { OffensiveSystem.Motion => 0.006, OffensiveSystem.Isolation => -0.012, OffensiveSystem.PostCentric => 0.003, OffensiveSystem.PaceAndSpace => 0.004, _ => 0 })
         + (def.Scheme switch { DefensiveScheme.Zone23 => 0.002, DefensiveScheme.SwitchEverything => 0.004, _ => 0 })
         + (def.DoubleStar ? 0.004 : 0);
 
