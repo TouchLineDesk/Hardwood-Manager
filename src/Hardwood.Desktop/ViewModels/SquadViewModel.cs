@@ -13,7 +13,8 @@ public sealed class MoodRow
     public string Pos => Player.PrimaryPosition.ToString();
     public string Mood => PeopleEngine.Mood(Player.Morale);
     public int Morale => (int)Math.Round(Player.Morale);
-    public string MoodClass => Player.Morale >= 68 ? "good" : Player.Morale < 38 ? "bad" : "";
+    public string MoodIcon => Player.Morale >= 60 ? "Smile" : Player.Morale >= 45 ? "Meh" : "Frown";
+    public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Player.Morale >= 60 ? "#3FB950" : Player.Morale >= 45 ? "#D29922" : "#F85149"));
     public string MainReason { get; init; } = "";
     public string Status { get; init; } = "";
 }
@@ -52,6 +53,9 @@ public sealed partial class SquadViewModel : PageViewModel
     [ObservableProperty] private string _reply = "";
     [ObservableProperty] private string _talkNote = "";
     [ObservableProperty] private string _promisesText = "";
+    [ObservableProperty] private IReadOnlyList<Hardwood.Desktop.Controls.LineSeries>? _trend;
+    [ObservableProperty] private string[]? _trendLabels;
+    [ObservableProperty] private bool _hasTrend;
 
     private double WinPct => Session.Standings[Session.HumanTeam].Games > 0 ? Session.Standings[Session.HumanTeam].WinPct : 0.5;
 
@@ -84,6 +88,14 @@ public sealed partial class SquadViewModel : PageViewModel
             var p = team.Roster.FirstOrDefault(x => x.Id == pr.PlayerId);
             return p == null ? "" : pr.Kind == "trade" ? $"{p.Name}: trade him by {pr.Made.AddDays(30):MMM d}" : $"{p.Name}: about {pr.TargetMpg:0} minutes a game over his next {pr.Games} games";
         }).Where(x => x.Length > 0));
+        var h = Session.MoodHistory;
+        HasTrend = h.Count >= 2;
+        Trend = HasTrend ? new[]
+        {
+            new Hardwood.Desktop.Controls.LineSeries { Name = "Chemistry", Values = h.Select(x => x.Chemistry).ToArray(), Color = ThemeService.Accent, Emphasis = true },
+            new Hardwood.Desktop.Controls.LineSeries { Name = "Average morale", Values = h.Select(x => x.Morale).ToArray(), Color = Avalonia.Media.Color.Parse("#58A6FF") },
+        } : null;
+        TrendLabels = HasTrend ? h.Select((x, i) => i % 4 == 0 ? x.Date.ToString("MMM d") : "").ToArray() : null;
         ShowPlayer();
     }
 

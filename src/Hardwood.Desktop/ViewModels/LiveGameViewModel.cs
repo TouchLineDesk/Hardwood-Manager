@@ -39,6 +39,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public string HomeName => _live.Result.Home.Team.Abbreviation;
     public Team AwayTeam => _live.Result.Away.Team;
     public Team HomeTeam => _live.Result.Home.Team;
+    public Avalonia.Media.IBrush AwayBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(AwayTeam.PrimaryColor));
+    public Avalonia.Media.IBrush HomeBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
+    public Avalonia.Media.Color HomeColor => ThemeService.AccentFor(HomeTeam);
 
     [ObservableProperty] private int _awayScore;
     [ObservableProperty] private int _homeScore;
@@ -53,6 +56,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public ObservableCollection<OnCourtRow> TheirFloor { get; } = new();
     public ObservableCollection<LineupSlot> Lineup { get; } = new();
     public string PlayPauseText => Complete ? "Final" : Running ? "Pause" : "Play";
+    public string PlayPauseIcon => Running ? "Pause" : "Play";
 
     // Tactics bound straight to the team: the engine reads them every possession.
     public double Pace { get => Us.Tactic.Pace; set { Us.Tactic.Pace = value; OnPropertyChanged(); } }
@@ -98,7 +102,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
 
-    partial void OnRunningChanged(bool value) => OnPropertyChanged(nameof(PlayPauseText));
+    partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); }
     partial void OnCompleteChanged(bool value) => OnPropertyChanged(nameof(PlayPauseText));
 
     private void Tick()

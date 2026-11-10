@@ -5,6 +5,9 @@ namespace Hardwood.Core.People;
 
 /// <summary>Something a player or team did this week that the human should hear about.</summary>
 public sealed record PeopleEvent(Player Player, Team Team, PeopleEventKind Kind, string Text);
+/// <summary>A week's reading of a team's mood: chemistry and average morale.</summary>
+public sealed record MoodSnapshot(DateOnly Date, double Chemistry, double Morale);
+
 public enum PeopleEventKind { WantsTalk, TradeRequest, PromiseKept, PromiseBroken, Settled }
 
 /// <summary>A promise the coach made a player (decision #64): more minutes over his next ten games.</summary>

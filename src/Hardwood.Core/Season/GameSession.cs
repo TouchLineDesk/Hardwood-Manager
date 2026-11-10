@@ -371,10 +371,14 @@ public sealed class GameSession
 
     /// <summary>Promises the coach has made his players (more minutes, or a trade).</summary>
     public List<People.Promise> Promises { get; } = new();
+    /// <summary>Weekly snapshot of your team's chemistry and average morale (for the trend charts).</summary>
+    public List<People.MoodSnapshot> MoodHistory { get; } = new();
 
     private void WeeklyPeople()
     {
         var events = People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, HumanTeam.Id, Promises);
+        MoodHistory.Add(new People.MoodSnapshot(Today, Math.Round(HumanTeam.Chemistry, 1), Math.Round(HumanTeam.Roster.Select(p => p.Morale).DefaultIfEmpty(60).Average(), 1)));
+        if (MoodHistory.Count > 120) MoodHistory.RemoveAt(0);
         foreach (var e in events)
         {
             string title = e.Kind switch

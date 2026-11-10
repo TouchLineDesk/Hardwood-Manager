@@ -5,35 +5,57 @@
              x:Class="Hardwood.Desktop.Views.LiveGameView"
              x:DataType="vm:LiveGameViewModel">
   <Grid RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
-    <!-- Scoreboard -->
-    <Border Grid.ColumnSpan="2" Classes="panel" Margin="0,0,0,10">
-      <Grid ColumnDefinitions="*,Auto,*,Auto">
-        <StackPanel>
-          <TextBlock Text="{Binding Headline}" Classes="muted"/>
-          <StackPanel Orientation="Horizontal" Spacing="14">
-            <c:TeamLogo Team="{Binding AwayTeam}" Width="44" Height="44" ShowText="False"/>
-            <TextBlock Text="{Binding AwayName}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding AwayScore}" FontSize="30" FontWeight="Bold" Classes="accent" VerticalAlignment="Center"/>
-            <TextBlock Text="–" FontSize="26" Classes="muted" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding HomeScore}" FontSize="30" FontWeight="Bold" Classes="accent" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding HomeName}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
-            <c:TeamLogo Team="{Binding HomeTeam}" Width="44" Height="44" ShowText="False"/>
-            <TextBlock Text="{Binding Clock}" FontSize="22" VerticalAlignment="Center" Margin="20,0,0,0"/>
+    <!-- Scoreboard: arena floor, team colours, big score (game-day presentation, decision #69) -->
+    <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" Height="118">
+      <Grid>
+        <c:CourtBackdrop Glow="{Binding HomeColor}" Intensity="0.7"/>
+        <Grid ColumnDefinitions="*,Auto,*,Auto" Margin="16,8">
+          <!-- Away -->
+          <Grid ColumnDefinitions="6,Auto,*,Auto" VerticalAlignment="Center">
+            <Border Background="{Binding AwayBrush}" CornerRadius="3"/>
+            <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" Width="60" Height="60" Margin="12,0"/>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+              <TextBlock Text="{Binding AwayName}" FontSize="22" FontWeight="Bold"/>
+              <TextBlock Text="AWAY" Classes="muted" FontSize="11" LetterSpacing="2"/>
+            </StackPanel>
+            <TextBlock Grid.Column="3" Text="{Binding AwayScore}" FontSize="48" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+          </Grid>
+          <!-- Clock -->
+          <Border Grid.Column="1" Background="#C0101318" CornerRadius="8" Padding="16,6" VerticalAlignment="Center" Margin="10,0">
+            <StackPanel>
+              <TextBlock Text="{Binding Clock}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource HwAccentBrush}"/>
+              <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="11" HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+          <!-- Home -->
+          <Grid Grid.Column="2" ColumnDefinitions="Auto,*,Auto,6" VerticalAlignment="Center">
+            <TextBlock Text="{Binding HomeScore}" FontSize="48" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+              <TextBlock Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right"/>
+              <TextBlock Text="HOME" Classes="muted" FontSize="11" LetterSpacing="2" HorizontalAlignment="Right"/>
+            </StackPanel>
+            <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" Width="60" Height="60" Margin="12,0"/>
+            <Border Grid.Column="3" Background="{Binding HomeBrush}" CornerRadius="3"/>
+          </Grid>
+          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+            <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
+            <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
+            <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="96">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
+                <TextBlock Text="{Binding PlayPauseText}"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110"/>
           </StackPanel>
-          <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace"/>
-        </StackPanel>
-        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-          <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
-          <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
-          <Button Classes="primary" Content="{Binding PlayPauseText}" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="90"/>
-          <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110"/>
-        </StackPanel>
+        </Grid>
       </Grid>
     </Border>
 
     <!-- Play by play -->
     <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="0,0,10,0" Padding="8">
       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2"/>
         <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
         <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
           <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2"/></DataTemplate></ListBox.ItemTemplate>
@@ -41,9 +63,11 @@
       </DockPanel>
     </Border>
 
-    <!-- Bench and controls -->
-    <ScrollViewer Grid.Row="1" Grid.Column="1">
-      <StackPanel Spacing="10">
+    <!-- Bench and controls: lineup and tactics on tabs, so tactics never sit below the fold -->
+    <TabControl Grid.Row="1" Grid.Column="1" Padding="0">
+      <TabItem Header="Lineup">
+        <ScrollViewer>
+          <StackPanel Spacing="10">
         <Border Classes="panel">
           <StackPanel Spacing="6">
             <Grid ColumnDefinitions="*,Auto">
@@ -90,6 +114,11 @@
           </StackPanel>
         </Border>
 
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Tactics">
+        <ScrollViewer>
         <Border Classes="panel">
           <StackPanel Spacing="8">
             <TextBlock Text="Tactics (live)" FontWeight="SemiBold"/>
@@ -109,7 +138,8 @@
             <TextBlock Text="Star usage" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}"/>
           </StackPanel>
         </Border>
-      </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
   </Grid>
 </UserControl>

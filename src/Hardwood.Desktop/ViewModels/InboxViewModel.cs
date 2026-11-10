@@ -10,6 +10,12 @@ public sealed partial class InboxItem : ObservableObject
     public string Date => Message.Date.ToString("MMM d");
     public string Title => Message.Title;
     public string Category => Message.Category;
+    public string Icon => Message.Category switch
+    {
+        "Squad" => "HeartHandshake", "World" => "Globe", "Draft" => "ClipboardPen", "Roster" => "Users", "League" => "Trophy",
+        "Board" => "Shield", "Staff" => "Dumbbell", "Game" => "Activity", "Trade" => "ArrowLeftRight", "Injury" => "Bandage", _ => "Newspaper",
+    };
+    public Avalonia.Media.IBrush IconBrush => Message.Read ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#8B96A5")) : new Avalonia.Media.SolidColorBrush(ThemeService.Accent);
     public string Body => Message.Body;
     [ObservableProperty] private bool _isRead;
     public string Weight => IsRead ? "Normal" : "SemiBold";

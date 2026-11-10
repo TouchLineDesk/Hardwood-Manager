@@ -16,7 +16,7 @@
       <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
-            <c:CompetitionBadge Kind="League" Width="40" Height="40"/>
+            <c:BallMark Width="34" Height="34" Fill="{DynamicResource HwAccentBrush}"/>
             <c:TeamLogo Team="{Binding Session.HumanTeam}" Width="40" Height="40"/>
             <StackPanel>
               <TextBlock Text="{Binding TeamText}" FontWeight="SemiBold" FontSize="14"/>
@@ -41,14 +41,21 @@
       <!-- Sidebar -->
       <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,1,0" Padding="8">
         <DockPanel>
-          <Button DockPanel.Dock="Bottom" Classes="nav" Content="Main menu" Command="{Binding BackToStartCommand}" Foreground="{StaticResource HwMutedBrush}"/>
+          <Button DockPanel.Dock="Bottom" Classes="nav" Command="{Binding BackToStartCommand}" Foreground="{StaticResource HwMutedBrush}">
+            <StackPanel Orientation="Horizontal">
+              <c:Icon Kind="LogOut" Width="17" Height="17" Margin="0,0,10,0" Stroke="1.8" Foreground="{StaticResource HwMutedBrush}"/>
+              <TextBlock Text="Main menu"/>
+            </StackPanel>
+          </Button>
           <ItemsControl ItemsSource="{Binding Nav}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:NavItem">
                 <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding Command}">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding Name}"/>
-                    <Border Grid.Column="1" Background="{StaticResource HwAccentBrush}" CornerRadius="8" Padding="6,0" IsVisible="{Binding Badge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <c:Icon Kind="{Binding Icon}" Width="17" Height="17" Margin="0,0,10,0" Stroke="1.8" VerticalAlignment="Center"
+                            Foreground="{Binding $parent[Button].Foreground}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}"/>
+                    <Border Grid.Column="2" Background="{DynamicResource HwAccentBrush}" CornerRadius="8" Padding="6,0" IsVisible="{Binding Badge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                       <TextBlock Text="{Binding Badge}" Foreground="#111" FontSize="11" FontWeight="Bold"/>
                     </Border>
                   </Grid>
