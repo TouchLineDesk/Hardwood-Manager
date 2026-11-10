@@ -39,6 +39,14 @@ public static class Portraits
     /// <summary>Drop these players' cached images (their files were just redrawn) and tell the UI to redraw.</summary>
     public static void Invalidate(IEnumerable<int> playerIds)
     {
+        // Always hop onto the UI thread as a posted job: the portrait service reports from the thread pool, and redrawing
+        // in the middle of a render pass crashes Avalonia ("Visual was invalidated during the render pass"; CI, Nov 10).
+        var ids = playerIds.ToList();
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => InvalidateNow(ids), Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    private static void InvalidateNow(IEnumerable<int> playerIds)
+    {
         bool any = false;
         foreach (var id in playerIds)
         {

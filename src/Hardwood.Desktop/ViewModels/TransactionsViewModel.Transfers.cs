@@ -21,7 +21,7 @@ public sealed class MarketRow
     public string PA => Scouting.Potential(Player, Knowledge).ToString();
     public string Contract => Player.Contract is { } c ? $"${c.Salary / 1e6:F2}M × {Math.Max(1, c.Years)}" : "-";
     public long AskValue { get; init; }
-    public string Ask => $"${AskValue / 1e6:F2}M";
+    public string Ask => $"${AskValue / 1e6:F1}M";
     public string Clause => Player.Contract is { Buyout: > 0 } c ? $"${c.Buyout / 1e6:F2}M" : "-";
     public bool Agreed { get; init; }
     public string Status => Agreed ? "Fee agreed" : "";
