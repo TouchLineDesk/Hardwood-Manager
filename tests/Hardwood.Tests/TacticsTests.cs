@@ -47,11 +47,11 @@ public class TacticsTests
         Assert.InRange(mean, 0.3, 0.7);
     }
 
-    private static (double threeShare, double pace, double starShare) Play(Team a, Team b, int games, Rules rules)
+    private static (double threeShare, double pace, double starShare) Play(Team a, Team b, int games, Rules rules, Player? star = null)
     {
         var sim = new GameSimulator();
         double threes = 0, fga = 0, poss = 0, starFga = 0;
-        var star = b.Roster.MaxBy(p => p.CurrentAbility)!;
+        star ??= b.Roster.MaxBy(p => p.CurrentAbility)!;
         for (int i = 0; i < games; i++)
         {
             var r = sim.Simulate(a, b, rules, (ulong)(100 + i), date: On);
@@ -78,9 +78,13 @@ public class TacticsTests
         // Doubling their star cuts his share of their shots.
         a.Tactic.System = OffensiveSystem.Balanced;
         a.Tactic.DoubleStar = false;
-        var normal = Play(a, b, 40, league.Rules);
+        // Their star is whoever takes their shots (the engine's go-to man), not simply their highest-rated player.
+        var sim = new GameSimulator();
+        var first = sim.Simulate(a, b, league.Rules, 100UL, date: On);
+        var star = b.Roster.MaxBy(p => first.Away.LineFor(p).FGA)!;
+        var normal = Play(a, b, 40, league.Rules, star);
         a.Tactic.DoubleStar = true;
-        var doubled = Play(a, b, 40, league.Rules);
+        var doubled = Play(a, b, 40, league.Rules, star);
         Assert.True(doubled.starShare < normal.starShare, $"{doubled.starShare:F3} vs {normal.starShare:F3}");
     }
 

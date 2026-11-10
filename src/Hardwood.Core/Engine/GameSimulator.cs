@@ -359,6 +359,14 @@ public sealed class GameSimulator
             SetTactics(off); SetTactics(def);
             _offStar = Star(off); _defStar = Star(def);
             _fitLogit = FitFor(off, def) * (off.Team.Coach?.FitMultiplier ?? 1);
+            // Fourth-quarter game flow: a team well ahead eases off (rests starters, runs clock, loses focus) and the
+            // team behind presses; leads shrink. Without it overtime came in ~3% of games, half the NBA's rate (critic review #2).
+            if (_period >= _rules.Periods)
+            {
+                int lead = Score(off) - Score(def);
+                if (lead <= -6) _fitLogit += _cfg.CatchUpLogit;
+                else if (lead >= 6) _fitLogit -= _cfg.CatchUpLogit * 0.7;
+            }
 
             double pace = (off.Tac.Pace + def.Tac.Pace) / 2.0 + Tactics.PaceShift(off.Tac.System);
             // Pace is possessions per 48 minutes (Tactic.Pace), so a 40-minute FIBA game has 5/6 as many possessions.

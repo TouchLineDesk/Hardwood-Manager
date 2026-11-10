@@ -71,4 +71,27 @@ public class AssistantTests
         Assert.NotEmpty(tips);
         Assert.Contains(tips, t => t.Contains("on pace for"));
     }
+
+    [Fact]
+    public void Notes_go_quiet_after_three_days_and_the_last_game_is_explained()
+    {
+        var s = GameSession.NewGame(2026, 5, null);
+        while (s.MyRecord.Wins + s.MyRecord.Losses < 12) s.AdvanceDay();
+        var progress = new GuideProgress();
+        var first = Assistant.Advise(s, "Home", GuideLevel.StrategyOnly, progress).Strategy;
+        Assert.NotEmpty(first);
+        for (int i = 0; i < 4; i++) { Assistant.Advise(s, "Home", GuideLevel.StrategyOnly, progress); }
+        // Same day: still counts as one day.
+        Assert.Equal(first.Count, Assistant.Advise(s, "Home", GuideLevel.StrategyOnly, progress).Strategy.Count);
+        var until = s.Today.AddDays(3);
+        var seen = new List<IReadOnlyList<string>>();
+        while (s.Today < until) { s.AdvanceDay(); seen.Add(Assistant.Advise(s, "Home", GuideLevel.StrategyOnly, progress).Strategy); }
+        Assert.All(progress.NoteDays.Values, n => Assert.True(n <= Assistant.MaxNoteDays));
+
+        // After a game: two or three reasons.
+        while (!s.MyGames().Any(g => g.Played && g.Result != null && s.Today.DayNumber - g.Date.DayNumber <= 1)) s.AdvanceDay();
+        var (title, why) = Assistant.LastGame(s);
+        Assert.StartsWith("Last game:", title);
+        Assert.InRange(why.Count, 1, 3);
+    }
 }

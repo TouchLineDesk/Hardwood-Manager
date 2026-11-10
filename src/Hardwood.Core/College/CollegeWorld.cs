@@ -380,7 +380,7 @@ public sealed class CollegeWorld
         }
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College);
+            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
         }
         UpdateElo(g);

@@ -196,7 +196,10 @@ public static class BalanceAudit
         m.Add(new("NABL competitive balance", "Scoring leader (points per game)", "0.0", leader, 28, 36, "NBA 2015-25"));
         int distinct = report.Champions.Select(c => c[(c.IndexOf(':') + 2)..]).Distinct().Count();
         // Real leagues have dynasties and repeat winners: the NBA had 7 different champions in 2015-24, 6 in 2005-14.
-        m.Add(new("NABL competitive balance", "Different champions", "0", new() { distinct }, seasons >= 5 ? Math.Ceiling(seasons * 0.4) : null, seasons >= 5 ? Math.Ceiling(seasons * 0.8) : null, "NBA: 6-7 different per 10 seasons"));
+        // NBA: 6-7 different champions in a decade, but only ~20 franchises in 77 years: repeat winners pile up over
+        // long runs, so the band narrows with length (critic review #2: 40-80 per century was impossible).
+        double champLo = seasons <= 20 ? Math.Ceiling(seasons * 0.4) : Math.Ceiling(8 + seasons * 0.15), champHi = seasons <= 20 ? Math.Ceiling(seasons * 0.8) : Math.Ceiling(16 + seasons * 0.3);
+        m.Add(new("NABL competitive balance", "Different champions", "0", new() { distinct }, seasons >= 5 ? champLo : null, seasons >= 5 ? champHi : null, "NBA: 6-7 per decade; ~20 in 77 years"));
         int mostTitles = report.Champions.GroupBy(c => c[(c.IndexOf(':') + 2)..]).Select(g => g.Count()).DefaultIfEmpty(0).Max();
         m.Add(new("NABL competitive balance", "Most titles by one team", "0", new() { mostTitles }, seasons >= 5 ? 1 : null, seasons >= 5 ? Math.Ceiling(seasons * 0.4) : null, "NBA: 4 in 10 (GSW 2015-24)"));
         // Players: league talent should neither inflate nor collapse; stars ~1-2 per 3 teams.
@@ -211,7 +214,8 @@ public static class BalanceAudit
         m.Add(new("NABL development", "Yearly ability change, age 22 and under", "+0.0;-0.0", devYoung, 2, 12, "young players improve"));
         m.Add(new("NABL development", "Yearly ability change, age 26-29", "+0.0;-0.0", devPrime, -2, 3, "prime: roughly flat"));
         m.Add(new("NABL development", "Yearly ability change, age 32+", "+0.0;-0.0", devOld, -10, -1, "decline"));
-        m.Add(new("NABL development", "Retirements per season", "0", retiredN, 15, 50, "NBA ~20-40"));
+        // Here many veterans finish their careers abroad or down the pyramid instead of retiring from the NABL.
+        m.Add(new("NABL development", "Retirements per season", "0", retiredN, 8, 50, "NBA ~20-40; veterans here often move abroad first"));
         m.Add(new("NABL development", "Average retirement age", "0.0", retiredAge, 32, 37, "NBA ~33-35"));
         if (fin.OpenMarket)
         {
@@ -245,9 +249,13 @@ public static class BalanceAudit
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)
         {
-            bool usa = Competitions.All.FirstOrDefault(c => c.Name == name) is { } prof && UsaPyramid.IsPyramid(prof.Key);
-            // The USA pyramid plays NBA rules (48 minutes): G League teams score ~110-120, lower levels less.
-            (double lo, double hi) = usa ? (88, 112) : name switch { "Australian League" => (78, 96), "China Pro League" => (78, 108), _ => (74, 90) };
+            // Each league scores at its own level (critic review #2); the check is that level ± 6.
+            double target = name switch
+            {
+                "USA tier 2" => 110, "USA tier 3" => 105, "USA regional leagues" => 100, "USA local leagues" => 96,
+                _ => Competitions.All.FirstOrDefault(c => c.Name == name)?.PointsPerTeam ?? 80,
+            };
+            (double lo, double hi) = (target - 6, target + 6);
             m.Add(new("Overseas", $"{name}: points per team per game", "0.0", list, lo, hi, "recent seasons"));
         }
         foreach (var (name, list) in worldCa)

@@ -13,7 +13,11 @@ public enum GuideStage { Beginner, Experienced, Strategy }
 /// <summary>Something to do now, most urgent first. <see cref="Page"/> is the page that does it (null: just press Continue).</summary>
 public sealed record GuideTask(string Key, int Priority, string Title, string Detail, string? Page);
 
-public sealed record GuideAdvice(GuideStage Stage, string Headline, IReadOnlyList<GuideTask> Tasks, string PageTitle, string PageTip, IReadOnlyList<string> Strategy);
+public sealed record GuideAdvice(GuideStage Stage, string Headline, IReadOnlyList<GuideTask> Tasks, string PageTitle, string PageTip, IReadOnlyList<string> Strategy,
+    string LastGameTitle = "", IReadOnlyList<string>? LastGameWhy = null);
+
+/// <summary>A strategy note with a key that stays the same while its point does (for "don't repeat yourself").</summary>
+public sealed record StrategyNote(string Key, string Text);
 
 /// <summary>What the player has seen and done, kept with the app settings (it's the person who learns, not the save).</summary>
 public sealed class GuideProgress
@@ -22,6 +26,9 @@ public sealed class GuideProgress
     public HashSet<string> Dismissed { get; set; } = new();
     public int DaysPlayed { get; set; }
     public int SeasonsPlayed { get; set; }
+    /// <summary>On how many different days each strategy note has been shown; a note goes quiet after three (critic review #2).</summary>
+    public Dictionary<string, int> NoteDays { get; set; } = new();
+    public Dictionary<string, int> NoteLastDay { get; set; } = new();
 }
 
 /// <summary>
@@ -47,7 +54,53 @@ public static class Assistant
         var stage = StageFor(level, progress);
         var tasks = Tasks(s, stage, progress).Where(t => !progress.Dismissed.Contains(t.Key)).OrderBy(t => t.Priority).ToList();
         var (title, tip) = PageTip(page, stage);
-        return new GuideAdvice(stage, Headline(s, tasks), tasks, title, tip, Strategy(s, stage));
+        var notes = new List<string>();
+        int day = s.Today.DayNumber;
+        foreach (var n in StrategyNotes(s, stage))
+        {
+            int shown = progress.NoteDays.GetValueOrDefault(n.Key);
+            if (shown >= MaxNoteDays) continue;
+            if (progress.NoteLastDay.GetValueOrDefault(n.Key) != day) { progress.NoteDays[n.Key] = shown + 1; progress.NoteLastDay[n.Key] = day; }
+            notes.Add(n.Text);
+        }
+        var (gameTitle, why) = LastGame(s);
+        return new GuideAdvice(stage, Headline(s, tasks), tasks, title, tip, notes, gameTitle, why);
+    }
+
+    /// <summary>A strategy note is shown on at most this many days (its key changes when the situation does).</summary>
+    public const int MaxNoteDays = 3;
+
+    // ------------------------------------------------------------------------------------------
+    // Why the last game went the way it did (critic review #2: "the assistant never says why")
+
+    public static (string title, IReadOnlyList<string> why) LastGame(GameSession s)
+    {
+        if (!s.Employed) return ("", Array.Empty<string>());
+        var g = s.MyGames().LastOrDefault(x => x.Played && x.Result != null);
+        if (g?.Result is not { } r || s.Today.DayNumber - g.Date.DayNumber > 6) return ("", Array.Empty<string>());
+        var us = r.Home.Team == s.HumanTeam ? r.Home : r.Away;
+        var them = us == r.Home ? r.Away : r.Home;
+        bool won = us.Points > them.Points;
+        var factors = new List<(double weight, string text)>();
+        void Add(double edge, string good, string bad) { if (Math.Abs(edge) >= 1) factors.Add((won ? edge : -edge, edge > 0 ? good : bad)); }
+        int to = them.Turnovers - us.Turnovers;
+        Add(to * 1.1, $"We won the turnover battle ({us.Turnovers} to {them.Turnovers}).", $"Turnovers: we gave it away {us.Turnovers} times to their {them.Turnovers}.");
+        int reb = (us.OReb + us.DReb) - (them.OReb + them.DReb);
+        Add(reb * 0.8, $"We owned the glass ({(us.OReb + us.DReb)}-{(them.OReb + them.DReb)}, {us.OReb} offensive).", $"They out-rebounded us {(them.OReb + them.DReb)}-{(us.OReb + us.DReb)} ({them.OReb} offensive boards).");
+        double our3 = us.ThreePA == 0 ? 0 : (double)us.ThreePM / us.ThreePA, their3 = them.ThreePA == 0 ? 0 : (double)them.ThreePM / them.ThreePA;
+        Add((our3 - their3) * 40, $"Shooting from three: {us.ThreePM}/{us.ThreePA} against their {them.ThreePM}/{them.ThreePA}.", $"They shot {them.ThreePM}/{them.ThreePA} from three to our {us.ThreePM}/{us.ThreePA}.");
+        Add((us.FTA - them.FTA) * 0.4, $"We got to the line {us.FTA} times to their {them.FTA}.", $"They got to the line {them.FTA} times to our {us.FTA}.");
+        var ourTop = us.Lines.OrderByDescending(l => l.Points).First();
+        var theirTop = them.Lines.OrderByDescending(l => l.Points).First();
+        if (theirTop.Points >= 30) factors.Add((won ? -2 : 4, $"{theirTop.Player.Name} hurt us: {theirTop.Points} points." + (won ? " We survived it." : " Put a stopper on him next time.")));
+        if (ourTop.Points >= 28) factors.Add((won ? 4 : 1, $"{ourTop.Player.Name} carried us with {ourTop.Points}."));
+        int bench = us.Lines.Where(l => l.Minutes > 0).OrderByDescending(l => l.Minutes).Skip(5).Sum(l => l.Points);
+        int theirBench = them.Lines.Where(l => l.Minutes > 0).OrderByDescending(l => l.Minutes).Skip(5).Sum(l => l.Points);
+        Add((bench - theirBench) * 0.25, $"The bench outscored theirs {bench}-{theirBench}.", $"Their bench outscored ours {theirBench}-{bench}.");
+        if (Math.Abs(us.Points - them.Points) <= 4) factors.Add((3, won ? "A coin flip at the end that went our way." : "Lost a coin flip at the end: nothing to panic about."));
+        var why = factors.OrderByDescending(f => f.weight).Take(3).Select(f => f.text).ToList();
+        string title = $"Last game: {(won ? "W" : "L")} {us.Points}-{them.Points} {(g.Home ? "vs" : "at")} {g.Opponent.Abbreviation}";
+        return (title, why);
     }
 
     // ------------------------------------------------------------------------------------------
@@ -131,9 +184,11 @@ public static class Assistant
                 $"{string.Join(", ", missing.Select(Staff.RoleName))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
 
         // ---- inbox
-        int unread = s.Inbox.Count(m => !m.Read);
-        if (unread >= 5)
-            yield return new($"inbox-{unread / 5}", 35, $"{unread} unread messages", "Most are news; the important ones (board, injuries, offers) are worth a look.", "Inbox");
+        // Only mail that needs you (critic review #2: "26 unread messages" sat at the top of the panel all season).
+        var important = s.Inbox.Where(m => !m.Read && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff").ToList();
+        if (important.Count > 0)
+            yield return new($"inbox-{important.Max(m => m.Id)}", 22, $"{important.Count} message{(important.Count == 1 ? "" : "s")} that need{(important.Count == 1 ? "s" : "")} you",
+                $"Latest: {important[0].Title}. Board, medical, squad and transfer news is worth reading; results and world news can wait.", "Inbox");
 
         // ---- game day
         if (s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && s.NextMyGame is { } next && next.Date <= today.AddDays(1) && stage != GuideStage.Strategy)
@@ -183,9 +238,12 @@ public static class Assistant
     // ------------------------------------------------------------------------------------------
     // Strategy: what an assistant would point out about this team right now
 
-    public static IReadOnlyList<string> Strategy(GameSession s, GuideStage stage)
+    /// <summary>The notes as plain text (all of them, ignoring what has been shown).</summary>
+    public static IReadOnlyList<string> Strategy(GameSession s, GuideStage stage) => StrategyNotes(s, stage).Select(n => n.Text).ToList();
+
+    public static List<StrategyNote> StrategyNotes(GameSession s, GuideStage stage)
     {
-        var tips = new List<string>();
+        var tips = new List<StrategyNote>();
         if (!s.Employed) return tips;
         var team = s.HumanTeam;
         var today = s.Today;
@@ -197,9 +255,9 @@ public static class Assistant
         if (s.Job.Current is { } e && games >= 10 && s.Phase == SessionPhase.RegularSeason)
         {
             double pace = rec.Wins / (double)games * ctx.SeasonGames;
-            tips.Add(pace >= e.TargetWins
+            tips.Add(new($"pace-{s.League.Season}-{(int)(pace - e.TargetWins) / 5}", pace >= e.TargetWins
                 ? $"We're on pace for {pace:F0} wins; the board wants {e.TargetWins}. Keep the rotation steady."
-                : $"We're on pace for {pace:F0} wins and the board wants {e.TargetWins}. Look at the weakest starter, or a tactic that suits our best players.");
+                : $"We're on pace for {pace:F0} wins and the board wants {e.TargetWins}. Look at the weakest starter, or a tactic that suits our best players."));
         }
 
         // Young players who need minutes.
@@ -209,26 +267,26 @@ public static class Assistant
             .Where(x => x.pot >= x.p.CurrentAbility + 15 && x.mpg < 15 && x.p.IsAvailable(today))
             .OrderByDescending(x => x.pot).Take(2).ToList();
         foreach (var (p, pot, mpg) in young)
-            tips.Add(s.Phase == SessionPhase.Offseason
+            tips.Add(new($"young-{p.Id}-{s.Phase == SessionPhase.Offseason}", s.Phase == SessionPhase.Offseason
                 ? $"{p.Name} ({p.Age(today)}) could become a {Level((int)pot)} but played {mpg:F0} minutes a game last season. Plan real minutes for him next year."
-                : $"{p.Name} ({p.Age(today)}) could become a {Level((int)pot)} but plays {mpg:F0} minutes. Young players develop faster with real minutes.");
+                : $"{p.Name} ({p.Age(today)}) could become a {Level((int)pot)} but plays {mpg:F0} minutes. Young players develop faster with real minutes."));
 
         // Heavy minutes.
         var tired = s.Phase == SessionPhase.Offseason ? new List<Player>()
             : team.Roster.Where(p => stats.TryGetValue(p.Id, out var st) && st.Games >= 5 && st.Mpg > 37).ToList();
         if (tired.Count > 0)
-            tips.Add($"{Names(tired.Take(2))} average{(tired.Count == 1 ? "s" : "")} over 37 minutes. Tired legs mean worse shooting late and more injuries.");
+            tips.Add(new($"tired-{string.Join('.', tired.Select(p => p.Id))}", $"{Names(tired.Take(2))} average{(tired.Count == 1 ? "s" : "")} over 37 minutes. Tired legs mean worse shooting late and more injuries."));
 
         // The weakest position.
         var byPos = team.Roster.GroupBy(p => p.PrimaryPosition).ToDictionary(g => g.Key, g => g.Max(p => p.CurrentAbility));
         var gaps = Enum.GetValues<Position>().Where(pos => !byPos.ContainsKey(pos)).ToList();
-        if (gaps.Count > 0) tips.Add($"No natural {gaps[0]} on the roster. Players out of position lose effectiveness.");
+        if (gaps.Count > 0) tips.Add(new($"gap-{gaps[0]}", $"No natural {gaps[0]} on the roster. Players out of position lose effectiveness."));
         else if (byPos.Count >= 5)
         {
             var weakest = byPos.OrderBy(kv => kv.Value).First();
             var best = byPos.Values.Max();
             if (best - weakest.Value >= 15)
-                tips.Add($"Our best {weakest.Key} is well below the rest of the starters. That's the position to upgrade when money allows.");
+                tips.Add(new($"weak-{weakest.Key}-{s.League.Season}", $"Our best {weakest.Key} is well below the rest of the starters. That's the position to upgrade when money allows."));
         }
 
         // Money.
@@ -236,17 +294,20 @@ public static class Assistant
         {
             long room = team.Money.WageBudget - s.MyCommittedWages;
             if (room > team.Money.WageBudget * 0.08)
-                tips.Add($"There's ${room / 1e6:F1}M of wage room. A free agent or a transfer could use it{(s.WindowOpen ? " while the window is open" : "")}.");
+                tips.Add(new($"room-{s.League.Season}-{s.WindowOpen}", $"There's ${room / 1e6:F1}M of wage room. A free agent or a transfer could use it{(s.WindowOpen ? " while the window is open" : "")}."));
         }
 
         // Ageing stars on long deals.
         var old = team.Roster.Where(p => p.Age(today) >= 31 && (p.Contract?.Years ?? 0) >= 3).OrderByDescending(p => p.Contract!.Salary).FirstOrDefault();
         if (old != null)
-            tips.Add($"{old.Name} is {old.Age(today)} with {old.Contract!.Years} years left. Ability falls after 30; his value is highest now if you ever want to sell.");
+            tips.Add(new($"old-{old.Id}-{s.League.Season}", $"{old.Name} is {old.Age(today)} with {old.Contract!.Years} years left. Ability falls after 30; his value is highest now if you ever want to sell."));
 
         // General principles, one at a time, for players past the basics.
         if (stage != GuideStage.Beginner)
-            tips.Add(Principles[(today.DayNumber / 7) % Principles.Length]);
+        {
+            int k = (today.DayNumber / 7) % Principles.Length;
+            tips.Add(new($"principle-{k}-{today.DayNumber / 7}", Principles[k]));
+        }
         return tips;
     }
 

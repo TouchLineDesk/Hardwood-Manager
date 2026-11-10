@@ -24,7 +24,7 @@
             <ComboBox ItemsSource="{Binding Systems}" SelectedItem="{Binding SelectedSystem}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:SystemOption">
-                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding FitText}" Classes="muted" Margin="12,0,0,0"/></Grid>
+                  <StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding FitText}" Classes="muted" FontSize="11"/></StackPanel>
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
@@ -37,7 +37,7 @@
             <ComboBox ItemsSource="{Binding Schemes}" SelectedItem="{Binding SelectedScheme}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:SystemOption">
-                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding FitText}" Classes="muted" Margin="12,0,0,0"/></Grid>
+                  <StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding FitText}" Classes="muted" FontSize="11"/></StackPanel>
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
@@ -56,7 +56,8 @@
         <StackPanel Spacing="10">
           <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Fine-tuning" Classes="h2" Margin="0"/><Button Grid.Column="1" Content="Reset" Command="{Binding ResetSlidersCommand}"/></Grid>
           <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Pace" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding PaceText}" Classes="muted"/></Grid>
+            <TextBlock Text="Pace" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding PaceText}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
           </StackPanel>
           <StackPanel>
@@ -123,8 +124,8 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Best fit" Binding="{Binding Best}" Width="240" IsReadOnly="True"/>
-          <DataGridTextColumn Header="What he does" Binding="{Binding Summary}" Width="*" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Best fit" Binding="{Binding Best}" Width="200" IsReadOnly="True"/>
+          <DataGridTextColumn Header="What he does" Binding="{Binding Summary}" Width="*" MinWidth="160" IsReadOnly="True"/>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>

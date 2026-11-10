@@ -7,13 +7,14 @@ namespace Hardwood.Core.Engine;
 public sealed class EngineConfig
 {
     // --- Make probability: logit = ZoneBase + SkillBeta*(skill-11) - ContestBeta*(contest-11) - FatigueBeta*(1-energy) + Home*home
+    // Two-point zones down another 0.02-0.03 (Nov 10): the late-game catch-up push lifted FG% to .486-.488 (critic review #3).
     // Lowered 0.065 across the board (Nov 9): roles and fitting systems steer shots to players' strengths, and the
     // players taking most shots are usually the happiest (morale); together FG% +1.2 pts before this.
     public double[] ZoneBaseLogit { get; set; } =
     {
-        0.265,  // Rim           ≈ 65% after shooter selection bias
-        -0.445, // ShortMid      ≈ 44%
-        -0.565, // LongMid       ≈ 41%
+        0.235,  // Rim           ≈ 65% after shooter selection bias
+        -0.465, // ShortMid      ≈ 44%
+        -0.585, // LongMid       ≈ 41%
         -0.585, // CornerThree   ≈ 39%
         -0.765, // AboveBreak3   ≈ 35%
     };
@@ -68,7 +69,9 @@ public sealed class EngineConfig
     public double DoubleStarUsage { get; set; } = 0.65;
     public double DoubleStarContest { get; set; } = 2.0;
     public double DoubleStarOpenLook { get; set; } = 1.2;
-    public double UsageSharpness { get; set; } = 2.0; // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
+    /// <summary>Fourth-quarter catch-up: shot logit for a side trailing by 7+ (and 70% of it off a side leading by 7+).</summary>
+    public double CatchUpLogit { get; set; } = 0.40;
+    public double UsageSharpness { get; set; } = 1.75; // 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
     public double[] AssistedShareByZone { get; set; } = { 0.52, 0.42, 0.45, 0.88, 0.74 };

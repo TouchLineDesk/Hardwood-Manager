@@ -21,12 +21,14 @@ public static class QuickSim
     }
 
     /// <summary>Play one game. Returns the score and adds each player's line to <paramref name="stats"/>.</summary>
-    public static (int home, int away) Play(Team home, Team away, DateOnly date, Rng rng, Dictionary<int, StatLine> stats, Rules? rules = null)
+    public static (int home, int away) Play(Team home, Team away, DateOnly date, Rng rng, Dictionary<int, StatLine> stats, Rules? rules = null, double perTeam = 0)
     {
-        // FIBA's 40 minutes score ~80 a side; NBA rules (48 minutes, the USA pyramid) ~100.
+        // FIBA's 40 minutes score ~80 a side; NBA rules (48 minutes, the USA pyramid) ~100; each league can set its own level.
         bool long48 = (rules?.GameMinutes ?? 40) >= 48;
-        double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * 0.55 * (long48 ? 1.2 : 1) + 2.5, long48 ? 13 : 11);
-        double total = rng.NextGaussian(long48 ? 202 : 160, long48 ? 14 : 12);
+        double level = perTeam > 0 ? perTeam : long48 ? 101 : 80;
+        double spread = level / 80.0;
+        double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * 0.55 * spread + 2.5, 11 * spread);
+        double total = rng.NextGaussian(level * 2, 12 * spread);
         int hp = (int)Math.Round((total + margin) / 2), ap = (int)Math.Round((total - margin) / 2);
         if (hp == ap) { if (rng.Chance(0.5)) hp += rng.Next(1, 6); else ap += rng.Next(1, 6); }
         int minutes = rules?.GameMinutes ?? 40;

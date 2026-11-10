@@ -30,6 +30,13 @@ public class BoardSanityTests
         var (_, _, sacked) = Board.SeasonReview(near, new Coach(), league, team, SeasonGoal.Playoffs, 54, 28, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2028, 6, 20));
         Assert.False(sacked);
         Assert.True(near.Confidence >= 40, $"confidence {near.Confidence}");
+
+        // A clearly winning season is never a sacking, even from a low base (critic review #3: 51-31 a year after 72-10).
+        var low = new JobState { Current = Board.SetExpectations(league, team, 2026), Confidence = 15, HiredSeason = 2025 };
+        low.Current.Goal = SeasonGoal.ConferenceFinals; low.Current.TargetWins = 62;
+        var (_, _, lowSacked) = Board.SeasonReview(low, new Coach(), league, team, SeasonGoal.Playoffs, 51, 31, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2028, 6, 20));
+        Assert.False(lowSacked);
+        Assert.True(low.Confidence >= 25, $"confidence {low.Confidence}");
     }
 
     [Fact]

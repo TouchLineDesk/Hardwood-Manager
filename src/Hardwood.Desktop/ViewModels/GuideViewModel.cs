@@ -48,8 +48,15 @@ public sealed partial class GuideViewModel : ObservableObject
     [ObservableProperty] private string _level;
     public ObservableCollection<GuideTaskRow> Tasks { get; } = new();
     public ObservableCollection<string> Strategy { get; } = new();
-    public bool Expanded => On && !Collapsed;
-    public bool ShowStrip => On && Collapsed;
+    public ObservableCollection<string> LastGameWhy { get; } = new();
+    [ObservableProperty] private string _lastGameTitle = "";
+    [ObservableProperty] private bool _hasLastGame;
+    // Pages with wide tables fold the panel to its strip unless you open it there (critic review #2: the transfer
+    // market hid its CA, age and price columns behind the panel).
+    private static readonly HashSet<string> WidePages = new() { "Transactions", "Roster", "Leagues", "League Leaders", "Tactics", "Offseason" };
+    private bool _wide, _openedHere;
+    public bool Expanded => On && !Collapsed && (!_wide || _openedHere);
+    public bool ShowStrip => On && !Expanded;
 
     public static readonly List<string> Levels = new() { "Grows with me", "Beginner", "Experienced", "Strategy only" };
     public List<string> LevelChoices => Levels;
@@ -65,8 +72,21 @@ public sealed partial class GuideViewModel : ObservableObject
     }
 
     [RelayCommand] private void Toggle() => On = !On;
-    [RelayCommand] private void Collapse() => Collapsed = true;
-    [RelayCommand] private void Expand() => Collapsed = false;
+    [RelayCommand]
+    private void Collapse()
+    {
+        if (_wide && _openedHere) { _openedHere = false; Notify(); return; }
+        Collapsed = true;
+    }
+    [RelayCommand]
+    private void Expand()
+    {
+        if (_wide) _openedHere = true;
+        Collapsed = false;
+        Notify();
+    }
+
+    private void Notify() { OnPropertyChanged(nameof(Expanded)); OnPropertyChanged(nameof(ShowStrip)); }
     [RelayCommand] private void ResetDismissed() { Settings.GuideProgress.Dismissed.Clear(); Settings.Save(); Refresh(); }
 
     /// <summary>A career was opened: start counting days from its date.</summary>
@@ -76,6 +96,8 @@ public sealed partial class GuideViewModel : ObservableObject
     public void OnPage(string page)
     {
         _page = page;
+        _wide = WidePages.Contains(page); _openedHere = false;
+        Notify();
         if (Settings.GuideProgress.PagesSeen.Add(page)) Settings.Save();
         Refresh();
     }
@@ -89,7 +111,7 @@ public sealed partial class GuideViewModel : ObservableObject
         if (_lastDate is { } last && s.Today > last) { prog.DaysPlayed += Math.Min(400, s.Today.DayNumber - last.DayNumber); changed = true; }
         if (_lastPhase is { } ph && ph != SessionPhase.Offseason && s.Phase == SessionPhase.Offseason) { prog.SeasonsPlayed++; changed = true; }
         _lastDate = s.Today; _lastPhase = s.Phase;
-        if (changed) Settings.Save();
+        Settings.Save(); // days, seasons and strategy-note counts
         Refresh();
     }
 
@@ -110,8 +132,13 @@ public sealed partial class GuideViewModel : ObservableObject
                 Go = new RelayCommand(() => Go(t)),
                 Dismiss = new RelayCommand(() => { Settings.GuideProgress.Dismissed.Add(t.Key); Settings.Save(); Refresh(); }),
             });
+        LastGameTitle = advice.LastGameTitle;
+        LastGameWhy.Clear();
+        foreach (var w in advice.LastGameWhy ?? Array.Empty<string>()) LastGameWhy.Add(w);
+        HasLastGame = LastGameWhy.Count > 0;
         Strategy.Clear();
         foreach (var tip in advice.Strategy.Take(4)) Strategy.Add(tip);
+
         HasStrategy = Strategy.Count > 0;
     }
 

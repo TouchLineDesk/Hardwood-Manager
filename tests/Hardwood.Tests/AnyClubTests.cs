@@ -53,8 +53,7 @@ public class AnyClubTests
         Assert.Equal(rec.Games, s.MyGames().Count(g => g.Played && g.Competition == "Spanish League"));
         Assert.True(s.MyRank >= 1);
         Assert.Contains(s.MyStats.Values, st => st.Games >= 5 && st.Points > 0);
-        Assert.Contains(s.Inbox, m => m.Category == "Game");
-        Assert.Contains(s.Inbox, m => m.Category == "Squad" || m.Category == "Board" || true);
+        Assert.Contains(s.Inbox, m => m.Category == "Game" && m.Title.StartsWith("This week:") && m.Body.Contains("led with"));
         // Trades are an NABL thing.
         Assert.False(s.ProposeTrade(new TradeProposal { From = s.HumanTeam, To = s.League.Teams[0] }).Accepted);
     }
