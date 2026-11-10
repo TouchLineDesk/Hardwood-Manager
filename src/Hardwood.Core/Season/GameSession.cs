@@ -194,6 +194,20 @@ public sealed partial class GameSession
 
     public void MarkAllRead() { foreach (var m in Inbox) m.Read = true; }
 
+    /// <summary>This week's regular-season results, posted together once a week.</summary>
+    public List<string> WeekResults { get; } = new();
+
+    private void MaybePostResults(bool now = false)
+    {
+        if (WeekResults.Count == 0) return;
+        if (!now && Today.DayOfWeek != DayOfWeek.Monday) return;
+        int w = WeekResults.Count(l => l.Contains("  W ")), l = WeekResults.Count - w;
+        Post($"This week: {w}-{l} ({MyRecord.Wins}-{MyRecord.Losses} overall)", string.Join("\n", WeekResults) + "\n\nBox scores are on the Schedule & Results page.", "Game");
+        WeekResults.Clear();
+    }
+
+    private static string Count(int n, string word) => $"{n} {word}{(n == 1 ? "" : "s")}";
+
     public void Post(string title, string body, string category = "News")
     {
         Inbox.Insert(0, new InboxMessage { Id = _nextMessageId++, Date = Today, Title = title, Body = body, Category = category });
@@ -327,6 +341,7 @@ public sealed partial class GameSession
         if (!Employed) DailyJobMarket();
         DailyTransfers();
         MaybePostDigest();
+        MaybePostResults(now: Phase is SessionPhase.Postseason or SessionPhase.Offseason);
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -416,8 +431,12 @@ public sealed partial class GameSession
         bool won = us.Points > them.Points;
         var top = us.Lines.OrderByDescending(l => l.Points).First();
         string seriesNote = series != null ? $" Series: {series.Score}." : "";
-        Post($"{(won ? "W" : "L")} {us.Points}-{them.Points} {(us == r.Home ? "vs" : "at")} {them.Team.Abbreviation}",
-            $"{top.Player.Name} led with {top.Points} points, {top.Rebounds} rebounds and {top.Assists} assists.{seriesNote}", "Game");
+        string title = $"{(won ? "W" : "L")} {us.Points}-{them.Points} {(us == r.Home ? "vs" : "at")} {them.Team.Abbreviation}";
+        string line = $"{top.Player.Name} led with {Count(top.Points, "point")}, {Count(top.Rebounds, "rebound")} and {Count(top.Assists, "assist")}.";
+        // Regular-season results go into one weekly message (critic review #2: up to 216 result messages in three
+        // seasons buried everything else); playoff games still arrive one by one.
+        if (series == null && Phase != SessionPhase.Postseason) WeekResults.Add($"{r.Date ?? Today:ddd MMM d}  {title}  · {line}");
+        else Post(title, line + seriesNote, "Game");
         foreach (var (p, inj) in r.Injuries.Where(x => x.player.TeamId == HumanTeam.Id))
             Post($"{p.Name} injured: {inj.Name}", $"Out approximately {inj.DaysOut(Today)} days (expected return {inj.ReturnDate:MMM d}).{(inj.AttributeLoss > 0 ? " The medical staff expect some lasting loss of athleticism." : "")}", "Medical");
     }

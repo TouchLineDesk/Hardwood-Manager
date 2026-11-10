@@ -63,7 +63,8 @@ public class LiveGameTests
             s.FinishLiveDay(live, played);
             Assert.Equal(before + others + 1, s.Results.Count);
             Assert.Equal(1, s.Standings[s.HumanTeam].Games);
-            Assert.Contains(s.Inbox, m => m.Category == "Game");
+            // Regular-season results wait for the weekly round-up (critic review #2).
+            Assert.Single(s.WeekResults);
             Assert.True(s.Stats.Values.Any(x => x.TeamId == 9 && x.Games == 1));
 
             // A reload sees the same game count and date.
