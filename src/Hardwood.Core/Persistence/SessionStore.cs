@@ -95,7 +95,10 @@ public static class SessionStore
             if (!r.IsDBNull(7)) midseason = SaveFile.FromJson<SeasonAwards>(r.GetString(7));
         }
 
-        var session = new GameSession(league, league.TeamById(humanId), seed, file, rngState: rngSeed, world: world) { Midseason = midseason };
+        // Your club may be abroad (stage 3): look in the world too, and give clubs abroad their staff first.
+        if (world != null) file.AttachPending(world.TeamById);
+        var human = league.Teams.FirstOrDefault(t => t.Id == humanId) ?? world?.TeamById(humanId) ?? league.Teams[0];
+        var session = new GameSession(league, human, seed, file, rngState: rngSeed, world: world) { Midseason = midseason };
         var players = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(file.LoadedProspects).ToDictionary(p => p.Id);
 
         var boxes = new Dictionary<int, Dictionary<int, List<PlayerLine>>>(); // game -> team -> lines

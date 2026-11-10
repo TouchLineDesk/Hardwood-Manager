@@ -62,8 +62,8 @@ public sealed partial class AwardsViewModel : PageViewModel
         var s = Session;
         var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).ToDictionary(p => p.Id);
         string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
-        string TeamOf(int? id) => id is { } i && s.Stats.TryGetValue(i, out var st) ? s.League.TeamById(st.TeamId).Abbreviation
-            : id is { } j && all.TryGetValue(j, out var p) && p.TeamId is { } t ? s.League.TeamById(t).Abbreviation : "FA";
+        string TeamOf(int? id) => id is { } i && s.Stats.TryGetValue(i, out var st) ? s.FindTeam(st.TeamId)!.Abbreviation
+            : id is { } j && all.TryGetValue(j, out var p) && p.TeamId is { } t ? s.FindTeam(t)!.Abbreviation : "FA";
 
         if (Season == null) { Headline = "No awards yet"; Summary = "Awards are voted after the regular season; All-Stars are named in February."; AllLeague = ""; AllStars = ""; return; }
         SeasonAwards? a; SeasonSummary? summary = null;
@@ -78,7 +78,7 @@ public sealed partial class AwardsViewModel : PageViewModel
 
         Headline = summary != null ? $"{Season} awards" : $"{Season}: All-Star weekend";
         Summary = summary != null
-            ? $"Champions: {s.League.TeamById(summary.ChampionTeamId).FullName} over {s.League.TeamById(summary.RunnerUpTeamId).FullName} · Finals MVP {Name(summary.FinalsMvpPlayerId)} · Coach of the Year: {(a.CoachOfYearTeamId is { } c ? s.League.TeamById(c).FullName : "-")} ({a.CoachOfYearNote})"
+            ? $"Champions: {s.FindTeam(summary.ChampionTeamId)!.FullName} over {s.FindTeam(summary.RunnerUpTeamId)!.FullName} · Finals MVP {Name(summary.FinalsMvpPlayerId)} · Coach of the Year: {(a.CoachOfYearTeamId is { } c ? s.FindTeam(c)!.FullName : "-")} ({a.CoachOfYearNote})"
             : "Season in progress. Full awards arrive after the Finals.";
         AllLeague = a.AllLeague.Count == 0 ? "" : string.Join("\n", a.AllLeague.Select((t, i) => $"{(i == 0 ? "First" : i == 1 ? "Second" : "Third")} team: {string.Join(", ", t.Select(id => $"{Name(id)} ({TeamOf(id)})"))}"));
         AllStars = a.AllStarsEast.Count == 0 ? "No All-Star Game this season." :

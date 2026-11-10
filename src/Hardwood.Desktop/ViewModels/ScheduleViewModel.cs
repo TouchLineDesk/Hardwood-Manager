@@ -8,16 +8,17 @@ namespace Hardwood.Desktop.ViewModels;
 
 public sealed class GameRow
 {
-    public required ScheduledGame Game { get; init; }
-    public GameResult? Result { get; init; }
+    public required MyGame Game { get; init; }
+    public GameResult? Result => Game.Result;
     public string Date => Game.Date.ToString("ddd MMM d");
     public string Opponent { get; init; } = "";
     public Hardwood.Core.Model.Team? OpponentTeam { get; init; }
+    public string Competition { get; init; } = "";
     public string Score { get; init; } = "";
     public string Outcome { get; init; } = "";
     public string Record { get; init; } = "";
     public string TopPerformer { get; init; } = "";
-    public bool Played => Result != null;
+    public bool Played => Game.Played;
     public bool HasBox => Result != null && Result.Home.Lines.Count > 0;
 }
 
@@ -52,33 +53,38 @@ public sealed partial class ScheduleViewModel : PageViewModel
         var s = Session; var us = s.HumanTeam;
         Games.Clear();
         int w = 0, l = 0;
-        foreach (var g in s.Schedule.Where(g => g.Home == us || g.Away == us))
+        foreach (var g in s.MyGames())
         {
-            s.Results.TryGetValue(g.Index, out var r);
-            var opp = g.Home == us ? g.Away : g.Home;
+            var r = g.Result;
             string score = "", outcome = "", top = "";
-            if (r != null)
+            if (g.Played)
             {
-                var ours = r.Home.Team == us ? r.Home : r.Away;
-                var theirs = ours == r.Home ? r.Away : r.Home;
-                bool won = ours.Points > theirs.Points;
-                if (won) w++; else l++;
-                score = $"{ours.Points}-{theirs.Points}" + (r.Overtimes > 0 ? $" ({r.Overtimes}OT)" : "");
-                outcome = won ? "W" : "L";
-                var best = ours.Lines.OrderByDescending(x => x.Points).FirstOrDefault();
+                if (g.Won) w++; else l++;
+                score = $"{g.Us}-{g.Them}" + (r is { Overtimes: > 0 } ? $" ({r.Overtimes}OT)" : "");
+                outcome = g.Won ? "W" : "L";
+                var ours = r == null ? null : r.Home.Team == us ? r.Home : r.Away;
+                var best = ours?.Lines.OrderByDescending(x => x.Points).FirstOrDefault();
                 top = best != null ? $"{best.Player.LastName} {best.Points} pts, {best.Rebounds} reb, {best.Assists} ast" : "";
             }
+            string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
             Games.Add(new GameRow
             {
-                Game = g, Result = r, Opponent = $"{(g.Home == us ? "vs" : "at")} {opp.FullName}", OpponentTeam = opp,
-                Score = score, Outcome = outcome, Record = r != null ? $"{w}-{l}" : "", TopPerformer = top,
+                Game = g, Opponent = $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}" + (comp.Length > 0 ? $" · {comp}" : ""), OpponentTeam = g.Opponent,
+                Competition = comp, Score = score, Outcome = outcome, Record = g.Played ? $"{w}-{l}" : "", TopPerformer = top,
             });
         }
         var next = Games.FirstOrDefault(g => !g.Played);
         Selected = next ?? Games.LastOrDefault();
 
         Series.Clear();
-        ShowPlayoffs = s.Postseason != null;
+        ShowPlayoffs = s.Postseason != null || s.HumanLeague?.Season.Series.Count > 0;
+        if (s.HumanLeague is { } hl)
+            foreach (var se in hl.Season.Series)
+            {
+                var hi = s.FindTeam(se.HighId)!; var lo = s.FindTeam(se.LowId)!;
+                Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{hi.FullName} vs {lo.FullName}",
+                    Score = se.Complete ? $"{s.FindTeam(se.WinnerId!.Value)!.Abbreviation} wins {se.Score}" : se.Score, Involved = hi == us || lo == us });
+            }
         if (s.Postseason != null)
             foreach (var se in s.Postseason.Series)
                 Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{se.Higher.FullName} vs {se.Lower.FullName}", Score = se.Complete ? $"{se.Winner!.Abbreviation} wins {se.Score}" : se.Score, Involved = se.Higher == us || se.Lower == us });
@@ -87,12 +93,15 @@ public sealed partial class ScheduleViewModel : PageViewModel
         var yesterday = s.Today.AddDays(-1);
         foreach (var g in s.Schedule.Where(g => g.Date == yesterday && s.Results.ContainsKey(g.Index)))
             LeagueScores.Add(s.Results[g.Index].Summary());
+        if (s.HumanLeague is { } league)
+            foreach (var f in league.Season.Fixtures.Where(f => f.Date == yesterday && f.Played))
+                LeagueScores.Add($"{s.FindTeam(f.AwayId)!.Abbreviation} {f.AwayPts} @ {s.FindTeam(f.HomeId)!.Abbreviation} {f.HomePts}");
         if (s.Postseason != null)
             foreach (var se in s.Postseason.Series)
             foreach (var r in se.Games.Where(r => r.Date == yesterday)) LeagueScores.Add($"{se.Round}: {r.Summary()}");
 
-        var rec = s.Standings[us];
-        Summary = $"{rec.Wins}-{rec.Losses} · home {rec.HomeWins}-{rec.HomeLosses} · {rec.PointsFor / Math.Max(1.0, rec.Games):F1} for, {rec.PointsAgainst / Math.Max(1.0, rec.Games):F1} against";
+        var rec = s.MyRecord;
+        Summary = $"{s.HumanLeagueName}: {rec.Wins}-{rec.Losses} · home {rec.HomeWins}-{rec.HomeLosses} · {rec.PointsFor / Math.Max(1.0, rec.Games):F1} for, {rec.PointsAgainst / Math.Max(1.0, rec.Games):F1} against";
     }
 }
 

@@ -29,7 +29,13 @@ public class ScreenshotTests
 
             var start = (StartViewModel)vm.CurrentPage!;
             start.SavePath = path; start.SeedText = "2026";
-            start.SelectedTeam = start.Teams.First(t => t.Team.Abbreviation == "BOS");
+            if (Environment.GetEnvironmentVariable("HW_ABROAD") is { Length: > 0 } league)
+            {
+                start.PlayLeague = league; // e.g. "Spanish League": a career abroad (stage 3)
+                Snap(window, Path.Combine(dir, "00-start-abroad.png"));
+                start.SelectedTeam = start.Teams[1];
+            }
+            else start.SelectedTeam = start.Teams.First(t => t.Team.Abbreviation == "BOS");
             start.NewGame();
             var session = vm.Session!;
             if (Environment.GetEnvironmentVariable("HW_SAMPLE_LOGOS") == "1") SampleLogos(session, Path.Combine(dir, "sample-logos"));

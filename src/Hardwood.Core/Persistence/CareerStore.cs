@@ -19,8 +19,9 @@ public static class CareerStore
         void Put(string k, string v) => SaveFile.Exec(conn, "INSERT INTO career_meta(key, value) VALUES($k, $v)", ("$k", k), ("$v", v));
         Put("coach", SaveFile.ToJson(s.Coach));
         Put("job", SaveFile.ToJson(s.Job));
-        Put("owners", SaveFile.ToJson(s.League.Teams.ToDictionary(t => t.Id, t => t.Owner)));
-        Put("coaches", SaveFile.ToJson(s.League.Teams.ToDictionary(t => t.Id, t => t.CoachName)));
+        var clubs = s.League.Teams.Concat(s.World.Clubs).DistinctBy(t => t.Id).ToList();
+        Put("owners", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Owner)));
+        Put("coaches", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.CoachName)));
         tx.Commit();
     }
 
@@ -35,13 +36,14 @@ public static class CareerStore
             cmd.Parameters.AddWithValue("$k", key);
             return cmd.ExecuteScalar() as string;
         }
+        var clubs = s.League.Teams.Concat(s.World.Clubs).DistinctBy(t => t.Id).ToList();
         if (Get("owners") is { } oj && SaveFile.FromJson<Dictionary<int, Owner>>(oj) is { } owners)
-            foreach (var t in s.League.Teams) if (owners.TryGetValue(t.Id, out var o)) t.Owner = o;
+            foreach (var t in clubs) if (owners.TryGetValue(t.Id, out var o)) t.Owner = o;
         if (Get("coaches") is { } cj && SaveFile.FromJson<Dictionary<int, string>>(cj) is { } names)
-            foreach (var t in s.League.Teams) if (names.TryGetValue(t.Id, out var n)) t.CoachName = n;
+            foreach (var t in clubs) if (names.TryGetValue(t.Id, out var n)) t.CoachName = n;
         if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
         if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
-        foreach (var t in s.League.Teams) t.Coach = null;
+        foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
     }
 

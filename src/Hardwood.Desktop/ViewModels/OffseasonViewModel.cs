@@ -139,6 +139,17 @@ public sealed partial class OffseasonViewModel : PageViewModel
             IsReSigning = IsDraft = IsFreeAgency = false;
             return;
         }
+        if (s.Abroad || !s.Employed)
+        {
+            // The NABL's summer runs in the background; a club abroad has its contracts handled by the sporting director.
+            Headline = s.Employed ? $"Summer at the {s.HumanTeam.FullName}" : "Summer";
+            Instructions = (s.Employed ? "Your sporting director renews or lets go expiring contracts and tops up the squad before the new season. " : "")
+                + $"The NABL is in its {o!.Phase switch { OffseasonPhase.ReSigning => "re-signing period", OffseasonPhase.Draft => "draft", _ => "free agency" }}. Press Continue to move through the summer.";
+            IsReSigning = IsDraft = IsFreeAgency = false;
+            Expiring.Clear(); Prospects.Clear(); Picks.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear(); Rights.Clear();
+            CapText = "";
+            return;
+        }
         var team = s.HumanTeam; var fin = s.League.Finance;
         IsReSigning = o!.Phase == OffseasonPhase.ReSigning;
         IsDraft = o.Phase == OffseasonPhase.Draft;

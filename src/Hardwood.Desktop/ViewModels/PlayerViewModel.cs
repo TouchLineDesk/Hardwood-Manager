@@ -46,7 +46,7 @@ public sealed partial class PlayerViewModel : PageViewModel
     }
 
     public string Name => Player.Name;
-    public Hardwood.Core.Model.Team? TeamObj => Player.TeamId is { } id ? Session.League.TeamById(id) : null;
+    public Hardwood.Core.Model.Team? TeamObj => Player.TeamId is { } id ? Session.FindTeam(id)! : null;
     public double Knowledge => Core.Season.Scouting.Knowledge(Session.HumanTeam, Player);
     public string TierLine { get; private set; } = "";
     public string Headline { get; private set; } = "";
@@ -72,7 +72,7 @@ public sealed partial class PlayerViewModel : PageViewModel
     public override void Refresh()
     {
         var p = Player; var s = Session;
-        var team = p.TeamId is { } id ? s.League.TeamById(id).FullName : "Free agent";
+        var team = p.TeamId is { } id ? s.FindTeam(id)!.FullName : "Free agent";
         Headline = $"{p.PrimaryPosition}{(p.SecondaryPosition is { } sp ? "/" + sp : "")} · {team}";
         var tier = Tier.ForCa(p.CurrentAbility);
         TierLine = tier.Next is { } nx ? $"{tier.Name} card · {nx.MinCa - p.CurrentAbility} ability from {nx.Name}" : $"{tier.Name} card · the top tier";
@@ -141,7 +141,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         foreach (var st in all.OrderByDescending(x => x.Season))
             Seasons.Add(new SeasonLine
             {
-                Season = $"{st.Season}-{(st.Season + 1) % 100:00}", Team = s.League.TeamById(st.TeamId).Abbreviation,
+                Season = $"{st.Season}-{(st.Season + 1) % 100:00}", Team = s.FindTeam(st.TeamId)!.Abbreviation,
                 GP = st.Games, MPG = Math.Round(st.Mpg, 1), PPG = Math.Round(st.Ppg, 1), RPG = Math.Round(st.Rpg, 1), APG = Math.Round(st.Apg, 1),
                 FG = st.FGA > 0 ? $"{st.FgPct * 100:F1}%" : "-", TP = st.ThreePA > 0 ? $"{st.ThreePct * 100:F1}%" : "-", FT = st.FTA > 0 ? $"{100.0 * st.FTM / st.FTA:F1}%" : "-",
             });

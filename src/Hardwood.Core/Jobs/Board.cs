@@ -68,9 +68,11 @@ public static class Board
     private static readonly string[] CoachLast = { "Brennan", "Hollis", "Mercer", "Draper", "Fontaine", "Waverly", "Kingsley", "Barlow", "Prentice", "Ashby", "Coleridge", "Danvers", "Ellery", "Garland", "Hartley", "Langston" };
 
     /// <summary>Give every team an owner and a computer coach if it doesn't have one (new careers and older saves).</summary>
-    public static void EnsureOwnersAndCoaches(League league, ulong seed)
+    public static void EnsureOwnersAndCoaches(League league, ulong seed) => EnsureOwnersAndCoaches(league.Teams, seed);
+
+    public static void EnsureOwnersAndCoaches(IEnumerable<Team> teams, ulong seed)
     {
-        foreach (var t in league.Teams)
+        foreach (var t in teams)
         {
             var rng = new Rng(seed ^ (ulong)(t.Id * 7919 + 17));
             if (string.IsNullOrEmpty(t.Owner.Name))
@@ -87,12 +89,14 @@ public static class Board
     public static string NewCoachName(Rng rng) => $"{rng.Pick(CoachFirst)} {rng.Pick(CoachLast)}";
 
     /// <summary>Where the squad and payroll put a team in the league, 1 = best (squad 70%, spending 30%).</summary>
-    public static int ProjectedRank(League league, Team team)
+    public static int ProjectedRank(League league, Team team) => ProjectedRank(LeagueContext.Nabl(league), team);
+
+    public static int ProjectedRank(LeagueContext ctx, Team team)
     {
         double Score(Team t) =>
             t.Roster.OrderByDescending(p => p.CurrentAbility).Take(9).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(0).Average() * 0.7
-            + ContractMarket.Payroll(t) / 1e6 * 0.3 * 0.25;
-        return league.Teams.OrderByDescending(Score).ToList().IndexOf(team) + 1;
+            + ContractMarket.Payroll(t) / 1e6 * 0.3 * 0.25 * (ctx.IsNabl ? 1 : 8); // overseas wages are ~1/8 of the NABL's
+        return ctx.Teams.OrderByDescending(Score).ThenBy(t => t.Id).ToList().IndexOf(team) + 1;
     }
 
     public static string Describe(SeasonGoal g) => g switch
@@ -116,24 +120,46 @@ public static class Board
     /// <summary>
     /// Season expectations (decision #72, "both"): a goal from the squad and the payroll, plus the owner's own demands.
     /// </summary>
-    public static Expectations SetExpectations(League league, Team team, int season)
+    public static Expectations SetExpectations(League league, Team team, int season) => SetExpectations(LeagueContext.Nabl(league), team, season);
+
+    public static Expectations SetExpectations(LeagueContext ctx, Team team, int season)
     {
-        int r = ProjectedRank(league, team);
-        var goal = r <= 2 ? SeasonGoal.Title : r <= 5 ? SeasonGoal.ConferenceFinals : r <= 10 ? SeasonGoal.SecondRound
+        int r = ProjectedRank(ctx, team);
+        SeasonGoal goal;
+        int target;
+        if (ctx.IsNabl)
+        {
+            goal = r <= 2 ? SeasonGoal.Title : r <= 5 ? SeasonGoal.ConferenceFinals : r <= 10 ? SeasonGoal.SecondRound
                  : r <= 16 ? SeasonGoal.Playoffs : r <= 20 ? SeasonGoal.PlayIn : SeasonGoal.Develop;
+            target = Math.Clamp((int)Math.Round(60 - (r - 1) * 1.25), 22, 62);
+        }
+        else
+        {
+            // Overseas leagues have one table and a short bracket: favourites chase the title, the top half the playoffs.
+            goal = r == 1 ? SeasonGoal.Title : r <= 2 ? SeasonGoal.Finals : r <= Math.Max(3, ctx.PlayoffTeams / 2) ? SeasonGoal.SecondRound
+                 : r <= ctx.PlayoffTeams ? SeasonGoal.Playoffs : SeasonGoal.Develop;
+            target = (int)Math.Round(ctx.SeasonGames * (0.73 - ctx.Fraction(r) * 0.46));
+        }
         var o = team.Owner;
-        var e = new Expectations { Season = season, Goal = goal, TargetWins = Math.Clamp((int)Math.Round(60 - (r - 1) * 1.25), 22, 62) };
-        if (o.Ambition <= 7 && league.Finance.SoftCap) e.Demands.Add(Demand.StayUnderTax);
-        if (o.Ambition >= 15 && goal < SeasonGoal.Playoffs) { e.Demands.Add(Demand.MakePlayoffs); e.Goal = SeasonGoal.Playoffs; e.TargetWins = Math.Max(e.TargetWins, 43); }
+        var e = new Expectations { Season = season, Goal = goal, TargetWins = target };
+        if (o.Ambition <= 7 && ctx.Finance is { SoftCap: true }) e.Demands.Add(Demand.StayUnderTax);
+        if (o.Ambition >= 15 && goal < SeasonGoal.Playoffs)
+        {
+            e.Demands.Add(Demand.MakePlayoffs); e.Goal = SeasonGoal.Playoffs;
+            e.TargetWins = Math.Max(e.TargetWins, (int)Math.Round(ctx.SeasonGames * (ctx.IsNabl ? 43 / 82.0 : 0.52)));
+        }
         var start = new DateOnly(season, 10, 1);
         if (o.Patience >= 12 && team.Roster.Count(p => p.Age(start) <= 23 && p.PotentialAbility >= 120) >= 2) e.Demands.Add(Demand.PlayYoungsters);
         return e;
     }
 
     /// <summary>How the board feels about each demand right now (true = being met).</summary>
-    public static bool Meeting(Demand d, League league, Team team, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int wins, int games) => d switch
+    public static bool Meeting(Demand d, League league, Team team, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int wins, int games) =>
+        Meeting(d, LeagueContext.Nabl(league), team, stats, today, wins, games);
+
+    public static bool Meeting(Demand d, LeagueContext ctx, Team team, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int wins, int games) => d switch
     {
-        Demand.StayUnderTax => ContractMarket.Payroll(team) <= league.Finance.TaxLine,
+        Demand.StayUnderTax => ctx.Finance == null || ContractMarket.Payroll(team) <= ctx.Finance.TaxLine,
         Demand.PlayYoungsters => team.Roster.Where(p => p.Age(today) <= 23).Sum(p => stats.TryGetValue(p.Id, out var s) && s.TeamId == team.Id ? s.Mpg : 0) >= 25,
         _ => games == 0 || wins / (double)games >= 0.5,
     };
@@ -143,26 +169,31 @@ public static class Board
     /// Returns a message for the inbox when the board's mood crosses a line, and whether you're sacked mid-season.
     /// </summary>
     public static (string? title, string? body, bool sacked) Weekly(JobState job, League league, Team team, int wins, int losses,
-        IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today)
+        IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today) =>
+        Weekly(job, LeagueContext.Nabl(league), team, wins, losses, stats, today, league.Season);
+
+    public static (string? title, string? body, bool sacked) Weekly(JobState job, LeagueContext ctx, Team team, int wins, int losses,
+        IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season)
     {
         var e = job.Current;
         int games = wins + losses;
         if (e == null || games < 5) return (null, null, false);
         double impatience = 1.3 - team.Owner.Patience / 40.0;
-        double projected = wins / (double)games * 82;
-        // Confidence drifts toward a level set by the pace: on target ≈ 62, 10 wins short ≈ 42, 20 short ≈ 22.
+        double full = Math.Max(1, ctx.SeasonGames);
+        double projected = wins / (double)games * full;
+        // Confidence drifts toward a level set by the pace: on target ≈ 62, 10 wins short (of 82) ≈ 42, 20 short ≈ 22.
         // Early in the season the record says little, so the board moves slowly; impatient owners move faster.
-        double paceLevel = 62 + (projected - e.TargetWins) * 2;
-        foreach (var d in e.Demands) if (!Meeting(d, league, team, stats, today, wins, games)) paceLevel -= 5;
-        double rate = Math.Clamp(games / 82.0, 0.1, 1) * 0.18 * impatience;
+        double paceLevel = 62 + (projected - e.TargetWins) * 2 * (82 / full);
+        foreach (var d in e.Demands) if (!Meeting(d, ctx, team, stats, today, wins, games)) paceLevel -= 5;
+        double rate = Math.Clamp(games / full, 0.1, 1) * 0.18 * impatience;
         job.Confidence = Math.Clamp(job.Confidence + (Math.Clamp(paceLevel, 0, 100) - job.Confidence) * rate, 0, 100);
         job.History.Add(new ConfidencePoint(today, Math.Round(job.Confidence, 1)));
         if (job.History.Count > 200) job.History.RemoveAt(0);
 
         bool honeymoon = today.DayNumber - job.HiredOn.DayNumber < 60;
         // A new coach is only sacked mid-way through his first season if it's a catastrophe.
-        double line = job.HiredSeason == league.Season && job.HiredSeason != 0 ? 3 : 12 + (10 - team.Owner.Patience) * 0.8;
-        if (!honeymoon && games >= 30 && job.Confidence < line)
+        double line = job.HiredSeason == season && job.HiredSeason != 0 ? 3 : 12 + (10 - team.Owner.Patience) * 0.8;
+        if (!honeymoon && games >= full * 30 / 82 && job.Confidence < line)
             return ("You have been sacked", $"{team.Owner.Name} has run out of patience. With the team {wins}-{losses} against a target of {e.TargetWins} wins, you have been relieved of your duties.", true);
         int level = job.Confidence < 20 ? 2 : job.Confidence < 35 ? 1 : 0;
         if (level > job.WarningLevel)
@@ -193,29 +224,45 @@ public static class Board
         };
     }
 
+    /// <summary>How far a club got in an overseas league's playoffs (title, final, won a round, made them, or not).</summary>
+    public static SeasonGoal Achieved(int teamId, World.CompetitionSeason season, World.CompetitionProfile profile)
+    {
+        if (season.ChampionId == teamId) return SeasonGoal.Title;
+        if (season.RunnerUpId == teamId) return SeasonGoal.Finals;
+        var mine = season.Series.Where(x => x.HighId == teamId || x.LowId == teamId).ToList();
+        if (mine.Count == 0) return SeasonGoal.Develop;
+        return mine.Max(x => x.RoundIndex) >= 1 ? SeasonGoal.SecondRound : SeasonGoal.Playoffs;
+    }
+
     /// <summary>
     /// End of season: the board judges the result against the goal and the demands, then decides your future.
     /// Also moves your reputation.
     /// </summary>
     public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, League league, Team team, SeasonGoal achieved,
-        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today)
+        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today) =>
+        SeasonReview(job, coach, LeagueContext.Nabl(league), team, achieved, wins, losses, stats, today, league.Season);
+
+    public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, LeagueContext ctx, Team team, SeasonGoal achieved,
+        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season)
     {
-        var e = job.Current ?? SetExpectations(league, team, league.Season);
+        var e = job.Current ?? SetExpectations(ctx, team, season);
         double impatience = 1.3 - team.Owner.Patience / 40.0;
         int diff = (int)achieved - (int)e.Goal;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         var lines = new List<string> { $"Goal: {Describe(e.Goal).ToLower()}. Result: {Describe(achieved).ToLower()} ({wins}-{losses})." };
         foreach (var d in e.Demands)
         {
-            bool met = Meeting(d, league, team, stats, today, wins, wins + losses);
+            bool met = Meeting(d, ctx, team, stats, today, wins, wins + losses);
             delta += met ? 4 : -8 * impatience;
             lines.Add($"{Describe(d)}: {(met ? "done" : "not done")}.");
         }
         job.Confidence = Math.Clamp(job.Confidence + delta, 0, 100);
-        coach.Reputation = Math.Clamp(coach.Reputation + (wins / Math.Max(1.0, wins + losses) - 0.5) * 10
-            + achieved switch { SeasonGoal.Title => 10, SeasonGoal.Finals => 6, SeasonGoal.ConferenceFinals => 4, SeasonGoal.SecondRound => 2, SeasonGoal.Playoffs => 1, _ => 0 }, 0, 100);
+        // Success in a smaller league counts for less with clubs elsewhere.
+        double weight = ctx.IsNabl ? 1 : Math.Clamp(1 + ctx.PrestigeOffset / 40, 0.4, 1);
+        coach.Reputation = Math.Clamp(coach.Reputation + ((wins / Math.Max(1.0, wins + losses) - 0.5) * 10
+            + achieved switch { SeasonGoal.Title => 10, SeasonGoal.Finals => 6, SeasonGoal.ConferenceFinals => 4, SeasonGoal.SecondRound => 2, SeasonGoal.Playoffs => 1, _ => 0 }) * weight, 0, 100);
         // A new coach gets his first season: a bad one earns a final warning, not the sack.
-        bool firstSeason = job.HiredSeason == league.Season;
+        bool firstSeason = job.HiredSeason == season;
         bool sacked = !firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10);
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         string verdict = sacked ? $"{team.Owner.Name} has decided to make a change. You have been sacked."
@@ -225,24 +272,28 @@ public static class Board
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
     }
 
-    /// <summary>A club's standing when hiring: the better the squad and the bigger the spending, the higher the bar.</summary>
-    public static double Prestige(League league, Team team) => 25 + (30 - ProjectedRank(league, team)) / 29.0 * 45;
+    /// <summary>A club's standing when hiring: the better the squad and the bigger the spending, the higher the bar; overseas leagues are easier to get into.</summary>
+    public static double Prestige(League league, Team team) => Prestige(LeagueContext.Nabl(league), team);
+    public static double Prestige(LeagueContext ctx, Team team) => 25 + (1 - ctx.Fraction(ProjectedRank(ctx, team))) * 45 + ctx.PrestigeOffset;
 
     /// <summary>Chance a club hires you: your reputation against its prestige.</summary>
-    public static double HireChance(Coach coach, League league, Team team) => 1 / (1 + Math.Exp(-(coach.Reputation - Prestige(league, team) + 8) / 7));
+    public static double HireChance(Coach coach, League league, Team team) => HireChance(coach, LeagueContext.Nabl(league), team);
+    public static double HireChance(Coach coach, LeagueContext ctx, Team team) => 1 / (1 + Math.Exp(-(coach.Reputation - Prestige(ctx, team) + 8) / 7));
 
     /// <summary>
     /// The coaching carousel for computer-run teams at the end of a season: owners who expected more may fire their
     /// coach (impatient owners more readily). Returns the teams that changed coach.
     /// </summary>
-    public static List<Team> AiSeasonChanges(League league, Standings standings, Rng rng, int? humanTeamId)
+    public static List<Team> AiSeasonChanges(League league, Standings standings, Rng rng, int? humanTeamId) =>
+        AiSeasonChanges(LeagueContext.Nabl(league), t => standings[t].Wins, rng, humanTeamId, league.Season);
+
+    public static List<Team> AiSeasonChanges(LeagueContext ctx, Func<Team, int> wins, Rng rng, int? humanTeamId, int season)
     {
         var fired = new List<Team>();
-        foreach (var t in league.Teams.Where(t => t.Id != humanTeamId))
+        foreach (var t in ctx.Teams.Where(t => t.Id != humanTeamId))
         {
-            var e = SetExpectations(league, t, league.Season);
-            int wins = standings[t].Wins;
-            double shortfall = Math.Max(0, e.TargetWins - wins);
+            var e = SetExpectations(ctx, t, season);
+            double shortfall = Math.Max(0, e.TargetWins - wins(t)) * 82.0 / Math.Max(1, ctx.SeasonGames);
             double p = Math.Clamp(0.04 + shortfall * 0.025 * (1.3 - t.Owner.Patience / 40.0), 0, 0.7);
             if (rng.Chance(p)) fired.Add(t);
         }

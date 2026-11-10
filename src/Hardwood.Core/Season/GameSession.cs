@@ -2,6 +2,7 @@ using Hardwood.Core.Engine;
 using Hardwood.Core.Generation;
 using Hardwood.Core.Model;
 using Hardwood.Core.Persistence;
+using Hardwood.Core.World;
 
 namespace Hardwood.Core.Season;
 
@@ -21,7 +22,7 @@ public sealed class InboxMessage
 /// A playable career: one human-controlled team in a living league, advanced one day at a time.
 /// Owns the calendar, schedule, standings, stats, inbox, postseason and offseason, and saves after every day.
 /// </summary>
-public sealed class GameSession
+public sealed partial class GameSession
 {
     private readonly Rng _rng;
     private readonly GameSimulator _sim;
@@ -80,9 +81,11 @@ public sealed class GameSession
         // assistant's setup: the system and scheme that suit the roster, everyone in his best role.
         if (HumanTeam.Tactic.Auto) CoachAi.AssistantSetup(HumanTeam);
         Jobs.Board.EnsureOwnersAndCoaches(League, seed);
+        Jobs.Board.EnsureOwnersAndCoaches(World.Clubs, seed);
         HumanTeam.Coach = Coach;
+        if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
-        Job.Current ??= Jobs.Board.SetExpectations(League, HumanTeam, league.Season);
+        Job.Current ??= Jobs.Board.SetExpectations(ContextOf(HumanTeam), HumanTeam, league.Season);
         BuildSeason();
     }
 
@@ -91,12 +94,18 @@ public sealed class GameSession
     {
         var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", season, new DateOnly(season, 10, 1));
         var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? DefaultFullSim, new DateOnly(season, 10, 1));
-        var session = new GameSession(league, league.TeamById(humanTeamId), seed, savePath != null ? new SaveFile(savePath) : null, world: world);
+        var team = league.Teams.FirstOrDefault(t => t.Id == humanTeamId) ?? world.TeamById(humanTeamId)
+                   ?? throw new ArgumentException($"No club with id {humanTeamId}.", nameof(humanTeamId));
+        var session = new GameSession(league, team, seed, savePath != null ? new SaveFile(savePath) : null, world: world);
         if (coach != null) { session.Coach = coach; session.HumanTeam.Coach = coach; }
         session.HumanTeam.CoachName = session.Coach.Name;
+        session.Today = session.CareerYearStart();
+        session.Job.HiredOn = session.Today;
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
-        session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName}. Preseason runs until {session.OpeningNight:MMM d}: set your rotation and tactics, then press Continue.", "Board");
+        var first = session.NextMyGame;
+        session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName} ({session.HumanLeagueName}). "
+            + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue."), "Board");
         session.SaveNow();
         return session;
     }
@@ -160,6 +169,7 @@ public sealed class GameSession
 
     /// <summary>True when the human team plays today and the game could be followed live.</summary>
     public bool HumanPlaysToday =>
+        Abroad ? Employed && Phase != SessionPhase.Offseason && World.GameOn(HumanTeam.Id, Today) != null :
         Employed && (Phase == SessionPhase.RegularSeason || (Phase == SessionPhase.Preseason && Today >= OpeningNight)) && GamesOn(Today).Any(g => g.Home == HumanTeam || g.Away == HumanTeam)
         || (Employed && Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam));
 
@@ -176,9 +186,11 @@ public sealed class GameSession
     {
         var played = new List<GameResult>();
         GameSimulator.LiveGame? live = null;
-        _liveSeries = null; _liveScheduled = null;
+        _liveSeries = null; _liveScheduled = null; _liveWorld = null;
         if (Phase == SessionPhase.Offseason) return (null, played);
         if (Phase == SessionPhase.Preseason && Today >= OpeningNight) Phase = SessionPhase.RegularSeason;
+        // A club abroad plays its league and continental games from the world's fixtures.
+        live = BeginAbroadGame(liveHumanGame, played);
 
         if (Phase == SessionPhase.RegularSeason)
         {
@@ -220,7 +232,8 @@ public sealed class GameSession
         if (live != null)
         {
             if (!live.Complete) live.Finish();
-            if (_liveScheduled != null) RecordRegularSeasonGame(_liveScheduled, live.Result);
+            if (_liveWorld is { } w) RecordAbroad(w.comp, w.fixture, live.Result);
+            else if (_liveScheduled != null) RecordRegularSeasonGame(_liveScheduled, live.Result);
             else if (_liveSeries != null)
             {
                 Postseason!.RecordGame(_liveSeries, live.Result);
@@ -264,10 +277,11 @@ public sealed class GameSession
     private List<GameResult> EndDay(List<GameResult> played)
     {
         PlayWorld(Today);
-        if ((Phase == SessionPhase.RegularSeason || Phase == SessionPhase.Postseason) && Today.DayOfWeek == DayOfWeek.Monday)
+        bool inSeason = Abroad ? Phase != SessionPhase.Offseason : Phase is SessionPhase.RegularSeason or SessionPhase.Postseason;
+        if (inSeason && Today.DayOfWeek == DayOfWeek.Monday)
         {
             WeeklyPeople();
-            if (Phase == SessionPhase.RegularSeason) WeeklyBoard();
+            if (Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason) WeeklyBoard();
         }
         if (!Employed) DailyJobMarket();
         if (Phase == SessionPhase.RegularSeason)
@@ -293,11 +307,14 @@ public sealed class GameSession
             {
                 Phase = SessionPhase.Postseason;
                 Postseason = new Postseason(League, Standings);
-                var rec = Standings[HumanTeam];
-                int seed = Standings.Conference(HumanTeam.Conference).FindIndex(r => r.Team == HumanTeam) + 1;
-                Post("Regular season complete",
-                    $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(seed)} in the {HumanTeam.Conference}. " +
-                    (seed <= 6 ? "You are in the playoffs." : seed <= 10 ? "You are in the play-in." : "Your season is over; the lottery awaits."), "League");
+                if (InNabl)
+                {
+                    var rec = Standings[HumanTeam];
+                    int seed = Standings.Conference(HumanTeam.Conference).FindIndex(r => r.Team == HumanTeam) + 1;
+                    Post("Regular season complete",
+                        $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(seed)} in the {HumanTeam.Conference}. " +
+                        (seed <= 6 ? "You are in the playoffs." : seed <= 10 ? "You are in the play-in." : "Your season is over; the lottery awaits."), "League");
+                }
             }
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
@@ -306,9 +323,17 @@ public sealed class GameSession
                 Post($"{Postseason.Stage} begins", string.Join("\n", Postseason.Active.Select(s => $"{s.Higher.FullName} vs {s.Lower.FullName}")), "League");
             if (Postseason.Complete)
             {
-                Post($"{Postseason.Champion!.FullName} are champions",
-                    $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
-                    (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""), "League");
+                string title = $"{Postseason.Champion!.FullName} are champions";
+                if (!Inbox.Any(m => m.Title == title && m.Date >= OpeningNight))
+                    Post(title, $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
+                        (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""), "League");
+                // A club abroad may still be playing (overseas playoffs run into June): the summer waits for it.
+                if (!HumanSeasonOver && Today < new DateOnly(League.Season + 1, 7, 20))
+                {
+                    Today = Today.AddDays(1);
+                    SaveNow();
+                    return played;
+                }
                 Today = Today.AddDays(1);
                 SeasonEndCoaching();
                 BeginOffseason();
@@ -371,6 +396,8 @@ public sealed class GameSession
 
     public TradeEvaluation ProposeTrade(TradeProposal proposal)
     {
+        if (Abroad)
+            return new TradeEvaluation(false, "Clubs outside the NABL don't trade players.", 0, 0, 0, false, "Clubs outside the NABL don't trade players.");
         if (TradeDeadlinePassed && Phase != SessionPhase.Offseason && Phase != SessionPhase.Preseason)
             return new TradeEvaluation(false, "The trade deadline has passed.", 0, 0, 0, false, "The trade deadline has passed.");
         var eval = Trades.Evaluate(proposal);
@@ -400,8 +427,8 @@ public sealed class GameSession
     private void WeeklyBoard()
     {
         if (!Employed) return;
-        var rec = Standings[HumanTeam];
-        var (title, body, sacked) = Jobs.Board.Weekly(Job, League, HumanTeam, rec.Wins, rec.Losses, Stats, Today);
+        var rec = MyRecord;
+        var (title, body, sacked) = Jobs.Board.Weekly(Job, ContextOf(HumanTeam), HumanTeam, rec.Wins, rec.Losses, MyStats, Today, League.Season);
         if (title != null) Post(title, body!, "Board");
         if (sacked) Fire();
     }
@@ -409,14 +436,17 @@ public sealed class GameSession
     /// <summary>After the playoffs: the board reviews your season; computer-run clubs change coaches.</summary>
     private void SeasonEndCoaching()
     {
+        if (Abroad) PlayWorld(DateOnly.MaxValue); // every overseas season ends with the NABL's
         if (Employed)
         {
-            var rec = Standings[HumanTeam];
-            var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, League, HumanTeam, Jobs.Board.Achieved(HumanTeam, Postseason), rec.Wins, rec.Losses, Stats, Today);
+            var rec = MyRecord;
+            var achieved = HumanLeague is { } c ? Jobs.Board.Achieved(HumanTeam.Id, c.Season, c.Profile) : Jobs.Board.Achieved(HumanTeam, Postseason);
+            var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season);
             Post(title, body, "Board");
             if (sacked) Fire();
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
+        WorldCoachingChanges();
     }
 
     /// <summary>A computer-run club changes coach; while you're out of work the job is open to you.</summary>
@@ -427,12 +457,13 @@ public sealed class GameSession
         {
             Job.Vacancies.Add(new Jobs.Vacancy { TeamId = t.Id, Opened = Today });
             t.CoachName = "Interim coach";
-            Post($"Job opening: {t.FullName}", $"{t.FullName} have {how} {old}. The job is open: apply on the Board page.", "Board");
+            Post($"Job opening: {t.FullName}", $"{t.FullName} ({ContextOf(t).Name}) have {how} {old}. The job is open: apply on the Board page.", "Board");
         }
         else
         {
             t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
-            Post($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", "League");
+            if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
+                Post($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", "League");
         }
     }
 
@@ -440,7 +471,7 @@ public sealed class GameSession
     public void Fire()
     {
         if (!Employed) return;
-        var rec = Standings[HumanTeam];
+        var rec = MyRecord;
         Coach.History.Add(new Jobs.JobRecord(HumanTeam.Id, HumanTeam.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, "Sacked"));
         Coach.Reputation = Math.Max(0, Coach.Reputation - 5);
         HumanTeam.Coach = null;
@@ -461,7 +492,7 @@ public sealed class GameSession
         if (v == null) return "That job isn't open.";
         v.Status = "applied";
         v.DecideOn = Today.AddDays(3 + _rng.Next(0, 5));
-        Post($"Application sent: {League.TeamById(teamId).FullName}", $"They'll decide by {v.DecideOn:MMM d}.", "Board");
+        Post($"Application sent: {FindTeam(teamId)!.FullName}", $"They'll decide by {v.DecideOn:MMM d}.", "Board");
         SaveNow();
         return null;
     }
@@ -471,7 +502,7 @@ public sealed class GameSession
     {
         var v = Job.Vacancies.FirstOrDefault(x => x.TeamId == teamId && x.Status == "offered");
         if (v == null) return "There's no offer from that club.";
-        var team = League.TeamById(teamId);
+        var team = FindTeam(teamId)!;
         foreach (var other in Job.Vacancies.Where(x => x.Status is "open" or "applied" or "offered" && x != v)) other.Status = "filled";
         v.Status = "filled";
         TakeJob(team);
@@ -482,7 +513,7 @@ public sealed class GameSession
     public void DeclineOffer(int teamId)
     {
         var v = Job.Vacancies.FirstOrDefault(x => x.TeamId == teamId && x.Status == "offered");
-        if (v != null) { v.Status = "filled"; League.TeamById(teamId).CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong())); }
+        if (v != null && FindTeam(teamId) is { } t) { v.Status = "filled"; t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong())); }
         SaveNow();
     }
 
@@ -497,12 +528,13 @@ public sealed class GameSession
         Job.HiredOn = Today;
         Job.HiredSeason = League.Season;
         Job.History.Clear();
-        Job.Current = Jobs.Board.SetExpectations(League, team, League.Season);
+        Job.Current = Jobs.Board.SetExpectations(ContextOf(team), team, League.Season);
+        if (Abroad) EnsureStaff(team);
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
         Promises.Clear();
         MoodHistory.Clear();
-        Post($"Welcome to the {team.FullName}", $"{team.Owner.Name} has hired you as head coach. Check your rotation and tactics before the next game.", "Board");
+        Post($"Welcome to the {team.FullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game.", "Board");
         PostExpectations();
     }
 
@@ -511,10 +543,10 @@ public sealed class GameSession
     {
         foreach (var v in Job.Vacancies.ToList())
         {
-            var t = League.TeamById(v.TeamId);
+            if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
             if (v.Status == "applied" && v.DecideOn <= Today)
             {
-                if (_rng.Chance(Jobs.Board.HireChance(Coach, League, t)))
+                if (_rng.Chance(Jobs.Board.HireChance(Coach, ContextOf(t), t)))
                 {
                     v.Status = "offered"; v.DecideOn = Today.AddDays(7);
                     Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of the {t.FullName}. Accept or decline on the Board page within a week.", "Board");
@@ -539,6 +571,17 @@ public sealed class GameSession
         {
             var struggling = League.Teams.Where(t => Standings[t].Games >= 10 && Standings[t].WinPct < 0.42).OrderBy(t => Standings[t].WinPct).FirstOrDefault();
             if (struggling != null && _rng.Chance(0.4)) CoachLeaves(struggling, "fired");
+            // Overseas clubs too: a struggling club abroad sometimes looks for a new coach.
+            else if (_rng.Chance(0.3))
+            {
+                var comp = World.Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic).ToList() is { Count: > 0 } doms ? doms[_rng.Next(doms.Count)] : null;
+                if (comp != null)
+                {
+                    var table = TableOf(comp);
+                    var weak = comp.Clubs.Where(t => table[t].Games >= 6 && table[t].WinPct < 0.35).OrderBy(t => table[t].WinPct).FirstOrDefault();
+                    if (weak != null) CoachLeaves(weak, "fired");
+                }
+            }
         }
         if (Phase == SessionPhase.Preseason && Today.DayOfWeek == DayOfWeek.Monday && !Job.Vacancies.Any(v => v.Status is "open" or "applied" or "offered") && _rng.Chance(0.3))
             CoachLeaves(League.Teams[_rng.Next(League.Teams.Count)], "parted ways with");
@@ -554,7 +597,17 @@ public sealed class GameSession
 
     private void WeeklyPeople()
     {
-        var events = People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, ControlledTeamId, Promises);
+        List<People.PeopleEvent> events;
+        if (InNabl)
+            events = People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, ControlledTeamId, Promises);
+        else
+        {
+            // The NABL lives on; your club abroad gets the same weekly update, with wages judged by its league's market.
+            People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, null);
+            var rec = MyRecord;
+            events = People.PeopleEngine.Weekly(new[] { HumanTeam }, League.Finance, HumanLeague?.Profile.SalaryScale ?? 1, FindTeam, Today,
+                _ => rec.Games > 0 ? rec.WinPct : 0.5, MyStats, ControlledTeamId, Promises);
+        }
         MoodHistory.Add(new People.MoodSnapshot(Today, Math.Round(HumanTeam.Chemistry, 1), Math.Round(HumanTeam.Roster.Select(p => p.Morale).DefaultIfEmpty(60).Average(), 1)));
         if (MoodHistory.Count > 120) MoodHistory.RemoveAt(0);
         foreach (var e in events)
@@ -576,8 +629,8 @@ public sealed class GameSession
     {
         if (!Employed || p.TeamId != HumanTeam.Id) return new("He isn't one of your players.", 0, false);
         if (People.Talks.Unavailable(p, Today) is { } why) return new(why, 0, false);
-        Stats.TryGetValue(p.Id, out var st);
-        double wp = Standings[HumanTeam].Games > 0 ? Standings[HumanTeam].WinPct : 0.5;
+        MyStats.TryGetValue(p.Id, out var st);
+        double wp = MyRecord.Games > 0 ? MyRecord.WinPct : 0.5;
         var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng, Coach);
         SaveNow();
         return r;
@@ -606,6 +659,13 @@ public sealed class GameSession
 
         AnnounceAwards(Offseason.Summary!);
         if (!Employed) return; // out of work: the rest of these messages are about your team
+        if (Abroad)
+        {
+            _summerRoster = HumanTeam.Roster.Select(p => p.Id).ToList();
+            Post("Summer", $"The NABL offseason is under way. At the {HumanTeam.FullName} your sporting director handles contracts this summer: "
+                + "expiring deals are renewed or let go, and the squad is topped up before the new season. Continue to move through the summer.", "Roster");
+            return;
+        }
 
         var retired = Offseason.Report.Retired.Where(p => p.InjuryHistory != null).ToList();
         var ours = Offseason.Report.Retired.Where(p => HumanTeamHad(p)).ToList();
@@ -667,7 +727,7 @@ public sealed class GameSession
                 foreach (var (title, body) in World.News) Post(title, body, "World");
                 World.News.Clear();
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
-                Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
+                if (InNabl) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
                 break;
             case OffseasonPhase.FreeAgency:
                 Offseason.Complete();
@@ -681,6 +741,7 @@ public sealed class GameSession
     public string? BuyOut(Player p)
     {
         if (!Employed) return "You aren't coaching a team right now.";
+        if (Abroad) return "Only NABL clubs buy players out of overseas contracts.";
         if (Offseason == null) return "Players can only move in the summer.";
         var terms = Hardwood.Core.World.WorldMarket.Terms(World, Offseason, HumanTeam, p);
         if (!terms.Possible) return terms.Note;
@@ -695,6 +756,7 @@ public sealed class GameSession
     public string? Stash(Player p)
     {
         if (!Employed) return "You aren't coaching a team right now.";
+        if (Abroad) return "Only NABL clubs have draft picks.";
         if (Offseason == null) return "Picks can only be stashed in the summer.";
         if (Hardwood.Core.World.WorldMarket.CannotStash(Offseason, HumanTeam, p) is { } why) return why;
         if (!Hardwood.Core.World.WorldMarket.Stash(World, Offseason, HumanTeam, p, new Rng(World.NextRngSeed())))
@@ -715,26 +777,41 @@ public sealed class GameSession
         return pick;
     }
 
+    private List<int>? _summerRoster;
+
+    /// <summary>Abroad: what the sporting director did over the summer.</summary>
+    private void SummerReport()
+    {
+        if (_summerRoster == null) return;
+        var now = HumanTeam.Roster.Select(p => p.Id).ToHashSet();
+        var left = _summerRoster.Where(id => !now.Contains(id)).Select(id => League.FreeAgents.Concat(League.Retired).Concat(World.Players).Concat(League.AllActivePlayers).FirstOrDefault(p => p.Id == id)?.Name).Where(n => n != null).ToList();
+        var joined = HumanTeam.Roster.Where(p => !_summerRoster.Contains(p.Id)).Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})").ToList();
+        Post("Summer business", (left.Count > 0 ? $"Left: {string.Join(", ", left)}." : "Nobody left.") + "\n\n"
+            + (joined.Count > 0 ? $"Joined: {string.Join(", ", joined)}." : "No new signings.") + $"\n\nSquad size: {HumanTeam.Roster.Count}.", "Roster");
+        _summerRoster = null;
+    }
+
     private void StartNewSeason()
     {
         Phase = SessionPhase.Preseason;
-        if (Employed)
-        {
-            Job.Current = Jobs.Board.SetExpectations(League, HumanTeam, League.Season);
-            Job.WarningLevel = 0;
-            PostExpectations();
-        }
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
         foreach (var (title, body) in World.News) Post(title, body, "World");
         World.News.Clear();
-        Today = OpeningNight.AddDays(-7);
+        if (Employed)
+        {
+            if (Abroad) SummerReport();
+            Job.Current = Jobs.Board.SetExpectations(ContextOf(HumanTeam), HumanTeam, League.Season);
+            Job.WarningLevel = 0;
+            PostExpectations();
+        }
+        Today = CareerYearStart();
         PlayWorld(Today.AddDays(-1));
         HumanTeam.DepthChart = null;
         Midseason = null;
         BuildSeason();
         var last = League.History.Last();
         Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
-            $"Last season's champions: {League.TeamById(last.ChampionTeamId).FullName}. Opening night is {OpeningNight:MMM d}. Review your rotation before the first game.", "Board");
+            $"Last season's NABL champions: {League.TeamById(last.ChampionTeamId).FullName}. " + (NextMyGame is { } g ? $"Your first game is on {g.Date:MMM d}." : $"Opening night is {OpeningNight:MMM d}.") + " Review your rotation before the first game.", "Board");
     }
 
     // ------------------------------------------------------------------------------------------
@@ -742,7 +819,7 @@ public sealed class GameSession
     public void SaveNow()
     {
         if (Save == null) return;
-        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players);
+        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players, World.Clubs);
         Save.SaveSession(this);
         Save.SaveWorld(World);
         Save.SavePeople(this);

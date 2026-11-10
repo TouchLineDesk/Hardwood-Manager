@@ -13,7 +13,7 @@
     </StackPanel>
     <Grid ColumnDefinitions="*,*">
       <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="Eastern Conference" Classes="h2" Margin="0,0,0,6"/>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding LeftTitle}" Classes="h2" Margin="0,0,0,6"/>
         <DataGrid ItemsSource="{Binding East}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
             <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>
@@ -35,7 +35,7 @@
         </DataGrid>
       </DockPanel>
       <DockPanel Grid.Column="1">
-        <TextBlock DockPanel.Dock="Top" Text="Western Conference" Classes="h2" Margin="0,0,0,6"/>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding RightTitle}" Classes="h2" Margin="0,0,0,6"/>
         <DataGrid ItemsSource="{Binding West}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
             <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="34"/>

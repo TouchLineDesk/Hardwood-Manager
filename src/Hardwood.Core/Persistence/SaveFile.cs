@@ -30,6 +30,17 @@ public sealed class SaveFile
     public List<Player> LoadedProspects { get; } = new();
     /// <summary>Players of clubs outside the NABL found in the last Load; <see cref="WorldStore"/> puts them on their clubs.</summary>
     public List<Player> LoadedOverseas { get; } = new();
+    /// <summary>Staff and training plans of clubs abroad (the club you coach there), attached after the world loads.</summary>
+    public List<Staff> PendingStaff { get; } = new();
+    public Dictionary<int, TrainingPlan> PendingTraining { get; } = new();
+
+    /// <summary>Give clubs abroad their saved staff and training plans.</summary>
+    public void AttachPending(Func<int, Team?> teamById)
+    {
+        foreach (var st in PendingStaff) if (st.TeamId is { } id && teamById(id) is { } t && !t.Staff.Contains(st)) t.Staff.Add(st);
+        foreach (var (id, plan) in PendingTraining) if (teamById(id) is { } t) t.Training = plan;
+        PendingStaff.Clear(); PendingTraining.Clear();
+    }
 
     public SaveFile(string path) => _path = path;
 
@@ -81,7 +92,8 @@ public sealed class SaveFile
     }
 
     // ------------------------------------------------------------------------------------------
-    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null, IEnumerable<Player>? prospects = null, IEnumerable<Player>? overseas = null)
+    public void Save(League league, IEnumerable<PlayerSeasonStats>? seasonStats = null, IEnumerable<Player>? prospects = null, IEnumerable<Player>? overseas = null,
+                     IEnumerable<Team>? worldClubs = null)
     {
         using var conn = Open();
         CreateSchema(conn);
@@ -135,7 +147,8 @@ public sealed class SaveFile
                 Exec(conn, "INSERT INTO season_record(season, team_id, wins, losses) VALUES($s, $t, $w, $l)", ("$s", h.Season), ("$t", teamId), ("$w", w), ("$l", l));
         }
 
-        foreach (var st in league.Teams.SelectMany(t => t.Staff).Concat(league.FreeStaff))
+        var clubs = league.Teams.Concat(worldClubs ?? Enumerable.Empty<Team>()).DistinctBy(t => t.Id).ToList();
+        foreach (var st in clubs.SelectMany(t => t.Staff).Concat(league.FreeStaff))
             Exec(conn, """
                 INSERT INTO staff(id, first_name, last_name, birth_date, role, coaching, development, fitness, medical, scouting, reputation, team_id, salary, years)
                 VALUES($id, $fn, $ln, $bd, $role, $c, $d, $f, $m, $s, $r, $t, $sal, $y)
@@ -143,7 +156,8 @@ public sealed class SaveFile
                 ("$id", st.Id), ("$fn", st.FirstName), ("$ln", st.LastName), ("$bd", st.BirthDate.ToString("yyyy-MM-dd")), ("$role", (int)st.Role),
                 ("$c", st.Coaching), ("$d", st.Development), ("$f", st.Fitness), ("$m", st.Medical), ("$s", st.Scouting), ("$r", st.Reputation),
                 ("$t", (object?)st.TeamId ?? DBNull.Value), ("$sal", st.Salary), ("$y", st.ContractYears));
-        foreach (var t in league.Teams)
+        // Clubs abroad only matter once you've coached one (they have staff then).
+        foreach (var t in clubs.Where(t => league.Teams.Contains(t) || t.Staff.Count > 0))
             Exec(conn, "INSERT INTO training(team_id, intensity, focus) VALUES($t, $i, $f)",
                 ("$t", t.Id), ("$i", t.Training.Intensity), ("$f", string.Join(",", t.Training.Focus.Select(kv => $"{kv.Key}:{(int)kv.Value}"))));
 
@@ -372,7 +386,12 @@ public sealed class SaveFile
                     Coaching = r.GetInt32(5), Development = r.GetInt32(6), Fitness = r.GetInt32(7), Medical = r.GetInt32(8), Scouting = r.GetInt32(9), Reputation = r.GetInt32(10),
                     TeamId = r.IsDBNull(11) ? null : r.GetInt32(11), Salary = r.GetInt64(12), ContractYears = r.GetInt32(13),
                 };
-                if (st.TeamId is { } tid) league.TeamById(tid).Staff.Add(st); else league.FreeStaff.Add(st);
+                if (st.TeamId is { } tid)
+                {
+                    if (league.Teams.FirstOrDefault(t => t.Id == tid) is { } team) team.Staff.Add(st);
+                    else PendingStaff.Add(st); // a club abroad: attached once the world is loaded
+                }
+                else league.FreeStaff.Add(st);
             }
         }
         using (var cmd = conn.CreateCommand())
@@ -381,10 +400,11 @@ public sealed class SaveFile
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
-                var t = league.TeamById(r.GetInt32(0));
-                t.Training = new TrainingPlan { Intensity = r.GetInt32(1) };
+                var plan = new TrainingPlan { Intensity = r.GetInt32(1) };
                 var f = r.GetString(2);
-                if (f.Length > 0) foreach (var kv in f.Split(',')) { var parts = kv.Split(':'); t.Training.Focus[int.Parse(parts[0])] = (AttrGroup)int.Parse(parts[1]); }
+                if (f.Length > 0) foreach (var kv in f.Split(',')) { var parts = kv.Split(':'); plan.Focus[int.Parse(parts[0])] = (AttrGroup)int.Parse(parts[1]); }
+                if (league.Teams.FirstOrDefault(t => t.Id == r.GetInt32(0)) is { } team) team.Training = plan;
+                else PendingTraining[r.GetInt32(0)] = plan;
             }
         }
         using (var cmd = conn.CreateCommand())

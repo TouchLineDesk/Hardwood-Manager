@@ -12,7 +12,9 @@ public sealed class TeamChoice
 {
     public required Team Team { get; init; }
     public string Name => Team.FullName;
-    public string Conference => $"{Team.Conference} · {Team.Division}";
+    /// <summary>NABL: conference and division; abroad: the league.</summary>
+    public string League { get; init; } = "";
+    public string Conference => League.Length > 0 ? League : $"{Team.Conference} · {Team.Division}";
     public double CoreCa { get; init; }
     public double LeagueCoreCa { get; init; }
     public string Strength => CoreCa - LeagueCoreCa >= 6 ? "Contender" : CoreCa - LeagueCoreCa >= 1.5 ? "Playoff team" : CoreCa - LeagueCoreCa >= -4 ? "Middle of the pack" : "Rebuilding";
@@ -93,14 +95,20 @@ public sealed partial class StartViewModel : ViewModelBase
         Hardwood.Core.World.Competitions.All.Where(c => c.Kind != Hardwood.Core.World.CompetitionKind.GuestPool)
             .Select(c => new LeagueChoice { Key = c.Key, Name = c.Name, FullSim = GameSession.DefaultFullSim.Contains(c.Key) }));
     private League? _preview;
+    private Hardwood.Core.World.GameWorld? _previewWorld;
+
+    /// <summary>Where you can start (stage 3): the NABL or any league abroad.</summary>
+    public List<string> PlayLeagues { get; } = new[] { "NABL" }.Concat(Hardwood.Core.World.Competitions.All
+        .Where(c => c.Kind == Hardwood.Core.World.CompetitionKind.Domestic).Select(c => c.Name)).ToList();
+    [ObservableProperty] private string _playLeague = "NABL";
+    partial void OnPlayLeagueChanged(string value) => FillTeams();
+    public string ChooseTitle => PlayLeague == "NABL" ? "Choose your franchise" : $"Choose your club · {PlayLeague}";
 
     public StartViewModel(MainViewModel shell)
     {
         foreach (var at in Enum.GetValues<Hardwood.Core.Jobs.CoachAttr>()) CoachAttrs.Add(new CoachAttrRow { Attr = at, Owner = this });
         _shell = shell;
-        Graphics = new GraphicsSettingsViewModel(() => _preview == null
-            ? Enumerable.Empty<(string, IEnumerable<Team>)>()
-            : new[] { ("NABL", (IEnumerable<Team>)_preview.Teams) });
+        Graphics = new GraphicsSettingsViewModel(PreviewLeagues);
         Preview();
     }
 
@@ -121,20 +129,43 @@ public sealed partial class StartViewModel : ViewModelBase
         if (!ulong.TryParse(SeedText, out var seed)) { Status = "Seed must be a number."; return; }
         Status = "";
         _preview = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", 2026, new DateOnly(2026, 10, 1));
+        // The world is built from the same seed as the career's, so club ids match.
+        _previewWorld = Hardwood.Core.World.GameWorld.Generate(_preview, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
+        FillTeams();
+    }
+
+    private IEnumerable<(string league, IEnumerable<Team> teams)> PreviewLeagues()
+    {
+        if (_preview == null) yield break;
+        yield return ("NABL", _preview.Teams);
+        if (_previewWorld != null)
+            foreach (var c in _previewWorld.Competitions.Where(c => c.Profile.Kind != Hardwood.Core.World.CompetitionKind.Continental))
+                yield return (c.Profile.Name, c.Clubs);
+    }
+
+    private void FillTeams()
+    {
+        if (_preview == null) return;
         Teams.Clear();
-        double leagueCore = _preview.Teams.Average(t => t.Roster.OrderByDescending(p => p.CurrentAbility).Take(8).Average(p => p.CurrentAbility));
-        foreach (var t in _preview.Teams.OrderBy(t => t.Conference).ThenBy(t => t.Division).ThenBy(t => t.City))
+        bool nabl = PlayLeague == "NABL";
+        var clubs = nabl ? _preview.Teams.OrderBy(t => t.Conference).ThenBy(t => t.Division).ThenBy(t => t.City).ToList()
+            : _previewWorld?.Competitions.FirstOrDefault(c => c.Profile.Name == PlayLeague)?.Clubs.OrderBy(t => t.City).ToList() ?? new List<Team>();
+        if (clubs.Count == 0) return;
+        static double Core(Team t) => t.Roster.OrderByDescending(p => p.CurrentAbility).Take(8).Average(p => p.CurrentAbility);
+        double leagueCore = clubs.Average(Core);
+        foreach (var t in clubs)
         {
-            var core = t.Roster.OrderByDescending(p => p.CurrentAbility).Take(8).Average(p => p.CurrentAbility);
             var star = t.Roster.OrderByDescending(p => p.CurrentAbility).First();
+            long pay = ContractMarket.Payroll(t);
             Teams.Add(new TeamChoice
             {
-                Team = t, CoreCa = core, LeagueCoreCa = leagueCore,
-                Payroll = $"${ContractMarket.Payroll(t) / 1e6:F0}M",
+                Team = t, CoreCa = Core(t), LeagueCoreCa = leagueCore, League = nabl ? "" : PlayLeague,
+                Payroll = pay >= 10_000_000 ? $"${pay / 1e6:F0}M" : $"${pay / 1e6:F1}M",
                 Star = $"{star.Name} ({star.PrimaryPosition}, {star.CurrentAbility})",
             });
         }
         SelectedTeam = Teams.FirstOrDefault();
+        OnPropertyChanged(nameof(ChooseTitle));
     }
 
     [RelayCommand]
@@ -144,6 +175,7 @@ public sealed partial class StartViewModel : ViewModelBase
         try
         {
             if (File.Exists(SavePath)) File.Delete(SavePath);
+            Status = "";
             var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath, fullSim: Leagues.Where(l => l.FullSim).Select(l => l.Key).ToList(), coach: BuildCoach());
             _shell.AttachSession(session);
         }

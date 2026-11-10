@@ -58,6 +58,31 @@ public sealed class GameWorld
     /// <summary>The domestic league (or guest pool) a club belongs to.</summary>
     public WorldCompetition HomeOf(Team t) => Competitions.First(c => c.Clubs.Contains(t));
 
+    /// <summary>The domestic league (not a continental competition or the guest pool) a club plays in, if any.</summary>
+    public WorldCompetition? LeagueOf(Team t) => Competitions.FirstOrDefault(c => c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Contains(t));
+
+    /// <summary>Every game a club has in any competition this season (league and continental), in date order.</summary>
+    public IEnumerable<(WorldCompetition comp, Fixture fixture)> FixturesOf(int teamId) =>
+        Playing.SelectMany(c => c.Season.Fixtures.Where(f => f.HomeId == teamId || f.AwayId == teamId).Select(f => (c, f)))
+               .OrderBy(x => x.Item2.Date).ThenBy(x => x.Item2.Index);
+
+    /// <summary>A club's unplayed game on a date (games are scheduled at the end of the previous day, playoffs included).</summary>
+    public (WorldCompetition comp, Fixture fixture)? GameOn(int teamId, DateOnly date)
+    {
+        foreach (var x in FixturesOf(teamId)) if (!x.fixture.Played && x.fixture.Date == date) return x;
+        return null;
+    }
+
+    /// <summary>
+    /// Record a game played elsewhere (the human's game, through the full engine or live): score, stat lines and series.
+    /// </summary>
+    public void Record(WorldCompetition comp, Fixture f, GameResult r)
+    {
+        f.HomePts = r.Home.Points; f.AwayPts = r.Away.Points;
+        AddLines(comp.Season.Stats, r);
+        AfterResult(comp, f);
+    }
+
     public void Index()
     {
         _teams.Clear();
@@ -328,19 +353,29 @@ public sealed class GameWorld
         {
             var r = sim.Simulate(home, away, comp.Profile.Rules, _rng.NextULong(), false, f.Date);
             f.HomePts = r.Home.Points; f.AwayPts = r.Away.Points;
-            foreach (var box in new[] { r.Home, r.Away })
-            foreach (var l in box.Lines.Where(l => l.Seconds > 0))
-            {
-                var st = stats.TryGetValue(l.Player.Id, out var x) ? x : stats[l.Player.Id] = new StatLine();
-                st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
-                st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
-            }
+            AddLines(stats, r);
         }
         else
         {
             var (hp, ap) = QuickSim.Play(home, away, f.Date, _rng, stats);
             f.HomePts = hp; f.AwayPts = ap;
         }
+        AfterResult(comp, f);
+    }
+
+    private static void AddLines(Dictionary<int, StatLine> stats, GameResult r)
+    {
+        foreach (var box in new[] { r.Home, r.Away })
+        foreach (var l in box.Lines.Where(l => l.Seconds > 0))
+        {
+            var st = stats.TryGetValue(l.Player.Id, out var x) ? x : stats[l.Player.Id] = new StatLine();
+            st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
+            st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
+        }
+    }
+
+    private static void AfterResult(WorldCompetition comp, Fixture f)
+    {
         if (f.SeriesId is { } sid)
         {
             var series = comp.Season.Series.First(x => x.Id == sid);

@@ -229,9 +229,11 @@ public sealed partial class MainViewModel : ViewModelBase
         var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
         JobText = s.Employed ? $"Board: {jobLabel}" : jobLabel;
         JobBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(jobColour));
-        var rec = s.Standings[s.HumanTeam];
+        var rec = s.MyRecord;
         RecordText = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
-        PhaseText = s.Phase switch
+        PhaseText = s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
+            ? $"{hl.Profile.Name} · {(hl.Season.IsComplete ? "season over" : hl.Season.Stage.ToLower())}"
+            : s.Phase switch
         {
             SessionPhase.Preseason => $"Preseason · opens {s.OpeningNight:MMM d}",
             SessionPhase.RegularSeason => $"Regular season {s.League.Season}-{(s.League.Season + 1) % 100:00}",
@@ -248,10 +250,10 @@ public sealed partial class MainViewModel : ViewModelBase
                 _ => "Continue",
             } ?? "Continue"
             : "Continue (1 day)";
-        var next = s.NextHumanGame;
-        NextGameText = s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs
+        var next = s.NextMyGame;
+        NextGameText = s.InNabl && s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs
             ? $"Series vs {(hs.Higher == s.HumanTeam ? hs.Lower : hs.Higher).Abbreviation}: {hs.Score}"
-            : next != null ? $"Next: {(next.Home == s.HumanTeam ? "vs" : "at")} {(next.Home == s.HumanTeam ? next.Away : next.Home).Abbreviation}, {next.Date:MMM d}"
+            : next != null ? $"Next: {(next.Home ? "vs" : "at")} {next.Opponent.Abbreviation}, {next.Date:MMM d}"
             : "";
         var inbox = Nav.FirstOrDefault(n => n.Name == "Inbox");
         if (inbox != null) { int unread = s.Inbox.Count(m => !m.Read); inbox.Badge = unread > 0 ? unread.ToString() : ""; }
