@@ -198,7 +198,9 @@ public sealed class GameWorld
 
     /// <summary>The heritage (names and looks) of a country's own players; null for the USA and unknown countries.</summary>
     private static Heritage? LocalHeritage(string country) =>
-        country is "" or "USA" ? null : Heritages.All.FirstOrDefault(h => h.Nationalities.Contains(country));
+        country is "" or "USA" ? null
+            // A country's own name list (weight 0) beats a shared regional one.
+            : Heritages.All.Where(h => h.Nationalities.Contains(country)).OrderBy(h => h.Weight > 0).FirstOrDefault();
 
     /// <summary>An overseas contract. Every one carries a buyout clause (decision #53).</summary>
     public static Contract NewContract(Player p, CompetitionProfile profile, int years, DateOnly on, int startSeason)
@@ -574,7 +576,8 @@ public sealed class GameWorld
                     (AwaitingDecision.TryGetValue(team.Id, out var waiting) ? waiting : AwaitingDecision[team.Id] = new()).Add(p);
                     continue;
                 }
-                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.2);
+                // 20% when the world had five leagues; the wider world (decision #111) has about 60% more players of NABL calibre.
+                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.12);
                 bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
                 if (!testsMarket && clubWants && _rng.Chance(0.95))
                     p.Contract = NewContract(p, comp.Profile, _rng.Next(1, 4), date, summerYear);
