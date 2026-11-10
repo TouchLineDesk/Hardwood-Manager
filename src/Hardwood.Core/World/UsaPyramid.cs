@@ -252,12 +252,31 @@ public static class UsaPyramid
             {
                 t.Division = c.Profile.Short;
                 if (nabl.Teams.Any(x => x.Id == t.Id)) continue;
-                if (!before.TryGetValue(t, out var was))
-                    Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, 1); // down from the NABL
-                else if (was != c.Key) Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, ScaleOf(was));
+                bool down = false;
+                if (!before.TryGetValue(t, out var was)) { Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, 1); down = true; } // down from the NABL
+                else if (was != c.Key) { Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, ScaleOf(was)); down = Level(c.Key) > Level(was); }
+                if (down) news.AddRange(RelegationReleases(world, nabl, t, c, on));
             }
         }
         world.Index();
         return news;
+    }
+
+    /// <summary>
+    /// Relegation release clauses (critic review #2: a relegated club's long contracts outlived its parachute): young
+    /// players far too good for the new level may walk away free, which also takes their wages off the books.
+    /// </summary>
+    private static IEnumerable<(string, string)> RelegationReleases(GameWorld world, League nabl, Team t, WorldCompetition c, DateOnly date)
+    {
+        if (!world.Levels.TryGetValue(c.Key, out var level)) level = c.Clubs.SelectMany(x => x.Roster).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(80).Average();
+        var rng = new Rng((ulong)(t.Id * 7919 + date.Year));
+        var gone = t.Roster.Where(p => p.CurrentAbility > level + 22 && p.Age(date) < 31 && rng.Chance(0.6)).ToList();
+        foreach (var p in gone)
+        {
+            t.Roster.Remove(p); p.TeamId = null; p.Contract = null;
+            nabl.FreeAgents.Add(p);
+        }
+        if (gone.Count > 0)
+            yield return ($"{t.FullName}: relegation clauses", $"{string.Join(", ", gone.Select(p => p.Name))} used the relegation release in {(gone.Count == 1 ? "his contract" : "their contracts")} and left on a free. Their wages are off the books.");
     }
 }

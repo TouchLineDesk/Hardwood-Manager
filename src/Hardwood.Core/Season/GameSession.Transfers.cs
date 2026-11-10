@@ -57,6 +57,7 @@ public sealed partial class GameSession
         if (fee > HumanTeam.Money.TransferBudget)
             return new(BidAnswer.Rejected, 0, $"The owner won't fund it: your transfer budget is ${HumanTeam.Money.TransferBudget / 1e6:F2}M.");
         if (TransferMarket.WontJoin(p, ScaleOf(seller), MySalaryScale, Today) is { } why) return new(BidAnswer.Rejected, 0, why);
+        if (AimsHigher(p) is { } higher) return new(BidAnswer.Rejected, 0, higher);
         var reply = TransferMarket.Answer(p, seller, fee, Today, ScaleOf(seller), League.Finance);
         if (reply.Answer == BidAnswer.Accepted)
         {

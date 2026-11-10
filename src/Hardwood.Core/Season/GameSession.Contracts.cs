@@ -58,9 +58,23 @@ public sealed partial class GameSession
             return HumanTeam.Roster.Count >= League.Finance.RosterMax ? "Your roster is full. Release someone first." : null;
         if (!League.FreeAgents.Contains(p)) return $"{p.Name} is under contract elsewhere. Agree a fee with his club first (Transactions page).";
         if (HumanTeam.Roster.Count >= League.Finance.RosterMax) return "Your roster is full. Release someone first.";
+        if (AimsHigher(p) is { } higher) return higher;
         if (Phase == SessionPhase.Offseason && Offseason?.Phase == OffseasonPhase.ReSigning && InNabl)
             return "Free agency opens after the re-signing period. Continue to free agency first.";
         return null;
+    }
+
+    /// <summary>
+    /// A free agent far better than your league won't sign for a club in it while he's young enough to do better
+    /// (critic review #2: a local club stacked with tier-2 players climbed three levels in three seasons, first every time).
+    /// Players aged 31+ will drop down; so will anyone within about 22 CA of the league's level.
+    /// </summary>
+    public string? AimsHigher(Player p)
+    {
+        if (InNabl || HumanLeague is not { } lg || p.Age(Today) >= 31) return null;
+        if (!World.Levels.TryGetValue(lg.Key, out var level)) return null;
+        double gap = p.CurrentAbility - level;
+        return gap > 22 ? $"{p.Name} is aiming higher than the {lg.Profile.Name}. Players of his level want a stronger league." : null;
     }
 
     /// <summary>
