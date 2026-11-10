@@ -48,6 +48,9 @@ public sealed partial class GuideViewModel : ObservableObject
     [ObservableProperty] private string _level;
     public ObservableCollection<GuideTaskRow> Tasks { get; } = new();
     public ObservableCollection<string> Strategy { get; } = new();
+    public ObservableCollection<string> LastGameWhy { get; } = new();
+    [ObservableProperty] private string _lastGameTitle = "";
+    [ObservableProperty] private bool _hasLastGame;
     // Pages with wide tables fold the panel to its strip unless you open it there (critic review #2: the transfer
     // market hid its CA, age and price columns behind the panel).
     private static readonly HashSet<string> WidePages = new() { "Transactions", "Roster", "Leagues", "League Leaders", "Tactics", "Offseason" };
@@ -108,7 +111,7 @@ public sealed partial class GuideViewModel : ObservableObject
         if (_lastDate is { } last && s.Today > last) { prog.DaysPlayed += Math.Min(400, s.Today.DayNumber - last.DayNumber); changed = true; }
         if (_lastPhase is { } ph && ph != SessionPhase.Offseason && s.Phase == SessionPhase.Offseason) { prog.SeasonsPlayed++; changed = true; }
         _lastDate = s.Today; _lastPhase = s.Phase;
-        if (changed) Settings.Save();
+        Settings.Save(); // days, seasons and strategy-note counts
         Refresh();
     }
 
@@ -129,8 +132,13 @@ public sealed partial class GuideViewModel : ObservableObject
                 Go = new RelayCommand(() => Go(t)),
                 Dismiss = new RelayCommand(() => { Settings.GuideProgress.Dismissed.Add(t.Key); Settings.Save(); Refresh(); }),
             });
+        LastGameTitle = advice.LastGameTitle;
+        LastGameWhy.Clear();
+        foreach (var w in advice.LastGameWhy ?? Array.Empty<string>()) LastGameWhy.Add(w);
+        HasLastGame = LastGameWhy.Count > 0;
         Strategy.Clear();
         foreach (var tip in advice.Strategy.Take(4)) Strategy.Add(tip);
+
         HasStrategy = Strategy.Count > 0;
     }
 

@@ -30,6 +30,22 @@
           <StackPanel Margin="14,0,14,14" Spacing="12">
             <TextBlock Text="{Binding Headline}" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13"/>
 
+            <Border IsVisible="{Binding HasLastGame}" Background="{StaticResource HwPanelAltBrush}" CornerRadius="6" Padding="10,8">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{Binding LastGameTitle}" FontWeight="SemiBold" FontSize="12.5"/>
+                <ItemsControl ItemsSource="{Binding LastGameWhy}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,3">
+                        <TextBlock Text="•" Foreground="{DynamicResource HwAccentBrush}" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" FontSize="11.5"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="WHAT TO DO NEXT" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
             <ItemsControl ItemsSource="{Binding Tasks}">
               <ItemsControl.ItemTemplate>
