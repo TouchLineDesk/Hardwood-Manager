@@ -79,9 +79,17 @@ public sealed class PortraitService
         var league = session.League;
         var prospects = session.Phase == SessionPhase.Offseason ? session.Offseason?.Prospects : null;
         var world = session.World;
-        var shown = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Concat(prospects ?? new List<Player>()).Concat(world.Players).ToList();
+        var college = world.College?.Programs ?? new List<Core.Model.Team>();
+        var shown = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Concat(prospects ?? new List<Player>()).Concat(world.Players)
+            .Concat(college.SelectMany(t => t.Roster)).ToList();
         lib.AssignMissing(shown.Concat(league.Retired), shown);
-        var cards = PortraitCard.For(league, prospects, world.Clubs, Graphics.LogoPackService.FileFor);
+        var cards = PortraitCard.For(league, prospects, world.Clubs.Concat(college), Graphics.LogoPackService.FileFor);
+        // Your own squad first, then your league, then everyone else: a new world has ~13,000 cards to draw, and at a
+        // club abroad your players used to wait behind the whole NABL and every league before yours.
+        var mine = session.HumanTeam.Roster.Select(p => p.Id).ToHashSet();
+        var myLeague = (session.InNabl ? league.Teams : world.LeagueOf(session.HumanTeam)?.Clubs ?? new List<Core.Model.Team>())
+            .SelectMany(t => t.Roster).Select(p => p.Id).ToHashSet();
+        cards = cards.OrderBy(c => mine.Contains(c.PlayerId) ? 0 : myLeague.Contains(c.PlayerId) ? 1 : 2).ToList();
         var folder = Controls.Portraits.FolderFor(savePath);
 
         var progress = new Progress<(int done, int total, int[] ids)>(p =>
