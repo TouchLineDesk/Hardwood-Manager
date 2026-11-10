@@ -92,13 +92,13 @@ public sealed partial class StartViewModel : ViewModelBase
     };
     /// <summary>Leagues that can run the full match engine; the rest give quick results.</summary>
     public ObservableCollection<LeagueChoice> Leagues { get; } = new(
-        Hardwood.Core.World.Competitions.All.Where(c => c.Kind != Hardwood.Core.World.CompetitionKind.GuestPool)
+        Hardwood.Core.World.Competitions.Current.Where(c => c.Kind != Hardwood.Core.World.CompetitionKind.GuestPool)
             .Select(c => new LeagueChoice { Key = c.Key, Name = c.Name, FullSim = GameSession.DefaultFullSim.Contains(c.Key) }));
     private League? _preview;
     private Hardwood.Core.World.GameWorld? _previewWorld;
 
     /// <summary>Where you can start (stage 3): the NABL or any league abroad.</summary>
-    public List<string> PlayLeagues { get; } = new[] { "NABL" }.Concat(Hardwood.Core.World.Competitions.All
+    public List<string> PlayLeagues { get; } = new[] { "NABL" }.Concat(Hardwood.Core.World.Competitions.Current
         .Where(c => c.Kind == Hardwood.Core.World.CompetitionKind.Domestic).Select(c => c.Name)).ToList();
     [ObservableProperty] private string _playLeague = "NABL";
     partial void OnPlayLeagueChanged(string value) => FillTeams();

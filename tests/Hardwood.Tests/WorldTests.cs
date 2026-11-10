@@ -21,7 +21,7 @@ public class WorldTests
     public void Generates_five_competitions_with_their_own_clubs_and_unique_ids()
     {
         var (nabl, world) = Build();
-        Assert.Equal(new[] { 0, 18, 16, 10, 20, 9 }, world.Competitions.Take(6).Select(c => c.Clubs.Count)); // then the USA pyramid
+        Assert.Equal(new[] { 0, 18, 16, 10, 20 }, world.Competitions.Take(5).Select(c => c.Clubs.Count)); // then the USA pyramid and the wider world
         Assert.Equal(18, world[Competitions.Elite].Season.Participants.Count);
 
         var teamIds = nabl.Teams.Select(t => t.Id).Concat(world.Clubs.Select(t => t.Id)).ToList();
@@ -186,7 +186,7 @@ public class WorldTests
             }
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             var upgraded = GameSession.Load(path);
-            Assert.Equal(Competitions.All.Count(c => c.Kind != CompetitionKind.GuestPool), upgraded.World.Playing.Count());
+            Assert.Equal(Competitions.Current.Count(c => c.Kind != CompetitionKind.GuestPool), upgraded.World.Playing.Count());
             Assert.True(upgraded.World.Playing.Sum(c => c.Season.Fixtures.Count(f => f.Played)) > 100); // caught up to today
             var ids = upgraded.League.AllActivePlayers.Concat(upgraded.League.FreeAgents).Concat(upgraded.World.Players).Select(p => p.Id).ToList();
             Assert.Equal(ids.Count, ids.Distinct().Count());
