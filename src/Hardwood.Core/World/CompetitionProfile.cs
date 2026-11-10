@@ -47,6 +47,23 @@ public sealed class CompetitionProfile
     public double JobPrestige { get; init; } = -10;
 
     public Rules Rules { get; init; } = Rules.Fiba;
+    /// <summary>Points per team per game in quick results (0: the rules' default, ~80 FIBA / ~101 NBA). Each league its own style (critic review #2).</summary>
+    public double ScoringLevel { get; init; }
+
+    /// <summary>The scoring level quick results aim for.</summary>
+    public double PointsPerTeam => ScoringLevel > 0 ? ScoringLevel
+        : Styles.TryGetValue(Key, out var v) ? v
+        : UsaPyramid.IsPyramid(Key) ? UsaPyramid.Level(Key) switch { 2 => 110, 3 => 105, 4 => 100, _ => 96 }
+        : Rules.GameMinutes >= 48 ? 101 : 80;
+
+    /// <summary>Real-world-ish scoring by league: China and the Philippines run, Greece grinds.</summary>
+    private static readonly Dictionary<string, double> Styles = new()
+    {
+        ["esp"] = 82, ["tur"] = 80, ["aus"] = 89, ["chn"] = 101, ["eel"] = 79,
+        ["ltu"] = 81, ["aba"] = 80, ["ger"] = 84, ["fra"] = 82, ["ita"] = 80, ["gre"] = 76, ["isr"] = 85, ["vtb"] = 82,
+        ["pol"] = 81, ["bal"] = 83, ["cze"] = 80, ["bnx"] = 81, ["arg"] = 79, ["bra"] = 81, ["pur"] = 86, ["mex"] = 85,
+        ["jpn"] = 81, ["kor"] = 83, ["phi"] = 96, ["afr"] = 77, ["ecc"] = 80, ["amc"] = 82,
+    };
 
     // ---- calendar (relative to the season's start year Y) ----
     /// <summary>Round-robin passes: 2 = home and away against everyone, 4 = twice each way.</summary>

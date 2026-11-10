@@ -371,7 +371,7 @@ public sealed class GameWorld
         }
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, f.Date, _rng, stats, comp.Profile.Rules);
+            var (hp, ap) = QuickSim.Play(home, away, f.Date, _rng, stats, comp.Profile.Rules, comp.Profile.PointsPerTeam);
             f.HomePts = hp; f.AwayPts = ap;
         }
         AfterResult(comp, f);
@@ -556,6 +556,9 @@ public sealed class GameWorld
         foreach (var team in comp.Clubs)
         {
             double clubLevel = team.Roster.Count == 0 ? 0 : team.Roster.OrderByDescending(p => p.CurrentAbility).Take(9).Average(p => p.CurrentAbility);
+            // Champions get raided: their best players are courted, and the bills for a winning squad come due.
+            bool champion = comp.Profile.Kind == CompetitionKind.Domestic && comp.Season.ChampionId == team.Id;
+            var stars = champion ? team.Roster.OrderByDescending(p => p.CurrentAbility).Take(3).ToHashSet() : new HashSet<Player>();
             foreach (var p in team.Roster.ToList())
             {
                 double mpg = Mpg(p.Id);
@@ -579,7 +582,8 @@ public sealed class GameWorld
                     continue;
                 }
                 // 20% when the world had five leagues; the wider world (decision #111) has about 60% more players of NABL calibre.
-                bool testsMarket = p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.12);
+                bool testsMarket = (p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.12))
+                                   || (stars.Contains(p) && p.Age(date) <= 31 && _rng.Chance(0.45));
                 bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
                 if (!testsMarket && clubWants && _rng.Chance(0.95))
                     p.Contract = NewContract(p, comp.Profile, _rng.Next(1, 4), date, summerYear);
@@ -647,7 +651,8 @@ public sealed class GameWorld
         while (any)
         {
             any = false;
-            foreach (var (comp, team) in clubs.OrderByDescending(x => Strength(x.team)))
+            // Weakest clubs choose first, like a draft (critic review #2: best-first let dynasties keep the best of the pool).
+            foreach (var (comp, team) in clubs.OrderBy(x => Strength(x.team)))
             {
                 // You build your own squad; the sporting director only makes up the numbers if you leave it short.
                 if (team.Roster.Count >= (team.Id == ManagedClubId ? ManagedMinimum : RosterSize)) continue;
@@ -686,9 +691,31 @@ public sealed class GameWorld
             }
         }
         Departed.Clear();
-        Nabl.NextPlayerId = gen.NextId;
         // Promotion and relegation through the USA pyramid, before next season's fixtures (decisions #78-79, #91).
         foreach (var n in UsaPyramid.Promote(this, Nabl, new StaffGenerator(new Rng(_rng.NextULong())), date)) News.Add(n);
+        // Relegation releases leave gaps: those clubs sign again at their new level.
+        foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic))
+        foreach (var team in comp.Clubs.Where(t => t.Id != ManagedClubId))
+        {
+            var club = ClubOf(comp, team);
+            while (team.Roster.Count < RosterSize)
+            {
+                int target = ExpectedCa(comp.Profile, team, team.Roster.Count);
+                var pick = freeAgents.Where(p => p.Age(date) <= 33 && p.Age(date) >= comp.Profile.MinAge && Math.Abs(p.CurrentAbility - target) <= 10
+                        && LocalsOf(comp.Profile, club).Contains(p.Nationality)).OrderBy(p => Math.Abs(p.CurrentAbility - target)).FirstOrDefault();
+                if (pick != null)
+                {
+                    freeAgents.Remove(pick); pick.TeamId = team.Id;
+                    pick.Contract = NewContract(pick, comp.Profile, _rng.Next(1, 4), date, newYear);
+                    team.Roster.Add(pick); SignedAbroad.Add((pick, team));
+                    continue;
+                }
+                var signing = NewPlayer(team, comp.Profile, club, team.Roster.Count, 0, date, gen, _rng, foreignSlot: false, ageOverride: _rng.Next(21, 30), caOverride: target);
+                signing.Contract!.StartSeason = newYear;
+                team.Roster.Add(signing);
+            }
+        }
+        Nabl.NextPlayerId = gen.NextId;
         College?.StartSeason(newYear, _rng);
         StartSeason(newYear);
     }
