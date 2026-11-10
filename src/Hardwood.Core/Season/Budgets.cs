@@ -96,7 +96,9 @@ public static class Budgets
             m.WageBudget = Round(m.Income * share);
             if (endedSeason >= 0 && m.Balance >= 0)
             {
-                long committed = t.Roster.Where(p => p.Contract is { } c && c.StartSeason + c.Years - 1 > endedSeason).Sum(p => p.Contract!.Salary);
+                // Contract.Years counts the seasons left including the one just ended (it's decremented after the books close),
+                // so a deal that runs into next season has more than one left.
+                long committed = t.Roster.Where(p => p.Contract is { Years: > 1 }).Sum(p => p.Contract!.Salary);
                 m.WageBudget = Math.Max(m.WageBudget, (long)Math.Ceiling(committed / 100_000.0) * 100_000);
             }
             // Deep debt: a transfer embargo until the balance recovers (critic review, Nov 10).
