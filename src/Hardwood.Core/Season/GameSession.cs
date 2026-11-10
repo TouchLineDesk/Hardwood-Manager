@@ -206,6 +206,23 @@ public sealed partial class GameSession
         WeekResults.Clear();
     }
 
+    /// <summary>
+    /// Openings while you're out of work, posted together once a week (critic review #3: 104 separate "Job opening"
+    /// messages in one spell out of work). The vacancies themselves are on the Board page straight away.
+    /// </summary>
+    public List<string> JobOpenings { get; } = new();
+    private DateOnly _lastJobsPost;
+
+    private void MaybePostJobs()
+    {
+        if (Employed) { JobOpenings.Clear(); return; }
+        if (JobOpenings.Count == 0 || (Today.DayNumber - _lastJobsPost.DayNumber < 7 && _lastJobsPost != default)) return;
+        Post(JobOpenings.Count == 1 ? "A new job opening" : $"{JobOpenings.Count} new job openings",
+            string.Join("\n", JobOpenings) + "\n\nApply on the Board page; smaller clubs answer first.", "Board");
+        JobOpenings.Clear();
+        _lastJobsPost = Today;
+    }
+
     private static string Count(int n, string word) => $"{n} {word}{(n == 1 ? "" : "s")}";
 
     public void Post(string title, string body, string category = "News")
@@ -341,6 +358,7 @@ public sealed partial class GameSession
         if (!Employed) DailyJobMarket();
         DailyTransfers();
         MaybePostDigest();
+        MaybePostJobs();
         MaybePostResults(now: Phase is SessionPhase.Postseason or SessionPhase.Offseason);
         if (Phase == SessionPhase.RegularSeason)
         {
@@ -520,7 +538,7 @@ public sealed partial class GameSession
         {
             Job.Vacancies.Add(new Jobs.Vacancy { TeamId = t.Id, Opened = Today });
             t.CoachName = "Interim coach";
-            Post($"Job opening: {t.FullName}", $"{t.FullName} ({ContextOf(t).Name}) have {how} {old}. The job is open: apply on the Board page.", "Board");
+            JobOpenings.Add($"• {t.FullName} ({ContextOf(t).Name}) have {how} {old}.");
         }
         else
         {
