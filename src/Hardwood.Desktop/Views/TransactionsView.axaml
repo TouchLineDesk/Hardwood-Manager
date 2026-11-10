@@ -23,12 +23,12 @@
           <DataGrid Grid.Row="1" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="170"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="54"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="80"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="80"/>
-              <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="110"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="160"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="58"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="58"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="58"/>
+              <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="128"/>
               <DataGridTextColumn Header="Value" Binding="{Binding Ask}" Width="90"/>
               <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="80"/>
               <DataGridTextColumn Header="" Binding="{Binding Status}" Width="*"/>

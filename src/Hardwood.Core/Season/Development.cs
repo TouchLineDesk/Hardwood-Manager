@@ -72,15 +72,8 @@ public sealed class DevelopmentEngine
         int age = p.Age(offseasonDate);
         int oldCa = p.CurrentAbility, oldPa = p.PotentialAbility;
 
-        // --- Potential drift ---
-        if (age <= 22 && _rng.Chance(0.18))
-            p.PotentialAbility = Math.Clamp(p.PotentialAbility + (int)Math.Round(_rng.NextGaussian(0, 6)), p.CurrentAbility, 200);
-        if (age >= 26)
-        {
-            // Unrealised potential fades: PA drifts toward CA once the growth years are over.
-            int gap = p.PotentialAbility - p.CurrentAbility;
-            if (gap > 0) p.PotentialAbility -= Math.Min(gap, age >= 29 ? gap : Math.Max(1, gap / 3));
-        }
+        // Potential is fixed for life, as in FM (Danny, Nov 10): CA grows toward it and declines with age; late bloomers and
+        // busts come from minutes, training, professionalism and luck, not from a moving ceiling.
 
         // --- CA change ---
         double minutesMod = _cfg.MinMinutesModifier + (_cfg.MaxMinutesModifier - _cfg.MinMinutesModifier) * Math.Clamp(mpg / _cfg.FullMinutes, 0, 1);
@@ -105,8 +98,7 @@ public sealed class DevelopmentEngine
     public void Nudge(Player p, int caDelta, int age)
     {
         if (caDelta == 0) return;
-        p.CurrentAbility = Math.Clamp(p.CurrentAbility + caDelta, 20, 200);
-        if (p.PotentialAbility < p.CurrentAbility) p.PotentialAbility = p.CurrentAbility;
+        p.CurrentAbility = Math.Clamp(p.CurrentAbility + caDelta, 20, Math.Max(20, p.PotentialAbility));
         ApplyToAttributes(p, caDelta, age);
     }
 

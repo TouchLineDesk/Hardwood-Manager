@@ -71,8 +71,10 @@ public class StaffTests
         // Stable: same range every call.
         Assert.Equal(r, Scouting.Attribute(theirs, Attr.ThreePoint, k));
         // A better scout narrows it.
-        var wide = Scouting.Ability(theirs, 0.3); var narrow = Scouting.Ability(theirs, 0.9);
+        var wide = Scouting.Attribute(theirs, Attr.ThreePoint, 0.3); var narrow = Scouting.Attribute(theirs, Attr.ThreePoint, 0.9);
         Assert.True(wide.High - wide.Low > narrow.High - narrow.Low);
+        // CA and PA are shown exactly for everyone (Nov 10).
+        Assert.True(Scouting.Ability(theirs, 0.3).Exact && Scouting.Potential(theirs, 0.3).Exact);
     }
 
     [Fact]
