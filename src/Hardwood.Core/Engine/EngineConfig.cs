@@ -12,7 +12,7 @@ public sealed class EngineConfig
     // players taking most shots are usually the happiest (morale); together FG% +1.2 pts before this.
     public double[] ZoneBaseLogit { get; set; } =
     {
-        0.235,  // Rim           ≈ 65% after shooter selection bias
+        0.215,  // Rim           ≈ 65% after shooter selection bias (review #4: the rebalanced systems drive more)
         -0.465, // ShortMid      ≈ 44%
         -0.585, // LongMid       ≈ 41%
         -0.585, // CornerThree   ≈ 39%
