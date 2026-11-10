@@ -243,14 +243,18 @@ public static class UsaPyramid
         // Clubs that moved get budgets for their new league (decision #88).
         var before = tables.SelectMany(kv => kv.Value.Select(t => (t, kv.Key))).GroupBy(x => x.t).ToDictionary(g => g.Key, g => g.First().Key);
         double nablArena = nabl.Teams.Average(t => (double)t.ArenaCapacity);
-        foreach (var t in nabl.Teams.Where(t => before.ContainsKey(t))) Season.Budgets.Rescale(t, 1, nablArena);
+        double ScaleOf(string key) => Competitions.Get(key).SalaryScale;
+        foreach (var t in nabl.Teams.Where(t => before.ContainsKey(t))) Season.Budgets.Rescale(t, 1, nablArena, ScaleOf(before[t]));
         foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key)))
         {
             double arena = c.Clubs.Average(t => (double)t.ArenaCapacity);
             foreach (var t in c.Clubs)
             {
                 t.Division = c.Profile.Short;
-                if (!before.TryGetValue(t, out var was) || was != c.Key) Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena);
+                if (nabl.Teams.Any(x => x.Id == t.Id)) continue;
+                if (!before.TryGetValue(t, out var was))
+                    Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, 1); // down from the NABL
+                else if (was != c.Key) Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, ScaleOf(was));
             }
         }
         world.Index();

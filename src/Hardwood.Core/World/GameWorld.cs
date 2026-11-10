@@ -128,6 +128,8 @@ public sealed class GameWorld
         nabl.CollegeActive = true;
         nabl.NextPlayerId = gen.NextId;
         world.Index();
+        foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic))
+            world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility), 1);
         world.StartSeason(nabl.Season);
         return world;
     }
@@ -634,6 +636,11 @@ public sealed class GameWorld
         // The pool is tried first; if nobody there fits, the club finds a new player (sometimes a younger prospect).
         // (Refilling with weak teenagers drained every overseas league by 5-10 CA a decade; balance audit, Nov 9.)
         var clubs = Competitions.Where(c => c.Clubs.Count > 0).SelectMany(c => c.Clubs.Select(t => (comp: c, team: t))).ToList();
+        // Talent anchor (critic review, Nov 10): like-for-like replacement drifts down, because a 34-year-old who
+        // retires at CA 80 was a 100 at his peak and gets replaced by an 80. Over 100 seasons every league outside the
+        // NABL lost ~25 CA. Each league leans its signings back toward its own level.
+        var lean = Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic)
+            .ToDictionary(c => c.Key, AnchorCorrection);
         var needs = clubs.ToDictionary(x => x.team.Id, x => new Queue<Departure>(
             (Departed.TryGetValue(x.team.Id, out var d) ? d : new List<Departure>()).OrderByDescending(d => d.Ca)));
         bool any = true;
@@ -648,6 +655,7 @@ public sealed class GameWorld
                 var club = ClubOf(comp, team);
                 var locals = LocalsOf(comp.Profile, club);
                 var need = needs[team.Id].Count > 0 ? needs[team.Id].Dequeue() : new Departure(ExpectedCa(comp.Profile, team, team.Roster.Count), false);
+                if (lean.TryGetValue(comp.Key, out var shift) && shift != 0) need = need with { Ca = need.Ca + shift };
                 any = true;
                 int imports = team.Roster.Count(p => !locals.Contains(p.Nationality));
                 bool importRoom = imports < comp.Profile.ForeignLimit;
@@ -692,6 +700,26 @@ public sealed class GameWorld
         BeginSummer(newYear, sim, pool);
         EndSummer(newYear, sim, pool);
         foreach (var p in pool) { p.TeamId = null; Nabl.FreeAgents.Add(p); }
+    }
+
+    /// <summary>
+    /// Each league's home level: its mean ability when the world was made (saved). Careers from before it was kept
+    /// take the level the league has on first use, so nothing jumps.
+    /// </summary>
+    public Dictionary<string, double> Levels { get; } = new();
+
+    /// <summary>How far to lean this summer's signings: a multiple of the gap between the league's home level and where it has drifted.</summary>
+    private int AnchorCorrection(WorldCompetition c)
+    {
+        // The league as it stood before the summer's departures (counting them in): the players left behind are the
+        // better ones, so measuring them alone would read a drained league as healthy.
+        var cas = c.Clubs.SelectMany(t => t.Roster.Select(p => (double)p.CurrentAbility)
+            .Concat(Departed.TryGetValue(t.Id, out var d) ? d.Select(x => (double)x.Ca) : Enumerable.Empty<double>())).ToList();
+        if (cas.Count == 0) return 0;
+        double now = cas.Average();
+        if (!Levels.TryGetValue(c.Key, out var home)) Levels[c.Key] = home = Math.Round(now, 1);
+        double gap = home - now;
+        return (int)Math.Round(Math.Clamp(gap * 3.0, -12, 20));
     }
 
     /// <summary>The ability a club expects for its next roster spot: its league's slot table, shifted by how strong the club is.</summary>

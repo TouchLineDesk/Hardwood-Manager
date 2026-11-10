@@ -20,6 +20,7 @@ public static class WorldStore
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_started', $v)", ("$v", world.SummerStarted.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_ended', $v)", ("$v", world.SummerEnded.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('departed', $v)", ("$v", SaveFile.ToJson(world.Departed)));
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('levels', $v)", ("$v", SaveFile.ToJson(world.Levels)));
         if (world.College is { } col)
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college', $v)", ("$v", SaveFile.ToJson(new CollegeState(
                 col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
@@ -106,6 +107,9 @@ public static class WorldStore
             cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'departed'";
             if (cmd.ExecuteScalar() is string dj && SaveFile.FromJson<Dictionary<int, List<GameWorld.Departure>>>(dj) is { } departed)
                 foreach (var (k, list) in departed) world.Departed[k] = list;
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'levels'";
+            if (cmd.ExecuteScalar() is string lj && SaveFile.FromJson<Dictionary<string, double>>(lj) is { } levels)
+                foreach (var (k, lv) in levels) world.Levels[k] = lv;
         }
         var asOf = new DateOnly(nabl.Season, 10, 1);
         foreach (var p in overseasPlayers)

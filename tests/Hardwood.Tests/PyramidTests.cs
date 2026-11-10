@@ -56,6 +56,7 @@ public class PyramidTests
         var summary = new SeasonSummary { Season = 2026, Records = order.Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() };
         nabl.History.Add(summary);
         var down = order.Take(3).ToList();
+        var wagesBefore = down.SelectMany(t => t.Roster).Where(p => p.Contract != null).ToDictionary(p => p.Id, p => p.Contract!.Salary);
         var t2 = world[UsaPyramid.Tier2];
         var up = t2.Season.Table().Take(3).Select(r => world.TeamById(r.TeamId)!).ToList();
         var t3Up = world[UsaPyramid.Tier3].Season.Table().Take(3).Select(r => world.TeamById(r.TeamId)!).ToList();
@@ -71,7 +72,13 @@ public class PyramidTests
         Assert.All(up, t => Assert.NotEmpty(t.Staff));
         Assert.Equal(down.Select(t => t.Conference).OrderBy(c => c), up.Select(t => t.Conference).OrderBy(c => c));
         Assert.All(up, t => Assert.True(t.Money.WageBudget > 100_000_000, $"{t.FullName}: {t.Money.WageBudget:N0}")); // NABL money now
-        Assert.All(down, t => Assert.True(t.Money.WageBudget < 50_000_000)); // tier-2 money
+        Assert.All(down, t => Assert.True(t.Money.Revenue < 50_000_000)); // tier-2 money
+        // Relegation clauses halve the wages; a parachute (half the lost revenue, for two seasons) covers the rest.
+        Assert.All(down.SelectMany(t => t.Roster).Where(p => p.Contract != null && wagesBefore.ContainsKey(p.Id)),
+            p => Assert.InRange(p.Contract!.Salary, wagesBefore[p.Id] * 0.49, wagesBefore[p.Id] * 0.51));
+        Assert.All(down, t => { Assert.True(t.Money.Parachute > 50_000_000); Assert.Equal(2, t.Money.ParachuteYears); });
+        Assert.All(down, t => Assert.True(t.Money.Income > ContractMarket.Payroll(t), $"{t.FullName}: income {t.Money.Income:N0} vs payroll {ContractMarket.Payroll(t):N0}"));
+        Assert.All(up, t => Assert.Equal(0, t.Money.Parachute));
         Assert.All(t3Up, t => Assert.Contains(t, t2.Clubs));
         Assert.Equal(24, t2.Clubs.Count);
         Assert.Equal(24, world[UsaPyramid.Tier3].Clubs.Count);

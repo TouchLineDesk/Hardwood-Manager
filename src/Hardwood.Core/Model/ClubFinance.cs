@@ -18,4 +18,12 @@ public sealed class ClubFinance
     public double FanBase { get; set; } = 50;
     /// <summary>Set once budgets have been worked out (old saves and new clubs get them on first use).</summary>
     public bool Ready { get; set; }
+    /// <summary>Parachute money after relegation, paid on top of revenue: this season's amount and the seasons left (critic review, Nov 10).</summary>
+    public long Parachute { get; set; }
+    public int ParachuteYears { get; set; }
+    /// <summary>Deep in debt (balance below half a season's revenue): no transfer fees until it recovers.</summary>
+    public bool Embargo { get; set; }
+
+    /// <summary>Money in for a season: revenue plus any parachute.</summary>
+    public long Income => Revenue + Parachute;
 }

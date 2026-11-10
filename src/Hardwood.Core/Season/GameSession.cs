@@ -8,6 +8,9 @@ namespace Hardwood.Core.Season;
 
 public enum SessionPhase { Preseason, RegularSeason, Postseason, Offseason }
 
+/// <summary>One world headline waiting for the weekly digest.</summary>
+public sealed record DigestItem(DateOnly Date, string Title, string Line);
+
 public sealed class InboxMessage
 {
     public int Id { get; init; }
@@ -89,7 +92,7 @@ public sealed partial class GameSession
         HumanTeam.Coach = Coach;
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
-        Job.Current ??= Jobs.Board.SetExpectations(ContextOf(HumanTeam), HumanTeam, league.Season);
+        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, HumanLeague?.Key ?? "nabl", MyLevel, 0);
         BuildSeason();
     }
 
@@ -156,6 +159,40 @@ public sealed partial class GameSession
         Post($"Released {st.Name}", $"{Staff.RoleName(st.Role)} {st.Name} has left the organisation.", "Staff");
         SaveNow();
     }
+
+    /// <summary>World headlines waiting for the weekly digest (critic review, Nov 10: 150-190 world messages a season buried the board's warnings).</summary>
+    public List<DigestItem> WorldDigest { get; } = new();
+    public DateOnly LastDigest { get; set; }
+
+    /// <summary>World news: anything about your club goes straight to the inbox; the rest waits for the weekly "Around the world".</summary>
+    public void PostWorld(string title, string body)
+    {
+        if (Employed && (title.Contains(HumanTeam.FullName) || body.Contains(HumanTeam.FullName))) { Post(title, body, "World"); return; }
+        WorldDigest.Add(new DigestItem(Today, title, FirstSentence(body)));
+        if (WorldDigest.Count > 200) WorldDigest.RemoveRange(0, WorldDigest.Count - 200);
+    }
+
+    /// <summary>Once a week (or when it fills up), the world's headlines arrive as one message.</summary>
+    private void MaybePostDigest(bool now = false)
+    {
+        if (WorldDigest.Count == 0) return;
+        if (!now && Today.DayNumber - LastDigest.DayNumber < 7 && WorldDigest.Count < 40) return;
+        var lines = WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : ""));
+        Post($"Around the world: {WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}",
+            string.Join("\n", lines) + "\n\nTables, results and leaders are on the Leagues page.", "World");
+        WorldDigest.Clear();
+        LastDigest = Today;
+    }
+
+    private static string FirstSentence(string body)
+    {
+        var line = body.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        int dot = line.IndexOf(". ", StringComparison.Ordinal);
+        if (dot > 0) line = line[..(dot + 1)];
+        return line.Length > 180 ? line[..177] + "..." : line;
+    }
+
+    public void MarkAllRead() { foreach (var m in Inbox) m.Read = true; }
 
     public void Post(string title, string body, string category = "News")
     {
@@ -268,7 +305,7 @@ public sealed partial class GameSession
     public void PlayWorld(DateOnly date)
     {
         World.PlayThrough(date, _sim);
-        foreach (var (title, body) in World.News) Post(title, body, "World");
+        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
         World.News.Clear();
     }
 
@@ -289,6 +326,7 @@ public sealed partial class GameSession
         }
         if (!Employed) DailyJobMarket();
         DailyTransfers();
+        MaybePostDigest();
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -426,7 +464,7 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower()} (around {e.TargetWins} wins)."
+            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, avoid the relegation places" : Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower())} (around {e.TargetWins} wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
 
@@ -534,7 +572,7 @@ public sealed partial class GameSession
         Job.HiredOn = Today;
         Job.HiredSeason = League.Season;
         Job.History.Clear();
-        Job.Current = Jobs.Board.SetExpectations(ContextOf(team), team, League.Season);
+        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, League.Season, null, World.LeagueOf(team)?.Key ?? "nabl", 0, 0);
         if (Abroad) EnsureStaff(team);
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
@@ -569,7 +607,8 @@ public sealed partial class GameSession
             {
                 v.Status = "filled";
                 t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
-                Post($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.", "League");
+                // Openings you didn't go for are news, not mail (critic review: 146 of these in one spell out of work).
+                PostWorld($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.");
             }
         }
         // Keep the market moving: struggling clubs sometimes change coach mid-season.
@@ -737,7 +776,7 @@ public sealed partial class GameSession
                     Offseason.AiFreeAgency(ControlledTeamId);
                     AiTransferRound(15); // the summer transfer market (decision #87)
                     if (Employed && _rng.Chance(0.6)) MaybeBidForYourPlayer();
-                    foreach (var (title, body) in World.News) Post(title, body, "World");
+                    foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
                     World.News.Clear();
                     if (Employed)
                     {
@@ -755,7 +794,7 @@ public sealed partial class GameSession
                 Offseason.AdvanceToFreeAgency();
                 Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
                 Offseason.AiFreeAgency(ControlledTeamId);
-                foreach (var (title, body) in World.News) Post(title, body, "World");
+                foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
                 World.News.Clear();
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
                 if (InNabl && !League.Finance.OpenMarket) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
@@ -837,12 +876,13 @@ public sealed partial class GameSession
         AgreedFees.Clear(); IncomingBids.Clear(); // the summer window shuts
         Phase = SessionPhase.Preseason;
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
-        foreach (var (title, body) in World.News) Post(title, body, "World");
+        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
         World.News.Clear();
         if (Employed)
         {
             if (Abroad) SummerReport();
-            Job.Current = Jobs.Board.SetExpectations(ContextOf(HumanTeam), HumanTeam, League.Season);
+            Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
+                HumanLeague?.Key ?? "nabl", MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
             Job.WarningLevel = 0;
             PostExpectations();
         }
@@ -854,6 +894,15 @@ public sealed partial class GameSession
         var last = League.History.Last();
         Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
             $"Last season's NABL champions: {League.TeamById(last.ChampionTeamId).FullName}. " + (NextMyGame is { } g ? $"Your first game is on {g.Date:MMM d}." : $"Opening night is {OpeningNight:MMM d}.") + " Review your rotation before the first game.", "Board");
+        // Money news for your club (critic review, Nov 10): parachute payments and the debt embargo.
+        var m = HumanTeam.Money;
+        if (Employed && m.Embargo)
+        {
+            Job.Confidence = Math.Max(0, Job.Confidence - 8);
+            Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
+        }
+        if (Employed && m.Parachute > 0)
+            Post("Parachute payment", $"After relegation the league pays a parachute of ${m.Parachute / 1e6:F1}M this season ({(m.ParachuteYears > 1 ? "it halves next season, then stops" : "the last one")}). Every contract's relegation clause has cut wages by half. Use the time to bring the payroll down to this level.", "Board");
     }
 
     // ------------------------------------------------------------------------------------------

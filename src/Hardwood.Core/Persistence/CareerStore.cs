@@ -25,6 +25,7 @@ public static class CareerStore
         Put("coaches", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.CoachName)));
         Put("money", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Money)));
         Put("transfers", SaveFile.ToJson(new TransferState(s.TransferLog, s.IncomingBids, s.AgreedFees)));
+        Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest)));
         tx.Commit();
     }
 
@@ -52,7 +53,11 @@ public static class CareerStore
             s.IncomingBids.Clear(); s.IncomingBids.AddRange(ts.Incoming ?? new());
             s.AgreedFees.Clear(); foreach (var (k, v) in ts.Agreed ?? new()) s.AgreedFees[k] = v;
         }
-        if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
+        if (Get("digest") is { } dj && SaveFile.FromJson<DigestState>(dj) is { } ds)
+        {
+            s.WorldDigest.Clear(); s.WorldDigest.AddRange(ds.Items ?? new()); s.LastDigest = ds.Last;
+        }
+                if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
         if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
@@ -64,3 +69,6 @@ public static class CareerStore
     private static void CreateSchema(SqliteConnection conn) =>
         SaveFile.Exec(conn, "CREATE TABLE IF NOT EXISTS career_meta(key TEXT PRIMARY KEY, value TEXT);");
 }
+
+/// <summary>World headlines waiting for the weekly digest.</summary>
+public sealed record DigestState(List<DigestItem>? Items, DateOnly Last);

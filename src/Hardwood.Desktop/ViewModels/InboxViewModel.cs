@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.Season;
 
 namespace Hardwood.Desktop.ViewModels;
@@ -39,6 +40,28 @@ public sealed partial class InboxViewModel : PageViewModel
 
     public InboxViewModel(MainViewModel shell) : base(shell) { }
 
+    /// <summary>Unread first, your club's business, or everything (critic review: action items were buried under news).</summary>
+    public List<string> Filters { get; } = new() { "All messages", "Unread", "Your club (board, squad, staff, medical)", "Games", "League and world" };
+    [ObservableProperty] private string _filter = "All messages";
+    partial void OnFilterChanged(string value) => Refresh();
+
+    [RelayCommand]
+    private void MarkAllRead()
+    {
+        Session.MarkAllRead();
+        Shell.RefreshHeader();
+        Refresh();
+    }
+
+    private bool Shows(InboxMessage m) => Filter switch
+    {
+        "Unread" => !m.Read,
+        "Your club (board, squad, staff, medical)" => m.Category is "Board" or "Squad" or "Staff" or "Medical" or "Injury" or "Roster" or "Transactions",
+        "Games" => m.Category == "Game",
+        "League and world" => m.Category is "League" or "World" or "Awards" or "Draft",
+        _ => true,
+    };
+
     partial void OnSelectedChanged(InboxItem? value)
     {
         if (value == null || value.IsRead) return;
@@ -51,7 +74,7 @@ public sealed partial class InboxViewModel : PageViewModel
     {
         var selectedId = Selected?.Message.Id;
         Items.Clear();
-        foreach (var m in Session.Inbox) Items.Add(new InboxItem { Message = m, IsRead = m.Read });
+        foreach (var m in Session.Inbox.Where(Shows)) Items.Add(new InboxItem { Message = m, IsRead = m.Read });
         Selected = Items.FirstOrDefault(i => i.Message.Id == selectedId) ?? Items.FirstOrDefault();
         var s = Session;
         var rec = s.MyRecord;
