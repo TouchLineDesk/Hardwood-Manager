@@ -22,6 +22,8 @@ public sealed partial class NavItem : ObservableObject
 {
     public required string Name { get; init; }
     public required Func<PageViewModel> Factory { get; init; }
+    /// <summary>Lucide icon name (see Controls.IconData).</summary>
+    public string Icon { get; init; } = "";
     public IRelayCommand? Command { get; set; }
     [ObservableProperty] private bool _isActive;
     [ObservableProperty] private string _badge = "";
@@ -73,29 +75,31 @@ public sealed partial class MainViewModel : ViewModelBase
         Portraits.PortraitService.Instance.Request(session);
         _pages.Clear();
         Nav.Clear();
-        foreach (var (name, factory) in new (string, Func<PageViewModel>)[]
+        foreach (var (name, icon, factory) in new (string, string, Func<PageViewModel>)[]
         {
-            ("Inbox", () => new InboxViewModel(this)),
-            ("Roster", () => new RosterViewModel(this)),
-            ("Rotation", () => new RotationViewModel(this)),
-            ("Tactics", () => new TacticsViewModel(this)),
-            ("Squad", () => new SquadViewModel(this)),
-            ("Staff & Training", () => new StaffViewModel(this)),
-            ("Schedule & Results", () => new ScheduleViewModel(this)),
-            ("Standings", () => new StandingsViewModel(this)),
-            ("World", () => new WorldViewModel(this)),
-            ("League Leaders", () => new LeadersViewModel(this)),
-            ("Transactions", () => new TransactionsViewModel(this)),
-            ("Offseason", () => new OffseasonViewModel(this)),
-            ("Awards", () => new AwardsViewModel(this)),
-            ("History", () => new HistoryViewModel(this)),
+            ("Home", "LayoutDashboard", () => new HomeViewModel(this)),
+            ("Inbox", "Inbox", () => new InboxViewModel(this)),
+            ("Roster", "Users", () => new RosterViewModel(this)),
+            ("Rotation", "Repeat", () => new RotationViewModel(this)),
+            ("Tactics", "ClipboardList", () => new TacticsViewModel(this)),
+            ("Squad", "HeartHandshake", () => new SquadViewModel(this)),
+            ("Staff & Training", "Dumbbell", () => new StaffViewModel(this)),
+            ("Schedule & Results", "CalendarDays", () => new ScheduleViewModel(this)),
+            ("Standings", "ListOrdered", () => new StandingsViewModel(this)),
+            ("World", "Globe", () => new WorldViewModel(this)),
+            ("League Leaders", "ChartColumnIncreasing", () => new LeadersViewModel(this)),
+            ("Transactions", "ArrowLeftRight", () => new TransactionsViewModel(this)),
+            ("Offseason", "Sun", () => new OffseasonViewModel(this)),
+            ("Awards", "Award", () => new AwardsViewModel(this)),
+            ("History", "History", () => new HistoryViewModel(this)),
         })
         {
-            var item = new NavItem { Name = name, Factory = factory };
+            var item = new NavItem { Name = name, Icon = icon, Factory = factory };
             item.Command = new RelayCommand(() => Navigate(item.Name));
             Nav.Add(item);
         }
-        Navigate("Inbox");
+        ThemeService.Apply(session.HumanTeam);
+        Navigate("Home");
         RefreshHeader();
     }
 
@@ -249,6 +253,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         Session = null;
         HasSession = false;
+        ThemeService.Apply(null);
         Nav.Clear();
         CurrentPage = new StartViewModel(this);
     }

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.SquadView"
              x:DataType="vm:SquadViewModel">
   <Grid ColumnDefinitions="11*,6*">
@@ -23,8 +24,26 @@
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
-          <DataGridTextColumn Header="Mood" Binding="{Binding Mood}" Width="110"/>
-          <DataGridTextColumn Header="Morale" Binding="{Binding Morale}" Width="84"/>
+          <DataGridTemplateColumn Header="Mood" Width="120">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MoodRow">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="6,0" VerticalAlignment="Center">
+                  <c:Icon Kind="{Binding MoodIcon}" Width="15" Height="15" Foreground="{Binding MoodBrush}"/>
+                  <TextBlock Text="{Binding Mood}"/>
+                </StackPanel>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Morale" Width="130" SortMemberPath="Morale">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MoodRow">
+                <Grid ColumnDefinitions="*,30" Margin="6,0" VerticalAlignment="Center">
+                  <ProgressBar Value="{Binding Morale}" Maximum="100" Height="6" MinWidth="60" Foreground="{Binding MoodBrush}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Morale}" HorizontalAlignment="Right"/>
+                </Grid>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120"/>
           <DataGridTextColumn Header="Biggest worry" Binding="{Binding MainReason}" Width="*"/>
         </DataGrid.Columns>
@@ -60,6 +79,12 @@
           </ItemsControl>
           <TextBlock Text="{Binding Reply}" TextWrapping="Wrap" FontWeight="SemiBold"/>
           <TextBlock Text="{Binding TalkNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Classes="panel" IsVisible="{Binding HasTrend}">
+        <StackPanel>
+          <TextBlock Text="Chemistry and morale by week" Classes="h2" Margin="0"/>
+          <c:LineChart Series="{Binding Trend}" XLabels="{Binding TrendLabels}" Height="150"/>
         </StackPanel>
       </Border>
       <Border Classes="panel">

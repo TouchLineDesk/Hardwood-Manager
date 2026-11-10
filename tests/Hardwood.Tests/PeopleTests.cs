@@ -139,6 +139,9 @@ public class PeopleTests
             // A few weeks of games: weekly updates run and post squad news.
             for (int i = 0; i < 40; i++) loaded.AdvanceDay();
             Assert.Contains(loaded.Inbox, m => m.Category == "Squad");
+            Assert.NotEmpty(loaded.MoodHistory);
+            loaded.SaveNow();
+            Assert.Equal(loaded.MoodHistory.Count, GameSession.Load(path).MoodHistory.Count);
         }
         finally { Directory.Delete(dir, true); }
     }

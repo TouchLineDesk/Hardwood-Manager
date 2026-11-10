@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Controls.Wordmark">
+  <!-- Logo A (decision #67): serif "Hardwood" with the ball as the second o, a rule, and MANAGER spaced underneath. -->
+  <StackPanel HorizontalAlignment="Center">
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+      <TextBlock x:Name="Left" Text="Hardw" FontFamily="Georgia, Times New Roman, serif" FontWeight="Bold" Foreground="#E6EAF0" VerticalAlignment="Bottom"/>
+      <c:BallMark x:Name="Ball" Margin="2,0,2,0" VerticalAlignment="Bottom"/>
+      <TextBlock x:Name="Right" Text="od" FontFamily="Georgia, Times New Roman, serif" FontWeight="Bold" Foreground="#E6EAF0" VerticalAlignment="Bottom"/>
+    </StackPanel>
+    <Border x:Name="Rule" Height="3" Background="#F0A33A" Margin="0,8,0,6"/>
+    <TextBlock x:Name="Sub" Text="MANAGER" HorizontalAlignment="Center" FontWeight="SemiBold" Foreground="#8B96A5" LetterSpacing="12"/>
+  </StackPanel>
+</UserControl>

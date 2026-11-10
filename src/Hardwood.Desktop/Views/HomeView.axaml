@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="12">
+      <!-- Header -->
+      <Border CornerRadius="10" ClipToBounds="True" Height="132">
+        <Grid>
+          <c:CourtBackdrop Glow="{Binding Glow}" Intensity="0.8"/>
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,0">
+            <c:TeamLogo Team="{Binding Team}" Width="92" Height="92" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="18,0">
+              <TextBlock Text="{Binding Headline}" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="{Binding Subline}" Classes="muted" FontSize="14"/>
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                <c:Icon Kind="HeartHandshake" Width="15" Height="15" Foreground="{DynamicResource HwAccentBrush}"/>
+                <TextBlock Text="{Binding ChemistryText}" FontSize="12.5"/>
+              </StackPanel>
+            </StackPanel>
+            <Border Grid.Column="2" Background="#B0161B22" CornerRadius="8" Padding="14,10" VerticalAlignment="Center" MinWidth="320">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:Icon Kind="CalendarDays" Width="15" Height="15" Foreground="{DynamicResource HwAccentBrush}"/>
+                    <TextBlock Text="NEXT GAME" Classes="muted" FontSize="11" FontWeight="SemiBold" LetterSpacing="1"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding NextGame}" FontWeight="SemiBold" FontSize="15"/>
+                  <TextBlock Text="{Binding NextDetail}" Classes="muted" FontSize="12"/>
+                  <TextBlock Text="{Binding Scouting}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="300" Margin="0,4,0,0"/>
+                </StackPanel>
+                <c:TeamLogo Grid.Column="1" Team="{Binding Opponent}" Width="56" Height="56" Margin="12,0,0,0" VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <!-- Quick actions -->
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Command="{Binding GoCommand}" CommandParameter="Tactics"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ClipboardList" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Game plan"/></StackPanel></Button>
+        <Button Command="{Binding GoCommand}" CommandParameter="Rotation"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Repeat" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Rotation"/></StackPanel></Button>
+        <Button Command="{Binding GoCommand}" CommandParameter="Squad"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="HeartHandshake" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Squad"/></StackPanel></Button>
+        <Button Command="{Binding GoCommand}" CommandParameter="Inbox"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Inbox" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Inbox"/></StackPanel></Button>
+      </StackPanel>
+
+      <Grid ColumnDefinitions="*,*,*">
+        <!-- Standings -->
+        <Border Classes="panel" Margin="0,0,10,0">
+          <StackPanel Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ListOrdered" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Conference" Classes="h2" Margin="0"/></StackPanel>
+            <ItemsControl ItemsSource="{Binding Table}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TableRow">
+                  <Border Padding="4,3" CornerRadius="4" Background="{Binding Ours, Converter={x:Static vm:HomeConverters.Highlight}}">
+                    <Grid ColumnDefinitions="24,24,*,58,48">
+                      <TextBlock Text="{Binding Rank}" Classes="muted"/>
+                      <c:TeamLogo Grid.Column="1" Team="{Binding Team}" ShowText="False" Width="18" Height="18" HorizontalAlignment="Left"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="{Binding Ours, Converter={x:Static vm:HomeConverters.Bold}}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Grid.Column="3" Text="{Binding Record}" HorizontalAlignment="Right"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Diff}" Classes="muted" HorizontalAlignment="Right"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- Squad pulse and injuries -->
+        <StackPanel Grid.Column="1" Spacing="10" Margin="0,0,10,0">
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="HeartHandshake" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Squad pulse" Classes="h2" Margin="0"/></StackPanel>
+              <ItemsControl ItemsSource="{Binding Pulse}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HomeRow">
+                    <Grid ColumnDefinitions="24,*,Auto" Margin="0,2">
+                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Title}"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="muted"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+          <Border Classes="panel">
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Bandage" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Injuries" Classes="h2" Margin="0"/></StackPanel>
+              <ItemsControl ItemsSource="{Binding Injuries}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HomeRow">
+                    <Grid ColumnDefinitions="24,*,Auto" Margin="0,2">
+                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Title}"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="muted"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- News -->
+        <Border Grid.Column="2" Classes="panel">
+          <StackPanel Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Newspaper" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Latest" Classes="h2" Margin="0"/></StackPanel>
+            <ItemsControl ItemsSource="{Binding News}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HomeRow">
+                  <Grid ColumnDefinitions="24,*,Auto" Margin="0,3">
+                    <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="Wrap" FontWeight="{Binding Highlight, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="muted" Margin="8,0,0,0"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Charts -->
+      <Grid ColumnDefinitions="2*,*,*">
+        <Border Classes="panel" Margin="0,0,10,0">
+          <StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="TrendingUp" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Season form (running point differential)" Classes="h2" Margin="0"/></StackPanel>
+            <c:LineChart Series="{Binding Form}" XLabels="{Binding FormLabels}" ZeroLine="True" Height="180"/>
+            <TextBlock Text="Chemistry and morale by week" Classes="h2" Margin="0,8,0,0" IsVisible="{Binding HasMood}"/>
+            <c:LineChart Series="{Binding Mood}" XLabels="{Binding MoodLabels}" Height="150" IsVisible="{Binding HasMood}"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Classes="panel" Margin="0,0,10,0">
+          <StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ChartColumnIncreasing" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Points per game" Classes="h2" Margin="0"/></StackPanel>
+            <c:BarChart Bars="{Binding Comparison}" Height="180"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="panel">
+          <StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="DollarSign" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Payroll committed" Classes="h2" Margin="0"/></StackPanel>
+            <c:BarChart Bars="{Binding Payroll}" Lines="{Binding PayrollLines}" Height="180"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

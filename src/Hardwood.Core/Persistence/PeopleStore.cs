@@ -26,6 +26,7 @@ public static class PeopleStore
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('players', $v)", ("$v", SaveFile.ToJson(players)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('teams', $v)", ("$v", SaveFile.ToJson(teams)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('promises', $v)", ("$v", SaveFile.ToJson(s.Promises)));
+        SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('history', $v)", ("$v", SaveFile.ToJson(s.MoodHistory)));
         tx.Commit();
     }
 
@@ -54,6 +55,11 @@ public static class PeopleStore
         {
             s.Promises.Clear();
             s.Promises.AddRange(promises);
+        }
+        if (Get("history") is { } hj && SaveFile.FromJson<List<MoodSnapshot>>(hj) is { } history)
+        {
+            s.MoodHistory.Clear();
+            s.MoodHistory.AddRange(history);
         }
     }
 

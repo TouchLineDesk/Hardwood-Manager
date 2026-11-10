@@ -43,6 +43,9 @@ public sealed class PlayerRow
     public string Team { get; init; } = "";
     public Hardwood.Core.Model.Team? TeamObj { get; init; }
     public string TierName => Tier.ForCa(Player.CurrentAbility).Name;
+    public Avalonia.Media.IBrush TierBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Tier.ForCa(Player.CurrentAbility).Light));
+    public string MoodIcon => Player.Morale >= 60 ? "Smile" : Player.Morale >= 45 ? "Meh" : "Frown";
+    public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Player.Morale >= 60 ? "#3FB950" : Player.Morale >= 45 ? "#D29922" : "#F85149"));
     public string CardFooter { get; init; } = "";
     /// <summary>Set by the hosting page so a card click opens the player.</summary>
     public IRelayCommand? Open { get; set; }

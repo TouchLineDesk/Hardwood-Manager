@@ -45,7 +45,7 @@
     <Setter Property="Foreground" Value="{StaticResource HwMutedBrush}"/>
   </Style>
   <Style Selector="TextBlock.accent">
-    <Setter Property="Foreground" Value="{StaticResource HwAccentBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource HwAccentBrush}"/>
   </Style>
   <Style Selector="TextBlock.good">
     <Setter Property="Foreground" Value="{StaticResource HwGoodBrush}"/>
@@ -73,11 +73,11 @@
   </Style>
   <Style Selector="Button.nav.active">
     <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
-    <Setter Property="Foreground" Value="{StaticResource HwAccentBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource HwAccentBrush}"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
   </Style>
   <Style Selector="Button.primary">
-    <Setter Property="Background" Value="{StaticResource HwAccentBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource HwAccentBrush}"/>
     <Setter Property="Foreground" Value="#111"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Padding" Value="16,8"/>

@@ -38,8 +38,25 @@
         <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
         <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
         <DataGridTextColumn Header="Ht" Binding="{Binding Height}" Width="66"/>
-        <DataGridTextColumn Header="Mood" Binding="{Binding Mood}" Width="110"/>
-        <DataGridTextColumn Header="Tier" Binding="{Binding TierName}" Width="96"/>
+        <DataGridTemplateColumn Header="Mood" Width="130" SortMemberPath="Player.Morale">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:PlayerRow">
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="6,0" VerticalAlignment="Center">
+                <c:Icon Kind="{Binding MoodIcon}" Width="15" Height="15" Foreground="{Binding MoodBrush}"/>
+                <TextBlock Text="{Binding Mood}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Tier" Width="104" SortMemberPath="Player.CurrentAbility">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:PlayerRow">
+              <Border Background="{Binding TierBrush}" CornerRadius="9" Padding="8,1" Margin="6,0" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock Text="{Binding TierName}" Foreground="#111" FontSize="11.5" FontWeight="SemiBold"/>
+              </Border>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
         <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="84"/>
         <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
         <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
