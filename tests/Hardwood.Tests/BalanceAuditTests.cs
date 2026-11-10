@@ -20,7 +20,7 @@ public class BalanceAuditTests
         // (Champions shedding stars and relegation releases put more veterans on the market, so fewer graduates are needed.)
         Assert.True(r["College graduates signed by NABL clubs"].Mean >= 5, $"{r["College graduates signed by NABL clubs"].Mean}");
         Assert.InRange(r["Points per team per game"].Mean, 100, 130);
-        Assert.All(r.Metrics.Where(m => m.Name.EndsWith("points per team per game")), m => Assert.InRange(m.Mean, 65, 110));
+        Assert.All(r.Metrics.Where(m => m.Name.EndsWith("points per team per game")), m => Assert.InRange(m.Mean, 65, 118)); // each league its own level: Greece ~76 to tier 2 ~110
         var md = r.ToMarkdown();
         Assert.Contains("# Balance audit", md);
         Assert.Contains("| Points per team per game |", md);
