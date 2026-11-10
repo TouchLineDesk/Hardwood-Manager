@@ -14,7 +14,11 @@ public sealed class SystemOption
     public required double Fit { get; init; }
     public OffensiveSystem? System { get; init; }
     public DefensiveScheme? Scheme { get; init; }
-    public string FitText => System is OffensiveSystem.Balanced || Scheme is DefensiveScheme.Man ? "baseline" : $"fit {TacticsViewModel.StarText(Fit * 5)}";
+    /// <summary>How it fares against what the next opponent is likely to run (critic review: show the matchup before you choose).</summary>
+    public double Matchup { get; init; }
+    public bool Recommended { get; init; }
+    public string FitText => (System is OffensiveSystem.Balanced || Scheme is DefensiveScheme.Man ? "baseline" : $"fit {TacticsViewModel.StarText(Fit * 5)}")
+        + (Matchup >= 0.02 ? " · good matchup" : Matchup <= -0.02 ? " · poor matchup" : "") + (Recommended ? " · assistant's pick" : "");
     public override string ToString() => Name;
 }
 
@@ -123,12 +127,21 @@ public sealed partial class TacticsViewModel : PageViewModel
         var t = team.Tactic;
         var rot = CoachAi.Rotation(team, Session.Today);
 
+        // What the next opponent will probably run, to show each option's matchup.
+        var nextOpp = Session.NextMyGame?.Opponent;
+        var nextRot = nextOpp == null ? null : CoachAi.Rotation(nextOpp, Session.Today);
+        DefensiveScheme? theirScheme = nextOpp == null ? null : nextOpp.Tactic.Auto ? CoachAi.BestScheme(nextRot!) : nextOpp.Tactic.Scheme;
+        OffensiveSystem? theirSystem = nextOpp == null ? null : nextOpp.Tactic.Auto ? CoachAi.BestSystem(nextRot!) : nextOpp.Tactic.System;
+        var bestSystem = CoachAi.BestSystem(rot, theirScheme);
+        var bestScheme = CoachAi.BestScheme(rot, theirSystem);
         Systems.Clear();
         foreach (var s in Enum.GetValues<OffensiveSystem>())
-            Systems.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(s), Description = Hardwood.Core.Model.Systems.Describe(s), Fit = Hardwood.Core.Model.Systems.Fit(s, rot), System = s });
+            Systems.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(s), Description = Hardwood.Core.Model.Systems.Describe(s), Fit = Hardwood.Core.Model.Systems.Fit(s, rot), System = s,
+                Matchup = theirScheme is { } ts ? Hardwood.Core.Engine.Tactics.Matchup(s, ts) : 0, Recommended = s == bestSystem });
         Schemes.Clear();
         foreach (var d in Enum.GetValues<DefensiveScheme>())
-            Schemes.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(d), Description = Hardwood.Core.Model.Systems.Describe(d), Fit = Hardwood.Core.Model.Systems.Fit(d, rot), Scheme = d });
+            Schemes.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(d), Description = Hardwood.Core.Model.Systems.Describe(d), Fit = Hardwood.Core.Model.Systems.Fit(d, rot), Scheme = d,
+                Matchup = theirSystem is { } tsys ? -Hardwood.Core.Engine.Tactics.Matchup(tsys, d) : 0, Recommended = d == bestScheme });
         SelectedSystem = Systems.First(o => o.System == t.System);
         SelectedScheme = Schemes.First(o => o.Scheme == t.Scheme);
 

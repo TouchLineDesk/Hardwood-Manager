@@ -569,7 +569,7 @@ public sealed class GameSimulator
             if (shooter != null && shooter == _offStar && def.Tac.StarStopperId is { } sid && def.OnCourt.FirstOrDefault(p => p.Id == sid) is { } stopper && _rng.Chance(0.85))
                 return stopper;
             // Nearest-position defender most of the time, otherwise anyone (help, switches; switching teams more often).
-            if (shooter != null && _rng.Chance(def.Tac.Scheme == DefensiveScheme.SwitchEverything ? 0.45 : 0.7))
+            if (shooter != null && _rng.Chance(def.Tac.Scheme == DefensiveScheme.SwitchEverything ? 0.6 : 0.7))
             {
                 var same = def.OnCourt.Where(p => p.PrimaryPosition == shooter.PrimaryPosition || p.SecondaryPosition == shooter.PrimaryPosition).ToList();
                 if (same.Count > 0) return _rng.Pick(same);

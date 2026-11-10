@@ -29,7 +29,7 @@ public static class Tactics
     /// <summary>Per-player shot-share multiplier from the system (who the plays are run for).</summary>
     public static double SystemUsage(OffensiveSystem s, Player p) => s switch
     {
-        OffensiveSystem.PickAndRoll => 0.75 + p.Attributes[Attr.PickAndRollHandler] / 40.0 + (p.PrimaryPosition >= Position.PF ? p.Attributes[Attr.Dunk] / 80.0 : 0),
+        OffensiveSystem.PickAndRoll => 0.85 + p.Attributes[Attr.PickAndRollHandler] / 55.0 + (p.PrimaryPosition >= Position.PF ? p.Attributes[Attr.Dunk] / 80.0 : 0),
         OffensiveSystem.PostCentric => 0.8 + p.Attributes[Attr.PostMoves] / 40.0,
         OffensiveSystem.PaceAndSpace => 0.8 + p.Attributes[Attr.ThreePoint] / 50.0,
         _ => 1.0,
@@ -39,11 +39,11 @@ public static class Tactics
     private static readonly double[] One = { 1, 1, 1, 1, 1 };
     public static double[] SystemZoneMix(OffensiveSystem s) => s switch
     {
-        OffensiveSystem.PickAndRoll => new[] { 1.2, 1.1, 1.0, 0.9, 1.0 },
+        OffensiveSystem.PickAndRoll => new[] { 1.3, 1.05, 0.9, 0.95, 1.0 },
         OffensiveSystem.Motion => new[] { 1.0, 0.95, 0.85, 1.3, 1.05 },
         OffensiveSystem.PostCentric => new[] { 1.25, 1.35, 0.9, 0.8, 0.75 },
         OffensiveSystem.PaceAndSpace => new[] { 1.1, 0.8, 0.65, 1.25, 1.25 },
-        OffensiveSystem.Isolation => new[] { 1.0, 1.25, 1.25, 0.85, 0.95 },
+        OffensiveSystem.Isolation => new[] { 1.1, 1.15, 1.1, 0.9, 1.0 },  // retuned Nov 10: it was 8 win-% points worse than anything else
         _ => One,
     };
 
@@ -66,14 +66,14 @@ public static class Tactics
     public static double AssistFactor(OffensiveSystem s) => s switch
     {
         OffensiveSystem.Motion => 1.12,
-        OffensiveSystem.Isolation => 0.82,
+        OffensiveSystem.Isolation => 0.88,
         OffensiveSystem.PostCentric => 0.95,
         _ => 1.0,
     };
 
     public static double TurnoverShift(Tactic off, Tactic def) =>
-        (off.System switch { OffensiveSystem.Motion => 0.006, OffensiveSystem.Isolation => -0.006, OffensiveSystem.PostCentric => 0.003, _ => 0 })
-        + (def.Scheme switch { DefensiveScheme.Zone23 => -0.004, _ => 0 })
+        (off.System switch { OffensiveSystem.Motion => 0.006, OffensiveSystem.Isolation => -0.01, OffensiveSystem.PostCentric => 0.003, _ => 0 })
+        + (def.Scheme switch { DefensiveScheme.Zone23 => 0.002, DefensiveScheme.SwitchEverything => 0.004, _ => 0 })
         + (def.DoubleStar ? 0.004 : 0);
 
     /// <summary>
@@ -83,8 +83,8 @@ public static class Tactics
     /// </summary>
     public static double Matchup(OffensiveSystem o, DefensiveScheme d) => (o, d) switch
     {
-        (OffensiveSystem.PickAndRoll, DefensiveScheme.SwitchEverything) => -0.06,
-        (OffensiveSystem.PickAndRoll, DefensiveScheme.Zone23) => 0.02,
+        (OffensiveSystem.PickAndRoll, DefensiveScheme.SwitchEverything) => -0.05,
+        (OffensiveSystem.PickAndRoll, DefensiveScheme.Zone23) => 0.03,
         (OffensiveSystem.PickAndRoll, DefensiveScheme.Drop) => 0.03,
         (OffensiveSystem.Motion, DefensiveScheme.SwitchEverything) => 0.03,
         (OffensiveSystem.Motion, DefensiveScheme.Zone23) => 0.04,
@@ -93,7 +93,7 @@ public static class Tactics
         (OffensiveSystem.PostCentric, DefensiveScheme.Drop) => -0.03,
         (OffensiveSystem.PaceAndSpace, DefensiveScheme.Zone23) => 0.04,
         (OffensiveSystem.PaceAndSpace, DefensiveScheme.Drop) => -0.02,
-        (OffensiveSystem.Isolation, DefensiveScheme.SwitchEverything) => 0.02,
+        (OffensiveSystem.Isolation, DefensiveScheme.SwitchEverything) => 0.03,
         (OffensiveSystem.Isolation, DefensiveScheme.Zone23) => -0.04,
         (OffensiveSystem.Isolation, DefensiveScheme.Drop) => 0.02,
         _ => 0,
