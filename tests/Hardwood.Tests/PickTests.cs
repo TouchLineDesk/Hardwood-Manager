@@ -150,7 +150,7 @@ public class AwardsTests
             Assert.NotNull(a.CoachOfYearTeamId);
             Assert.NotNull(summary.FinalsMvpPlayerId);
             Assert.True(s.League.Careers.Count > 400);
-            Assert.Contains(s.Inbox, m => m.Title.StartsWith("MVP:"));
+            Assert.Contains(s.Inbox, m => m.Title.StartsWith("Season awards") && m.Body.Contains("MVP:")); // one awards message (review #4)
             Assert.Contains(s.Inbox, m => m.Title == "All-Star Game");
 
             var loaded = GameSession.Load(path);

@@ -97,15 +97,23 @@ public class PeopleTests
         var league = NewLeague();
         var (a, b) = (league.Teams[0], league.Teams[1]);
         a.Tactic.Auto = b.Tactic.Auto = false;
-        double Net(double morale, double chem)
+        // Measured on shooting (the direct effect): late-game catch-up play compresses final margins, so the scoreboard
+        // is a noisy yardstick for a ~0.07 logit edge.
+        (double fg, double net) Play(double morale, double chem)
         {
             foreach (var p in a.Roster) p.Morale = morale;
             a.Chemistry = chem;
-            var sim = new GameSimulator(); double net = 0;
-            for (int i = 0; i < 150; i++) { var r = sim.Simulate(a, b, league.Rules, (ulong)(500 + i), date: On); net += r.Home.Points - r.Away.Points; }
-            return net / 150;
+            var sim = new GameSimulator(); double fgm = 0, fga = 0, net = 0;
+            for (int i = 0; i < 300; i++)
+            {
+                var r = sim.Simulate(a, b, league.Rules, (ulong)(500 + i), date: On);
+                fgm += r.Home.FGM; fga += r.Home.FGA; net += r.Home.Points - r.Away.Points;
+            }
+            return (fgm / fga, net / 300);
         }
-        Assert.True(Net(95, 95) > Net(20, 20) + 1.5);
+        var happy = Play(95, 95); var unhappy = Play(20, 20);
+        Assert.True(happy.fg > unhappy.fg + 0.006, $"FG% happy {happy.fg:F3} vs unhappy {unhappy.fg:F3}");
+        Assert.True(happy.net > unhappy.net, $"margin happy {happy.net:F1} vs unhappy {unhappy.net:F1}");
     }
 
     [Fact]
