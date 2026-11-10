@@ -169,7 +169,8 @@ public sealed class Offseason
             // No draft (decision #80): this summer's college graduates join free agency (decision #90).
             DraftOrder = new List<Team>();
             PickOwners = new List<Team>();
-            Prospects = GenerateGraduates();
+            // College graduates join free agency from the world (decision #98); otherwise a generated class (decision #90).
+            Prospects = _league.CollegeActive ? new List<Player>() : GenerateGraduates();
         }
         else
         {

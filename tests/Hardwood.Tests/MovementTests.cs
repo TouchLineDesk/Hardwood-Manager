@@ -110,12 +110,13 @@ public class MovementTests
         off.AiFreeAgency(null);
         var before = world.Competitions.SelectMany(c => c.Clubs.Select(t => (t, n: t.Roster.Count(p => !c.Profile.LocalNationalities.Contains(p.Nationality)))))
             .ToDictionary(x => x.t.Id, x => x.n);
+        var leagueBefore = world.Competitions.SelectMany(c => c.Clubs.Select(t => (t.Id, c.Key))).ToDictionary(x => x.Id, x => x.Key);
         off.Complete(); // the end of summer: clubs sign from the pool
 
         foreach (var c in world.Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic))
             foreach (var t in c.Clubs)
-                // (A club relegated from the NABL arrives with its imports; it isn't made to cut them.)
-                Assert.True(t.Roster.Count(p => !c.Profile.LocalNationalities.Contains(p.Nationality)) <= Math.Max(c.Profile.ForeignLimit, before.TryGetValue(t.Id, out var b) && world.Competitions.First(x => x.Clubs.Contains(t)) == c ? b : 99),
+                // (A club that changed league this summer, by promotion or relegation, arrives with its imports; it isn't made to cut them.)
+                Assert.True(t.Roster.Count(p => !c.Profile.LocalNationalities.Contains(p.Nationality)) <= Math.Max(c.Profile.ForeignLimit, before.TryGetValue(t.Id, out var b) && leagueBefore[t.Id] == c.Key ? b : 99),
                     $"{t.FullName} has too many imports");
         Assert.All(world.Clubs, t => Assert.True(t.Roster.Count >= GameWorld.RosterSize, t.FullName));
         Assert.Equal(2027, world.SummerEnded);

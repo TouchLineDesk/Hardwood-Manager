@@ -74,6 +74,12 @@ public class ScreenshotTests
             vm.AfterTick();
             vm.Navigate("Awards");
             Snap(window, Path.Combine(dir, $"{n++:00}-awards.png"));
+            vm.Navigate("College");
+            var college = (CollegeViewModel)vm.CurrentPage!;
+            college.Tab = 2;
+            Snap(window, Path.Combine(dir, $"{n++:00}-college-bracket.png"));
+            college.Tab = 3;
+            Snap(window, Path.Combine(dir, $"{n++:00}-college-prospects.png"));
             vm.Navigate("Offseason");
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-resign.png"));
             session.AdvanceOffseason(); vm.AfterTick();

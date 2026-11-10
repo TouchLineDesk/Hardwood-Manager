@@ -20,6 +20,11 @@ public static class WorldStore
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_started', $v)", ("$v", world.SummerStarted.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_ended', $v)", ("$v", world.SummerEnded.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('departed', $v)", ("$v", SaveFile.ToJson(world.Departed)));
+        if (world.College is { } col)
+            SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college', $v)", ("$v", SaveFile.ToJson(new CollegeState(
+                col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
+                    col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic))).ToList(),
+                col.Destined, col.Season, col.History))));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
             ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));
         int order = 0;
@@ -39,7 +44,12 @@ public static class WorldStore
     }
 
     /// <summary>Rebuild the world from a save, or null if the save predates it (the session then generates one).</summary>
-    public static GameWorld? LoadWorld(this SaveFile file, League nabl, IEnumerable<Player> overseasPlayers)
+    private sealed record ProgramState(int Id, string City, string Name, string Abbr, string Division, int Capacity, string Primary, string Secondary, int Logo,
+                                       string Conference, double Prestige, string Tactic);
+    private sealed record CollegeState(List<ProgramState> Programs, Dictionary<int, int> Destined, Hardwood.Core.College.CollegeSeason Season,
+                                       List<Hardwood.Core.College.CollegeChampion> History);
+
+    public static GameWorld? LoadWorld(this SaveFile file, League nabl, IEnumerable<Player> overseasPlayers, IEnumerable<Player>? collegePlayers = null)
     {
         using var conn = file.OpenConnection();
         CreateSchema(conn);
@@ -105,6 +115,33 @@ public static class WorldStore
                 // Saves from before format 6 have no buyout clauses: write them in now.
                 if (p.Contract is { Buyout: 0 } c) c.Buyout = GameWorld.BuyoutFor(p, c.Salary, c.Years, asOf);
             }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'college'";
+            if (cmd.ExecuteScalar() is string cj && SaveFile.FromJson<CollegeState>(cj) is { } cs)
+            {
+                var col = new Hardwood.Core.College.CollegeWorld { Season = cs.Season ?? new() };
+                foreach (var ps in cs.Programs)
+                {
+                    var t = new Team
+                    {
+                        Id = ps.Id, City = ps.City, Name = ps.Name, Abbreviation = ps.Abbr, Conference = Conference.East, Division = ps.Division,
+                        ArenaCapacity = ps.Capacity, PrimaryColor = ps.Primary, SecondaryColor = ps.Secondary, LogoStyle = ps.Logo,
+                        Tactic = SaveFile.FromJson<Tactic>(ps.Tactic) ?? new(),
+                    };
+                    col.Programs.Add(t);
+                    col.ConferenceOf[t.Id] = ps.Conference;
+                    col.Prestige[t.Id] = ps.Prestige;
+                }
+                foreach (var (k, v) in cs.Destined ?? new()) col.Destined[k] = v;
+                col.History.AddRange(cs.History ?? new());
+                var byId = col.Programs.ToDictionary(t => t.Id);
+                foreach (var p in collegePlayers ?? Enumerable.Empty<Player>())
+                    if (p.TeamId is { } pid && byId.TryGetValue(pid, out var prog)) prog.Roster.Add(p);
+                world.College = col;
+                nabl.CollegeActive = true;
+            }
+        }
         world.Index();
         using (var cmd = conn.CreateCommand())
         {

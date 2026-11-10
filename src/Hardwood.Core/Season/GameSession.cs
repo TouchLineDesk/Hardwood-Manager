@@ -861,7 +861,7 @@ public sealed partial class GameSession
     public void SaveNow()
     {
         if (Save == null) return;
-        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players, World.Clubs);
+        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players, World.Clubs, World.College?.Players);
         Save.SaveSession(this);
         Save.SaveWorld(World);
         Save.SavePeople(this);
@@ -872,7 +872,7 @@ public sealed partial class GameSession
     {
         var save = new SaveFile(path);
         var league = save.Load();
-        var world = save.LoadWorld(league, save.LoadedOverseas);
+        var world = save.LoadWorld(league, save.LoadedOverseas, save.LoadedCollege);
         var session = save.LoadSession(league, world);
         save.LoadPeople(session);
         save.LoadCareer(session);

@@ -105,6 +105,8 @@ public sealed class League
     public Finance Finance { get; set; } = Finance.HardCapDefault;
     /// <summary>Players without a team (free agents, undrafted), still in the world.</summary>
     public List<Player> FreeAgents { get; } = new();
+    /// <summary>College exists in this world (decision #98): its graduates replace the generated graduate class.</summary>
+    public bool CollegeActive { get; set; }
     /// <summary>Retired players, kept for history.</summary>
     public List<Player> Retired { get; } = new();
     public List<SeasonSummary> History { get; } = new();
@@ -209,4 +211,6 @@ public sealed record Rules(
 
     public static readonly Rules Nba = new("NBA-style", 4, 12, 24, 6, 5, 7.24);
     public static readonly Rules Fiba = new("FIBA", 4, 10, 24, 5, 5, 6.75);
+    /// <summary>College: two 20-minute halves, a 30-second clock, five fouls (decision #95).</summary>
+    public static readonly Rules College = new("College", 2, 20, 30, 5, 7, 6.75);
 }

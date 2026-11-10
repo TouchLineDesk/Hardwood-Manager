@@ -89,6 +89,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Schedule & Results", "CalendarDays", () => new ScheduleViewModel(this)),
             ("Standings", "ListOrdered", () => new StandingsViewModel(this)),
             ("World", "Globe", () => new WorldViewModel(this)),
+            ("College", "GraduationCap", () => new CollegeViewModel(this)),
             ("League Leaders", "ChartColumnIncreasing", () => new LeadersViewModel(this)),
             ("Transactions", "ArrowLeftRight", () => new TransactionsViewModel(this)),
             ("Offseason", "Sun", () => new OffseasonViewModel(this)),
