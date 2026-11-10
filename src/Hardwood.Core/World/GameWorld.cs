@@ -645,6 +645,8 @@ public sealed class GameWorld
         // NABL lost ~25 CA. Each league leans its signings back toward its own level.
         var lean = Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic)
             .ToDictionary(c => c.Key, AnchorCorrection);
+        var leagueStrength = Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic)
+            .ToDictionary(c => c.Key, c => c.Clubs.Average(t => Strength(t)));
         var needs = clubs.ToDictionary(x => x.team.Id, x => new Queue<Departure>(
             (Departed.TryGetValue(x.team.Id, out var d) ? d : new List<Departure>()).OrderByDescending(d => d.Ca)));
         bool any = true;
@@ -661,6 +663,13 @@ public sealed class GameWorld
                 var locals = LocalsOf(comp.Profile, club);
                 var need = needs[team.Id].Count > 0 ? needs[team.Id].Dequeue() : new Departure(ExpectedCa(comp.Profile, team, team.Roster.Count), false);
                 if (lean.TryGetValue(comp.Key, out var shift) && shift != 0) need = need with { Ca = need.Ca + shift };
+                // Parity (critic review #2/#3: Sydney won 68 of 100 titles): a club far above its league's level can't
+                // replace like for like; the market prices it out and its replacements regress toward the league.
+                if (comp.Profile.Kind == CompetitionKind.Domestic && leagueStrength.TryGetValue(comp.Key, out var avg))
+                {
+                    double excess = Strength(team) - avg;
+                    if (excess > 4) need = need with { Ca = need.Ca - (int)Math.Round(Math.Min(14, (excess - 4) * 0.6)) };
+                }
                 any = true;
                 int imports = team.Roster.Count(p => !locals.Contains(p.Nationality));
                 bool importRoom = imports < comp.Profile.ForeignLimit;

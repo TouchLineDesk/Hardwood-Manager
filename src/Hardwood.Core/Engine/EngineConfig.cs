@@ -70,7 +70,7 @@ public sealed class EngineConfig
     public double DoubleStarOpenLook { get; set; } = 1.2;
     /// <summary>Fourth-quarter catch-up: shot logit for a side trailing by 7+ (and 70% of it off a side leading by 7+).</summary>
     public double CatchUpLogit { get; set; } = 0.40;
-    public double UsageSharpness { get; set; } = 1.85; // 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
+    public double UsageSharpness { get; set; } = 1.75; // 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
     public double[] AssistedShareByZone { get; set; } = { 0.52, 0.42, 0.45, 0.88, 0.74 };
