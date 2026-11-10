@@ -47,20 +47,10 @@ public static class Scouting
         return new Range(low, high);
     }
 
-    public static Range Ability(Player p, double knowledge) => Scale(p.CurrentAbility, knowledge, p.Id, 100);
-    public static Range Potential(Player p, double knowledge) => knowledge >= 0.999 ? new Range(p.PotentialAbility, p.PotentialAbility) : Scale(p.PotentialAbility, Math.Max(0, knowledge - 0.1), p.Id, 101);
-
-    private static Range Scale(int value, double knowledge, int id, int salt)
-    {
-        if (knowledge >= 0.999) return new Range(value, value);
-        int width = (int)Math.Round((1 - knowledge) * 60);              // 0.3 → 42 CA points of doubt
-        if (width <= 0) return new Range(value, value);
-        int centre = value + (int)Math.Round(Bias(id, salt) * width / 2.0);
-        int low = Math.Clamp(centre - width / 2, 1, 200), high = Math.Clamp(centre + (width + 1) / 2, 1, 200);
-        if (low > value) low = value;
-        if (high < value) high = value;
-        return new Range(low, high);
-    }
+    // CA and PA are shown exactly for every player (Danny, Nov 10: ranges like "165-180" were confusing, and a PA range
+    // could read below the CA range). Scouting still blurs individual attributes.
+    public static Range Ability(Player p, double knowledge) => new(p.CurrentAbility, p.CurrentAbility);
+    public static Range Potential(Player p, double knowledge) => new(p.PotentialAbility, p.PotentialAbility);
 
     public static string GroupAverage(Player p, AttrGroup g, double knowledge)
     {
