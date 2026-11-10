@@ -11,9 +11,10 @@ namespace Hardwood.Tests;
 /// <summary>Stage 2 player movement: buyouts (#53), summer-only moves (#54), draft-and-stash (#55), import limits (#56).</summary>
 public class MovementTests
 {
-    private static (League league, GameWorld world, Offseason off) SummerAtFreeAgency(ulong seed = 11)
+    private static (League league, GameWorld world, Offseason off) SummerAtFreeAgency(ulong seed = 11, bool legacy = false)
     {
         var league = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+        if (legacy) Legacy.Rules(league);
         var world = GameWorld.Generate(league, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1));
         var rng = new Rng(seed + 1);
         var outcome = new SeasonSimulator(rng).Run(league, ScheduleBuilder.Build(league, new DateOnly(2026, 10, 21), rng));
@@ -83,7 +84,7 @@ public class MovementTests
     [Fact]
     public void A_stashed_pick_plays_abroad_and_his_team_keeps_the_rights()
     {
-        var (league, world, off) = SummerAtFreeAgency();
+        var (league, world, off) = SummerAtFreeAgency(legacy: true); // draft-and-stash is an old-rules feature
         var d = off.Report.Draft.First(x => x.Round == 2 && league.FreeAgents.Contains(x.Player));
         Assert.Null(WorldMarket.CannotStash(off, d.Team, d.Player));
         Assert.True(WorldMarket.Stash(world, off, d.Team, d.Player, new Rng(1)));
@@ -122,23 +123,27 @@ public class MovementTests
     [Fact]
     public void Players_move_both_ways_over_several_summers()
     {
+        // The open market (decision #80): no draft; graduates and overseas free agents join NABL clubs, and overseas
+        // clubs sign from the same pool.
         var league = new WorldGenerator(new Rng(9)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
         var world = GameWorld.Generate(league, 9, Array.Empty<string>(), new DateOnly(2026, 10, 1));
         var career = new Career(new Rng(10));
         var sim = new GameSimulator();
-        int signedAbroad = 0, stashed = 0, intl = 0, picks = 0;
+        int signedAbroad = 0, graduatesSigned = 0, fromAbroad = 0;
         for (int i = 0; i < 2; i++)
         {
             world.FinishSeasons(sim);
+            var abroadBefore = world.Players.Select(p => p.Id).ToHashSet();
             var played = career.PlaySeason(league, world: world, worldSim: sim);
             signedAbroad += world.SignedAbroad.Count;
-            stashed += world.Stashes.Count;
-            intl += played.Offseason.Draft.Count(d => WorldMarket.IsInternational(d.Player));
-            picks += played.Offseason.Draft.Count;
+            graduatesSigned += played.Offseason.FreeAgentSignings.Count(x => x.player.RookieSeason == league.Season);
+            fromAbroad += league.AllActivePlayers.Count(p => abroadBefore.Contains(p.Id));
         }
         Assert.True(signedAbroad > 0, "overseas clubs should sign from the shared pool");
-        Assert.True(stashed > 0, "AI teams should stash some international picks");
-        Assert.InRange(intl / (double)picks, 0.12, 0.45); // about a quarter (decision #55)
+        Assert.True(graduatesSigned >= 10, $"NABL clubs should sign college graduates ({graduatesSigned})");
+        Assert.True(fromAbroad > 0, "some players should come over from abroad");
         Assert.All(league.Teams, t => Assert.InRange(t.Roster.Count, league.Finance.RosterMin, league.Finance.RosterMax));
+        Assert.All(league.Teams, t => Assert.True(t.Money.Ready && t.Money.WageBudget > 0));
+        Assert.Empty(league.Picks);
     }
 }

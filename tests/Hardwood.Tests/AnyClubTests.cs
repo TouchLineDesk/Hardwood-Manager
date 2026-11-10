@@ -160,4 +160,45 @@ public class AnyClubTests
         Assert.InRange(eb.TargetWins, 20, 38);
         Assert.DoesNotContain(Demand.StayUnderTax, eb.Demands.Concat(ew.Demands));
     }
+
+    [Fact]
+    public void Abroad_you_renew_and_sign_your_own_players_within_the_budget()
+    {
+        var id = ClubIn(Competitions.Spain);
+        var s = GameSession.NewGame(7, id, null);
+        Assert.True(s.HumanTeam.Money.Ready);
+        Assert.InRange(s.HumanTeam.Money.WageBudget, 4_000_000, 40_000_000); // Spanish wages, not NABL ones
+        int guard = 0;
+        while (s.Phase != SessionPhase.Offseason && guard++ < 500) s.AdvanceDay();
+        Assert.Equal(SessionPhase.Offseason, s.Phase);
+        Assert.Equal(id, s.World.ManagedClubId);
+
+        // Expiring players wait for you (the computer doesn't decide for your club).
+        var waiting = s.MyExpiring.ToList();
+        Assert.All(waiting, p => Assert.Contains(p, s.HumanTeam.Roster));
+        if (waiting.Count > 0)
+        {
+            var keep = waiting[0];
+            var ask = s.DemandOf(keep);
+            Assert.True(ask.Wage < 8_000_000, $"a Spanish wage: {ask.Wage:N0}");
+            var low = s.Offer(keep, ask.Wage / 3, ask.Years);
+            Assert.False(low.Accepted);
+            var fair = s.Offer(keep, ask.Wage, ask.Years);
+            if (!Hardwood.Core.Season.Offseason.WontReSign(keep) && s.MyCommittedWages + ask.Wage <= s.HumanTeam.Money.WageBudget + ask.Wage)
+                Assert.True(fair.Accepted || fair.Text.Contains("owner"), fair.Text);
+        }
+
+        // Sign a free agent at his ask (if the budget allows).
+        var fa = s.League.FreeAgents.Where(p => s.CannotTalk(p) == null).OrderBy(p => s.PeekDemand(p).Wage).First();
+        var a = s.DemandOf(fa);
+        var r = s.Offer(fa, a.Wage, a.Years);
+        if (r.Accepted) { Assert.Contains(fa, s.HumanTeam.Roster); Assert.True(fa.Contract!.Buyout > 0); }
+
+        // Finish the summer: anyone not renewed leaves; the squad has at least the minimum.
+        while (s.Phase == SessionPhase.Offseason && guard++ < 520) s.AdvanceOffseason();
+        Assert.Equal(SessionPhase.Preseason, s.Phase);
+        Assert.Empty(s.World.AwaitingDecision);
+        Assert.True(s.HumanTeam.Roster.Count >= GameWorld.ManagedMinimum);
+        Assert.All(s.HumanTeam.Roster, p => Assert.True(p.Contract is { Years: > 0 }, p.Name));
+    }
 }

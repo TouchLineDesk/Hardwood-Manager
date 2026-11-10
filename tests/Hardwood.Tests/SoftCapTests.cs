@@ -9,7 +9,7 @@ namespace Hardwood.Tests;
 /// <summary>The NABL's NBA-style soft cap (decision #52): Bird rights, cap room, the mid-level exception, minimum deals, the apron, trades.</summary>
 public class SoftCapTests
 {
-    private static League NewLeague(ulong seed = 3) => new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+    private static League NewLeague(ulong seed = 3) => Legacy.Rules(new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1)));
 
     private static (League league, Offseason off) OffseasonAtFreeAgency()
     {

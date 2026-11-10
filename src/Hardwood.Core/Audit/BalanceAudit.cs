@@ -99,6 +99,7 @@ public static class BalanceAudit
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
+        var overBudget = new List<double>(); var budgetUse = new List<double>(); var gradsSigned = new List<double>(); var bestGrad = new List<double>();
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
 
@@ -113,6 +114,11 @@ public static class BalanceAudit
             overCap.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > fin.Apron + fin.MinSalary * 2));
             payroll.Add(league.Teams.Average(t => ContractMarket.Payroll(t)) / fin.SalaryCap);
             taxTeams.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > fin.TaxLine));
+            if (league.Teams.All(t => t.Money.Ready))
+            {
+                overBudget.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > t.Money.WageBudget * 1.05));
+                budgetUse.Add(league.Teams.Average(t => ContractMarket.Payroll(t) / (double)Math.Max(1, t.Money.WageBudget)));
+            }
             faPool.Add(league.FreeAgents.Count);
             foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
                 (worldCa.TryGetValue(c.Profile.Name, out var l) ? l : worldCa[c.Profile.Name] = new()).Add(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility));
@@ -156,6 +162,9 @@ public static class BalanceAudit
             devOld.Add(dev.Where(d => d.Age >= 32).Select(d => (double)(d.NewCa - d.OldCa)).DefaultIfEmpty(0).Average());
             retiredN.Add(off.Retired.Count);
             retiredAge.Add(off.Retired.Select(p => (double)p.Age(new DateOnly(year + 1, 7, 1))).DefaultIfEmpty(0).Average());
+            var grads = off.FreeAgentSignings.Where(x => x.player.RookieSeason == year + 1).ToList();
+            gradsSigned.Add(grads.Count);
+            if (grads.Count > 0) bestGrad.Add(grads.Max(x => x.player.CurrentAbility));
             var draft = off.Draft.OrderBy(d => d.Pick).ToList();
             if (draft.Count > 0) { firstPick.Add(draft[0].Player.CurrentAbility); rookieTop5.Add(draft.Take(5).Average(d => d.Player.CurrentAbility)); }
             intlPicks.Add(draft.Count == 0 ? 0 : draft.Count(d => WorldMarket.IsInternational(d.Player)) / (double)draft.Count);
@@ -196,18 +205,34 @@ public static class BalanceAudit
         m.Add(new("NABL development", "Yearly ability change, age 32+", "+0.0;-0.0", devOld, -10, -1, "decline"));
         m.Add(new("NABL development", "Retirements per season", "0", retiredN, 15, 50, "NBA ~20-40"));
         m.Add(new("NABL development", "Average retirement age", "0.0", retiredAge, 32, 37, "NBA ~33-35"));
-        m.Add(new("NABL draft", "No. 1 pick ability (CA)", "0", firstPick, null, null, ""));
-        m.Add(new("NABL draft", "Top-5 picks average ability (CA)", "0", rookieTop5, null, null, ""));
-        m.Add(new("NABL money", "Teams over the apron at season start", "0", overCap, 0, 0, "must be 0"));
-        m.Add(new("NABL money", "Average payroll as share of the cap", "0.00", payroll, fin.SoftCap ? 0.95 : 0.80, fin.SoftCap ? 1.25 : 1.00, fin.SoftCap ? "NBA ~1.05-1.15" : "hard-cap league"));
-        m.Add(new("NABL money", "Teams paying luxury tax", "0.0", taxTeams, fin.SoftCap ? 0 : null, fin.SoftCap ? 10 : null, "NBA ~5-8"));
+        if (fin.OpenMarket)
+        {
+            // Open market (decisions #80, #88, #90): college graduates instead of a draft; budgets instead of a cap.
+            m.Add(new("NABL graduates", "College graduates signed by NABL clubs", "0.0", gradsSigned, 8, 40, "a draft placed ~30-45 rookies a year"));
+            m.Add(new("NABL graduates", "Best graduate signed (CA)", "0", bestGrad, null, null, ""));
+            m.Add(new("NABL money", "Clubs over their wage budget at season start", "0.0", overBudget, 0, 8, "a few overspend"));
+            m.Add(new("NABL money", "Average payroll as share of budget", "0.00", budgetUse, 0.80, 1.05, "clubs spend most of it"));
+        }
+        else
+        {
+            m.Add(new("NABL draft", "No. 1 pick ability (CA)", "0", firstPick, null, null, ""));
+            m.Add(new("NABL draft", "Top-5 picks average ability (CA)", "0", rookieTop5, null, null, ""));
+            m.Add(new("NABL money", "Teams over the apron at season start", "0", overCap, 0, 0, "must be 0"));
+            m.Add(new("NABL money", "Average payroll as share of the cap", "0.00", payroll, fin.SoftCap ? 0.95 : 0.80, fin.SoftCap ? 1.25 : 1.00, fin.SoftCap ? "NBA ~1.05-1.15" : "hard-cap league"));
+            m.Add(new("NABL money", "Teams paying luxury tax", "0.0", taxTeams, fin.SoftCap ? 0 : null, fin.SoftCap ? 10 : null, "NBA ~5-8"));
+        }
         m.Add(new("NABL money", "Free agents available at season start", "0", faPool, null, null, ""));
         // Movement (decisions #53-56). NBA: roughly 2-6 draft-and-stash picks a year; a few overseas players bought out
         // each summer; international players are about a quarter to a third of draftees.
-        m.Add(new("Player movement", "International share of draft picks", "0.00", intlPicks, 0.15, 0.40, "NBA drafts 2015-25"));
-        m.Add(new("Player movement", "Draft picks stashed overseas", "0.0", stashes, 1, 8, "NBA ~2-6"));
+        if (!fin.OpenMarket)
+        {
+            m.Add(new("Player movement", "International share of draft picks", "0.00", intlPicks, 0.15, 0.40, "NBA drafts 2015-25"));
+            m.Add(new("Player movement", "Draft picks stashed overseas", "0.0", stashes, 1, 8, "NBA ~2-6"));
+        }
         m.Add(new("Player movement", "Overseas players bought out by NABL teams", "0.0", buyouts, 0.5, 8, "NBA a few a summer"));
-        m.Add(new("Player movement", "Overseas players joining NABL teams (free agency + buyouts)", "0.0", cameOver, 3, 15, "rough estimate: NBA ~5-15 a summer incl. players returning from abroad"));
+        // With no draft, NABL clubs fill more of their rosters from the shared free-agent pool (open market).
+        m.Add(new("Player movement", "Overseas players joining NABL teams (free agency + buyouts)", "0.0", cameOver, 3, fin.OpenMarket ? 30 : 15,
+            fin.OpenMarket ? "open market: more players cross over without a draft" : "rough estimate: NBA ~5-15 a summer incl. players returning from abroad"));
         m.Add(new("Player movement", "Free agents signed by overseas clubs", "0", signedAbroad, null, null, ""));
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)

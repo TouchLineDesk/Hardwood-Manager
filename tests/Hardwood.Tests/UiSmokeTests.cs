@@ -123,46 +123,49 @@ public class UiSmokeTests
 
             vm.Navigate("Transactions");
             var tx = (TransactionsViewModel)vm.CurrentPage!;
-            tx.Ours[0].Included = true;
-            tx.Theirs[^1].Included = true;
-            Assert.False(string.IsNullOrEmpty(tx.Verdict));
+            Assert.False(tx.TradesOpen); // the open market has no trades
+            if (tx.FreeAgents.Count > 0)
+            {
+                tx.SelectedFreeAgent = tx.FreeAgents.First();
+                Assert.Same(tx.FreeAgents.First().Player, tx.Talk.Player);
+            }
             window.UpdateLayout();
 
-            // Run to the offseason and walk the three phases through the view model.
+            // Run to the summer: contract talks, releases, free agency (no draft on the open market).
             int guard = 0;
             while (session.Phase != SessionPhase.Offseason && guard++ < 400) session.AdvanceDay();
             vm.AfterTick();
             vm.Navigate("Offseason");
             var off = (OffseasonViewModel)vm.CurrentPage!;
-            Assert.True(off.IsReSigning);
+            Assert.True(off.InOffseason);
+            Assert.True(off.ShowContracts);
             window.UpdateLayout();
-            foreach (var row in off.Expiring.ToList()) { off.SelectedExpiring = row; off.ReSign(); }
+            foreach (var row in off.Expiring.ToList())
+            {
+                off.SelectedExpiring = row;
+                off.Talk.OfferCommand.Execute(null); // at his ask: accepted, unless he won't stay or it's over budget
+            }
             vm.AfterTick();
-            // Whatever didn't fit is still expiring; release it.
-            foreach (var row in off.Expiring.ToList()) { off.SelectedExpiring = row; off.Release(); }
+            foreach (var p in session.MyExpiring.ToList()) session.ReleaseExpiring(p);
+            Assert.Empty(session.MyExpiring);
 
             session.AdvanceOffseason();
             vm.AfterTick();
-            Assert.True(off.IsDraft);
+            off.Refresh();
+            Assert.True(off.ShowFreeAgency);
+            Assert.Contains(off.FreeAgents, f => f.Graduate);
             window.UpdateLayout();
-            while (off.IsDraft && session.Phase == SessionPhase.Offseason && session.Offseason!.Phase == OffseasonPhase.Draft)
+            if (session.HumanTeam.Roster.Count < 15)
             {
-                off.SelectedProspect = off.Prospects.First();
-                off.MakePick();
+                off.SelectedFreeAgent = off.FreeAgents.Last();
+                Assert.False(string.IsNullOrEmpty(off.Talk.AskText));
+                off.Talk.OfferCommand.Execute(null);
+                Assert.False(string.IsNullOrEmpty(off.Talk.Reply));
             }
-            vm.AfterTick();
-            Assert.True(off.IsFreeAgency);
-            window.UpdateLayout();
-            if (off.FreeAgents.Count > 0 && session.HumanTeam.Roster.Count < 15) { off.SelectedFreeAgent = off.FreeAgents.First(); off.SignFreeAgent(); }
-            // Overseas buyouts and draft rights (stage 2): the lists fill, and acting on them never throws.
             Assert.NotEmpty(off.Overseas);
-            Assert.NotEmpty(off.Rights); // this year's picks
             off.SelectedOverseas = off.Overseas.First();
             window.UpdateLayout();
             off.BuyOut();
-            Assert.False(string.IsNullOrEmpty(off.Status));
-            off.SelectedRights = off.Rights.FirstOrDefault(r => !r.Abroad);
-            off.Stash();
             Assert.False(string.IsNullOrEmpty(off.Status));
             window.UpdateLayout();
 

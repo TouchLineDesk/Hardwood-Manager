@@ -44,7 +44,11 @@ public sealed partial class TransactionsViewModel : PageViewModel
     [ObservableProperty] private PlayerRow? _selectedFreeAgent;
     public Player? SelectedFreeAgentPlayer => SelectedFreeAgent?.Player;
     public double FreeAgentKnowledge => SelectedFreeAgent?.Knowledge ?? 1.0;
-    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); }
+    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); Talk.Show(value?.Player); }
+    /// <summary>Contract talks with the selected free agent (decision #89).</summary>
+    public TalkViewModel Talk { get; }
+    /// <summary>Trades only exist under the old NABL rules; the open market has transfers instead.</summary>
+    public bool TradesOpen => !Session.League.Finance.OpenMarket && Session.InNabl;
     [ObservableProperty] private string _faStatus = "";
     [ObservableProperty] private string _capText = "";
 
@@ -61,6 +65,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
 
     public TransactionsViewModel(MainViewModel shell) : base(shell)
     {
+        Talk = new TalkViewModel(shell, () => Refresh());
         foreach (var t in Session.League.Teams.Where(t => t != Session.HumanTeam).OrderBy(t => t.City)) Partners.Add(t);
         _partner = Partners.FirstOrDefault();
     }
@@ -79,11 +84,12 @@ public sealed partial class TransactionsViewModel : PageViewModel
             : s.TradeDeadlinePassed ? "The trade deadline has passed; trades reopen after the Finals."
             : $"Trade deadline: {s.TradeDeadline:MMM d}.";
         RebuildTrade();
-        if (s.Abroad)
+        if (!TradesOpen)
         {
-            DeadlineText = "Clubs outside the NABL don't trade players. Your sporting director handles signings in the summer.";
-            CapText = $"Roster {s.HumanTeam.Roster.Count} · wage bill ${payroll / 1e6:F1}M";
+            DeadlineText = "Free agents can be signed at any time through contract talks. (Transfers between clubs come with the transfer market.)";
+            CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · {Budgets.Describe(s.HumanTeam)}";
             CanPropose = false;
+            FaStatus = "Select a free agent to see his ask and make an offer.";
         }
     }
 

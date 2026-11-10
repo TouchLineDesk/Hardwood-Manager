@@ -59,7 +59,7 @@ public class PortraitDataTests
     [Fact]
     public void Draft_record_and_ethnicity_survive_save_and_load()
     {
-        var league = NewLeague();
+        var league = Legacy.Rules(NewLeague());
         var path = Path.Combine(Path.GetTempPath(), $"hw-portrait-{Guid.NewGuid():N}.save");
         try
         {

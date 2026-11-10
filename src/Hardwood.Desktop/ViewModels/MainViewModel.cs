@@ -244,7 +244,7 @@ public sealed partial class MainViewModel : ViewModelBase
         ContinueText = s.Phase == SessionPhase.Offseason
             ? s.Offseason?.Phase switch
             {
-                OffseasonPhase.ReSigning => "Continue to draft",
+                OffseasonPhase.ReSigning => s.League.Finance.OpenMarket ? "Continue to free agency" : "Continue to draft",
                 OffseasonPhase.Draft => "Continue to free agency",
                 OffseasonPhase.FreeAgency => "Start new season",
                 _ => "Continue",

@@ -105,7 +105,7 @@ public sealed partial class RosterViewModel : PageViewModel
         }
         var fin = Session.League.Finance;
         long payroll = ContractMarket.Payroll(team);
-        Summary = $"{team.Roster.Count} players · " + fin.Describe(payroll)
+        Summary = $"{team.Roster.Count} players · " + (team.Money.Ready ? Budgets.Describe(team) : fin.Describe(payroll))
                   + (team == Session.HumanTeam ? "" : $" · {Session.Trades.Direction(team)} · scouting knowledge {StaffEffects.ScoutingKnowledge(Session.HumanTeam) * 100:F0}% (ranges show what your scouts believe)");
     }
 }

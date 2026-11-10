@@ -112,7 +112,7 @@ public static class Board
 
     public static string Describe(Demand d) => d switch
     {
-        Demand.StayUnderTax => "Keep the payroll under the luxury tax line",
+        Demand.StayUnderTax => "Keep wages within the budget",
         Demand.PlayYoungsters => "Give the young players real minutes",
         _ => "Make the playoffs, whatever it takes",
     };
@@ -142,7 +142,8 @@ public static class Board
         }
         var o = team.Owner;
         var e = new Expectations { Season = season, Goal = goal, TargetWins = target };
-        if (o.Ambition <= 7 && ctx.Finance is { SoftCap: true }) e.Demands.Add(Demand.StayUnderTax);
+        // Careful owners want wages kept within the budget (the luxury tax, before the open market).
+        if (o.Ambition <= 7 && (ctx.Finance is { SoftCap: true } || ctx.Finance is null or { OpenMarket: true })) e.Demands.Add(Demand.StayUnderTax);
         if (o.Ambition >= 15 && goal < SeasonGoal.Playoffs)
         {
             e.Demands.Add(Demand.MakePlayoffs); e.Goal = SeasonGoal.Playoffs;
@@ -159,7 +160,8 @@ public static class Board
 
     public static bool Meeting(Demand d, LeagueContext ctx, Team team, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int wins, int games) => d switch
     {
-        Demand.StayUnderTax => ctx.Finance == null || ContractMarket.Payroll(team) <= ctx.Finance.TaxLine,
+        Demand.StayUnderTax => ctx.Finance is { OpenMarket: false } f ? ContractMarket.Payroll(team) <= f.TaxLine
+                               : !team.Money.Ready || ContractMarket.Payroll(team) <= team.Money.WageBudget,
         Demand.PlayYoungsters => team.Roster.Where(p => p.Age(today) <= 23).Sum(p => stats.TryGetValue(p.Id, out var s) && s.TeamId == team.Id ? s.Mpg : 0) >= 25,
         _ => games == 0 || wins / (double)games >= 0.5,
     };

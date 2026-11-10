@@ -8,7 +8,7 @@ public sealed record DraftPick(int Round, int Pick, Team Team, Player Player, Te
 public enum OffseasonPhase { NotStarted, ReSigning, Draft, FreeAgency, Complete }
 
 /// <summary>How a free agent is signed: cap room, the mid-level exception, or a minimum deal.</summary>
-public enum SigningRoute { None, CapRoom, MidLevel, Minimum }
+public enum SigningRoute { None, CapRoom, MidLevel, Minimum, Budget }
 
 public sealed class OffseasonReport
 {
@@ -114,6 +114,16 @@ public sealed class Offseason
     {
         if (Phase != OffseasonPhase.NotStarted) return;
         RecordHistory();
+        var fin0 = _league.Finance;
+        if (fin0.OpenMarket)
+        {
+            // The books close and owners set next season's budgets (decision #88). No draft rights on the open market.
+            Budgets.Initialize(_league.Teams, 1, _rng);
+            var champ = _outcome.Playoffs.Count > 0 ? _outcome.Playoffs.Last().Series.Winner : null;
+            Budgets.Summer(_league.Teams, 1, LastWinPct, t => t == champ);
+            foreach (var p in _league.AllActivePlayers.Concat(_league.FreeAgents)) p.DraftRightsTeamId = null;
+            _league.Picks.Clear();
+        }
 
         foreach (var team in _league.Teams)
         {
@@ -154,14 +164,24 @@ public sealed class Offseason
                 .OrderByDescending(p => ContractMarket.Value(p, Date)).ToList();
         }
 
-        // Lottery and draft order.
-        var reverse = _outcome.Standings.All().Select(r => r.Team).Reverse().ToList();
-        var playoffTeams = _outcome.Playoffs.Where(x => x.Round.EndsWith("First Round"))
-            .SelectMany(x => new[] { x.Series.Winner.Id, x.Series.Loser.Id }).ToHashSet();
-        Report.Lottery = DraftLottery.Run(reverse, playoffTeams, _rng);
-        DraftOrder = Report.Lottery.Order;
-        ResolvePickOwners();
-        Prospects = GenerateProspects();
+        if (fin0.OpenMarket)
+        {
+            // No draft (decision #80): this summer's college graduates join free agency (decision #90).
+            DraftOrder = new List<Team>();
+            PickOwners = new List<Team>();
+            Prospects = GenerateGraduates();
+        }
+        else
+        {
+            // Lottery and draft order.
+            var reverse = _outcome.Standings.All().Select(r => r.Team).Reverse().ToList();
+            var playoffTeams = _outcome.Playoffs.Where(x => x.Round.EndsWith("First Round"))
+                .SelectMany(x => new[] { x.Series.Winner.Id, x.Series.Loser.Id }).ToHashSet();
+            Report.Lottery = DraftLottery.Run(reverse, playoffTeams, _rng);
+            DraftOrder = Report.Lottery.Order;
+            ResolvePickOwners();
+            Prospects = GenerateProspects();
+        }
 
         Phase = OffseasonPhase.ReSigning;
     }
@@ -193,8 +213,11 @@ public sealed class Offseason
         }
     }
 
-    /// <summary>What an expiring player asks for from his current team.</summary>
-    public long Ask(Player p) => ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), _league.Finance);
+    /// <summary>What an expiring player asks for from his current team (open market: his demand in contract talks).</summary>
+    public long Ask(Player p) =>
+        _league.Finance.OpenMarket && p.TeamId is { } tid && _league.Teams.FirstOrDefault(t => t.Id == tid) is { } team
+            ? ContractTalks.Demand(p, team, Date, 1, _league.Finance, renewal: true).Wage
+            : ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), _league.Finance);
 
     /// <summary>Payroll committed for next season (players under contract beyond this one).</summary>
     public long CommittedPayroll(Team team) => team.Roster.Where(x => x.Contract != null && x.Contract.Years > 0).Sum(x => x.Contract!.Salary);
@@ -202,7 +225,7 @@ public sealed class Offseason
     /// <summary>Rookie-scale money this team's first-round pick will cost, so re-signing leaves room for it.</summary>
     public long ReservedForDraft(Team team)
     {
-        if (Phase != OffseasonPhase.ReSigning) return 0;
+        if (Phase != OffseasonPhase.ReSigning || _league.Finance.OpenMarket) return 0;
         long total = 0;
         for (int slot = 0; slot < DraftOrder.Count && slot < PickOwners.Count; slot++)
             if (PickOwners[slot] == team) total += Math.Max(_league.Finance.MinSalary, (long)(_league.Finance.RookieScaleFirstPick * Math.Pow(0.93, slot)));
@@ -213,7 +236,9 @@ public sealed class Offseason
     /// Can the team re-sign one of its own players at this salary? With the soft cap (Bird rights) it may go over the
     /// salary cap, up to the apron; with a hard cap it must stay under the cap.
     /// </summary>
-    public bool CanAfford(Team team, long salary) => CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.Apron;
+    public bool CanAfford(Team team, long salary) => _league.Finance.OpenMarket
+        ? CommittedPayroll(team) + salary <= team.Money.WageBudget
+        : CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.Apron;
 
     /// <summary>
     /// The most an AI front office will commit: contenders and teams keeping a star go up to the apron, everyone else
@@ -222,15 +247,17 @@ public sealed class Offseason
     public long AiPayrollLimit(Team team, bool star)
     {
         var fin = _league.Finance;
+        // Open market: the wage budget (a club stretches a little to keep a star).
+        if (fin.OpenMarket) return (long)(team.Money.WageBudget * (star ? 1.05 : 1.0));
         if (!fin.SoftCap) return fin.HardCap;
         return star || LastWinPct(team) >= 0.55 ? fin.Apron : fin.TaxLine;
     }
 
     /// <summary>Re-sign an expiring player at his ask (Bird rights: allowed over the cap, up to the apron).</summary>
-    public bool ReSign(Team team, Player p, int? years = null)
+    public bool ReSign(Team team, Player p, int? years = null, long? wage = null)
     {
         if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return false;
-        long ask = Ask(p);
+        long ask = wage ?? Ask(p);
         if (!CanAfford(team, ask)) return false;
         if (WontReSign(p)) return false;
         p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = ask, StartSeason = Season + 1 };
@@ -290,6 +317,31 @@ public sealed class Offseason
         // Anyone still undecided is released.
         foreach (var team in _league.Teams) foreach (var p in Expiring[team.Id].ToList()) Release(team, p);
         Phase = OffseasonPhase.Draft;
+        // Open market: no draft; straight on to free agency, where the graduates are waiting.
+        if (_league.Finance.OpenMarket) AdvanceToFreeAgency();
+    }
+
+    /// <summary>
+    /// This summer's college graduates (decision #90): 23-year-olds, mostly American, from a few ready-made players to
+    /// many long shots. Until the college game exists (stage B) they are generated here.
+    /// </summary>
+    private List<Player> GenerateGraduates()
+    {
+        var gen = new PlayerGenerator(_rng, _league.NextPlayerId);
+        var grads = new List<Player>();
+        var positions = Enum.GetValues<Position>();
+        for (int i = 0; i < 70; i++)
+        {
+            double u = _rng.NextDouble();
+            int ca = u < 0.06 ? _rng.Next(110, 128) : u < 0.32 ? _rng.Next(90, 110) : _rng.Next(60, 92);
+            var p = gen.Generate(positions[_rng.Next(5)], ca, 23, Date);
+            // Same restraint as the old draft classes: a few future stars a year, not a flood (issue #9).
+            p.PotentialAbility = Math.Clamp(p.PotentialAbility - _rng.Next(0, 9), p.CurrentAbility, 200);
+            p.RookieSeason = Season + 1;
+            grads.Add(p);
+        }
+        _league.NextPlayerId = gen.NextId;
+        return grads.OrderByDescending(p => ContractMarket.Value(p, Date)).ToList();
     }
 
     private List<Player> GenerateProspects()
@@ -372,7 +424,7 @@ public sealed class Offseason
     }
 
     /// <summary>Cap room: how far the payroll is under the salary cap.</summary>
-    public long Room(Team team) => _league.Finance.SalaryCap - ContractMarket.Payroll(team);
+    public long Room(Team team) => _league.Finance.OpenMarket ? Budgets.Room(team) : _league.Finance.SalaryCap - ContractMarket.Payroll(team);
 
     /// <summary>Teams that have used their mid-level exception this offseason.</summary>
     public HashSet<int> MidLevelUsed { get; } = new();
@@ -386,6 +438,13 @@ public sealed class Offseason
     {
         var fin = _league.Finance;
         long payroll = ContractMarket.Payroll(team);
+        if (fin.OpenMarket)
+        {
+            if (ask <= Room(team)) return (SigningRoute.Budget, ask);
+            // A club short of players may always add a minimum deal.
+            if (ask <= fin.MinSalary * 2 && team.Roster.Count < fin.RosterMin) return (SigningRoute.Minimum, fin.MinSalary);
+            return (SigningRoute.None, 0);
+        }
         if (ask <= Room(team)) return (SigningRoute.CapRoom, ask);
         if (fin.SoftCap && !MidLevelUsed.Contains(team.Id) && ask <= fin.MidLevel && payroll + ask <= fin.Apron) return (SigningRoute.MidLevel, ask);
         bool mustFill = team.Roster.Count < fin.RosterMin;
@@ -394,12 +453,12 @@ public sealed class Offseason
     }
 
     /// <summary>Sign a free agent at market salary, using cap room, the mid-level exception or a minimum deal.</summary>
-    public bool SignFreeAgent(Team team, Player p, int? years = null)
+    public bool SignFreeAgent(Team team, Player p, int? years = null, long? wage = null)
     {
         if (!_league.FreeAgents.Contains(p) || team.Roster.Count >= _league.Finance.RosterMax) return false;
         if (p.DraftRightsTeamId is { } rights && rights != team.Id) return false; // another team holds his draft rights
         var fin = _league.Finance;
-        long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
+        long ask = wage ?? ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
         var (route, salary) = SigningOption(team, ask);
         if (route == SigningRoute.None) return false;
         if (route == SigningRoute.MidLevel) MidLevelUsed.Add(team.Id);
@@ -473,6 +532,12 @@ public sealed class Offseason
         // under a hard cap), reach the minimum.
         foreach (var team in _league.Teams)
         {
+            if (fin.OpenMarket)
+            {
+                // Open market: only the roster limit is enforced; a club over its budget pays for it from its balance.
+                while (team.Roster.Count > fin.RosterMax) Waive(team, team.Roster.OrderBy(p => ContractMarket.Value(p, Date)).First());
+                continue;
+            }
             while (team.Roster.Count > fin.RosterMax ||
                    (ContractMarket.Payroll(team) > fin.Apron && team.Roster.Count > fin.RosterMin))
             {
@@ -516,7 +581,7 @@ public sealed class Offseason
         // New season, fresh start: moods settle and trade requests lapse (unhappy players have had their chance to leave).
         People.PeopleEngine.Summer(_league);
         _league.Season = Season + 1;
-        _league.EnsurePicks();
+        if (!fin.OpenMarket) _league.EnsurePicks();
         Phase = OffseasonPhase.Complete;
     }
 

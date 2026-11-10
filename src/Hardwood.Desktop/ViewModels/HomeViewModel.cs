@@ -157,11 +157,13 @@ public sealed partial class HomeViewModel : PageViewModel
         }
         Payroll = bars;
         // Cap and tax lines are NABL rules; clubs abroad just see their wage bill.
-        PayrollLines = s.InNabl ? new[]
-        {
-            new RefLine { Label = "Cap", Value = fin.SalaryCap / 1e6, Color = Color.Parse("#58A6FF") },
-            new RefLine { Label = "Tax", Value = fin.TaxLine / 1e6, Color = Color.Parse("#F85149") },
-        } : Array.Empty<RefLine>();
+        PayrollLines = fin.OpenMarket || s.Abroad
+            ? new[] { new RefLine { Label = "Budget", Value = team.Money.WageBudget / 1e6, Color = Color.Parse("#58A6FF") } }
+            : new[]
+            {
+                new RefLine { Label = "Cap", Value = fin.SalaryCap / 1e6, Color = Color.Parse("#58A6FF") },
+                new RefLine { Label = "Tax", Value = fin.TaxLine / 1e6, Color = Color.Parse("#F85149") },
+            };
 
         HasMood = s.MoodHistory.Count >= 2;
         Mood = HasMood ? new[]

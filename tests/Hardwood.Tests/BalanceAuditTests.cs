@@ -15,7 +15,9 @@ public class BalanceAuditTests
         var r = BalanceAudit.Run(7, 2);
         Assert.Equal(2, r.Champions.Count);
         Assert.True(r.Metrics.Count >= 30);
-        Assert.Equal(0, r["Teams over the apron at season start"].PerSeason.Max());
+        // Open market (decision #80): clubs live within their budgets and sign the graduates instead of drafting.
+        Assert.True(r["Clubs over their wage budget at season start"].PerSeason.Max() <= 8);
+        Assert.True(r["College graduates signed by NABL clubs"].Mean >= 8);
         Assert.InRange(r["Points per team per game"].Mean, 100, 130);
         Assert.All(r.Metrics.Where(m => m.Name.EndsWith("points per team per game")), m => Assert.InRange(m.Mean, 65, 110));
         var md = r.ToMarkdown();

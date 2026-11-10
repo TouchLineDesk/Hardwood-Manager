@@ -38,6 +38,8 @@ public sealed class VacancyRow
 /// <summary>The Board page (decisions #70-74): owner, expectations, board confidence, your coach profile, and jobs when out of work.</summary>
 public sealed partial class BoardViewModel : PageViewModel
 {
+    /// <summary>The club's money (decision #88).</summary>
+    [ObservableProperty] private string _finances = "";
     public override string Title => "Board";
     public BoardViewModel(MainViewModel shell) : base(shell) { }
 
@@ -93,6 +95,11 @@ public sealed partial class BoardViewModel : PageViewModel
             var (label, colour) = Mood(job.Confidence);
             ConfidenceText = $"{label} ({job.Confidence:0}/100)";
             ConfidenceBrush = new SolidColorBrush(Color.Parse(colour));
+            var m = t.Money;
+            static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
+            long wages = Hardwood.Core.Season.ContractMarket.Payroll(t);
+            Finances = $"Revenue {M(m.Revenue)} a season · wage budget {M(m.WageBudget)} · wages {M(wages)} · "
+                       + $"transfer budget {M(m.TransferBudget)} · bank balance {M(m.Balance)} · fan base {m.FanBase:0}/100";
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }

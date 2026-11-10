@@ -20,11 +20,12 @@ public sealed class SaveFile
     /// 6: player movement (overseas buyout clauses, draft rights held while a player is stashed abroad) ·
     /// 7: full team tactics (system, scheme, roles, matchups, presets) as JSON ·
     /// 8: players as people (morale, chemistry, promises; people_meta table) ·
-    /// 9: your coach, club owners and your job (career_meta table).
+    /// 9: your coach, club owners and your job (career_meta table) ·
+    /// 10: the open market: club money (revenue, budgets, balance, fans), your club abroad's contract decisions; no draft picks.
     /// Bump it whenever the format changes, add a sample save of the old format to tests/Hardwood.Tests/SaveFixtures,
     /// and make sure Load upgrades it (SaveCompatibilityTests loads every sample).
     /// </summary>
-    public const int SchemaVersion = 9;
+    public const int SchemaVersion = 10;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();

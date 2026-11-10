@@ -56,7 +56,7 @@ public class CareerTests
     {
         // The known bug: a team near the cap that needs 3+ minimum signings to reach the roster minimum
         // used to end the offseason three or more minimum deals over the hard cap.
-        var league = NewLeague();
+        var league = Legacy.Rules(NewLeague());
         var rng = new Rng(11);
         var schedule = ScheduleBuilder.Build(league, new DateOnly(2026, 10, 21), rng);
         var outcome = new SeasonSimulator(rng).Run(league, schedule);

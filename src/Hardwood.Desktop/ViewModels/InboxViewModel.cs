@@ -58,7 +58,7 @@ public sealed partial class InboxViewModel : PageViewModel
         int rank = s.MyRank;
         var hurt = s.HumanTeam.Roster.Where(p => !p.IsAvailable(s.Today)).ToList();
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
-                  + $" · Payroll ${ContractMarket.Payroll(s.HumanTeam) / 1e6:F1}M" + (s.InNabl ? $" (cap ${s.League.Finance.SalaryCap / 1e6:F0}M)" : "")
+                  + $" · {Budgets.Describe(s.HumanTeam)}"
                   + (hurt.Count > 0 ? $" · Injured: {string.Join(", ", hurt.Select(p => $"{p.LastName} ({p.Injury!.DaysOut(s.Today)}d)"))}" : "");
     }
 
