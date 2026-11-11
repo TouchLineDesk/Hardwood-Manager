@@ -73,6 +73,17 @@ public sealed partial class PlayerViewModel : PageViewModel
     public ObservableCollection<SeasonLine> Seasons { get; } = new();
 
     [RelayCommand] public void Back() => Shell.GoBack();
+
+    /// <summary>Your own player: open the Squad page with him selected, ready to talk (roadmap 1; it used to be a text hint).</summary>
+    public bool CanTalk => TeamObj != null && TeamObj == Session.HumanTeam;
+    [RelayCommand]
+    public void TalkToHim()
+    {
+        var player = Player;
+        Shell.Navigate("Squad");
+        if (Shell.CurrentPage is SquadViewModel squad)
+            squad.Selected = squad.Players.FirstOrDefault(r => r.Player == player) ?? squad.Selected;
+    }
     /// <summary>His club (opens its team page), or null for a free agent.</summary>
     public Hardwood.Core.Model.Team? Club => Player.TeamId is { } id ? Session.FindTeam(id) : null;
 
@@ -90,9 +101,9 @@ public sealed partial class PlayerViewModel : PageViewModel
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
             : p.InjuryHistory.Count > 0 ? $"Healthy · {p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}" : "Healthy";
         MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested ? " · has asked to be traded" : "")
-            + (p.TeamId == s.HumanTeam.Id ? " · talk to him on the Squad page" : "");
+            ;
         Chips = BuildChips(p, k);
-        Hint = p.TeamId == s.HumanTeam.Id ? "Talk to him on the Squad page." : "";
+        Hint = "";
         var career = s.League.Careers.GetValueOrDefault(p.Id);
         var hall = s.League.HallOfFame.FirstOrDefault(h => h.PlayerId == p.Id);
         var retiredBy = s.League.Teams.Where(x => x.RetiredNumbers.Contains(p.Id)).Select(x => x.FullName).ToList();

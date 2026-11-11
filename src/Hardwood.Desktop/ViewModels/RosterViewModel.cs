@@ -75,6 +75,9 @@ public sealed partial class RosterViewModel : PageViewModel
     [ObservableProperty] private Team? _team;
     [ObservableProperty] private PlayerRow? _selected;
     [ObservableProperty] private string _summary = "";
+    /// <summary>Roadmap 1: the squad at a glance as stat chips (players, wages, injuries, expiring deals, best player, mood).</summary>
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
+    public Avalonia.Media.Color Accent => ThemeService.AccentFor(Team ?? Session.HumanTeam);
     [ObservableProperty] private bool _cardView = true;
     public bool TableView => !CardView;
     partial void OnCardViewChanged(bool value) => OnPropertyChanged(nameof(TableView));
@@ -86,6 +89,39 @@ public sealed partial class RosterViewModel : PageViewModel
     }
 
     partial void OnTeamChanged(Team? value) => Refresh();
+
+    public List<Hardwood.Desktop.Controls.Chip> BuildChips(Team team, long payroll)
+    {
+        var s = Session;
+        var roster = team.Roster;
+        var chips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Players", roster.Count.ToString(), roster.Count == 0 ? "" : $"average age {roster.Average(p => p.Age(s.Today)):0.0}", "team"),
+        };
+        if (team.Money.Ready)
+        {
+            long budget = team.Money.WageBudget;
+            chips.Add(new("Wages", PlayerViewModel.Money(payroll), $"of a {PlayerViewModel.Money(budget)} budget",
+                payroll > budget ? "bad" : payroll > budget * 0.95 ? "warn" : "good"));
+        }
+        else chips.Add(new("Wages", PlayerViewModel.Money(payroll), "a season"));
+        var injured = roster.Where(p => p.Injury is { } i && i.IsOut(s.Today)).ToList();
+        chips.Add(injured.Count == 0
+            ? new("Injured", "0", "everyone fit", "good")
+            : new("Injured", injured.Count.ToString(), string.Join(", ", injured.Take(2).Select(p => p.Name.Split(' ').Last())) + (injured.Count > 2 ? $" +{injured.Count - 2}" : ""), "bad"));
+        int expiring = roster.Count(p => p.Contract is { Years: <= 0 });
+        chips.Add(new("Expiring", expiring.ToString(), expiring == 0 ? "no deals end this summer" : "deals end this summer", expiring > 0 ? "warn" : ""));
+        if (roster.Count > 0)
+        {
+            var best = roster.OrderByDescending(p => p.CurrentAbility).First();
+            var k = team == s.HumanTeam ? 1.0 : StaffEffects.ScoutingKnowledge(s.HumanTeam);
+            chips.Add(new("Best player", best.Name.Split(' ').Last(), $"{best.PrimaryPosition} · ability {Scouting.Ability(best, k)}", "info"));
+            int unhappy = roster.Count(p => p.TradeRequested || p.Morale < 50); // "Unhappy" or worse in the Mood column
+            chips.Add(new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody is unsettled" : "unhappy or want out",
+                roster.Any(p => p.TradeRequested || p.Morale < 35) ? "bad" : unhappy > 0 ? "warn" : "good"));
+        }
+        return chips;
+    }
 
     [RelayCommand]
     public void Open(PlayerRow? row)
@@ -105,7 +141,9 @@ public sealed partial class RosterViewModel : PageViewModel
         }
         var fin = Session.League.Finance;
         long payroll = ContractMarket.Payroll(team);
-        Summary = $"{team.Roster.Count} players · " + (team.Money.Ready ? Budgets.Describe(team) : fin.Describe(payroll))
-                  + (team == Session.HumanTeam ? "" : $" · {Session.Trades.Direction(team)} · scouting knowledge {StaffEffects.ScoutingKnowledge(Session.HumanTeam) * 100:F0}% (ranges show what your scouts believe)");
+        Summary = team == Session.HumanTeam ? ""
+            : $"{Session.Trades.Direction(team)} · scouting knowledge {StaffEffects.ScoutingKnowledge(Session.HumanTeam) * 100:F0}% (ranges show what your scouts believe)";
+        Chips = BuildChips(team, payroll);
+        OnPropertyChanged(nameof(Accent));
     }
 }

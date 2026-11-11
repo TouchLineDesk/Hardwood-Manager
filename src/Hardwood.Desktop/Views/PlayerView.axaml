@@ -30,7 +30,7 @@
           <c:StatStrip ItemsSource="{Binding Chips}" Accent="{Binding Accent}"/>
           <TextBlock Text="{Binding Honours}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding Honours, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <TextBlock Text="{Binding Tendencies}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
-          <TextBlock Text="{Binding Hint}" Classes="muted" FontSize="11.5" IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <Button Content="Talk to him" Command="{Binding TalkToHimCommand}" IsVisible="{Binding CanTalk}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
           <c:RadarChart Values="{Binding RadarValues}" Labels="{Binding RadarLabels}" Accent="{Binding Accent}" Height="250" Width="440" HorizontalAlignment="Left"/>
         </StackPanel>
       </Grid>

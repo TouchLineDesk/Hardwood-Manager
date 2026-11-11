@@ -26,12 +26,13 @@
         </Grid>
       </Border>
 
+      <c:StatStrip ItemsSource="{Binding Leaders}" Accent="{DynamicResource HwAccent}"/>
       <Grid ColumnDefinitions="*,*" IsVisible="{Binding HasLog}">
         <Border Classes="panel" Padding="6" Margin="0,0,6,0"><StackPanel><TextBlock Text="{Binding AwayName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding AwayZoneAttempts}" Makes="{Binding AwayZoneMakes}" Height="230"/></StackPanel></Border>
         <Border Grid.Column="1" Classes="panel" Padding="6" Margin="6,0,0,0"><StackPanel><TextBlock Text="{Binding HomeName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding HomeZoneAttempts}" Makes="{Binding HomeZoneMakes}" Height="230"/></StackPanel></Border>
       </Grid>
       <c:TeamLink Team="{Binding AwayTeam}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,6"/>
-      <TextBlock Text="{Binding AwayTotals}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+      <c:StatStrip ItemsSource="{Binding AwayChips}" Accent="{Binding AwayAccent}"/>
       <DataGrid ItemsSource="{Binding Away}" Height="300">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
@@ -53,7 +54,7 @@
       </DataGrid>
 
       <c:TeamLink Team="{Binding HomeTeam}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,6"/>
-      <TextBlock Text="{Binding HomeTotals}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+      <c:StatStrip ItemsSource="{Binding HomeChips}" Accent="{Binding HomeAccent}"/>
       <DataGrid ItemsSource="{Binding Home}" Height="300">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>

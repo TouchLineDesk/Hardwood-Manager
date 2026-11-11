@@ -43,6 +43,9 @@ public sealed partial class SquadViewModel : PageViewModel
     public SquadViewModel(MainViewModel shell) : base(shell) { }
 
     [ObservableProperty] private string _chemistryHeadline = "";
+    /// <summary>Roadmap 1: the dressing room at a glance (chemistry, moods, trade requests, promises).</summary>
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
+    public Avalonia.Media.Color Accent => ThemeService.AccentFor(Session.HumanTeam);
     public ObservableCollection<FactorRow> ChemistryFactors { get; } = new();
     public ObservableCollection<MoodRow> Players { get; } = new();
     [ObservableProperty] private MoodRow? _selected;
@@ -58,6 +61,24 @@ public sealed partial class SquadViewModel : PageViewModel
     [ObservableProperty] private bool _hasTrend;
 
     private double WinPct => Session.MyRecord.Games > 0 ? Session.MyRecord.WinPct : 0.5;
+
+    public List<Hardwood.Desktop.Controls.Chip> BuildChips(Hardwood.Core.Model.Team team, string chemistryLabel)
+    {
+        var roster = team.Roster;
+        // The same bands as the Mood column (PeopleEngine.Mood): Happy 68+, Unhappy below 50.
+        int happy = roster.Count(p => p.Morale >= 68), unhappy = roster.Count(p => p.Morale < 50 && !p.TradeRequested),
+            requests = roster.Count(p => p.TradeRequested), promises = Session.Promises.Count(pr => roster.Any(p => p.Id == pr.PlayerId));
+        var lowest = roster.OrderBy(p => p.Morale).FirstOrDefault();
+        return new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Chemistry", $"{team.Chemistry:0}", chemistryLabel + " · out of 100", team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "" : "bad"),
+            new("Happy", happy.ToString(), $"of {roster.Count} players", happy >= roster.Count / 2 ? "good" : ""),
+            new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody unsettled" : lowest != null ? $"lowest: {lowest.Name.Split(' ').Last()} ({lowest.Morale:0})" : "",
+                roster.Any(p => p.Morale < 35 && !p.TradeRequested) ? "bad" : unhappy > 0 ? "warn" : "good"),
+            new("Trade requests", requests.ToString(), requests == 0 ? "nobody wants out" : "want out", requests > 0 ? "bad" : "good"),
+            new("Promises", promises.ToString(), promises == 0 ? "none outstanding" : "you must keep them", promises > 0 ? "info" : ""),
+        };
+    }
 
     public override void Refresh()
     {
@@ -88,6 +109,7 @@ public sealed partial class SquadViewModel : PageViewModel
             var p = team.Roster.FirstOrDefault(x => x.Id == pr.PlayerId);
             return p == null ? "" : pr.Kind == "trade" ? $"{p.Name}: trade him by {pr.Made.AddDays(30):MMM d}" : $"{p.Name}: about {pr.TargetMpg:0} minutes a game over his next {pr.Games} games";
         }).Where(x => x.Length > 0));
+        Chips = BuildChips(team, label);
         var h = Session.MoodHistory;
         HasTrend = h.Count >= 2;
         Trend = HasTrend ? new[]
