@@ -185,7 +185,9 @@ public static class Assistant
 
         // ---- inbox
         // Only mail that needs you (critic review #2: "26 unread messages" sat at the top of the panel all season).
-        var important = s.Inbox.Where(m => !m.Read && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff").ToList();
+        // Only the last fortnight's: an unread note from two months ago no longer needs you (dial-in item 4: the task sat on the
+        // panel 87 weeks out of 87 because old unread mail kept it alive).
+        var important = s.Inbox.Where(m => !m.Read && m.Date.DayNumber >= today.DayNumber - 14 && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff").ToList();
         if (important.Count > 0)
             yield return new($"inbox-{important.Max(m => m.Id)}", 22, $"{important.Count} message{(important.Count == 1 ? "" : "s")} that need{(important.Count == 1 ? "s" : "")} you",
                 $"Latest: {important[0].Title}. Board, medical, squad and transfer news is worth reading; results and world news can wait.", "Inbox");

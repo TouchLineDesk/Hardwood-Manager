@@ -76,6 +76,8 @@ while (s.League.Season < startYear + seasons)
         var adv = Assistant.Advise(s, "Home", GuideLevel.Auto, progress);
         foreach (var t in adv.Tasks) { var k = System.Text.RegularExpressions.Regex.Replace(t.Title.Split(':')[0], @"\d+(\.\d+)?", "#").Trim(); assistantTitles[k] = assistantTitles.GetValueOrDefault(k) + 1; if (t.Priority < 30) urgentSeen++; }
         tipsSeen += adv.Strategy.Count;
+        // Like a player, read the mail the assistant points at (so the count measures new mail, not a growing backlog).
+        foreach (var m in s.Inbox.Where(m => !m.Read && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff")) m.Read = true;
         progress.DaysPlayed += 7;
         if (s.Employed)
         {
@@ -191,6 +193,7 @@ L($"money: over the wage budget {overBudgetWeeks} of {weeksEmployed} weeks emplo
 L("board titles: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Board").GroupBy(m => new string(m.Title.TakeWhile(c => c != ':').ToArray())).OrderByDescending(g => g.Count()).Take(10).Select(g => $"{g.Key} x{g.Count()}")));
 L($"recruiting: {recruitCommits} seniors committed to us");
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
+L("inbox titles: " + string.Join(", ", s.Inbox.GroupBy(m => System.Text.RegularExpressions.Regex.Replace(m.Title.Split(':')[0], @"\d+(\.\d+)?", "#")).OrderByDescending(g => g.Count()).Take(25).Select(g => $"{g.Key} x{g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
     L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");
 L($"save size {new FileInfo(path).Length / 1e6:F1} MB");
