@@ -163,35 +163,72 @@ public static class Systems
     private static double Top(IEnumerable<Player> ps, int n, params Attr[] attrs) =>
         ps.Select(p => attrs.Average(a => (double)p.Attributes[a])).OrderByDescending(x => x).Take(n).DefaultIfEmpty(10).Average();
 
-    /// <summary>How well a group of players (the five on the floor, or a rotation) suits an offensive system: 0 (bad) to 1 (ideal).</summary>
-    public static double Raw(OffensiveSystem s, IReadOnlyCollection<Player> players)
+    /// <summary>One ingredient of a system's fit: what it is, how good the group is at it, its weight, and the player who supplies it (for "best of" ingredients).</summary>
+    public sealed record FitPart(string Label, double Value, double Weight, Player? Best, bool OneMan = false);
+
+    private static FitPart AvgPart(string label, IEnumerable<Player> ps, double w, params Attr[] attrs) => new(label, Avg(ps, attrs), w, null);
+    private static FitPart TopPart(string label, IEnumerable<Player> ps, double w, params Attr[] attrs)
     {
-        if (players.Count == 0) return 11.5;
-        return s switch
-        {
-            OffensiveSystem.Balanced => 11.5,
-            OffensiveSystem.PickAndRoll => Top(players, 1, Attr.PickAndRollHandler, Attr.BallHandling, Attr.ShotCreation) * 0.55
-                                           + Top(players.Where(p => p.PrimaryPosition >= Position.PF), 1, Attr.Dunk, Attr.Vertical, Attr.OffBallMovement) * 0.45,
-            OffensiveSystem.Motion => Avg(players, Attr.Passing, Attr.OffBallMovement, Attr.Teamwork, Attr.BasketballIQ),
-            OffensiveSystem.PostCentric => Top(players, 1, Attr.PostMoves, Attr.CloseShot, Attr.Strength) * 0.65 + Avg(players, Attr.ThreePoint, Attr.CatchAndShoot) * 0.35,
-            OffensiveSystem.PaceAndSpace => Avg(players, Attr.ThreePoint, Attr.CatchAndShoot) * 0.6 + Avg(players, Attr.Speed, Attr.Stamina) * 0.4,
-            _ => Top(players, 1, Attr.ShotCreation, Attr.MidRange, Attr.BallHandling) * 0.7 + Avg(players, Attr.CatchAndShoot) * 0.3,
-        };
+        var best = ps.Select(p => (p, v: attrs.Average(a => (double)p.Attributes[a]))).OrderByDescending(x => x.v).FirstOrDefault();
+        return new(label, best.p == null ? 10 : best.v, w, best.p, true);
     }
 
-    /// <summary>How well players suit a defensive scheme: 0 to 1.</summary>
-    public static double Raw(DefensiveScheme s, IReadOnlyCollection<Player> players)
+    /// <summary>The ingredients of an offensive system's fit (weights add to 1; <see cref="Raw(OffensiveSystem, IReadOnlyCollection{Player})"/> is their weighted sum).</summary>
+    public static List<FitPart> Parts(OffensiveSystem s, IReadOnlyCollection<Player> players) => s switch
     {
-        if (players.Count == 0) return 11.5;
-        return s switch
+        OffensiveSystem.Balanced => new(),
+        OffensiveSystem.PickAndRoll => new() { TopPart("ball handler", players, 0.55, Attr.PickAndRollHandler, Attr.BallHandling, Attr.ShotCreation),
+                                               TopPart("roll man", players.Where(p => p.PrimaryPosition >= Position.PF), 0.45, Attr.Dunk, Attr.Vertical, Attr.OffBallMovement) },
+        OffensiveSystem.Motion => new() { AvgPart("passing and movement", players, 1, Attr.Passing, Attr.OffBallMovement, Attr.Teamwork, Attr.BasketballIQ) },
+        OffensiveSystem.PostCentric => new() { TopPart("post scorer", players, 0.65, Attr.PostMoves, Attr.CloseShot, Attr.Strength),
+                                               AvgPart("shooting around him", players, 0.35, Attr.ThreePoint, Attr.CatchAndShoot) },
+        OffensiveSystem.PaceAndSpace => new() { AvgPart("shooting", players, 0.6, Attr.ThreePoint, Attr.CatchAndShoot),
+                                                AvgPart("speed and stamina", players, 0.4, Attr.Speed, Attr.Stamina) },
+        _ => new() { TopPart("go-to scorer", players, 0.7, Attr.ShotCreation, Attr.MidRange, Attr.BallHandling),
+                     AvgPart("catch-and-shoot help", players, 0.3, Attr.CatchAndShoot) },
+    };
+
+    /// <summary>The ingredients of a defensive scheme's fit.</summary>
+    public static List<FitPart> Parts(DefensiveScheme s, IReadOnlyCollection<Player> players) => s switch
+    {
+        DefensiveScheme.Man => new(),
+        DefensiveScheme.SwitchEverything => new() { AvgPart("perimeter defence", players, 0.6, Attr.PerimeterDefense, Attr.Agility),
+                                                    AvgPart("bigs who can switch", players.Where(p => p.PrimaryPosition >= Position.PF), 0.4, Attr.PerimeterDefense, Attr.Agility, Attr.Speed) },
+        DefensiveScheme.Zone23 => new() { AvgPart("help defence", players, 0.7, Attr.HelpDefense, Attr.BasketballIQ),
+                                          TopPart("rim protector", players, 0.3, Attr.Block, Attr.InteriorDefense) },
+        _ => new() { TopPart("rim protector", players, 0.7, Attr.Block, Attr.InteriorDefense, Attr.HelpDefense),
+                     AvgPart("perimeter defence", players, 0.3, Attr.PerimeterDefense) },
+    };
+
+    /// <summary>How well a group of players (the five on the floor, or a rotation) suits an offensive system (raw score; see <see cref="Fit(OffensiveSystem, IReadOnlyCollection{Player})"/>).</summary>
+    public static double Raw(OffensiveSystem s, IReadOnlyCollection<Player> players) =>
+        players.Count == 0 || s == OffensiveSystem.Balanced ? 11.5 : Parts(s, players).Sum(p => p.Value * p.Weight);
+
+    /// <summary>How well players suit a defensive scheme (raw score).</summary>
+    public static double Raw(DefensiveScheme s, IReadOnlyCollection<Player> players) =>
+        players.Count == 0 || s == DefensiveScheme.Man ? 11.5 : Parts(s, players).Sum(p => p.Value * p.Weight);
+
+    /// <summary>One reason behind a fit rating: what it says and how much it moves the fit (+ helps, − hurts; the effects add up to fit − 0.5 before clamping).</summary>
+    public sealed record FitReason(string Text, double Effect);
+
+    /// <summary>Why a system fits or doesn't (the assistant explains "why", roadmap 4): each ingredient against an average rotation, biggest first.</summary>
+    public static List<FitReason> Reasons(OffensiveSystem s, IReadOnlyCollection<Player> players) =>
+        s == OffensiveSystem.Balanced || players.Count == 0 ? new() : Explain(Parts(s, players), OffCenter[(int)s], OffSpread[(int)s]);
+
+    public static List<FitReason> Reasons(DefensiveScheme s, IReadOnlyCollection<Player> players) =>
+        s == DefensiveScheme.Man || players.Count == 0 ? new() : Explain(Parts(s, players), DefCenter[(int)s], DefSpread[(int)s]);
+
+    private static List<FitReason> Explain(List<FitPart> parts, double center, double spread) =>
+        parts.Select(p =>
         {
-            DefensiveScheme.Man => 11.5,
-            DefensiveScheme.SwitchEverything => Avg(players, Attr.PerimeterDefense, Attr.Agility) * 0.6
-                                                + Avg(players.Where(p => p.PrimaryPosition >= Position.PF), Attr.PerimeterDefense, Attr.Agility, Attr.Speed) * 0.4,
-            DefensiveScheme.Zone23 => Avg(players, Attr.HelpDefense, Attr.BasketballIQ) * 0.7 + Top(players, 1, Attr.Block, Attr.InteriorDefense) * 0.3,
-            _ => Top(players, 1, Attr.Block, Attr.InteriorDefense, Attr.HelpDefense) * 0.7 + Avg(players, Attr.PerimeterDefense) * 0.3,
-        };
-    }
+            double effect = p.Weight * (p.Value - center) / spread;
+            string level = effect >= 0.08 ? "a real strength" : effect >= 0.025 ? "better than most" : effect <= -0.08 ? "a real weakness" : effect <= -0.025 ? "below average" : "about average";
+            string who = p.Best != null ? $"best is {p.Best.Name}, {p.Value:0.#}" : p.OneMan ? "nobody in the rotation" : $"{p.Value:0.#} average";
+            string text = $"{Cap(p.Label)}: {level} ({who})";
+            return new FitReason(text, effect);
+        }).OrderByDescending(r => Math.Abs(r.Effect)).ToList();
+
+    private static string Cap(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
     /// <summary>
     /// How well a group of players (the five on the floor, or a rotation) suits a system or scheme: 0 (bad) to 1

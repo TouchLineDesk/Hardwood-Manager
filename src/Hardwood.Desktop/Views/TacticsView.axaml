@@ -29,6 +29,13 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
             <TextBlock Text="{Binding SelectedSystem.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <!-- Why it fits (roadmap 4): the ingredients, best and worst first -->
+            <StackPanel Spacing="1" IsVisible="{Binding SelectedSystem.HasReasons}">
+              <TextBlock Text="Why this fit" FontSize="11.5" FontWeight="SemiBold" Margin="0,2,0,0"/>
+              <ItemsControl ItemsSource="{Binding SelectedSystem.Reasons}">
+                <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
         </Border>
         <Border Classes="panel">
@@ -42,6 +49,13 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
             <TextBlock Text="{Binding SelectedScheme.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <!-- Why it fits (roadmap 4): the ingredients, best and worst first -->
+            <StackPanel Spacing="1" IsVisible="{Binding SelectedScheme.HasReasons}">
+              <TextBlock Text="Why this fit" FontSize="11.5" FontWeight="SemiBold" Margin="0,2,0,0"/>
+              <ItemsControl ItemsSource="{Binding SelectedScheme.Reasons}">
+                <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
             <TextBlock Text="Their best scorer" FontWeight="SemiBold" Margin="0,6,0,0"/>
             <ComboBox ItemsSource="{Binding Stoppers}" SelectedItem="{Binding SelectedStopper}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:StopperOption"><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate>
