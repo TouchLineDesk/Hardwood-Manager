@@ -30,6 +30,10 @@ public class LayoutCheckTests
         });
         yield return ("Team page", v => v.ShowTeam(v.Session!.League.Teams.First(t => t != v.Session.HumanTeam)));
         yield return ("Records book", v => v.Navigate("History"));
+        // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
+        yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });
+        yield return ("College recruits", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 4; });
+        yield return ("College classes", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 5; });
         yield return ("Box score", v =>
         {
             v.Navigate("Schedule & Results");

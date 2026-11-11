@@ -91,6 +91,10 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-college-bracket.png"));
             college.Tab = 3;
             Snap(window, Path.Combine(dir, $"{n++:00}-college-prospects.png"));
+            college.Tab = 4;
+            Snap(window, Path.Combine(dir, $"{n++:00}-college-recruits.png"));
+            college.Tab = 5;
+            Snap(window, Path.Combine(dir, $"{n++:00}-college-class-rankings.png"));
             vm.Navigate("Offseason");
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-resign.png"));
             session.AdvanceOffseason(); vm.AfterTick();

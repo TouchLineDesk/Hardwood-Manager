@@ -64,22 +64,76 @@
       </TabItem>
       <TabItem Header="Prospects">
         <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
-            <ComboBox ItemsSource="{Binding Ages}" SelectedItem="{Binding Age}" MinWidth="220"/>
-            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding Position}" MinWidth="80"/>
-            <Button Content="Open player" Command="{Binding OpenProspectCommand}"/>
-            <TextBlock Text="Players turn pro at 23 and join free agency in the summer. Ranges show what your scouts believe." Classes="muted" VerticalAlignment="Center"/>
-          </StackPanel>
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding Ages}" SelectedItem="{Binding Age}" MinWidth="220" Margin="0,0,8,4"/>
+            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding Position}" MinWidth="80" Margin="0,0,8,4"/>
+            <Button Content="Open player" Command="{Binding OpenProspectCommand}" Margin="0,0,8,4"/>
+            <TextBlock Text="Players turn pro at 23 and join free agency in the summer. Ranges show what your scouts believe." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
+          </WrapPanel>
           <DataGrid ItemsSource="{Binding Prospects}" SelectedItem="{Binding SelectedProspect}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="66"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
-              <DataGridTextColumn Header="Program" Binding="{Binding Program}" Width="270"/>
+              <DataGridTextColumn Header="Program or high school" Binding="{Binding Program}" Width="330"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="80"/>
               <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="80"/>
               <DataGridTextColumn Header="This season" Binding="{Binding Line}" Width="240"/>
-              <DataGridTextColumn Header="" Binding="{Binding Turns}" Width="*"/>
+              <DataGridTextColumn Header="" Binding="{Binding Turns}" Width="*" MinWidth="190"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+      <!-- Recruiting (decision #162): the high-school classes and where they're going. -->
+      <TabItem Header="Recruits" IsVisible="{Binding HasRecruiting}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
+            <c:StatStrip ItemsSource="{Binding RecruitChips}" Accent="{DynamicResource HwAccent}"/>
+            <WrapPanel>
+              <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding RecruitClass}" MinWidth="220" Margin="0,0,8,4"/>
+              <ComboBox ItemsSource="{Binding StarFilters}" SelectedItem="{Binding StarFilter}" MinWidth="140" Margin="0,0,8,4"/>
+              <Button Content="Open player" Command="{Binding OpenRecruitCommand}" Margin="0,0,8,4"/>
+              <TextBlock Text="Stars are the recruiting services' opinion, not a promise: busts and sleepers happen." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
+            </WrapPanel>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Recruits}" SelectedItem="{Binding SelectedRecruit}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+              <DataGridTextColumn Header="Stars" Binding="{Binding Stars}" Width="70"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="50"/>
+              <DataGridTextColumn Header="Committed to" Binding="{Binding Committed}" Width="230"/>
+              <DataGridTextColumn Header="High school" Binding="{Binding HighSchool}" Width="190"/>
+              <DataGridTextColumn Header="State" Binding="{Binding State}" Width="*" MinWidth="56"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Class rankings" IsVisible="{Binding HasRecruiting}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding RecruitClass}" MinWidth="220"/>
+            <TextBlock Text="{Binding ClassNote}" Classes="muted" TextWrapping="Wrap"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding ClassRanks}" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+              <DataGridTemplateColumn Header="" Width="44">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ClassRankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Program" Width="300">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ClassRankRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="70"/>
+              <DataGridTextColumn Header="Signed" Binding="{Binding Commits}" Width="76"/>
+              <DataGridTextColumn Header="5-star" Binding="{Binding FiveStars}" Width="70"/>
+              <DataGridTextColumn Header="4-star" Binding="{Binding FourStars}" Width="70"/>
+              <DataGridTextColumn Header="Points" Binding="{Binding Points}" Width="*" MinWidth="70"/>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>

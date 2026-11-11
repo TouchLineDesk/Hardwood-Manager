@@ -365,7 +365,7 @@ public static class Assistant
                          "Watch the teams around you and the playoff line."),
         ["Leagues"] = ("Every league in the game, ours included: standings, schedule and results, stat leaders, the rules and format, and past champions. Pick a region, then a league. Click any team or player name to open their page.",
                      "Scout other clubs' rosters from here: a team's page shows its players as your scouts see them."),
-        ["College"] = ("College basketball: the Top 25, conferences, March Madness and prospects. Players turn pro at 23 and join free agency in the summer.",
+        ["College"] = ("College basketball: the Top 25, conferences, March Madness, prospects and the high-school recruiting classes. Seniors sign by mid-April, enroll at 18 and turn pro at 23.",
                        "Track the best 22-year-olds in Prospects; they're free agents next summer."),
         ["League Leaders"] = ("The best players in the league by points, rebounds, assists and more.", "Spot breakout players before their value rises."),
         ["Transactions"] = ("Sign free agents, bid for players at other clubs, answer bids for yours, and propose trades. Free agents need contract talks: offer wage and years, and they accept, counter or walk.",
