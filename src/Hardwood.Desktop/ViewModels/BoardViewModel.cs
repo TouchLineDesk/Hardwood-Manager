@@ -60,6 +60,10 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private IBrush _confidenceBrush = Brushes.Gray;
     [ObservableProperty] private IReadOnlyList<LineSeries>? _confidenceTrend;
     [ObservableProperty] private bool _hasTrend;
+    /// <summary>Roadmap 4, the assistant explains why: what's pushing confidence up or down this week, and where it's heading.</summary>
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _confidenceDrivers = new();
+    [ObservableProperty] private string _confidenceHeading = "";
+    [ObservableProperty] private string _confidenceRecent = "";
 
     [ObservableProperty] private string _coachName = "";
     [ObservableProperty] private string _coachBio = "";
@@ -112,6 +116,13 @@ public sealed partial class BoardViewModel : PageViewModel
                 new("Bank", M(m.Balance), m.Balance < 0 ? "in debt" : "balance", m.Balance < 0 ? "bad" : ""),
                 new("Fan base", $"{m.FanBase:0}", "out of 100", m.FanBase >= 70 ? "good" : m.FanBase < 35 ? "warn" : ""),
             };
+            var outlook = Board.Outlook(job, ctx, t, rec.Wins, rec.Losses, s.MyStats, s.Today);
+            ConfidenceDrivers = outlook == null ? new() : DriverChips(outlook);
+            ConfidenceHeading = outlook == null
+                ? "The board starts judging the season after five games."
+                : $"Heading toward {outlook.Level:0} (now {job.Confidence:0}): each week it closes {outlook.Rate * 100:0}% of the gap. "
+                  + (o.Patience <= 7 ? "An impatient owner: it moves fast." : o.Patience >= 14 ? "A patient owner: it moves slowly." : "");
+            ConfidenceRecent = Recent(job);
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }
@@ -143,6 +154,27 @@ public sealed partial class BoardViewModel : PageViewModel
                 Decline = new RelayCommand(() => { Session.DeclineOffer(id); Status = "Offer declined."; Refresh(); }),
             });
         }
+    }
+
+    /// <summary>Each thing the board weighs as a chip: the points it adds to or takes off where confidence settles.</summary>
+    public static List<Hardwood.Desktop.Controls.Chip> DriverChips(BoardOutlook outlook)
+    {
+        var chips = new List<Hardwood.Desktop.Controls.Chip> { new("Starting point", $"{Board.BaseLevel:0}", "on target, demands met", "info") };
+        foreach (var d in outlook.Drivers)
+            chips.Add(new(d.Label, d.Points >= 0 ? $"+{d.Points:0}" : $"{d.Points:0}", d.Text, d.Points >= 1 ? "good" : d.Points <= -1 ? "bad" : ""));
+        chips.Add(new("Heading toward", $"{outlook.Level:0}", "where confidence settles", outlook.Level >= 50 ? "good" : outlook.Level >= 35 ? "warn" : "bad"));
+        return chips;
+    }
+
+    /// <summary>How confidence moved over the last four weekly reviews.</summary>
+    public static string Recent(JobState job)
+    {
+        var h = job.History;
+        if (h.Count < 2) return "";
+        int back = Math.Min(4, h.Count - 1);
+        double change = h[^1].Confidence - h[h.Count - 1 - back].Confidence;
+        string weeks = back == 1 ? "last week" : $"the last {back} weeks";
+        return Math.Abs(change) < 0.5 ? $"Steady over {weeks}." : $"{(change > 0 ? "Up" : "Down")} {Math.Abs(change):0} over {weeks}.";
     }
 
     private static string Bio(CoachBackground b) => b switch

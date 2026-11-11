@@ -68,10 +68,13 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <StackPanel Spacing="4">
+            <StackPanel Spacing="4" IsVisible="{Binding ShowPageTip}">
               <TextBlock Text="{Binding PageTitle, StringFormat='ON THIS PAGE: {0}'}" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
               <TextBlock Text="{Binding PageTip}" TextWrapping="Wrap" FontSize="12"/>
             </StackPanel>
+            <!-- Seen this page before: the tip stays out of the way until asked for (roadmap 4). -->
+            <Button Content="{Binding PageTitle, StringFormat='Tip for {0}'}" Command="{Binding RevealPageTipCommand}" IsVisible="{Binding !ShowPageTip}"
+                    HorizontalAlignment="Left" Padding="8,2" FontSize="11.5"/>
 
             <StackPanel Spacing="6" IsVisible="{Binding HasStrategy}">
               <TextBlock Text="STRATEGY" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>

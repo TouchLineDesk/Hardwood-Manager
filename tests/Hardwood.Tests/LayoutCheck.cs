@@ -46,6 +46,12 @@ public static class LayoutCheck
         {
             if (gf.Result == null) continue;
             var labels = Hardwood.Desktop.Controls.GameFlowChart.PlaceLabels(gf.Result, gf.Bounds.Size);
+            // A run's score drawn across the win-probability line is hard to read (review #6).
+            var (probArea, _) = Hardwood.Desktop.Controls.GameFlowChart.Areas(gf.Bounds.Size);
+            var line = Hardwood.Desktop.Controls.GameFlowChart.LinePoints(gf.Result, (probArea, Hardwood.Desktop.Controls.GameFlowChart.Span(gf.Result)));
+            foreach (var l in labels.Where(l => Hardwood.Core.Engine.GameFlow.Runs(gf.Result).Any(x => x.Score == l.Text)))
+                if (Hardwood.Desktop.Controls.GameFlowChart.CrossesLine(line, l.Box))
+                    problems.Add(new Problem("chart label", l.Text, Describe(gf) + " on the win-probability line", 1));
             for (int i = 0; i < labels.Count; i++)
             {
                 var b = labels[i].Box;

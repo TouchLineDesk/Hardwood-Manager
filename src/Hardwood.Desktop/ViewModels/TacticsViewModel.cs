@@ -17,6 +17,9 @@ public sealed class SystemOption
     /// <summary>How it fares against what the next opponent is likely to run (critic review: show the matchup before you choose).</summary>
     public double Matchup { get; init; }
     public bool Recommended { get; init; }
+    /// <summary>Why it fits or doesn't (roadmap 4): each ingredient against an average rotation, naming the player who supplies it.</summary>
+    public IReadOnlyList<string> Reasons { get; init; } = Array.Empty<string>();
+    public bool HasReasons => Reasons.Count > 0;
     public string FitText => (System is OffensiveSystem.Balanced || Scheme is DefensiveScheme.Man ? "baseline" : $"fit {TacticsViewModel.StarText(Fit * 5)}")
         + (Matchup >= 0.02 ? " · good matchup" : Matchup <= -0.02 ? " · poor matchup" : "") + (Recommended ? " · assistant's pick" : "");
     public override string ToString() => Name;
@@ -137,10 +140,12 @@ public sealed partial class TacticsViewModel : PageViewModel
         Systems.Clear();
         foreach (var s in Enum.GetValues<OffensiveSystem>())
             Systems.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(s), Description = Hardwood.Core.Model.Systems.Describe(s), Fit = Hardwood.Core.Model.Systems.Fit(s, rot), System = s,
+                Reasons = Hardwood.Core.Model.Systems.Reasons(s, rot).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
                 Matchup = theirScheme is { } ts ? Hardwood.Core.Engine.Tactics.Matchup(s, ts) : 0, Recommended = s == bestSystem });
         Schemes.Clear();
         foreach (var d in Enum.GetValues<DefensiveScheme>())
             Schemes.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(d), Description = Hardwood.Core.Model.Systems.Describe(d), Fit = Hardwood.Core.Model.Systems.Fit(d, rot), Scheme = d,
+                Reasons = Hardwood.Core.Model.Systems.Reasons(d, rot).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
                 Matchup = theirSystem is { } tsys ? -Hardwood.Core.Engine.Tactics.Matchup(tsys, d) : 0, Recommended = d == bestScheme });
         SelectedSystem = Systems.First(o => o.System == t.System);
         SelectedScheme = Schemes.First(o => o.Scheme == t.Scheme);

@@ -44,6 +44,9 @@ public sealed partial class GuideViewModel : ObservableObject
     [ObservableProperty] private string _stageText = "";
     [ObservableProperty] private string _pageTitle = "";
     [ObservableProperty] private string _pageTip = "";
+    /// <summary>Roadmap 4: a page's tip shows the first time you open the page; after that it's one click away.</summary>
+    [ObservableProperty] private bool _showPageTip = true;
+    [RelayCommand] private void RevealPageTip() => ShowPageTip = true;
     [ObservableProperty] private bool _hasStrategy;
     [ObservableProperty] private string _level;
     public ObservableCollection<GuideTaskRow> Tasks { get; } = new();
@@ -98,7 +101,9 @@ public sealed partial class GuideViewModel : ObservableObject
         _page = page;
         _wide = WidePages.Contains(page); _openedHere = false;
         Notify();
-        if (Settings.GuideProgress.PagesSeen.Add(page)) Settings.Save();
+        bool first = Settings.GuideProgress.PagesSeen.Add(page);
+        ShowPageTip = first;
+        if (first) Settings.Save();
         Refresh();
     }
 

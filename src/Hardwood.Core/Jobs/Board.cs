@@ -75,6 +75,12 @@ public sealed class JobState
 
 public sealed record ConfidencePoint(DateOnly Date, double Confidence);
 
+/// <summary>One thing the board is weighing, and how many points it moves the level confidence heads toward.</summary>
+public sealed record BoardDriver(string Label, string Text, double Points);
+
+/// <summary>The level confidence is drifting toward, the share of the gap it closes each week, and why (see <see cref="Board.Outlook"/>).</summary>
+public sealed record BoardOutlook(double Level, double Rate, IReadOnlyList<BoardDriver> Drivers);
+
 public static class Board
 {
     private static readonly string[] OwnerFirst = { "Richard", "Victoria", "Gerald", "Margaret", "Howard", "Diane", "Leonard", "Catherine", "Stanley", "Patricia", "Walter", "Eleanor", "Franklin", "Judith", "Raymond", "Sandra" };
@@ -265,6 +271,40 @@ public static class Board
     /// earns it too unless the record fell this far short of the target.</summary>
     public const double CreditWins = 5;
 
+    /// <summary>
+    /// What the board is weighing each week (the assistant explains "why", roadmap 4): the level confidence drifts toward,
+    /// how fast it gets there, and each thing pushing it up or down. <see cref="Weekly(JobState, LeagueContext, Team, int, int, IReadOnlyDictionary{int, PlayerSeasonStats}, DateOnly, int)"/>
+    /// moves confidence with exactly these numbers. Null before the board starts judging (game five).
+    /// </summary>
+    public static BoardOutlook? Outlook(JobState job, LeagueContext ctx, Team team, int wins, int losses,
+        IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today)
+    {
+        var e = job.Current;
+        int games = wins + losses;
+        if (e == null || games < 5) return null;
+        double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
+        double full = Math.Max(1, ctx.SeasonGames);
+        double projected = wins / (double)games * full;
+        var drivers = new List<BoardDriver>();
+        // Confidence drifts toward a level set by the pace: on target ≈ 62, 10 wins short (of 82) ≈ 42, 20 short ≈ 22.
+        // Early in the season the record says little, so the board moves slowly; impatient owners move faster.
+        double pace = (projected - e.TargetWins) * 2 * (82 / full);
+        drivers.Add(new BoardDriver("Pace",
+            $"On pace for {projected:0} wins against a target of {e.TargetWins}" + (Math.Abs(projected - e.TargetWins) < 0.5 ? "" : projected > e.TargetWins ? $" ({projected - e.TargetWins:0} ahead)" : $" ({e.TargetWins - projected:0} short)"),
+            pace));
+        foreach (var d in e.Demands)
+        {
+            bool met = Meeting(d, ctx, team, stats, today, wins, games);
+            drivers.Add(new BoardDriver("Owner's demand", $"{Describe(d)}: {(met ? "being done" : "not being done")}", met ? 0 : -5));
+        }
+        double level = Math.Clamp(BaseLevel + drivers.Sum(x => x.Points), 0, 100);
+        double rate = Math.Clamp(games / full, 0.1, 1) * 0.18 * impatience;
+        return new BoardOutlook(level, rate, drivers);
+    }
+
+    /// <summary>Where confidence settles for a team exactly on its target with every demand met.</summary>
+    public const double BaseLevel = 62;
+
     public static (string? title, string? body, bool sacked) Weekly(JobState job, League league, Team team, int wins, int losses,
         IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today) =>
         Weekly(job, LeagueContext.Nabl(league), team, wins, losses, stats, today, league.Season);
@@ -274,16 +314,10 @@ public static class Board
     {
         var e = job.Current;
         int games = wins + losses;
-        if (e == null || games < 5) return (null, null, false);
-        double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
+        var outlook = Outlook(job, ctx, team, wins, losses, stats, today);
+        if (e == null || outlook == null) return (null, null, false);
         double full = Math.Max(1, ctx.SeasonGames);
-        double projected = wins / (double)games * full;
-        // Confidence drifts toward a level set by the pace: on target ≈ 62, 10 wins short (of 82) ≈ 42, 20 short ≈ 22.
-        // Early in the season the record says little, so the board moves slowly; impatient owners move faster.
-        double paceLevel = 62 + (projected - e.TargetWins) * 2 * (82 / full);
-        foreach (var d in e.Demands) if (!Meeting(d, ctx, team, stats, today, wins, games)) paceLevel -= 5;
-        double rate = Math.Clamp(games / full, 0.1, 1) * 0.18 * impatience;
-        job.Confidence = Math.Clamp(job.Confidence + (Math.Clamp(paceLevel, 0, 100) - job.Confidence) * rate, 0, 100);
+        job.Confidence = Math.Clamp(job.Confidence + (outlook.Level - job.Confidence) * outlook.Rate, 0, 100);
         job.History.Add(new ConfidencePoint(today, Math.Round(job.Confidence, 1)));
         if (job.History.Count > 200) job.History.RemoveAt(0);
 

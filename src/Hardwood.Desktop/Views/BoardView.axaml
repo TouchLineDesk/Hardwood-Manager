@@ -56,6 +56,11 @@
               <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" Margin="10,0,0,0" Foreground="{Binding ConfidenceBrush}" FontWeight="SemiBold"/>
             </Grid>
             <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" MinY="0" MaxY="100" IsVisible="{Binding HasTrend}"/>
+            <!-- What moved confidence (roadmap 4) -->
+            <TextBlock Text="What's moving it" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <TextBlock Text="{Binding ConfidenceHeading}" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ConfidenceRecent}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding ConfidenceDrivers}" Accent="{Binding Accent}"/>
             <TextBlock Text="Confidence follows your pace against the target each week (faster with impatient owners), and the owner's demands. After the playoffs the board reviews the season against the goal." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
