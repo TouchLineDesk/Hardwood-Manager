@@ -13,6 +13,30 @@ public class BoardSanityTests
     private static League NewLeague() => new WorldGenerator(new Rng(3)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
 
     [Fact]
+    public void Every_playoff_exit_is_judged_by_the_round_it_came_in()
+    {
+        // Review #7: the bracket names rounds "East First Round", "West Semifinals", "East Finals", and the board matched
+        // only plain names, so a 64-18 second seed that went out in the playoffs was reviewed as "reach the play-in".
+        var league = NewLeague();
+        var post = new Postseason(league, new Standings(league));
+        var sim = new Hardwood.Core.Engine.GameSimulator(); var rng = new Rng(7); var day = new DateOnly(2027, 4, 15);
+        for (int i = 0; i < 200 && !post.Complete; i++, day = day.AddDays(1)) { post.PlayDay(sim, rng, day); post.AfterDay(); }
+        Assert.True(post.Complete);
+        var got = league.Teams.GroupBy(t => Board.Achieved(t, post)).ToDictionary(g => g.Key, g => g.Count());
+        Assert.Equal(1, got.GetValueOrDefault(SeasonGoal.Title));
+        Assert.Equal(1, got.GetValueOrDefault(SeasonGoal.Finals));
+        Assert.Equal(2, got.GetValueOrDefault(SeasonGoal.ConferenceFinals));
+        Assert.Equal(4, got.GetValueOrDefault(SeasonGoal.SecondRound));
+        Assert.Equal(8, got.GetValueOrDefault(SeasonGoal.Playoffs));
+        Assert.Equal(4, got.GetValueOrDefault(SeasonGoal.PlayIn));
+        Assert.Equal(league.Teams.Count - 20, got.GetValueOrDefault(SeasonGoal.Develop));
+        // Each team's result matches the last series it lost.
+        foreach (var s in post.Series.Where(s => s.Loser != null && !s.Round.Contains("Play-In")))
+            if (post.Series.Last(x => x.Higher == s.Loser || x.Lower == s.Loser) == s)
+                Assert.Equal(Board.RoundReached(s.Round), Board.Achieved(s.Loser!, post));
+    }
+
+    [Fact]
     public void A_great_regular_season_with_a_playoff_upset_is_a_disappointment_not_a_crisis()
     {
         var league = NewLeague();

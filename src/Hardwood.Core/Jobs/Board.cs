@@ -405,14 +405,22 @@ public static class Board
         if (post.Champion == team) return SeasonGoal.Title;
         var last = post.Series.LastOrDefault(s => s.Higher == team || s.Lower == team);
         if (last == null) return SeasonGoal.Develop;
-        return last.Round switch
-        {
-            "Finals" => SeasonGoal.Finals,
-            "Conference Finals" => SeasonGoal.ConferenceFinals,
-            "Semifinals" => SeasonGoal.SecondRound,
-            "First Round" => SeasonGoal.Playoffs,
-            _ => post.Series.Any(s => s.Round == "First Round" && (s.Higher == team || s.Lower == team)) ? SeasonGoal.Playoffs : SeasonGoal.PlayIn,
-        };
+        // The bracket names its rounds by conference ("East First Round", "West Semifinals", "East Finals"); only the
+        // NABL Finals is plain "Finals". Until v0.48.1 this matched the plain names only, so every exit before the
+        // Finals was judged "reach the play-in" (review #7: a 64-18 second seed's season review).
+        return RoundReached(last.Round) ?? (post.Series.Any(s => RoundReached(s.Round) == SeasonGoal.Playoffs && (s.Higher == team || s.Lower == team))
+            ? SeasonGoal.Playoffs : SeasonGoal.PlayIn);
+    }
+
+    /// <summary>The goal a playoff round stands for (null for the play-in).</summary>
+    public static SeasonGoal? RoundReached(string round)
+    {
+        if (round == "Finals") return SeasonGoal.Finals;
+        if (round.Contains("Play-In")) return null;
+        if (round.EndsWith("First Round")) return SeasonGoal.Playoffs;
+        if (round.EndsWith("Semifinals")) return SeasonGoal.SecondRound;
+        if (round.EndsWith("Finals")) return SeasonGoal.ConferenceFinals;
+        return null;
     }
 
     /// <summary>How far a club got in an overseas league's playoffs (title, final, won a round, made them, or not).</summary>

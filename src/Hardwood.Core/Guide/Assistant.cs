@@ -204,7 +204,7 @@ public static class Assistant
         // ---- the press room and the locker room (people part 2)
         foreach (var d in s.OpenDecisions.Take(1))
             yield return new($"decision-{d.Id}", 18, d.Title,
-                $"Answer in the Inbox by {d.Expires:MMM d}, or I'll say \"{d.Options[d.SafeOption].Label}\" for you. Each answer shows what it will do.", "Inbox");
+                $"Answer in the Inbox by {d.Expires:MMM d}, or I'll say \"{d.Options[d.SafeOption].Label.Trim('"')}\" for you. Each answer shows what it will do.", "Inbox");
 
         // ---- inbox
         // Only mail that needs you (critic review #2: "26 unread messages" sat at the top of the panel all season).
