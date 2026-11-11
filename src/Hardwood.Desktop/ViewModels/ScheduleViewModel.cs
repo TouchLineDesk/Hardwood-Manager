@@ -161,6 +161,51 @@ public sealed partial class BoxScoreViewModel : PageViewModel
         foreach (var line in result.PlayLog) Log.Add(line);
     }
 
+    /// <summary>Roadmap 1: the game's leaders (points, rebounds, assists) as cards under the score.</summary>
+    public List<Hardwood.Desktop.Controls.Chip> Leaders
+    {
+        get
+        {
+            var all = Result.Away.Lines.Select(l => (l, t: Result.Away.Team)).Concat(Result.Home.Lines.Select(l => (l, t: Result.Home.Team)))
+                .Where(x => x.l.Seconds > 0).ToList();
+            var chips = new List<Hardwood.Desktop.Controls.Chip>();
+            if (all.Count == 0) return chips;
+            void Add(string label, Func<PlayerLine, int> stat, string unit)
+            {
+                var top = all.OrderByDescending(x => stat(x.l)).ThenByDescending(x => x.l.Points).First();
+                chips.Add(new(label, $"{stat(top.l)} {unit}", $"{top.l.Player.Name} ({top.t.Abbreviation})", "team"));
+            }
+            Add("Top scorer", l => l.Points, "pts");
+            Add("Rebounds", l => l.Rebounds, "reb");
+            Add("Assists", l => l.Assists, "ast");
+            var plus = all.OrderByDescending(x => x.l.PlusMinus).First();
+            chips.Add(new("Best +/-", plus.l.PlusMinus.ToString("+#;-#;0"), $"{plus.l.Player.Name} ({plus.t.Abbreviation})", "info"));
+            return chips;
+        }
+    }
+
+    public List<Hardwood.Desktop.Controls.Chip> AwayChips => TeamChips(Result.Away, Result.Home);
+    public List<Hardwood.Desktop.Controls.Chip> HomeChips => TeamChips(Result.Home, Result.Away);
+    public Avalonia.Media.Color AwayAccent => ThemeService.AccentFor(Result.Away.Team);
+    public Avalonia.Media.Color HomeAccent => ThemeService.AccentFor(Result.Home.Team);
+
+    /// <summary>A team's shooting, boards, assists and turnovers as chips; green where it beat the other side.</summary>
+    public static List<Hardwood.Desktop.Controls.Chip> TeamChips(TeamBox b, TeamBox o)
+    {
+        static double Pct(int m, int a) => a > 0 ? 100.0 * m / a : 0;
+        static string Edge(double mine, double theirs, bool lowerIsBetter = false) =>
+            Math.Abs(mine - theirs) < 1e-9 ? "" : (mine > theirs) != lowerIsBetter ? "good" : "";
+        return new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("FG", $"{Pct(b.FGM, b.FGA):0.0}%", $"{b.FGM}-{b.FGA}", Edge(Pct(b.FGM, b.FGA), Pct(o.FGM, o.FGA))),
+            new("3PT", $"{Pct(b.ThreePM, b.ThreePA):0.0}%", $"{b.ThreePM}-{b.ThreePA}", Edge(Pct(b.ThreePM, b.ThreePA), Pct(o.ThreePM, o.ThreePA))),
+            new("FT", $"{b.FTM}-{b.FTA}", $"{Pct(b.FTM, b.FTA):0}%", Edge(b.FTM, o.FTM)),
+            new("Rebounds", (b.OReb + b.DReb).ToString(), $"{b.OReb} offensive", Edge(b.OReb + b.DReb, o.OReb + o.DReb)),
+            new("Assists", b.Assists.ToString(), $"{b.Steals} stl · {b.Blocks} blk", Edge(b.Assists, o.Assists)),
+            new("Turnovers", b.Turnovers.ToString(), $"{b.Possessions} possessions", Edge(b.Turnovers, o.Turnovers, lowerIsBetter: true)),
+        };
+    }
+
     private static string Totals(TeamBox b) => $"FG {b.FGM}-{b.FGA} ({(b.FGA > 0 ? 100.0 * b.FGM / b.FGA : 0):F1}%) · 3P {b.ThreePM}-{b.ThreePA} · FT {b.FTM}-{b.FTA} · Reb {b.OReb + b.DReb} ({b.OReb} off) · Ast {b.Assists} · Stl {b.Steals} · Blk {b.Blocks} · TO {b.Turnovers} · Poss {b.Possessions}";
 
     [RelayCommand] public void Back() => Shell.GoBack();

@@ -9,7 +9,7 @@
       <c:TeamLogo Team="{Binding Team}" Width="56" Height="56" Margin="0,0,12,0"/>
       <StackPanel Grid.Column="1" VerticalAlignment="Center">
         <TextBlock Text="{Binding Team.FullName}" Classes="h1" Margin="0"/>
-        <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Summary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
       </StackPanel>
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <ToggleButton Content="Cards" IsChecked="{Binding CardView}"/>
@@ -20,6 +20,7 @@
         <Button Content="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Selected}"/>
       </StackPanel>
     </Grid>
+    <c:StatStrip DockPanel.Dock="Top" ItemsSource="{Binding Chips}" Accent="{Binding Accent}" Margin="0,0,0,4"/>
     <ScrollViewer IsVisible="{Binding CardView}">
       <ItemsControl ItemsSource="{Binding Rows}">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>

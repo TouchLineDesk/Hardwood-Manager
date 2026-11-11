@@ -86,4 +86,65 @@ public class StatChipTests
         }
         finally { try { File.Delete(path); } catch { } }
     }
+
+    [AvaloniaFact]
+    public void Roster_squad_and_box_score_chips_match_the_session_data()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hw-chips2-{Guid.NewGuid():N}.save");
+        try
+        {
+            var vm = new MainViewModel();
+            var start = (StartViewModel)vm.CurrentPage!;
+            start.SavePath = path;
+            start.SeedText = "41";
+            start.SelectedTeam = start.Teams.First();
+            start.NewGame();
+            var s = vm.Session!;
+            for (int i = 0; i < 25; i++) s.AdvanceDay();
+            var team = s.HumanTeam;
+            Chip C(IEnumerable<Chip> chips, string label) => chips.Single(c => c.Label == label);
+
+            // Roster: counts come straight from the squad.
+            vm.Navigate("Roster");
+            var rv = (RosterViewModel)vm.CurrentPage!;
+            Assert.Equal(team.Roster.Count.ToString(), C(rv.Chips, "Players").Value);
+            int injured = team.Roster.Count(p => p.Injury is { } inj && inj.IsOut(s.Today));
+            Assert.Equal(injured.ToString(), C(rv.Chips, "Injured").Value);
+            Assert.Equal(injured > 0 ? "bad" : "good", C(rv.Chips, "Injured").Tone);
+            Assert.Equal(team.Roster.Count(p => p.Contract is { Years: <= 0 }).ToString(), C(rv.Chips, "Expiring").Value);
+            Assert.Equal(PlayerViewModel.Money(ContractMarket.Payroll(team)), C(rv.Chips, "Wages").Value);
+            Assert.Equal(team.Roster.OrderByDescending(p => p.CurrentAbility).First().Name.Split(' ').Last(), C(rv.Chips, "Best player").Value);
+            // "Unhappy" agrees with the Mood column: anyone shown as Unhappy or Very unhappy, or asking out.
+            Assert.Equal(team.Roster.Count(p => p.TradeRequested || Hardwood.Core.People.PeopleEngine.Mood(p.Morale) is "Unhappy" or "Very unhappy").ToString(), C(rv.Chips, "Unhappy").Value);
+
+            // Squad: chemistry and trade requests.
+            vm.Navigate("Squad");
+            var sv = (SquadViewModel)vm.CurrentPage!;
+            Assert.Equal($"{team.Chemistry:0}", C(sv.Chips, "Chemistry").Value);
+            Assert.Equal(team.Roster.Count(p => p.TradeRequested).ToString(), C(sv.Chips, "Trade requests").Value);
+            Assert.Equal(team.Roster.Count(p => !p.TradeRequested && Hardwood.Core.People.PeopleEngine.Mood(p.Morale) is "Unhappy" or "Very unhappy").ToString(), C(sv.Chips, "Unhappy").Value);
+            Assert.Equal(team.Roster.Count(p => Hardwood.Core.People.PeopleEngine.Mood(p.Morale) is "Happy" or "Delighted").ToString(), C(sv.Chips, "Happy").Value);
+
+            // Box score: the top scorer chip is the game's highest scorer; team chips compare the two sides.
+            var game = s.Results.Values.First();
+            var box = new BoxScoreViewModel(vm, game);
+            int top = game.Away.Lines.Concat(game.Home.Lines).Max(l => l.Points);
+            Assert.Equal($"{top} pts", C(box.Leaders, "Top scorer").Value);
+            Assert.Equal((game.Away.OReb + game.Away.DReb).ToString(), C(box.AwayChips, "Rebounds").Value);
+            bool awayMoreBoards = game.Away.OReb + game.Away.DReb > game.Home.OReb + game.Home.DReb;
+            Assert.Equal(awayMoreBoards ? "good" : "", C(box.AwayChips, "Rebounds").Tone);
+            Assert.Equal(game.Away.Turnovers < game.Home.Turnovers ? "good" : "", C(box.AwayChips, "Turnovers").Tone);
+
+            // Player page: your own player gets a Talk button that opens the Squad page with him selected.
+            var mine = team.Roster.First();
+            var pv = new PlayerViewModel(vm, mine);
+            Assert.True(pv.CanTalk);
+            pv.TalkToHim();
+            var squad = Assert.IsType<SquadViewModel>(vm.CurrentPage);
+            Assert.Equal(mine, squad.Selected?.Player);
+            var other = s.League.Teams.First(t => t != team).Roster.First();
+            Assert.False(new PlayerViewModel(vm, other).CanTalk);
+        }
+        finally { try { File.Delete(path); } catch { } }
+    }
 }
