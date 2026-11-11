@@ -43,6 +43,7 @@
           <StackPanel x:Name="ScoreButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
             <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
             <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
+            <CheckBox Content="Stop at breaks" IsChecked="{Binding PauseAtBreaks}" VerticalAlignment="Center" ToolTip.Tip="Pause at the end of each period for the break card"/>
             <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="96">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
@@ -101,6 +102,18 @@
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
           <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
+          <!-- Match day part 3: the break card, like a broadcast's quarter-break graphic. -->
+          <Border DockPanel.Dock="Top" IsVisible="{Binding ShowBreak}" Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
+                  CornerRadius="6" Padding="10,8" Margin="4,0,4,8">
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="{Binding BreakTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}"/>
+                <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="12" VerticalAlignment="Center"/>
+              </StackPanel>
+              <TextBlock Text="{Binding BreakLine}" TextWrapping="Wrap"/>
+              <c:StatStrip ItemsSource="{Binding BreakChips}" Accent="{DynamicResource HwAccent}"/>
+            </StackPanel>
+          </Border>
           <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>

@@ -132,13 +132,62 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         // A few possessions per tick at the faster speeds keeps the log readable without being sluggish.
         int steps = _speed == 2 ? 3 : 1;
-        for (int i = 0; i < steps && !_live.Complete; i++) _live.Step();
+        bool periodEnded = false;
+        for (int i = 0; i < steps && !_live.Complete && !periodEnded; i++)
+        {
+            int before = _live.Log.Count;
+            _live.Step();
+            for (int k = before; k < _live.Log.Count; k++) if (_live.Log[k].Contains("End of period")) periodEnded = true;
+        }
         Refresh();
         if (_live.Complete)
         {
             _timer.Stop(); Running = false; Complete = true;
             Status = $"Final: {AwayName} {AwayScore}, {HomeName} {HomeScore}. Continue to record the result and move on.";
+            ShowBreakCard(final: true);
         }
+        else if (periodEnded && PauseAtBreaks)
+        {
+            // Match day part 3: the broadcast stops at the break for a recap card; press Play to go on.
+            _timer.Stop(); Running = false;
+            ShowBreakCard(final: false);
+            Status = "Break in play. Make changes now, or press Play for the next period.";
+        }
+    }
+
+    // Match day part 3: the break card (end of a period, halftime, final).
+    [ObservableProperty] private bool _pauseAtBreaks = true;
+    [ObservableProperty] private bool _showBreak;
+    [ObservableProperty] private string _breakTitle = "";
+    [ObservableProperty] private string _breakLine = "";
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _breakChips = new();
+
+    /// <summary>Fill the break card: the period just played, the leaders so far, and (at the final) the game's highlights.</summary>
+    public void ShowBreakCard(bool final)
+    {
+        var r = _live.Result;
+        int period = r.CurrentPeriod;
+        // The period that just ended is the last "End of period" in the log.
+        var endLine = _live.Log.LastOrDefault(l => l.Contains("End of period"));
+        if (endLine != null && int.TryParse(endLine.Split("End of period ")[1].Split(':')[0], out var ended)) period = ended;
+        BreakTitle = final ? (r.Overtimes > 0 ? $"Final ({(r.Overtimes == 1 ? "OT" : $"{r.Overtimes}OT")})" : "Final")
+                   : period * 2 == r.Periods ? "Halftime"
+                   : $"End of {Hardwood.Core.Engine.GameFlow.PeriodName(r, period)}";
+        BreakLine = _live.Log.LastOrDefault(l => l.Contains("quarter goes") || l.Contains("half goes") || l.Contains("is even") || l.Contains("Overtime goes"))?.Split("  ", 2).Last() ?? "";
+        var chips = new List<Hardwood.Desktop.Controls.Chip>();
+        foreach (var box in new[] { r.Away, r.Home })
+        {
+            var top = box.Lines.Where(l => l.Seconds > 0).OrderByDescending(l => l.Points).FirstOrDefault();
+            if (top != null) chips.Add(new($"{box.Team.Abbreviation} leader", $"{top.Points} pts", $"{top.Player.Name} · {top.Rebounds} reb · {top.Assists} ast", "team"));
+        }
+        string Pct(TeamBox b) => b.FGA == 0 ? "-" : $"{100.0 * b.FGM / b.FGA:0}%";
+        chips.Add(new("Shooting", $"{Pct(r.Away)} · {Pct(r.Home)}", $"{r.Away.Team.Abbreviation} · {r.Home.Team.Abbreviation} from the field", "info"));
+        chips.Add(new("Win chance", WinChance, final ? "" : "heading into the next period", "info"));
+        if (final)
+            foreach (var h in Hardwood.Core.Engine.GameHighlights.For(r, final: true, max: 3))
+                chips.Add(new(h.Title, h.Value, h.Detail, h.Tone));
+        BreakChips = chips;
+        ShowBreak = true;
     }
 
     public override void Refresh()
@@ -208,7 +257,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         if (Complete) return;
         if (Running) { _timer.Stop(); Running = false; Status = "Paused. Change your lineup or tactics, then press Play."; }
-        else { _timer.Start(); Running = true; Status = ""; }
+        else { _timer.Start(); Running = true; Status = ""; ShowBreak = false; }
     }
 
     /// <summary>Skip the ticker to its next fact.</summary>
@@ -245,6 +294,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Refresh();
         Complete = true;
         Status = $"Final: {AwayName} {AwayScore}, {HomeName} {HomeScore}.";
+        ShowBreakCard(final: true);
     }
 
     [RelayCommand]
