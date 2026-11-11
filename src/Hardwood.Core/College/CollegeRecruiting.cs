@@ -345,7 +345,7 @@ public sealed partial class CollegeWorld
                 var r = Recruits[p.Id];
                 if (r.CommittedTo != null) continue;
                 if (++waiting > open * 1.2) break;
-                double chance = spring ? 0.22 : (0.01 + 0.008 * r.Stars) * (early ? 2.5 : 1);
+                double chance = spring ? 0.22 : (0.01 + 0.008 * r.Stars + (r.Stars >= 4 ? 0.02 : 0)) * (early ? 2.5 : 1); // C3: the best decide earlier still, so few top-50 recruits are left for spring
                 if (!rng.Chance(chance)) continue;
                 if (Choose(p, r, board, rng) is { } pick) Commit(p, r, pick, day, board);
             }
