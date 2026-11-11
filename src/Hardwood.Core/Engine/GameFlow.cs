@@ -42,8 +42,14 @@ public static class GameFlow
         if (f <= 1e-6) return homeMinusAway > 0 ? 1 : homeMinusAway < 0 ? 0 : 0.5;
         double mean = homeMinusAway + r.PregameEdge * f;
         double sd = Math.Max(0.5, r.MarginSpread * Math.Sqrt(f));
-        return Phi(mean / sd);
+        double p = Phi(mean / sd);
+        // Nothing is certain while the trailing side could still catch up (critic review #7: "100%" at 50-70 with 20
+        // minutes left). Only a lead bigger than three points for every 12 seconds left is shown as settled.
+        return Decided(homeMinusAway, secondsLeft) ? p : Math.Clamp(p, 0.01, 0.99);
     }
+
+    /// <summary>A lead the other side can't realistically make up: more than three points for every 12 seconds left.</summary>
+    public static bool Decided(int homeMinusAway, double secondsLeft) => Math.Abs(homeMinusAway) > 3 * Math.Ceiling(secondsLeft / 12.0);
 
     /// <summary>Home win probability (0–100) after every scoring possession, starting from the opening tip.</summary>
     public static List<(double Elapsed, double Percent)> WinProbability(GameResult r)

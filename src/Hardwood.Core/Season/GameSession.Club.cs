@@ -225,9 +225,9 @@ public sealed partial class GameSession
             if (live)
             {
                 _liveCollege = cg;
-                return _sim.StartLive(h, a, Rules.College, _rng.NextULong(), Today);
+                return _sim.StartLive(h, a, College.CollegeWorld.RulesFor(cg), _rng.NextULong(), Today);
             }
-            var cr = _sim.Simulate(h, a, Rules.College, _rng.NextULong(), keepLog: true, date: Today);
+            var cr = _sim.Simulate(h, a, College.CollegeWorld.RulesFor(cg), _rng.NextULong(), keepLog: true, date: Today);
             RecordCollege(cg, cr);
             played.Add(cr);
             return null;

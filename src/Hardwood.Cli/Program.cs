@@ -15,6 +15,8 @@ namespace Hardwood.Cli;
 ///   hardwood roster [--seed N] [--team ABBR]
 ///   hardwood audit [--seed N] [--seasons N] [--out report.md] [--full-sim]
 ///                                        play N seasons (NABL + world) and check the results against real basketball
+///   hardwood madness [--seed N] [--tournaments N] [--out report.md]
+///                                        the college world alone: March Madness seed results over many tournaments
 /// </summary>
 public static class Program
 {
@@ -36,6 +38,37 @@ public static class Program
             if (ArgValue(args, "--out") is { } outFile) { File.WriteAllText(outFile, md); Console.WriteLine($"Wrote {outFile}"); }
             else Console.WriteLine(md);
             Console.WriteLine(report.Flags.Any() ? $"{report.Flags.Count()} metric(s) out of range: {string.Join(", ", report.Flags.Select(f => f.Name))}" : "All checked metrics in range.");
+            return 0;
+        }
+
+        if (cmd == "calib")
+        {
+            var gen = new Hardwood.Core.Generation.PlayerGenerator(new Rng(5), 2_000_000);
+            var c = Hardwood.Core.College.CollegeWorld.Generate(gen, new Rng(seed), today);
+            var sim2 = new GameSimulator(); var rr = new Rng(seed + 1);
+            double sxy = 0, sxx = 0, sres = 0; int n = int.Parse(ArgValue(args, "--games") ?? "2000");
+            var xs = new List<(double x, double y)>();
+            for (int i = 0; i < n; i++)
+            {
+                var a = c.Programs[rr.Next(c.Programs.Count)]; var b = c.Programs[rr.Next(c.Programs.Count)];
+                if (a == b) continue;
+                var r = sim2.Simulate(a, b, Rules.CollegeNeutral, rr.NextULong());
+                double x = Hardwood.Core.World.QuickSim.Strength(a) - Hardwood.Core.World.QuickSim.Strength(b), y = r.Home.Points - r.Away.Points;
+                xs.Add((x, y)); sxy += x * y; sxx += x * x;
+            }
+            double k = sxy / sxx;
+            foreach (var (x, y) in xs) sres += (y - k * x) * (y - k * x);
+            Console.WriteLine($"engine college: margin per strength point {k:0.000}, residual sd {Math.Sqrt(sres / xs.Count):0.00}, n {xs.Count}, mean gap sd {Math.Sqrt(xs.Average(t => t.x * t.x)):0.0}");
+            return 0;
+        }
+
+        if (cmd == "madness")
+        {
+            int n = int.Parse(ArgValue(args, "--tournaments") ?? "100");
+            var (tally, elapsed) = Hardwood.Core.Audit.MadnessAudit.Run(seed, n, msg => Console.Error.WriteLine(msg));
+            var md = Hardwood.Core.Audit.MadnessAudit.Report(tally, seed, elapsed);
+            if (ArgValue(args, "--out") is { } outFile) File.WriteAllText(outFile, md);
+            Console.WriteLine(md);
             return 0;
         }
 
