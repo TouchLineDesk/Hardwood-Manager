@@ -9,7 +9,9 @@ public sealed class StandingRow
 {
     public int Rank { get; init; }
     public required Team Team { get; init; }
-    public string Name => Team.FullName;
+    /// <summary>A shorter name (a college program goes by its school, C2).</summary>
+    public string? Label { get; init; }
+    public string Name => Label ?? Team.FullName;
     public string Division => Team.Division;
     public int W { get; init; }
     public int L { get; init; }
@@ -38,6 +40,9 @@ public sealed partial class StandingsViewModel : PageViewModel
     public ObservableCollection<StandingRow> East { get; } = new();
     public ObservableCollection<StandingRow> West { get; } = new();
     [ObservableProperty] private string _note = "";
+    /// <summary>The green chip's meaning: the playoffs, or a college conference tournament.</summary>
+    [ObservableProperty] private string _playoffLabel = "Playoffs";
+    [ObservableProperty] private bool _showPlayIn = true;
     [ObservableProperty] private string _leftTitle = "Eastern Conference";
     [ObservableProperty] private string _rightTitle = "Western Conference";
     public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Race { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
@@ -49,6 +54,25 @@ public sealed partial class StandingsViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session;
+        if (s.InCollege && s.World.College is { } cw)
+        {
+            // College (C2): your conference on the left (its top eight play the conference tournament), the Top 25 on the right.
+            FillRecords(East, s.MyStandings.All(), r => r <= 8 ? "Playoffs" : "", school: true);
+            var top = cw.Top25().Select(s.CollegeRecord).ToList();
+            FillRecords(West, top, _ => "");
+            for (int i = 0; i < West.Count; i++) West[i] = new StandingRow
+            {
+                Rank = i + 1, Team = West[i].Team, Label = West[i].Team.City, W = West[i].W, L = West[i].L, Pct = West[i].Pct, GB = "", Diff = West[i].Diff,
+                Home = West[i].Home, Last10 = West[i].Last10, IsHuman = West[i].IsHuman,
+            };
+            PlayoffLabel = "Conference tournament"; ShowPlayIn = false;
+            LeftTitle = $"{s.MyConference!.Name} (conference games)"; RightTitle = "Top 25 (by rating, overall records)";
+            Note = "Tournament winners get automatic March Madness bids.";
+            Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
+            OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
+            return;
+        }
+        PlayoffLabel = "Playoffs"; ShowPlayIn = true;
         if (s.HumanLeague is { } hl)
         {
             // Abroad: your league on the left, the NABL on the right.
@@ -99,7 +123,7 @@ public sealed partial class StandingsViewModel : PageViewModel
     }
 
     /// <summary>A plain table (a league abroad, or the whole NABL).</summary>
-    private void FillRecords(ObservableCollection<StandingRow> list, List<TeamRecord> table, Func<int, string> zone)
+    private void FillRecords(ObservableCollection<StandingRow> list, List<TeamRecord> table, Func<int, string> zone, bool school = false)
     {
         list.Clear();
         var leader = table.FirstOrDefault();
@@ -109,7 +133,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             double gb = leader == null ? 0 : ((leader.Wins - r.Wins) + (r.Losses - leader.Losses)) / 2.0;
             list.Add(new StandingRow
             {
-                Rank = rank, Team = r.Team, W = r.Wins, L = r.Losses, Zone = zone(rank),
+                Rank = rank, Team = r.Team, Label = school ? r.Team.City : null, W = r.Wins, L = r.Losses, Zone = zone(rank),
                 Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
                 IsHuman = r.Team == Session.HumanTeam,
@@ -168,6 +192,9 @@ public sealed partial class LeadersViewModel : PageViewModel
     public string[] Categories { get; } = { "Points", "Rebounds", "Assists", "Steals", "Blocks", "Minutes", "FG%", "3P%" };
     [ObservableProperty] private string _category = "Points";
     [ObservableProperty] private string _note = "";
+    /// <summary>The green chip's meaning: the playoffs, or a college conference tournament.</summary>
+    [ObservableProperty] private string _playoffLabel = "Playoffs";
+    [ObservableProperty] private bool _showPlayIn = true;
 
     public LeadersViewModel(MainViewModel shell) : base(shell) { }
     partial void OnCategoryChanged(string value) => Refresh();

@@ -64,6 +64,7 @@ public sealed partial class GameSession
     public BidReply Bid(Player p, long fee)
     {
         if (!Employed) return new(BidAnswer.Rejected, 0, "You aren't coaching a club right now.");
+        if (InCollege) return new(BidAnswer.Rejected, 0, "A college program doesn't sign professionals: your roster comes from high-school recruiting.");
         if (!WindowOpen) return new(BidAnswer.Rejected, 0, WindowText);
         if (FindTeam(p.TeamId ?? 0) is not { } seller || seller == HumanTeam) return new(BidAnswer.Rejected, 0, "He isn't at another club.");
         if (HumanTeam.Money.Embargo)
@@ -134,7 +135,7 @@ public sealed partial class GameSession
         bool big = fee >= (League.Teams.Contains(to) ? 15_000_000 : 1_500_000);
         if (ours || big || HumanLeague?.Clubs.Contains(to) == true || HumanLeague?.Clubs.Contains(from) == true)
             Post($"Transfer: {p.Name} to {to.Abbreviation}", $"{p.Name} ({p.PrimaryPosition}, {p.Age(Today)}) moves from {from.FullName} to {to.FullName} for ${fee / 1e6:F2}M, "
-                + $"on ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", ours ? "Roster" : "Transactions");
+                + $"on ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", ours ? "Roster" : InCollege ? "League" : "Transactions");
     }
 
     /// <summary>
@@ -189,7 +190,7 @@ public sealed partial class GameSession
             return;
         }
         if (Today.Month == 1 && Today.Day == 15) AiTransferRound(6);
-        if (Employed && _rng.Chance(0.06)) MaybeBidForYourPlayer();
+        if (Employed && !InCollege && _rng.Chance(0.06)) MaybeBidForYourPlayer();
     }
 
     /// <summary>A computer club from the same or a bigger league bids for one of your better players.</summary>

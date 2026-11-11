@@ -32,7 +32,9 @@ public sealed class TableRow
 {
     public int Rank { get; init; }
     public Team? Team { get; init; }
-    public string Name => Team?.FullName ?? "";
+    /// <summary>A shorter name where space is tight (a college program goes by its school, C2).</summary>
+    public string? Label { get; init; }
+    public string Name => Label ?? Team?.FullName ?? "";
     public string Record { get; init; } = "";
     public string Diff { get; init; } = "";
     public bool Ours { get; init; }
@@ -69,6 +71,9 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<Bar>? _comparison;
     [ObservableProperty] private IReadOnlyList<Bar>? _payroll;
     [ObservableProperty] private IReadOnlyList<RefLine>? _payrollLines;
+    /// <summary>"Payroll committed", or "Roster by class" at a college program (C2).</summary>
+    [ObservableProperty] private string _payrollTitle = "Payroll committed";
+    [ObservableProperty] private string _payrollIcon = "DollarSign";
     [ObservableProperty] private IReadOnlyList<LineSeries>? _mood;
     [ObservableProperty] private string[]? _moodLabels;
     [ObservableProperty] private bool _hasMood;
@@ -87,7 +92,14 @@ public sealed partial class HomeViewModel : PageViewModel
         int seed = s.MyRank;
         TableTitle = s.InNabl ? $"{team.Conference} Conference" : s.HumanLeagueName;
         Headline = team.FullName;
-        Subline = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses} · {Ordinal(seed)} in the {s.MyTableName} · {(rec.PointDiff >= 0 ? "+" : "")}{rec.PointDiff:0.0} per game"
+        if (s.InCollege && rec.Games > 0)
+        {
+            // College: the overall record, then the conference race once conference play has begun.
+            var cr = s.MyStandings[team];
+            Subline = $"{rec.Wins}-{rec.Losses} · " + (cr.Games > 0 ? $"{Ordinal(seed)} in the {s.MyConference!.Short} ({cr.Wins}-{cr.Losses})" : "conference play starts in January")
+                + $" · {(rec.PointDiff >= 0 ? "+" : "")}{rec.PointDiff:0.0} per game";
+        }
+        else Subline = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses} · {Ordinal(seed)} in the {s.MyTableName} · {(rec.PointDiff >= 0 ? "+" : "")}{rec.PointDiff:0.0} per game"
             : $"{s.HumanLeagueName} · season {s.League.Season}-{(s.League.Season + 1) % 100:00}";
 
         var next = s.NextMyGame;
@@ -110,7 +122,7 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             i++;
             if (i > 8 && r.Team != team) continue;
-            Table.Add(new TableRow { Rank = i, Team = r.Team, Record = $"{r.Wins}-{r.Losses}", Diff = $"{(r.PointDiff >= 0 ? "+" : "")}{r.PointDiff:0.0}", Ours = r.Team == team });
+            Table.Add(new TableRow { Rank = i, Team = r.Team, Label = s.InCollege ? r.Team.City : null, Record = $"{r.Wins}-{r.Losses}", Diff = $"{(r.PointDiff >= 0 ? "+" : "")}{r.PointDiff:0.0}", Ours = r.Team == team });
         }
 
         string chem = team.Chemistry >= 75 ? "excellent" : team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "average" : "poor";
@@ -149,19 +161,37 @@ public sealed partial class HomeViewModel : PageViewModel
 
         // Team vs league: points scored and allowed per game.
         var all = s.MyStandings.All().Where(r => r.Games > 0).ToList();
-        if (rec.Games > 0 && all.Count > 0)
+        var played = s.InCollege ? s.World.College!.Season.Games.Where(g => g.Played).ToList() : null;
+        if (rec.Games > 0 && (all.Count > 0 || played is { Count: > 0 }))
         {
-            double lg = all.Average(r => (double)r.PointsFor / r.Games);
+            double lg = played != null ? played.Average(g => (g.HomePts!.Value + g.AwayPts!.Value) / 2.0) : all.Average(r => (double)r.PointsFor / r.Games);
             var accent = ThemeService.Accent; var grey = Color.Parse("#4A5563");
             Comparison = new[]
             {
                 new Bar { Label = "We score", Value = (double)rec.PointsFor / rec.Games, Color = accent },
-                new Bar { Label = "League avg", Value = lg, Color = grey },
+                new Bar { Label = played != null ? "College avg" : "League avg", Value = lg, Color = grey },
                 new Bar { Label = "We allow", Value = (double)rec.PointsAgainst / rec.Games, Color = Color.Parse("#F85149") },
             };
         }
         else Comparison = null;
 
+        if (s.InCollege)
+        {
+            // No wages in college: the roster by class instead, so the coach sees who graduates when (C2).
+            var summer = new DateOnly(s.World.College!.Season.Year + 1, 7, 1);
+            // By age next summer: 19 = freshmen ... 22 = seniors; 23 and over graduate into the pros then (#162).
+            string[] names = { "Fr", "So", "Jr", "Sr", "Final yr" };
+            Payroll = names.Select((n, k) =>
+            {
+                int count = team.Roster.Count(p => Math.Clamp(p.Age(summer), 19, 23) == 19 + k);
+                return new Bar { Label = n, Value = count, ValueText = $"{count}", Color = k == 4 ? ThemeService.Accent : Color.Parse("#4A5563") };
+            }).ToList();
+            PayrollLines = null;
+            PayrollTitle = "Roster by class"; PayrollIcon = "GraduationCap";
+        }
+        else
+        {
+        PayrollTitle = "Payroll committed"; PayrollIcon = "DollarSign";
         // Payroll committed for this and the next three seasons.
         var fin = s.League.Finance;
         var bars = new List<Bar>();
@@ -181,6 +211,7 @@ public sealed partial class HomeViewModel : PageViewModel
                 new RefLine { Label = "Cap", Value = fin.SalaryCap / 1e6, Color = Color.Parse("#58A6FF") },
                 new RefLine { Label = "Tax", Value = fin.TaxLine / 1e6, Color = Color.Parse("#F85149") },
             };
+        }
 
         HasMood = s.MoodHistory.Count >= 2;
         Mood = HasMood ? new[]

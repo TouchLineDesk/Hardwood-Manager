@@ -158,7 +158,7 @@
         </Border>
         <Border Grid.Column="2" Classes="panel">
           <StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="DollarSign" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Payroll committed" Classes="h2" Margin="0"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="{Binding PayrollIcon}" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding PayrollTitle}" Classes="h2" Margin="0"/></StackPanel>
             <c:BarChart Bars="{Binding Payroll}" Lines="{Binding PayrollLines}" Height="180"/>
           </StackPanel>
         </Border>
