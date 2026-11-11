@@ -37,6 +37,10 @@ public class LayoutCheckTests
             college.Tab = 4;
             college.SelectedRecruit = college.Recruits.FirstOrDefault();
         });
+        // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
+        yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });
+        yield return ("College high school", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 5; });
+        yield return ("College classes", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 6; });
         yield return ("Box score", v =>
         {
             v.Navigate("Schedule & Results");

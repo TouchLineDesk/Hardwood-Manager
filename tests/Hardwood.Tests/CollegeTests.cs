@@ -20,15 +20,19 @@ public class CollegeTests
 
     [Fact]
     public void There_are_148_programs_in_ten_conferences_with_players_from_14_to_22()
+    // Since decision #162: rosters of 15 (ages 18-22) and high-school prospects (14-17) in a recruiting pool.
     {
         var (nabl, world) = NewWorld();
         var c = world.College!;
         Assert.True(nabl.CollegeActive);
         Assert.Equal(6 * 14 + 4 * 16, c.Programs.Count); // decision #121: two more conferences
         foreach (var conf in CollegeWorld.Conferences) Assert.Equal(conf.Size, c.InConference(conf.Key).Count());
-        Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.RosterSize, t.Roster.Count));
-        var on = new DateOnly(2026, 10, 1);
+        Assert.True(c.Recruiting);
+        Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.Squad, t.Roster.Count));
+        var on = new DateOnly(2026, 7, 1); // ages as of the summer the school year began (classes enroll and graduate then)
         Assert.All(c.Players, p => Assert.InRange(p.Age(on), 14, 22));
+        Assert.All(c.Programs.SelectMany(t => t.Roster), p => Assert.InRange(p.Age(on), 18, 22));
+        Assert.All(c.Prospects, p => { Assert.InRange(p.Age(on), 14, 17); Assert.Null(p.TeamId); });
         // Ids don't clash with the pros, and every program can be found by id.
         var pros = world.Players.Select(p => p.Id).Concat(nabl.Teams.SelectMany(t => t.Roster).Select(p => p.Id)).ToHashSet();
         Assert.DoesNotContain(c.Players, p => pros.Contains(p.Id));
@@ -77,8 +81,8 @@ public class CollegeTests
         Assert.InRange(grads.Count, 150, 600);
         Assert.All(grads, p => Assert.Null(p.TeamId));
         Assert.DoesNotContain(c.Players, p => grads.Contains(p));
-        Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.RosterSize, t.Roster.Count));
-        Assert.Contains(c.Players, p => p.Age(summer) <= 14);
+        Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.Squad, t.Roster.Count));
+        Assert.Contains(c.Prospects, p => p.Age(summer) <= 14);
         Assert.Contains(grads, p => p.CurrentAbility >= 100); // a few are ready for a good league
         world.EndSummer(2027, new GameSimulator(), pool);
         // The pyramid signs graduates, and a new college season is scheduled.

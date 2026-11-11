@@ -15,6 +15,7 @@ today's code, plays a few days and saves again, so an old career can never silen
 | career-v9.hwsave | 9 | coach-and-board branch (coach, owners, job) |
 | career-v10.hwsave | 10 | money-model branch (club budgets, open market, no draft) |
 | career-v11.hwsave | 11 | college branch (118 college programs, graduates at 23) |
+| career-v12.hwsave | 12 | college recruiting (C1, decision #162: high-school prospects, 15-man rosters) |
 
 Each is `GameSession.NewGame(seed 2026, team 5)` advanced 12 days. **When the save format changes:** bump
 `SaveFile.SchemaVersion`, make a save with the *previous* version's code, add it here as `career-v<N>.hwsave`, and
