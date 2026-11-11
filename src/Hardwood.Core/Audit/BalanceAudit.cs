@@ -93,6 +93,7 @@ public static class BalanceAudit
 
         var pts = new List<double>(); var poss = new List<double>(); var fg = new List<double>(); var tp = new List<double>();
         var tpRate = new List<double>(); var ftRate = new List<double>(); var home = new List<double>(); var ot = new List<double>();
+        var rimShare = new List<double>(); var astPer = new List<double>(); var andOnes = new List<double>();
         var best = new List<double>(); var worst = new List<double>(); var spread = new List<double>(); var leader = new List<double>();
         var meanCa = new List<double>(); var stars = new List<double>(); var meanAge = new List<double>();
         var devYoung = new List<double>(); var devPrime = new List<double>(); var devOld = new List<double>();
@@ -153,6 +154,9 @@ public static class BalanceAudit
             tp.Add(boxes.Sum(b => b.ThreePM) / (double)boxes.Sum(b => b.ThreePA));
             tpRate.Add(boxes.Sum(b => b.ThreePA) / (double)boxes.Sum(b => b.FGA));
             ftRate.Add(boxes.Sum(b => b.FTA) / (double)boxes.Sum(b => b.FGA));
+            rimShare.Add(boxes.Sum(b => b.Lines.Sum(l => l.ZoneAttempts[0])) / (double)boxes.Sum(b => b.FGA));
+            astPer.Add(boxes.Average(b => b.Assists));
+            andOnes.Add(boxes.Average(b => b.Lines.Sum(l => l.AndOnes)));
             home.Add(games.Count(g => g.Winner == g.Home) / (double)games.Count);
             ot.Add(games.Count(g => g.Overtimes > 0) / (double)games.Count);
             var table = played.Outcome.Standings.All();
@@ -187,6 +191,11 @@ public static class BalanceAudit
         m.Add(new("NABL games", "Three-point %", "0.000", tp, 0.345, 0.375, "NBA 2018-25"));
         m.Add(new("NABL games", "Threes as share of shots", "0.000", tpRate, 0.34, 0.44, "NBA 2018-25"));
         m.Add(new("NABL games", "Free throws per shot (FTA/FGA)", "0.000", ftRate, 0.22, 0.28, "NBA 2018-25"));
+        // Review #6: shots at the rim and assists weren't checked (39% and 24.2 a game); and-ones joined Nov 11.
+        // NBA 2018-25: shots within 3 ft ~28-33% of FGA, assists 24.6-26.9 a team, and-ones ~2-3 a team.
+        m.Add(new("NABL games", "Shots at the rim (share of FGA)", "0.000", rimShare, 0.27, 0.35, "NBA 2018-25, 0-3 ft"));
+        m.Add(new("NABL games", "Assists per team per game", "0.0", astPer, 24, 28, "NBA 2018-25"));
+        m.Add(new("NABL games", "And-ones per team per game", "0.0", andOnes, 1.6, 3.6, "NBA 2018-25"));
         m.Add(new("NABL games", "Home win %", "0.000", home, 0.53, 0.60, "NBA 2018-25"));
         m.Add(new("NABL games", "Games going to overtime", "0.000", ot, 0.04, 0.08, "NBA ~5-6%"));
         // Records: NBA best record 57-68 wins, worst 15-25, spread (SD of wins) ~11-14 over recent seasons.

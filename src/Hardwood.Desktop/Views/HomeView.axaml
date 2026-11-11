@@ -55,16 +55,21 @@
         <Border x:Name="TablePanel" Classes="panel" Margin="0,0,10,0">
           <StackPanel Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ListOrdered" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding TableTitle}" Classes="h2" Margin="0"/></StackPanel>
-            <ItemsControl ItemsSource="{Binding Table}">
+            <ItemsControl ItemsSource="{Binding Table}" Grid.IsSharedSizeScope="True">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:TableRow">
                   <Border Padding="4,3" CornerRadius="4" Background="{Binding Ours, Converter={x:Static vm:HomeConverters.Highlight}}">
-                    <Grid ColumnDefinitions="24,24,*,58,48">
+                    <!-- Record and margin columns are only as wide as the widest row needs, so long team names keep the room. -->
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="22"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Rec"/><ColumnDefinition Width="Auto" SharedSizeGroup="Diff"/>
+                      </Grid.ColumnDefinitions>
                       <TextBlock Text="{Binding Rank}" Classes="muted"/>
                       <c:TeamLogo Grid.Column="1" Team="{Binding Team}" ShowText="False" Width="18" Height="18" HorizontalAlignment="Left"/>
                       <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="{Binding Ours, Converter={x:Static vm:HomeConverters.Bold}}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
-                      <TextBlock Grid.Column="3" Text="{Binding Record}" HorizontalAlignment="Right"/>
-                      <TextBlock Grid.Column="4" Text="{Binding Diff}" Classes="muted" HorizontalAlignment="Right"/>
+                      <TextBlock Grid.Column="3" Text="{Binding Record}" HorizontalAlignment="Right" Margin="8,0,0,0"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Diff}" Classes="muted" HorizontalAlignment="Right" Margin="10,0,0,0"/>
                     </Grid>
                   </Border>
                 </DataTemplate>

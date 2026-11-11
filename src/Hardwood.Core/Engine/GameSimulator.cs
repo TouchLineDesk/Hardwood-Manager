@@ -721,6 +721,9 @@ public sealed class GameSimulator
                            + _cfg.RoleFitLogit * (Roles.Stars(shooter, off.Tac.RoleOf(shooter)) - 3);
             double pMake = Sigmoid(logit);
 
+            // A fouled shot is much harder to finish: the contact usually wins (NBA: about 2.5 and-ones a team a game).
+            if (fouled) pMake *= _cfg.AndOneRate;
+
             // Blocks (only on missed shots inside the arc)
             bool made = _rng.Chance(pMake);
             if (!made && !zone.IsThree())
@@ -741,6 +744,7 @@ public sealed class GameSimulator
                 if (made)
                 {
                     RecordFieldGoal(off, shooter, zone, made: true, transition);
+                    line.AndOnes++;
                     if (_log) Log(Call(off, def, shooter, zone, andOne: true));
                     ShootFreeThrows(off, def, shooter, 1);
                 }
