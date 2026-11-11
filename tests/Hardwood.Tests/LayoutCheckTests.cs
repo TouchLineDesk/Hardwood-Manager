@@ -149,6 +149,32 @@ public class LayoutCheckTests
     }
 
     [AvaloniaFact]
+    public void Flow_chart_run_labels_stay_off_the_line()
+    {
+        // Review #6: "11-2", "9-2 8-0" and "14-0" sat on the win-probability line.
+        var league = new Hardwood.Core.Generation.WorldGenerator(new Hardwood.Core.Rng(51)).Generate("L", 2026, new DateOnly(2026, 10, 1));
+        var sim = new Hardwood.Core.Engine.GameSimulator();
+        int shown = 0;
+        for (int g = 0; g < 30; g++)
+        {
+            var r = sim.Simulate(league.Teams[g % 8], league.Teams[8 + g % 8], Hardwood.Core.Model.Rules.Nba, (ulong)(300 + g), keepLog: true);
+            foreach (var size in new[] { new Avalonia.Size(420, 150), new Avalonia.Size(640, 150), new Avalonia.Size(900, 190) })
+            {
+                var labels = Hardwood.Desktop.Controls.GameFlowChart.PlaceLabels(r, size);
+                var (prob, _) = Hardwood.Desktop.Controls.GameFlowChart.Areas(size);
+                var line = Hardwood.Desktop.Controls.GameFlowChart.LinePoints(r, (prob, Hardwood.Desktop.Controls.GameFlowChart.Span(r)));
+                var runScores = Hardwood.Core.Engine.GameFlow.Runs(r).Select(x => x.Score).ToHashSet();
+                foreach (var l in labels.Where(l => runScores.Contains(l.Text)))
+                {
+                    shown++;
+                    Assert.False(Hardwood.Desktop.Controls.GameFlowChart.CrossesLine(line, l.Box), $"game {g}, {size}: \"{l.Text}\" on the line");
+                }
+            }
+        }
+        Assert.True(shown > 30, $"only {shown} run labels shown");
+    }
+
+    [AvaloniaFact]
     public void Chart_labels_fit_their_slot()
     {
         var c = Avalonia.Media.Colors.Gray;

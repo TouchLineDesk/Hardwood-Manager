@@ -77,17 +77,56 @@ public sealed class GameFlowChart : Control
             if (start >= span) break;
             TryAdd(GameFlow.PeriodName(r, p), new Point(X(start) + 3, 1));
         }
-        // Runs: label each over the middle of its span, on the side of the band that belongs to the team.
+        // Runs: label each over the middle of its span, on the team's side of the band if the win-probability line
+        // leaves room there, else the other side; never on the line (review #6). No room either side: no label (the
+        // shaded wash still marks the run).
+        var line = LinePoints(r, (prob, span));
         foreach (var run in GameFlow.Runs(r).OrderByDescending(x => x.For - x.Against))
         {
             double mid = X((run.StartElapsed + run.EndElapsed) / 2);
             var ft = Text(run.Score, Colors.White);
-            double y = run.Home ? prob.Y + 3 : prob.Bottom - ft.Height - 3;
-            TryAdd(run.Score, new Point(mid - ft.Width / 2, y));
+            double top = prob.Y + 3, bottom = prob.Bottom - ft.Height - 3;
+            foreach (double y in run.Home ? new[] { top, bottom } : new[] { bottom, top })
+            {
+                var box = new Rect(mid - ft.Width / 2, y, ft.Width, ft.Height);
+                if (CrossesLine(line, box.Inflate(2))) continue;
+                if (TryAdd(run.Score, box.TopLeft)) break;
+            }
         }
         // Momentum strip title, if there's room.
         TryAdd("+/-", new Point(4, mom.Y + mom.Height / 2 - 7));
         return placed;
+    }
+
+    /// <summary>The win-probability line as drawn: a step line through each scoring possession, in control coordinates.</summary>
+    public static List<Point> LinePoints(GameResult r, (Rect Prob, double Span) area)
+    {
+        var (prob, span) = area;
+        double X(double t) => prob.X + prob.Width * Math.Clamp(t / span, 0, 1);
+        double Y(double pct) => prob.Bottom - prob.Height * Math.Clamp(pct, 0, 100) / 100;
+        var wp = GameFlow.WinProbability(r);
+        var pts = new List<Point>();
+        if (wp.Count == 0) return pts;
+        pts.Add(new Point(X(wp[0].Elapsed), Y(wp[0].Percent)));
+        for (int i = 1; i < wp.Count; i++)
+        {
+            pts.Add(new Point(X(wp[i].Elapsed), Y(wp[i - 1].Percent)));
+            pts.Add(new Point(X(wp[i].Elapsed), Y(wp[i].Percent)));
+        }
+        return pts;
+    }
+
+    /// <summary>Whether the step line passes through a box (any segment touching it).</summary>
+    public static bool CrossesLine(List<Point> line, Rect box)
+    {
+        for (int i = 1; i < line.Count; i++)
+        {
+            var a = line[i - 1]; var b = line[i];
+            double x0 = Math.Min(a.X, b.X), x1 = Math.Max(a.X, b.X), y0 = Math.Min(a.Y, b.Y), y1 = Math.Max(a.Y, b.Y);
+            // Segments are horizontal or vertical, so their bounding box is the segment.
+            if (x1 >= box.X && x0 <= box.Right && y1 >= box.Y && y0 <= box.Bottom) return true;
+        }
+        return false;
     }
 
     private static FormattedText Text(string s, Color c) =>
