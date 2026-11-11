@@ -22,14 +22,62 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
     /// <summary>A sample of clubs, to see the pack at a glance (pack logo or drawn crest).</summary>
     public ObservableCollection<Team> Sample { get; } = new();
 
+    // Name pack (real names for clubs, leagues and conferences; a file the player keeps, never shipped with the game).
+    [ObservableProperty] private string _namePackFile = AppSettings.Current.NamePackFile;
+    [ObservableProperty] private string _namePackStatus = "";
+    [ObservableProperty] private string _namePackNote = "";
+    private readonly Func<Hardwood.Core.Season.GameSession?>? _session;
+    private readonly Action? _renamed;
+    /// <summary>The career's clubs can be renamed only in-game (the start screen applies the pack when the career begins).</summary>
+    public bool CanApplyNames => _session?.Invoke() != null;
+
     /// <param name="leagues">The clubs in the game (or the preview league on the start screen), grouped by league.</param>
     /// <param name="changed">Called after a folder changes (e.g. redraw portraits).</param>
-    public GraphicsSettingsViewModel(Func<IEnumerable<(string league, IEnumerable<Team> teams)>> leagues, Action? changed = null)
+    /// <param name="session">The career in play (in-game Settings), for "Apply to this career".</param>
+    /// <param name="renamed">Called after the career's clubs are renamed (refresh every page).</param>
+    public GraphicsSettingsViewModel(Func<IEnumerable<(string league, IEnumerable<Team> teams)>> leagues, Action? changed = null,
+        Func<Hardwood.Core.Season.GameSession?>? session = null, Action? renamed = null)
     {
         _leagues = leagues;
         _changed = changed;
+        _session = session;
+        _renamed = renamed;
         UpdateFaceStatus();
         UpdateLogoStatus();
+        UpdateNameStatus();
+    }
+
+    partial void OnNamePackFileChanged(string value)
+    {
+        AppSettings.Current.NamePackFile = value;
+        AppSettings.Current.Save();
+        NamePackService.ApplyStatic();
+        UpdateNameStatus();
+        _changed?.Invoke();
+    }
+
+    public void UpdateNameStatus()
+    {
+        NamePackService.Current(out var status);
+        var applied = _session?.Invoke()?.NamePackApplied;
+        NamePackStatus = status + (applied != null ? $" This career wears {applied}." : "");
+    }
+
+    /// <summary>Rename this career's clubs from the pack (new careers get it automatically).</summary>
+    [RelayCommand]
+    private void ApplyNames()
+    {
+        var s = _session?.Invoke();
+        if (s == null) return;
+        if (NamePackService.Current(out var status) is not { } pack) { NamePackNote = status; return; }
+        int n = pack.ApplyToCareer(s);
+        s.SaveNow();
+        LogoPackService.UseTeams(s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? new List<Team>()));
+        LogoPackService.Reload();
+        NamePackNote = $"Renamed {n} clubs from {pack.Name}.";
+        UpdateNameStatus();
+        UpdateLogoStatus();
+        _renamed?.Invoke();
     }
 
     partial void OnFaceFolderChanged(string value)

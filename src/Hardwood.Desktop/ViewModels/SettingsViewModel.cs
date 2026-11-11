@@ -9,7 +9,7 @@ public sealed class SettingsViewModel : PageViewModel
     public GuideViewModel Guide => Shell.Guide;
 
     public SettingsViewModel(MainViewModel shell) : base(shell) =>
-        Graphics = new GraphicsSettingsViewModel(() => Leagues(shell), () => shell.RequestPortraits());
+        Graphics = new GraphicsSettingsViewModel(() => Leagues(shell), () => shell.RequestPortraits(), () => shell.Session, () => shell.AfterTick());
 
     /// <summary>Text and interface size (roadmap 1): 90-130% of the standard size.</summary>
     public IReadOnlyList<string> SizeChoices { get; } = UiScale.Percents.Select(UiScale.Label).ToList();
@@ -31,11 +31,11 @@ public sealed class SettingsViewModel : PageViewModel
         }
     }
 
-    /// <summary>The NABL and every competition in the world, for logo matching and the team list.</summary>
+    /// <summary>The top league and every competition in the world, for logo matching and the team list.</summary>
     public static IEnumerable<(string league, IEnumerable<Core.Model.Team> teams)> Leagues(MainViewModel shell)
     {
         if (shell.Session is not { } s) yield break;
-        yield return ("NABL", s.League.Teams);
+        yield return (Hardwood.Core.Names.Brand.Top, s.League.Teams);
         foreach (var c in s.World.Competitions.Where(c => c.Profile.Kind != Core.World.CompetitionKind.Continental))
             yield return (c.Profile.Name, c.Clubs);
     }
@@ -44,5 +44,6 @@ public sealed class SettingsViewModel : PageViewModel
     {
         Graphics.UpdateFaceStatus();
         Graphics.UpdateLogoStatus();
+        Graphics.UpdateNameStatus();
     }
 }

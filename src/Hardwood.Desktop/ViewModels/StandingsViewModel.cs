@@ -79,7 +79,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             int playoff = hl.Profile.Playoffs.Length > 0 ? hl.Profile.Playoffs[0].Teams : 0;
             FillRecords(East, s.MyStandings.All(), r => r <= playoff ? "Playoffs" : "");
             FillRecords(West, s.Standings.All(), _ => "");
-            LeftTitle = hl.Profile.Name; RightTitle = "NABL";
+            LeftTitle = hl.Profile.Name; RightTitle = Hardwood.Core.Names.Brand.Top;
             Note = playoff > 0 ? $"Top {playoff} reach the playoffs ({string.Join(", ", hl.Profile.Playoffs.Select(p => p.Name.ToLower()))})." : "";
             Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
             OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));

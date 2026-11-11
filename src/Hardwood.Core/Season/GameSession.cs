@@ -40,6 +40,8 @@ public sealed partial class GameSession
     public Team HumanTeam { get; private set; }
     /// <summary>You (decision #70).</summary>
     public Jobs.Coach Coach { get; set; } = new();
+    /// <summary>The name pack this career's clubs wear ("Real world 2025-26 (applied Nov 11, 2026)"), or null for the fictional names.</summary>
+    public string? NamePackApplied { get; set; }
     /// <summary>Your job: employed, board confidence, expectations, open jobs (decisions #71-74).</summary>
     public Jobs.JobState Job { get; set; } = new();
     public bool Employed => Job.Employed;
@@ -99,16 +101,20 @@ public sealed partial class GameSession
     }
 
     /// <summary>Start a new career from a generated world.</summary>
-    public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026, IEnumerable<string>? fullSim = null, Jobs.Coach? coach = null)
+    public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026, IEnumerable<string>? fullSim = null, Jobs.Coach? coach = null,
+        Names.NamePack? names = null)
     {
         var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", season, new DateOnly(season, 10, 1));
         var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? DefaultFullSim, new DateOnly(season, 10, 1));
+        // A name pack renames the clubs before anything is written about them (the welcome, the first news).
+        names?.ApplyToClubs(league, world);
         var team = league.Teams.FirstOrDefault(t => t.Id == humanTeamId) ?? world.TeamById(humanTeamId)
                    ?? throw new ArgumentException($"No club with id {humanTeamId}.", nameof(humanTeamId));
         var session = new GameSession(league, team, seed, savePath != null ? new SaveFile(savePath) : null, world: world);
         if (coach != null) { session.Coach = coach; session.HumanTeam.Coach = coach; }
         session.HumanTeam.CoachName = session.Coach.Name;
         session.Today = session.CareerYearStart();
+        if (names != null) session.NamePackApplied = $"{names.Name} (applied {session.Today:MMM d, yyyy})";
         session.Job.HiredOn = session.Today;
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
@@ -931,7 +937,7 @@ public sealed partial class GameSession
     public string? BuyOut(Player p)
     {
         if (!Employed) return "You aren't coaching a team right now.";
-        if (Abroad) return "Only NABL clubs buy players out of overseas contracts.";
+        if (Abroad) return $"Only {Hardwood.Core.Names.Brand.Top} clubs buy players out of overseas contracts.";
         if (Offseason == null) return "Players can only move in the summer.";
         var terms = Hardwood.Core.World.WorldMarket.Terms(World, Offseason, HumanTeam, p);
         if (!terms.Possible) return terms.Note;
@@ -946,7 +952,7 @@ public sealed partial class GameSession
     public string? Stash(Player p)
     {
         if (!Employed) return "You aren't coaching a team right now.";
-        if (Abroad) return "Only NABL clubs have draft picks.";
+        if (Abroad) return $"Only {Hardwood.Core.Names.Brand.Top} clubs have draft picks.";
         if (Offseason == null) return "Picks can only be stashed in the summer.";
         if (Hardwood.Core.World.WorldMarket.CannotStash(Offseason, HumanTeam, p) is { } why) return why;
         if (!Hardwood.Core.World.WorldMarket.Stash(World, Offseason, HumanTeam, p, new Rng(World.NextRngSeed())))
@@ -1004,7 +1010,7 @@ public sealed partial class GameSession
         BuildSeason();
         var last = League.History.Last();
         Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
-            $"Last season's NABL champions: {League.TeamById(last.ChampionTeamId).FullName}. " + (NextMyGame is { } g ? $"Your first game is on {g.Date:MMM d}." : $"Opening night is {OpeningNight:MMM d}.") + " Review your rotation before the first game.", "Board");
+            $"Last season's {Hardwood.Core.Names.Brand.Top} champions: {League.TeamById(last.ChampionTeamId).FullName}. " + (NextMyGame is { } g ? $"Your first game is on {g.Date:MMM d}." : $"Opening night is {OpeningNight:MMM d}.") + " Review your rotation before the first game.", "Board");
         // Money news for your club (critic review, Nov 10): parachute payments and the debt embargo.
         var m = HumanTeam.Money;
         if (Employed && m.Embargo)

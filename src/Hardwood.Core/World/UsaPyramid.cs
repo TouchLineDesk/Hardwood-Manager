@@ -203,8 +203,8 @@ public static class UsaPyramid
                 if (p.Staff.Count == 0)
                     foreach (var role in Enum.GetValues<StaffRole>()) { var st = staffGen.Generate(nabl, role, on, 8); st.TeamId = p.Id; p.Staff.Add(st); }
             }
-            news.Add(($"Promoted to the NABL: {Names(up)}", $"{Names(up)} finished top of {t2.Profile.Name} and move up to the NABL."));
-            news.Add(($"Relegated from the NABL: {Names(down)}", $"{Names(down)} finished bottom of the NABL and drop into {t2.Profile.Name}."));
+            news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up)} finished top of {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."));
+            news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished bottom of the {Hardwood.Core.Names.Brand.Top} and drop into {t2.Profile.Name}."));
         }
         // Tier 2 ↔ tier 3.
         var t2Down = tables[Tier2].Where(t => t2.Clubs.Contains(t)).TakeLast(NationalSwaps).ToList();

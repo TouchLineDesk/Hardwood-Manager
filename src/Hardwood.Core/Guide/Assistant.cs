@@ -419,7 +419,7 @@ public static class Assistant
                                 "Development coaches pay off with young rosters; a good physio matters for older ones."),
         ["Schedule & Results"] = ("Every game this season. Click a played game for its box score.",
                                   "Look ahead for back-to-backs and tough stretches."),
-        ["Standings"] = ("The league table. In the NABL the top teams make the playoffs; in leagues without playoffs the table decides it.",
+        ["Standings"] = ($"The league table. In the {Hardwood.Core.Names.Brand.Top} the top teams make the playoffs; in leagues without playoffs the table decides it.",
                          "Watch the teams around you and the playoff line."),
         ["Leagues"] = ("Every league in the game, ours included: standings, schedule and results, stat leaders, the rules and format, and past champions. Pick a region, then a league. Click any team or player name to open their page.",
                      "Scout other clubs' rosters from here: a team's page shows its players as your scouts see them."),

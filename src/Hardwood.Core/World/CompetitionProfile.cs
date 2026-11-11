@@ -25,8 +25,9 @@ public sealed record PlayoffRound(string Name, int BestOf, int Teams);
 public sealed class CompetitionProfile
 {
     public required string Key { get; init; }
-    public required string Name { get; init; }
-    public required string Short { get; init; }
+    /// <summary>Display names: settable so a name pack can rename the competition (Names.NamePack).</summary>
+    public required string Name { get; set; }
+    public required string Short { get; set; }
     public CompetitionKind Kind { get; init; } = CompetitionKind.Domestic;
     /// <summary>Country of a domestic league; players of these nationalities are local.</summary>
     public string Country { get; init; } = "";

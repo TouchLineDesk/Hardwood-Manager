@@ -100,12 +100,12 @@ public sealed partial class StartViewModel : ViewModelBase
     private Hardwood.Core.World.GameWorld? _previewWorld;
 
     /// <summary>Where you can start (stage 3): the NABL, any league abroad, or a college program (C2, #168).</summary>
-    public List<string> PlayLeagues { get; } = new[] { "NABL" }.Concat(Hardwood.Core.World.Competitions.Current
+    public List<string> PlayLeagues { get; } = new[] { Hardwood.Core.Names.Brand.Top }.Concat(Hardwood.Core.World.Competitions.Current
         .Where(c => c.Kind == Hardwood.Core.World.CompetitionKind.Domestic).Select(c => c.Name)).Append(CollegeChoice).ToList();
     public const string CollegeChoice = "College basketball";
-    [ObservableProperty] private string _playLeague = "NABL";
+    [ObservableProperty] private string _playLeague = Hardwood.Core.Names.Brand.Top;
     partial void OnPlayLeagueChanged(string value) => FillTeams();
-    public string ChooseTitle => PlayLeague == "NABL" ? "Choose your franchise" : PlayLeague == CollegeChoice ? "Choose your program · College basketball" : $"Choose your club · {PlayLeague}";
+    public string ChooseTitle => PlayLeague == Hardwood.Core.Names.Brand.Top ? "Choose your franchise" : PlayLeague == CollegeChoice ? "Choose your program · College basketball" : $"Choose your club · {PlayLeague}";
 
     public StartViewModel(MainViewModel shell)
     {
@@ -134,13 +134,15 @@ public sealed partial class StartViewModel : ViewModelBase
         _preview = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", 2026, new DateOnly(2026, 10, 1));
         // The world is built from the same seed as the career's, so club ids match.
         _previewWorld = Hardwood.Core.World.GameWorld.Generate(_preview, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
+        // The picker shows the clubs as the career will: with the name pack's names if there is one.
+        Hardwood.Desktop.Graphics.NamePackService.Current(out _)?.ApplyToClubs(_preview, _previewWorld);
         FillTeams();
     }
 
     private IEnumerable<(string league, IEnumerable<Team> teams)> PreviewLeagues()
     {
         if (_preview == null) yield break;
-        yield return ("NABL", _preview.Teams);
+        yield return (Hardwood.Core.Names.Brand.Top, _preview.Teams);
         if (_previewWorld != null)
             foreach (var c in _previewWorld.Competitions.Where(c => c.Profile.Kind != Hardwood.Core.World.CompetitionKind.Continental))
                 yield return (c.Profile.Name, c.Clubs);
@@ -151,7 +153,7 @@ public sealed partial class StartViewModel : ViewModelBase
         if (_preview == null) return;
         Teams.Clear();
         if (PlayLeague == CollegeChoice) { FillPrograms(); return; }
-        bool nabl = PlayLeague == "NABL";
+        bool nabl = PlayLeague == Hardwood.Core.Names.Brand.Top;
         var clubs = nabl ? _preview.Teams.OrderBy(t => t.Conference).ThenBy(t => t.Division).ThenBy(t => t.City).ToList()
             : _previewWorld?.Competitions.FirstOrDefault(c => c.Profile.Name == PlayLeague)?.Clubs.OrderBy(t => t.City).ToList() ?? new List<Team>();
         if (clubs.Count == 0) return;
@@ -204,7 +206,9 @@ public sealed partial class StartViewModel : ViewModelBase
         {
             if (File.Exists(SavePath)) File.Delete(SavePath);
             Status = "";
-            var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath, fullSim: Leagues.Where(l => l.FullSim).Select(l => l.Key).ToList(), coach: BuildCoach());
+            var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath, fullSim: Leagues.Where(l => l.FullSim).Select(l => l.Key).ToList(), coach: BuildCoach(),
+                names: Hardwood.Desktop.Graphics.NamePackService.Current(out _));
+            Hardwood.Desktop.Graphics.LogoPackService.Reload();
             _shell.AttachSession(session);
         }
         catch (Exception ex) { Status = ex.Message; }
