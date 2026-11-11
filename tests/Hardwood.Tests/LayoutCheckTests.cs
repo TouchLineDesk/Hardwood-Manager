@@ -10,7 +10,7 @@ namespace Hardwood.Tests;
 
 /// <summary>
 /// Roadmap 1: no clipped, trimmed or cut-off text on the key pages at 1280 and 1480 px, with and without the
-/// assistant panel. Set HW_LAYOUT_REPORT to a file path to write every problem found (including at 130% text size).
+/// assistant panel, and at the biggest text sizes (120-130%). Set HW_LAYOUT_REPORT to a file path to write every problem found.
 /// </summary>
 [Collection(SharedUiState.Name)]
 public class LayoutCheckTests
@@ -75,7 +75,11 @@ public class LayoutCheckTests
             {
                 (1480, true, 1.0, true), (1480, false, 1.0, true), (1280, true, 1.0, true), (1280, false, 1.0, true),
             };
-            if (report != null) sizes.Add((1480, true, 1.3, false));
+            // The biggest text sizes (roadmap 1): 130% at 1480 px is a 1138 px window, 120% at 1280 px a 1067 px one.
+            sizes.Add((1480, true, 1.3, true));
+            sizes.Add((1280, true, 1.2, true));
+            sizes.Add((1280, true, 1.3, true));
+            if (report != null) sizes.Add((1280, false, 1.3, false));
             foreach (var (width, guide, scale, gated) in sizes)
             {
                 window.Width = width;

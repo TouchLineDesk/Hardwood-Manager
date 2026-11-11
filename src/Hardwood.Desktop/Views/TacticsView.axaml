@@ -24,7 +24,7 @@
             <ComboBox ItemsSource="{Binding Systems}" SelectedItem="{Binding SelectedSystem}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:SystemOption">
-                  <StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding FitText}" Classes="muted" FontSize="11"/></StackPanel>
+                  <StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding FitText}" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
@@ -37,7 +37,7 @@
             <ComboBox ItemsSource="{Binding Schemes}" SelectedItem="{Binding SelectedScheme}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:SystemOption">
-                  <StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding FitText}" Classes="muted" FontSize="11"/></StackPanel>
+                  <StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding FitText}" Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
@@ -92,7 +92,7 @@
           <StackPanel Spacing="6">
             <TextBlock Text="Presets" Classes="h2" Margin="0"/>
             <Grid ColumnDefinitions="*,Auto,Auto">
-              <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" HorizontalAlignment="Stretch" PlaceholderText="Saved presets"/>
+              <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" HorizontalAlignment="Stretch" MinWidth="140" PlaceholderText="Saved presets"/>
               <Button Grid.Column="1" Content="Load" Command="{Binding LoadPresetCommand}" Margin="6,0,0,0"/>
               <Button Grid.Column="2" Content="Delete" Command="{Binding DeletePresetCommand}" Margin="6,0,0,0"/>
             </Grid>

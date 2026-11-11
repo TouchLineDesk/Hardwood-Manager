@@ -86,9 +86,13 @@
       </Border>
 
       <!-- Content -->
-      <Border Grid.Row="1" Grid.Column="1" Padding="16">
-        <ContentControl Content="{Binding CurrentPage}"/>
-      </Border>
+      <!-- Pages fill the window, but never get shorter than MinPageHeight: a short window or a big text size
+           scrolls the whole page instead of cutting off its bottom (roadmap 1). -->
+      <ScrollViewer x:Name="PageScroll" Grid.Row="1" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Border x:Name="PageHost" Padding="16">
+          <ContentControl Content="{Binding CurrentPage}"/>
+        </Border>
+      </ScrollViewer>
 
       <!-- Assistant (decisions #115-118) -->
       <v:GuidePanel Grid.Row="1" Grid.Column="2" DataContext="{Binding Guide}"/>

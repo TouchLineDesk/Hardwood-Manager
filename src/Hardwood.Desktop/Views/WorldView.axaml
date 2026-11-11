@@ -28,7 +28,7 @@
                 <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Team" Width="*">
+            <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLink Team="{Binding Team}" FontWeight="{Binding Mine, Converter={x:Static c:Converters.BoldIf}}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
