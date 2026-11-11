@@ -2,8 +2,8 @@ using Hardwood.Core.Model;
 
 namespace Hardwood.Core.Engine;
 
-/// <summary>The score after a possession that changed it: seconds played, the period, and both scores.</summary>
-public readonly record struct FlowPoint(double Elapsed, int Period, int Home, int Away);
+/// <summary>The score after a possession that changed it: seconds played, the period, both scores, and who scored last.</summary>
+public readonly record struct FlowPoint(double Elapsed, int Period, int Home, int Away, Player? Scorer = null);
 
 /// <summary>A scoring run: one side scored <see cref="For"/> while the other scored <see cref="Against"/>.</summary>
 public sealed record ScoringRun(bool Home, string Team, int For, int Against, double StartElapsed, double EndElapsed, int StartPeriod, int EndPeriod)

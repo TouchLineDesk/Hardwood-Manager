@@ -283,6 +283,8 @@ public sealed class GameSimulator
             return !Complete;
         }
 
+        private Player? _lastScorer;
+
         private void RecordFlow()
         {
             _result.Elapsed = _elapsed; _result.CurrentPeriod = _period;
@@ -290,7 +292,7 @@ public sealed class GameSimulator
             var flow = _result.Flow;
             int h = Score(_home), a = Score(_away);
             if (flow.Count == 0 ? h + a > 0 : flow[^1].Home != h || flow[^1].Away != a)
-                flow.Add(new FlowPoint(_elapsed, _period, h, a));
+                flow.Add(new FlowPoint(_elapsed, _period, h, a, _lastScorer));
         }
 
         private void OpenPeriod()
@@ -723,6 +725,7 @@ public sealed class GameSimulator
 
             line.FGM++;
             line.ZoneMakes[(int)zone]++;
+            _lastScorer = shooter;
             int pts = zone.IsThree() ? 3 : 2;
             line.Points += pts;
             if (zone.IsThree()) line.ThreePM++;
@@ -779,7 +782,7 @@ public sealed class GameSimulator
             for (int i = 0; i < count; i++)
             {
                 line.FTA++;
-                if (_rng.Chance(p)) { line.FTM++; line.Points++; }
+                if (_rng.Chance(p)) { line.FTM++; line.Points++; _lastScorer = line.Player; }
                 else if (i == count - 1)
                 {
                     // Missed last free throw: live rebound.

@@ -10,6 +10,13 @@ public sealed record SplitRow(string Team, IReadOnlyList<string> Cells, string T
     public double Opacity => Header ? 0.6 : 1;
 }
 
+/// <summary>One team-comparison row: the stat, each side's figure as shown, and the numbers the bar compares.</summary>
+public sealed record TeamStatRow(string Label, string AwayText, string HomeText, double Away, double Home)
+{
+    public Color AwayColor { get; init; }
+    public Color HomeColor { get; init; }
+}
+
 /// <summary>
 /// What the live screen and the box score both show about a game's shape (roadmap 2, match day part 1): the period
 /// splits table, the runs, and the flow chips. Built from <see cref="GameFlow"/>, so both screens agree.
@@ -51,6 +58,30 @@ public static class GameFlowInfo
         chips.Add(best == null ? new("Biggest run", "None", $"No {GameFlow.RunMinPoints}+ point runs", "info")
                                : new("Biggest run", best.Score, best.Team, "warn"));
         return chips;
+    }
+
+    /// <summary>Side-by-side team stats (match day part 2): shooting, the glass, ball security, paint and bench points.</summary>
+    public static List<TeamStatRow> TeamStats(GameResult r)
+    {
+        var a = r.Away; var h = r.Home;
+        string Pct(int m, int att) => att == 0 ? "–" : $"{100.0 * m / att:0}%";
+        double P(int m, int att) => att == 0 ? 0 : (double)m / att;
+        int Paint(TeamBox b) => b.Lines.Sum(l => l.ZoneMakes[0]) * 2;
+        int Bench(TeamBox b) => b.Lines.Where(l => !l.Started).Sum(l => l.Points);
+        var (ac, hc) = Colours(r);
+        return new List<TeamStatRow>
+        {
+            new("Field goals", $"{a.FGM}-{a.FGA} · {Pct(a.FGM, a.FGA)}", $"{h.FGM}-{h.FGA} · {Pct(h.FGM, h.FGA)}", P(a.FGM, a.FGA), P(h.FGM, h.FGA)),
+            new("Three-pointers", $"{a.ThreePM}-{a.ThreePA} · {Pct(a.ThreePM, a.ThreePA)}", $"{h.ThreePM}-{h.ThreePA} · {Pct(h.ThreePM, h.ThreePA)}", P(a.ThreePM, a.ThreePA), P(h.ThreePM, h.ThreePA)),
+            new("Free throws", $"{a.FTM}-{a.FTA}", $"{h.FTM}-{h.FTA}", a.FTM, h.FTM),
+            new("Rebounds", $"{a.OReb + a.DReb} ({a.OReb} off)", $"{h.OReb + h.DReb} ({h.OReb} off)", a.OReb + a.DReb, h.OReb + h.DReb),
+            new("Assists", a.Assists.ToString(), h.Assists.ToString(), a.Assists, h.Assists),
+            // The bar for turnovers shows who protected the ball better: each side's share is the other's turnovers.
+            new("Turnovers", a.Turnovers.ToString(), h.Turnovers.ToString(), h.Turnovers, a.Turnovers),
+            new("Steals · blocks", $"{a.Steals} · {a.Blocks}", $"{h.Steals} · {h.Blocks}", a.Steals + a.Blocks, h.Steals + h.Blocks),
+            new("Points at the rim", Paint(a).ToString(), Paint(h).ToString(), Paint(a), Paint(h)),
+            new("Bench points", Bench(a).ToString(), Bench(h).ToString(), Bench(a), Bench(h)),
+        }.Select(x => x with { AwayColor = ac, HomeColor = hc }).ToList();
     }
 
     /// <summary>"BOS 64%": the favourite's chance to win right now.</summary>
