@@ -389,6 +389,7 @@ public sealed partial class GameSession
         MaybePostDigest();
         MaybePostJobs();
         MaybePostResults(now: Phase is SessionPhase.Postseason or SessionPhase.Offseason);
+        AttachPressToResults();
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -752,6 +753,7 @@ public sealed partial class GameSession
             };
             Post(title, e.Text, "Squad");
         }
+        WeeklyMedia();
     }
 
     /// <summary>Hold a one-on-one conversation with one of your players. Returns his reply (or why you can't talk now).</summary>

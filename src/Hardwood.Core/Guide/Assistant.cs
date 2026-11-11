@@ -186,6 +186,11 @@ public static class Assistant
             yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire a {Staff.RoleName(missing[0]).ToLowerInvariant()}",
                 $"{string.Join(", ", missing.Select(Staff.RoleName))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
 
+        // ---- the press room and the locker room (people part 2)
+        foreach (var d in s.OpenDecisions.Take(1))
+            yield return new($"decision-{d.Id}", 18, d.Title,
+                $"Answer in the Inbox by {d.Expires:MMM d}, or I'll say \"{d.Options[d.SafeOption].Label}\" for you. Each answer shows what it will do.", "Inbox");
+
         // ---- inbox
         // Only mail that needs you (critic review #2: "26 unread messages" sat at the top of the panel all season).
         // Only the last fortnight's: an unread note from two months ago no longer needs you (dial-in item 4: the task sat on the
