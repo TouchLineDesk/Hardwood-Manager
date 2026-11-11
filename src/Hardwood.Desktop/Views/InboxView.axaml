@@ -27,7 +27,7 @@
               <Grid ColumnDefinitions="26,56,*,Auto" Margin="2,2">
                 <c:Icon Kind="{Binding Icon}" Width="15" Height="15" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="{Binding Date}" Classes="muted" FontSize="11.5" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="{Binding Weight}" TextWrapping="Wrap" VerticalAlignment="Center"/>
                 <Border Grid.Column="3" Background="{StaticResource HwPanelAltBrush}" CornerRadius="3" Padding="6,1">
                   <TextBlock Text="{Binding Category}" FontSize="10.5" Classes="muted"/>
                 </Border>

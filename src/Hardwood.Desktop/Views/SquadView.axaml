@@ -4,7 +4,7 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.SquadView"
              x:DataType="vm:SquadViewModel">
-  <Grid ColumnDefinitions="11*,6*">
+  <Grid ColumnDefinitions="*,300">
     <DockPanel Margin="0,0,12,0">
       <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
         <TextBlock Text="Squad" Classes="h1" Margin="0"/>
@@ -14,17 +14,17 @@
             <DataTemplate x:DataType="vm:FactorRow">
               <Grid ColumnDefinitions="40,*">
                 <TextBlock Text="{Binding EffectText}" FontWeight="SemiBold" Classes.good="{Binding Positive}" Classes.bad="{Binding !Positive}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Reason}" Classes="muted"/>
+                <TextBlock Grid.Column="1" Text="{Binding Reason}" Classes="muted" TextWrapping="Wrap"/>
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}" IsReadOnly="True">
+      <DataGrid ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}" IsReadOnly="True" RowHeight="NaN">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
-          <DataGridTemplateColumn Header="Mood" Width="120">
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="50"/>
+          <DataGridTemplateColumn Header="Mood" Width="112">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:MoodRow">
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="6,0" VerticalAlignment="Center">
@@ -34,7 +34,7 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Morale" Width="130" SortMemberPath="Morale">
+          <DataGridTemplateColumn Header="Morale" Width="120" SortMemberPath="Morale">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:MoodRow">
                 <Grid ColumnDefinitions="*,30" Margin="6,0" VerticalAlignment="Center">
@@ -44,8 +44,12 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120"/>
-          <DataGridTextColumn Header="Biggest worry" Binding="{Binding MainReason}" Width="*"/>
+          <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
+          <DataGridTemplateColumn Header="Biggest worry" Width="*" MinWidth="130">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MoodRow"><TextBlock Text="{Binding MainReason}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="6,3"/></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>

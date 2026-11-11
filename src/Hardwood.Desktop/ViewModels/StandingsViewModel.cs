@@ -20,6 +20,16 @@ public sealed class StandingRow
     public string Last10 { get; init; } = "";
     public bool IsHuman { get; init; }
     public string Zone { get; init; } = "";
+    /// <summary>The rank chip's colour: green for a playoff place, amber for the play-in.</summary>
+    public Avalonia.Media.IBrush ZoneBrush => Zone switch
+    {
+        "Playoffs" => PlayoffBrush,
+        "Play-in" => PlayInBrush,
+        _ => Avalonia.Media.Brushes.Transparent,
+    };
+    public string ZoneTip => Zone == "" ? "Outside the postseason places" : Zone;
+    public static readonly Avalonia.Media.IBrush PlayoffBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E8B57"));
+    public static readonly Avalonia.Media.IBrush PlayInBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B7832A"));
 }
 
 public sealed partial class StandingsViewModel : PageViewModel

@@ -14,10 +14,11 @@
       </Grid>
       <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10">
         <ItemsControl ItemsSource="{Binding Starters}">
-          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <!-- Five across when there is room; otherwise they wrap, so long names never clip. -->
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:StarterSlot">
-              <StackPanel Margin="4,0" Spacing="4">
+              <StackPanel Margin="4,0,4,6" Spacing="4" Width="196">
                 <TextBlock Text="{Binding Label}" Classes="muted" FontWeight="SemiBold"/>
                 <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>

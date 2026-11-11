@@ -4,5 +4,9 @@ namespace Hardwood.Desktop.Views;
 
 public partial class HomeView : UserControl
 {
-    public HomeView() => InitializeComponent();
+    public HomeView()
+    {
+        InitializeComponent();
+        Controls.Reflow.Watch(Hero, HeroLeft, HeroRight);
+    }
 }

@@ -14,7 +14,9 @@ namespace Hardwood.Tests;
 
 public class TestAppBuilder
 {
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
+    // WithInterFont: the game's own font, so text measures in tests as it does in the app (CI has no Inter installed).
+    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UseSkia().WithInterFont()
+        .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
 
 [Collection(SharedUiState.Name)]

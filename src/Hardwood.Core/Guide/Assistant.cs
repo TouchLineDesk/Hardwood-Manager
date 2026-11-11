@@ -343,8 +343,8 @@ public static class Assistant
 
     private static readonly Dictionary<string, (string Beginner, string Experienced)> Pages = new()
     {
-        ["Home"] = ("Your dashboard: record, next game, the board's mood and recent news. Press Continue (top right) to move a day forward; Sim week and Sim to next game go faster.",
-                    "Glance at the board meter and next opponent, then play on. Sim to next game skips quiet days."),
+        ["Home"] = ("Your dashboard: record, next game, the board's mood and recent news. Press Continue (top right) to move a day forward; Sim week and Next game go faster.",
+                    "Glance at the board meter and next opponent, then play on. Next game skips quiet days."),
         ["Inbox"] = ("Messages from the board, your staff, players and the league. Most are news; the coloured ones need a decision.",
                      "Skim for injuries, offers and board warnings; the rest is colour."),
         ["Roster"] = ("Everyone on the team. CA is current ability, PA potential (a range when your scouts aren't sure). Click a player for his full page: attributes, contract, history.",
