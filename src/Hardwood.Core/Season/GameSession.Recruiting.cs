@@ -65,8 +65,9 @@ public sealed partial class GameSession
         int month = Today.Year * 12 + Today.Month;
         if (b.PointsMonth == month) return;
         b.PointsMonth = month;
-        int scout = HumanTeam.Staff.FirstOrDefault(s => s.Role == StaffRole.Scout)?.Scouting ?? 5;
-        b.Points = Math.Min(RecruitingBoard.PointsCap, b.Points + 6 + scout / 4);
+        var head = HumanTeam.Staff.FirstOrDefault(s => s.Role == StaffRole.Scout);
+        int scout = head?.Scouting ?? 5;
+        b.Points = Math.Min(RecruitingBoard.PointsCap, b.Points + 6 + scout / 4 + (head?.Is("Networker") == true ? 2 : 0));
     }
 
     public string Shortlist(Player p)

@@ -120,6 +120,8 @@ public sealed class League
     public List<Season.HallOfFamer> HallOfFame { get; } = new();
     /// <summary>Single-game records and career milestones (roadmap 4, the living history). Empty for saves made before it.</summary>
     public Season.RecordBook Records { get; set; } = new();
+    /// <summary>What the manager has handed to his staff (roadmap 12). Saved as JSON in meta; older saves delegate nothing.</summary>
+    public Season.Delegation Delegation { get; set; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;
 

@@ -374,7 +374,7 @@ public sealed partial class GameSession
             if (Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason) WeeklyBoard();
         }
         if (!Employed) DailyJobMarket();
-        if (Today.DayOfWeek == DayOfWeek.Monday) WeeklyRecruiting();
+        if (Today.DayOfWeek == DayOfWeek.Monday) { DelegatedTraining(); DelegatedRecruiting(); WeeklyRecruiting(); }
         DailyTransfers();
         MaybePostDigest();
         MaybePostJobs();

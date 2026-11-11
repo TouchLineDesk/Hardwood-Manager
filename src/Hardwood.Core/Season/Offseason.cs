@@ -132,7 +132,7 @@ public sealed class Offseason
             {
                 double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
                 team.Training.Focus.TryGetValue(p.Id, out var focus);
-                Report.Development.Add(_dev.Develop(p, Date, mpg, quality, team.Training.Focus.ContainsKey(p.Id) ? focus : null));
+                Report.Development.Add(_dev.Develop(p, Date, mpg, quality + StaffEffects.TrainingQualityFor(team, p, Date) - StaffEffects.TrainingQuality(team), team.Training.Focus.ContainsKey(p.Id) ? focus : null));
             }
         }
         foreach (var p in _league.FreeAgents.ToList())
