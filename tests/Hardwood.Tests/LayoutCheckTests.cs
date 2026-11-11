@@ -37,6 +37,29 @@ public class LayoutCheckTests
             college.Tab = 4;
             college.SelectedRecruit = college.Recruits.FirstOrDefault();
         });
+        // People part 2: a locker-room moment open in the inbox, with its answers and their hints.
+        yield return ("Locker room", v =>
+        {
+            var s = v.Session!;
+            if (!s.OpenDecisions.Any())
+            {
+                s.Post("Locker room: Example clash", "Two senior players had words at practice and it carried into the film session.", "Squad");
+                s.Media.Decisions.Add(new Hardwood.Core.People.PendingDecision
+                {
+                    Id = s.Media.NextId++, Kind = "locker", Topic = "feud", TeamId = s.HumanTeam.Id, Created = s.Today, Expires = s.Today.AddDays(7),
+                    Title = "Locker room: Example clash", Text = "Two senior players had words at practice.", MessageId = s.Inbox[0].Id,
+                    Options = new()
+                    {
+                        new() { Label = "Sit them down together", Hint = "Both calm down; spirit up for three weeks (more with good man-management)" },
+                        new() { Label = "Back the veteran", Hint = "The veteran is pleased, the younger man is not" },
+                        new() { Label = "Let them sort it out", Hint = "Spirit dips for three weeks" },
+                    },
+                });
+            }
+            v.Navigate("Inbox");
+            var inbox = (InboxViewModel)v.CurrentPage!;
+            inbox.Selected = inbox.Items.First(i => i.HasDecision);
+        });
         // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
         yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });
         yield return ("College high school", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 5; });

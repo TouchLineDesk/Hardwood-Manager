@@ -349,12 +349,16 @@ public sealed partial class GameSession
             {
                 ["points"] = (pts, pts + l.Points), ["rebounds"] = (reb, reb + l.Rebounds), ["assists"] = (ast, ast + l.Assists), ["games"] = (gp, gp + 1),
             });
+            // Yours arrive on their own; other clubs' big ones wait for the fortnightly digest (dial-in item 5: inbox volume).
             foreach (var m in passed)
-                if (box.Team == HumanTeam || m.Threshold >= (m.Stat == "points" ? 20_000 : m.Stat == "games" ? 1_000 : 10_000))
+                if (box.Team == HumanTeam)
                     Post($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.", "League");
+                else if (m.Threshold >= (m.Stat == "points" ? 20_000 : m.Stat == "games" ? 1_000 : 10_000))
+                    PostWorld($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.");
         }
+        bool ours = r.Home.Team == HumanTeam || r.Away.Team == HumanTeam;
         foreach (var line in League.Records.Consider(r, Today, League.Season))
-            Post("New league record", line, "League");
+            if (ours) Post("New league record", line, "League"); else PostWorld("New league record", line);
         ReportGame(r);
     }
 
@@ -391,6 +395,7 @@ public sealed partial class GameSession
         MaybePostDigest();
         MaybePostJobs();
         MaybePostResults(now: Phase is SessionPhase.Postseason or SessionPhase.Offseason);
+        AttachPressToResults();
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -754,6 +759,7 @@ public sealed partial class GameSession
             };
             Post(title, e.Text, "Squad");
         }
+        WeeklyMedia();
     }
 
     /// <summary>Hold a one-on-one conversation with one of your players. Returns his reply (or why you can't talk now).</summary>
@@ -764,6 +770,7 @@ public sealed partial class GameSession
         MyStats.TryGetValue(p.Id, out var st);
         double wp = MyRecord.Games > 0 ? MyRecord.WinPct : 0.5;
         var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng, Coach);
+        Coach.SeasonTalks++;
         SaveNow();
         return r;
     }
@@ -781,8 +788,13 @@ public sealed partial class GameSession
         Postseason!.FillOutcome(outcome);
 
         Phase = SessionPhase.Offseason;
-        Offseason = new Offseason(League, outcome, Stats, _rng);
+        Offseason = new Offseason(League, outcome, Stats, _rng) { HumanTeamId = ControlledTeamId };
         Offseason.Begin();
+        if (Employed && Offseason.Report.StaffLeft.Count > 0)
+            Post($"{Count(Offseason.Report.StaffLeft.Count, "staff contract")} ran out",
+                string.Join("\n", Offseason.Report.StaffLeft.Select(st => $"{st.Name} ({Staff.RoleName(st.Role).ToLower()}) has left: his contract ended without an extension."))
+                + "\n\nHire replacements on the Staff & Training page; interview candidates first.", "Staff");
+        CoachGrowth();
         // The world's summer starts too: overseas contracts end and some players enter the shared free-agent pool.
         var recruiting = World.College?.Season.Recruiting;
         World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);

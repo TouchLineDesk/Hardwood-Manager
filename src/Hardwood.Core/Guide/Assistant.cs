@@ -186,9 +186,21 @@ public static class Assistant
             yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire a {Staff.RoleName(missing[0]).ToLowerInvariant()}",
                 $"{string.Join(", ", missing.Select(Staff.RoleName))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
 
+        // Staff part 2: contracts you have to extend yourself, raised from February so there's time.
+        if (s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && today.Month is >= 2 and <= 6 && s.StaffExpiring is { Count: > 0 } ending)
+            yield return new($"staffdeal-{today.Year}-{ending.Count}", 26, $"{ending.Count} staff contract{(ending.Count == 1 ? "" : "s")} end this summer",
+                $"{string.Join(", ", ending.Select(x => x.Name))}. Extend on the Staff & Training page or they leave when the season ends.", "Staff & Training");
+
+        // ---- the press room and the locker room (people part 2)
+        foreach (var d in s.OpenDecisions.Take(1))
+            yield return new($"decision-{d.Id}", 18, d.Title,
+                $"Answer in the Inbox by {d.Expires:MMM d}, or I'll say \"{d.Options[d.SafeOption].Label}\" for you. Each answer shows what it will do.", "Inbox");
+
         // ---- inbox
         // Only mail that needs you (critic review #2: "26 unread messages" sat at the top of the panel all season).
-        var important = s.Inbox.Where(m => !m.Read && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff").ToList();
+        // Only the last fortnight's: an unread note from two months ago no longer needs you (dial-in item 4: the task sat on the
+        // panel 87 weeks out of 87 because old unread mail kept it alive).
+        var important = s.Inbox.Where(m => !m.Read && m.Date.DayNumber >= today.DayNumber - 14 && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff").ToList();
         if (important.Count > 0)
             yield return new($"inbox-{important.Max(m => m.Id)}", 22, $"{important.Count} message{(important.Count == 1 ? "" : "s")} that need{(important.Count == 1 ? "s" : "")} you",
                 $"Latest: {important[0].Title}. Board, medical, squad and transfer news is worth reading; results and world news can wait.", "Inbox");

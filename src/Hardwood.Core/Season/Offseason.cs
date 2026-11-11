@@ -12,6 +12,8 @@ public enum SigningRoute { None, CapRoom, MidLevel, Minimum, Budget }
 
 public sealed class OffseasonReport
 {
+    /// <summary>Your staff whose contracts ran out without an extension.</summary>
+    public List<Staff> StaffLeft { get; } = new();
     public int Season { get; init; }
     public List<DevelopmentReport> Development { get; } = new();
     public List<Player> Retired { get; } = new();
@@ -61,6 +63,9 @@ public sealed class Offseason
     public int CurrentRound => NextPickIndex / Math.Max(1, DraftOrder.Count) + 1;
     /// <summary>Original team for a given pick index.</summary>
     public Team OriginalTeamAt(int pickIndex) => DraftOrder[pickIndex % DraftOrder.Count];
+
+    /// <summary>The club you manage: its staff contracts are your call (staff part 2), so they aren't renewed for you.</summary>
+    public int? HumanTeamId { get; init; }
 
     public Offseason(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng, DevelopmentConfig? devConfig = null)
     {
@@ -664,6 +669,12 @@ public sealed class Offseason
             {
                 st.ContractYears--;
                 if (st.ContractYears > 0) continue;
+                if (team.Id == HumanTeamId)
+                {
+                    // Not extended during the season: he moves on.
+                    team.Staff.Remove(st); st.TeamId = null; _league.FreeStaff.Add(st); Report.StaffLeft.Add(st);
+                    continue;
+                }
                 bool keep = st.KeyAttribute >= 10 && _rng.Chance(0.75);
                 if (keep) { st.ContractYears = _rng.Next(1, 4); st.Salary = Generation.StaffGenerator.SalaryFor(st); }
                 else { team.Staff.Remove(st); st.TeamId = null; _league.FreeStaff.Add(st); Report.StaffReleased.Add((st, team)); }

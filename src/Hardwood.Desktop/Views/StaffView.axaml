@@ -13,10 +13,12 @@
       <!-- Stacked rather than side by side (critic review #4: half-width tables cut off salary and ratings). -->
       <StackPanel Spacing="12">
         <StackPanel>
-          <Grid ColumnDefinitions="*,Auto">
+          <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBlock Text="Your staff" Classes="h2"/>
-            <Button Grid.Column="1" Content="Release selected" Command="{Binding FireCommand}" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="1" Classes="primary" Content="Extend" Command="{Binding ExtendCommand}" IsEnabled="{Binding CanExtend}" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="2" Content="Release selected" Command="{Binding FireCommand}" VerticalAlignment="Bottom"/>
           </Grid>
+          <TextBlock Text="{Binding Renewal}" TextWrapping="Wrap" Margin="0,4" IsVisible="{Binding Renewal, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="200">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
@@ -55,6 +57,15 @@
         </StackPanel>
       </StackPanel>
 
+      <!-- You as a coach (staff part 2): your ratings, and how a season's work grows them. -->
+      <Border Classes="panel">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{Binding Session.Coach.Name, StringFormat='You: {0}'}" FontWeight="SemiBold"/>
+          <c:StatStrip ItemsSource="{Binding CoachChips}" Accent="{Binding Accent}"/>
+          <TextBlock Text="{Binding CoachNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
       <!-- Delegation (roadmap 12): hand an area to the staff member who runs it. -->
       <Border Classes="panel">
         <StackPanel Spacing="4">
@@ -62,6 +73,7 @@
           <CheckBox Content="Development coach plans training (focus and intensity, every Monday)" IsChecked="{Binding DelegateTraining}"/>
           <CheckBox Content="Head scout courts college seniors (spends the recruiting points; offers stay with you)" IsChecked="{Binding DelegateRecruiting}"/>
           <CheckBox Content="Assistant picks tactics for each opponent" IsChecked="{Binding DelegateTactics}"/>
+          <CheckBox Content="Assistant coach fronts the press and handles the locker room" IsChecked="{Binding DelegateMedia}"/>
           <TextBlock Text="{Binding DelegationNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>

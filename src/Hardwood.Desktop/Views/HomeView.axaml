@@ -86,10 +86,13 @@
               <ItemsControl ItemsSource="{Binding Pulse}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:HomeRow">
-                    <Grid ColumnDefinitions="24,*,Auto" Margin="0,2">
-                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left"/>
-                      <TextBlock Grid.Column="1" Text="{Binding Title}"/>
-                      <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="muted"/>
+                    <!-- Name, then the detail underneath: side by side they didn't fit in a narrow panel. -->
+                    <Grid ColumnDefinitions="24,*" Margin="0,2">
+                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                      </StackPanel>
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -102,10 +105,12 @@
               <ItemsControl ItemsSource="{Binding Injuries}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:HomeRow">
-                    <Grid ColumnDefinitions="24,*,Auto" Margin="0,2">
-                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left"/>
-                      <TextBlock Grid.Column="1" Text="{Binding Title}"/>
-                      <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="muted"/>
+                    <Grid ColumnDefinitions="24,*" Margin="0,2">
+                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                      </StackPanel>
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
