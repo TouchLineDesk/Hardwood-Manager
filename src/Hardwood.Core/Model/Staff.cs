@@ -54,6 +54,24 @@ public sealed class Staff
         _ => "Head scout",
     };
 
+    /// <summary>
+    /// His way of working (staff depth, roadmap 12): one of two styles per role, fixed for a person. Derived from his id so
+    /// every career and older save has it without a save change.
+    /// </summary>
+    public string Style => Styles(Role)[(int)((uint)Id * 2654435761u >> 16) % 2].Name;
+    public string StyleText => Styles(Role).First(x => x.Name == Style).Text;
+
+    public static (string Name, string Text)[] Styles(StaffRole r) => r switch
+    {
+        StaffRole.AssistantCoach => new[] { ("Mentor", "Stays late with the kids: +0.3 training quality for players 23 and under, -0.2 for the rest."), ("Film junkie", "Breaks down opponents: +3% scouting knowledge.") },
+        StaffRole.DevelopmentCoach => new[] { ("Teacher", "Lives for young players: +1 training quality for players 23 and under, -0.3 for the rest."), ("Craftsman", "Polishes finished players: +0.5 training quality for players 24 and over, -0.3 for the young.") },
+        StaffRole.StrengthCoach => new[] { ("Conditioner", "Keeps legs fresh: injury risk ×0.95."), ("Builder", "Builds durable bodies: injury risk ×0.97 and recovery time ×0.97.") },
+        StaffRole.Physio => new[] { ("Healer", "Gets players back sooner: recovery time ×0.93."), ("Preventer", "Catches problems early: injury risk ×0.96.") },
+        _ => new[] { ("Analyst", "Reads the numbers: +5% scouting knowledge."), ("Networker", "Knows every college coach: +2 recruiting points a month.") },
+    };
+
+    public bool Is(string style) => Style == style;
+
     public override string ToString() => $"{Name} ({RoleName(Role)}, {KeyAttribute})";
 }
 
@@ -81,12 +99,29 @@ public static class StaffEffects
                + (t.Coach?.TrainingBonus ?? 0);                 // your Development rating (decision #70)
     }
 
+    /// <summary>
+    /// Training quality for one player: the team's, plus the coaching styles' tilt. Each style trades young players against
+    /// established ones (Teacher and Mentor toward the young, Craftsman toward the rest), so styles shape a squad without
+    /// inflating the league's talent.
+    /// </summary>
+    public static double TrainingQualityFor(Team t, Player p, DateOnly on)
+    {
+        bool young = p.Age(on) <= 23;
+        double tilt = 0;
+        var dev = Find(t, StaffRole.DevelopmentCoach);
+        if (dev?.Is("Teacher") == true) tilt += young ? 1.0 : -0.3;
+        if (dev?.Is("Craftsman") == true) tilt += young ? -0.3 : 0.5;
+        if (Find(t, StaffRole.AssistantCoach)?.Is("Mentor") == true) tilt += young ? 0.3 : -0.2;
+        return TrainingQuality(t) + tilt;
+    }
+
     /// <summary>Injury probability multiplier.</summary>
     public static double InjuryRiskFactor(Team t)
     {
         var sc = Find(t, StaffRole.StrengthCoach);
         double fit = sc?.Fitness ?? 7;
-        return (1.25 - fit / 20.0 * 0.5) * (0.85 + t.Training.Intensity / 330.0);
+        return (1.25 - fit / 20.0 * 0.5) * (0.85 + t.Training.Intensity / 330.0)
+               * (sc?.Is("Conditioner") == true ? 0.95 : sc?.Is("Builder") == true ? 0.97 : 1) * (Find(t, StaffRole.Physio)?.Is("Preventer") == true ? 0.96 : 1);
     }
 
     /// <summary>Injury duration multiplier.</summary>
@@ -94,7 +129,7 @@ public static class StaffEffects
     {
         var ph = Find(t, StaffRole.Physio);
         double med = ph?.Medical ?? 7;
-        return 1.25 - med / 20.0 * 0.5;
+        return (1.25 - med / 20.0 * 0.5) * (ph?.Is("Healer") == true ? 0.93 : 1) * (Find(t, StaffRole.StrengthCoach)?.Is("Builder") == true ? 0.97 : 1);
     }
 
     /// <summary>How much of the truth the team sees about outsiders: 0.3 (no scout) to 0.95.</summary>
@@ -102,6 +137,7 @@ public static class StaffEffects
     {
         var sc = Find(t, StaffRole.Scout);
         double judge = sc?.Scouting ?? 4;
-        return Math.Clamp(0.3 + judge / 20.0 * 0.65, 0.3, 0.95);
+        double style = (sc?.Is("Analyst") == true ? 0.05 : 0) + (Find(t, StaffRole.AssistantCoach)?.Is("Film junkie") == true ? 0.03 : 0);
+        return Math.Clamp(0.3 + judge / 20.0 * 0.65 + style, 0.3, 0.97);
     }
 }

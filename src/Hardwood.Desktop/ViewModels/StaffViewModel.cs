@@ -21,6 +21,9 @@ public sealed class StaffRow
     public long Pay { get; init; } = -1;
     public string Salary => (Pay >= 0 ? Pay : Staff.Salary) is var v && v >= 1_000_000 ? $"${v / 1e6:F2}M" : $"${v / 1e3:F0}K";
     public string Contract => Staff.ContractYears > 0 ? $"{Staff.ContractYears} yr" : "expiring";
+    /// <summary>His way of working (roadmap 12): one of two styles per role, each with an effect.</summary>
+    public string Style => Staff.Style;
+    public string StyleText => Staff.StyleText;
 }
 
 public sealed partial class FocusRow : ObservableObject
@@ -31,6 +34,9 @@ public sealed partial class FocusRow : ObservableObject
     public string Pos => Player.PrimaryPosition.ToString();
     public int Age { get; init; }
     public string Ability => $"{Player.CurrentAbility} / {Player.PotentialAbility}";
+    /// <summary>Where this summer's development is heading at his minutes, and your staff's share of it (roadmap 12).</summary>
+    public string Projected { get; init; } = "";
+    public string FromStaff { get; init; } = "";
     [ObservableProperty] private string _focus = "Balanced";
     partial void OnFocusChanged(string value) => Owner.FocusChanged(this);
 }
@@ -52,6 +58,26 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
     public Avalonia.Media.Color Accent => ThemeService.AccentFor(Session.HumanTeam);
     [ObservableProperty] private double _intensity;
+    // Interviews and delegation (roadmap 12).
+    [ObservableProperty] private string _interview = "";
+    [ObservableProperty] private bool _canHire;
+    [ObservableProperty] private bool _delegateTraining;
+    [ObservableProperty] private bool _delegateRecruiting;
+    [ObservableProperty] private bool _delegateTactics;
+    [ObservableProperty] private string _delegationNote = "";
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _developmentChips = new();
+    public bool TrainingManual => !DelegateTraining;
+    partial void OnSelectedMarketChanged(StaffRow? value) { Interview = ""; CanHire = false; }
+    partial void OnDelegateTrainingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TrainingManual));
+        if (_loading) return;
+        Session.Delegated.Training = value;
+        if (value) { Session.DelegateTrainingNow(); Refresh(); }
+        Session.SaveNow();
+    }
+    partial void OnDelegateRecruitingChanged(bool value) { if (_loading) return; Session.Delegated.Recruiting = value; Session.SaveNow(); FillDelegationNote(); }
+    partial void OnDelegateTacticsChanged(bool value) { if (_loading) return; Session.HumanTeam.Tactic.Auto = value; Session.SaveNow(); FillDelegationNote(); }
     [ObservableProperty] private string _intensityText = "";
     private bool _loading;
 
@@ -81,8 +107,27 @@ public sealed partial class StaffViewModel : PageViewModel
         }
         FillMarket();
         Players.Clear();
+        double staffTotal = 0; (Player p, double c)? riser = null;
         foreach (var p in team.Roster.OrderByDescending(p => p.PotentialAbility - p.CurrentAbility).ThenByDescending(p => p.CurrentAbility))
-            Players.Add(new FocusRow { Player = p, Owner = this, Age = p.Age(s.Today), Focus = team.Training.Focus.TryGetValue(p.Id, out var f) ? f.ToString() : "Balanced" });
+        {
+            var (change, fromStaff) = s.Projection(p);
+            staffTotal += fromStaff;
+            if (riser == null || change > riser.Value.c) riser = (p, change);
+            Players.Add(new FocusRow
+            {
+                Player = p, Owner = this, Age = p.Age(s.Today), Focus = team.Training.Focus.TryGetValue(p.Id, out var f) ? f.ToString() : "Balanced",
+                Projected = Math.Abs(change) < 0.5 ? "steady" : $"{change:+0;-0} CA", FromStaff = Math.Abs(fromStaff) < 0.05 ? "-" : $"{fromStaff:+0.0;-0.0}",
+            });
+        }
+        int growing = Players.Count(r => r.Projected.StartsWith("+"));
+        DevelopmentChips = new()
+        {
+            new("Your staff add", $"{staffTotal:+0.0;-0.0} CA", "across the squad this summer, against average training", staffTotal >= 1 ? "good" : staffTotal < 0 ? "bad" : ""),
+            new("Biggest riser", riser is { } r && r.c >= 0.5 ? $"{r.c:+0} CA" : "None", riser is { } rr ? rr.p.Name : "", riser is { } r2 && r2.c >= 3 ? "good" : ""),
+            new("Growing", growing.ToString(), "players heading up at their minutes", "info"),
+        };
+        DelegateTraining = s.Delegated.Training; DelegateRecruiting = s.Delegated.Recruiting; DelegateTactics = team.Tactic.Auto;
+        FillDelegationNote();
         Intensity = team.Training.Intensity;
         IntensityText = Describe(team.Training.Intensity);
         UpdateEffects();
@@ -123,14 +168,33 @@ public sealed partial class StaffViewModel : PageViewModel
         Session.SaveNow();
     }
 
+    private void FillDelegationNote()
+    {
+        var d = Session.Delegated;
+        var lines = new List<string>();
+        if (d.Training && d.LastTraining.Length > 0) lines.Add(d.LastTraining);
+        if (d.Recruiting) lines.Add(d.LastRecruiting.Length > 0 ? d.LastRecruiting : "Your head scout starts courting seniors from November (College > Recruiting).");
+        if (Session.HumanTeam.Tactic.Auto) lines.Add("Your assistant picks the system, scheme and sliders for each opponent.");
+        DelegationNote = lines.Count == 0 ? "You're running everything yourself." : string.Join("\n", lines);
+    }
+
+    /// <summary>Interview the selected candidate: will he come, and for what (roadmap 12).</summary>
+    [RelayCommand]
+    public void InterviewCandidate()
+    {
+        if (SelectedMarket == null) return;
+        var a = Session.Interview(SelectedMarket.Staff);
+        Interview = a.Text; CanHire = a.Willing;
+    }
+
     [RelayCommand]
     public void Hire()
     {
         if (SelectedMarket == null) return;
         var st = SelectedMarket.Staff;
         var replaced = Session.HumanTeam.Staff.FirstOrDefault(x => x.Role == st.Role);
-        Session.HireStaff(st);
-        Status = $"Hired {st.Name} as {Staff.RoleName(st.Role).ToLower()}." + (replaced != null ? $" {replaced.Name} released." : "");
+        Status = Session.HireOnTerms(st) + (replaced != null && Session.HumanTeam.Staff.Contains(st) ? $" {replaced.Name} released." : "");
+        Interview = ""; CanHire = false;
         Shell.AfterTick();
     }
 

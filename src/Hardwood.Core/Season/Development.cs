@@ -76,13 +76,7 @@ public sealed class DevelopmentEngine
         // busts come from minutes, training, professionalism and luck, not from a moving ceiling.
 
         // --- CA change ---
-        double minutesMod = _cfg.MinMinutesModifier + (_cfg.MaxMinutesModifier - _cfg.MinMinutesModifier) * Math.Clamp(mpg / _cfg.FullMinutes, 0, 1);
-        double trainingMod = 0.85 + trainingQuality / 20.0 * 0.30;
-        double profMod = 0.85 + p.Hidden.Professionalism / 20.0 * 0.30;
-
-        double growth = (p.PotentialAbility - p.CurrentAbility) * _cfg.GapShare(age) * minutesMod * trainingMod * profMod;
-        double fitness = (p.Attributes[Attr.NaturalFitness] + p.Attributes[Attr.Durability]) / 2.0;
-        double decline = _cfg.Decline(age) * (1.35 - fitness / 20.0 * 0.70) * (2.0 - profMod);
+        var (growth, decline) = Expected(p, age, mpg, trainingQuality, _cfg);
         double delta = growth - decline + _rng.NextGaussian(0, _cfg.NoiseSd) * (age <= 24 ? 1.2 : 0.8);
 
         int newCa = (int)Math.Round(Math.Clamp(p.CurrentAbility + delta, 20, p.PotentialAbility));
@@ -92,6 +86,22 @@ public sealed class DevelopmentEngine
 
         ApplyToAttributes(p, newCa - oldCa, age);
         return new DevelopmentReport(p, age, oldCa, newCa, oldPa, p.PotentialAbility, mpg);
+    }
+
+    /// <summary>
+    /// The change this summer's development is heading for, before luck: growth toward potential (age, minutes, training,
+    /// professionalism) and veterans' decline. The Staff page shows it, so training's effect is visible in-season.
+    /// </summary>
+    public static (double Growth, double Decline) Expected(Player p, int age, double mpg, double trainingQuality, DevelopmentConfig? cfg = null)
+    {
+        cfg ??= new DevelopmentConfig();
+        double minutesMod = cfg.MinMinutesModifier + (cfg.MaxMinutesModifier - cfg.MinMinutesModifier) * Math.Clamp(mpg / cfg.FullMinutes, 0, 1);
+        double trainingMod = 0.85 + trainingQuality / 20.0 * 0.30;
+        double profMod = 0.85 + p.Hidden.Professionalism / 20.0 * 0.30;
+        double growth = (p.PotentialAbility - p.CurrentAbility) * cfg.GapShare(age) * minutesMod * trainingMod * profMod;
+        double fitness = (p.Attributes[Attr.NaturalFitness] + p.Attributes[Attr.Durability]) / 2.0;
+        double decline = cfg.Decline(age) * (1.35 - fitness / 20.0 * 0.70) * (2.0 - profMod);
+        return (growth, decline);
     }
 
     /// <summary>Change a player's ability by <paramref name="caDelta"/> and move his attributes to match (college growth uses this).</summary>
