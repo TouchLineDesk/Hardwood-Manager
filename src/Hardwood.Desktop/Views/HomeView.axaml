@@ -118,7 +118,12 @@
                 <DataTemplate x:DataType="vm:HomeRow">
                   <Grid ColumnDefinitions="24,*,Auto" Margin="0,3">
                     <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="Wrap" FontWeight="{Binding Highlight, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <Border Background="{Binding BadgeBrush}" CornerRadius="3" Padding="5,0" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Badge}" FontSize="9.5" FontWeight="Bold" LetterSpacing="0.6" Foreground="White"/>
+                      </Border>
+                      <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontWeight="{Binding Highlight, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                    </StackPanel>
                     <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="muted" Margin="8,0,0,0"/>
                   </Grid>
                 </DataTemplate>

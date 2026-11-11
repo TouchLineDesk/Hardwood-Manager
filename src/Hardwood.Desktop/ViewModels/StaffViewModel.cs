@@ -48,6 +48,9 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private StaffRow? _selectedMarket;
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _effects = "";
+    /// <summary>Roadmap 1: what your staff do for you, as stat chips (the same numbers the Effects line used to list).</summary>
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
+    public Avalonia.Media.Color Accent => ThemeService.AccentFor(Session.HumanTeam);
     [ObservableProperty] private double _intensity;
     [ObservableProperty] private string _intensityText = "";
     private bool _loading;
@@ -99,6 +102,16 @@ public sealed partial class StaffViewModel : PageViewModel
         var missing = Enum.GetValues<StaffRole>().Where(r => t.Staff.All(s => s.Role != r)).Select(Staff.RoleName).ToList();
         Effects = $"Training quality {StaffEffects.TrainingQuality(t):0.0}/20 · injury risk ×{StaffEffects.InjuryRiskFactor(t):0.00} · recovery time ×{StaffEffects.RecoveryFactor(t):0.00} · scouting knowledge {StaffEffects.ScoutingKnowledge(t) * 100:F0}% · staff payroll ${t.Staff.Sum(s => s.Salary) / 1e6:F2}M (not counted against the cap)"
                   + (missing.Count > 0 ? $"\nVacant: {string.Join(", ", missing)} — empty roles hurt." : "");
+        double tq = StaffEffects.TrainingQuality(t), inj = StaffEffects.InjuryRiskFactor(t), rec = StaffEffects.RecoveryFactor(t), sc = StaffEffects.ScoutingKnowledge(t);
+        Chips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Training", $"{tq:0.0}", "quality out of 20", tq >= 14 ? "good" : tq < 9 ? "warn" : ""),
+            new("Injury risk", $"×{inj:0.00}", inj <= 1 ? "below normal" : "above normal", inj <= 0.95 ? "good" : inj > 1.05 ? "bad" : ""),
+            new("Recovery", $"×{rec:0.00}", rec <= 1 ? "faster than normal" : "slower than normal", rec <= 0.95 ? "good" : rec > 1.05 ? "bad" : ""),
+            new("Scouting", $"{sc * 100:F0}%", "of other players' ratings known", sc >= 0.8 ? "good" : sc < 0.5 ? "warn" : ""),
+            new("Staff payroll", PlayerViewModel.Money(t.Staff.Sum(s => s.Salary)), "not counted against the cap", "team"),
+            new("Vacant roles", missing.Count.ToString(), missing.Count == 0 ? "every role filled" : string.Join(", ", missing), missing.Count > 0 ? "bad" : "good"),
+        };
     }
 
     public void FocusChanged(FocusRow row)

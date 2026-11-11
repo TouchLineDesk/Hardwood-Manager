@@ -135,6 +135,18 @@ public class StatChipTests
             Assert.Equal(awayMoreBoards ? "good" : "", C(box.AwayChips, "Rebounds").Tone);
             Assert.Equal(game.Away.Turnovers < game.Home.Turnovers ? "good" : "", C(box.AwayChips, "Turnovers").Tone);
 
+            // Staff: vacant roles and staff payroll come from the staff list.
+            vm.Navigate("Staff & Training");
+            var stv = (StaffViewModel)vm.CurrentPage!;
+            int vacant = Enum.GetValues<Hardwood.Core.Model.StaffRole>().Count(r => team.Staff.All(x => x.Role != r));
+            Assert.Equal(vacant.ToString(), C(stv.Chips, "Vacant roles").Value);
+            Assert.Equal(PlayerViewModel.Money(team.Staff.Sum(x => x.Salary)), C(stv.Chips, "Staff payroll").Value);
+
+            // Home: each Latest item carries its inbox category as a badge.
+            vm.Navigate("Home");
+            var hv = (HomeViewModel)vm.CurrentPage!;
+            Assert.All(hv.News, r => Assert.False(string.IsNullOrEmpty(r.Badge)));
+
             // Player page: your own player gets a Talk button that opens the Squad page with him selected.
             var mine = team.Roster.First();
             var pv = new PlayerViewModel(vm, mine);

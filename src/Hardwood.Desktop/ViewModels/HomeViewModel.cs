@@ -17,6 +17,15 @@ public sealed class HomeRow
     public string Detail { get; init; } = "";
     public bool Highlight { get; init; }
     public IBrush IconBrush { get; init; } = Brushes.Gray;
+    /// <summary>Roadmap 1: a coloured category badge (BOARD, MEDICAL, GAME…) so the Latest column scans like a news ticker.</summary>
+    public string Badge { get; init; } = "";
+    public IBrush BadgeBrush { get; init; } = Brushes.Gray;
+
+    public static IBrush CategoryBrush(string category) => new SolidColorBrush(Color.Parse(category switch
+    {
+        "Board" => "#D29922", "Medical" => "#F85149", "Squad" => "#A371F7", "Transactions" or "Roster" => "#58A6FF",
+        "League" => "#3FB950", "Awards" => "#E3B341", "World" => "#6E7A8A", "Draft" => "#58A6FF", _ => "#3A4654",
+    }));
 }
 
 public sealed class TableRow
@@ -119,6 +128,7 @@ public sealed partial class HomeViewModel : PageViewModel
             {
                 Icon = m.Category switch { "Squad" => "HeartHandshake", "World" => "Globe", "Draft" => "ClipboardPen", "Roster" => "Users", "League" => "Trophy", "Board" => "Shield", _ => "Newspaper" },
                 IconBrush = m.Read ? Muted : new SolidColorBrush(ThemeService.Accent), Title = m.Title, Detail = m.Date.ToString("MMM d"), Highlight = !m.Read,
+                Badge = m.Category.ToUpperInvariant(), BadgeBrush = HomeRow.CategoryBrush(m.Category),
             });
 
         // Form: running point differential over the season's games.
