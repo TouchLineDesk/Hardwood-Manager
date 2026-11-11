@@ -63,6 +63,14 @@ public sealed class JobState
     public List<ConfidencePoint> History { get; set; } = new();
     /// <summary>The last warning level the board gave (0 none, 1 concerned, 2 under threat), so warnings aren't repeated.</summary>
     public int WarningLevel { get; set; }
+    /// <summary>
+    /// A season in which the board won't sack you mid-season, or at the end while you're above <see cref="Board.ProtectedFloor"/>
+    /// of games won (critic review #5): the season after you beat the win target by 5+, and the first season after relegation.
+    /// 0 = none. Older saves load without it.
+    /// </summary>
+    public int ProtectedSeason { get; set; }
+    /// <summary>Why <see cref="ProtectedSeason"/> was granted: "credit" (beat the target) or "rebuild" (relegated).</summary>
+    public string ProtectedReason { get; set; } = "";
 }
 
 public sealed record ConfidencePoint(DateOnly Date, double Confidence);
@@ -158,6 +166,15 @@ public static class Board
             e.Demands.Remove(Demand.MakePlayoffs);
             return e;
         }
+        // Relegated: a rebuild year. The squad may look strong for the tier below, but it just won a fraction of its games
+        // (critic review #5: an 11-71 club was set "reach the Finals" in tier 2 and sacked at 17-29).
+        bool relegated = previous.League != leagueKey && level > 0 && previousLevel > 0 && level > previousLevel;
+        if (relegated)
+        {
+            if ((int)e.Goal > (int)SeasonGoal.Playoffs) e.Goal = SeasonGoal.Playoffs;
+            e.TargetWins = Math.Min(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.5));
+            return e;
+        }
         if (previous.League != leagueKey) return e;
         var steps = ctx.IsNabl ? Enum.GetValues<SeasonGoal>().ToList()
             : new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.Finals, SeasonGoal.Title };
@@ -242,6 +259,11 @@ public static class Board
     /// </summary>
     /// <summary>Win share at or above which the board won't sack you (it can still be disappointed).</summary>
     public const double WinningRecord = 0.58;
+    /// <summary>In a protected season (<see cref="JobState.ProtectedSeason"/>) the board keeps you while you win at least this share.</summary>
+    public const double ProtectedFloor = 0.40;
+    /// <summary>Wins above the target (per 82 games) that earn the next season's protection on their own; meeting the goal
+    /// earns it too unless the record fell this far short of the target.</summary>
+    public const double CreditWins = 5;
 
     public static (string? title, string? body, bool sacked) Weekly(JobState job, League league, Team team, int wins, int losses,
         IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today) =>
@@ -270,7 +292,9 @@ public static class Board
         double line = job.HiredSeason == season && job.HiredSeason != 0 ? 3 : 12 + (10 - team.Owner.Patience) * 0.8;
         // A winning team isn't sacked mid-season, whatever the target (critic review #3).
         bool winning = wins / (double)games >= WinningRecord;
-        if (!honeymoon && !winning && games >= full * 30 / 82 && job.Confidence < line)
+        // The season after a big overshoot, and a relegated club's first season down, are never mid-season sackings.
+        bool shielded = job.ProtectedSeason == season && season != 0;
+        if (!honeymoon && !winning && !shielded && games >= full * 30 / 82 && job.Confidence < line)
             return ("You have been sacked", $"{team.Owner.Name} has run out of patience. With the team {wins}-{losses} against a target of {e.TargetWins} wins, you have been relieved of your duties.", true);
         int level = job.Confidence < 20 ? 2 : job.Confidence < 35 ? 1 : 0;
         if (level > job.WarningLevel)
@@ -365,10 +389,22 @@ public static class Board
         // after 72-10, and 24-22 the season after relegation, were both sacked).
         bool winning = wins / Math.Max(1.0, wins + losses) >= WinningRecord;
         if (winning) job.Confidence = Math.Max(job.Confidence, 25);
-        bool sacked = !firstSeason && !winning && job.Confidence < 25 - (team.Owner.Patience - 10);
+        // Protected seasons (critic review #5: 59-23 then 41-41 was sacked; so was a relegated club 46 games into life
+        // in the tier below): the board keeps you unless you fell below the floor.
+        bool shielded = job.ProtectedSeason == season && season != 0
+            && wins / Math.Max(1.0, wins + losses) >= ProtectedFloor;
+        bool sacked = !firstSeason && !winning && !shielded && job.Confidence < 25 - (team.Owner.Patience - 10);
+        if (shielded && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
+        // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
+        // the title at 59-23 was sacked the next May at 41-41).
+        bool earned = winsVsTarget >= CreditWins || (diff >= 0 && winsVsTarget >= -CreditWins);
+        if (!sacked && earned) { job.ProtectedSeason = season + 1; job.ProtectedReason = "credit"; }
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         string verdict = sacked ? $"{team.Owner.Name} has decided to make a change. You have been sacked."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{team.Owner.Name} is giving you another season, but expects much better. Consider this a final warning."
+            : shielded && diff < 0 && job.Confidence <= 25 ? (job.ProtectedReason == "rebuild"
+                ? $"{team.Owner.Name} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
+                : $"{team.Owner.Name} hasn't forgotten last season, and that bought you time. It won't happen twice.")
             : diff >= 1 ? $"{team.Owner.Name} is delighted." : diff == 0 ? $"{team.Owner.Name} is satisfied." : $"{team.Owner.Name} expected more. Board confidence: {job.Confidence:0}/100.";
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);

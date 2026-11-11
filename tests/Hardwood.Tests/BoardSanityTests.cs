@@ -40,6 +40,85 @@ public class BoardSanityTests
     }
 
     [Fact]
+    public void Beating_the_target_buys_a_protected_season_but_not_a_free_pass()
+    {
+        // Critic review #5: 59-23 (target ~49) then 41-41 was sacked on May 3.
+        var league = NewLeague();
+        Board.EnsureOwnersAndCoaches(league, 3);
+        var team = league.Teams.OrderBy(t => Board.ProjectedRank(league, t)).First();
+        team.Owner.Patience = 3;
+        var none = new Dictionary<int, PlayerSeasonStats>();
+        var job = new JobState { Current = Board.SetExpectations(league, team, 2026), Confidence = 60, HiredSeason = 2025 };
+        job.Current.Goal = SeasonGoal.Playoffs; job.Current.TargetWins = 49;
+        Board.SeasonReview(job, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Playoffs, 59, 23, none, new DateOnly(2027, 6, 20), 2026);
+        Assert.Equal(2027, job.ProtectedSeason);
+        Assert.Equal("credit", job.ProtectedReason);
+
+        // The next season goes badly: 41-41 against a Finals goal and a 57-win target, confidence on the floor.
+        job.Current = Board.SetExpectations(league, team, 2027);
+        job.Current.Goal = SeasonGoal.Finals; job.Current.TargetWins = 57; job.Confidence = 5;
+        var (_, _, midSeason) = Board.Weekly(job, LeagueContext.Nabl(league), team, 20, 30, none, new DateOnly(2028, 2, 10), 2027);
+        Assert.False(midSeason);
+        var (_, body, sacked) = Board.SeasonReview(job, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Develop, 41, 41, none, new DateOnly(2028, 5, 3), 2027);
+        Assert.False(sacked);
+        Assert.Contains("bought you time", body);
+        Assert.NotEqual(2028, job.ProtectedSeason); // no credit carried forward from a bad year
+
+        // The year after that there's no shield: the same season is a sacking.
+        job.Current = Board.SetExpectations(league, team, 2028);
+        job.Current.Goal = SeasonGoal.Finals; job.Current.TargetWins = 57; job.Confidence = 5;
+        var (_, _, sackedNow) = Board.SeasonReview(job, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Develop, 41, 41, none, new DateOnly(2029, 5, 3), 2028);
+        Assert.True(sackedNow);
+    }
+
+    [Fact]
+    public void Winning_the_title_buys_a_protected_season()
+    {
+        // The seed-31 career: title at 59-23 against a 60-win target, then 41-41 against a Finals goal.
+        var league = NewLeague();
+        Board.EnsureOwnersAndCoaches(league, 3);
+        var team = league.Teams.OrderBy(t => Board.ProjectedRank(league, t)).First();
+        var none = new Dictionary<int, PlayerSeasonStats>();
+        var job = new JobState { Current = Board.SetExpectations(league, team, 2026), Confidence = 70, HiredSeason = 2025 };
+        job.Current.Goal = SeasonGoal.Title; job.Current.TargetWins = 60;
+        Board.SeasonReview(job, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Title, 59, 23, none, new DateOnly(2027, 6, 20), 2026);
+        Assert.Equal(2027, job.ProtectedSeason);
+        // Missing the goal by a mile earns nothing.
+        var miss = new JobState { Current = Board.SetExpectations(league, team, 2026), Confidence = 70, HiredSeason = 2025 };
+        miss.Current.Goal = SeasonGoal.Playoffs; miss.Current.TargetWins = 50;
+        Board.SeasonReview(miss, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Develop, 30, 52, none, new DateOnly(2027, 6, 20), 2026);
+        Assert.Equal(0, miss.ProtectedSeason);
+    }
+
+    [Fact]
+    public void A_protected_season_still_ends_in_the_sack_below_the_floor()
+    {
+        var league = NewLeague();
+        Board.EnsureOwnersAndCoaches(league, 3);
+        var team = league.Teams.First();
+        team.Owner.Patience = 3;
+        var job = new JobState { Current = Board.SetExpectations(league, team, 2027), Confidence = 5, HiredSeason = 2025, ProtectedSeason = 2027, ProtectedReason = "rebuild" };
+        job.Current.Goal = SeasonGoal.Playoffs; job.Current.TargetWins = 45;
+        // Mid-season: protected, however bad.
+        var (_, _, mid) = Board.Weekly(job, LeagueContext.Nabl(league), team, 10, 40, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2028, 2, 10), 2027);
+        Assert.False(mid);
+        // Season end below 40% wins: the board acts.
+        var (_, _, sacked) = Board.SeasonReview(job, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Develop, 29, 53, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2028, 5, 3), 2027);
+        Assert.True(sacked);
+    }
+
+    [Fact]
+    public void Older_saves_load_without_a_protected_season()
+    {
+        var job = SaveFile_FromJson("{\"Employed\":true,\"Confidence\":50,\"HiredSeason\":2026}");
+        Assert.Equal(0, job.ProtectedSeason);
+        Assert.Equal("", job.ProtectedReason);
+    }
+
+    // Saves store the job as plain JSON (CareerStore "job"); fields an older save lacks keep their defaults.
+    private static JobState SaveFile_FromJson(string json) => System.Text.Json.JsonSerializer.Deserialize<JobState>(json)!;
+
+    [Fact]
     public void Goals_climb_one_step_a_season_and_promoted_clubs_aim_to_stay_up()
     {
         var league = NewLeague();
@@ -55,6 +134,11 @@ public class BoardSanityTests
         Assert.True(promoted.Survive);
         Assert.Equal(SeasonGoal.Develop, promoted.Goal);
         Assert.InRange(promoted.TargetWins, 30, 35);
+
+        // Relegated (level 1 → 2): a rebuild year, at most the playoffs and half the games won.
+        var relegated = Board.NextExpectations(ctx, best, 2027, new Expectations { TeamId = best.Id, League = "nabl", Goal = SeasonGoal.Playoffs }, "chp", 2, 1);
+        Assert.True((int)relegated.Goal <= (int)SeasonGoal.Playoffs, $"goal {relegated.Goal}");
+        Assert.True(relegated.TargetWins <= (int)Math.Round(ctx.SeasonGames * 0.5), $"target {relegated.TargetWins}");
 
         // A new club (or the first season) takes the squad's goal as it is.
         Assert.Equal(SeasonGoal.Title, Board.NextExpectations(ctx, best, 2027, null, "nabl", 1, 0).Goal);

@@ -864,6 +864,8 @@ public sealed partial class GameSession
                 if (Employed && HumanLeagueName != leagueBefore)
                 {
                     bool up = MyLevel > 0 && MyLevel < levelBefore;
+                    // A relegated club's first season down is a rebuild: no mid-season sacking (critic review #5).
+                    if (!up) { Job.ProtectedSeason = League.Season; Job.ProtectedReason = "rebuild"; }
                     Post(up ? $"Promoted to {HumanLeagueName}!" : $"Relegated to {HumanLeagueName}",
                         up ? $"The {HumanTeam.FullName} go up from {leagueBefore} to {HumanLeagueName}. The owner has set new budgets and expectations for life at the higher level."
                            : $"The {HumanTeam.FullName} drop from {leagueBefore} to {HumanLeagueName}. Wages already agreed don't fall with you; the owner expects you to bounce back.", "Board");

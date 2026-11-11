@@ -72,7 +72,7 @@ while (s.League.Season < startYear + seasons)
     {
         lastDay = s.Today.DayNumber;
         var adv = Assistant.Advise(s, "Home", GuideLevel.Auto, progress);
-        foreach (var t in adv.Tasks) { var k = new string(t.Title.TakeWhile(c => !char.IsDigit(c)).ToArray()).Split(':')[0].Trim(); assistantTitles[k] = assistantTitles.GetValueOrDefault(k) + 1; if (t.Priority < 30) urgentSeen++; }
+        foreach (var t in adv.Tasks) { var k = System.Text.RegularExpressions.Regex.Replace(t.Title.Split(':')[0], @"\d+(\.\d+)?", "#").Trim(); assistantTitles[k] = assistantTitles.GetValueOrDefault(k) + 1; if (t.Priority < 30) urgentSeen++; }
         tipsSeen += adv.Strategy.Count;
         progress.DaysPlayed += 7;
         if (s.Employed)
@@ -142,7 +142,7 @@ while (s.League.Season < startYear + seasons)
         if (off.Phase is OffseasonPhase.FreeAgency or OffseasonPhase.Complete) progress.SeasonsPlayed++;
         s.AdvanceOffseason();
         if (s.Phase != SessionPhase.Offseason)
-            L($"season {s.League.Season} begins: {s.HumanTeam.FullName} ({s.HumanLeagueName}, level {s.MyLevel}) roster {s.HumanTeam.Roster.Count}, wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M, board {s.Job.Confidence:F0}, goal {s.Job.Current?.Goal}");
+            L($"season {s.League.Season} begins: {s.HumanTeam.FullName} ({s.HumanLeagueName}, level {s.MyLevel}) roster {s.HumanTeam.Roster.Count}, wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M, board {s.Job.Confidence:F0}, goal {s.Job.Current?.Goal}, protected {s.Job.ProtectedSeason} {s.Job.ProtectedReason}");
         continue;
     }
     bool wasEmployed = s.Employed;
@@ -161,4 +161,6 @@ L($"people: longest unhappy spell {longestUnhappy} weeks, unhappy player-weeks {
 L($"money: over the wage budget {overBudgetWeeks} of {weeksEmployed} weeks employed");
 L("board titles: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Board").GroupBy(m => new string(m.Title.TakeWhile(c => c != ':').ToArray())).OrderByDescending(g => g.Count()).Take(10).Select(g => $"{g.Key} x{g.Count()}")));
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
+foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
+    L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");
 L($"save size {new FileInfo(path).Length / 1e6:F1} MB");
