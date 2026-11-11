@@ -84,6 +84,70 @@
           </DataGrid>
         </DockPanel>
       </TabItem>
+      <TabItem Header="Recruiting">
+        <!-- Senior recruiting (decision #157): the board, and the selected senior beside it (or under it when narrow). -->
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding RecruitNote}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding RecruitChips}" Accent="{DynamicResource HwAccent}"/>
+            <Grid x:Name="RecruitRowGrid" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+              <DockPanel x:Name="RecruitBoard" VerticalAlignment="Top">
+                <CheckBox DockPanel.Dock="Top" Content="Only my list and commitments" IsChecked="{Binding ListedOnly}" Margin="0,0,0,4"/>
+                <DataGrid x:Name="RecruitGrid" ItemsSource="{Binding Recruits}" SelectedItem="{Binding SelectedRecruit}" RowHeight="NaN" Height="500">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="Senior" Binding="{Binding Name}" Width="150"/>
+                    <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56"/>
+                    <DataGridTemplateColumn Header="Program" Width="*" MinWidth="160">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RecruitRow"><TextBlock Text="{Binding Program}" TextWrapping="Wrap" Margin="6,3" VerticalAlignment="Center"/></DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="60"/>
+                    <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="60"/>
+                    <DataGridTemplateColumn Header="Interest" Width="120">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RecruitRow">
+                          <Grid ColumnDefinitions="*,Auto" Margin="6,0" VerticalAlignment="Center">
+                            <ProgressBar Value="{Binding Interest}" Maximum="100" Height="6" MinWidth="0" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding InterestText}" FontSize="11" Margin="6,0,0,0"/>
+                          </Grid>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="140"/>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </DockPanel>
+              <StackPanel x:Name="RecruitPanel" Grid.Column="1" Width="330" Margin="10,0,0,0" Spacing="8" VerticalAlignment="Top">
+                <TextBlock Text="Pick a senior to court him." Classes="muted" IsVisible="{Binding !HasRecruit}" TextWrapping="Wrap"/>
+                <Border Classes="panel" IsVisible="{Binding HasRecruit}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding SelectedRecruit.Name}" Classes="h2" Margin="0"/>
+                    <TextBlock Text="{Binding SelectedRecruit.Program}" Classes="muted" TextWrapping="Wrap"/>
+                    <c:StatStrip ItemsSource="{Binding InterestChips}" Accent="{DynamicResource HwAccent}"/>
+                    <TextBlock Text="{Binding RecruitLean}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <WrapPanel>
+                      <Button Content="Call (1 pt)" Command="{Binding CallRecruitCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Visit (3 pts)" Command="{Binding VisitRecruitCommand}" Margin="0,0,6,6"/>
+                      <Button Content="List / unlist" Command="{Binding ShortlistRecruitCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Open player" Command="{Binding OpenRecruitCommand}" Margin="0,0,6,6"/>
+                    </WrapPanel>
+                    <TextBlock Text="Offer terms (he signs when the season ends)" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    <WrapPanel>
+                      <TextBlock Text="$M a year" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                      <NumericUpDown Value="{Binding OfferWage}" Minimum="0" Maximum="80" Increment="0.25" FormatString="0.00" Width="130" Margin="0,0,10,6"/>
+                      <TextBlock Text="Years" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                      <NumericUpDown Value="{Binding OfferYears}" Minimum="1" Maximum="5" Increment="1" FormatString="0" Width="100" Margin="0,0,0,6"/>
+                    </WrapPanel>
+                    <Button Classes="primary" Content="Make the offer" Command="{Binding OfferRecruitCommand}" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{Binding RecruitReply}" Classes="accent" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
     </TabControl>
   </DockPanel>
 </UserControl>

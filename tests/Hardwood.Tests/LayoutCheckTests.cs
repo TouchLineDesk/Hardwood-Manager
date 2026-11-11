@@ -30,6 +30,13 @@ public class LayoutCheckTests
         });
         yield return ("Team page", v => v.ShowTeam(v.Session!.League.Teams.First(t => t != v.Session.HumanTeam)));
         yield return ("Records book", v => v.Navigate("History"));
+        yield return ("Recruiting", v =>
+        {
+            v.Navigate("College");
+            var college = (CollegeViewModel)v.CurrentPage!;
+            college.Tab = 4;
+            college.SelectedRecruit = college.Recruits.FirstOrDefault();
+        });
         yield return ("Box score", v =>
         {
             v.Navigate("Schedule & Results");

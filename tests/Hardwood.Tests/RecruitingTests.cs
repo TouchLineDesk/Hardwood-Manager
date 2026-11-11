@@ -1,0 +1,116 @@
+using Hardwood.Core;
+using Hardwood.Core.Generation;
+using Hardwood.Core.Model;
+using Hardwood.Core.Season;
+using Xunit;
+
+namespace Hardwood.Tests;
+
+/// <summary>Senior recruiting (decision #157, college depth): court seniors, they commit, they sign on graduation day.</summary>
+public class RecruitingTests
+{
+    private static GameSession Season(ulong seed, string? path = null)
+    {
+        var probe = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+        var id = probe.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ElementAt(3).Id;
+        var s = GameSession.NewGame(seed, id, path);
+        while (s.Today < new DateOnly(2026, 12, 1)) s.AdvanceDay();
+        return s;
+    }
+
+    [Fact]
+    public void Courting_a_senior_wins_his_commitment_and_he_signs_on_graduation_day()
+    {
+        var s = Season(71);
+        Assert.True(s.RecruitingOpen);
+        var seniors = s.Seniors();
+        Assert.True(seniors.Count >= 60, $"{seniors.Count} seniors");
+        Assert.All(seniors, p => Assert.True(p.Age(s.GraduationDay) >= 23));
+
+        // A mid-ranked senior (no star premium on the interest he needs).
+        var p = seniors[45];
+        var before = s.InterestIn(p);
+        Assert.Equal(Math.Clamp(before.Appeal * 0.45 + before.Minutes * 0.25 + before.Effort, 0, 100), before.Total, 6);
+        Assert.Equal(55, before.Need);
+
+        s.TopUpRecruitingPoints();
+        int points = s.Recruiting!.Points;
+        Assert.InRange(points, 6, 20);
+        Assert.StartsWith("You spoke to", s.CallRecruit(p));
+        Assert.Equal(points - 1, s.Recruiting.Points);
+        Assert.True(s.InterestIn(p).Effort > 0);
+
+        // An offer below his ask doesn't win him; enough effort and his ask does.
+        long ask = s.RecruitDemand(p).Wage;
+        s.OfferRecruit(p, ask / 3, 3);
+        Assert.Null(s.Recruiting.Find(p.Id)!.CommittedTeamId);
+        for (int i = 0; i < 2; i++) { s.Recruiting.Points = 20; s.VisitRecruit(p); }
+        Assert.Contains("twice", s.VisitRecruit(p));
+        for (int i = 0; i < 6 && !s.InterestIn(p).Enough; i++) { s.Recruiting.Points = 20; s.CallRecruit(p); }
+        Assert.True(s.InterestIn(p).Enough, $"interest {s.InterestIn(p).Total:0} of {s.InterestIn(p).Need:0}");
+        var reply = s.OfferRecruit(p, ask, 3);
+        Assert.Contains("commits to the", reply);
+        Assert.Equal(s.HumanTeam.Id, s.Recruiting.Find(p.Id)!.CommittedTeamId);
+        Assert.Contains(s.Inbox, m => m.Title == $"{p.Name} commits to you");
+
+        // Play to the summer: rivals land some of the top seniors along the way; ours stays ours.
+        int guard = 0;
+        int rivalCommits = 0;
+        while (s.Phase != SessionPhase.Offseason && guard++ < 400)
+        {
+            rivalCommits = s.Recruiting?.Prospects.Values.Count(x => x.CommittedTeamId != null && x.CommittedTeamId != s.HumanTeam.Id) ?? rivalCommits;
+            s.AdvanceDay();
+        }
+        Assert.True(rivalCommits >= 20, $"{rivalCommits} rival commitments by the end of the season");
+        Assert.True(s.HumanTeam.Roster.Contains(p), string.Join(" | ", s.Inbox.Where(m => m.Body.Contains(p.Name) || m.Title.Contains(p.Name)).Select(m => m.Title + ": " + m.Body)) + $" roster {s.HumanTeam.Roster.Count} FA? {s.League.FreeAgents.Contains(p)} team {p.TeamId} age {p.Age(s.Today)} today {s.Today}");
+        Assert.Equal(ask, p.Contract!.Salary);
+        Assert.Equal(3, p.Contract.Years);
+        var rival = s.League.Teams.Where(t => t != s.HumanTeam).SelectMany(t => t.Roster)
+            .Count(x => x.RookieSeason == s.League.Season + 1 && seniors.Take(40).Contains(x));
+        Assert.True(rival >= 10, $"only {rival} of the top 40 seniors signed with rival NABL clubs on graduation");
+    }
+
+    [Fact]
+    public void A_committed_senior_cannot_be_courted_and_your_courting_resets_with_a_new_club()
+    {
+        var s = Season(72);
+        var p = s.Seniors()[50];
+        var st = s.Recruiting!.For(p.Id);
+        st.CommittedTeamId = s.League.Teams.First(t => t != s.HumanTeam).Id;
+        Assert.Contains("has committed to", s.CallRecruit(p));
+        Assert.NotNull(s.InterestIn(p).Blocked);
+
+        var q = s.Seniors()[51];
+        s.Recruiting.Points = 20;
+        s.CallRecruit(q);
+        Assert.True(s.InterestIn(q).Effort > 0);
+        // Effort belongs to the club that put it in.
+        s.Recruiting.Find(q.Id)!.TeamId = -1;
+        Assert.Equal(0, s.InterestIn(q).Effort);
+    }
+
+    [Fact]
+    public void The_board_survives_a_save()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hw-rec-{Guid.NewGuid():N}.hwsave");
+        try
+        {
+            var s = Season(73, path);
+            var p = s.Seniors()[30];
+            s.Recruiting!.Points = 20;
+            s.VisitRecruit(p);
+            s.SaveNow();
+            var loaded = GameSession.Load(path);
+            var st = loaded.Recruiting!.Find(p.Id);
+            Assert.NotNull(st);
+            Assert.Equal(1, st!.Visits);
+            Assert.Equal(17, loaded.Recruiting.Points);
+            Assert.True(st.Shortlisted);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+}

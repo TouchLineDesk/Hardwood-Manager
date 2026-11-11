@@ -374,6 +374,7 @@ public sealed partial class GameSession
             if (Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason) WeeklyBoard();
         }
         if (!Employed) DailyJobMarket();
+        if (Today.DayOfWeek == DayOfWeek.Monday) WeeklyRecruiting();
         DailyTransfers();
         MaybePostDigest();
         MaybePostJobs();
@@ -765,6 +766,7 @@ public sealed partial class GameSession
         Offseason = new Offseason(League, outcome, Stats, _rng);
         Offseason.Begin();
         // The world's summer starts too: overseas contracts end and some players enter the shared free-agent pool.
+        var recruiting = World.College?.Season.Recruiting;
         World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);
         Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
         var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre).OrderByDescending(x => x.player.CurrentAbility).Take(8).ToList();
@@ -772,6 +774,8 @@ public sealed partial class GameSession
             Post("Overseas free agents", "These players' overseas contracts have ended and they're free to sign anywhere:\n"
                 + string.Join("\n", abroad.Select(x => $"{x.player.Name} ({x.player.PrimaryPosition}, {x.player.Age(Offseason.Date)}, {x.player.CurrentAbility} CA), last with {x.from.FullName}")), "World");
         Offseason.AiReSignAll(exceptTeamId: ControlledTeamId);
+        // Seniors who committed during the season sign before free agency opens (decision #157).
+        SignCommittedGraduates(recruiting);
 
         AnnounceAwards(Offseason.Summary!);
         if (!Employed) return; // out of work: the rest of these messages are about your team

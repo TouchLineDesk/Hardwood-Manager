@@ -481,6 +481,15 @@ public sealed class Offseason
         Report.Waived.Add((p, team));
     }
 
+    /// <summary>An AI club signs a free agent only if it fits the cap and (except minimum deals) its budget, as in AI free agency.</summary>
+    public bool AiSignIfAffordable(Team team, Player p)
+    {
+        long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), _league.Finance);
+        var (route, salary) = SigningOption(team, ask);
+        if (route == SigningRoute.None || route != SigningRoute.Minimum && ContractMarket.Payroll(team) + salary > AiPayrollLimit(team, false)) return false;
+        return SignFreeAgent(team, p);
+    }
+
     /// <summary>AI teams fill their rosters; the human team (if any) is skipped.</summary>
     public void AiFreeAgency(int? humanTeamId)
     {
