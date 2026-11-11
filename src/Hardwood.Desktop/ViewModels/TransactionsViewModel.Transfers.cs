@@ -53,7 +53,9 @@ public sealed partial class TransactionsViewModel
 {
     public ObservableCollection<MarketRow> Market { get; } = new();
     [ObservableProperty] private MarketRow? _selectedMarket;
-    public List<string> MarketLeagues { get; } = new() { "All leagues", "NABL", "Spanish League", "Turkish Super League", "Australian League", "China Pro League", "Other European clubs" };
+    /// <summary>The league filter: the top league, then every league abroad by its current name (a name pack can rename them).</summary>
+    public List<string> MarketLeagues { get; } = new[] { "All leagues", Hardwood.Core.Names.Brand.Top }
+        .Concat(Hardwood.Core.World.Competitions.All.Where(c => c.Kind != Hardwood.Core.World.CompetitionKind.Continental).Select(c => c.Name)).Distinct().ToList();
     public List<string> Positions { get; } = new() { "All", "PG", "SG", "SF", "PF", "C" };
     [ObservableProperty] private string _marketLeague = "All leagues";
     [ObservableProperty] private string _marketPosition = "All";
@@ -111,7 +113,7 @@ public sealed partial class TransactionsViewModel
         var rows = s.Market()
             .Where(x => x.player.CurrentAbility >= min)
             .Where(x => MarketPosition == "All" || x.player.PrimaryPosition.ToString() == MarketPosition)
-            .Select(x => (x.player, x.club, league: s.ContextOf(x.club).Name is var n && s.League.Teams.Contains(x.club) ? "NABL" : s.World.Competitions.FirstOrDefault(c => c.Clubs.Contains(x.club))?.Profile.Name ?? n))
+            .Select(x => (x.player, x.club, league: s.ContextOf(x.club).Name is var n && s.League.Teams.Contains(x.club) ? Hardwood.Core.Names.Brand.Top : s.World.Competitions.FirstOrDefault(c => c.Clubs.Contains(x.club))?.Profile.Name ?? n))
             .Where(x => MarketLeague == "All leagues" || x.league == MarketLeague)
             .OrderByDescending(x => x.player.CurrentAbility).Take(300);
         foreach (var (p, club, league) in rows)

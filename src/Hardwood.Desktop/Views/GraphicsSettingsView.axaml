@@ -41,5 +41,17 @@
         <TextBlock Text="{Binding LogoNote}" TextWrapping="Wrap" FontSize="11.5" IsVisible="{Binding LogoNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
       </StackPanel>
     </Border>
+    <!-- Name pack: real names for clubs, leagues and conferences, from a file the player keeps (the game ships fictional). -->
+    <Border Classes="panel">
+      <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ListOrdered" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Name pack" Classes="h2" Margin="0"/></StackPanel>
+        <TextBox Text="{Binding NamePackFile}" Watermark="Empty: the Names folder in Documents\Hardwood Manager"/>
+        <TextBlock Text="{Binding NamePackStatus}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        <Button Content="Apply to this career" Command="{Binding ApplyNamesCommand}" IsVisible="{Binding CanApplyNames}"/>
+        <TextBlock Text="A new career uses the pack from the start. League and conference names follow the pack whenever it's present; club names are saved with the career."
+                   Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        <TextBlock Text="{Binding NamePackNote}" TextWrapping="Wrap" FontSize="11.5" IsVisible="{Binding NamePackNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>

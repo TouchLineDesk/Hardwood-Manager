@@ -14,6 +14,9 @@ public sealed class AppSettings
     public static string DefaultLogoFolder() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Hardwood Manager", "Logos");
 
+    /// <summary>A name pack file or folder (real names for clubs, leagues and conferences); empty = Documents\Hardwood Manager\Names.</summary>
+    public string NamePackFile { get; set; } = "";
+
     /// <summary>Let the game draw player card portraits automatically.</summary>
     public bool AutoPortraits { get; set; } = true;
 

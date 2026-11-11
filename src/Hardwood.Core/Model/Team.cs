@@ -5,10 +5,11 @@ public enum Conference { East, West }
 public sealed class Team
 {
     public int Id { get; init; }
-    public required string City { get; init; }
-    public required string Name { get; init; }
+    /// <summary>City, nickname and abbreviation: settable so a name pack can rename the club (Names.NamePack).</summary>
+    public required string City { get; set; }
+    public required string Name { get; set; }
     public string FullName => $"{City} {Name}";
-    public required string Abbreviation { get; init; }
+    public required string Abbreviation { get; set; }
     public Conference Conference { get; set; }
     public required string Division { get; set; }
     public int ArenaCapacity { get; init; } = 18000;

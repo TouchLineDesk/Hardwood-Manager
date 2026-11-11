@@ -18,6 +18,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // A name pack renames the competitions and the top league before any page shows them.
+            Graphics.NamePackService.ApplyStatic();
             var vm = new MainViewModel();
             desktop.MainWindow = new MainWindow { DataContext = vm };
         }

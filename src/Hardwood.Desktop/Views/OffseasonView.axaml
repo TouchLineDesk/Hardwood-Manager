@@ -51,7 +51,7 @@
               <TextBlock Text="Players under contract abroad" Classes="h2" Margin="0" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75" Margin="0,4,0,6"
-                       Text="Every overseas contract has a buyout clause. You pay up to the NABL allowance; the player pays the rest himself, but only if the move is worth it to him. (The full transfer market comes next.)"/>
+                       Text="Every overseas contract has a buyout clause. You pay up to the league's buyout allowance; the player pays the rest himself, but only if the move is worth it to him. (The full transfer market comes next.)"/>
             <DataGrid Grid.Row="2" ItemsSource="{Binding Overseas}" SelectedItem="{Binding SelectedOverseas}">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>

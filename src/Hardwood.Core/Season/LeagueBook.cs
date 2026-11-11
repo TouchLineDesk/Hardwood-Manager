@@ -92,7 +92,7 @@ public sealed class LeagueBook
         string Group(Team t) => t.Conference.ToString();
         return new LeagueBook
         {
-            Key = NablKey, Name = "NABL", Region = "USA", Season = $"{lg.Season}-{(lg.Season + 1) % 100:00}",
+            Key = NablKey, Name = Hardwood.Core.Names.Brand.Top, Region = "USA", Season = $"{lg.Season}-{(lg.Season + 1) % 100:00}",
             Status = post?.Champion is { } ch ? $"Champions: {ch.FullName}" : post != null ? post.Stage : s.Phase == SessionPhase.Offseason ? "Offseason" : "Regular season",
             Teams = lg.Teams,
             Table = () =>
@@ -205,7 +205,7 @@ public sealed class LeagueBook
         {
             string level = UsaPyramid.IsPyramid(p.Key) ? UsaPyramid.Level(p.Key) switch
             {
-                2 => "Tier 2 of the USA pyramid. Top 3 go up to the NABL; bottom 3 drop to National League One.",
+                2 => $"Tier 2 of the USA pyramid. Top 3 go up to the {Hardwood.Core.Names.Brand.Top}; bottom 3 drop to {Hardwood.Core.World.Competitions.All.First(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier3).Name}.",
                 3 => "Tier 3. Top 3 go up to The Championship; bottom 6 drop to the regional leagues.",
                 4 => "Regional (tier 4, semi-pro). The champion goes up to National League One; the bottom drop to local leagues.",
                 _ => "Local (tier 5, near-amateur). The champion goes up to its regional league.",
@@ -214,7 +214,7 @@ public sealed class LeagueBook
             if (p.ForeignLimit < 99)
                 list.Add(("Imports", $"Up to {p.ForeignLimit} players per club from outside {(p.LocalNationalities.Length > 0 ? string.Join("/", p.LocalNationalities) : p.Country)}" + (p.ImportsAreStars ? ", usually the team's stars." : ".")));
             if (p.MinAge > 0) list.Add(("Pro age", $"Players must be {p.MinAge} or older."));
-            list.Add(("Wages", $"About {p.SalaryScale * 100:0.#}% of what the NABL pays the same player."));
+            list.Add(("Wages", $"About {p.SalaryScale * 100:0.#}% of what the {Hardwood.Core.Names.Brand.Top} pays the same player."));
         }
         list.Add(("Game", RulesText(p.Rules)));
         int perOpp = p.RoundRobins;
