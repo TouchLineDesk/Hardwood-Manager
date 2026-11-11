@@ -115,7 +115,7 @@ public sealed partial class TeamViewModel : PageViewModel
             {
                 Player = p, Age = p.Age(today), CA = Scouting.Ability(p, k).ToString(), PA = Scouting.Potential(p, k).ToString(),
                 Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M × {c.Years}y" : "-",
-                Status = p.IsAvailable(today) ? "" : $"Injured ({p.Injury!.Name}, {p.Injury.DaysOut(today)}d)",
+                Status = p.IsAvailable(today) ? "" : $"Out {p.Injury!.DaysOut(today)}d", // the injury itself is on his page (too long for this column at 1280 px)
                 G = st?.G ?? 0, Mpg = F(st?.Mpg), Ppg = F(st?.Ppg), Rpg = F(st?.Rpg), Apg = F(st?.Apg), Spg = F(st?.Spg), Bpg = F(st?.Bpg),
                 Fg = st is { Fga: > 0 } ? st.FgPct.ToString(".000") : "-", Tp = st is { Tpa: > 0 } ? st.TpPct.ToString(".000") : "-",
             });

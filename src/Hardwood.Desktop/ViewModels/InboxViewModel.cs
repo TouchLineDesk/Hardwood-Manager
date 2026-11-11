@@ -20,6 +20,22 @@ public sealed partial class InboxItem : ObservableObject
     public string Body => Message.Body;
     [ObservableProperty] private bool _isRead;
     public string Weight => IsRead ? "Normal" : "SemiBold";
+
+    /// <summary>A press question or locker-room moment that came with this message (people part 2).</summary>
+    public Hardwood.Core.People.PendingDecision? Decision { get; init; }
+    public bool HasDecision => Decision != null;
+    public bool DecisionOpen => Decision is { Open: true };
+    public string DecisionHeading => Decision == null ? "" : Decision.Kind == "press" ? "Your answer to the press" : "How do you handle it?";
+    public List<DecisionButton> Answers { get; init; } = new();
+    [ObservableProperty] private string _outcome = "";
+}
+
+/// <summary>One answer under a press question or locker-room moment, with what it will do.</summary>
+public sealed class DecisionButton
+{
+    public required string Label { get; init; }
+    public required string Hint { get; init; }
+    public required IRelayCommand Command { get; init; }
 }
 
 public sealed partial class InboxViewModel : PageViewModel
@@ -74,7 +90,7 @@ public sealed partial class InboxViewModel : PageViewModel
     {
         var selectedId = Selected?.Message.Id;
         Items.Clear();
-        foreach (var m in Session.Inbox.Where(Shows)) Items.Add(new InboxItem { Message = m, IsRead = m.Read });
+        foreach (var m in Session.Inbox.Where(Shows)) Items.Add(MakeItem(m));
         Selected = Items.FirstOrDefault(i => i.Message.Id == selectedId) ?? Items.FirstOrDefault();
         var s = Session;
         var rec = s.MyRecord;
@@ -83,6 +99,25 @@ public sealed partial class InboxViewModel : PageViewModel
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
                   + $" · {Budgets.Describe(s.HumanTeam)}"
                   + (hurt.Count > 0 ? $" · Injured: {string.Join(", ", hurt.Select(p => $"{p.LastName} ({p.Injury!.DaysOut(s.Today)}d)"))}" : "");
+    }
+
+    private InboxItem MakeItem(InboxMessage m)
+    {
+        var d = Session.Media.ForMessage(m.Id);
+        if (d == null || d.TeamId != Session.HumanTeam.Id) return new InboxItem { Message = m, IsRead = m.Read };
+        InboxItem? item = null;
+        var answers = d.Options.Select((o, i) => new DecisionButton
+        {
+            Label = o.Label, Hint = o.Hint,
+            Command = new RelayCommand(() =>
+            {
+                item!.Outcome = Session.Answer(d.Id, i);
+                Shell.RefreshHeader();
+                Refresh();
+            }, () => d.Open),
+        }).ToList();
+        item = new InboxItem { Message = m, IsRead = m.Read, Decision = d, Answers = answers, Outcome = d.Outcome ?? "" };
+        return item;
     }
 
     private static string Ordinal(int n) => n % 100 is 11 or 12 or 13 ? $"{n}th" : (n % 10) switch { 1 => $"{n}st", 2 => $"{n}nd", 3 => $"{n}rd", _ => $"{n}th" };

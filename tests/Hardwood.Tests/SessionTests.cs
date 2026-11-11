@@ -36,12 +36,14 @@ public class SessionTests
             Assert.Equal(SessionPhase.RegularSeason, s.Phase);
             int playedBefore = s.Results.Count;
             var recBefore = (s.Standings[team].Wins, s.Standings[team].Losses);
-            // The engine should land within a few minutes of each healthy rotation player's target.
+            // The engine should land within a few minutes of each healthy rotation player's target. When a rotation teammate
+            // has been hurt, the bench covers his minutes, so allow a little more on top.
+            bool covering = rotation.Any(p => p.InjuryHistory.Count > 0);
             foreach (var kv in chart.MinutesTargets)
             {
                 var player = team.Roster.First(p => p.Id == kv.Key);
                 if (player.InjuryHistory.Count > 0) continue;
-                Assert.InRange(s.Stats[kv.Key].Mpg, kv.Value - 5, kv.Value + 5);
+                Assert.InRange(s.Stats[kv.Key].Mpg, kv.Value - 5, kv.Value + (covering ? 7 : 5));
             }
 
             var loaded = GameSession.Load(path);

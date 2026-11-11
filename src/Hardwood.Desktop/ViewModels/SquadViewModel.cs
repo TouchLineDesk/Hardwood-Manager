@@ -86,7 +86,7 @@ public sealed partial class SquadViewModel : PageViewModel
         string label = team.Chemistry >= 75 ? "excellent" : team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "average" : "poor";
         ChemistryHeadline = $"Team chemistry: {label} ({team.Chemistry:0}/100)";
         ChemistryFactors.Clear();
-        foreach (var (r, e) in PeopleEngine.ChemistryFactors(team).OrderByDescending(x => Math.Abs(x.effect)))
+        foreach (var (r, e) in PeopleEngine.ChemistryFactors(team).Concat(Session.SpiritFactors()).OrderByDescending(x => Math.Abs(x.effect)))
             ChemistryFactors.Add(new FactorRow { Reason = r, Effect = e });
 
         var keep = Selected?.Player;
