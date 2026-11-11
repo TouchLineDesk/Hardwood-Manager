@@ -141,6 +141,14 @@ public sealed partial class BoxScoreViewModel : PageViewModel
     public ObservableCollection<BoxLineRow> Home { get; } = new();
     public ObservableCollection<string> Log { get; } = new();
     public bool HasLog => Log.Count > 0;
+    // Match day (roadmap 2): the game's shape, for games with a timeline (yours).
+    public bool HasFlow => Result.Flow.Count > 0;
+    public Avalonia.Media.Color FlowHome => GameFlowInfo.Colours(Result).Home;
+    public Avalonia.Media.Color FlowAway => GameFlowInfo.Colours(Result).Away;
+    public List<SplitRow> Splits => GameFlowInfo.Splits(Result);
+    public List<string> RunLines => GameFlowInfo.RunLines(Result);
+    public bool HasRuns => RunLines.Count > 0;
+    public List<Hardwood.Desktop.Controls.Chip> FlowChips => GameFlowInfo.Chips(Result);
     public int[] AwayZoneAttempts => Sum(Result.Away, l => l.ZoneAttempts);
     public int[] AwayZoneMakes => Sum(Result.Away, l => l.ZoneMakes);
     public int[] HomeZoneAttempts => Sum(Result.Home, l => l.ZoneAttempts);

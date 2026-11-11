@@ -46,7 +46,10 @@ public sealed class Reflow
     private void Fit()
     {
         if (!_grid.IsEffectivelyVisible || _grid.Bounds.Width <= 0) return;
-        double need = (_leftNeed?.Invoke() ?? _left.DesiredSize.Width) + _right.DesiredSize.Width + _gap;
+        // The right part's width side by side: its desired width with the side-by-side margin, whichever margin it has now
+        // (otherwise the stacked margin changes the sum and the row flips back and forth for ever).
+        double rightW = _right.DesiredSize.Width - _right.Margin.Left - _right.Margin.Right + _rightMargin.Left + _rightMargin.Right;
+        double need = (_leftNeed?.Invoke() ?? _left.DesiredSize.Width) + rightW + _gap;
         // A little hysteresis so it doesn't flip back and forth at the boundary.
         bool stack = Stacked ? need > _grid.Bounds.Width - 8 : need > _grid.Bounds.Width;
         if (stack == Stacked) return;

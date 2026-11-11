@@ -77,6 +77,17 @@ public sealed class GameResult
     public ulong Seed { get; init; }
     public DateOnly? Date { get; init; }
     public List<string> PlayLog { get; } = new();
+    /// <summary>The score after every possession that changed it (games with a play log only; see <see cref="GameFlow"/>).</summary>
+    public List<FlowPoint> Flow { get; } = new();
+    /// <summary>Seconds played so far and the period being played (kept up to date while a live game runs).</summary>
+    public double Elapsed { get; set; }
+    public int CurrentPeriod { get; set; } = 1;
+    public int Periods { get; set; } = 4;
+    public int PeriodSeconds { get; set; } = 720;
+    public int OvertimeSeconds { get; set; } = 300;
+    /// <summary>The home side's expected winning margin at tip-off, and the spread around it (for win probability).</summary>
+    public double PregameEdge { get; set; }
+    public double MarginSpread { get; set; } = 13;
     public List<(Player player, Injury injury)> Injuries { get; } = new();
 
     public TeamBox Winner => Home.Points > Away.Points ? Home : Away;
