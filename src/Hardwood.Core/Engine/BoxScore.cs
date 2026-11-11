@@ -29,6 +29,8 @@ public sealed class PlayerLine
     public int Turnovers { get; set; }
     public int Fouls { get; set; }
     public int PlusMinus { get; set; }
+    /// <summary>Made baskets while fouled (the audit checks the rate against the NBA's).</summary>
+    public int AndOnes { get; set; }
     public int[] ZoneAttempts { get; } = new int[5];
     public int[] ZoneMakes { get; } = new int[5];
 
