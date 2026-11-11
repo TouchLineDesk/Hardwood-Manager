@@ -343,12 +343,16 @@ public sealed partial class GameSession
             {
                 ["points"] = (pts, pts + l.Points), ["rebounds"] = (reb, reb + l.Rebounds), ["assists"] = (ast, ast + l.Assists), ["games"] = (gp, gp + 1),
             });
+            // Yours arrive on their own; other clubs' big ones wait for the fortnightly digest (dial-in item 5: inbox volume).
             foreach (var m in passed)
-                if (box.Team == HumanTeam || m.Threshold >= (m.Stat == "points" ? 20_000 : m.Stat == "games" ? 1_000 : 10_000))
+                if (box.Team == HumanTeam)
                     Post($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.", "League");
+                else if (m.Threshold >= (m.Stat == "points" ? 20_000 : m.Stat == "games" ? 1_000 : 10_000))
+                    PostWorld($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.");
         }
+        bool ours = r.Home.Team == HumanTeam || r.Away.Team == HumanTeam;
         foreach (var line in League.Records.Consider(r, Today, League.Season))
-            Post("New league record", line, "League");
+            if (ours) Post("New league record", line, "League"); else PostWorld("New league record", line);
         ReportGame(r);
     }
 

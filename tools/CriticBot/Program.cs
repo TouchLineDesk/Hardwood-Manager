@@ -89,6 +89,8 @@ while (s.League.Season < startYear + seasons)
             s.Answer(d.Id, pick); decisions++;
             mediaAnswers[d.Topic + ":" + pick] = mediaAnswers.GetValueOrDefault(d.Topic + ":" + pick) + 1;
         }
+        // Like a player, read the mail the assistant points at (so the count measures new mail, not a growing backlog).
+        foreach (var m in s.Inbox.Where(m => !m.Read && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff")) m.Read = true;
         progress.DaysPlayed += 7;
         if (s.Employed)
         {
@@ -211,6 +213,7 @@ L("board titles: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Board")
 L($"recruiting: {recruitCommits} seniors committed to us");
 L($"media: {s.Media.Decisions.Count(d => d.Kind == "press")} press conferences, {s.Media.Decisions.Count(d => d.Kind == "locker")} locker-room moments; answers " + string.Join(", ", mediaAnswers.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} x{kv.Value}")));
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
+L("inbox titles: " + string.Join(", ", s.Inbox.GroupBy(m => System.Text.RegularExpressions.Regex.Replace(m.Title.Split(':')[0], @"\d+(\.\d+)?", "#")).OrderByDescending(g => g.Count()).Take(25).Select(g => $"{g.Key} x{g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
     L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");
 L($"save size {new FileInfo(path).Length / 1e6:F1} MB");
