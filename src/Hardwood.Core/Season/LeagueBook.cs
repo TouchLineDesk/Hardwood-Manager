@@ -252,7 +252,9 @@ public sealed class LeagueBook
             Series = () => new(),
             Rules = new List<(string, string)>
             {
-                ("Format", $"{col.Programs.Count} programs in {Hardwood.Core.College.CollegeWorld.Conferences.Length} conferences (5 power, 3 mid-major). Every American from 14 to 22 plays here; at 23 they turn pro."),
+                ("Format", col.Recruiting
+                    ? $"{col.Programs.Count} programs in {col.Active.Count()} conferences, each with {Hardwood.Core.College.CollegeWorld.Scholarships} scholarships and {Hardwood.Core.College.CollegeWorld.WalkOns} walk-ons. Americans play high school from 14 to 17, sign with a college as seniors, enroll at 18 and turn pro at 23."
+                    : $"{col.Programs.Count} programs in {col.Active.Count()} conferences. Every American from 14 to 22 plays here; at 23 they turn pro."),
                 ("Game", RulesText(Model.Rules.College)),
                 ("Season", "Non-conference games from November, Thanksgiving invitationals, December showcases, then a conference round robin from January and conference tournaments in March."),
                 ("March Madness", "68 teams: the 8 conference tournament winners plus 60 at-large. First Four, then six rounds to the national title. Played on the full match engine."),

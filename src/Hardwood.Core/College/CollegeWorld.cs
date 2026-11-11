@@ -58,7 +58,7 @@ public sealed record CollegeChampion(int Year, int ChampionId, string Champion, 
 /// November invitationals and December showcases through conference play and tournaments to a 68-team March Madness,
 /// whose games use the full match engine.
 /// </summary>
-public sealed class CollegeWorld
+public sealed partial class CollegeWorld
 {
     public const int RosterSize = 30, FirstId = 90_001, YoungestAge = 14, GraduateAge = 23;
     public const string Madness = "March Madness";
@@ -91,7 +91,8 @@ public sealed class CollegeWorld
     public List<CollegeChampion> History { get; } = new();
     public List<(string Title, string Body)> News { get; } = new();
 
-    public IEnumerable<Player> Players => Programs.SelectMany(t => t.Roster);
+    /// <summary>Every college player and high-school prospect.</summary>
+    public IEnumerable<Player> Players => Programs.SelectMany(t => t.Roster).Concat(Prospects);
     public Team? Program(int id) => Programs.FirstOrDefault(t => t.Id == id);
     public IEnumerable<Team> InConference(string key) => Programs.Where(t => ConferenceOf[t.Id] == key);
 
@@ -111,9 +112,9 @@ public sealed class CollegeWorld
         return u < elite ? rng.Next(110, 131) : u < 0.065 ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
     }
 
-    private Player NewRecruit(PlayerGenerator gen, Rng rng, int age, DateOnly on)
+    private Player NewRecruit(PlayerGenerator gen, Rng rng, int age, DateOnly on, int? destined = null)
     {
-        int g = DestinedAbility(rng, Math.Min(1, BasePrograms / (double)Math.Max(1, Programs.Count)));
+        int g = destined ?? DestinedAbility(rng, Math.Min(1, BasePrograms / (double)Math.Max(1, Programs.Count)));
         int ca = Math.Max(20, (int)Math.Round(g * Share(age) + rng.NextGaussian(0, 2)));
         var p = gen.Generate((Position)rng.Next(0, 5), ca, age, on, Heritages.All.First(h => h.Key == "us"), "USA");
         p.PotentialAbility = Math.Max(ca, g + (int)Math.Round(Math.Max(0, rng.NextGaussian(g >= 100 ? 10 : 5, 6))));
@@ -155,8 +156,8 @@ public sealed class CollegeWorld
         "Beavers", "Sun Devils", "Utes", "Buffaloes", "Cyclones", "Jayhawks", "Wolfpack", "Blue Devils", "Tar Heels", "Cavaliers", "Hokies",
     };
 
-    /// <summary>Build every program with a full roster (new careers).</summary>
-    public static CollegeWorld Generate(PlayerGenerator gen, Rng rng, DateOnly today)
+    /// <summary>Build every program with a full roster (new careers): the recruiting model (#162) unless asked for the old one.</summary>
+    public static CollegeWorld Generate(PlayerGenerator gen, Rng rng, DateOnly today, bool recruiting = true)
     {
         var c = new CollegeWorld();
         var used = new HashSet<string>();
@@ -183,6 +184,12 @@ public sealed class CollegeWorld
                 c.ConferenceOf[team.Id] = conf.Key;
                 c.Prestige[team.Id] = Math.Clamp(rng.NextGaussian(conf.Power ? 68 : 42, 11), 15, 95);
             }
+        }
+        if (recruiting)
+        {
+            c.GenerateRecruiting(gen, rng, today);
+            c.StartSeason(today.Month >= 7 ? today.Year : today.Year - 1, rng);
+            return c;
         }
         // Rosters: each age group recruited in turn, so the best of every year go to the biggest programs.
         // Ages 14-22 today: everyone who turns 23 before next summer graduates then, so every graduate is 23
@@ -223,7 +230,7 @@ public sealed class CollegeWorld
                 {
                     t.Roster.Remove(p);
                     p.TeamId = null; p.Contract = null; p.RookieSeason = on.Year;
-                    Destined.Remove(p.Id);
+                    Destined.Remove(p.Id); WalkOnIds.Remove(p.Id);
                     freeAgents.Add(p);
                     grads.Add(p);
                     continue;
@@ -243,9 +250,24 @@ public sealed class CollegeWorld
             double change = (w + l > 0 ? (w / (double)(w + l) - 0.5) * 10 : 0) + runs * 1.5 + (s.ChampionId == t.Id ? 4 : 0);
             Prestige[t.Id] = Math.Clamp(Prestige[t.Id] + change + ((conf.Power ? 68 : 42) - Prestige[t.Id]) * 0.08, 10, 99);
         }
+        if (Recruiting)
+        {
+            // High-school prospects grow along their path too; then the seniors enroll (decision #162).
+            foreach (var p in Prospects)
+            {
+                int age = p.Age(on);
+                int g = Destined.TryGetValue(p.Id, out var d) ? d : p.CurrentAbility;
+                int delta = (int)Math.Round(g * Share(age)) - p.CurrentAbility + (int)Math.Round(rng.NextGaussian(0, 2));
+                if (delta > 0) dev.Nudge(p, delta, age);
+            }
+            SummerRecruiting(on, gen, rng);
+        }
+        else
+        {
         // Recruit the new class of 14-year-olds.
         int needed = Programs.Sum(t => RosterSize - t.Roster.Count);
         Recruit(Enumerable.Range(0, needed).Select(_ => NewRecruit(gen, rng, YoungestAge, on)).ToList(), rng);
+        }
         if (grads.Count > 0)
         {
             var top = grads.OrderByDescending(p => p.CurrentAbility).Take(5).ToList();
@@ -360,6 +382,7 @@ public sealed class CollegeWorld
     /// <summary>Play every game up to and including <paramref name="date"/>, adding knockout rounds and stages as they come.</summary>
     public void PlayThrough(DateOnly date, GameSimulator sim, Rng rng)
     {
+        RecruitingThrough(date, rng);
         var s = Season;
         while (true)
         {
