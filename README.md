@@ -25,6 +25,8 @@ A basketball management simulation in the spirit of Football Manager: a living w
 
 **Windows:** download the latest build from the repository's Releases page (or build it yourself below), run `HardwoodManager.exe`, choose a seed and a franchise, and press *Start career*. Saves go to `Documents\Hardwood Manager\career.hwsave` by default.
 
+**New releases are automatic.** The version lives in `VERSION`. When a change that bumps it merges to `main`, the *Release* workflow builds the Windows zip and publishes release `v<VERSION>` with notes listing the merged pull requests. A merge that doesn't bump `VERSION` makes no release.
+
 **From source (any OS):**
 
 ```bash

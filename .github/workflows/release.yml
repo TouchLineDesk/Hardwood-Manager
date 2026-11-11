@@ -1,0 +1,77 @@
+# Publishes a GitHub release with the Windows build whenever main gets a new version.
+# The version is the single line in VERSION at the repo root. Bump it in a PR (minor for a
+# feature, patch for fixes); when that PR merges, this builds the self-contained Windows zip
+# and publishes release v<VERSION> from that commit, with notes listing the merged PRs.
+# If a release for that version already exists (published or draft), it does nothing.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: v
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -TotalCount 1).Trim()
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "VERSION must look like 0.30.1, got '$v'" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+
+      - name: Skip if this version is already released
+        id: check
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ steps.v.outputs.tag }}" --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release ${{ steps.v.outputs.tag }} already exists; nothing to do."
+            "skip=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "skip=false" >> $env:GITHUB_OUTPUT
+          }
+          exit 0
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.check.outputs.skip == 'false'
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build the Windows zip
+        if: steps.check.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          $dir = "HardwoodManager-$v"
+          dotnet publish src/Hardwood.Desktop -c Release -r win-x64 --self-contained true -p:Version=$v -o $dir
+          Copy-Item THIRD-PARTY-NOTICES.md $dir
+          Compress-Archive -Path $dir -DestinationPath "HardwoodManager-v$v-win-x64.zip"
+
+      - name: Publish the release
+        if: steps.check.outputs.skip == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          gh release create "v$v" "HardwoodManager-v$v-win-x64.zip" `
+            --repo "${{ github.repository }}" `
+            --target "${{ github.sha }}" `
+            --title "Hardwood Manager $v" `
+            --generate-notes
