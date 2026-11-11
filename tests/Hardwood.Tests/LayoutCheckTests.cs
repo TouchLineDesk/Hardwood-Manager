@@ -35,6 +35,13 @@ public class LayoutCheckTests
             var sched = (ScheduleViewModel)v.CurrentPage!;
             sched.OpenBox(sched.Games.First(g => g.Played));
         });
+        // Roadmap 2b: the transfer market with a player selected, so the deal chips are on screen.
+        yield return ("Transfer deal", v =>
+        {
+            v.Navigate("Transactions");
+            var tx = (TransactionsViewModel)v.CurrentPage!;
+            tx.SelectedMarket = tx.Market.FirstOrDefault(r => r.Player.Contract is { Buyout: > 0 }) ?? tx.Market.First();
+        });
     }
 
     /// <summary>Tables size their columns over several layout passes; let them finish before looking.</summary>

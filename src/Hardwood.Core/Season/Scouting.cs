@@ -25,7 +25,7 @@ public static class Scouting
     }
 
     /// <summary>Deterministic pseudo-random in [-1, 1) for (player, attribute) so the fog is stable.</summary>
-    private static double Bias(int playerId, int salt)
+    internal static double Bias(int playerId, int salt)
     {
         unchecked
         {

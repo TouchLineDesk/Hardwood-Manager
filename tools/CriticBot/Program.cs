@@ -62,6 +62,7 @@ L($"start: {s.HumanTeam.FullName} in {s.HumanLeagueName}, level {s.MyLevel}, bud
 int longestUnhappy = 0, unhappyPlayerWeeks = 0, overBudgetWeeks = 0, weeksEmployed = 0;
 int decisions = 0, signings = 0, talks = 0, bidsMade = 0, bidsWon = 0, sold = 0, renewed = 0, released = 0, urgentSeen = 0, tipsSeen = 0, sackings = 0, jobs = 0;
 var assistantTitles = new Dictionary<string, int>();
+var bidOutcomes = new Dictionary<string, int>();
 var rng = new Rng(seed + 7);
 int startYear = s.League.Season;
 int lastDay = 0;
@@ -95,14 +96,23 @@ while (s.League.Season < startYear + seasons)
             {
                 long room = s.HumanTeam.Money.WageBudget - s.MyCommittedWages;
                 var worst = s.HumanTeam.Roster.OrderBy(p => p.CurrentAbility).Skip(2).First().CurrentAbility;
-                var target = s.Market().Where(x => x.player.CurrentAbility > worst + 8 && x.player.Age(s.Today) <= 30)
-                    .Select(x => (x.player, x.club, ask: s.AskingPrice(x.player))).Where(x => x.ask <= s.HumanTeam.Money.TransferBudget && s.PeekDemand(x.player).Wage < room)
+                // Roadmap 2b: a manager sees the likely fee and whether he'd come; the bot uses only what the screen shows.
+                var target = s.Market().Where(x => x.player.CurrentAbility > worst + 8 && x.player.Age(s.Today) <= 30 && s.WontCome(x.player) == null)
+                    .Select(x => (x.player, x.club, likely: s.LikelyFee(x.player))).Where(x => x.likely.High <= s.HumanTeam.Money.TransferBudget && s.PeekDemand(x.player).Wage < room)
                     .OrderByDescending(x => x.player.CurrentAbility).FirstOrDefault();
                 if (target.player != null && s.HumanTeam.Roster.Count < (s.InNabl ? s.League.Finance.RosterMax : 15))
                 {
                     bidsMade++; decisions++;
-                    var r = s.Bid(target.player, target.ask);
-                    if (r.Answer == BidAnswer.Accepted) { var d = s.DemandOf(target.player); var reply = s.Offer(target.player, d.Wage, d.Years); if (reply.Accepted) { bidsWon++; signings++; } }
+                    var r = s.Bid(target.player, target.likely.Mid);
+                    if (r.Answer == BidAnswer.Countered && r.Fee <= s.HumanTeam.Money.TransferBudget) { decisions++; r = s.Bid(target.player, r.Fee); }
+                    string Why(string t) => System.Text.RegularExpressions.Regex.Replace(t.Replace(target.player.Name, "X").Replace(target.club.FullName, "C"), @"\$[\d.]+M", "$#M").Split(". ")[0];
+                    if (r.Answer == BidAnswer.Accepted)
+                    {
+                        var d = s.DemandOf(target.player); var reply = s.Offer(target.player, d.Wage, d.Years);
+                        if (reply.Accepted) { bidsWon++; signings++; bidOutcomes["won"] = bidOutcomes.GetValueOrDefault("won") + 1; L($"{s.Today}: bought {target.player.Name} (CA {target.player.CurrentAbility}) from {target.club.FullName}"); }
+                        else { var k = "terms: " + Why(reply.Text); bidOutcomes[k] = bidOutcomes.GetValueOrDefault(k) + 1; }
+                    }
+                    else { var k = $"{r.Answer}: " + Why(r.Text); bidOutcomes[k] = bidOutcomes.GetValueOrDefault(k) + 1; }
                 }
             }
         }
@@ -156,6 +166,7 @@ while (s.League.Season < startYear + seasons)
     }
 }
 L($"done in {sw.Elapsed.TotalMinutes:F1} min. decisions {decisions}, signings {signings}, renewals {renewed}, releases {released}, talks {talks}, bids {bidsMade} (won {bidsWon}), sold {sold}, sackings {sackings}, new jobs {jobs}");
+L("bids: " + string.Join("; ", bidOutcomes.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} x{kv.Value}")));
 L($"assistant: urgent tasks seen {urgentSeen}, strategy tips {tipsSeen}; tasks: " + string.Join(", ", assistantTitles.OrderByDescending(kv => kv.Value).Take(12).Select(kv => $"{kv.Key} x{kv.Value}")));
 L($"people: longest unhappy spell {longestUnhappy} weeks, unhappy player-weeks {unhappyPlayerWeeks}, squad messages: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Squad").GroupBy(m => m.Title.Contains("settles") ? "settles" : m.Title.Contains("requests a trade") ? "trade request" : m.Title.Contains("wants a word") ? "wants a word" : "other").Select(g => $"{g.Key} x{g.Count()}")));
 L($"money: over the wage budget {overBudgetWeeks} of {weeksEmployed} weeks employed");

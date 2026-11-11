@@ -7,6 +7,20 @@ public enum BidAnswer { Accepted, Countered, Rejected }
 
 public sealed record BidReply(BidAnswer Answer, long Fee, string Text);
 
+/// <summary>How the selling club feels about letting a player go (roadmap 2b).</summary>
+public enum TransferStance { WontSell, WouldListen, WantsHimGone }
+
+/// <summary>The selling club's stance, with a short label for a chip or column and the reason behind it.</summary>
+public sealed record StanceInfo(TransferStance Stance, string Label, string Why);
+
+/// <summary>What your scouts expect the fee to be: a range that holds the club's real price, narrower with a better head scout.</summary>
+public readonly record struct FeeRange(long Low, long High)
+{
+    public string Text => Low == High ? $"${Low / 1e6:F2}M" : $"${Low / 1e6:F2}–{High / 1e6:F2}M";
+    public string Short => Low == High ? $"${Low / 1e6:F1}M" : $"${Low / 1e6:F1}–{High / 1e6:F1}M";
+    public long Mid => (Low + High) / 2 / 10_000 * 10_000;
+}
+
 /// <summary>A completed transfer, for the news and the Transactions page.</summary>
 public sealed record TransferRecord(DateOnly Date, int PlayerId, string Player, int FromTeamId, string From, int ToTeamId, string To, long Fee);
 
@@ -39,6 +53,7 @@ public static class TransferMarket
         double ask = Valuation(p, on, sellerScale, fin);
         if (KeyPlayer(p, seller)) ask *= 1.4;
         if (seller.Money.Ready && seller.Money.Balance < 0) ask *= 0.85;   // needs the money
+        if (Unsettled(p)) ask *= 0.85;                                     // he wants out, or is unhappy: they'll cash in
         if ((p.Contract?.Years ?? 0) <= 1) ask *= 0.6;                     // he'd leave for nothing next summer
         return Round(ask);
     }
@@ -51,9 +66,45 @@ public static class TransferMarket
             return new(BidAnswer.Accepted, bid, $"{seller.FullName} accept: your bid meets {p.LastName}'s release clause (${clause / 1e6:F2}M).");
         long ask = Ask(p, seller, on, sellerScale, fin);
         if (bid >= ask) return new(BidAnswer.Accepted, bid, $"{seller.FullName} accept your bid of ${bid / 1e6:F2}M for {p.Name}.");
-        if (bid >= ask * 0.75)
+        var stance = Stance(p, seller);
+        if (bid >= ask * (stance.Stance == TransferStance.WontSell ? 0.85 : 0.75))
             return new(BidAnswer.Countered, ask, $"{seller.FullName} want more for {p.Name}: they'd sell for ${ask / 1e6:F2}M.");
         return new(BidAnswer.Rejected, ask, $"{seller.FullName} reject the bid out of hand. {p.Name} isn't leaving for that.");
+    }
+
+    /// <summary>Unhappy in the Mood column's sense (below 50), or he's asked for a trade.</summary>
+    public static bool Unsettled(Player p) => p.TradeRequested || p.Morale < 50;
+
+    /// <summary>
+    /// The selling club's stance (roadmap 2b), from the same factors as <see cref="Ask"/>, so the label never disagrees
+    /// with the price: a player who wants out, or a club in debt, means they want him gone; a key player signed for two
+    /// or more years means they won't sell without a premium (and a low bid gets no counter); anyone else they'd listen.
+    /// </summary>
+    public static StanceInfo Stance(Player p, Team seller)
+    {
+        int years = p.Contract?.Years ?? 0;
+        if (p.TradeRequested) return new(TransferStance.WantsHimGone, "Wants him gone", $"{p.LastName} has asked for a trade, so they'll take less.");
+        if (seller.Money.Ready && seller.Money.Balance < 0) return new(TransferStance.WantsHimGone, "Wants him gone", "The club is in debt and needs the money.");
+        if (KeyPlayer(p, seller) && years >= 2)
+            return new(TransferStance.WontSell, "Won't sell", $"One of their three best, signed for {years} more years: only a premium will move him.");
+        if (p.Morale < 50) return new(TransferStance.WantsHimGone, "Wants him gone", $"{p.LastName} is unhappy there, so they'll cash in.");
+        if (years <= 1) return new(TransferStance.WouldListen, "Would listen", "His deal is up next summer, so the price is low.");
+        return new(TransferStance.WouldListen, "Would listen", "Not a key player for them: a fair bid will do.");
+    }
+
+    /// <summary>
+    /// What your scouts expect the club to want: a range around the real asking price, ±6% with a top scout and up to ±30%
+    /// with a poor one, centred on a stable per-player misjudgement (like <see cref="Scouting"/>). The real ask always lies
+    /// inside it, so a bid at the top end is accepted; a release clause caps it.
+    /// </summary>
+    public static FeeRange LikelyFee(Player p, long ask, double knowledge)
+    {
+        double err = 0.06 + 0.24 * (1 - Math.Clamp(knowledge, 0, 1));
+        double mid = ask * (1 + Scouting.Bias(p.Id, 977) * err * 0.6);
+        long low = Math.Min(ask, (long)Math.Floor(mid * (1 - err) / 50_000) * 50_000);
+        long high = Math.Max(ask, (long)Math.Ceiling(mid * (1 + err) / 50_000) * 50_000);
+        if (p.Contract is { Buyout: > 0 } c) { high = Math.Min(high, c.Buyout); low = Math.Min(low, high); }
+        return new(Math.Max(0, low), high);
     }
 
     /// <summary>

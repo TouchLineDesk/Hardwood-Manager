@@ -46,6 +46,20 @@ public sealed partial class GameSession
     public long AskingPrice(Player p) =>
         FindTeam(p.TeamId ?? 0) is { } club ? TransferMarket.Ask(p, club, Today, ScaleOf(club), League.Finance) : 0;
 
+    /// <summary>The selling club's stance on one of its players (roadmap 2b).</summary>
+    public StanceInfo? StanceOn(Player p) => FindTeam(p.TeamId ?? 0) is { } club && club != HumanTeam ? TransferMarket.Stance(p, club) : null;
+
+    /// <summary>The fee range your scouts expect, narrower with a better head scout (roadmap 2b).</summary>
+    public FeeRange LikelyFee(Player p) => TransferMarket.LikelyFee(p, AskingPrice(p), Scouting.Knowledge(HumanTeam, p));
+
+    /// <summary>
+    /// Why he wouldn't come to your club, before you spend a bid on him: a good player won't drop to a weaker league,
+    /// and one far above your league aims higher. Null when he'd talk to you.
+    /// </summary>
+    public string? WontCome(Player p) =>
+        FindTeam(p.TeamId ?? 0) is { } seller && seller != HumanTeam
+            ? TransferMarket.WontJoin(p, ScaleOf(seller), MySalaryScale, Today) ?? AimsHigher(p) : null;
+
     /// <summary>Bid for a player under contract. On acceptance, talk to him about personal terms.</summary>
     public BidReply Bid(Player p, long fee)
     {
@@ -56,8 +70,7 @@ public sealed partial class GameSession
             return new(BidAnswer.Rejected, 0, "The club is under a transfer embargo: the debt is more than half a season's revenue. Free agents only, within the wage budget, until it recovers.");
         if (fee > HumanTeam.Money.TransferBudget)
             return new(BidAnswer.Rejected, 0, $"The owner won't fund it: your transfer budget is ${HumanTeam.Money.TransferBudget / 1e6:F2}M.");
-        if (TransferMarket.WontJoin(p, ScaleOf(seller), MySalaryScale, Today) is { } why) return new(BidAnswer.Rejected, 0, why);
-        if (AimsHigher(p) is { } higher) return new(BidAnswer.Rejected, 0, higher);
+        if (WontCome(p) is { } why) return new(BidAnswer.Rejected, 0, why);
         var reply = TransferMarket.Answer(p, seller, fee, Today, ScaleOf(seller), League.Finance);
         if (reply.Answer == BidAnswer.Accepted)
         {

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.Model;
 using Hardwood.Core.Season;
+using Hardwood.Desktop.Controls;
 
 namespace Hardwood.Desktop.ViewModels;
 
@@ -21,7 +22,14 @@ public sealed class MarketRow
     public string PA => Scouting.Potential(Player, Knowledge).ToString();
     public string Contract => Player.Contract is { } c ? $"${c.Salary / 1e6:F2}M × {Math.Max(1, c.Years)}" : "-";
     public long AskValue { get; init; }
-    public string Ask => $"${AskValue / 1e6:F1}M";
+    /// <summary>What your scouts expect the fee to be (roadmap 2b): a range, not the club's exact price.</summary>
+    public FeeRange Likely { get; init; }
+    public string Ask => Likely.Short;
+    public StanceInfo? StanceInfo { get; init; }
+    public string Stance => StanceInfo?.Label ?? "";
+    /// <summary>Null when he'd talk to you; otherwise why he won't.</summary>
+    public string? WontCome { get; init; }
+    public string Interest => WontCome == null ? "Yes" : WontCome.Contains("weaker league") ? "Weaker league" : "Aims higher";
     public string Clause => Player.Contract is { Buyout: > 0 } c ? $"${c.Buyout / 1e6:F2}M" : "-";
     public bool Agreed { get; init; }
     public string Status => Agreed ? "Fee agreed" : "";
@@ -52,6 +60,8 @@ public sealed partial class TransactionsViewModel
     [ObservableProperty] private decimal? _minAbility = 110;
     [ObservableProperty] private decimal? _bidFee;
     [ObservableProperty] private string _dealText = "Select a player to see what his club wants.";
+    /// <summary>The selected player's deal at a glance: likely fee, the club's stance, whether he'd come, the clause, your budget.</summary>
+    public ObservableCollection<Chip> DealChips { get; } = new();
     [ObservableProperty] private string _dealReply = "";
     [ObservableProperty] private string _windowText = "";
     [ObservableProperty] private string _transferBudgetText = "";
@@ -67,6 +77,7 @@ public sealed partial class TransactionsViewModel
     private void ShowDeal(MarketRow? row)
     {
         DealReply = "";
+        DealChips.Clear();
         if (row == null) { DealText = "Select a player to see what his club wants."; return; }
         var s = Session;
         var p = row.Player;
@@ -76,10 +87,19 @@ public sealed partial class TransactionsViewModel
             Talk.Show(p);
             return;
         }
-        BidFee = Math.Round((decimal)(row.AskValue / 1e6), 2);
-        DealText = $"{row.ClubName} would want about {row.Ask} for {p.Name}"
-                   + (p.Contract is { Buyout: > 0 } c ? $"; his release clause is ${c.Buyout / 1e6:F2}M (a bid that meets it can't be refused)." : ".")
-                   + $" Your transfer budget: ${s.HumanTeam.Money.TransferBudget / 1e6:F2}M.";
+        long budget = s.HumanTeam.Money.TransferBudget;
+        var likely = row.Likely;
+        var stance = row.StanceInfo;
+        BidFee = Math.Round((decimal)(likely.Mid / 1e6), 2);
+        DealChips.Add(new Chip("Likely fee", likely.Short, "your scouts' estimate", likely.Low > budget ? "bad" : likely.High > budget ? "warn" : "info"));
+        if (stance != null)
+            DealChips.Add(new Chip("Club stance", stance.Label, "", stance.Stance switch { TransferStance.WontSell => "bad", TransferStance.WantsHimGone => "good", _ => "info" }));
+        DealChips.Add(new Chip("Will he come?", row.WontCome == null ? "Yes" : "No", row.WontCome == null ? "he'll talk terms" : row.Interest.ToLowerInvariant(), row.WontCome == null ? "good" : "bad"));
+        if (p.Contract is { Buyout: > 0 } c) DealChips.Add(new Chip("Release clause", $"${c.Buyout / 1e6:F2}M", "can't be refused", "info"));
+        DealChips.Add(new Chip("Your budget", $"${budget / 1e6:F2}M", "transfer budget", budget >= likely.High ? "good" : budget >= likely.Low ? "warn" : "bad"));
+        DealText = row.WontCome is { } why ? why + " A bid would be wasted."
+            : $"{row.ClubName}: {stance?.Why} Your scouts expect them to want {likely.Text}; a bid at the top of that range should be accepted."
+              + (p.Contract is { Buyout: > 0 } cl ? $" His release clause (${cl.Buyout / 1e6:F2}M) can't be refused." : "");
         Talk.Show(null);
     }
 
@@ -99,6 +119,7 @@ public sealed partial class TransactionsViewModel
             {
                 Player = p, Club = club, League = league, Age = p.Age(s.Today), Knowledge = Scouting.Knowledge(s.HumanTeam, p),
                 AskValue = TransferMarket.Ask(p, club, s.Today, s.ScaleOf(club), s.League.Finance), Agreed = s.AgreedFees.ContainsKey(p.Id),
+                Likely = s.LikelyFee(p), StanceInfo = s.StanceOn(p), WontCome = s.WontCome(p),
             });
     }
 
