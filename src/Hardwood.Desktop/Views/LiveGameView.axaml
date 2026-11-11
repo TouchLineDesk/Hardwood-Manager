@@ -6,19 +6,21 @@
              x:DataType="vm:LiveGameViewModel">
   <Grid RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
     <!-- Scoreboard: arena floor, team colours, big score (game-day presentation, decision #69) -->
-    <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" Height="118">
+    <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" MinHeight="118">
       <Grid>
         <c:CourtBackdrop Glow="{Binding HomeColor}" Intensity="0.7"/>
-        <Grid ColumnDefinitions="*,Auto,*,Auto" Margin="16,8">
+        <StackPanel VerticalAlignment="Center">
+        <Grid x:Name="ScoreRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="16,8,16,4">
+        <Grid x:Name="ScoreLine" ColumnDefinitions="*,Auto,*" MinHeight="100">
           <!-- Away -->
           <Grid ColumnDefinitions="6,Auto,*,Auto" VerticalAlignment="Center">
             <Border Background="{Binding AwayBrush}" CornerRadius="3"/>
-            <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" Width="52" Height="52" Margin="10,0"/>
+            <c:TeamLogo x:Name="AwayLogo" Grid.Column="1" Team="{Binding AwayTeam}" Width="52" Height="52" Margin="10,0"/>
             <StackPanel Grid.Column="2" VerticalAlignment="Center">
               <TextBlock Text="{Binding AwayName}" FontSize="22" FontWeight="Bold" MinWidth="58"/>
               <TextBlock Text="AWAY" Classes="muted" FontSize="11" LetterSpacing="2"/>
             </StackPanel>
-            <TextBlock Grid.Column="3" Text="{Binding AwayScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+            <TextBlock x:Name="AwayScoreText" Grid.Column="3" Text="{Binding AwayScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
           </Grid>
           <!-- Clock -->
           <Border Grid.Column="1" Background="#C0101318" CornerRadius="8" Padding="16,6" VerticalAlignment="Center" Margin="10,0">
@@ -29,15 +31,16 @@
           </Border>
           <!-- Home -->
           <Grid Grid.Column="2" ColumnDefinitions="Auto,*,Auto,6" VerticalAlignment="Center">
-            <TextBlock Text="{Binding HomeScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+            <TextBlock x:Name="HomeScoreText" Text="{Binding HomeScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
               <TextBlock Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right" MinWidth="58" TextAlignment="Right"/>
               <TextBlock Text="HOME" Classes="muted" FontSize="11" LetterSpacing="2" HorizontalAlignment="Right"/>
             </StackPanel>
-            <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" Width="52" Height="52" Margin="10,0"/>
+            <c:TeamLogo x:Name="HomeLogo" Grid.Column="2" Team="{Binding HomeTeam}" Width="52" Height="52" Margin="10,0"/>
             <Border Grid.Column="3" Background="{Binding HomeBrush}" CornerRadius="3"/>
           </Grid>
-          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+        </Grid>
+          <StackPanel x:Name="ScoreButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
             <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
             <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
             <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="96">
@@ -49,19 +52,61 @@
             <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110"/>
           </StackPanel>
         </Grid>
+        <!-- Stat ticker (match day part 2): one fact at a time, moving on as the game goes; click for the next. -->
+        <Button Classes="flat" Command="{Binding NextFactCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="#B0101318" CornerRadius="0" Padding="16,4" ToolTip.Tip="Next fact">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="LIVE" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="#F85149" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding Ticker}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
-    <!-- Play by play -->
-    <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="0,0,10,0" Padding="8">
-      <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2"/>
-        <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
-        <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
-          <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2"/></DataTemplate></ListBox.ItemTemplate>
-        </ListBox>
-      </DockPanel>
-    </Border>
+    <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,10,0">
+      <!-- Game flow (roadmap 2): win probability and momentum, quarter splits, run alerts -->
+      <Border Classes="panel" Padding="8" Margin="0,0,0,10">
+        <StackPanel>
+          <WrapPanel Margin="4,0,4,4">
+            <TextBlock Text="Game flow" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <Border Background="#26303B" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
+              <TextBlock FontSize="11.5"><Run Text="Win chance " Foreground="#8B96A5"/><Run Text="{Binding WinChance}" FontWeight="SemiBold"/></TextBlock>
+            </Border>
+            <Border Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,1" IsVisible="{Binding HasRunAlert}" VerticalAlignment="Center">
+              <TextBlock Text="{Binding RunAlert}" FontSize="11.5" FontWeight="SemiBold" Foreground="#F0A33A"/>
+            </Border>
+          </WrapPanel>
+          <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
+          <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SplitRow">
+                <StackPanel Orientation="Horizontal" Margin="0,2" Opacity="{Binding Opacity}">
+                  <TextBlock Text="{Binding Team}" Width="44" FontWeight="SemiBold" FontSize="12"/>
+                  <ItemsControl ItemsSource="{Binding Cells}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Width="30" TextAlignment="Center" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding Total}" Width="34" TextAlignment="Right" FontWeight="Bold" FontSize="12"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Play by play -->
+      <Border Grid.Row="1" Classes="panel" Padding="8">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
+          <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
+          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
+            <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+    </Grid>
 
     <!-- Bench and controls: lineup and tactics on tabs, so tactics never sit below the fold -->
     <TabControl Grid.Row="1" Grid.Column="1" Padding="0">
@@ -92,10 +137,13 @@
             <ItemsControl ItemsSource="{Binding OurPlayers}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OnCourtRow">
-                  <Grid ColumnDefinitions="14,150,*" Margin="0,1">
-                    <Ellipse Width="8" Height="8" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Name}"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Line}" Classes="muted" FontSize="11.5"/>
+                  <Grid ColumnDefinitions="14,*" Margin="0,1">
+                    <Ellipse Width="8" Height="8" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                    <!-- The stat line sits beside the name, or under it when the panel is narrow. -->
+                    <WrapPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Name}" Width="140" TextWrapping="Wrap"/>
+                      <TextBlock Text="{Binding Line}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="0,1,0,2"/>
+                    </WrapPanel>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -104,16 +152,58 @@
             <ItemsControl ItemsSource="{Binding TheirFloor}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OnCourtRow">
-                  <Grid ColumnDefinitions="164,*" Margin="0,1">
-                    <TextBlock Text="{Binding Name}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="muted" FontSize="11.5"/>
-                  </Grid>
+                  <WrapPanel Margin="0,1">
+                    <TextBlock Text="{Binding Name}" Width="154" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Line}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="0,1,0,2"/>
+                  </WrapPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
         </Border>
 
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Shots">
+        <ScrollViewer>
+          <StackPanel Spacing="10">
+            <Border Classes="panel" Padding="6"><StackPanel><TextBlock Text="{Binding AwayName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding AwayZoneAttempts}" Makes="{Binding AwayZoneMakes}" Height="220"/></StackPanel></Border>
+            <Border Classes="panel" Padding="6"><StackPanel><TextBlock Text="{Binding HomeName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding HomeZoneAttempts}" Makes="{Binding HomeZoneMakes}" Height="220"/></StackPanel></Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Stats">
+        <ScrollViewer>
+          <StackPanel Spacing="10">
+            <Border Classes="panel">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Highlights so far" FontWeight="SemiBold"/>
+                <c:HighlightStrip ItemsSource="{Binding Highlights}"/>
+              </StackPanel>
+            </Border>
+            <Border Classes="panel">
+              <StackPanel Spacing="2">
+                <Grid ColumnDefinitions="*,*">
+                  <TextBlock Text="{Binding AwayName}" FontWeight="SemiBold"/>
+                  <TextBlock Grid.Column="1" Text="{Binding HomeName}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                </Grid>
+            <ItemsControl ItemsSource="{Binding TeamStats}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TeamStatRow">
+                  <StackPanel Margin="0,3">
+                    <Grid ColumnDefinitions="*,Auto,*">
+                      <TextBlock Text="{Binding AwayText}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="muted" FontSize="11" Margin="8,0" HorizontalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding HomeText}" FontSize="12" FontWeight="SemiBold" TextAlignment="Right" TextWrapping="Wrap"/>
+                    </Grid>
+                    <c:CompareBar Away="{Binding Away}" Home="{Binding Home}" AwayColor="{Binding AwayColor}" HomeColor="{Binding HomeColor}" Margin="0,3,0,0"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
