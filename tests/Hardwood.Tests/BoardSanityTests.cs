@@ -160,4 +160,36 @@ public class BoardSanityTests
         var met = new Expectations { TeamId = best.Id, League = "nabl", Goal = SeasonGoal.SecondRound, TargetWins = 50, Achieved = SeasonGoal.SecondRound };
         Assert.Equal(SeasonGoal.ConferenceFinals, Board.NextExpectations(ctx, best, 2027, met, "nabl", 1, 1).Goal);
     }
+
+    [Fact]
+    public void A_goal_falls_at_most_one_step_and_eight_wins_a_season()
+    {
+        // Critic review #6 (#152): Milwaukee went 48-34 against "make the playoffs, about 49 wins" and was then set
+        // "develop, about 31 wins". Goals now fall the way they rise: one step, and the target at most 8 of 82.
+        var league = NewLeague();
+        Board.EnsureOwnersAndCoaches(league, 3);
+        var ctx = LeagueContext.Nabl(league);
+        var worst = league.Teams.OrderBy(t => Board.ProjectedRank(league, t)).Last();
+        worst.Owner.Ambition = 10; // no owner demand lifting the goal on its own
+        Assert.Equal(SeasonGoal.Develop, Board.SetExpectations(ctx, worst, 2027).Goal); // what the squad alone would say
+
+        var missed = new Expectations { TeamId = worst.Id, League = "nabl", Goal = SeasonGoal.Playoffs, TargetWins = 49, Achieved = SeasonGoal.PlayIn };
+        var next = Board.NextExpectations(ctx, worst, 2027, missed, "nabl", 1, 1);
+        Assert.Equal(SeasonGoal.PlayIn, next.Goal);
+        Assert.Equal(41, next.TargetWins);
+
+        // From the title, a collapse in squad strength still only drops the bar one step.
+        var champs = new Expectations { TeamId = worst.Id, League = "nabl", Goal = SeasonGoal.Title, TargetWins = 60, Achieved = SeasonGoal.Title };
+        var after = Board.NextExpectations(ctx, worst, 2027, champs, "nabl", 1, 1);
+        Assert.Equal(SeasonGoal.Finals, after.Goal);
+        Assert.Equal(52, after.TargetWins);
+
+        // Promotion and relegation still reset the bar (handled before the symmetry rule).
+        var relegated = Board.NextExpectations(ctx, worst, 2027, new Expectations { TeamId = worst.Id, League = "nabl", Goal = SeasonGoal.Title, TargetWins = 60 }, "chp", 2, 1);
+        Assert.True((int)relegated.Goal <= (int)SeasonGoal.Playoffs);
+
+        // A goal that was met falls one step at most as well.
+        var euro = Board.NextExpectations(ctx, worst, 2027, new Expectations { TeamId = worst.Id, League = "nabl", Goal = SeasonGoal.SecondRound, TargetWins = 50, Achieved = SeasonGoal.SecondRound }, "nabl", 1, 1);
+        Assert.Equal(SeasonGoal.Playoffs, euro.Goal);
+    }
 }

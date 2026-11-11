@@ -52,6 +52,21 @@ public class LayoutCheckTests
         });
     }
 
+    /// <summary>Market columns whose right edge lies past the visible part of the table (they'd need a sideways scroll).</summary>
+    private static IEnumerable<string> DealColumnsOffScreen(MainWindow window, string[] headers)
+    {
+        var grid = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<DataGrid>()
+            .First(g => g.Columns.Any(c => c.Header as string == "Club stance"));
+        var cells = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(grid).OfType<Avalonia.Controls.DataGridColumnHeader>().ToList();
+        foreach (var name in headers)
+        {
+            var h = cells.FirstOrDefault(c => c.Content as string == name);
+            if (h == null) { yield return $"market column '{name}' missing"; continue; }
+            var right = Avalonia.VisualExtensions.TranslatePoint(h, new Avalonia.Point(h.Bounds.Width, 0), grid);
+            if (right is not { } r || r.X > grid.Bounds.Width + 0.5) yield return $"market column '{name}' ends at {right?.X:0}, past the table's {grid.Bounds.Width:0}px";
+        }
+    }
+
     /// <summary>Tables size their columns over several layout passes; let them finish before looking.</summary>
     private static void Settle(MainWindow window)
     {
@@ -127,6 +142,10 @@ public class LayoutCheckTests
                         using var frame = window.CaptureRenderedFrame();
                         frame?.Save(Path.Combine(shots, $"{width}-{(guide ? "a" : "n")}-{scale * 100:0}-{name.Replace(" & ", "-").Replace(' ', '-').ToLower()}.png"));
                     }
+                    // Critic review #6: the market's deal columns must be on screen, not scrolled off the table's edge.
+                    if (name == "Transfer deal" && scale == 1.0)
+                        foreach (var line in DealColumnsOffScreen(window, width >= 1480 ? new[] { "Joins?", "Club stance", "Likely fee", "Club" } : new[] { "Joins?", "Club stance" }))
+                            gate.Add($"{width}px {(guide ? "assistant" : "no-assist")} {scale:P0} | {name,-20} | {line}");
                     if (window.TopBarOverlap() is > 1 and var overlap)
                     {
                         string line = $"{width}px {(guide ? "assistant" : "no-assist")} {scale:P0} | {name,-20} | top bar overlaps itself by {overlap:0}px";
