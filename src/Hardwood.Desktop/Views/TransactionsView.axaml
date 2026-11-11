@@ -24,12 +24,14 @@
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
               <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="186"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="54"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="46"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="48"/>
               <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="48"/>
+              <DataGridTextColumn Header="Likely fee" Binding="{Binding Ask}" Width="124"/>
+              <DataGridTextColumn Header="Joins?" Binding="{Binding Interest}" Width="110"/>
+              <DataGridTextColumn Header="Club stance" Binding="{Binding Stance}" Width="122"/>
               <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="108"/>
-              <DataGridTextColumn Header="Value" Binding="{Binding Ask}" Width="78"/>
               <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="70"/>
               <DataGridTextColumn Header="" Binding="{Binding Status}" Width="SizeToCells" MinWidth="40"/>
             </DataGrid.Columns>
@@ -40,6 +42,7 @@
                 <StackPanel Spacing="8">
                   <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ArrowLeftRight" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Make a bid" Classes="h2" Margin="0"/></StackPanel>
                   <TextBlock Text="{Binding WindowText}" Classes="muted" TextWrapping="Wrap"/>
+                  <c:StatStrip ItemsSource="{Binding DealChips}" Accent="{DynamicResource HwAccent}"/>
                   <TextBlock Text="{Binding DealText}" TextWrapping="Wrap"/>
                   <Grid ColumnDefinitions="Auto,*,Auto">
                     <TextBlock Text="Fee $M" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0"/>
