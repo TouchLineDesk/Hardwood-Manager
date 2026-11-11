@@ -26,11 +26,68 @@
         </Grid>
       </Border>
 
+      <!-- Highlight cards (match day part 2): the moments that decided it -->
+      <c:HighlightStrip ItemsSource="{Binding Highlights}" IsVisible="{Binding HasHighlights}"/>
       <c:StatStrip ItemsSource="{Binding Leaders}" Accent="{DynamicResource HwAccent}"/>
+      <!-- Game flow (roadmap 2): how the game went, not just how it ended -->
+      <Border Classes="panel" Padding="8" IsVisible="{Binding HasFlow}">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Game flow" FontWeight="SemiBold" Margin="4,0"/>
+          <c:StatStrip ItemsSource="{Binding FlowChips}" Accent="{DynamicResource HwAccent}"/>
+          <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+            <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="190" MinWidth="240"/>
+            <StackPanel x:Name="FlowSide" Grid.Column="1" Margin="14,10,4,0" Spacing="10" MaxWidth="340">
+              <ItemsControl ItemsSource="{Binding Splits}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SplitRow">
+                    <StackPanel Orientation="Horizontal" Margin="0,2" Opacity="{Binding Opacity}">
+                      <TextBlock Text="{Binding Team}" Width="44" FontWeight="SemiBold" FontSize="12"/>
+                      <ItemsControl ItemsSource="{Binding Cells}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Width="30" TextAlignment="Center" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="{Binding Total}" Width="34" TextAlignment="Right" FontWeight="Bold" FontSize="12"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Spacing="2" IsVisible="{Binding HasRuns}">
+                <TextBlock Text="Runs" Classes="muted" FontSize="11.5"/>
+                <ItemsControl ItemsSource="{Binding RunLines}">
+                  <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
       <Grid ColumnDefinitions="*,*" IsVisible="{Binding HasLog}">
         <Border Classes="panel" Padding="6" Margin="0,0,6,0"><StackPanel><TextBlock Text="{Binding AwayName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding AwayZoneAttempts}" Makes="{Binding AwayZoneMakes}" Height="230"/></StackPanel></Border>
         <Border Grid.Column="1" Classes="panel" Padding="6" Margin="6,0,0,0"><StackPanel><TextBlock Text="{Binding HomeName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding HomeZoneAttempts}" Makes="{Binding HomeZoneMakes}" Height="230"/></StackPanel></Border>
       </Grid>
+      <Border Classes="panel" Padding="10" IsVisible="{Binding HasHighlights}">
+        <StackPanel Spacing="2" MaxWidth="720" HorizontalAlignment="Stretch">
+          <TextBlock Text="Team stats" FontWeight="SemiBold" Margin="0,0,0,4"/>
+          <Grid ColumnDefinitions="*,*">
+            <TextBlock Text="{Binding AwayName}" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="1" Text="{Binding HomeName}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding TeamStats}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TeamStatRow">
+                  <StackPanel Margin="0,3">
+                    <Grid ColumnDefinitions="*,Auto,*">
+                      <TextBlock Text="{Binding AwayText}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="muted" FontSize="11" Margin="8,0" HorizontalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding HomeText}" FontSize="12" FontWeight="SemiBold" TextAlignment="Right" TextWrapping="Wrap"/>
+                    </Grid>
+                    <c:CompareBar Away="{Binding Away}" Home="{Binding Home}" AwayColor="{Binding AwayColor}" HomeColor="{Binding HomeColor}" Margin="0,3,0,0"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+      </Border>
       <c:TeamLink Team="{Binding AwayTeam}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,6"/>
       <c:StatStrip ItemsSource="{Binding AwayChips}" Accent="{Binding AwayAccent}"/>
       <DataGrid ItemsSource="{Binding Away}" Height="300">

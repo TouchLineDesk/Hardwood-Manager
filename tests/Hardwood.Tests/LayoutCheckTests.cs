@@ -16,8 +16,10 @@ namespace Hardwood.Tests;
 public class LayoutCheckTests
 {
     /// <summary>The pages the check covers: every sidebar page, plus a player, another team, and a box score.</summary>
-    private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm)
+    private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null)
     {
+        if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); });
+        if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
             yield return (nav.Name, v => v.Navigate(nav.Name));
         yield return ("Player", v =>
@@ -77,6 +79,11 @@ public class LayoutCheckTests
             var session = vm.Session!;
             for (int i = 0; i < 45; i++) session.AdvanceDay();
             vm.AfterTick();
+            // A live game two quarters in (match day, roadmap 2), played on the side so the season isn't touched.
+            var game = new Hardwood.Core.Engine.GameSimulator().StartLive(session.HumanTeam, session.League.Teams.First(t => t != session.HumanTeam),
+                session.League.Rules, 77, session.Today);
+            for (int i = 0; i < 115; i++) game.Step();
+            var live = new LiveGameViewModel(vm, game, new());
 
             var sizes = new List<(int width, bool guide, double scale, bool gated)>
             {
@@ -92,10 +99,19 @@ public class LayoutCheckTests
                 window.Width = width;
                 window.ApplyScale(scale);
                 vm.Guide.On = guide;
-                foreach (var (name, open) in Pages(vm))
+                foreach (var (name, open) in Pages(vm, live))
                 {
                     open(vm);
-                    Settle(window);
+                    try { Settle(window); }
+                    catch (InvalidOperationException e) { throw new InvalidOperationException($"{name} at {width}px {(guide ? "with" : "without")} the assistant, {scale:P0}: {e.Message}", e); }
+                    // The live screen's Stats tab (highlights and team stats, match day part 2).
+                    if (name == "Live stats")
+                    {
+                        var tabs = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<TabControl>()
+                            .First(t => Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<LiveGameView>(t) != null);
+                        tabs.SelectedIndex = 2;
+                        Settle(window);
+                    }
                     if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)
                     {
                         Directory.CreateDirectory(shots);

@@ -101,10 +101,34 @@ public class UiSmokeTests
             liveVm.Refresh();
             liveVm.Lineup[0].Selected = liveVm.OurPlayers.Last().Player;
             liveVm.ApplyLineup();
+            // Match day (roadmap 2): what the flow panel says matches the game.
+            for (int step = 0; step < 200 && !live!.Complete; step++)
+            {
+                live.Step();
+                liveVm.Refresh();
+                var run = Hardwood.Core.Engine.GameFlow.CurrentRun(live.Result);
+                Assert.Equal(run == null ? null : $"{run.Team} on a {run.Score} run", liveVm.RunAlert);
+                Assert.Equal(live.AwayScore.ToString(), liveVm.Splits[1].Total);
+                Assert.Equal(live.HomeScore.ToString(), liveVm.Splits[2].Total);
+                Assert.Equal(live.AwayScore, liveVm.Splits[1].Cells.Where(c => c != "–").Sum(int.Parse));
+                Assert.Equal(live.HomeScore, liveVm.Splits[2].Cells.Where(c => c != "–").Sum(int.Parse));
+                Assert.Equal(live.Result.Away.FGA, liveVm.AwayZoneAttempts.Sum());
+                Assert.Equal(live.Result.Home.FGM, liveVm.HomeZoneMakes.Sum());
+                // Match day part 2: the ticker quotes a current fact, the stats tab matches the box, no winner yet.
+                Assert.Contains(liveVm.Ticker, Hardwood.Core.Engine.GameHighlights.Ticker(live.Result).DefaultIfEmpty(liveVm.Ticker));
+                Assert.Equal($"{live.Result.Away.FGM}-{live.Result.Away.FGA}", liveVm.TeamStats[0].AwayText.Split(' ')[0]);
+                Assert.Equal(live.Result.Home.Turnovers.ToString(), liveVm.TeamStats.First(t => t.Label == "Turnovers").HomeText);
+                if (!live.Complete) Assert.DoesNotContain(liveVm.Highlights, h => h.Kind == "clutch");
+            }
+            Assert.Contains(liveVm.Log, l => l.Contains(" run") && l.Contains(">>"));
             liveVm.SimToEnd();
             Assert.True(liveVm.Complete);
             liveVm.Continue();
-            Assert.IsType<BoxScoreViewModel>(vm.CurrentPage);
+            var box = Assert.IsType<BoxScoreViewModel>(vm.CurrentPage);
+            Assert.True(box.HasFlow);
+            Assert.Equal("Player of the game", box.Highlights[0].Title);
+            Assert.Equal(Hardwood.Core.Engine.GameFlow.Runs(box.Result).Count, box.RunLines.Count);
+            Assert.Equal(box.Result.Home.PointsByPeriod.Select(x => x.ToString()), box.Splits[2].Cells);
             window.UpdateLayout();
 
             // Play into the season and open the box score of the first game.
