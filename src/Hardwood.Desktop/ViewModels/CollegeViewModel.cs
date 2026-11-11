@@ -36,7 +36,7 @@ public sealed class ProspectListRow
 }
 
 /// <summary>A high-school prospect in a recruiting class (decision #162).</summary>
-public sealed class RecruitRow
+public sealed class HighSchoolRow
 {
     public required Player Player { get; init; }
     public int Rank { get; init; }
@@ -61,6 +61,31 @@ public sealed class ClassRankRow
     public int Points { get; init; }
 }
 
+/// <summary>One matchup box in the bracket view.</summary>
+public sealed record BracketCard(string SeedA, string NameA, string ScoreA, bool WinA, string SeedB, string NameB, string ScoreB, bool WinB, string Note, bool Upset)
+{
+    public double OpacityA => WinB ? 0.55 : 1;
+    public double OpacityB => WinA ? 0.55 : 1;
+}
+
+/// <summary>A round of the selected region: its name and boxes.</summary>
+public sealed record BracketColumn(string Title, IReadOnlyList<BracketCard> Cards, int Rows);
+
+/// <summary>A senior on the recruiting board (decision #157).</summary>
+public sealed class RecruitRow
+{
+    public required Player Player { get; init; }
+    public string Name => Player.Name;
+    public string Pos => Player.PrimaryPosition.ToString();
+    public string Program { get; init; } = "";
+    public string CA { get; init; } = "";
+    public string PA { get; init; } = "";
+    public double Interest { get; init; }
+    public string InterestText { get; init; } = "";
+    public string Status { get; init; } = "";
+    public bool Listed { get; init; }
+}
+
 /// <summary>The college hub (decision #97): Top 25, conference tables, the March Madness bracket, and prospects by age.</summary>
 public sealed partial class CollegeViewModel : PageViewModel
 {
@@ -72,6 +97,14 @@ public sealed partial class CollegeViewModel : PageViewModel
     [ObservableProperty] private string _conference = CollegeWorld.Conferences[0].Name;
     public ObservableCollection<RankRow> ConferenceRows { get; } = new();
     public ObservableCollection<string> Bracket { get; } = new();
+    // March Madness as a bracket (college depth part 2): pick a region or the Final Four.
+    public List<string> BracketViews { get; } = MadnessBracket.Regions.Append("Final Four").ToList();
+    [ObservableProperty] private string _bracketView = "East";
+    [ObservableProperty] private List<BracketColumn> _bracketColumns = new();
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _madnessChips = new();
+    public bool HasBracket => BracketColumns.Count > 0;
+    partial void OnBracketColumnsChanged(List<BracketColumn> value) => OnPropertyChanged(nameof(HasBracket));
+    partial void OnBracketViewChanged(string value) => FillBracket();
     [ObservableProperty] private string _bracketNote = "";
     public List<string> Ages { get; } = new() { "Turning pro next summer", "College (18-22)", "High school (14-17)", "All" };
     [ObservableProperty] private string _age = "Turning pro next summer";
@@ -83,21 +116,36 @@ public sealed partial class CollegeViewModel : PageViewModel
     /// <summary>The recruiting tabs exist in careers with the high-school model (decision #162).</summary>
     public bool HasRecruiting => Session.World.College?.Recruiting == true;
     public List<string> Classes { get; private set; } = new();
-    [ObservableProperty] private string _recruitClass = "";
+    [ObservableProperty] private string _highSchoolClass = "";
     public List<string> StarFilters { get; } = new() { "All", "5-star", "4-star", "3-star", "2-star", "Uncommitted", "Committed" };
     [ObservableProperty] private string _starFilter = "All";
-    public ObservableCollection<RecruitRow> Recruits { get; } = new();
-    [ObservableProperty] private RecruitRow? _selectedRecruit;
-    public ObservableCollection<Chip> RecruitChips { get; } = new();
+    public ObservableCollection<HighSchoolRow> HighSchoolers { get; } = new();
+    [ObservableProperty] private HighSchoolRow? _selectedHighSchool;
+    public ObservableCollection<Chip> HighSchoolChips { get; } = new();
     public ObservableCollection<ClassRankRow> ClassRanks { get; } = new();
     [ObservableProperty] private string _classNote = "";
+
+    // Senior recruiting (decision #157): court seniors so they sign for you on graduation day.
+    public ObservableCollection<RecruitRow> Recruits { get; } = new();
+    [ObservableProperty] private RecruitRow? _selectedRecruit;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _recruitChips = new();
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _interestChips = new();
+    [ObservableProperty] private string _recruitLean = "";
+    [ObservableProperty] private string _recruitReply = "";
+    [ObservableProperty] private string _recruitNote = "";
+    [ObservableProperty] private decimal _offerWage;
+    [ObservableProperty] private decimal _offerYears = 3;
+    [ObservableProperty] private bool _listedOnly;
+    public bool HasRecruit => SelectedRecruit != null;
+    partial void OnSelectedRecruitChanged(RecruitRow? value) { OnPropertyChanged(nameof(HasRecruit)); RecruitReply = ""; FillRecruitPanel(); }
+    partial void OnListedOnlyChanged(bool value) => FillRecruits();
     [ObservableProperty] private int _tab;
 
     partial void OnConferenceChanged(string value) => FillConference();
     partial void OnAgeChanged(string value) => FillProspects();
     partial void OnPositionChanged(string value) => FillProspects();
-    partial void OnRecruitClassChanged(string value) => FillRecruits();
-    partial void OnStarFilterChanged(string value) => FillRecruits();
+    partial void OnHighSchoolClassChanged(string value) => FillHighSchool();
+    partial void OnStarFilterChanged(string value) => FillHighSchool();
 
     public CollegeViewModel(MainViewModel shell) : base(shell)
     {
@@ -129,39 +177,40 @@ public sealed partial class CollegeViewModel : PageViewModel
         FillConference();
         FillBracket();
         FillProspects();
+        FillRecruits();
         if (c.Recruiting)
         {
             int senior = c.SeniorClass;
             var classes = Enumerable.Range(senior, 4).Select(y => ClassLabel(c, y)).ToList();
             if (!classes.SequenceEqual(Classes)) { Classes = classes; OnPropertyChanged(nameof(Classes)); }
-            if (!Classes.Contains(RecruitClass)) RecruitClass = Classes[0]; else FillRecruits();
+            if (!Classes.Contains(HighSchoolClass)) HighSchoolClass = Classes[0]; else FillHighSchool();
         }
     }
 
     private string ClassLabel(CollegeWorld c, int year) => $"Class of {year}" + (year == c.SeniorClass ? " (seniors)" : year == c.SeniorClass + 3 ? " (freshmen)" : "");
-    private int ClassYear => int.TryParse(RecruitClass.Replace("Class of ", "").Split(' ')[0], out var y) ? y : 0;
+    private int ClassYear => int.TryParse(HighSchoolClass.Replace("Class of ", "").Split(' ')[0], out var y) ? y : 0;
 
-    private void FillRecruits()
+    private void FillHighSchool()
     {
-        Recruits.Clear(); RecruitChips.Clear(); ClassRanks.Clear();
+        HighSchoolers.Clear(); HighSchoolChips.Clear(); ClassRanks.Clear();
         if (Session.World.College is not { Recruiting: true } c || ClassYear == 0) return;
         int year = ClassYear;
         var today = Session.Today;
         var all = c.ClassOf(year).Select(p => (p, r: c.Recruits[p.Id])).OrderBy(x => x.r.Rank).ToList();
         int committed = all.Count(x => x.r.CommittedTo != null);
         var signing = CollegeWorld.SigningDay(year);
-        RecruitChips.Add(new Chip("Class", $"{year}", year == c.SeniorClass ? "seniors: enroll next summer" : $"enrolls in {year - today.Year} summers", "info"));
-        RecruitChips.Add(new Chip("Committed", $"{committed} of {all.Count}", today < CollegeWorld.CommitmentsOpen(year) ? $"commitments open {CollegeWorld.CommitmentsOpen(year):MMM d, yyyy}" : "tracked prospects", committed > 0 ? "good" : ""));
-        RecruitChips.Add(new Chip("Five-stars signed", $"{all.Count(x => x.r.Stars == 5 && x.r.CommittedTo != null)} of {CollegeWorld.FiveStars}", "the top 25 in the class", "info"));
-        RecruitChips.Add(new Chip("Signing day", $"{signing:MMM d}", today > signing ? "done: the class is set" : $"{(signing.DayNumber - today.DayNumber)} days away", today > signing ? "good" : "warn"));
+        HighSchoolChips.Add(new Chip("Class", $"{year}", year == c.SeniorClass ? "seniors: enroll next summer" : $"enrolls in {year - today.Year} summers", "info"));
+        HighSchoolChips.Add(new Chip("Committed", $"{committed} of {all.Count}", today < CollegeWorld.CommitmentsOpen(year) ? $"commitments open {CollegeWorld.CommitmentsOpen(year):MMM d, yyyy}" : "tracked prospects", committed > 0 ? "good" : ""));
+        HighSchoolChips.Add(new Chip("Five-stars signed", $"{all.Count(x => x.r.Stars == 5 && x.r.CommittedTo != null)} of {CollegeWorld.FiveStars}", "the top 25 in the class", "info"));
+        HighSchoolChips.Add(new Chip("Signing day", $"{signing:MMM d}", today > signing ? "done: the class is set" : $"{(signing.DayNumber - today.DayNumber)} days away", today > signing ? "good" : "warn"));
         var ranking = c.ClassRanking(year);
-        if (ranking.Count > 0) RecruitChips.Add(new Chip("Top class", ranking[0].Program.FullName, $"{ranking[0].Points} pts · {ranking[0].FiveStars}× 5-star", ""));
+        if (ranking.Count > 0) HighSchoolChips.Add(new Chip("Top class", ranking[0].Program.FullName, $"{ranking[0].Points} pts · {ranking[0].FiveStars}× 5-star", ""));
         foreach (var (p, r) in all.Where(x => StarFilter switch
                  {
                      "5-star" => x.r.Stars == 5, "4-star" => x.r.Stars == 4, "3-star" => x.r.Stars == 3, "2-star" => x.r.Stars == 2,
                      "Uncommitted" => x.r.CommittedTo == null, "Committed" => x.r.CommittedTo != null, _ => true,
                  }).Take(300))
-            Recruits.Add(new RecruitRow
+            HighSchoolers.Add(new HighSchoolRow
             {
                 Player = p, Rank = r.Rank, Stars = CollegeWorld.StarText(r.Stars), Age = p.Age(today), HighSchool = r.HighSchool,
                 State = r.State, Committed = r.CommittedTo is { } to ? c.Program(to)!.City : "Uncommitted",
@@ -173,10 +222,84 @@ public sealed partial class CollegeViewModel : PageViewModel
     }
 
     [RelayCommand]
-    private void OpenRecruit(RecruitRow? row)
+    private void OpenHighSchool(HighSchoolRow? row)
     {
-        if ((row ?? SelectedRecruit) is { } r) Shell.ShowPlayer(r.Player);
+        if ((row ?? SelectedHighSchool) is { } r) Shell.ShowPlayer(r.Player);
     }
+
+    private void FillRecruits()
+    {
+        var keep = SelectedRecruit?.Player;
+        Recruits.Clear();
+        if (Session.World.College is not { } c) return;
+        var board = Session.Recruiting;
+        var team = Session.HumanTeam;
+        int ours = 0, rivals = 0;
+        foreach (var p in Session.Seniors().Take(80))
+        {
+            var st = board?.Find(p.Id);
+            if (st?.CommittedTeamId == team.Id) ours++; else if (st?.CommittedTeamId != null) rivals++;
+            bool listed = st is { Shortlisted: true } && st.TeamId == team.Id;
+            if (ListedOnly && !listed && st?.CommittedTeamId != team.Id) continue;
+            var i = Session.InterestIn(p);
+            double k = Scouting.Knowledge(team, p, prospect: true);
+            Recruits.Add(new RecruitRow
+            {
+                Player = p, Program = c.Program(p.TeamId ?? 0)?.FullName ?? "", CA = Scouting.Ability(p, k).ToString(), PA = Scouting.Potential(p, k).ToString(),
+                Interest = i.Blocked != null ? 0 : i.Total, InterestText = i.Blocked != null ? "-" : $"{i.Total:0} / {i.Need:0}",
+                Listed = listed,
+                Status = st?.CommittedTeamId is { } t ? (t == team.Id ? "Committed to you" : $"Committed: {Session.FindTeam(t)?.Abbreviation}")
+                       : i.Blocked != null ? "Aims higher" : st is { OfferWage: > 0 } && st.TeamId == team.Id ? "Your offer is in" : listed ? "On your list" : "Open",
+            });
+        }
+        RecruitNote = !Session.RecruitingOpen
+            ? "Recruiting opens with the college season in November and closes when the season ends and the seniors turn pro."
+            : "Seniors turn pro when the season ends. Win them over with calls and visits, then offer terms: a senior who commits signs for you then, before free agency opens.";
+        RecruitChips = new()
+        {
+            new("Recruiting points", $"{board?.Points ?? 0}", $"tops up monthly (scout), max {Hardwood.Core.College.RecruitingBoard.PointsCap}", "team"),
+            new("Committed to you", ours.ToString(), "sign when the season ends", ours > 0 ? "good" : ""),
+            new("Committed elsewhere", rivals.ToString(), "of the top 80 seniors", rivals > 40 ? "warn" : ""),
+            new("Seniors", Session.Seniors().Count.ToString(), "turning pro this summer", "info"),
+        };
+        SelectedRecruit = keep == null ? null : Recruits.FirstOrDefault(r => r.Player == keep);
+        FillRecruitPanel();
+    }
+
+    private void FillRecruitPanel()
+    {
+        if (SelectedRecruit?.Player is not { } p) { InterestChips = new(); RecruitLean = ""; return; }
+        var i = Session.InterestIn(p);
+        InterestChips = new()
+        {
+            new("Club pull", $"{i.Appeal * 0.45:0}", $"{i.Appeal:0}/100 × 45%: league, record, your name", i.Appeal >= 60 ? "good" : i.Appeal < 40 ? "bad" : ""),
+            new("Playing time", $"{i.Minutes * 0.25:0}", $"{i.Minutes:0}/100 × 25%: who's ahead of him", i.Minutes >= 70 ? "good" : i.Minutes < 40 ? "bad" : ""),
+            new("Your effort", $"{i.Effort:0}", "calls and visits (fades 3% a week)", i.Effort >= 15 ? "good" : ""),
+            new("Interest", $"{i.Total:0}", $"he needs {i.Need:0} to commit", i.Enough ? "good" : "warn"),
+        };
+        RecruitLean = Session.Lean(p);
+        if (_wageFor != p) { _wageFor = p; OfferWage = Math.Round((decimal)(Session.RecruitDemand(p).Wage / 1e6), 2); }
+    }
+
+    private Player? _wageFor;
+
+    private void AfterRecruitAction(string reply)
+    {
+        RecruitReply = reply;
+        FillRecruits();
+        Shell.Guide.Refresh();
+    }
+
+    [RelayCommand] private void ShortlistRecruit() { if (SelectedRecruit?.Player is { } p) AfterRecruitAction(Session.Shortlist(p)); }
+    [RelayCommand] private void CallRecruit() { if (SelectedRecruit?.Player is { } p) AfterRecruitAction(Session.CallRecruit(p)); }
+    [RelayCommand] private void VisitRecruit() { if (SelectedRecruit?.Player is { } p) AfterRecruitAction(Session.VisitRecruit(p)); }
+    [RelayCommand] private void OfferRecruit()
+    {
+        if (SelectedRecruit?.Player is not { } p) return;
+        var wage = OfferWage; var years = OfferYears;
+        AfterRecruitAction(Session.OfferRecruit(p, (long)(wage * 1_000_000m), (int)years));
+    }
+    [RelayCommand] private void OpenRecruit() { if (SelectedRecruit?.Player is { } p) Shell.ShowPlayer(p); }
 
     private static string ConfName(CollegeWorld c, Team t) => CollegeWorld.Conferences.First(x => x.Key == c.ConferenceOf[t.Id]).Short;
 
@@ -196,18 +319,46 @@ public sealed partial class CollegeViewModel : PageViewModel
     private void FillBracket()
     {
         Bracket.Clear();
+        BracketColumns = new(); MadnessChips = new();
         if (Session.World.College is not { } c) return;
         var s = c.Season;
         if (!s.Selected) { BracketNote = "The 68-team field is picked on Selection Sunday in mid-March: eight conference tournament champions and 60 at-large teams."; return; }
-        BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Games use the full match engine.";
-        string T(int id) => $"({s.Seeds.GetValueOrDefault(id)}) {c.Program(id)!.FullName}";
-        foreach (var round in s.Games.Where(g => g.Event == CollegeWorld.Madness).GroupBy(g => g.Round).OrderByDescending(g => g.Key))
+        BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Every March Madness game uses the full match engine. Upsets (a seed four or more lines worse winning) are marked.";
+        var boxes = MadnessBracket.Boxes(s);
+        // Brackets use the school name ("Jersey Christian"), as on TV; the full name is a click away.
+        string Name(int? id) => id is { } x ? c.Program(x)?.City ?? "?" : "To be decided";
+        BracketCard Card(BracketBox b) => new(
+            b.TeamA != null ? b.SeedA.ToString() : "", Name(b.TeamA), b.ScoreA?.ToString() ?? "", b.Played && b.Winner == b.TeamA,
+            b.TeamB != null ? b.SeedB.ToString() : "", b.TeamB == null && b.Round == 1 ? "First Four winner" : Name(b.TeamB), b.ScoreB?.ToString() ?? "", b.Played && b.Winner == b.TeamB,
+            b.Played ? "Final" : b.Date is { } d ? d.ToString("MMM d") : "", b.Upset);
+        int region = MadnessBracket.Regions.ToList().IndexOf(BracketView);
+        if (region >= 0)
+            BracketColumns = Enumerable.Range(1, 4).Select(r =>
+            {
+                var cards = boxes.Where(b => b.Round == r && MadnessBracket.RegionOf(b) == region).OrderBy(b => b.Slot).Select(Card).ToList();
+                return new BracketColumn(CollegeWorld.RoundName(r), cards, cards.Count);
+            }).ToList();
+        else
+            BracketColumns = new()
+            {
+                new BracketColumn("Final Four", boxes.Where(b => b.Round == 5).OrderBy(b => b.Slot).Select(Card).ToList(), 2),
+                new BracketColumn("Championship", boxes.Where(b => b.Round == 6).Select(Card).ToList(), 1),
+            };
+        // The tournament at a glance.
+        var played = boxes.Where(b => b.Played).ToList();
+        var cinderella = boxes.Where(b => b.Round >= 3).SelectMany(b => new[] { (b.TeamA, b.SeedA), (b.TeamB, b.SeedB) })
+            .Where(x => x.Item1 != null && x.Item2 >= 10).Select(x => x.Item1!.Value).Distinct().ToList();
+        var biggest = played.Where(b => b.Upset).OrderByDescending(b => Math.Abs(b.SeedA - b.SeedB)).FirstOrDefault();
+        var chips = new List<Hardwood.Desktop.Controls.Chip>
         {
-            Bracket.Add($"— {CollegeWorld.RoundName(round.Key)} —");
-            foreach (var g in round.OrderBy(g => g.Slot))
-                Bracket.Add(g.Played ? $"{T(g.WinnerId!.Value)} beat {T(g.WinnerId == g.HomeId ? g.AwayId : g.HomeId)} {Math.Max(g.HomePts!.Value, g.AwayPts!.Value)}-{Math.Min(g.HomePts!.Value, g.AwayPts!.Value)}"
-                                     : $"{g.Date:MMM d}: {T(g.HomeId)} vs {T(g.AwayId)}");
-        }
+            new("Stage", c.StageText.Replace("March Madness: ", ""), s.ChampionId != null ? "" : "next up", "team"),
+            new("Upsets", played.Count(b => b.Upset).ToString(), "a seed 4+ lines worse winning", "warn"),
+            new("Biggest upset", biggest == null ? "None yet" : $"{Math.Max(biggest.SeedA, biggest.SeedB)} over {Math.Min(biggest.SeedA, biggest.SeedB)}",
+                biggest == null ? "" : c.Program(biggest.Winner!.Value)?.FullName ?? "", biggest == null ? "" : "warn"),
+            new("Cinderellas", cinderella.Count.ToString(), cinderella.Count == 0 ? "no double-digit seed in the Sweet 16" : string.Join(", ", cinderella.Take(2).Select(id => c.Program(id)?.Name)), cinderella.Count > 0 ? "good" : ""),
+        };
+        if (s.ChampionId is { } champ) chips.Insert(0, new("Champions", c.Program(champ)!.Name, c.Program(champ)!.City, "good"));
+        MadnessChips = chips;
     }
 
     private void FillProspects()

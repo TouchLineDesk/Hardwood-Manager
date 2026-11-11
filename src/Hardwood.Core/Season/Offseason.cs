@@ -132,7 +132,7 @@ public sealed class Offseason
             {
                 double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
                 team.Training.Focus.TryGetValue(p.Id, out var focus);
-                Report.Development.Add(_dev.Develop(p, Date, mpg, quality, team.Training.Focus.ContainsKey(p.Id) ? focus : null));
+                Report.Development.Add(_dev.Develop(p, Date, mpg, quality + StaffEffects.TrainingQualityFor(team, p, Date) - StaffEffects.TrainingQuality(team), team.Training.Focus.ContainsKey(p.Id) ? focus : null));
             }
         }
         foreach (var p in _league.FreeAgents.ToList())
@@ -479,6 +479,15 @@ public sealed class Offseason
         p.TeamId = null; p.Contract = null;
         _league.FreeAgents.Add(p);
         Report.Waived.Add((p, team));
+    }
+
+    /// <summary>An AI club signs a free agent only if it fits the cap and (except minimum deals) its budget, as in AI free agency.</summary>
+    public bool AiSignIfAffordable(Team team, Player p)
+    {
+        long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), _league.Finance);
+        var (route, salary) = SigningOption(team, ask);
+        if (route == SigningRoute.None || route != SigningRoute.Minimum && ContractMarket.Payroll(team) + salary > AiPayrollLimit(team, false)) return false;
+        return SignFreeAgent(team, p);
     }
 
     /// <summary>AI teams fill their rosters; the human team (if any) is skipped.</summary>

@@ -30,10 +30,17 @@ public class LayoutCheckTests
         });
         yield return ("Team page", v => v.ShowTeam(v.Session!.League.Teams.First(t => t != v.Session.HumanTeam)));
         yield return ("Records book", v => v.Navigate("History"));
+        yield return ("Recruiting", v =>
+        {
+            v.Navigate("College");
+            var college = (CollegeViewModel)v.CurrentPage!;
+            college.Tab = 4;
+            college.SelectedRecruit = college.Recruits.FirstOrDefault();
+        });
         // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
         yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });
-        yield return ("College recruits", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 4; });
-        yield return ("College classes", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 5; });
+        yield return ("College high school", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 5; });
+        yield return ("College classes", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 6; });
         yield return ("Box score", v =>
         {
             v.Navigate("Schedule & Results");
@@ -171,6 +178,61 @@ public class LayoutCheckTests
             if (report != null) File.WriteAllLines(report, lines);
         }
         Assert.True(gate.Count == 0, $"{gate.Count} pieces of text are cut off:\n" + string.Join("\n", gate.Take(60)));
+    }
+
+    [AvaloniaFact]
+    public void The_march_madness_bracket_shows_all_its_text()
+    {
+        // College depth part 2: the bracket in early April (Final Four week), every region and the Final Four, at 1280 and 1480 px.
+        var report = Environment.GetEnvironmentVariable("HW_LAYOUT_REPORT");
+        var path = Path.Combine(Path.GetTempPath(), $"hw-bracket-{Guid.NewGuid():N}.save");
+        var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
+        AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
+        AppSettings.Use(new AppSettings { FaceFolder = oldSettings.FaceFolder, LogoFolder = oldSettings.LogoFolder, AutoPortraits = false });
+        var problems = new List<string>();
+        MainWindow? window = null;
+        try
+        {
+            var vm = new MainViewModel();
+            window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
+            window.Show();
+            var start = (StartViewModel)vm.CurrentPage!;
+            start.SavePath = path; start.SeedText = "2026";
+            start.SelectedTeam = start.Teams.First(t => t.Team.Abbreviation == "BOS");
+            start.NewGame();
+            var session = vm.Session!;
+            while (session.Today < new DateOnly(2027, 4, 3)) session.AdvanceDay();
+            vm.AfterTick();
+            Assert.True(session.World.College!.Season.Selected);
+            foreach (int width in new[] { 1480, 1280 })
+                foreach (var view in Hardwood.Core.College.MadnessBracket.Regions.Append("Final Four"))
+                {
+                    window.Width = width;
+                    vm.Navigate("College");
+                    var college = (CollegeViewModel)vm.CurrentPage!;
+                    college.Tab = 2;
+                    college.BracketView = view;
+                    Settle(window);
+                    if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)
+                    {
+                        Directory.CreateDirectory(shots);
+                        using var frame = window.CaptureRenderedFrame();
+                        frame?.Save(Path.Combine(shots, $"{width}-bracket-{view.Replace(' ', '-').ToLower()}.png"));
+                    }
+                    Assert.Equal(view == "Final Four" ? 2 : 4, college.BracketColumns.Count);
+                    foreach (var p in LayoutCheck.Scan(window)) problems.Add($"{width}px {view} | {p}");
+                }
+        }
+        finally
+        {
+            window?.Close();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            if (File.Exists(AppSettings.FilePath)) File.Delete(AppSettings.FilePath);
+            AppSettings.FilePath = oldPath; AppSettings.Use(oldSettings);
+            if (File.Exists(path)) File.Delete(path);
+            if (report != null) File.AppendAllLines(report, problems);
+        }
+        Assert.True(problems.Count == 0, string.Join("\n", problems.Take(40)));
     }
 
     [AvaloniaFact]

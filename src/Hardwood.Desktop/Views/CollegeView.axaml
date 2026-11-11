@@ -57,10 +57,50 @@
         </DockPanel>
       </TabItem>
       <TabItem Header="March Madness">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
-          <ListBox ItemsSource="{Binding Bracket}"/>
-        </DockPanel>
+        <!-- The bracket (college depth part 2): a region's four rounds as columns, or the Final Four. -->
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding HasBracket}"/>
+            <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding HasBracket}"/>
+            <ItemsControl ItemsSource="{Binding BracketColumns}" Height="620" IsVisible="{Binding HasBracket}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BracketColumn">
+                  <DockPanel Margin="0,0,8,0">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontWeight="SemiBold" Classes="muted" Margin="2,0,0,4"/>
+                    <ItemsControl ItemsSource="{Binding Cards}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BracketCard">
+                          <Border Background="#1C232C" CornerRadius="6" Padding="8,4" VerticalAlignment="Center" Margin="0,2" BorderThickness="3,0,0,0"
+                                  BorderBrush="{DynamicResource HwAccentBrush}">
+                            <StackPanel>
+                              <Grid ColumnDefinitions="22,*,Auto" Opacity="{Binding OpacityA}">
+                                <TextBlock Text="{Binding SeedA}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding NameA}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding WinA, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding ScoreA}" FontSize="12" FontWeight="Bold" Margin="6,0,0,0"/>
+                              </Grid>
+                              <Grid ColumnDefinitions="22,*,Auto" Opacity="{Binding OpacityB}">
+                                <TextBlock Text="{Binding SeedB}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding NameB}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding WinB, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding ScoreB}" FontSize="12" FontWeight="Bold" Margin="6,0,0,0"/>
+                              </Grid>
+                              <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding Note}" Classes="muted" FontSize="10"/>
+                                <TextBlock Text="UPSET" FontSize="10" FontWeight="Bold" Foreground="#D29922" IsVisible="{Binding Upset}"/>
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
       <TabItem Header="Prospects">
         <DockPanel>
@@ -84,19 +124,83 @@
           </DataGrid>
         </DockPanel>
       </TabItem>
+      <TabItem Header="Recruiting">
+        <!-- Senior recruiting (decision #157): the board, and the selected senior beside it (or under it when narrow). -->
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding RecruitNote}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding RecruitChips}" Accent="{DynamicResource HwAccent}"/>
+            <Grid x:Name="RecruitRowGrid" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+              <DockPanel x:Name="RecruitBoard" VerticalAlignment="Top">
+                <CheckBox DockPanel.Dock="Top" Content="Only my list and commitments" IsChecked="{Binding ListedOnly}" Margin="0,0,0,4"/>
+                <DataGrid x:Name="RecruitGrid" ItemsSource="{Binding Recruits}" SelectedItem="{Binding SelectedRecruit}" RowHeight="NaN" Height="500">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="Senior" Binding="{Binding Name}" Width="150"/>
+                    <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56"/>
+                    <DataGridTemplateColumn Header="Program" Width="*" MinWidth="160">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RecruitRow"><TextBlock Text="{Binding Program}" TextWrapping="Wrap" Margin="6,3" VerticalAlignment="Center"/></DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="60"/>
+                    <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="60"/>
+                    <DataGridTemplateColumn Header="Interest" Width="120">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RecruitRow">
+                          <Grid ColumnDefinitions="*,Auto" Margin="6,0" VerticalAlignment="Center">
+                            <ProgressBar Value="{Binding Interest}" Maximum="100" Height="6" MinWidth="0" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding InterestText}" FontSize="11" Margin="6,0,0,0"/>
+                          </Grid>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="140"/>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </DockPanel>
+              <StackPanel x:Name="RecruitPanel" Grid.Column="1" Width="330" Margin="10,0,0,0" Spacing="8" VerticalAlignment="Top">
+                <TextBlock Text="Pick a senior to court him." Classes="muted" IsVisible="{Binding !HasRecruit}" TextWrapping="Wrap"/>
+                <Border Classes="panel" IsVisible="{Binding HasRecruit}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding SelectedRecruit.Name}" Classes="h2" Margin="0"/>
+                    <TextBlock Text="{Binding SelectedRecruit.Program}" Classes="muted" TextWrapping="Wrap"/>
+                    <c:StatStrip ItemsSource="{Binding InterestChips}" Accent="{DynamicResource HwAccent}"/>
+                    <TextBlock Text="{Binding RecruitLean}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <WrapPanel>
+                      <Button Content="Call (1 pt)" Command="{Binding CallRecruitCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Visit (3 pts)" Command="{Binding VisitRecruitCommand}" Margin="0,0,6,6"/>
+                      <Button Content="List / unlist" Command="{Binding ShortlistRecruitCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Open player" Command="{Binding OpenRecruitCommand}" Margin="0,0,6,6"/>
+                    </WrapPanel>
+                    <TextBlock Text="Offer terms (he signs when the season ends)" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    <WrapPanel>
+                      <TextBlock Text="$M a year" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                      <NumericUpDown Value="{Binding OfferWage}" Minimum="0" Maximum="80" Increment="0.25" FormatString="0.00" Width="130" Margin="0,0,10,6"/>
+                      <TextBlock Text="Years" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                      <NumericUpDown Value="{Binding OfferYears}" Minimum="1" Maximum="5" Increment="1" FormatString="0" Width="100" Margin="0,0,0,6"/>
+                    </WrapPanel>
+                    <Button Classes="primary" Content="Make the offer" Command="{Binding OfferRecruitCommand}" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{Binding RecruitReply}" Classes="accent" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
       <!-- Recruiting (decision #162): the high-school classes and where they're going. -->
-      <TabItem Header="Recruits" IsVisible="{Binding HasRecruiting}">
+      <TabItem Header="High school" IsVisible="{Binding HasRecruiting}">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
-            <c:StatStrip ItemsSource="{Binding RecruitChips}" Accent="{DynamicResource HwAccent}"/>
+            <c:StatStrip ItemsSource="{Binding HighSchoolChips}" Accent="{DynamicResource HwAccent}"/>
             <WrapPanel>
-              <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding RecruitClass}" MinWidth="220" Margin="0,0,8,4"/>
+              <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding HighSchoolClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding StarFilters}" SelectedItem="{Binding StarFilter}" MinWidth="140" Margin="0,0,8,4"/>
-              <Button Content="Open player" Command="{Binding OpenRecruitCommand}" Margin="0,0,8,4"/>
+              <Button Content="Open player" Command="{Binding OpenHighSchoolCommand}" Margin="0,0,8,4"/>
               <TextBlock Text="Stars are the recruiting services' opinion, not a promise: busts and sleepers happen." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
             </WrapPanel>
           </StackPanel>
-          <DataGrid ItemsSource="{Binding Recruits}" SelectedItem="{Binding SelectedRecruit}">
+          <DataGrid ItemsSource="{Binding HighSchoolers}" SelectedItem="{Binding SelectedHighSchool}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
               <DataGridTextColumn Header="Stars" Binding="{Binding Stars}" Width="70"/>
@@ -113,7 +217,7 @@
       <TabItem Header="Class rankings" IsVisible="{Binding HasRecruiting}">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
-            <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding RecruitClass}" MinWidth="220"/>
+            <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding HighSchoolClass}" MinWidth="220"/>
             <TextBlock Text="{Binding ClassNote}" Classes="muted" TextWrapping="Wrap"/>
           </StackPanel>
           <DataGrid ItemsSource="{Binding ClassRanks}" CanUserSortColumns="False">

@@ -23,17 +23,20 @@
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="170"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64"/>
               <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="64"/>
+              <DataGridTextColumn Header="Style" Binding="{Binding Style}" Width="120"/>
               <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="96"/>
-              <DataGridTextColumn Header="Deal" Binding="{Binding Contract}" Width="*"/>
+              <DataGridTextColumn Header="Deal" Binding="{Binding Contract}" Width="*" MinWidth="80"/>
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
         <StackPanel>
-          <Grid ColumnDefinitions="*,Auto,Auto">
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto">
             <TextBlock Text="Staff market" Classes="h2"/>
             <ComboBox Grid.Column="1" ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding RoleFilter}" Width="190" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
-            <Button Grid.Column="2" Classes="primary" Content="Hire selected" Command="{Binding HireCommand}" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="2" Content="Interview" Command="{Binding InterviewCandidateCommand}" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="3" Classes="primary" Content="Hire on his terms" Command="{Binding HireCommand}" IsEnabled="{Binding CanHire}" VerticalAlignment="Bottom"/>
           </Grid>
+          <TextBlock Text="{Binding Interview}" TextWrapping="Wrap" Margin="0,4" IsVisible="{Binding Interview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <DataGrid ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="240">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
@@ -45,13 +48,25 @@
               <DataGridTextColumn Header="Fit" Binding="{Binding Fitness}" Width="58"/>
               <DataGridTextColumn Header="Med" Binding="{Binding Medical}" Width="58"/>
               <DataGridTextColumn Header="Sco" Binding="{Binding Scouting}" Width="58"/>
-              <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="*"/>
+              <DataGridTextColumn Header="Style" Binding="{Binding Style}" Width="110"/>
+              <DataGridTextColumn Header="Salary" Binding="{Binding Salary}" Width="*" MinWidth="90"/>
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
       </StackPanel>
 
+      <!-- Delegation (roadmap 12): hand an area to the staff member who runs it. -->
       <Border Classes="panel">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Delegate" FontWeight="SemiBold"/>
+          <CheckBox Content="Development coach plans training (focus and intensity, every Monday)" IsChecked="{Binding DelegateTraining}"/>
+          <CheckBox Content="Head scout courts college seniors (spends the recruiting points; offers stay with you)" IsChecked="{Binding DelegateRecruiting}"/>
+          <CheckBox Content="Assistant picks tactics for each opponent" IsChecked="{Binding DelegateTactics}"/>
+          <TextBlock Text="{Binding DelegationNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="panel" IsEnabled="{Binding TrainingManual}">
         <StackPanel>
           <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Training intensity" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding IntensityText}" Classes="muted"/></Grid>
           <Slider Minimum="0" Maximum="100" Value="{Binding Intensity}"/>
@@ -60,13 +75,16 @@
       </Border>
 
       <TextBlock Text="Individual focus" Classes="h2"/>
-      <TextBlock Text="Pick what each player works on. Focus tilts skill growth toward one area; young players with headroom benefit most." Classes="muted" TextWrapping="Wrap"/>
-      <DataGrid ItemsSource="{Binding Players}" IsReadOnly="False" Height="380" CanUserSortColumns="False">
+      <TextBlock Text="Pick what each player works on. Focus tilts skill growth toward one area; young players with headroom benefit most. Projected is where this summer's development is heading at his minutes (before luck); Staff is your staff's share of it against average training." Classes="muted" TextWrapping="Wrap"/>
+      <c:StatStrip ItemsSource="{Binding DevelopmentChips}" Accent="{Binding Accent}"/>
+      <DataGrid ItemsSource="{Binding Players}" IsReadOnly="False" Height="380" CanUserSortColumns="False" IsEnabled="{Binding TrainingManual}">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64" IsReadOnly="True"/>
           <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64" IsReadOnly="True"/>
           <DataGridTextColumn Header="CA / PA" Binding="{Binding Ability}" Width="90" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Projected" Binding="{Binding Projected}" Width="100" IsReadOnly="True"/>
+          <DataGridTextColumn Header="Staff" Binding="{Binding FromStaff}" Width="72" IsReadOnly="True"/>
           <DataGridTemplateColumn Header="Focus" Width="200">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:FocusRow">
