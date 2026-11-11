@@ -332,8 +332,20 @@ public sealed partial class GameSession
             if (l.Seconds <= 0) continue;
             if (!Stats.TryGetValue(l.Player.Id, out var s))
                 Stats[l.Player.Id] = s = new PlayerSeasonStats { PlayerId = l.Player.Id, TeamId = box.Team.Id, Season = League.Season };
+            // Career milestones (roadmap 4): completed seasons plus this one, before and after this game.
+            var career = League.Careers.GetValueOrDefault(l.Player.Id);
+            int pts = (career?.Points ?? 0) + s.Points, reb = (career?.Rebounds ?? 0) + s.OReb + s.DReb, ast = (career?.Assists ?? 0) + s.Assists, gp = (career?.Games ?? 0) + s.Games;
             s.Add(l);
+            var passed = League.Records.CheckMilestones(l.Player, box.Team, Today, League.Season, new Dictionary<string, (int, int)>
+            {
+                ["points"] = (pts, pts + l.Points), ["rebounds"] = (reb, reb + l.Rebounds), ["assists"] = (ast, ast + l.Assists), ["games"] = (gp, gp + 1),
+            });
+            foreach (var m in passed)
+                if (box.Team == HumanTeam || m.Threshold >= (m.Stat == "points" ? 20_000 : m.Stat == "games" ? 1_000 : 10_000))
+                    Post($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.", "League");
         }
+        foreach (var line in League.Records.Consider(r, Today, League.Season))
+            Post("New league record", line, "League");
         ReportGame(r);
     }
 

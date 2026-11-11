@@ -118,6 +118,8 @@ public sealed class League
     public List<Staff> FreeStaff { get; } = new();
     public int NextStaffId { get; set; } = 1;
     public List<Season.HallOfFamer> HallOfFame { get; } = new();
+    /// <summary>Single-game records and career milestones (roadmap 4, the living history). Empty for saves made before it.</summary>
+    public Season.RecordBook Records { get; set; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;
 

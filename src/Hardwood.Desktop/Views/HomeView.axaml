@@ -129,6 +129,13 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- On this day (roadmap 4): earlier seasons around today's date -->
+            <StackPanel Spacing="3" Margin="0,8,0,0" IsVisible="{Binding HasOnThisDay}">
+              <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="History" Width="14" Height="14" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="On this day" FontWeight="SemiBold"/></StackPanel>
+              <ItemsControl ItemsSource="{Binding OnThisDay}">
+                <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,2"/></DataTemplate></ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
         </Border>
       </Grid>
