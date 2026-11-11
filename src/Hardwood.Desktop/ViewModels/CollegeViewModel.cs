@@ -258,7 +258,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         RecruitChips = new()
         {
             new("Recruiting points", $"{board?.Points ?? 0}", $"tops up monthly (scout), max {Hardwood.Core.College.RecruitingBoard.PointsCap}", "team"),
-            new("Committed to you", ours.ToString(), "sign when the season ends", ours > 0 ? "good" : ""),
+            new("Committed to you", ours.ToString(), Session.NoSpotFor() != null ? "no spots left this season" : $"sign when the season ends · up to {GameSession.MaxCommitments}", Session.NoSpotFor() != null ? "warn" : ours > 0 ? "good" : ""),
             new("Committed elsewhere", rivals.ToString(), "of the top 80 seniors", rivals > 40 ? "warn" : ""),
             new("Seniors", Session.Seniors().Count.ToString(), "turning pro this summer", "info"),
         };

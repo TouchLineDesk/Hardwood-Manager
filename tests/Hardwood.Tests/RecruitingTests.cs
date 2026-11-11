@@ -90,6 +90,50 @@ public class RecruitingTests
     }
 
     [Fact]
+    public void The_best_seniors_take_more_courting()
+    {
+        var s = Season(74);
+        var seniors = s.Seniors();
+        Player Free(int from) => seniors.Skip(from).First(p => s.Recruiting!.Find(p.Id)?.CommittedTeamId == null && s.InterestIn(p).Blocked == null);
+        var (star, good, plain) = (Free(0), Free(15), Free(45));
+        Assert.Equal(0.75, s.EffortScale(star));
+        Assert.Equal(0.9, s.EffortScale(good));
+        Assert.Equal(1.0, s.EffortScale(plain));
+        foreach (var p in new[] { star, good, plain }) { s.Recruiting!.Points = 20; s.VisitRecruit(p); }
+        Assert.Equal(15 * 0.75, s.InterestIn(star).Effort, 6);
+        Assert.Equal(15 * 0.9, s.InterestIn(good).Effort, 6);
+        Assert.Equal(15, s.InterestIn(plain).Effort, 6);
+        // The same two visits and five calls put in less with a top-10 senior than with an ordinary one.
+        s.Recruiting!.Points = 20; s.VisitRecruit(star); s.Recruiting.Points = 20; s.VisitRecruit(plain);
+        for (int i = 0; i < 5; i++) { s.Recruiting.Points = 20; s.CallRecruit(star); s.Recruiting.Points = 20; s.CallRecruit(plain); }
+        Assert.Equal(s.InterestIn(plain).Effort * 0.75, s.InterestIn(star).Effort, 6);
+        Assert.Contains("counts for less", s.CallRecruit(star));
+    }
+
+    [Fact]
+    public void Seniors_want_a_roster_spot()
+    {
+        var s = Season(75);
+        var others = s.Seniors().Skip(40).Take(MaxTake).ToList();
+        int signed = s.HumanTeam.Roster.Count(x => x.Contract is { Years: > 1 });
+        int spots = Math.Clamp(s.League.Finance.RosterMax - signed, 1, GameSession.MaxCommitments);
+        foreach (var p in others.Take(spots)) s.Recruiting!.For(p.Id).CommittedTeamId = s.HumanTeam.Id;
+        Assert.Equal(spots, s.MyCommitments);
+        Assert.NotNull(s.NoSpotFor());
+
+        // A keen senior with a good offer still won't commit while every spot is promised.
+        var q = others.Skip(spots).First(p => s.Recruiting!.Find(p.Id)?.CommittedTeamId == null);
+        s.Recruiting!.For(q.Id).TeamId = s.HumanTeam.Id;
+        s.Recruiting.For(q.Id).Effort = 60;
+        Assert.True(s.InterestIn(q).Enough);
+        var reply = s.OfferRecruit(q, s.RecruitDemand(q).Wage, 2);
+        Assert.Contains("roster spot", reply);
+        Assert.Null(s.Recruiting.Find(q.Id)!.CommittedTeamId);
+    }
+
+    private const int MaxTake = 20;
+
+    [Fact]
     public void The_board_survives_a_save()
     {
         var path = Path.Combine(Path.GetTempPath(), $"hw-rec-{Guid.NewGuid():N}.hwsave");
