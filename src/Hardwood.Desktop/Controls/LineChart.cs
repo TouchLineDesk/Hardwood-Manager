@@ -19,13 +19,18 @@ public sealed class LineChart : Control
     public static readonly StyledProperty<string[]?> XLabelsProperty = AvaloniaProperty.Register<LineChart, string[]?>(nameof(XLabels));
     public static readonly StyledProperty<string?> YTitleProperty = AvaloniaProperty.Register<LineChart, string?>(nameof(YTitle));
     public static readonly StyledProperty<bool> ZeroLineProperty = AvaloniaProperty.Register<LineChart, bool>(nameof(ZeroLine));
+    /// <summary>Fixed bottom/top of the y axis (NaN = fit the data), e.g. 0 and 100 for a 0–100 meter.</summary>
+    public static readonly StyledProperty<double> MinYProperty = AvaloniaProperty.Register<LineChart, double>(nameof(MinY), double.NaN);
+    public static readonly StyledProperty<double> MaxYProperty = AvaloniaProperty.Register<LineChart, double>(nameof(MaxY), double.NaN);
 
     public IReadOnlyList<LineSeries>? Series { get => GetValue(SeriesProperty); set => SetValue(SeriesProperty, value); }
     public string[]? XLabels { get => GetValue(XLabelsProperty); set => SetValue(XLabelsProperty, value); }
     public string? YTitle { get => GetValue(YTitleProperty); set => SetValue(YTitleProperty, value); }
     public bool ZeroLine { get => GetValue(ZeroLineProperty); set => SetValue(ZeroLineProperty, value); }
+    public double MinY { get => GetValue(MinYProperty); set => SetValue(MinYProperty, value); }
+    public double MaxY { get => GetValue(MaxYProperty); set => SetValue(MaxYProperty, value); }
 
-    static LineChart() => AffectsRender<LineChart>(SeriesProperty, XLabelsProperty, YTitleProperty, ZeroLineProperty);
+    static LineChart() => AffectsRender<LineChart>(SeriesProperty, XLabelsProperty, YTitleProperty, ZeroLineProperty, MinYProperty, MaxYProperty);
 
     public override void Render(DrawingContext ctx)
     {
@@ -37,20 +42,21 @@ public sealed class LineChart : Control
         int n = series.Max(s => s.Values.Length);
         double min = series.SelectMany(s => s.Values).Min(), max = series.SelectMany(s => s.Values).Max();
         if (ZeroLine) { min = Math.Min(min, 0); max = Math.Max(max, 0); }
-        if (Math.Abs(max - min) < 1e-9) { max += 1; min -= 1; }
-        double pad = (max - min) * 0.08; min -= pad; max += pad;
+        if (!double.IsNaN(MinY)) min = Math.Min(min, MinY);
+        if (!double.IsNaN(MaxY)) max = Math.Max(max, MaxY);
+        var ticks = NiceTicks(min, max);
+        min = ticks[0]; max = ticks[^1];
         double X(int i) => left + (n <= 1 ? w / 2 : w * i / (n - 1));
         double Y(double v) => top + h - (v - min) / (max - min) * h;
 
         var grid = new Pen(new SolidColorBrush(Color.Parse("#2A323D")), 1);
         var muted = new SolidColorBrush(Color.Parse("#8B96A5"));
         var tf = new Typeface("Inter");
-        for (int g = 0; g <= 4; g++)
+        foreach (var v in ticks)
         {
-            double v = min + (max - min) * g / 4;
             double y = Y(v);
             ctx.DrawLine(grid, new Point(left, y), new Point(left + w, y));
-            var t = new FormattedText(v.ToString("0.#"), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, tf, 10, muted);
+            var t = new FormattedText(TickText(v), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, tf, 10, muted);
             ctx.DrawText(t, new Point(left - t.Width - 6, y - t.Height / 2));
         }
         if (ZeroLine && min < 0 && max > 0) ctx.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#4B5563")), 1.5), new Point(left, Y(0)), new Point(left + w, Y(0)));
@@ -61,7 +67,7 @@ public sealed class LineChart : Control
             for (int i = 0; i < labels.Length && i < n; i += step)
             {
                 var t = new FormattedText(labels[i], System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, tf, 10, muted);
-                ctx.DrawText(t, new Point(X(i) - t.Width / 2, top + h + 6));
+                ctx.DrawText(t, new Point(Math.Clamp(X(i) - t.Width / 2, 0, Math.Max(0, Bounds.Width - t.Width)), top + h + 6));
             }
         }
         foreach (var s in series.OrderBy(s => s.Emphasis))
@@ -85,4 +91,24 @@ public sealed class LineChart : Control
             ctx.DrawText(t, new Point(left, 0));
         }
     }
+
+    /// <summary>
+    /// Round y-axis ticks (1, 2, 2.5 or 5 × a power of ten) that cover [min, max] with 3–6 gridlines,
+    /// so the axis reads 0 · 25 · 50 · 75 · 100 rather than 54 · 56.6 · 59.2.
+    /// </summary>
+    public static double[] NiceTicks(double min, double max)
+    {
+        if (double.IsNaN(min) || double.IsNaN(max)) return new[] { 0.0, 1.0 };
+        if (max - min < 1e-9) { min -= 1; max += 1; }
+        double raw = (max - min) / 4;
+        double mag = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+        double step = new[] { 1, 2, 2.5, 5, 10 }.Select(f => f * mag).First(st => st >= raw - 1e-12);
+        double lo = Math.Floor(min / step + 1e-9) * step, hi = Math.Ceiling(max / step - 1e-9) * step;
+        if (hi - lo < 1e-12) hi = lo + step;
+        var list = new List<double>();
+        for (double v = lo; v <= hi + step / 2; v += step) list.Add(Math.Abs(v) < step * 1e-9 ? 0 : Math.Round(v, 10));
+        return list.ToArray();
+    }
+
+    private static string TickText(double v) => Math.Abs(v) >= 1000 ? v.ToString("#,0", System.Globalization.CultureInfo.InvariantCulture) : v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 }

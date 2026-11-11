@@ -49,6 +49,9 @@ public sealed partial class TeamViewModel : PageViewModel
     [ObservableProperty] private string _record = "";
     [ObservableProperty] private string _club = "";
     [ObservableProperty] private string _money = "";
+    /// <summary>Roadmap 1: the club at a glance as stat chips (record, coach, owner, arena, money).</summary>
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
+    public Avalonia.Media.Color Accent => ThemeService.AccentFor(Team);
     public ObservableCollection<TeamPlayerRow> Players { get; } = new();
     public ObservableCollection<TeamGameRow> Games { get; } = new();
     [ObservableProperty] private TeamPlayerRow? _selectedPlayer;
@@ -77,6 +80,28 @@ public sealed partial class TeamViewModel : PageViewModel
         var coach = t.Coach?.Name ?? (t.CoachName.Length > 0 ? t.CoachName : "-");
         Club = $"Coach: {coach} · Owner: {(t.Owner.Name.Length > 0 ? t.Owner.Name + ", " : "")}{t.Owner.Style.ToLowerInvariant()} · Arena: {t.ArenaCapacity:N0}";
         Money = t.Money.Ready ? $"Revenue ${t.Money.Revenue / 1e6:F1}M · Wage budget ${t.Money.WageBudget / 1e6:F1}M · Payroll ${t.Roster.Sum(p => p.Contract?.Salary ?? 0) / 1e6:F1}M" : "";
+        var chips = new List<Hardwood.Desktop.Controls.Chip>();
+        if (home != null)
+        {
+            var mine = home.Table().FirstOrDefault(r => r.Team == t);
+            if (mine != null)
+            {
+                int gp = mine.W + mine.L;
+                chips.Add(new("Record", $"{mine.W}-{mine.L}", Record.Contains(" · ") ? Record[(Record.IndexOf(" · ") + 3)..] : "",
+                    gp == 0 ? "team" : mine.W * 2 > gp ? "good" : mine.W * 2 < gp ? "bad" : "team"));
+            }
+        }
+        chips.Add(new("Coach", coach, t.Coach is { } hc ? $"reputation {hc.Reputation:0}" : ""));
+        chips.Add(new("Owner", t.Owner.Name.Length > 0 ? t.Owner.Name : "-", t.Owner.Style.ToLowerInvariant()));
+        chips.Add(new("Arena", t.ArenaCapacity.ToString("N0"), "seats"));
+        if (t.Money.Ready)
+        {
+            long payroll = t.Roster.Sum(p => p.Contract?.Salary ?? 0);
+            chips.Add(new("Revenue", PlayerViewModel.Money(t.Money.Revenue), "a season"));
+            chips.Add(new("Payroll", PlayerViewModel.Money(payroll), $"budget {PlayerViewModel.Money(t.Money.WageBudget)}",
+                payroll > t.Money.WageBudget ? "bad" : payroll > t.Money.WageBudget * 0.95 ? "warn" : "good"));
+        }
+        Chips = chips;
 
         // Roster: what your scouts know (everything about your own players).
         var stats = (home?.Stats() ?? new()).Where(x => x.TeamId == t.Id).ToDictionary(x => x.PlayerId);
