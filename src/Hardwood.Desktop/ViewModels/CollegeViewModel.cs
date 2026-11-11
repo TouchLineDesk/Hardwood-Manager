@@ -32,6 +32,16 @@ public sealed class ProspectListRow
     public string Turns => Age >= 22 ? "Turns pro next summer" : $"Pro in {23 - Age} years";
 }
 
+/// <summary>One matchup box in the bracket view.</summary>
+public sealed record BracketCard(string SeedA, string NameA, string ScoreA, bool WinA, string SeedB, string NameB, string ScoreB, bool WinB, string Note, bool Upset)
+{
+    public double OpacityA => WinB ? 0.55 : 1;
+    public double OpacityB => WinA ? 0.55 : 1;
+}
+
+/// <summary>A round of the selected region: its name and boxes.</summary>
+public sealed record BracketColumn(string Title, IReadOnlyList<BracketCard> Cards, int Rows);
+
 /// <summary>A senior on the recruiting board (decision #157).</summary>
 public sealed class RecruitRow
 {
@@ -58,6 +68,14 @@ public sealed partial class CollegeViewModel : PageViewModel
     [ObservableProperty] private string _conference = CollegeWorld.Conferences[0].Name;
     public ObservableCollection<RankRow> ConferenceRows { get; } = new();
     public ObservableCollection<string> Bracket { get; } = new();
+    // March Madness as a bracket (college depth part 2): pick a region or the Final Four.
+    public List<string> BracketViews { get; } = MadnessBracket.Regions.Append("Final Four").ToList();
+    [ObservableProperty] private string _bracketView = "East";
+    [ObservableProperty] private List<BracketColumn> _bracketColumns = new();
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _madnessChips = new();
+    public bool HasBracket => BracketColumns.Count > 0;
+    partial void OnBracketColumnsChanged(List<BracketColumn> value) => OnPropertyChanged(nameof(HasBracket));
+    partial void OnBracketViewChanged(string value) => FillBracket();
     [ObservableProperty] private string _bracketNote = "";
     public List<string> Ages { get; } = new() { "Turning pro next summer", "18-21", "14-17", "All" };
     [ObservableProperty] private string _age = "Turning pro next summer";
@@ -212,18 +230,46 @@ public sealed partial class CollegeViewModel : PageViewModel
     private void FillBracket()
     {
         Bracket.Clear();
+        BracketColumns = new(); MadnessChips = new();
         if (Session.World.College is not { } c) return;
         var s = c.Season;
         if (!s.Selected) { BracketNote = "The 68-team field is picked on Selection Sunday in mid-March: eight conference tournament champions and 60 at-large teams."; return; }
-        BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Games use the full match engine.";
-        string T(int id) => $"({s.Seeds.GetValueOrDefault(id)}) {c.Program(id)!.FullName}";
-        foreach (var round in s.Games.Where(g => g.Event == CollegeWorld.Madness).GroupBy(g => g.Round).OrderByDescending(g => g.Key))
+        BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Every March Madness game uses the full match engine. Upsets (a seed four or more lines worse winning) are marked.";
+        var boxes = MadnessBracket.Boxes(s);
+        // Brackets use the school name ("Jersey Christian"), as on TV; the full name is a click away.
+        string Name(int? id) => id is { } x ? c.Program(x)?.City ?? "?" : "To be decided";
+        BracketCard Card(BracketBox b) => new(
+            b.TeamA != null ? b.SeedA.ToString() : "", Name(b.TeamA), b.ScoreA?.ToString() ?? "", b.Played && b.Winner == b.TeamA,
+            b.TeamB != null ? b.SeedB.ToString() : "", b.TeamB == null && b.Round == 1 ? "First Four winner" : Name(b.TeamB), b.ScoreB?.ToString() ?? "", b.Played && b.Winner == b.TeamB,
+            b.Played ? "Final" : b.Date is { } d ? d.ToString("MMM d") : "", b.Upset);
+        int region = MadnessBracket.Regions.ToList().IndexOf(BracketView);
+        if (region >= 0)
+            BracketColumns = Enumerable.Range(1, 4).Select(r =>
+            {
+                var cards = boxes.Where(b => b.Round == r && MadnessBracket.RegionOf(b) == region).OrderBy(b => b.Slot).Select(Card).ToList();
+                return new BracketColumn(CollegeWorld.RoundName(r), cards, cards.Count);
+            }).ToList();
+        else
+            BracketColumns = new()
+            {
+                new BracketColumn("Final Four", boxes.Where(b => b.Round == 5).OrderBy(b => b.Slot).Select(Card).ToList(), 2),
+                new BracketColumn("Championship", boxes.Where(b => b.Round == 6).Select(Card).ToList(), 1),
+            };
+        // The tournament at a glance.
+        var played = boxes.Where(b => b.Played).ToList();
+        var cinderella = boxes.Where(b => b.Round >= 3).SelectMany(b => new[] { (b.TeamA, b.SeedA), (b.TeamB, b.SeedB) })
+            .Where(x => x.Item1 != null && x.Item2 >= 10).Select(x => x.Item1!.Value).Distinct().ToList();
+        var biggest = played.Where(b => b.Upset).OrderByDescending(b => Math.Abs(b.SeedA - b.SeedB)).FirstOrDefault();
+        var chips = new List<Hardwood.Desktop.Controls.Chip>
         {
-            Bracket.Add($"— {CollegeWorld.RoundName(round.Key)} —");
-            foreach (var g in round.OrderBy(g => g.Slot))
-                Bracket.Add(g.Played ? $"{T(g.WinnerId!.Value)} beat {T(g.WinnerId == g.HomeId ? g.AwayId : g.HomeId)} {Math.Max(g.HomePts!.Value, g.AwayPts!.Value)}-{Math.Min(g.HomePts!.Value, g.AwayPts!.Value)}"
-                                     : $"{g.Date:MMM d}: {T(g.HomeId)} vs {T(g.AwayId)}");
-        }
+            new("Stage", c.StageText.Replace("March Madness: ", ""), s.ChampionId != null ? "" : "next up", "team"),
+            new("Upsets", played.Count(b => b.Upset).ToString(), "a seed 4+ lines worse winning", "warn"),
+            new("Biggest upset", biggest == null ? "None yet" : $"{Math.Max(biggest.SeedA, biggest.SeedB)} over {Math.Min(biggest.SeedA, biggest.SeedB)}",
+                biggest == null ? "" : c.Program(biggest.Winner!.Value)?.FullName ?? "", biggest == null ? "" : "warn"),
+            new("Cinderellas", cinderella.Count.ToString(), cinderella.Count == 0 ? "no double-digit seed in the Sweet 16" : string.Join(", ", cinderella.Take(2).Select(id => c.Program(id)?.Name)), cinderella.Count > 0 ? "good" : ""),
+        };
+        if (s.ChampionId is { } champ) chips.Insert(0, new("Champions", c.Program(champ)!.Name, c.Program(champ)!.City, "good"));
+        MadnessChips = chips;
     }
 
     private void FillProspects()

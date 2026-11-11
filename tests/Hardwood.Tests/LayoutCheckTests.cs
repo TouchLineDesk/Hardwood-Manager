@@ -177,6 +177,61 @@ public class LayoutCheckTests
     }
 
     [AvaloniaFact]
+    public void The_march_madness_bracket_shows_all_its_text()
+    {
+        // College depth part 2: the bracket in early April (Final Four week), every region and the Final Four, at 1280 and 1480 px.
+        var report = Environment.GetEnvironmentVariable("HW_LAYOUT_REPORT");
+        var path = Path.Combine(Path.GetTempPath(), $"hw-bracket-{Guid.NewGuid():N}.save");
+        var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
+        AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
+        AppSettings.Use(new AppSettings { FaceFolder = oldSettings.FaceFolder, LogoFolder = oldSettings.LogoFolder, AutoPortraits = false });
+        var problems = new List<string>();
+        MainWindow? window = null;
+        try
+        {
+            var vm = new MainViewModel();
+            window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
+            window.Show();
+            var start = (StartViewModel)vm.CurrentPage!;
+            start.SavePath = path; start.SeedText = "2026";
+            start.SelectedTeam = start.Teams.First(t => t.Team.Abbreviation == "BOS");
+            start.NewGame();
+            var session = vm.Session!;
+            while (session.Today < new DateOnly(2027, 4, 3)) session.AdvanceDay();
+            vm.AfterTick();
+            Assert.True(session.World.College!.Season.Selected);
+            foreach (int width in new[] { 1480, 1280 })
+                foreach (var view in Hardwood.Core.College.MadnessBracket.Regions.Append("Final Four"))
+                {
+                    window.Width = width;
+                    vm.Navigate("College");
+                    var college = (CollegeViewModel)vm.CurrentPage!;
+                    college.Tab = 2;
+                    college.BracketView = view;
+                    Settle(window);
+                    if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)
+                    {
+                        Directory.CreateDirectory(shots);
+                        using var frame = window.CaptureRenderedFrame();
+                        frame?.Save(Path.Combine(shots, $"{width}-bracket-{view.Replace(' ', '-').ToLower()}.png"));
+                    }
+                    Assert.Equal(view == "Final Four" ? 2 : 4, college.BracketColumns.Count);
+                    foreach (var p in LayoutCheck.Scan(window)) problems.Add($"{width}px {view} | {p}");
+                }
+        }
+        finally
+        {
+            window?.Close();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            if (File.Exists(AppSettings.FilePath)) File.Delete(AppSettings.FilePath);
+            AppSettings.FilePath = oldPath; AppSettings.Use(oldSettings);
+            if (File.Exists(path)) File.Delete(path);
+            if (report != null) File.AppendAllLines(report, problems);
+        }
+        Assert.True(problems.Count == 0, string.Join("\n", problems.Take(40)));
+    }
+
+    [AvaloniaFact]
     public void Flow_chart_run_labels_stay_off_the_line()
     {
         // Review #6: "11-2", "9-2 8-0" and "14-0" sat on the win-probability line.
