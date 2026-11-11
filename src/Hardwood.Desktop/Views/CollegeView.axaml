@@ -57,10 +57,50 @@
         </DockPanel>
       </TabItem>
       <TabItem Header="March Madness">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
-          <ListBox ItemsSource="{Binding Bracket}"/>
-        </DockPanel>
+        <!-- The bracket (college depth part 2): a region's four rounds as columns, or the Final Four. -->
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding HasBracket}"/>
+            <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding HasBracket}"/>
+            <ItemsControl ItemsSource="{Binding BracketColumns}" Height="620" IsVisible="{Binding HasBracket}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BracketColumn">
+                  <DockPanel Margin="0,0,8,0">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontWeight="SemiBold" Classes="muted" Margin="2,0,0,4"/>
+                    <ItemsControl ItemsSource="{Binding Cards}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BracketCard">
+                          <Border Background="#1C232C" CornerRadius="6" Padding="8,4" VerticalAlignment="Center" Margin="0,2" BorderThickness="3,0,0,0"
+                                  BorderBrush="{DynamicResource HwAccentBrush}">
+                            <StackPanel>
+                              <Grid ColumnDefinitions="22,*,Auto" Opacity="{Binding OpacityA}">
+                                <TextBlock Text="{Binding SeedA}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding NameA}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding WinA, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding ScoreA}" FontSize="12" FontWeight="Bold" Margin="6,0,0,0"/>
+                              </Grid>
+                              <Grid ColumnDefinitions="22,*,Auto" Opacity="{Binding OpacityB}">
+                                <TextBlock Text="{Binding SeedB}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding NameB}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding WinB, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding ScoreB}" FontSize="12" FontWeight="Bold" Margin="6,0,0,0"/>
+                              </Grid>
+                              <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding Note}" Classes="muted" FontSize="10"/>
+                                <TextBlock Text="UPSET" FontSize="10" FontWeight="Bold" Foreground="#D29922" IsVisible="{Binding Upset}"/>
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
       <TabItem Header="Prospects">
         <DockPanel>

@@ -568,3 +568,48 @@ public sealed class CollegeWorld
         0 => "First Four", 1 => "Round of 64", 2 => "Round of 32", 3 => "Sweet 16", 4 => "Elite Eight", 5 => "Final Four", _ => "Championship",
     };
 }
+
+/// <summary>One box in the March Madness bracket: two teams (or "to be decided"), seeds, the score once played.</summary>
+public sealed record BracketBox(int Round, int Slot, int? TeamA, int SeedA, int? TeamB, int SeedB, int? ScoreA, int? ScoreB, DateOnly? Date)
+{
+    public bool Played => ScoreA != null;
+    public int? Winner => !Played ? null : ScoreA > ScoreB ? TeamA : TeamB;
+    /// <summary>A win by a seed at least four lines worse.</summary>
+    public bool Upset => Played && (Winner == TeamA ? SeedA - SeedB : SeedB - SeedA) >= 4;
+}
+
+public static class MadnessBracket
+{
+    public static readonly string[] Regions = { "East", "West", "South", "Midwest" };
+
+    /// <summary>Every box of rounds 1-6 (Round of 64 to the final), filled from the games so far; slots not yet reached are empty.</summary>
+    public static List<BracketBox> Boxes(CollegeSeason s)
+    {
+        var boxes = new List<BracketBox>();
+        if (!s.Selected || s.Bracket.Count < 64) return boxes;
+        var games = s.Games.Where(g => g.Event == CollegeWorld.Madness).ToList();
+        int Seed(int? id) => id is { } x ? s.Seeds.GetValueOrDefault(x) : 0;
+        for (int round = 1; round <= 6; round++)
+        {
+            int n = 64 >> round;
+            for (int slot = 0; slot < n; slot++)
+            {
+                var g = games.FirstOrDefault(x => x.Round == round && x.Slot == slot);
+                if (g != null) { boxes.Add(new BracketBox(round, slot, g.HomeId, Seed(g.HomeId), g.AwayId, Seed(g.AwayId), g.HomePts, g.AwayPts, g.Date)); continue; }
+                int? a = null, b = null;
+                if (round == 1) { a = s.Bracket[slot * 2] is var x and > 0 ? x : null; b = s.Bracket[slot * 2 + 1] is var y and > 0 ? y : null; }
+                else
+                {
+                    a = games.FirstOrDefault(x => x.Round == round - 1 && x.Slot == slot * 2)?.WinnerId;
+                    b = games.FirstOrDefault(x => x.Round == round - 1 && x.Slot == slot * 2 + 1)?.WinnerId;
+                }
+                var date = s.RoundDates.TryGetValue(CollegeWorld.Madness, out var d) && round < d.Count ? d[round] : (DateOnly?)null;
+                boxes.Add(new BracketBox(round, slot, a, Seed(a), b, Seed(b), null, null, date));
+            }
+        }
+        return boxes;
+    }
+
+    /// <summary>Which region a box belongs to (rounds 1-4), or -1 for the Final Four and the final.</summary>
+    public static int RegionOf(BracketBox b) => b.Round >= 5 ? -1 : b.Slot / (8 >> (b.Round - 1));
+}
