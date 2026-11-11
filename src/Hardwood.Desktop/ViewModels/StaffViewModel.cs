@@ -20,7 +20,7 @@ public sealed class StaffRow
     /// <summary>What he'd cost you (market staff abroad are paid on your league's scale when hired).</summary>
     public long Pay { get; init; } = -1;
     public string Salary => (Pay >= 0 ? Pay : Staff.Salary) is var v && v >= 1_000_000 ? $"${v / 1e6:F2}M" : $"${v / 1e3:F0}K";
-    public string Contract => Staff.ContractYears > 0 ? $"{Staff.ContractYears} yr" : "expiring";
+    public string Contract => Staff.ContractYears > 1 ? $"{Staff.ContractYears} yr" : "final yr";
     /// <summary>His way of working (roadmap 12): one of two styles per role, each with an effect.</summary>
     public string Style => Staff.Style;
     public string StyleText => Staff.StyleText;
@@ -65,6 +65,13 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private bool _delegateRecruiting;
     [ObservableProperty] private bool _delegateTactics;
     [ObservableProperty] private string _delegationNote = "";
+    [ObservableProperty] private bool _delegateMedia;
+    partial void OnDelegateMediaChanged(bool value) { if (_loading) return; Session.Delegated.Media = value; Session.SaveNow(); FillDelegationNote(); }
+    // Staff part 2: extending your staff, and you as a coach.
+    [ObservableProperty] private string _renewal = "";
+    [ObservableProperty] private bool _canExtend;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _coachChips = new();
+    [ObservableProperty] private string _coachNote = "";
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _developmentChips = new();
     public bool TrainingManual => !DelegateTraining;
     partial void OnSelectedMarketChanged(StaffRow? value) { Interview = ""; CanHire = false; }
@@ -126,7 +133,15 @@ public sealed partial class StaffViewModel : PageViewModel
             new("Biggest riser", riser is { } r && r.c >= 0.5 ? $"{r.c:+0} CA" : "None", riser is { } rr ? rr.p.Name : "", riser is { } r2 && r2.c >= 3 ? "good" : ""),
             new("Growing", growing.ToString(), "players heading up at their minutes", "info"),
         };
-        DelegateTraining = s.Delegated.Training; DelegateRecruiting = s.Delegated.Recruiting; DelegateTactics = team.Tactic.Auto;
+        DelegateTraining = s.Delegated.Training; DelegateRecruiting = s.Delegated.Recruiting; DelegateTactics = team.Tactic.Auto; DelegateMedia = s.Delegated.Media;
+        var c = s.Coach;
+        CoachChips = Enum.GetValues<Hardwood.Core.Jobs.CoachAttr>()
+            .Select(a => new Hardwood.Desktop.Controls.Chip(Hardwood.Core.Jobs.Coach.Label(a), c[a].ToString(), Hardwood.Core.Jobs.Coach.Describe(a), c[a] >= 14 ? "good" : c[a] <= 7 ? "warn" : "")).ToList();
+        CoachNote = $"This season so far: {c.SeasonAnswers} press and locker-room moments answered yourself, {c.SeasonTalks} one-on-one talks. "
+                    + "A season's work grows your ratings: fronting the press builds Motivation, talks build Man management, a winning season Tactics, planning your own training for young players Development (up to two points a season).";
+        var ending = s.StaffExpiring;
+        if (Renewal.Length == 0 && ending.Count > 0)
+            Renewal = $"{string.Join(", ", ending.Select(x => x.Name))}: contract{(ending.Count == 1 ? "" : "s")} end this summer. Select one in Your staff and press Extend, or he leaves when the season ends.";
         FillDelegationNote();
         Intensity = team.Training.Intensity;
         IntensityText = Describe(team.Training.Intensity);
@@ -175,6 +190,7 @@ public sealed partial class StaffViewModel : PageViewModel
         if (d.Training && d.LastTraining.Length > 0) lines.Add(d.LastTraining);
         if (d.Recruiting) lines.Add(d.LastRecruiting.Length > 0 ? d.LastRecruiting : "Your head scout starts courting seniors from November (College > Recruiting).");
         if (Session.HumanTeam.Tactic.Auto) lines.Add("Your assistant picks the system, scheme and sliders for each opponent.");
+        if (d.Media) lines.Add(d.LastMedia.Length > 0 ? d.LastMedia : "Your assistant coach fronts the press and handles the locker room, in his own style (a Mentor protects team spirit).");
         DelegationNote = lines.Count == 0 ? "You're running everything yourself." : string.Join("\n", lines);
     }
 
@@ -195,6 +211,24 @@ public sealed partial class StaffViewModel : PageViewModel
         var replaced = Session.HumanTeam.Staff.FirstOrDefault(x => x.Role == st.Role);
         Status = Session.HireOnTerms(st) + (replaced != null && Session.HumanTeam.Staff.Contains(st) ? $" {replaced.Name} released." : "");
         Interview = ""; CanHire = false;
+        Shell.AfterTick();
+    }
+
+    partial void OnSelectedOursChanged(StaffRow? value)
+    {
+        CanExtend = false;
+        if (value == null) return;
+        var a = Session.StaffRenewal(value.Staff);
+        Renewal = a.Text; CanExtend = a.Willing;
+    }
+
+    /// <summary>Extend the selected staff member on the terms he asked for (staff part 2).</summary>
+    [RelayCommand]
+    public void Extend()
+    {
+        if (SelectedOurs == null) return;
+        Status = Session.ExtendStaff(SelectedOurs.Staff);
+        Renewal = ""; CanExtend = false;
         Shell.AfterTick();
     }
 

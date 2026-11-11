@@ -764,6 +764,7 @@ public sealed partial class GameSession
         MyStats.TryGetValue(p.Id, out var st);
         double wp = MyRecord.Games > 0 ? MyRecord.WinPct : 0.5;
         var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng, Coach);
+        Coach.SeasonTalks++;
         SaveNow();
         return r;
     }
@@ -781,8 +782,13 @@ public sealed partial class GameSession
         Postseason!.FillOutcome(outcome);
 
         Phase = SessionPhase.Offseason;
-        Offseason = new Offseason(League, outcome, Stats, _rng);
+        Offseason = new Offseason(League, outcome, Stats, _rng) { HumanTeamId = ControlledTeamId };
         Offseason.Begin();
+        if (Employed && Offseason.Report.StaffLeft.Count > 0)
+            Post($"{Count(Offseason.Report.StaffLeft.Count, "staff contract")} ran out",
+                string.Join("\n", Offseason.Report.StaffLeft.Select(st => $"{st.Name} ({Staff.RoleName(st.Role).ToLower()}) has left: his contract ended without an extension."))
+                + "\n\nHire replacements on the Staff & Training page; interview candidates first.", "Staff");
+        CoachGrowth();
         // The world's summer starts too: overseas contracts end and some players enter the shared free-agent pool.
         var recruiting = World.College?.Season.Recruiting;
         World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);
