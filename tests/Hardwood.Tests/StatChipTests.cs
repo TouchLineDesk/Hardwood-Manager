@@ -159,4 +159,39 @@ public class StatChipTests
         }
         finally { try { File.Delete(path); } catch { } }
     }
+
+    [AvaloniaFact]
+    public void Transfer_deal_chips_show_the_fee_range_stance_and_interest()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hw-chips3-{Guid.NewGuid():N}.save");
+        try
+        {
+            var vm = new MainViewModel();
+            var start = (StartViewModel)vm.CurrentPage!;
+            start.SavePath = path;
+            start.SeedText = "41";
+            start.SelectedTeam = start.Teams.First();
+            start.NewGame();
+            var s = vm.Session!;
+            vm.Navigate("Transactions");
+            var tx = (TransactionsViewModel)vm.CurrentPage!;
+            Assert.NotEmpty(tx.Market);
+            Chip C(IEnumerable<Chip> chips, string label) => chips.Single(c => c.Label == label);
+            foreach (var row in tx.Market.Take(25).ToList())
+            {
+                tx.SelectedMarket = row;
+                var likely = s.LikelyFee(row.Player);
+                Assert.Equal(likely.Short, C(tx.DealChips, "Likely fee").Value);
+                Assert.Equal(likely.Short, row.Ask);
+                Assert.Equal(s.StanceOn(row.Player)!.Label, C(tx.DealChips, "Club stance").Value);
+                Assert.Equal(s.StanceOn(row.Player)!.Label, row.Stance);
+                bool comes = s.WontCome(row.Player) == null;
+                Assert.Equal(comes ? "Yes" : "No", C(tx.DealChips, "Will he come?").Value);
+                Assert.Equal(comes, row.Interest == "Yes");
+                Assert.Equal(row.Player.Contract is { Buyout: > 0 }, tx.DealChips.Any(c => c.Label == "Release clause"));
+                Assert.Equal((decimal)Math.Round(likely.Mid / 1e6, 2), tx.BidFee);
+            }
+        }
+        finally { try { File.Delete(path); } catch { } }
+    }
 }
