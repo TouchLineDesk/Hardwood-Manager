@@ -132,13 +132,43 @@ public static class Board
     };
 
     /// <summary>Goal wording for a league: leagues without playoffs are judged on the final table.</summary>
-    public static string Describe(SeasonGoal g, LeagueContext ctx) => ctx.IsNabl || ctx.PlayoffTeams > 1 ? Describe(g) : g switch
+    public static string Describe(SeasonGoal g, LeagueContext ctx) => ctx.IsCollege ? DescribeCollege(g) : ctx.IsNabl || ctx.PlayoffTeams > 1 ? Describe(g) : g switch
     {
         SeasonGoal.Title => "Win the league",
         SeasonGoal.Finals => "Finish in the top two",
         SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => "Finish in the top three",
         SeasonGoal.Playoffs or SeasonGoal.PlayIn => "Finish in the top half",
         _ => "Stay clear of the bottom and show progress",
+    };
+
+    /// <summary>College goals are about March Madness (#160).</summary>
+    public static string DescribeCollege(SeasonGoal g) => g switch
+    {
+        SeasonGoal.Title => "Win the national championship",
+        SeasonGoal.Finals => "Reach the Final Four",
+        SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => "Reach the Sweet 16",
+        SeasonGoal.Playoffs or SeasonGoal.PlayIn => "Make March Madness",
+        _ => "Build the program and show progress",
+    };
+
+    /// <summary>A goal's place on the college ladder: 0 build, 1 in the field, 2 Sweet 16, 3 Final Four, 4 champion.</summary>
+    public static int CollegeStep(SeasonGoal g) => g switch
+    {
+        SeasonGoal.Title => 4,
+        SeasonGoal.Finals => 3,
+        SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => 2,
+        SeasonGoal.Playoffs or SeasonGoal.PlayIn => 1,
+        _ => 0,
+    };
+
+    /// <summary>How far a program got: champion, Final Four, Sweet 16, in the field, or not.</summary>
+    public static SeasonGoal Achieved(College.CollegeWorld cw, int teamId) => cw.MadnessReached(teamId) switch
+    {
+        7 => SeasonGoal.Title,
+        >= 5 => SeasonGoal.Finals,
+        >= 3 => SeasonGoal.SecondRound,
+        >= 1 => SeasonGoal.Playoffs,
+        _ => SeasonGoal.Develop,
     };
 
     public static string Describe(Demand d) => d switch
@@ -216,7 +246,15 @@ public static class Board
         int r = ProjectedRank(ctx, team);
         SeasonGoal goal;
         int target;
-        if (ctx.IsNabl)
+        if (ctx.IsCollege)
+        {
+            // About 148 programs: the favourite is asked for the title, the top four the Final Four, the top 16 the Sweet 16,
+            // roughly the top 45 a tournament bid (the at-large line sits around 45th once the automatic bids are in).
+            goal = r == 1 ? SeasonGoal.Title : r <= 4 ? SeasonGoal.Finals : r <= 16 ? SeasonGoal.SecondRound
+                 : r <= 45 ? SeasonGoal.Playoffs : SeasonGoal.Develop;
+            target = (int)Math.Round(ctx.SeasonGames * (0.80 - ctx.Fraction(r) * 0.52));
+        }
+        else if (ctx.IsNabl)
         {
             goal = r <= 2 ? SeasonGoal.Title : r <= 5 ? SeasonGoal.ConferenceFinals : r <= 10 ? SeasonGoal.SecondRound
                  : r <= 16 ? SeasonGoal.Playoffs : r <= 20 ? SeasonGoal.PlayIn : SeasonGoal.Develop;
@@ -240,6 +278,16 @@ public static class Board
         }
         var o = team.Owner;
         var e = new Expectations { Season = season, Goal = goal, TargetWins = target };
+        if (ctx.IsCollege)
+        {
+            // No wages and no veterans in college: an ambitious AD simply wants the tournament (#168).
+            if (o.Ambition >= 15 && goal < SeasonGoal.Playoffs)
+            {
+                e.Goal = SeasonGoal.Playoffs;
+                e.TargetWins = Math.Max(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.6));
+            }
+            return e;
+        }
         // Careful owners want wages kept within the budget (the luxury tax, before the open market).
         if (o.Ambition <= 7 && (ctx.Finance is { SoftCap: true } || ctx.Finance is null or { OpenMarket: true })) e.Demands.Add(Demand.StayUnderTax);
         if (o.Ambition >= 15 && goal < SeasonGoal.Playoffs)
@@ -400,7 +448,9 @@ public static class Board
         var e = job.Current ?? SetExpectations(ctx, team, season);
         e.Achieved = achieved;
         double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
-        int diff = (int)achieved - (int)e.Goal;
+        // College goals sit on a shorter ladder (in the field, Sweet 16, Final Four, title): a 1-seed set "win it all" who
+        // goes out in the round of 32 is three steps short, not four (the college-strong critic career, C2).
+        int diff = ctx.IsCollege ? CollegeStep(achieved) - CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
         double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);

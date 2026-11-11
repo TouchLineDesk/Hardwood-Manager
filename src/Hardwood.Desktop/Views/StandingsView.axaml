@@ -12,9 +12,9 @@
     <WrapPanel Margin="0,0,0,8">
       <TextBlock Text="{Binding Note}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0"/>
       <Border Background="{x:Static vm:StandingRow.PlayoffBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-      <TextBlock Text="Playoffs" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0"/>
-      <Border Background="{x:Static vm:StandingRow.PlayInBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-      <TextBlock Text="Play-in" Classes="muted" VerticalAlignment="Center"/>
+      <TextBlock Text="{Binding PlayoffLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0"/>
+      <Border Background="{x:Static vm:StandingRow.PlayInBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0" IsVisible="{Binding ShowPlayIn}"/>
+      <TextBlock Text="Play-in" Classes="muted" VerticalAlignment="Center" IsVisible="{Binding ShowPlayIn}"/>
     </WrapPanel>
     <Grid x:Name="Tables" ColumnDefinitions="*,*">
       <DockPanel x:Name="LeftTable" Margin="0,0,8,12">
@@ -37,7 +37,7 @@
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
               <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="38"/>
@@ -70,7 +70,7 @@
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
               <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="38"/>

@@ -17,7 +17,9 @@ public sealed class TeamChoice
     public string Conference => League.Length > 0 ? League : $"{Team.Conference} · {Team.Division}";
     public double CoreCa { get; init; }
     public double LeagueCoreCa { get; init; }
-    public string Strength => CoreCa - LeagueCoreCa >= 6 ? "Contender" : CoreCa - LeagueCoreCa >= 1.5 ? "Playoff team" : CoreCa - LeagueCoreCa >= -4 ? "Middle of the pack" : "Rebuilding";
+    /// <summary>A fixed outlook (college programs are ranked nationally); otherwise from the core ability.</summary>
+    public string? Outlook { get; init; }
+    public string Strength => Outlook ?? (CoreCa - LeagueCoreCa >= 6 ? "Contender" : CoreCa - LeagueCoreCa >= 1.5 ? "Playoff team" : CoreCa - LeagueCoreCa >= -4 ? "Middle of the pack" : "Rebuilding");
     public string Payroll { get; init; } = "";
     public string Star { get; init; } = "";
 }
@@ -97,12 +99,13 @@ public sealed partial class StartViewModel : ViewModelBase
     private League? _preview;
     private Hardwood.Core.World.GameWorld? _previewWorld;
 
-    /// <summary>Where you can start (stage 3): the NABL or any league abroad.</summary>
+    /// <summary>Where you can start (stage 3): the NABL, any league abroad, or a college program (C2, #168).</summary>
     public List<string> PlayLeagues { get; } = new[] { "NABL" }.Concat(Hardwood.Core.World.Competitions.Current
-        .Where(c => c.Kind == Hardwood.Core.World.CompetitionKind.Domestic).Select(c => c.Name)).ToList();
+        .Where(c => c.Kind == Hardwood.Core.World.CompetitionKind.Domestic).Select(c => c.Name)).Append(CollegeChoice).ToList();
+    public const string CollegeChoice = "College basketball";
     [ObservableProperty] private string _playLeague = "NABL";
     partial void OnPlayLeagueChanged(string value) => FillTeams();
-    public string ChooseTitle => PlayLeague == "NABL" ? "Choose your franchise" : $"Choose your club · {PlayLeague}";
+    public string ChooseTitle => PlayLeague == "NABL" ? "Choose your franchise" : PlayLeague == CollegeChoice ? "Choose your program · College basketball" : $"Choose your club · {PlayLeague}";
 
     public StartViewModel(MainViewModel shell)
     {
@@ -147,6 +150,7 @@ public sealed partial class StartViewModel : ViewModelBase
     {
         if (_preview == null) return;
         Teams.Clear();
+        if (PlayLeague == CollegeChoice) { FillPrograms(); return; }
         bool nabl = PlayLeague == "NABL";
         var clubs = nabl ? _preview.Teams.OrderBy(t => t.Conference).ThenBy(t => t.Division).ThenBy(t => t.City).ToList()
             : _previewWorld?.Competitions.FirstOrDefault(c => c.Profile.Name == PlayLeague)?.Clubs.OrderBy(t => t.City).ToList() ?? new List<Team>();
@@ -162,6 +166,30 @@ public sealed partial class StartViewModel : ViewModelBase
                 Team = t, CoreCa = Core(t), LeagueCoreCa = leagueCore, League = nabl ? "" : PlayLeague,
                 Payroll = pay >= 10_000_000 ? $"${pay / 1e6:F0}M" : $"${pay / 1e6:F1}M",
                 Star = $"{star.Name} ({star.PrimaryPosition}, {star.CurrentAbility})",
+            });
+        }
+        SelectedTeam = Teams.FirstOrDefault();
+        OnPropertyChanged(nameof(ChooseTitle));
+    }
+
+    /// <summary>College programs, best first: their conference, a national outlook, and no payroll (the classic era, #161).</summary>
+    private void FillPrograms()
+    {
+        if (_previewWorld?.College is not { } cw) return;
+        static double Core(Team t) => t.Roster.OrderByDescending(p => p.CurrentAbility).Take(8).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(0).Average();
+        var ranked = cw.Programs.OrderByDescending(Core).ToList();
+        double national = ranked.Average(Core);
+        for (int i = 0; i < ranked.Count; i++)
+        {
+            var t = ranked[i];
+            var conf = Hardwood.Core.College.CollegeWorld.Conferences.First(c => c.Key == cw.ConferenceOf[t.Id]);
+            var star = t.Roster.OrderByDescending(p => p.CurrentAbility).First();
+            Teams.Add(new TeamChoice
+            {
+                Team = t, CoreCa = Core(t), LeagueCoreCa = national, League = $"{conf.Short} · {(conf.Power ? "power" : "mid-major")}",
+                Outlook = i < 8 ? "National contender" : i < 30 ? "Tournament team" : i < 60 ? "On the bubble" : "Rebuilding",
+                Payroll = "No wages",
+                Star = $"{star.FirstName[0]}. {star.LastName} ({star.PrimaryPosition}, {star.CurrentAbility})",
             });
         }
         SelectedTeam = Teams.FirstOrDefault();

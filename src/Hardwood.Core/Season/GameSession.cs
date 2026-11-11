@@ -90,9 +90,11 @@ public sealed partial class GameSession
         Budgets.Initialize(League.Teams, 1, moneyRng);
         foreach (var c in World.Competitions.Where(c => c.Clubs.Count > 0)) Budgets.Initialize(c.Clubs, c.Profile.SalaryScale, moneyRng);
         HumanTeam.Coach = Coach;
+        // College programs get athletic directors (the board's role) and coaches' names (C2, #168).
+        if (World.College != null) Jobs.Board.EnsureOwnersAndCoaches(World.College.Programs, seed);
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
-        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, HumanLeague?.Key ?? "nabl", MyLevel, 0);
+        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0);
         BuildSeason();
     }
 
@@ -246,7 +248,7 @@ public sealed partial class GameSession
 
     /// <summary>True when the human team plays today and the game could be followed live.</summary>
     public bool HumanPlaysToday =>
-        Abroad ? Employed && Phase != SessionPhase.Offseason && World.GameOn(HumanTeam.Id, Today) != null :
+        Abroad ? Employed && Phase != SessionPhase.Offseason && (InCollege ? World.College!.GameOn(HumanTeam.Id, Today) != null : World.GameOn(HumanTeam.Id, Today) != null) :
         Employed && (Phase == SessionPhase.RegularSeason || (Phase == SessionPhase.Preseason && Today >= OpeningNight)) && GamesOn(Today).Any(g => g.Home == HumanTeam || g.Away == HumanTeam)
         || (Employed && Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam));
 
@@ -309,7 +311,8 @@ public sealed partial class GameSession
         if (live != null)
         {
             if (!live.Complete) live.Finish();
-            if (_liveWorld is { } w) RecordAbroad(w.comp, w.fixture, live.Result);
+            if (_liveCollege is { } cg) RecordCollege(cg, live.Result);
+            else if (_liveWorld is { } w) RecordAbroad(w.comp, w.fixture, live.Result);
             else if (_liveScheduled != null) RecordRegularSeasonGame(_liveScheduled, live.Result);
             else if (_liveSeries != null)
             {
@@ -356,6 +359,7 @@ public sealed partial class GameSession
     /// <summary>Play the world's games up to and including <paramref name="date"/> and post its headlines.</summary>
     public void PlayWorld(DateOnly date)
     {
+        if (World.College is { } cw) cw.ManagedProgramId = Employed && InCollege ? HumanTeam.Id : null;
         World.PlayThrough(date, _sim);
         // Day to day the digest keeps its fortnightly rhythm (review #4: posting whenever there was news made it near-daily).
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: date == DateOnly.MaxValue);
@@ -375,7 +379,9 @@ public sealed partial class GameSession
         if (inSeason && Today.DayOfWeek == DayOfWeek.Monday)
         {
             WeeklyPeople();
-            if (Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason) WeeklyBoard();
+            bool regular = InCollege ? !World.College!.Season.Selected && MyRecord.Games > 0
+                : Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason;
+            if (regular) WeeklyBoard();
         }
         if (!Employed) DailyJobMarket();
         if (Today.DayOfWeek == DayOfWeek.Monday) { DelegatedTraining(); DelegatedRecruiting(); WeeklyRecruiting(); }
@@ -537,16 +543,20 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, avoid the relegation places" : Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower())} (around {e.TargetWins} wins)."
+            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, avoid the relegation places" : Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower())} (around {e.TargetWins} wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
+
+    /// <summary>A college program's boss is its athletic director (C2): the board's wording, translated.</summary>
+    private string Boss(string text) => !InCollege ? text
+        : text.Replace("The owner", "The athletic director").Replace("the owner", "the athletic director").Replace("Board confidence", "AD confidence");
 
     private void WeeklyBoard()
     {
         if (!Employed) return;
         var rec = MyRecord;
         var (title, body, sacked) = Jobs.Board.Weekly(Job, ContextOf(HumanTeam), HumanTeam, rec.Wins, rec.Losses, MyStats, Today, League.Season);
-        if (title != null) Post(title, body!, "Board");
+        if (title != null) Post(Boss(title), Boss(body!), "Board");
         if (sacked) Fire();
     }
 
@@ -557,9 +567,10 @@ public sealed partial class GameSession
         if (Employed)
         {
             var rec = MyRecord;
-            var achieved = HumanLeague is { } c ? Jobs.Board.Achieved(HumanTeam.Id, c.Season, c.Profile) : Jobs.Board.Achieved(HumanTeam, Postseason);
+            var achieved = InCollege ? Jobs.Board.Achieved(World.College!, HumanTeam.Id)
+                : HumanLeague is { } c ? Jobs.Board.Achieved(HumanTeam.Id, c.Season, c.Profile) : Jobs.Board.Achieved(HumanTeam, Postseason);
             var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season);
-            Post(title, body, "Board");
+            Post(Boss(title), Boss(body), "Board");
             if (sacked) Fire();
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
@@ -645,7 +656,7 @@ public sealed partial class GameSession
         Job.HiredOn = Today;
         Job.HiredSeason = League.Season;
         Job.History.Clear();
-        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, League.Season, null, World.LeagueOf(team)?.Key ?? "nabl", 0, 0);
+        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, League.Season, null, MyLeagueKey, 0, 0);
         if (Abroad) EnsureStaff(team);
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
@@ -760,7 +771,8 @@ public sealed partial class GameSession
     // ------------------------------------------------------------------------------------------
     private void BeginOffseason()
     {
-        World.ManagedClubId = Employed && Abroad ? HumanTeam.Id : null;
+        World.ManagedClubId = Employed && Abroad && !InCollege ? HumanTeam.Id : null;
+        var collegeBefore = Employed && InCollege ? HumanTeam.Roster.ToList() : null;
         NewWindow();
         var outcome = new SeasonOutcome { Standings = Standings, Midseason = Midseason };
         outcome.RegularSeason.AddRange(Results.Values);
@@ -783,6 +795,18 @@ public sealed partial class GameSession
 
         AnnounceAwards(Offseason.Summary!);
         if (!Employed) return; // out of work: the rest of these messages are about your team
+        if (collegeBefore != null)
+        {
+            // College (C2): no contracts. Seniors graduate into the pros and the signed class enrolls (#162).
+            var now = HumanTeam.Roster.ToHashSet();
+            var left = collegeBefore.Where(p => !now.Contains(p)).ToList();
+            var joined = HumanTeam.Roster.Where(p => !collegeBefore.Contains(p)).OrderByDescending(p => p.CurrentAbility).ToList();
+            Post("Graduation and enrollment",
+                (left.Count > 0 ? $"Graduated into the pros: {string.Join(", ", left.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : "Nobody graduated this year.")
+                + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility}/{p.PotentialAbility})"))}." : "No new players enrolled.")
+                + $"\n\nRoster: {HumanTeam.Roster.Count} players. The pros' summer runs until the new season; your program has nothing to sign, so press Continue to move it along.", "Roster");
+            return;
+        }
         if (Abroad)
         {
             _summerRoster = HumanTeam.Roster.Select(p => p.Id).ToList();
@@ -852,7 +876,7 @@ public sealed partial class GameSession
                     Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
                     Offseason.AiFreeAgency(ControlledTeamId);
                     AiTransferRound(15); // the summer transfer market (decision #87)
-                    if (Employed && _rng.Chance(0.6)) MaybeBidForYourPlayer();
+                    if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
                     foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
                     World.News.Clear();
                     if (Employed)
@@ -959,9 +983,9 @@ public sealed partial class GameSession
         World.News.Clear();
         if (Employed)
         {
-            if (Abroad) SummerReport();
+            if (Abroad && !InCollege) SummerReport();
             Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
-                HumanLeague?.Key ?? "nabl", MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
+                MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
             Job.WarningLevel = 0;
             PostExpectations();
         }
@@ -989,7 +1013,9 @@ public sealed partial class GameSession
     public void SaveNow()
     {
         if (Save == null) return;
-        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players, World.Clubs, World.College?.Players);
+        // A college program you coach keeps its staff in the save like a club abroad (C2).
+        var clubs = World.Clubs.Concat(World.College?.Programs.Where(t => t.Staff.Count > 0) ?? Enumerable.Empty<Team>());
+        Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players, clubs, World.College?.Players);
         Save.SaveSession(this);
         Save.SaveWorld(World);
         Save.SavePeople(this);

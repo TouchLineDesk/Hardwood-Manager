@@ -98,19 +98,32 @@ public sealed partial class RosterViewModel : PageViewModel
         {
             new("Players", roster.Count.ToString(), roster.Count == 0 ? "" : $"average age {roster.Average(p => p.Age(s.Today)):0.0}", "team"),
         };
-        if (team.Money.Ready)
+        var college = s.World.College is { } cw && cw.Programs.Contains(team) ? cw : null;
+        if (college != null)
+        {
+            // College (C2): scholarships, not wages (13 plus up to 2 walk-ons, #162).
+            int walkOns = roster.Count(p => college.WalkOnIds.Contains(p.Id));
+            chips.Add(new("Scholarships", $"{roster.Count - walkOns}/13", walkOns == 0 ? "no walk-ons" : walkOns == 1 ? "plus 1 walk-on" : $"plus {walkOns} walk-ons"));
+        }
+        else if (team.Money.Ready)
         {
             long budget = team.Money.WageBudget;
             chips.Add(new("Wages", PlayerViewModel.Money(payroll), $"of a {PlayerViewModel.Money(budget)} budget",
                 payroll > budget ? "bad" : payroll > budget * 0.95 ? "warn" : "good"));
         }
         else chips.Add(new("Wages", PlayerViewModel.Money(payroll), "a season"));
+        if (college != null)
+        {
+            var summer = new DateOnly(college.Season.Year + 1, 7, 1);
+            int grads = roster.Count(p => p.Age(summer) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
+            chips.Add(new("Graduating", grads.ToString(), "turn pro next summer", grads > 0 ? "info" : ""));
+        }
         var injured = roster.Where(p => p.Injury is { } i && i.IsOut(s.Today)).ToList();
         chips.Add(injured.Count == 0
             ? new("Injured", "0", "everyone fit", "good")
             : new("Injured", injured.Count.ToString(), string.Join(", ", injured.Take(2).Select(p => p.Name.Split(' ').Last())) + (injured.Count > 2 ? $" +{injured.Count - 2}" : ""), "bad"));
         int expiring = roster.Count(p => p.Contract is { Years: <= 0 });
-        chips.Add(new("Expiring", expiring.ToString(), expiring == 0 ? "no deals end this summer" : "deals end this summer", expiring > 0 ? "warn" : ""));
+        if (college == null) chips.Add(new("Expiring", expiring.ToString(), expiring == 0 ? "no deals end this summer" : "deals end this summer", expiring > 0 ? "warn" : ""));
         if (roster.Count > 0)
         {
             var best = roster.OrderByDescending(p => p.CurrentAbility).First();

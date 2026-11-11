@@ -68,7 +68,7 @@
           <ItemsControl ItemsSource="{Binding Nav}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:NavItem">
-                <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding Command}">
+                <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding Command}" IsVisible="{Binding IsVisible}">
                   <Grid ColumnDefinitions="Auto,*,Auto">
                     <c:Icon Kind="{Binding Icon}" Width="17" Height="17" Margin="0,0,10,0" Stroke="1.8" VerticalAlignment="Center"
                             Foreground="{Binding $parent[Button].Foreground}"/>

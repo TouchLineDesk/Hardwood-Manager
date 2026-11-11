@@ -28,7 +28,17 @@ public sealed partial class GameSession
     public bool Abroad => !InNabl;
     /// <summary>The overseas league your club plays in (null in the NABL).</summary>
     public WorldCompetition? HumanLeague => InNabl ? null : World.LeagueOf(HumanTeam);
-    public string HumanLeagueName => HumanLeague?.Profile.Name ?? League.Name;
+    public string HumanLeagueName => InCollege ? MyConference!.Name : HumanLeague?.Profile.Name ?? League.Name;
+
+    /// <summary>You coach a college program (slice C2, #168). <see cref="Abroad"/> is true too: the NABL plays on without you.</summary>
+    public bool InCollege => World.College?.Programs.Contains(HumanTeam) == true;
+    /// <summary>Your program's conference (null outside college).</summary>
+    public College.ConferenceInfo? MyConference =>
+        InCollege && World.College!.ConferenceOf.TryGetValue(HumanTeam.Id, out var key) ? College.CollegeWorld.Conferences.First(c => c.Key == key) : null;
+    /// <summary>The key the board's expectations are filed under: "nabl", an overseas league's key, or "college".</summary>
+    public string MyLeagueKey => InCollege ? "college" : HumanLeague?.Key ?? "nabl";
+    /// <summary>Who judges you: the owner, or a college program's athletic director.</summary>
+    public string BossTitle => InCollege ? "athletic director" : "owner";
 
     /// <summary>Your club's level in the USA pyramid: 1 = NABL, 2-5 the tiers below; 0 for leagues abroad.</summary>
     public int MyLevel => InNabl ? 1 : HumanLeague is { } c ? UsaPyramid.Level(c.Key) : 0;
@@ -37,7 +47,41 @@ public sealed partial class GameSession
 
     /// <summary>The league a club plays in, as the board sees it.</summary>
     public LeagueContext ContextOf(Team t) =>
-        League.Teams.Contains(t) ? LeagueContext.Nabl(League) : World.LeagueOf(t) is { } c ? LeagueContext.Of(c) : LeagueContext.Nabl(League);
+        League.Teams.Contains(t) ? LeagueContext.Nabl(League) : World.LeagueOf(t) is { } c ? LeagueContext.Of(c)
+        : World.College is { } cw && cw.Programs.Contains(t) ? LeagueContext.College(cw, t) : LeagueContext.Nabl(League);
+
+    /// <summary>A college conference's table from its conference games (ties: the better rating).</summary>
+    public Standings CollegeTable(string conferenceKey)
+    {
+        var cw = World.College!;
+        var st = new Standings(cw.InConference(conferenceKey));
+        foreach (var g in cw.Season.Games.Where(g => g.Played && g.Stage == "Conference"))
+            if (cw.Program(g.HomeId) is { } h && cw.Program(g.AwayId) is { } a && st.Has(h) && st.Has(a))
+                st.Record(h, a, g.HomePts!.Value, g.AwayPts!.Value);
+        return st;
+    }
+
+    /// <summary>A college program's overall record this season: every game it has played.</summary>
+    public TeamRecord CollegeRecord(Team program)
+    {
+        var cw = World.College!;
+        var st = new Standings(new[] { program });
+        foreach (var g in cw.GamesOf(program.Id).Where(g => g.Played))
+        {
+            bool home = g.HomeId == program.Id;
+            var opp = cw.Program(home ? g.AwayId : g.HomeId);
+            if (opp == null) continue;
+            var r = st[program];
+            int us = home ? g.HomePts!.Value : g.AwayPts!.Value, them = home ? g.AwayPts!.Value : g.HomePts!.Value;
+            r.PointsFor += us; r.PointsAgainst += them;
+            if (us > them) { r.Wins++; if (home) r.HomeWins++; } else { r.Losses++; if (home) r.HomeLosses++; }
+        }
+        return st[program];
+    }
+
+    /// <summary>Box scores of your college games this session (the college season keeps scores and stat lines).</summary>
+    public Dictionary<string, GameResult> CollegeResults { get; } = new();
+    private static string Key(College.CollegeGame g) => $"college:{g.Date:yyyyMMdd}:{g.HomeId}:{g.AwayId}";
 
     /// <summary>Box scores of your games abroad this session (the world keeps scores and stat lines; these add the detail).</summary>
     public Dictionary<string, GameResult> AbroadResults { get; } = new();
@@ -55,11 +99,13 @@ public sealed partial class GameSession
 
     /// <summary>Any club's regular-season record in its own league (NABL or abroad).</summary>
     public TeamRecord RecordOf(Team t) =>
-        League.Teams.Contains(t) ? Standings[t] : World.LeagueOf(t) is { } c ? TableOf(c)[t] : new TeamRecord { Team = t };
+        League.Teams.Contains(t) ? Standings[t] : World.LeagueOf(t) is { } c ? TableOf(c)[t]
+        : World.College?.Programs.Contains(t) == true ? CollegeRecord(t) : new TeamRecord { Team = t };
 
     /// <summary>Your league's standings (the NABL's, or your overseas league's).</summary>
-    public Standings MyStandings => HumanLeague is { } c ? TableOf(c) : Standings;
-    public TeamRecord MyRecord => MyStandings.Has(HumanTeam) ? MyStandings[HumanTeam] : new TeamRecord { Team = HumanTeam };
+    public Standings MyStandings => InCollege ? CollegeTable(MyConference!.Key) : HumanLeague is { } c ? TableOf(c) : Standings;
+    /// <summary>Your record: in college, every game (the conference table is <see cref="MyTable"/>).</summary>
+    public TeamRecord MyRecord => InCollege ? CollegeRecord(HumanTeam) : MyStandings.Has(HumanTeam) ? MyStandings[HumanTeam] : new TeamRecord { Team = HumanTeam };
     /// <summary>The table you're ranked in: your NABL conference, or your whole overseas league.</summary>
     public List<TeamRecord> MyTable => InNabl ? Standings.Conference(HumanTeam.Conference) : MyStandings.All();
     public string MyTableName => InNabl ? HumanTeam.Conference.ToString() : HumanLeagueName;
@@ -88,6 +134,25 @@ public sealed partial class GameSession
                 }
             return list.OrderBy(g => g.Date).ToList();
         }
+        if (InCollege)
+        {
+            var cw = World.College!;
+            foreach (var g in cw.GamesOf(us.Id))
+            {
+                bool home = g.HomeId == us.Id;
+                var opp = cw.Program(home ? g.AwayId : g.HomeId);
+                if (opp == null) continue;
+                CollegeResults.TryGetValue(Key(g), out var r);
+                // Short labels for the schedule: conference games carry the conference's short name, non-conference games none,
+                // events their name (and the round for March Madness).
+                string comp = g.Event ?? HumanLeagueName;
+                string stage = g.Event == College.CollegeWorld.Madness ? College.CollegeWorld.RoundName(g.Round)
+                    : g.Stage == "Conference" ? MyConference!.Short : "Regular season";
+                list.Add(new MyGame(g.Date, opp, home, comp, stage,
+                    g.Played ? (home ? g.HomePts : g.AwayPts) : null, g.Played ? (home ? g.AwayPts : g.HomePts) : null, r));
+            }
+            return list;
+        }
         foreach (var (comp, f) in World.FixturesOf(us.Id))
         {
             bool home = f.HomeId == us.Id;
@@ -111,8 +176,9 @@ public sealed partial class GameSession
             if (InNabl) return Stats;
             var stats = new Dictionary<int, PlayerSeasonStats>();
             var mine = HumanTeam.Roster.Select(p => p.Id).ToHashSet();
-            foreach (var comp in World.Playing)
-            foreach (var (id, l) in comp.Season.Stats)
+            var sources = InCollege ? new[] { World.College!.Season.Stats } : World.Playing.Select(c => c.Season.Stats);
+            foreach (var source in sources)
+            foreach (var (id, l) in source)
             {
                 if (!mine.Contains(id) || l.TeamId != HumanTeam.Id) continue;
                 if (!stats.TryGetValue(id, out var s)) stats[id] = s = new PlayerSeasonStats { PlayerId = id, TeamId = l.TeamId, Season = League.Season };
@@ -125,8 +191,10 @@ public sealed partial class GameSession
 
     /// <summary>Your club's season is over: no game left to play in any competition (abroad), or the NABL playoffs are done.</summary>
     public bool HumanSeasonOver =>
-        InNabl || !Employed || World.FixturesOf(HumanTeam.Id).All(x => x.fixture.Played)
-        && !World.Playing.Any(c => c.Season.Series.Any(s => !s.Complete && (s.HighId == HumanTeam.Id || s.LowId == HumanTeam.Id)));
+        InNabl || !Employed
+        || (InCollege ? World.College!.Season.ChampionId != null
+            : World.FixturesOf(HumanTeam.Id).All(x => x.fixture.Played)
+              && !World.Playing.Any(c => c.Season.Series.Any(s => !s.Complete && (s.HighId == HumanTeam.Id || s.LowId == HumanTeam.Id))));
 
     /// <summary>The first day of a career year: a week before the NABL opens, or before your overseas league starts if earlier.</summary>
     public DateOnly CareerYearStart()
@@ -143,9 +211,27 @@ public sealed partial class GameSession
     private (WorldCompetition comp, Fixture fixture)? _liveWorld;
 
     /// <summary>Play or start today's game for a club abroad. Returns the live game when asked for one.</summary>
+    private College.CollegeGame? _liveCollege;
+
     private GameSimulator.LiveGame? BeginAbroadGame(bool live, List<GameResult> played)
     {
-        _liveWorld = null;
+        _liveWorld = null; _liveCollege = null;
+        if (Employed && InCollege)
+        {
+            // College (C2): your program's games use the full engine with college rules.
+            var cw = World.College!;
+            if (cw.GameOn(HumanTeam.Id, Today) is not { } cg) return null;
+            var (h, a) = (cw.Program(cg.HomeId)!, cw.Program(cg.AwayId)!);
+            if (live)
+            {
+                _liveCollege = cg;
+                return _sim.StartLive(h, a, Rules.College, _rng.NextULong(), Today);
+            }
+            var cr = _sim.Simulate(h, a, Rules.College, _rng.NextULong(), keepLog: true, date: Today);
+            RecordCollege(cg, cr);
+            played.Add(cr);
+            return null;
+        }
         if (!Employed || InNabl || World.GameOn(HumanTeam.Id, Today) is not { } g) return null;
         var home = World.TeamById(g.fixture.HomeId)!; var away = World.TeamById(g.fixture.AwayId)!;
         if (live)
@@ -157,6 +243,14 @@ public sealed partial class GameSession
         RecordAbroad(g.comp, g.fixture, r);
         played.Add(r);
         return null;
+    }
+
+    private void RecordCollege(College.CollegeGame g, GameResult r)
+    {
+        World.College!.Record(g, r);
+        CollegeResults[Key(g)] = r;
+        if (CollegeResults.Count > 200) CollegeResults.Remove(CollegeResults.Keys.First());
+        ReportGame(r);
     }
 
     private void RecordAbroad(WorldCompetition comp, Fixture f, GameResult r)

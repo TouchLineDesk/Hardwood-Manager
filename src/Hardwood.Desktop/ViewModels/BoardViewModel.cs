@@ -49,6 +49,11 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private bool _employed;
     [ObservableProperty] private Team? _team;
     [ObservableProperty] private string _ownerName = "";
+    /// <summary>"The owner", or "Athletic director" at a college program (C2).</summary>
+    [ObservableProperty] private string _ownerTitle = "The owner";
+    [ObservableProperty] private string _financeTitle = "Club finances";
+    [ObservableProperty] private string _confidenceTitle = "Board confidence";
+    [ObservableProperty] private string _financeNote = "Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin.";
     [ObservableProperty] private string _ownerStyle = "";
     [ObservableProperty] private int _patience;
     [ObservableProperty] private int _ambition;
@@ -116,12 +121,19 @@ public sealed partial class BoardViewModel : PageViewModel
                 new("Bank", M(m.Balance), m.Balance < 0 ? "in debt" : "balance", m.Balance < 0 ? "bad" : ""),
                 new("Fan base", $"{m.FanBase:0}", "out of 100", m.FanBase >= 70 ? "good" : m.FanBase < 35 ? "warn" : ""),
             };
+            OwnerTitle = s.InCollege ? "Athletic director" : "The owner";
+            FinanceTitle = s.InCollege ? "The program" : "Club finances";
+            ConfidenceTitle = s.InCollege ? "AD confidence" : "Board confidence";
+            FinanceNote = s.InCollege
+                ? "College players are paid nothing (the classic era): the program's pull is its prestige, its conference and its winning. The athletic director judges the season by March Madness."
+                : "Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin.";
+            if (s.InCollege) FinanceChips = ProgramChips(s);
             var outlook = Board.Outlook(job, ctx, t, rec.Wins, rec.Losses, s.MyStats, s.Today);
             ConfidenceDrivers = outlook == null ? new() : DriverChips(outlook);
             ConfidenceHeading = outlook == null
                 ? "The board starts judging the season after five games."
                 : $"Heading toward {outlook.Level:0} (now {job.Confidence:0}): each week it closes {outlook.Rate * 100:0}% of the gap. "
-                  + (o.Patience <= 7 ? "An impatient owner: it moves fast." : o.Patience >= 14 ? "A patient owner: it moves slowly." : "");
+                  + (o.Patience <= 7 ? $"An impatient {s.BossTitle}: it moves fast." : o.Patience >= 14 ? $"A patient {s.BossTitle}: it moves slowly." : "");
             ConfidenceRecent = Recent(job);
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
@@ -157,6 +169,24 @@ public sealed partial class BoardViewModel : PageViewModel
     }
 
     /// <summary>Each thing the board weighs as a chip: the points it adds to or takes off where confidence settles.</summary>
+    /// <summary>A college program at a glance: prestige, national rank, records, and next summer's graduates.</summary>
+    public static List<Hardwood.Desktop.Controls.Chip> ProgramChips(Hardwood.Core.Season.GameSession s)
+    {
+        var cw = s.World.College!; var t = s.HumanTeam;
+        double prestige = cw.Prestige.GetValueOrDefault(t.Id, 50);
+        int rank = cw.Programs.OrderByDescending(p => cw.Season.Elo.GetValueOrDefault(p.Id, 1500)).ToList().IndexOf(t) + 1;
+        var rec = s.MyRecord; var conf = s.MyStandings[t];
+        int seniors = t.Roster.Count(p => p.Age(new DateOnly(cw.Season.Year + 1, 7, 1)) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
+        return new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Prestige", $"{prestige:0}", prestige >= 75 ? "a blue blood" : prestige >= 55 ? "a known name" : "building a name", prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
+            new("National rank", $"#{rank}", $"of {cw.Programs.Count} programs", rank <= 25 ? "good" : ""),
+            new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
+            new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
+            new("Graduating", $"{seniors}", "turn pro next summer", "info"),
+        };
+    }
+
     public static List<Hardwood.Desktop.Controls.Chip> DriverChips(BoardOutlook outlook)
     {
         var chips = new List<Hardwood.Desktop.Controls.Chip> { new("Starting point", $"{Board.BaseLevel:0}", "on target, demands met", "info") };

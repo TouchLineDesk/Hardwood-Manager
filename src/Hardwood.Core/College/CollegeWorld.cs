@@ -400,25 +400,50 @@ public sealed partial class CollegeWorld
     private void Play(CollegeGame g, GameSimulator sim, Rng rng)
     {
         var home = Program(g.HomeId)!; var away = Program(g.AwayId)!;
-        if (g.Event == Madness)
-        {
-            // March Madness gets the full match engine (decision #95).
-            var r = sim.Simulate(home, away, Rules.College, rng.NextULong(), false, g.Date);
-            g.HomePts = r.Home.Points; g.AwayPts = r.Away.Points;
-            foreach (var box in new[] { r.Home, r.Away })
-            foreach (var l in box.Lines.Where(l => l.Seconds > 0))
-            {
-                var st = Season.Stats.TryGetValue(l.Player.Id, out var x) ? x : Season.Stats[l.Player.Id] = new StatLine();
-                st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
-                st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
-            }
-        }
+        // March Madness gets the full match engine (decision #95), and so does every game of a program you coach (C2, #168).
+        if (g.Event == Madness || g.HomeId == ManagedProgramId || g.AwayId == ManagedProgramId)
+            Record(g, sim.Simulate(home, away, Rules.College, rng.NextULong(), false, g.Date));
         else
         {
             var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
+            UpdateElo(g);
+        }
+    }
+
+    /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
+    public int? ManagedProgramId { get; set; }
+
+    /// <summary>A program's unplayed game on a date (null when it doesn't play).</summary>
+    public CollegeGame? GameOn(int teamId, DateOnly date) =>
+        Season.Games.FirstOrDefault(g => !g.Played && g.Date == date && (g.HomeId == teamId || g.AwayId == teamId));
+
+    /// <summary>Every game of a program this season, in date order.</summary>
+    public List<CollegeGame> GamesOf(int teamId) =>
+        Season.Games.Where(g => g.HomeId == teamId || g.AwayId == teamId).OrderBy(g => g.Date).ThenBy(g => g.Round).ToList();
+
+    /// <summary>Record a game played on the full engine: the score, every stat line and the ratings.</summary>
+    public void Record(CollegeGame g, GameResult r)
+    {
+        g.HomePts = r.Home.Points; g.AwayPts = r.Away.Points;
+        foreach (var box in new[] { r.Home, r.Away })
+        foreach (var l in box.Lines.Where(l => l.Seconds > 0))
+        {
+            var st = Season.Stats.TryGetValue(l.Player.Id, out var x) ? x : Season.Stats[l.Player.Id] = new StatLine();
+            st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
+            st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
         }
         UpdateElo(g);
+    }
+
+    /// <summary>The round a program reached in this season's March Madness (-1 = not in the field; 0 = lost in the First Four ... 7 = champion).</summary>
+    public int MadnessReached(int teamId)
+    {
+        var s = Season;
+        if (s.ChampionId == teamId) return 7;
+        var mine = s.Games.Where(g => g.Event == Madness && (g.HomeId == teamId || g.AwayId == teamId)).ToList();
+        if (mine.Count == 0) return s.Seeds.ContainsKey(teamId) && s.Bracket.Contains(teamId) ? 1 : -1;
+        return mine.Max(g => g.Round);
     }
 
     private void UpdateElo(CollegeGame g)
