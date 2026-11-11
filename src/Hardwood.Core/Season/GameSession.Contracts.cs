@@ -119,7 +119,7 @@ public sealed partial class GameSession
         return reply;
     }
 
-    private void Sign(Player p, long wage, int years)
+    private void Sign(Player p, long wage, int years, bool quiet = false)
     {
         bool renewal = MyExpiring.Contains(p);
         var team = HumanTeam;
@@ -148,7 +148,7 @@ public sealed partial class GameSession
         team.DepthChart = null;
         People.PeopleEngine.Joined(p);
         if (InNabl && Offseason != null) Offseason.Report.FreeAgentSignings.Add((p, team, wage, years));
-        Post($"{p.Name} signs", $"{p.Name} ({p.PrimaryPosition}, {p.Age(ContractDate)}) joins the {team.FullName}: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
+        if (!quiet) Post($"{p.Name} signs", $"{p.Name} ({p.PrimaryPosition}, {p.Age(ContractDate)}) joins the {team.FullName}: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
     }
 
     /// <summary>Let an expiring player go: he joins the free-agent pool.</summary>

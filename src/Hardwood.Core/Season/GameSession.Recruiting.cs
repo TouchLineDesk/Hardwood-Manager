@@ -133,7 +133,7 @@ public sealed partial class GameSession
             : $"Interested enough: offer at least ${floor / 1e6:F2}M a year and he'll commit.";
     }
 
-    private string? TryCommit(Player p, RecruitState st)
+    private string? TryCommit(Player p, RecruitState st, bool announce = false)
     {
         var i = InterestIn(p);
         if (!i.Enough || st.OfferWage <= 0) return null;
@@ -141,7 +141,8 @@ public sealed partial class GameSession
         if (st.OfferWage < (long)(ask * (i.Total >= i.Need + 15 ? 0.9 : 1.0))) return null;
         st.CommittedTeamId = HumanTeam.Id; st.CommittedOn = Today;
         string text = $"{p.Name} ({p.PrimaryPosition}, {World.College!.Program(p.TeamId ?? 0)?.FullName}) commits to the {HumanTeam.FullName}. He signs for you when the season ends: ${st.OfferWage / 1e6:F2}M a year for {st.OfferYears} year{(st.OfferYears == 1 ? "" : "s")}.";
-        Post($"{p.Name} commits to you", text, "Roster");
+        // When you make the offer you see his answer on the spot; the inbox only hears about commitments that come later.
+        if (announce) Post($"{p.Name} commits to you", text, "Roster");
         return text;
     }
 
@@ -164,7 +165,7 @@ public sealed partial class GameSession
             if (st is { CommittedTeamId: null } && st.TeamId == HumanTeam.Id)
             {
                 st.Effort *= 0.97;
-                if (TryCommit(p, st) != null) continue;
+                if (TryCommit(p, st, announce: true) != null) continue;
             }
         }
         // Rivals: about two-thirds of the top 40 seniors are committed somewhere by graduation; fewer further down.
@@ -182,8 +183,8 @@ public sealed partial class GameSession
             var team = rivals.OrderByDescending(t => (MyStandings.Has(t) ? MyStandings[t].WinPct : 0.5) + _rng.NextDouble() * 0.6).First();
             st ??= board.For(p.Id);
             st.CommittedTeamId = team.Id; st.CommittedOn = Today;
-            if (st.Shortlisted && st.TeamId == HumanTeam.Id)
-                Post($"{p.Name} commits to {team.Abbreviation}", $"{p.Name} ({p.PrimaryPosition}, {c.Program(p.TeamId ?? 0)?.FullName}), on your recruiting list, has committed to the {team.FullName}. He'll sign for them when he graduates.", "Roster");
+            if (st.TeamId == HumanTeam.Id && (st.Visits > 0 || st.OfferWage > 0))
+                Post($"{p.Name} commits to {team.Abbreviation}", $"{p.Name} ({p.PrimaryPosition}, {c.Program(p.TeamId ?? 0)?.FullName}), whom you've been courting, has committed to the {team.FullName}. He'll sign for them when he graduates.", "Roster");
         }
     }
 
@@ -191,6 +192,7 @@ public sealed partial class GameSession
     internal void SignCommittedGraduates(RecruitingBoard? board)
     {
         if (board == null) return;
+        var ours = new List<string>();
         foreach (var (pid, st) in board.Prospects.Where(kv => kv.Value.CommittedTeamId != null).ToList())
         {
             var p = League.FreeAgents.FirstOrDefault(x => x.Id == pid);
@@ -203,7 +205,8 @@ public sealed partial class GameSession
                     Post($"{p.Name} is a free agent", $"{p.Name} committed to you, but the deal couldn't go through when he turned pro (roster full or over the wage budget). He's in the free-agent pool.", "Roster");
                     continue;
                 }
-                Sign(p, st.OfferWage, Math.Max(1, st.OfferYears));
+                Sign(p, st.OfferWage, Math.Max(1, st.OfferYears), quiet: true);
+                ours.Add($"{p.Name} ({p.PrimaryPosition}): ${st.OfferWage / 1e6:F2}M for {st.OfferYears} year{(st.OfferYears == 1 ? "" : "s")}");
             }
             else if (FindTeam(st.CommittedTeamId!.Value) is { } t && League.Teams.Contains(t) && Offseason != null)
             {
@@ -213,5 +216,8 @@ public sealed partial class GameSession
                     if (Offseason.AiSignIfAffordable(other, p)) { st.CommittedTeamId = other.Id; break; }
             }
         }
+        if (ours.Count > 0)
+            Post(ours.Count == 1 ? "Your college recruit signs" : $"Your {ours.Count} college recruits sign",
+                "The seniors who committed to you have turned pro and signed:\n" + string.Join("\n", ours), "Roster");
     }
 }
