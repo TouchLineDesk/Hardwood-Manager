@@ -149,6 +149,10 @@ public sealed partial class BoxScoreViewModel : PageViewModel
     public List<string> RunLines => GameFlowInfo.RunLines(Result);
     public bool HasRuns => RunLines.Count > 0;
     public List<Hardwood.Desktop.Controls.Chip> FlowChips => GameFlowInfo.Chips(Result);
+    // Match day part 2: the game's highlight cards and the team comparison.
+    public List<Highlight> Highlights => GameHighlights.For(Result);
+    public bool HasHighlights => Result.Home.Lines.Any(l => l.Seconds > 0);
+    public List<TeamStatRow> TeamStats => GameFlowInfo.TeamStats(Result);
     public int[] AwayZoneAttempts => Sum(Result.Away, l => l.ZoneAttempts);
     public int[] AwayZoneMakes => Sum(Result.Away, l => l.ZoneMakes);
     public int[] HomeZoneAttempts => Sum(Result.Home, l => l.ZoneAttempts);

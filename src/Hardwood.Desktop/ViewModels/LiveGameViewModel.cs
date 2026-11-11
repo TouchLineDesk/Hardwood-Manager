@@ -55,6 +55,13 @@ public sealed partial class LiveGameViewModel : PageViewModel
     [ObservableProperty] private int[] _awayZoneMakes = new int[5];
     [ObservableProperty] private int[] _homeZoneAttempts = new int[5];
     [ObservableProperty] private int[] _homeZoneMakes = new int[5];
+    // Match day part 2: highlight cards, team stats and the ticker.
+    [ObservableProperty] private List<Highlight> _highlights = new();
+    [ObservableProperty] private List<TeamStatRow> _teamStats = new();
+    [ObservableProperty] private string _ticker = "";
+    private int _tickerIndex, _tickerTicks;
+    /// <summary>The ticker moves on to its next fact every this many refreshes.</summary>
+    public const int TickerEvery = 6;
     public bool HasRunAlert => RunAlert != null;
     partial void OnRunAlertChanged(string? value) => OnPropertyChanged(nameof(HasRunAlert));
     private string? _lastRunKey;
@@ -173,6 +180,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Splits = GameFlowInfo.Splits(r);
         AwayZoneAttempts = ZoneSum(r.Away, l => l.ZoneAttempts); AwayZoneMakes = ZoneSum(r.Away, l => l.ZoneMakes);
         HomeZoneAttempts = ZoneSum(r.Home, l => l.ZoneAttempts); HomeZoneMakes = ZoneSum(r.Home, l => l.ZoneMakes);
+        Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);
+        TeamStats = GameFlowInfo.TeamStats(r);
+        var facts = GameHighlights.Ticker(r);
+        if (++_tickerTicks >= TickerEvery) { _tickerTicks = 0; _tickerIndex++; }
+        Ticker = facts.Count == 0 ? "Tip-off: the ticker fills in as the game goes." : facts[_tickerIndex % facts.Count];
         var run = GameFlow.CurrentRun(r);
         RunAlert = run == null ? null : $"{run.Team} on a {run.Score} run";
         // Call each run out in the play by play once, the first time it qualifies.
@@ -197,6 +209,15 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (Complete) return;
         if (Running) { _timer.Stop(); Running = false; Status = "Paused. Change your lineup or tactics, then press Play."; }
         else { _timer.Start(); Running = true; Status = ""; }
+    }
+
+    /// <summary>Skip the ticker to its next fact.</summary>
+    [RelayCommand]
+    public void NextFact()
+    {
+        var facts = GameHighlights.Ticker(_live.Result);
+        _tickerIndex++; _tickerTicks = 0;
+        Ticker = facts.Count == 0 ? Ticker : facts[_tickerIndex % facts.Count];
     }
 
     [RelayCommand]

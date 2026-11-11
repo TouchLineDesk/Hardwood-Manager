@@ -19,6 +19,7 @@ public class LayoutCheckTests
     private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null)
     {
         if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); });
+        if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
             yield return (nav.Name, v => v.Navigate(nav.Name));
         yield return ("Player", v =>
@@ -96,6 +97,14 @@ public class LayoutCheckTests
                     open(vm);
                     try { Settle(window); }
                     catch (InvalidOperationException e) { throw new InvalidOperationException($"{name} at {width}px {(guide ? "with" : "without")} the assistant, {scale:P0}: {e.Message}", e); }
+                    // The live screen's Stats tab (highlights and team stats, match day part 2).
+                    if (name == "Live stats")
+                    {
+                        var tabs = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<TabControl>()
+                            .First(t => Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<LiveGameView>(t) != null);
+                        tabs.SelectedIndex = 2;
+                        Settle(window);
+                    }
                     if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)
                     {
                         Directory.CreateDirectory(shots);

@@ -9,7 +9,8 @@
     <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" MinHeight="118">
       <Grid>
         <c:CourtBackdrop Glow="{Binding HomeColor}" Intensity="0.7"/>
-        <Grid x:Name="ScoreRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="16,8" VerticalAlignment="Center">
+        <StackPanel VerticalAlignment="Center">
+        <Grid x:Name="ScoreRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="16,8,16,4">
         <Grid x:Name="ScoreLine" ColumnDefinitions="*,Auto,*" MinHeight="100">
           <!-- Away -->
           <Grid ColumnDefinitions="6,Auto,*,Auto" VerticalAlignment="Center">
@@ -51,6 +52,14 @@
             <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110"/>
           </StackPanel>
         </Grid>
+        <!-- Stat ticker (match day part 2): one fact at a time, moving on as the game goes; click for the next. -->
+        <Button Classes="flat" Command="{Binding NextFactCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="#B0101318" CornerRadius="0" Padding="16,4" ToolTip.Tip="Next fact">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="LIVE" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="#F85149" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding Ticker}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
@@ -161,6 +170,40 @@
           <StackPanel Spacing="10">
             <Border Classes="panel" Padding="6"><StackPanel><TextBlock Text="{Binding AwayName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding AwayZoneAttempts}" Makes="{Binding AwayZoneMakes}" Height="220"/></StackPanel></Border>
             <Border Classes="panel" Padding="6"><StackPanel><TextBlock Text="{Binding HomeName}" FontWeight="SemiBold" Margin="4,0,0,4"/><c:ShotChart Attempts="{Binding HomeZoneAttempts}" Makes="{Binding HomeZoneMakes}" Height="220"/></StackPanel></Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Stats">
+        <ScrollViewer>
+          <StackPanel Spacing="10">
+            <Border Classes="panel">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Highlights so far" FontWeight="SemiBold"/>
+                <c:HighlightStrip ItemsSource="{Binding Highlights}"/>
+              </StackPanel>
+            </Border>
+            <Border Classes="panel">
+              <StackPanel Spacing="2">
+                <Grid ColumnDefinitions="*,*">
+                  <TextBlock Text="{Binding AwayName}" FontWeight="SemiBold"/>
+                  <TextBlock Grid.Column="1" Text="{Binding HomeName}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                </Grid>
+            <ItemsControl ItemsSource="{Binding TeamStats}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TeamStatRow">
+                  <StackPanel Margin="0,3">
+                    <Grid ColumnDefinitions="*,Auto,*">
+                      <TextBlock Text="{Binding AwayText}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="muted" FontSize="11" Margin="8,0" HorizontalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding HomeText}" FontSize="12" FontWeight="SemiBold" TextAlignment="Right" TextWrapping="Wrap"/>
+                    </Grid>
+                    <c:CompareBar Away="{Binding Away}" Home="{Binding Home}" AwayColor="{Binding AwayColor}" HomeColor="{Binding HomeColor}" Margin="0,3,0,0"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
