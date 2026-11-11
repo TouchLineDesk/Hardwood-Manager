@@ -12,7 +12,7 @@
     </StackPanel>
     <TabControl>
       <TabItem Header="Transfer market">
-        <Grid ColumnDefinitions="*,330" RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,300" RowDefinitions="Auto,*">
           <!-- Wraps rather than running under the side panel at big text sizes (roadmap 1). -->
           <WrapPanel Margin="0,0,0,6">
             <ComboBox ItemsSource="{Binding MarketLeagues}" SelectedItem="{Binding MarketLeague}" MinWidth="170" Margin="0,0,8,4"/>
@@ -23,15 +23,16 @@
           </WrapPanel>
           <DataGrid Grid.Row="1" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
             <DataGrid.Columns>
+              <!-- The deal columns sit before Club (critic review #6): at 1480 px Club stance ran off the table's edge. -->
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="186"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="46"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="48"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="48"/>
-              <DataGridTextColumn Header="Likely fee" Binding="{Binding Ask}" Width="124"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="44"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="44"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="44"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="44"/>
               <DataGridTextColumn Header="Joins?" Binding="{Binding Interest}" Width="110"/>
               <DataGridTextColumn Header="Club stance" Binding="{Binding Stance}" Width="122"/>
+              <DataGridTextColumn Header="Likely fee" Binding="{Binding Ask}" Width="124"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="186"/>
               <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="108"/>
               <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="70"/>
               <DataGridTextColumn Header="" Binding="{Binding Status}" Width="SizeToCells" MinWidth="40"/>

@@ -155,7 +155,7 @@ public static class Board
 
     /// <summary>
     /// Next season's goal, reasonably (critic review, Nov 10): a newly promoted club aims to stay up; otherwise the
-    /// goal from the squad moves at most one step from last season's, and the win target at most 8 (of 82) up.
+    /// goal from the squad moves at most one step from last season's, up or down, and the win target at most 8 (of 82) either way.
     /// A 3rd-place finish no longer turns "reach the final" into "win the title" overnight.
     /// </summary>
     public static Expectations NextExpectations(LeagueContext ctx, Team team, int season, Expectations? previous, string leagueKey, int level, int previousLevel)
@@ -201,8 +201,13 @@ public static class Board
             var floor = steps[Math.Max(0, steps.IndexOf(done) - 1)];
             if ((int)e.Goal < (int)floor) e.Goal = floor;
         }
-        int maxRise = (int)Math.Round(8 * ctx.SeasonGames / 82.0);
-        if (previous.TargetWins > 0 && e.TargetWins > previous.TargetWins + maxRise) e.TargetWins = previous.TargetWins + maxRise;
+        // Symmetry (critic review #6, decision #152): a goal falls at most one step a season, as it rises at most one.
+        // Milwaukee went 48-34 against "make the playoffs, about 49 wins" and was then set "develop, about 31 wins".
+        int nowIdx = steps.IndexOf(e.Goal);
+        if (prevIdx > 0 && nowIdx >= 0 && nowIdx < prevIdx - 1) e.Goal = steps[prevIdx - 1];
+        int maxStep = (int)Math.Round(8 * ctx.SeasonGames / 82.0);
+        if (previous.TargetWins > 0 && e.TargetWins > previous.TargetWins + maxStep) e.TargetWins = previous.TargetWins + maxStep;
+        if (previous.TargetWins > 0 && e.TargetWins < previous.TargetWins - maxStep) e.TargetWins = previous.TargetWins - maxStep;
         return e;
     }
 
