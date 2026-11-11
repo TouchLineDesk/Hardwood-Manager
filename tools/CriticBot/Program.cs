@@ -120,8 +120,8 @@ while (s.League.Season < startYear + seasons)
         // Senior recruiting (decision #157): court three seniors who'd start for us, and offer their ask once they're keen.
         if (s.Employed && s.RecruitingOpen)
         {
-            var targets = s.Seniors().Take(80).Where(p => s.InterestIn(p).Blocked == null && s.Recruiting!.Find(p.Id)?.CommittedTeamId == null && s.InterestIn(p).Minutes >= 70)
-                .OrderByDescending(p => p.CurrentAbility).Take(3).ToList();
+            var targets = s.Seniors().Take(80).Where(p => s.InterestIn(p).Blocked == null && s.Recruiting!.Find(p.Id)?.CommittedTeamId == null && s.InterestIn(p).Minutes >= 70 && s.InterestIn(p).Need - s.InterestIn(p).Total <= 28)
+                .OrderByDescending(p => p.CurrentAbility).Take(2).ToList(); // two at a time: the best seniors take real courting
             foreach (var p in targets)
             {
                 var st = s.Recruiting!.Find(p.Id);

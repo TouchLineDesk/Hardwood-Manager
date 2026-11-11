@@ -84,9 +84,9 @@ public sealed partial class GameSession
         TopUpRecruitingPoints();
         if (Recruiting!.Points < RecruitingBoard.CallCost) return "No recruiting points left this month.";
         Recruiting.Points -= RecruitingBoard.CallCost;
-        double gain = 6 / (1 + st.Calls * 0.4);
+        double gain = 6 / (1 + st.Calls * 0.4) * EffortScale(p);
         st.Calls++; st.Effort += gain; st.Shortlisted = true;
-        return $"You spoke to {p.Name}. Interest +{gain:0}.";
+        return $"You spoke to {p.Name}. Interest +{gain:0}.{CrowdNote(p)}";
     }
 
     /// <summary>A campus visit: a big step (twice at most). Costs three points.</summary>
@@ -97,9 +97,22 @@ public sealed partial class GameSession
         TopUpRecruitingPoints();
         if (Recruiting!.Points < RecruitingBoard.VisitCost) return $"A visit costs {RecruitingBoard.VisitCost} recruiting points; you have {Recruiting.Points}.";
         Recruiting.Points -= RecruitingBoard.VisitCost;
-        st.Visits++; st.Effort += 15; st.Shortlisted = true;
-        return $"You visited {p.Name} at {World.College!.Program(p.TeamId ?? 0)?.FullName ?? "college"}. Interest +15.";
+        double gain = 15 * EffortScale(p);
+        st.Visits++; st.Effort += gain; st.Shortlisted = true;
+        return $"You visited {p.Name} at {World.College!.Program(p.TeamId ?? 0)?.FullName ?? "college"}. Interest +{gain:0}.{CrowdNote(p)}";
     }
+
+    /// <summary>
+    /// The best seniors hear from every club, so a call or visit moves them less: 75% for the top 10, 90% for the top 30
+    /// (Nov 11 balance: a weak club was landing three top-10 seniors a season on a month's points each).
+    /// </summary>
+    public double EffortScale(Player p)
+    {
+        int rank = Seniors().IndexOf(p);
+        return rank is >= 0 and < 10 ? 0.75 : rank is >= 0 and < 30 ? 0.9 : 1.0;
+    }
+
+    private string CrowdNote(Player p) => EffortScale(p) < 1 ? " Every club is calling him, so it counts for less." : "";
 
     /// <summary>What he'd ask of your club as a first contract.</summary>
     public ContractDemand RecruitDemand(Player p) =>
@@ -119,6 +132,25 @@ public sealed partial class GameSession
         return TryCommit(p, st) ?? $"{p.Name} has your offer (${wage / 1e6:F2}M for {years} year{(years == 1 ? "" : "s")}). {Lean(p)}";
     }
 
+    /// <summary>The most seniors who'll commit to one club in a season: each wants a real roster spot.</summary>
+    public const int MaxCommitments = 4;
+
+    /// <summary>Seniors committed to you this season.</summary>
+    public int MyCommitments => Recruiting?.Prospects.Values.Count(x => x.CommittedTeamId == HumanTeam.Id) ?? 0;
+
+    /// <summary>
+    /// Why the next senior won't commit, if he won't: he counts the players already signed for next season and the
+    /// seniors who've committed ahead of him, and wants a spot (at most four commitments a season).
+    /// </summary>
+    public string? NoSpotFor()
+    {
+        int signed = HumanTeam.Roster.Count(x => x.Contract is { Years: > 1 });
+        int spots = Math.Clamp(League.Finance.RosterMax - signed, 1, MaxCommitments);
+        int have = MyCommitments;
+        return have < spots ? null
+            : $"He wants a roster spot: you have {signed} players signed for next season and {have} senior{(have == 1 ? "" : "s")} committed already.";
+    }
+
     /// <summary>The line the recruiting panel shows: what it would take.</summary>
     public string Lean(Player p)
     {
@@ -127,6 +159,7 @@ public sealed partial class GameSession
         var st = Recruiting?.Find(p.Id);
         if (st?.CommittedTeamId == HumanTeam.Id) return $"Committed to you: he signs for you when the season ends, before free agency opens.";
         if (i.Total < i.Need) return $"Interest {i.Total:0} of the {i.Need:0} he needs before he'll commit.";
+        if (NoSpotFor() is { } full) return full;
         long ask = RecruitDemand(p).Wage;
         long floor = (long)(ask * (i.Total >= i.Need + 15 ? 0.9 : 1.0));
         return st is { OfferWage: > 0 } && st.OfferWage < floor
@@ -137,7 +170,7 @@ public sealed partial class GameSession
     private string? TryCommit(Player p, RecruitState st, bool announce = false)
     {
         var i = InterestIn(p);
-        if (!i.Enough || st.OfferWage <= 0) return null;
+        if (!i.Enough || st.OfferWage <= 0 || NoSpotFor() != null) return null;
         long ask = RecruitDemand(p).Wage;
         if (st.OfferWage < (long)(ask * (i.Total >= i.Need + 15 ? 0.9 : 1.0))) return null;
         st.CommittedTeamId = HumanTeam.Id; st.CommittedOn = Today;
