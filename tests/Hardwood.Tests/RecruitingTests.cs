@@ -51,7 +51,7 @@ public class RecruitingTests
         var reply = s.OfferRecruit(p, ask, 3);
         Assert.Contains("commits to the", reply);
         Assert.Equal(s.HumanTeam.Id, s.Recruiting.Find(p.Id)!.CommittedTeamId);
-        Assert.Contains(s.Inbox, m => m.Title == $"{p.Name} commits to you");
+        Assert.DoesNotContain(s.Inbox, m => m.Title == $"{p.Name} commits to you"); // you saw his answer on the spot
 
         // Play to the summer: rivals land some of the top seniors along the way; ours stays ours.
         int guard = 0;
