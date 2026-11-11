@@ -16,7 +16,7 @@ public sealed partial class GameSession
     public DateOnly GraduationDay => new(World.College?.Season.Year + 1 ?? Today.Year, 7, 1);
 
     /// <summary>Recruiting runs from the college season's start in November until the NABL season ends, while you have a club.</summary>
-    public bool RecruitingOpen => World.College is { } c && Employed && Phase != SessionPhase.Offseason && Today >= new DateOnly(c.Season.Year, 11, 1) && Today < GraduationDay;
+    public bool RecruitingOpen => World.College is { } c && Employed && !InCollege && Phase != SessionPhase.Offseason && Today >= new DateOnly(c.Season.Year, 11, 1) && Today < GraduationDay;
 
     public RecruitingBoard? Recruiting => World.College?.Season.Recruiting;
 
@@ -50,6 +50,7 @@ public sealed partial class GameSession
     private RecruitState? Mine(Player p, out string? why)
     {
         why = null;
+        if (InCollege) { why = "Pro clubs court the seniors; as a college coach you recruit high-schoolers."; return null; }
         if (!RecruitingOpen) { why = "Recruiting is closed: it runs from November until the season ends and the seniors turn pro."; return null; }
         if (!Seniors().Contains(p)) { why = $"{p.Name} isn't a senior this season."; return null; }
         var st = Recruiting!.For(p.Id);
@@ -153,7 +154,7 @@ public sealed partial class GameSession
     /// </summary>
     internal void WeeklyRecruiting()
     {
-        if (World.College is not { } c || !RecruitingOpen || Recruiting is not { } board) return;
+        if (World.College is not { } c || InCollege || !RecruitingOpen || Recruiting is not { } board) return;
         bool first = board.PointsMonth == 0;
         TopUpRecruitingPoints();
         if (first)

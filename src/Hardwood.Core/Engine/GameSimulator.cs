@@ -73,8 +73,8 @@ public sealed class GameSimulator
         public int Period => _game.Period;
         public double Clock => _game.Clock;
         public string ClockText => $"{(int)(_game.Clock / 60):0}:{(int)(_game.Clock % 60):00}";
-        public string PeriodText => _game.Period <= _regulationPeriods ? $"Q{_game.Period}" : $"OT{_game.Period - _regulationPeriods}";
-        private readonly int _regulationPeriods = 4;
+        /// <summary>Q1-Q4 in the pros, H1-H2 in college (C2: college games showed "Q2" for the second half), then OT.</summary>
+        public string PeriodText => _game.Period <= Result.Periods ? $"{(Result.Periods == 2 ? "H" : "Q")}{_game.Period}" : $"OT{_game.Period - Result.Periods}";
         public int HomeScore => _game.HomeScore;
         public int AwayScore => _game.AwayScore;
         public IReadOnlyList<Player> HomeOnCourt => _game.HomeOnCourt;
@@ -987,7 +987,8 @@ public sealed class GameSimulator
         {
             if (!_log) return;
             int m = (int)(_clock / 60), sec = (int)(_clock % 60);
-            _result.PlayLog.Add($"Q{_period} {m:00}:{sec:00}  {s}");
+            string p = _period > _rules.Periods ? $"OT{_period - _rules.Periods}" : $"{(_rules.Periods == 2 ? "H" : "Q")}{_period}";
+            _result.PlayLog.Add($"{p} {m:00}:{sec:00}  {s}");
         }
     }
 }

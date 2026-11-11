@@ -114,7 +114,7 @@ public sealed partial class GameSession
     /// <summary>The head scout's weekly round: court the three best seniors who'd get minutes here, visits first, then calls.</summary>
     internal void DelegatedRecruiting()
     {
-        if (!Delegated.Recruiting || !RecruitingOpen || Recruiting is not { } board) return;
+        if (!Delegated.Recruiting || InCollege || !RecruitingOpen || Recruiting is not { } board) return;
         TopUpRecruitingPoints();
         var targets = Seniors().Take(80)
             .Where(p => board.Find(p.Id)?.CommittedTeamId == null && InterestIn(p) is { Blocked: null, Minutes: >= 70 })

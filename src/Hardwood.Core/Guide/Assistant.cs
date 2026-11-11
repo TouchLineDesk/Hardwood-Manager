@@ -53,7 +53,7 @@ public static class Assistant
     {
         var stage = StageFor(level, progress);
         var tasks = Tasks(s, stage, progress).Where(t => !progress.Dismissed.Contains(t.Key)).OrderBy(t => t.Priority).ToList();
-        var (title, tip) = PageTip(page, stage);
+        var (title, tip) = PageTip(page, stage, s.Employed && s.InCollege);
         var notes = new List<string>();
         int day = s.Today.DayNumber;
         foreach (var n in StrategyNotes(s, stage))
@@ -138,7 +138,10 @@ public static class Assistant
             if (off.Phase == OffseasonPhase.FreeAgency && team.Roster.Count < min)
                 yield return new($"fa-{today.Year}", 6, $"Sign {min - team.Roster.Count} more player{(min - team.Roster.Count == 1 ? "" : "s")}",
                     $"We have {team.Roster.Count} and need at least {min}. Free agents and college graduates are on the Transactions page; check your wage room on the Board page first.", "Transactions");
-            if (off.Phase == OffseasonPhase.FreeAgency && team.Roster.Count >= min)
+            if (s.InCollege)
+                yield return new($"college-summer-{today.Year}", 40, "Nothing to sign this summer",
+                    "College programs don't sign pros. The seniors have graduated and the new class has enrolled (see Roster). Press Continue until the new season starts.", "Roster");
+            else if (off.Phase == OffseasonPhase.FreeAgency && team.Roster.Count >= min)
                 yield return new($"summer-done-{today.Year}", 40, "Finish the summer when you're happy",
                     "The roster is legal. Keep shopping if you have money left, or press Continue to start the new season.", null);
         }
@@ -174,7 +177,7 @@ public static class Assistant
 
         // ---- the board
         if (s.Job.Confidence < 40)
-            yield return new($"board-{(int)s.Job.Confidence / 5}", 12, "The board is losing patience",
+            yield return new($"board-{(int)s.Job.Confidence / 5}", 12, s.InCollege ? "The AD is losing patience" : "The board is losing patience",
                 $"Confidence is {s.Job.Confidence:F0}/100. {Goal(s)} Check the Board page for what else they want.", "Board");
 
         // ---- staff
@@ -203,7 +206,7 @@ public static class Assistant
         {
             int order = 50;
             foreach (var (pg, why) in FirstSteps)
-                if (!progress.PagesSeen.Contains(pg))
+                if (!progress.PagesSeen.Contains(pg) && !(s.InCollege && pg is "Transactions" or "Offseason")) // hidden for a college coach (C2)
                     yield return new($"visit-{pg}", order++, $"Look at {pg}", why, pg);
         }
     }
@@ -220,7 +223,7 @@ public static class Assistant
         ("Schedule & Results", "The fixture list and every result, with box scores."),
     };
 
-    private static int RosterMin(GameSession s) => s.InNabl ? s.League.Finance.RosterMin : World.GameWorld.ManagedMinimum;
+    private static int RosterMin(GameSession s) => s.InCollege ? 0 : s.InNabl ? s.League.Finance.RosterMin : World.GameWorld.ManagedMinimum;
 
     private static string Names(IEnumerable<Player> ps)
     {
@@ -255,9 +258,10 @@ public static class Assistant
         if (s.Job.Current is { } e && games >= 10 && s.Phase == SessionPhase.RegularSeason)
         {
             double pace = rec.Wins / (double)games * ctx.SeasonGames;
+            string boss = s.InCollege ? "the AD" : "the board";
             tips.Add(new($"pace-{s.League.Season}-{(int)(pace - e.TargetWins) / 5}", pace >= e.TargetWins
-                ? $"We're on pace for {pace:F0} wins; the board wants {e.TargetWins}. Keep the rotation steady."
-                : $"We're on pace for {pace:F0} wins and the board wants {e.TargetWins}. Look at the weakest starter, or a tactic that suits our best players."));
+                ? $"We're on pace for {pace:F0} wins; {boss} wants {e.TargetWins}. Keep the rotation steady."
+                : $"We're on pace for {pace:F0} wins and {boss} wants {e.TargetWins}. Look at the weakest starter, or a tactic that suits our best players."));
         }
 
         // Young players who need minutes.
@@ -286,7 +290,7 @@ public static class Assistant
             var weakest = byPos.OrderBy(kv => kv.Value).First();
             var best = byPos.Values.Max();
             if (best - weakest.Value >= 15)
-                tips.Add(new($"weak-{weakest.Key}-{s.League.Season}", $"Our best {weakest.Key} is well below the rest of the starters. That's the position to upgrade when money allows."));
+                tips.Add(new($"weak-{weakest.Key}-{s.League.Season}", $"Our best {weakest.Key} is well below the rest of the starters. {(s.InCollege ? "That's the position to recruit for." : "That's the position to upgrade when money allows.")}"));
         }
 
         // Money.
@@ -297,6 +301,19 @@ public static class Assistant
                 tips.Add(new($"room-{s.League.Season}-{s.WindowOpen}", $"There's ${room / 1e6:F1}M of wage room. A free agent or a transfer could use it{(s.WindowOpen ? " while the window is open" : "")}."));
         }
 
+        // College (C2): this year's graduates, and who replaces them.
+        if (s.InCollege && s.World.College is { } cw && s.Phase != SessionPhase.Offseason)
+        {
+            var summer = new DateOnly(cw.Season.Year + 1, 7, 1);
+            var leaving = team.Roster.Where(p => p.Age(summer) >= College.CollegeWorld.GraduateAge).OrderByDescending(p => p.CurrentAbility).ToList();
+            var next = team.Roster.Where(p => p.Age(summer) <= 20).OrderByDescending(p => p.PotentialAbility).FirstOrDefault();
+            if (leaving.Count > 0)
+                tips.Add(new($"grads-{cw.Season.Year}-{leaving.Count}", $"{Names(leaving.Take(2))}{(leaving.Count > 2 ? $" and {leaving.Count - 2} more" : "")} turn pro next summer. "
+                    + (next != null ? $"{next.Name} is the one to grow into the gap: give him minutes now." : "Plan who takes their minutes.")));
+            if (cw.Season.Selected && !cw.Season.Seeds.ContainsKey(team.Id))
+                tips.Add(new($"nit-{cw.Season.Year}", "We missed March Madness. The AD remembers; next year's goal starts here."));
+        }
+
         // Ageing stars on long deals.
         var old = team.Roster.Where(p => p.Age(today) >= 31 && (p.Contract?.Years ?? 0) >= 3).OrderByDescending(p => p.Contract!.Salary).FirstOrDefault();
         if (old != null)
@@ -305,8 +322,9 @@ public static class Assistant
         // General principles, one at a time, for players past the basics.
         if (stage != GuideStage.Beginner)
         {
-            int k = (today.DayNumber / 7) % Principles.Length;
-            tips.Add(new($"principle-{k}-{today.DayNumber / 7}", Principles[k]));
+            var list = s.InCollege ? CollegePrinciples : Principles;
+            int k = (today.DayNumber / 7) % list.Length;
+            tips.Add(new($"{(s.InCollege ? "college-" : "")}principle-{k}-{today.DayNumber / 7}", list[k]));
         }
         return tips;
     }
@@ -332,14 +350,42 @@ public static class Assistant
         "Scouts' ranges narrow as they watch a player more. Don't pay for potential you can't see yet.",
     };
 
+    /// <summary>College coaching in a sentence each (C2): no money, five-year players, March Madness.</summary>
+    private static readonly string[] CollegePrinciples =
+    {
+        "In college nobody is paid: the roster you have is the roster you coach. Develop it.",
+        "Players stay up to five seasons. A freshman's minutes now are next year's senior leader.",
+        "The AD judges the season in March. A good conference record gets you seeded; the tournament gets you paid in prestige.",
+        "Home court is worth more in college. Win your home games and you're on the bubble's right side.",
+        "Fit beats raw talent: a system that suits your best two players is worth more than a slightly better bench.",
+    };
+
     // ------------------------------------------------------------------------------------------
     // This page
 
-    public static (string Title, string Tip) PageTip(string page, GuideStage stage)
+    public static (string Title, string Tip) PageTip(string page, GuideStage stage) => PageTip(page, stage, false);
+
+    public static (string Title, string Tip) PageTip(string page, GuideStage stage, bool college)
     {
+        if (college && CollegePages.TryGetValue(page, out var c)) return (page, stage == GuideStage.Beginner ? c.Beginner : c.Experienced);
         if (!Pages.TryGetValue(page, out var t)) return (page, "");
         return (page, stage == GuideStage.Beginner ? t.Beginner : t.Experienced);
     }
+
+    /// <summary>Page tips for a college coach (C2), where they differ from the pros'.</summary>
+    private static readonly Dictionary<string, (string Beginner, string Experienced)> CollegePages = new()
+    {
+        ["Home"] = ("Your program at a glance: the overall record, the conference race (from January), the next game and news. Press Continue to move a day forward.",
+                    "Non-conference games set your rating; conference games decide the conference tournament's seeds."),
+        ["Roster"] = ("Your scholarship players (13, plus up to 2 walk-ons). Nobody is paid. Players stay until they turn 23, then graduate into the pros.",
+                      "Watch who graduates next summer (the chip at the top) and who grows into their minutes."),
+        ["Board"] = ("Your athletic director: the season goal (judged by March Madness), how confident the AD is in you, and the program's prestige and national rank. ADs fire coaches.",
+                     "Track the target wins and the tournament goal; the rank says where the selection committee sees you."),
+        ["Standings"] = ("Your conference's table from conference games, and the national Top 25. The top eight in each conference play its tournament; the champion gets an automatic bid.",
+                         "Win the conference tournament and you're in March Madness whatever your rating."),
+        ["Schedule & Results"] = ("Every game this season: non-conference in November and December, conference play from January, then the conference tournament and March Madness.",
+                                  "Invitationals and showcases against big names lift your rating for Selection Sunday."),
+    };
 
     private static readonly Dictionary<string, (string Beginner, string Experienced)> Pages = new()
     {

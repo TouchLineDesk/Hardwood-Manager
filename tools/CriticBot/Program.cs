@@ -50,6 +50,9 @@ int teamId = label switch
     "lithuania" => probeWorld[WorldLeagues.Lithuania].Clubs.OrderBy(t => QuickSim.Strength(t)).First().Id,
     "local" => probeWorld[UsaPyramid.LocalKey("txn")].Clubs.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     "japan" => probeWorld[WorldLeagues.Japan].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(4).Id,
+    // College sim C2 (#168): a mid-table program (the 50th strongest of 148) and a blue blood.
+    "college" => probeWorld.College!.Programs.OrderByDescending(t => QuickSim.Strength(t)).ElementAt(49).Id,
+    "college-strong" => probeWorld.College!.Programs.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     _ => throw new Exception(label),
 };
 var path = Path.Combine(Path.GetTempPath(), $"critic-{label}.hwsave"); if (File.Exists(path)) File.Delete(path);
@@ -181,6 +184,12 @@ while (s.League.Season < startYear + seasons)
     {
         var rec = s.MyRecord;
         L($"end {s.League.Season}: {rec.Wins}-{rec.Losses}, rank {s.MyRank} in {s.MyTableName}, board {s.Job.Confidence:F0}, level {s.MyLevel}, balance ${s.HumanTeam.Money.Balance / 1e6:F1}M");
+        if (s.InCollege && s.World.College is { } cw)
+        {
+            var conf = s.MyStandings[s.HumanTeam];
+            int reached = cw.MadnessReached(s.HumanTeam.Id);
+            L($"college {cw.Season.Year}: conference {conf.Wins}-{conf.Losses}, seed {(cw.Season.Seeds.TryGetValue(s.HumanTeam.Id, out var sd) ? sd.ToString() : "-")}, March Madness {(reached < 0 ? "missed" : reached == 7 ? "CHAMPIONS" : Hardwood.Core.College.CollegeWorld.RoundName(reached))}, champion {cw.Program(cw.Season.ChampionId ?? 0)?.FullName}, roster {s.HumanTeam.Roster.Count}, full-engine box scores {s.CollegeResults.Count}");
+        }
     }
 }
 L($"done in {sw.Elapsed.TotalMinutes:F1} min. decisions {decisions}, signings {signings}, renewals {renewed}, releases {released}, talks {talks}, bids {bidsMade} (won {bidsWon}), sold {sold}, sackings {sackings}, new jobs {jobs}");

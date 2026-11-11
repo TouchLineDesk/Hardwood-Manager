@@ -100,7 +100,7 @@
                 <DataTemplate x:DataType="vm:TeamChoice"><c:TeamLogo Team="{Binding Team}" Width="32" Height="32" ShowText="False" Margin="4,2"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="200"/>
+            <DataGridTextColumn Header="Team" Binding="{Binding Name}" Width="222"/>
             <DataGridTextColumn Header="League" Binding="{Binding Conference}" Width="160"/>
             <DataGridTextColumn Header="Outlook" Binding="{Binding Strength}" Width="150"/>
             <DataGridTextColumn Header="Core ability" Binding="{Binding CoreCa, StringFormat={}{0:F0}}" Width="90"/>

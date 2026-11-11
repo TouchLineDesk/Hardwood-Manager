@@ -27,6 +27,8 @@ public sealed partial class NavItem : ObservableObject
     public IRelayCommand? Command { get; set; }
     [ObservableProperty] private bool _isActive;
     [ObservableProperty] private string _badge = "";
+    /// <summary>Hidden when the page doesn't apply (a college coach has no transfers or pro offseason, C2).</summary>
+    [ObservableProperty] private bool _isVisible = true;
 }
 
 public sealed partial class MainViewModel : ViewModelBase
@@ -254,11 +256,13 @@ public sealed partial class MainViewModel : ViewModelBase
         DateText = s.Today.ToString("ddd, MMM d yyyy");
         TeamText = s.Employed ? s.HumanTeam.FullName : $"{s.Coach.Name} · out of work";
         var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
-        JobText = s.Employed ? $"Board: {jobLabel}" : jobLabel;
+        JobText = s.Employed ? $"{(s.InCollege ? "AD" : "Board")}: {jobLabel}" : jobLabel;
         JobBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(jobColour));
         var rec = s.MyRecord;
         RecordText = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
-        PhaseText = s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
+        PhaseText = s.InCollege && s.Employed && s.World.College is { } cw && cw.Season.Year == s.League.Season
+            ? $"{s.MyConference!.Short} · {(cw.Season.ChampionId != null ? "season over" : cw.StageText.ToLower())}"
+            : s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
             ? $"{hl.Profile.Name} · {(hl.Season.IsComplete ? "season over" : hl.Season.Stage.ToLower())}"
             : s.Phase switch
         {
@@ -284,6 +288,8 @@ public sealed partial class MainViewModel : ViewModelBase
             : "";
         var inbox = Nav.FirstOrDefault(n => n.Name == "Inbox");
         if (inbox != null) { int unread = s.Inbox.Count(m => !m.Read); inbox.Badge = unread > 0 ? unread.ToString() : ""; }
+        bool college = s.Employed && s.InCollege;
+        foreach (var item in Nav.Where(n => n.Name is "Transactions" or "Offseason")) item.IsVisible = !college;
         var off = Nav.FirstOrDefault(n => n.Name == "Offseason");
         if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
     }

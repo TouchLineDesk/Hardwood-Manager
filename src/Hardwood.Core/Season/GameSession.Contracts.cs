@@ -10,7 +10,9 @@ namespace Hardwood.Core.Season;
 public sealed partial class GameSession
 {
     /// <summary>Your league's wage level (1 for the NABL; an overseas league pays a fraction).</summary>
-    public double MySalaryScale => HumanLeague?.Profile.SalaryScale ?? 1;
+    public double MySalaryScale => InCollege ? CollegeStaffScale : HumanLeague?.Profile.SalaryScale ?? 1;
+    /// <summary>College staff are paid on a modest scale (C2): the programs have no player wages at all.</summary>
+    public const double CollegeStaffScale = 0.12;
 
     /// <summary>The day contracts are dated from: the summer's date in the offseason, otherwise today.</summary>
     private DateOnly ContractDate => Offseason?.Date ?? Today;
@@ -56,6 +58,7 @@ public sealed partial class GameSession
     public string? CannotTalk(Player p)
     {
         if (!Employed) return "You aren't coaching a club right now.";
+        if (InCollege) return "A college program doesn't sign professionals: your roster comes from high-school recruiting.";
         if (_talksOver.Contains(p.Id)) return $"{p.Name}'s agent won't talk to you again this window.";
         bool renewal = MyExpiring.Contains(p);
         if (renewal) return Offseason.WontReSign(p) ? $"{p.Name} is too unhappy here to sign a new deal." : null;

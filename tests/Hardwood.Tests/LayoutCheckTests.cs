@@ -181,6 +181,82 @@ public class LayoutCheckTests
     }
 
     [AvaloniaFact]
+    public void A_college_career_shows_all_its_text()
+    {
+        // College sim C2 (#168): a program's pages in January (conference play under way), at 1280 and 1480 px, with and
+        // without the assistant, and at 130%.
+        var report = Environment.GetEnvironmentVariable("HW_LAYOUT_REPORT");
+        var path = Path.Combine(Path.GetTempPath(), $"hw-college-{Guid.NewGuid():N}.save");
+        var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
+        AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
+        AppSettings.Use(new AppSettings { FaceFolder = oldSettings.FaceFolder, LogoFolder = oldSettings.LogoFolder, AutoPortraits = false });
+        var problems = new List<string>();
+        MainWindow? window = null;
+        try
+        {
+            var vm = new MainViewModel();
+            window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
+            window.Show();
+            var start = (StartViewModel)vm.CurrentPage!;
+            start.SavePath = path; start.SeedText = "2026";
+            start.PlayLeague = StartViewModel.CollegeChoice;
+            Settle(window);
+            foreach (var p in LayoutCheck.Scan(window)) problems.Add($"start | {p}");
+            start.SelectedTeam = start.Teams[1];
+            start.NewGame();
+            var session = vm.Session!;
+            Assert.True(session.InCollege);
+            while (session.Today < new DateOnly(2027, 1, 20)) session.AdvanceDay();
+            vm.AfterTick();
+            // Pro-only pages are hidden for a college coach.
+            Assert.False(vm.Nav.First(n => n.Name == "Transactions").IsVisible);
+            Assert.False(vm.Nav.First(n => n.Name == "Offseason").IsVisible);
+            var pages = new (string name, Action<MainViewModel> open)[]
+            {
+                ("Home", v => v.Navigate("Home")), ("Roster", v => v.Navigate("Roster")), ("Board", v => v.Navigate("Board")),
+                ("Standings", v => v.Navigate("Standings")), ("Schedule & Results", v => v.Navigate("Schedule & Results")),
+                ("Squad", v => v.Navigate("Squad")), ("Rotation", v => v.Navigate("Rotation")), ("Tactics", v => v.Navigate("Tactics")),
+                ("Box score", v =>
+                {
+                    v.Navigate("Schedule & Results");
+                    var sched = (ScheduleViewModel)v.CurrentPage!;
+                    sched.OpenBox(sched.Games.Last(g => g.Played));
+                }),
+            };
+            foreach (var (width, guide, scale) in new[] { (1480, true, 1.0), (1480, false, 1.0), (1280, true, 1.0), (1280, false, 1.0), (1280, true, 1.3) })
+            {
+                window.Width = width;
+                window.ApplyScale(scale);
+                vm.Guide.On = guide;
+                foreach (var (name, open) in pages)
+                {
+                    open(vm);
+                    Settle(window);
+                    if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)
+                    {
+                        Directory.CreateDirectory(shots);
+                        using var frame = window.CaptureRenderedFrame();
+                        frame?.Save(Path.Combine(shots, $"college-{width}-{(guide ? "a" : "n")}-{scale * 100:0}-{name.Replace(" & ", "-").Replace(' ', '-').ToLower()}.png"));
+                    }
+                    if (window.TopBarOverlap() is > 1 and var overlap) problems.Add($"{width}px {(guide ? "assistant" : "no-assist")} {scale:P0} | {name} | top bar overlaps itself by {overlap:0}px");
+                    foreach (var p in LayoutCheck.Scan(window)) problems.Add($"{width}px {(guide ? "assistant" : "no-assist")} {scale:P0} | {name} | {p}");
+                }
+            }
+            window.ApplyScale(1.0);
+        }
+        finally
+        {
+            window?.Close();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            if (File.Exists(AppSettings.FilePath)) File.Delete(AppSettings.FilePath);
+            AppSettings.FilePath = oldPath; AppSettings.Use(oldSettings);
+            if (File.Exists(path)) File.Delete(path);
+            if (report != null) File.AppendAllLines(report, problems);
+        }
+        Assert.True(problems.Count == 0, $"{problems.Count} pieces of text are cut off:\n" + string.Join("\n", problems.Take(60)));
+    }
+
+    [AvaloniaFact]
     public void The_march_madness_bracket_shows_all_its_text()
     {
         // College depth part 2: the bracket in early April (Final Four week), every region and the Final Four, at 1280 and 1480 px.

@@ -39,6 +39,8 @@ public sealed partial class ScheduleViewModel : PageViewModel
     [ObservableProperty] private GameRow? _selected;
     [ObservableProperty] private string _summary = "";
     [ObservableProperty] private bool _showPlayoffs;
+    /// <summary>College (C2): the event gets its own column and opponents go by their school's name, so long names fit.</summary>
+    [ObservableProperty] private bool _showEvent;
 
     public ScheduleViewModel(MainViewModel shell) : base(shell) { }
 
@@ -51,6 +53,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session; var us = s.HumanTeam;
+        ShowEvent = s.InCollege;
         Games.Clear();
         int w = 0, l = 0;
         foreach (var g in s.MyGames())
@@ -67,9 +70,12 @@ public sealed partial class ScheduleViewModel : PageViewModel
                 top = best != null ? $"{best.Player.LastName} {best.Points} pts, {best.Rebounds} reb, {best.Assists} ast" : "";
             }
             string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
+            if (s.InCollege && g.Competition == Hardwood.Core.College.CollegeWorld.Madness) comp = $"Madness: {g.Stage}";
+            string opponent = s.InCollege ? $"{(g.Home ? "vs" : "at")} {g.Opponent.City}"
+                : $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}" + (comp.Length > 0 ? $" · {comp}" : "");
             Games.Add(new GameRow
             {
-                Game = g, Opponent = $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}" + (comp.Length > 0 ? $" · {comp}" : ""), OpponentTeam = g.Opponent,
+                Game = g, Opponent = opponent, OpponentTeam = g.Opponent,
                 Competition = comp, Score = score, Outcome = outcome, Record = g.Played ? $"{w}-{l}" : "", TopPerformer = top,
             });
         }

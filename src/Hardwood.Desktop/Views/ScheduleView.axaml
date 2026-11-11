@@ -22,7 +22,8 @@
               <DataTemplate x:DataType="vm:GameRow"><c:TeamLogo Team="{Binding OpponentTeam}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="*" MinWidth="214"/>
+          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="*" MinWidth="220"/>
+          <DataGridTextColumn Header="Event" Binding="{Binding Competition}" Width="178" IsVisible="False"/>
           <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="34"/>
           <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="112"/>
           <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="64"/>
