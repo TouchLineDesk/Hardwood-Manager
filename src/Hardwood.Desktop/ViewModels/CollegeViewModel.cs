@@ -185,6 +185,7 @@ public sealed partial class CollegeViewModel : PageViewModel
             if (!classes.SequenceEqual(Classes)) { Classes = classes; OnPropertyChanged(nameof(Classes)); }
             if (!Classes.Contains(HighSchoolClass)) HighSchoolClass = Classes[0]; else FillHighSchool();
         }
+        FillTrail();
     }
 
     private string ClassLabel(CollegeWorld c, int year) => $"Class of {year}" + (year == c.SeniorClass ? " (seniors)" : year == c.SeniorClass + 3 ? " (freshmen)" : "");

@@ -196,6 +196,14 @@ while (s.League.Season < startYear + seasons)
     bool wasEmployed = s.Employed;
     var team = s.HumanTeam;
     s.AdvanceDay();
+    // The recruiting trail (C3): the day after signing day, how our class turned out.
+    if (s.TrailOpen && s.World.College is { } tw && s.Today == Hardwood.Core.College.CollegeWorld.SigningDay(tw.Season.Year + 1).AddDays(1))
+    {
+        int cls = tw.Season.Year + 1;
+        var ours = tw.ClassOf(cls).Select(p => tw.Recruits[p.Id]).Where(r => r.CommittedTo == team.Id).ToList();
+        var ranking = tw.ClassRanking(cls);
+        L($"recruiting class of {cls}: {ours.Count} signed ({ours.Count(r => r.Stars == 5)}x5, {ours.Count(r => r.Stars == 4)}x4, {ours.Count(r => r.Stars == 3)}x3, {ours.Count(r => r.Stars <= 2)}x2), best No. {(ours.Count > 0 ? ours.Min(r => r.Rank) : 0)}, class rank {ranking.FindIndex(x => x.Program == team) + 1} of {ranking.Count}; offered {tw.Recruits.Values.Count(r => r.ClassOf == cls && r.CourtedBy == team.Id && r.Offered)}; five-stars in class signed {tw.ClassOf(cls).Count(p => tw.Recruits[p.Id].Stars == 5 && tw.Recruits[p.Id].CommittedTo != null)}; {s.Delegated.LastRecruiting}");
+    }
     if (wasEmployed && !s.Employed) { sackings++; L($"{s.Today}: SACKED by {team.FullName} at {s.MyRecord.Wins}-{s.MyRecord.Losses}"); }
     if (s.Phase == SessionPhase.Offseason && s.Offseason?.Phase == OffseasonPhase.ReSigning && s.Employed && !log.Last().StartsWith($"end {s.League.Season}"))
     {

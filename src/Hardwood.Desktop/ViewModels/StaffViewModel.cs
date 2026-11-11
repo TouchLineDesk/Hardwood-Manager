@@ -63,6 +63,7 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private bool _canHire;
     [ObservableProperty] private bool _delegateTraining;
     [ObservableProperty] private bool _delegateRecruiting;
+    public string DelegateRecruitingText => Session.TrailOpen ? "Assistant recruits high-schoolers with the hours you leave unused (offers included)" : "Head scout courts college seniors (spends the recruiting points; offers stay with you)";
     [ObservableProperty] private bool _delegateTactics;
     [ObservableProperty] private string _delegationNote = "";
     [ObservableProperty] private bool _delegateMedia;
@@ -188,7 +189,7 @@ public sealed partial class StaffViewModel : PageViewModel
         var d = Session.Delegated;
         var lines = new List<string>();
         if (d.Training && d.LastTraining.Length > 0) lines.Add(d.LastTraining);
-        if (d.Recruiting) lines.Add(d.LastRecruiting.Length > 0 ? d.LastRecruiting : "Your head scout starts courting seniors from November (College > Recruiting).");
+        if (d.Recruiting) lines.Add(d.LastRecruiting.Length > 0 ? d.LastRecruiting : Session.TrailOpen ? "Your assistant spends the recruiting hours you leave unused each week (College > Recruiting)." : "Your head scout starts courting seniors from November (College > Recruiting).");
         if (Session.HumanTeam.Tactic.Auto) lines.Add("Your assistant picks the system, scheme and sliders for each opponent.");
         if (d.Media) lines.Add(d.LastMedia.Length > 0 ? d.LastMedia : "Your assistant coach fronts the press and handles the locker room, in his own style (a Mentor protects team spirit).");
         DelegationNote = lines.Count == 0 ? "You're running everything yourself." : string.Join("\n", lines);

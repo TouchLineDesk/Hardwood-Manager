@@ -23,6 +23,21 @@ public sealed class Recruit
     public int Bias { get; set; }
     public int? CommittedTo { get; set; }
     public DateOnly? CommittedOn { get; set; }
+
+    // The recruiting trail (C3, decision #173): the coached program's own courting. Only one program is courting in
+    // the player's name; when the coach changes jobs the old program's effort no longer counts (see CourtedBy).
+    /// <summary>The program whose effort the fields below record.</summary>
+    public int? CourtedBy { get; set; }
+    /// <summary>Goodwill toward that program, 0-100: calls, visits and an offer. Fades 1% a week.</summary>
+    public double Interest { get; set; }
+    public bool OnBoard { get; set; }
+    public bool Scouted { get; set; }
+    public int Calls { get; set; }
+    /// <summary>The Monday of the week he was last called (one call a week counts).</summary>
+    public DateOnly? CalledWeek { get; set; }
+    public bool HomeVisit { get; set; }
+    public bool OfficialVisit { get; set; }
+    public bool Offered { get; set; }
 }
 
 /// <summary>
@@ -96,16 +111,22 @@ public sealed partial class CollegeWorld
         ["Golden Valley"] = "CA", ["High Desert"] = "NV",
     };
 
-    public static string HomeState(Team program)
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> HomeCache = new();
+    private static readonly string[] PlacesLongestFirst = PlaceToState.Keys.OrderByDescending(k => k.Length).ToArray();
+
+    /// <summary>Cached by city name (a name pack can rename a program, so the name is the key, not the team).</summary>
+    public static string HomeState(Team program) => HomeCache.GetOrAdd(program.City, FindHomeState);
+
+    private static string FindHomeState(string city)
     {
-        string city = program.City;
-        foreach (var place in PlaceToState.Keys.OrderByDescending(k => k.Length))
+        foreach (var place in PlacesLongestFirst)
             if (city.Contains(place, StringComparison.Ordinal)) return PlaceToState[place];
         return "TX";
     }
 
     public static string StateName(string code) => StateTable.FirstOrDefault(s => s.Code == code).Name ?? code;
-    public static string RegionOf(string code) => StateTable.FirstOrDefault(s => s.Code == code).Region ?? "";
+    private static readonly Dictionary<string, string> RegionByCode = StateTable.ToDictionary(s => s.Code, s => s.Region);
+    public static string RegionOf(string code) => RegionByCode.GetValueOrDefault(code, "");
 
     private static string PickState(Rng rng)
     {
@@ -215,22 +236,75 @@ public sealed partial class CollegeWorld
     /// <summary>Scholarships a program can still offer to a class: 13, less the scholarship players still there next season, less commitments.</summary>
     public int OpenScholarships(Team t, int classOf) => Math.Max(0, BoardFor(classOf).Open[t.Id]);
 
-    /// <summary>How much a program appeals to a prospect: prestige, distance from home, and the minutes waiting at his position.</summary>
+    /// <summary>
+    /// How much a program appeals to a prospect: prestige, distance from home, the minutes waiting at his position and how
+    /// the program is winning, with the one he cares about most weighing extra (C3, #174: prestige +50% above average, home +50%, minutes and winning double); plus the coached program's
+    /// courting (<see cref="Recruit.Interest"/>). Noise stands for everything else (a cousin on the team, a coach he liked).
+    /// </summary>
     public double Appeal(Team t, Player p, Recruit r, ClassBoard board, Rng? rng = null)
+    {
+        var (prestige, near, minutes, winning) = AppealParts(t, p, r, board);
+        double a = prestige + near + minutes + winning;
+        a += PriorityOf(p) switch
+        {
+            RecruitPriority.Prestige => (prestige - 50) * 0.5,
+            RecruitPriority.Home => near * 0.5,
+            RecruitPriority.PlayingTime => minutes,
+            _ => winning,
+        };
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t));
+        return a + (rng?.NextGaussian(0, 14) ?? 0);
+    }
+
+    /// <summary>
+    /// What the coached program's courting is worth against the computer schools, which court everyone in their reach
+    /// all the time: interest above the prospect's baseline (what the rivals put in) adds appeal, below it costs appeal,
+    /// so a coached program that never calls is behind every school recruiting him. The best prospects are courted
+    /// hardest and are swayed least: a 5-star's baseline is 60 and each point counts 0.2 (100 interest is +8, so a
+    /// mid-major still can't outbid a blue blood for him); a 3-star's is 30 at 0.45 (100 interest is +31.5).
+    /// </summary>
+    public static double CourtingEdge(Recruit r, int programId, double interest) => (interest - Baseline(r)) * WeightOf(r);
+
+    /// <summary>How hard the computer schools court him, in interest points.</summary>
+    public static double Baseline(Recruit r) => r.Stars switch { >= 5 => 60, 4 => 45, 3 => 30, _ => 20 };
+
+    /// <summary>How much a point of interest sways him (the best hear from everyone and go where the program is).</summary>
+    public static double WeightOf(Recruit r) => r.Stars switch { >= 5 => 0.2, 4 => 0.3, _ => InterestWeight };
+
+    /// <summary>Each point of interest is worth this much appeal: 100 interest against a 3-star's baseline of 30 is about the gap between a mid-major and a power program.</summary>
+    public const double InterestWeight = 0.45;
+
+    /// <summary>The parts of a program's appeal before his priority and your courting: prestige, home, minutes, winning.</summary>
+    public (double Prestige, double Near, double Minutes, double Winning) AppealParts(Team t, Player p, Recruit r, ClassBoard board)
     {
         string home = HomeState(t);
         double near = home == r.State ? 14 : RegionOf(home) == RegionOf(r.State) ? 6 : 0;
         int crowd = board.AtPosition.GetValueOrDefault((t.Id, p.PrimaryPosition));
         double minutes = -3 * Math.Max(0, crowd - 2);
-        return Prestige[t.Id] + near + minutes + (rng?.NextGaussian(0, 14) ?? 0);
+        double winning = Season.Elo.TryGetValue(t.Id, out var elo) ? Math.Clamp((elo - 1500) / 12, -10, 10) : 0;
+        return (Prestige[t.Id], near, minutes, winning);
     }
+
+    /// <summary>What a prospect weighs most (fixed for life, from his id so older saves get one too).</summary>
+    public static RecruitPriority PriorityOf(Player p) => (RecruitPriority)((uint)(p.Id * 2654435761u) >> 8 & 0x3);
+
+    public static string PriorityText(RecruitPriority k) => k switch
+    {
+        RecruitPriority.Prestige => "a big-name program",
+        RecruitPriority.Home => "staying close to home",
+        RecruitPriority.PlayingTime => "early playing time",
+        _ => "a winning team",
+    };
+
+    /// <summary>The coached program can only land a prospect it has offered (C3): no scholarship, no commitment.</summary>
+    private bool CanTake(Team t, Recruit r) => t.Id != ManagedProgramId || (r.Offered && r.CourtedBy == t.Id);
 
     private Team? Choose(Player p, Recruit r, ClassBoard board, Rng rng)
     {
         Team? best = null; double top = double.MinValue;
         foreach (var t in Programs)
         {
-            if (board.Open[t.Id] <= 0) continue;
+            if (board.Open[t.Id] <= 0 || !CanTake(t, r)) continue;
             double a = Appeal(t, p, r, board, rng);
             if (a > top) { top = a; best = t; }
         }
@@ -242,6 +316,7 @@ public sealed partial class CollegeWorld
         r.CommittedTo = t.Id; r.CommittedOn = on;
         board.Open[t.Id]--;
         board.AtPosition[(t.Id, p.PrimaryPosition)] = board.AtPosition.GetValueOrDefault((t.Id, p.PrimaryPosition)) + 1;
+        TellCoach(p, r, t);
         if (r.Rank <= 10)
             News.Add(($"{StarText(r.Stars)} {p.Name} commits to {t.FullName}",
                       $"The No. {r.Rank} player in the Class of {r.ClassOf} ({p.PrimaryPosition}, {r.HighSchool}, {StateName(r.State)}) has chosen {t.FullName}."));
@@ -291,6 +366,7 @@ public sealed partial class CollegeWorld
             r.CommittedTo = pick.Id; r.CommittedOn = day;
             board.Open[pick.Id]--;
             board.AtPosition[(pick.Id, p.PrimaryPosition)] = board.AtPosition.GetValueOrDefault((pick.Id, p.PrimaryPosition)) + 1;
+            TellCoach(p, r, pick, signingDay: true);
         }
         var top = ClassRanking(cls).Take(5).ToList();
         if (top.Count > 0)

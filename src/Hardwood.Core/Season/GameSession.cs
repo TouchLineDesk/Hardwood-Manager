@@ -116,11 +116,14 @@ public sealed partial class GameSession
         session.Today = session.CareerYearStart();
         if (names != null) session.NamePackApplied = $"{names.Name} (applied {session.Today:MMM d, yyyy})";
         session.Job.HiredOn = session.Today;
+        // A college coach starts with his assistant using any recruiting hours he leaves unspent (C3, #176).
+        if (session.InCollege) session.Delegated.Recruiting = true;
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
         var first = session.NextMyGame;
         session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName} ({session.HumanLeagueName}). "
-            + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue."), "Board");
+            + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
+            + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
         session.SaveNow();
         return session;
     }
@@ -367,6 +370,7 @@ public sealed partial class GameSession
     {
         if (World.College is { } cw) cw.ManagedProgramId = Employed && InCollege ? HumanTeam.Id : null;
         World.PlayThrough(date, _sim);
+        PostCoachNews();
         // Day to day the digest keeps its fortnightly rhythm (review #4: posting whenever there was news made it near-daily).
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: date == DateOnly.MaxValue);
         World.News.Clear();
@@ -390,7 +394,7 @@ public sealed partial class GameSession
             if (regular) WeeklyBoard();
         }
         if (!Employed) DailyJobMarket();
-        if (Today.DayOfWeek == DayOfWeek.Monday) { DelegatedTraining(); DelegatedRecruiting(); WeeklyRecruiting(); }
+        if (Today.DayOfWeek == DayOfWeek.Monday) { DelegatedTraining(); DelegatedRecruiting(); WeeklyRecruiting(); WeeklyTrail(); }
         DailyTransfers();
         MaybePostDigest();
         MaybePostJobs();
