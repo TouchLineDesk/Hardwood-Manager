@@ -32,6 +32,21 @@ public sealed class ProspectListRow
     public string Turns => Age >= 22 ? "Turns pro next summer" : $"Pro in {23 - Age} years";
 }
 
+/// <summary>A senior on the recruiting board (decision #157).</summary>
+public sealed class RecruitRow
+{
+    public required Player Player { get; init; }
+    public string Name => Player.Name;
+    public string Pos => Player.PrimaryPosition.ToString();
+    public string Program { get; init; } = "";
+    public string CA { get; init; } = "";
+    public string PA { get; init; } = "";
+    public double Interest { get; init; }
+    public string InterestText { get; init; } = "";
+    public string Status { get; init; } = "";
+    public bool Listed { get; init; }
+}
+
 /// <summary>The college hub (decision #97): Top 25, conference tables, the March Madness bracket, and prospects by age.</summary>
 public sealed partial class CollegeViewModel : PageViewModel
 {
@@ -51,6 +66,21 @@ public sealed partial class CollegeViewModel : PageViewModel
     public ObservableCollection<ProspectListRow> Prospects { get; } = new();
     [ObservableProperty] private ProspectListRow? _selectedProspect;
     public bool HasCollege => Session.World.College != null;
+
+    // Senior recruiting (decision #157): court seniors so they sign for you on graduation day.
+    public ObservableCollection<RecruitRow> Recruits { get; } = new();
+    [ObservableProperty] private RecruitRow? _selectedRecruit;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _recruitChips = new();
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _interestChips = new();
+    [ObservableProperty] private string _recruitLean = "";
+    [ObservableProperty] private string _recruitReply = "";
+    [ObservableProperty] private string _recruitNote = "";
+    [ObservableProperty] private decimal _offerWage;
+    [ObservableProperty] private decimal _offerYears = 3;
+    [ObservableProperty] private bool _listedOnly;
+    public bool HasRecruit => SelectedRecruit != null;
+    partial void OnSelectedRecruitChanged(RecruitRow? value) { OnPropertyChanged(nameof(HasRecruit)); RecruitReply = ""; FillRecruitPanel(); }
+    partial void OnListedOnlyChanged(bool value) => FillRecruits();
     [ObservableProperty] private int _tab;
 
     partial void OnConferenceChanged(string value) => FillConference();
@@ -87,7 +117,82 @@ public sealed partial class CollegeViewModel : PageViewModel
         FillConference();
         FillBracket();
         FillProspects();
+        FillRecruits();
     }
+
+    private void FillRecruits()
+    {
+        var keep = SelectedRecruit?.Player;
+        Recruits.Clear();
+        if (Session.World.College is not { } c) return;
+        var board = Session.Recruiting;
+        var team = Session.HumanTeam;
+        int ours = 0, rivals = 0;
+        foreach (var p in Session.Seniors().Take(80))
+        {
+            var st = board?.Find(p.Id);
+            if (st?.CommittedTeamId == team.Id) ours++; else if (st?.CommittedTeamId != null) rivals++;
+            bool listed = st is { Shortlisted: true } && st.TeamId == team.Id;
+            if (ListedOnly && !listed && st?.CommittedTeamId != team.Id) continue;
+            var i = Session.InterestIn(p);
+            double k = Scouting.Knowledge(team, p, prospect: true);
+            Recruits.Add(new RecruitRow
+            {
+                Player = p, Program = c.Program(p.TeamId ?? 0)?.FullName ?? "", CA = Scouting.Ability(p, k).ToString(), PA = Scouting.Potential(p, k).ToString(),
+                Interest = i.Blocked != null ? 0 : i.Total, InterestText = i.Blocked != null ? "-" : $"{i.Total:0} / {i.Need:0}",
+                Listed = listed,
+                Status = st?.CommittedTeamId is { } t ? (t == team.Id ? "Committed to you" : $"Committed: {Session.FindTeam(t)?.Abbreviation}")
+                       : i.Blocked != null ? "Aims higher" : st is { OfferWage: > 0 } && st.TeamId == team.Id ? "Your offer is in" : listed ? "On your list" : "Open",
+            });
+        }
+        RecruitNote = !Session.RecruitingOpen
+            ? "Recruiting opens with the college season in November and closes when the season ends and the seniors turn pro."
+            : "Seniors turn pro when the season ends. Win them over with calls and visits, then offer terms: a senior who commits signs for you then, before free agency opens.";
+        RecruitChips = new()
+        {
+            new("Recruiting points", $"{board?.Points ?? 0}", $"tops up monthly (scout), max {Hardwood.Core.College.RecruitingBoard.PointsCap}", "team"),
+            new("Committed to you", ours.ToString(), "sign when the season ends", ours > 0 ? "good" : ""),
+            new("Committed elsewhere", rivals.ToString(), "of the top 80 seniors", rivals > 40 ? "warn" : ""),
+            new("Seniors", Session.Seniors().Count.ToString(), "turning pro this summer", "info"),
+        };
+        SelectedRecruit = keep == null ? null : Recruits.FirstOrDefault(r => r.Player == keep);
+        FillRecruitPanel();
+    }
+
+    private void FillRecruitPanel()
+    {
+        if (SelectedRecruit?.Player is not { } p) { InterestChips = new(); RecruitLean = ""; return; }
+        var i = Session.InterestIn(p);
+        InterestChips = new()
+        {
+            new("Club pull", $"{i.Appeal * 0.45:0}", $"{i.Appeal:0}/100 × 45%: league, record, your name", i.Appeal >= 60 ? "good" : i.Appeal < 40 ? "bad" : ""),
+            new("Playing time", $"{i.Minutes * 0.25:0}", $"{i.Minutes:0}/100 × 25%: who's ahead of him", i.Minutes >= 70 ? "good" : i.Minutes < 40 ? "bad" : ""),
+            new("Your effort", $"{i.Effort:0}", "calls and visits (fades 3% a week)", i.Effort >= 15 ? "good" : ""),
+            new("Interest", $"{i.Total:0}", $"he needs {i.Need:0} to commit", i.Enough ? "good" : "warn"),
+        };
+        RecruitLean = Session.Lean(p);
+        if (_wageFor != p) { _wageFor = p; OfferWage = Math.Round((decimal)(Session.RecruitDemand(p).Wage / 1e6), 2); }
+    }
+
+    private Player? _wageFor;
+
+    private void AfterRecruitAction(string reply)
+    {
+        RecruitReply = reply;
+        FillRecruits();
+        Shell.Guide.Refresh();
+    }
+
+    [RelayCommand] private void ShortlistRecruit() { if (SelectedRecruit?.Player is { } p) AfterRecruitAction(Session.Shortlist(p)); }
+    [RelayCommand] private void CallRecruit() { if (SelectedRecruit?.Player is { } p) AfterRecruitAction(Session.CallRecruit(p)); }
+    [RelayCommand] private void VisitRecruit() { if (SelectedRecruit?.Player is { } p) AfterRecruitAction(Session.VisitRecruit(p)); }
+    [RelayCommand] private void OfferRecruit()
+    {
+        if (SelectedRecruit?.Player is not { } p) return;
+        var wage = OfferWage; var years = OfferYears;
+        AfterRecruitAction(Session.OfferRecruit(p, (long)(wage * 1_000_000m), (int)years));
+    }
+    [RelayCommand] private void OpenRecruit() { if (SelectedRecruit?.Player is { } p) Shell.ShowPlayer(p); }
 
     private static string ConfName(CollegeWorld c, Team t) => CollegeWorld.Conferences.First(x => x.Key == c.ConferenceOf[t.Id]).Short;
 

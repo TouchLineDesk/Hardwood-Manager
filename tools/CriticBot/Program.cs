@@ -60,6 +60,7 @@ var log = new List<string>();
 void L(string x) { log.Add(x); Console.WriteLine($"[{label}] {x}"); }
 L($"start: {s.HumanTeam.FullName} in {s.HumanLeagueName}, level {s.MyLevel}, budget ${s.HumanTeam.Money.WageBudget / 1e6:F2}M");
 int longestUnhappy = 0, unhappyPlayerWeeks = 0, overBudgetWeeks = 0, weeksEmployed = 0;
+int recruitCommits = 0;
 int decisions = 0, signings = 0, talks = 0, bidsMade = 0, bidsWon = 0, sold = 0, renewed = 0, released = 0, urgentSeen = 0, tipsSeen = 0, sackings = 0, jobs = 0;
 var assistantTitles = new Dictionary<string, int>();
 var bidOutcomes = new Dictionary<string, int>();
@@ -116,7 +117,24 @@ while (s.League.Season < startYear + seasons)
                 }
             }
         }
-        else
+        // Senior recruiting (decision #157): court three seniors who'd start for us, and offer their ask once they're keen.
+        if (s.Employed && s.RecruitingOpen)
+        {
+            var targets = s.Seniors().Take(80).Where(p => s.InterestIn(p).Blocked == null && s.Recruiting!.Find(p.Id)?.CommittedTeamId == null && s.InterestIn(p).Minutes >= 70)
+                .OrderByDescending(p => p.CurrentAbility).Take(3).ToList();
+            foreach (var p in targets)
+            {
+                var st = s.Recruiting!.Find(p.Id);
+                if (st == null || st.Visits < 2) s.VisitRecruit(p); else s.CallRecruit(p);
+                if (s.InterestIn(p).Enough)
+                {
+                    var d = s.RecruitDemand(p);
+                    var r = s.OfferRecruit(p, d.Wage, 3); decisions++;
+                    if (r.Contains("commits to the")) { recruitCommits++; L($"{s.Today}: {p.Name} (CA {p.CurrentAbility}) commits"); }
+                }
+            }
+        }
+        else if (!s.Employed)
         {
             foreach (var v in s.Job.Vacancies.Where(v => v.Status == "open").Take(3)) { s.Apply(v.TeamId); decisions++; }
             foreach (var v in s.Job.Vacancies.Where(v => v.Status == "offered").ToList()) { if (s.AcceptOffer(v.TeamId) == null) { jobs++; L($"{s.Today}: hired by {s.HumanTeam.FullName} ({s.HumanLeagueName})"); } decisions++; break; }
@@ -171,6 +189,7 @@ L($"assistant: urgent tasks seen {urgentSeen}, strategy tips {tipsSeen}; tasks: 
 L($"people: longest unhappy spell {longestUnhappy} weeks, unhappy player-weeks {unhappyPlayerWeeks}, squad messages: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Squad").GroupBy(m => m.Title.Contains("settles") ? "settles" : m.Title.Contains("requests a trade") ? "trade request" : m.Title.Contains("wants a word") ? "wants a word" : "other").Select(g => $"{g.Key} x{g.Count()}")));
 L($"money: over the wage budget {overBudgetWeeks} of {weeksEmployed} weeks employed");
 L("board titles: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Board").GroupBy(m => new string(m.Title.TakeWhile(c => c != ':').ToArray())).OrderByDescending(g => g.Count()).Take(10).Select(g => $"{g.Key} x{g.Count()}")));
+L($"recruiting: {recruitCommits} seniors committed to us");
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
     L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");

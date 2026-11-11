@@ -45,6 +45,8 @@ public sealed class CollegeSeason
     public int? ChampionId { get; set; }
     public int? RunnerUpId { get; set; }
     public bool Selected { get; set; }
+    /// <summary>Pro clubs courting this season's seniors (roadmap 11, college depth). Older saves start with an empty board.</summary>
+    public RecruitingBoard Recruiting { get; set; } = new();
 }
 
 public sealed record CollegeChampion(int Year, int ChampionId, string Champion, int RunnerUpId, string RunnerUp);
