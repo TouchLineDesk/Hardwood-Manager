@@ -13,8 +13,10 @@ on:
 permissions:
   contents: write
 
+# One group per commit: a merge that lands while another release is still building
+# would otherwise replace the pending run and that version would never publish.
 concurrency:
-  group: release
+  group: release-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:

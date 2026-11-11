@@ -6,15 +6,16 @@ namespace Hardwood.Core.Engine;
 /// </summary>
 public sealed class EngineConfig
 {
+    // Nov 11 (engine dial-in): fewer rim shots and fouled makes lowered FG% to .451; two-point zones up 0.04-0.05.
     // --- Make probability: logit = ZoneBase + SkillBeta*(skill-11) - ContestBeta*(contest-11) - FatigueBeta*(1-energy) + Home*home
     // Two-point zones down another 0.02-0.03 (Nov 10): the late-game catch-up push lifted FG% to .486-.488 (critic review #3).
     // Lowered 0.065 across the board (Nov 9): roles and fitting systems steer shots to players' strengths, and the
     // players taking most shots are usually the happiest (morale); together FG% +1.2 pts before this.
     public double[] ZoneBaseLogit { get; set; } =
     {
-        0.215,  // Rim           ≈ 65% after shooter selection bias (review #4: the rebalanced systems drive more)
-        -0.465, // ShortMid      ≈ 44%
-        -0.585, // LongMid       ≈ 41%
+        0.265,  // Rim           ≈ 65% after shooter selection bias (review #4: the rebalanced systems drive more)
+        -0.425, // ShortMid      ≈ 44%
+        -0.545, // LongMid       ≈ 41%
         -0.585, // CornerThree   ≈ 39%
         -0.765, // AboveBreak3   ≈ 35%
     };
@@ -40,8 +41,9 @@ public sealed class EngineConfig
     public double TurnoverSkillBeta { get; set; } = 0.0085; // per point of (ball security - defence pressure)
     public double LiveBallTurnoverShare { get; set; } = 0.58;
     public double NonShootingFoulRate { get; set; } = 0.065;
-    public double[] ShootingFoulRateByZone { get; set; } = { 0.215, 0.080, 0.050, 0.020, 0.020 };
-    public double AndOneRate { get; set; } = 0.18;
+    public double[] ShootingFoulRateByZone { get; set; } = { 0.175, 0.065, 0.040, 0.016, 0.016 };
+    /// <summary>A fouled shot goes in at this share of its normal chance (Nov 11: and-ones were 4-8 a team a game).</summary>
+    public double AndOneRate { get; set; } = 0.45;
     public double OffensiveReboundBase { get; set; } = 0.205;
     /// <summary>Share of misses that become a team rebound or go out of bounds (no individual credit, possession flips).</summary>
     public double TeamReboundShare { get; set; } = 0.08;
@@ -74,10 +76,10 @@ public sealed class EngineConfig
     public double UsageSharpness { get; set; } = 1.65; // 1.75 still gave 36-37 ppg leaders on some seeds (Nov 10, fixed PA); 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
-    public double[] AssistedShareByZone { get; set; } = { 0.52, 0.42, 0.45, 0.88, 0.74 };
+    public double[] AssistedShareByZone { get; set; } = { 0.57, 0.46, 0.49, 0.92, 0.80 };
 
     // --- Shot zone mix (league baseline, before player tendencies)
-    public double[] ZoneBaseWeight { get; set; } = { 0.32, 0.17, 0.12, 0.10, 0.29 };
+    public double[] ZoneBaseWeight { get; set; } = { 0.285, 0.19, 0.12, 0.10, 0.30 };
 
     // --- Clock and fatigue
     public double SecondsPerPossessionSd { get; set; } = 5.0;
