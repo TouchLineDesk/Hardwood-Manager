@@ -121,6 +121,12 @@ public class UiSmokeTests
                 if (!live.Complete) Assert.DoesNotContain(liveVm.Highlights, h => h.Kind == "clutch");
             }
             Assert.Contains(liveVm.Log, l => l.Contains(" run") && l.Contains(">>"));
+            // Match day part 3: the break card after a period.
+            liveVm.ShowBreakCard(final: false);
+            Assert.True(liveVm.ShowBreak);
+            Assert.Matches(@"^(End of (Q\d|OT\d?)|Halftime)$", liveVm.BreakTitle);
+            var topHome = live.Result.Home.Lines.OrderByDescending(l => l.Points).First();
+            Assert.Contains(liveVm.BreakChips, c => c.Label == $"{live.Result.Home.Team.Abbreviation} leader" && c.Value == $"{topHome.Points} pts");
             liveVm.SimToEnd();
             Assert.True(liveVm.Complete);
             liveVm.Continue();

@@ -147,6 +147,9 @@ public sealed partial class BoxScoreViewModel : PageViewModel
     public Avalonia.Media.Color FlowAway => GameFlowInfo.Colours(Result).Away;
     public List<SplitRow> Splits => GameFlowInfo.Splits(Result);
     public List<string> RunLines => GameFlowInfo.RunLines(Result);
+    /// <summary>Match day part 3: the commentary's recap of each period ("The 3rd quarter goes to BOS, 31-22. Parker led the way with 12").</summary>
+    public List<string> PeriodRecaps => Result.PlayLog.Where(l => l.Contains(" goes to ") || l.Contains(" is even")).Select(l => l.Split("  ", 2).Last()).ToList();
+    public bool HasPeriodRecaps => PeriodRecaps.Count > 0;
     public bool HasRuns => RunLines.Count > 0;
     public List<Hardwood.Desktop.Controls.Chip> FlowChips => GameFlowInfo.Chips(Result);
     // Match day part 2: the game's highlight cards and the team comparison.

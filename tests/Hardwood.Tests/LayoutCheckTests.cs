@@ -18,7 +18,7 @@ public class LayoutCheckTests
     /// <summary>The pages the check covers: every sidebar page, plus a player, another team, and a box score.</summary>
     private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null)
     {
-        if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); });
+        if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); live.ShowBreakCard(final: false); });
         if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
             yield return (nav.Name, v => v.Navigate(nav.Name));

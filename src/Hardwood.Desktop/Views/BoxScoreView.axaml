@@ -51,6 +51,12 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              <StackPanel Spacing="2" IsVisible="{Binding HasPeriodRecaps}">
+                <TextBlock Text="Period by period" Classes="muted" FontSize="11.5"/>
+                <ItemsControl ItemsSource="{Binding PeriodRecaps}">
+                  <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
               <StackPanel Spacing="2" IsVisible="{Binding HasRuns}">
                 <TextBlock Text="Runs" Classes="muted" FontSize="11.5"/>
                 <ItemsControl ItemsSource="{Binding RunLines}">
@@ -136,7 +142,7 @@
       <Border Classes="panel" IsVisible="{Binding HasLog}" MaxHeight="400">
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding Log}">
-            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="Consolas,Menlo,monospace" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
+            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="Consolas,Menlo,monospace" FontSize="12" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
       </Border>
