@@ -67,6 +67,7 @@ int recruitCommits = 0;
 int decisions = 0, signings = 0, talks = 0, bidsMade = 0, bidsWon = 0, sold = 0, renewed = 0, released = 0, urgentSeen = 0, tipsSeen = 0, sackings = 0, jobs = 0;
 var assistantTitles = new Dictionary<string, int>();
 var mediaAnswers = new Dictionary<string, int>();
+int staffExtended = 0;
 var bidOutcomes = new Dictionary<string, int>();
 var rng = new Rng(seed + 7);
 int startYear = s.League.Season;
@@ -80,6 +81,10 @@ while (s.League.Season < startYear + seasons)
         var adv = Assistant.Advise(s, "Home", GuideLevel.Auto, progress);
         foreach (var t in adv.Tasks) { var k = System.Text.RegularExpressions.Regex.Replace(t.Title.Split(':')[0], @"\d+(\.\d+)?", "#").Trim(); assistantTitles[k] = assistantTitles.GetValueOrDefault(k) + 1; if (t.Priority < 30) urgentSeen++; }
         tipsSeen += adv.Strategy.Count;
+        // Staff part 2: extend the good staff whose contracts end this summer.
+        if (s.Employed && s.Today.Month is >= 2 and <= 6)
+            foreach (var st in s.StaffExpiring.Where(x => x.KeyAttribute >= 9).ToList())
+                if (s.ExtendStaff(st).StartsWith("Done")) { decisions++; staffExtended++; }
         // Press conferences and locker-room moments (people part 2): answer like a player who reads the hints.
         foreach (var d in s.OpenDecisions.ToList())
         {
@@ -209,6 +214,7 @@ L($"people: longest unhappy spell {longestUnhappy} weeks, unhappy player-weeks {
 L($"money: over the wage budget {overBudgetWeeks} of {weeksEmployed} weeks employed");
 L("board titles: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Board").GroupBy(m => new string(m.Title.TakeWhile(c => c != ':').ToArray())).OrderByDescending(g => g.Count()).Take(10).Select(g => $"{g.Key} x{g.Count()}")));
 L($"recruiting: {recruitCommits} seniors committed to us");
+L($"staff: extended {staffExtended}, on staff now {s.HumanTeam.Staff.Count}; coach " + string.Join(" ", Enum.GetValues<Hardwood.Core.Jobs.CoachAttr>().Select(a => $"{a} {s.Coach[a]}")));
 L($"media: {s.Media.Decisions.Count(d => d.Kind == "press")} press conferences, {s.Media.Decisions.Count(d => d.Kind == "locker")} locker-room moments; answers " + string.Join(", ", mediaAnswers.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} x{kv.Value}")));
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))

@@ -23,6 +23,9 @@ public sealed class Coach
     public double Reputation { get; set; } = 30;
     /// <summary>Jobs held so far (team id, from, to, record, why it ended).</summary>
     public List<JobRecord> History { get; set; } = new();
+    /// <summary>This season's work, for growth at the end of it (staff part 2): talks held, press and locker-room moments answered yourself.</summary>
+    public int SeasonTalks { get; set; }
+    public int SeasonAnswers { get; set; }
 
     public int this[CoachAttr a] => Attributes.TryGetValue(a, out var v) ? v : 10;
     public int Age(DateOnly on) => on.Year - BirthDate.Year - (on < BirthDate.AddYears(on.Year - BirthDate.Year) ? 1 : 0);

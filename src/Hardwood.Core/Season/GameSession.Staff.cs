@@ -12,9 +12,12 @@ public sealed class Delegation
     public bool Training { get; set; }
     /// <summary>The head scout spends the recruiting points courting the best seniors who'd play for you.</summary>
     public bool Recruiting { get; set; }
+    /// <summary>The assistant coach fronts the press and handles the locker room (staff part 2), in his own way.</summary>
+    public bool Media { get; set; }
     /// <summary>What the staff did last (shown on the Staff page).</summary>
     public string LastTraining { get; set; } = "";
     public string LastRecruiting { get; set; } = "";
+    public string LastMedia { get; set; } = "";
 }
 
 /// <summary>Staff depth (roadmap 12): interviews, staff styles in action, development projections and delegation.</summary>
@@ -51,6 +54,82 @@ public sealed partial class GameSession
         st.Salary = a.Wage; st.ContractYears = a.Years;
         SaveNow();
         return $"{st.Name} has joined: ${a.Wage / 1e6:F2}M a year for {a.Years} years.";
+    }
+
+    /// <summary>
+    /// Extending a staff member whose contract ends this summer (staff part 2). He asks his going rate, a little more if he's
+    /// outgrown the club; a big name at a small club with a poor season may want to move on.
+    /// </summary>
+    public StaffAnswer StaffRenewal(Staff st)
+    {
+        if (st.TeamId != HumanTeam.Id) return new StaffAnswer(false, 0, 0, $"{st.Name} doesn't work for you.");
+        if (st.ContractYears > 1) return new StaffAnswer(false, st.Salary, st.ContractYears, $"{st.Name} has {st.ContractYears} years left; talk again in his final year.");
+        double gap = Standing(st) - ClubPull;
+        double winPct = MyRecord.Games > 0 ? MyRecord.WinPct : 0.5;
+        if (gap > 18 && winPct < 0.45)
+            return new StaffAnswer(false, st.Salary, 0, $"{st.Name} wants to see out his contract and move to a bigger club this summer.");
+        long wage = (long)(Math.Max(st.Salary, StaffPayFor(st)) * (1 + Math.Max(0, gap) / 80.0) / 1000) * 1000;
+        int years = st.Age(Today) >= 60 ? 1 : st.Age(Today) >= 52 ? 2 : 3;
+        return new StaffAnswer(true, wage, years, $"{st.Name} would sign on for {years} more year{(years == 1 ? "" : "s")} at ${wage / 1e6:F2}M a year.");
+    }
+
+    /// <summary>Extend on the terms he asked for.</summary>
+    public string ExtendStaff(Staff st)
+    {
+        var a = StaffRenewal(st);
+        if (!a.Willing) return a.Text;
+        st.Salary = a.Wage;
+        st.ContractYears += a.Years;
+        Post($"{st.Name} extends", $"{st.Name} ({Staff.RoleName(st.Role).ToLower()}) has signed on until {League.Season + st.ContractYears}: ${a.Wage / 1e6:F2}M a year.", "Staff");
+        SaveNow();
+        return $"Done: {st.Name} stays {a.Years} more year{(a.Years == 1 ? "" : "s")} at ${a.Wage / 1e6:F2}M.";
+    }
+
+    /// <summary>Your staff whose contracts end this summer (they leave unless extended).</summary>
+    public List<Staff> StaffExpiring => Employed ? HumanTeam.Staff.Where(x => x.ContractYears <= 1).ToList() : new();
+
+    /// <summary>
+    /// The assistant coach's answer to a press question or locker-room moment, by his style: a Mentor protects the squad's
+    /// spirit, a Film junkie keeps it short and safe.
+    /// </summary>
+    internal int DelegatedAnswer(People.PendingDecision d)
+    {
+        var asst = HumanTeam.Staff.FirstOrDefault(x => x.Role == StaffRole.AssistantCoach);
+        if (asst?.Is("Mentor") == true)
+        {
+            int spirit = d.Options.FindIndex(o => o.Hint.Contains("pirit up"));
+            if (spirit >= 0) return spirit;
+        }
+        return d.SafeOption;
+    }
+
+    /// <summary>
+    /// A season on the job teaches you something (staff part 2): one point in what you did most, up to two a season, never
+    /// past 20. Fronting the press yourself builds Motivation, one-on-one talks Man management, a winning season Tactics,
+    /// planning your own training with young players Development.
+    /// </summary>
+    internal void CoachGrowth()
+    {
+        if (!Employed) { Coach.SeasonTalks = 0; Coach.SeasonAnswers = 0; return; }
+        var rec = MyRecord;
+        var young = HumanTeam.Roster.Count(p => p.Age(Today) <= 23);
+        var reasons = new List<(Jobs.CoachAttr attr, int weight, string why)>();
+        if (Coach.SeasonAnswers >= 5) reasons.Add((Jobs.CoachAttr.Motivation, Coach.SeasonAnswers, $"you fronted {Coach.SeasonAnswers} press conferences and locker-room moments yourself"));
+        if (Coach.SeasonTalks >= 6) reasons.Add((Jobs.CoachAttr.ManManagement, Coach.SeasonTalks, $"you held {Coach.SeasonTalks} one-on-one talks"));
+        if (rec.Games >= 20 && rec.WinPct >= 0.6) reasons.Add((Jobs.CoachAttr.Tactics, (int)(rec.WinPct * 20), $"a {rec.Wins}-{rec.Losses} season"));
+        if (!Delegated.Training && young >= 3) reasons.Add((Jobs.CoachAttr.Development, young * 2, $"you planned training yourself for {young} young players"));
+        var grown = new List<string>();
+        foreach (var (attr, _, why) in reasons.OrderByDescending(r => r.weight))
+        {
+            if (grown.Count >= 2) break;
+            int now = Coach[attr];
+            if (now >= Jobs.Coach.MaxAttr) continue;
+            Coach.Attributes[attr] = now + 1;
+            grown.Add($"{Jobs.Coach.Label(attr)} {now} → {now + 1} ({why})");
+        }
+        Coach.SeasonTalks = 0; Coach.SeasonAnswers = 0;
+        if (grown.Count > 0)
+            Post("You've grown as a coach", "A season's work shows:\n" + string.Join("\n", grown) + "\n\nYour ratings are on the Staff & Training page.", "Staff");
     }
 
     /// <summary>

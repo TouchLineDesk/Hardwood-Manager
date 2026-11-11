@@ -57,15 +57,22 @@ public sealed partial class GameSession
             HumanTeam.Chemistry = Math.Clamp(HumanTeam.Chemistry + s.Amount * 0.25, 0, 100);
 
         if (Media.OpenFor(HumanTeam.Id).Count() >= 2 || HumanTeam.Roster.Count < 5) return;
+        PendingDecision? opened = null;
         if (Today.DayNumber - Media.LastPress.DayNumber >= PressGapDays && NewPress() is { } press)
         {
             Media.LastPress = Today;
-            Open(press);
+            Open(opened = press);
         }
         else if (Today.DayNumber - Media.LastLocker.DayNumber >= LockerGapDays && _rng.Chance(0.5) && NewLocker() is { } locker)
         {
             Media.LastLocker = Today;
-            Open(locker);
+            Open(opened = locker);
+        }
+        // Delegated to the assistant coach (staff part 2): he answers on the spot, his way, and the week's message says so.
+        if (opened != null && Delegated.Media && HumanTeam.Staff.Any(x => x.Role == StaffRole.AssistantCoach))
+        {
+            Resolve(opened, DelegatedAnswer(opened), auto: true, who: $"{HumanTeam.Staff.First(x => x.Role == StaffRole.AssistantCoach).Name} answered");
+            Delegated.LastMedia = $"{Today:MMM d}: {opened.Title}: \"{opened.Options[opened.Chosen!.Value].Label}\"";
         }
     }
 
@@ -91,11 +98,13 @@ public sealed partial class GameSession
     /// </summary>
     internal void AttachPressToResults()
     {
-        foreach (var d in Media.Decisions.Where(d => d.Open && d.MessageId == 0 && d.TeamId == HumanTeam.Id))
+        foreach (var d in Media.Decisions.Where(d => (d.Open || d.Created == Today) && d.MessageId == 0 && d.TeamId == HumanTeam.Id))
         {
             bool press = d.Kind == "press";
             string heading = press ? "PRESS CONFERENCE" : "IN THE LOCKER ROOM";
-            string ask = $"{d.Text}\nAnswer below. If you haven't by {d.Expires:MMM d}, your assistant will: \"{d.Options[d.SafeOption].Label}\".";
+            string ask = d.Open
+                ? $"{d.Text}\nAnswer below. If you haven't by {d.Expires:MMM d}, your assistant will: \"{d.Options[d.SafeOption].Label}\"."
+                : $"{d.Text}\n{d.Outcome}"; // delegated: already handled by your assistant coach
             var week = Inbox.FirstOrDefault(m => m.Date == Today && m.Category == "Game" && m.Title.StartsWith("This week") && Media.ForMessage(m.Id) == null);
             if (week != null)
             {
@@ -270,10 +279,11 @@ public sealed partial class GameSession
         if (!d.Open) return d.Outcome ?? "Already answered.";
         if (option < 0 || option >= d.Options.Count) return "Pick one of the answers.";
         Media.Answered++;
+        Coach.SeasonAnswers++;
         return Resolve(d, option, auto: false);
     }
 
-    private string Resolve(PendingDecision d, int option, bool auto)
+    private string Resolve(PendingDecision d, int option, bool auto, string? who = null)
     {
         d.Chosen = option; d.Auto = auto;
         var team = HumanTeam;
@@ -341,7 +351,7 @@ public sealed partial class GameSession
             case ("dinner", 1): Spirit(-1, 14, "No team dinner"); notes.Add("A few long faces."); break;
         }
         if (repeated) notes.Add("They've heard that one before, so it counted for less.");
-        string who = auto ? "Your assistant answered for you" : "You answered";
+        who ??= auto ? "Your assistant answered for you" : "You answered";
         d.Outcome = $"{who}: \"{d.Options[option].Label}\". {string.Join(" ", notes)}";
         return d.Outcome;
     }

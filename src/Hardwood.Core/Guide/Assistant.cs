@@ -186,6 +186,11 @@ public static class Assistant
             yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire a {Staff.RoleName(missing[0]).ToLowerInvariant()}",
                 $"{string.Join(", ", missing.Select(Staff.RoleName))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
 
+        // Staff part 2: contracts you have to extend yourself, raised from February so there's time.
+        if (s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && today.Month is >= 2 and <= 6 && s.StaffExpiring is { Count: > 0 } ending)
+            yield return new($"staffdeal-{today.Year}-{ending.Count}", 26, $"{ending.Count} staff contract{(ending.Count == 1 ? "" : "s")} end this summer",
+                $"{string.Join(", ", ending.Select(x => x.Name))}. Extend on the Staff & Training page or they leave when the season ends.", "Staff & Training");
+
         // ---- the press room and the locker room (people part 2)
         foreach (var d in s.OpenDecisions.Take(1))
             yield return new($"decision-{d.Id}", 18, d.Title,
