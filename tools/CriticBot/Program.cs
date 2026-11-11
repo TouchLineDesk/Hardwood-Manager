@@ -66,6 +66,7 @@ int longestUnhappy = 0, unhappyPlayerWeeks = 0, overBudgetWeeks = 0, weeksEmploy
 int recruitCommits = 0;
 int decisions = 0, signings = 0, talks = 0, bidsMade = 0, bidsWon = 0, sold = 0, renewed = 0, released = 0, urgentSeen = 0, tipsSeen = 0, sackings = 0, jobs = 0;
 var assistantTitles = new Dictionary<string, int>();
+var mediaAnswers = new Dictionary<string, int>();
 var bidOutcomes = new Dictionary<string, int>();
 var rng = new Rng(seed + 7);
 int startYear = s.League.Season;
@@ -79,6 +80,15 @@ while (s.League.Season < startYear + seasons)
         var adv = Assistant.Advise(s, "Home", GuideLevel.Auto, progress);
         foreach (var t in adv.Tasks) { var k = System.Text.RegularExpressions.Regex.Replace(t.Title.Split(':')[0], @"\d+(\.\d+)?", "#").Trim(); assistantTitles[k] = assistantTitles.GetValueOrDefault(k) + 1; if (t.Priority < 30) urgentSeen++; }
         tipsSeen += adv.Strategy.Count;
+        // Press conferences and locker-room moments (people part 2): answer like a player who reads the hints.
+        foreach (var d in s.OpenDecisions.ToList())
+        {
+            int pick = d.Options.FindIndex(o => o.Hint.StartsWith("Spirit up") || o.Hint.Contains("; spirit up"));
+            if (pick < 0) pick = d.Options.FindIndex(o => o.Hint.StartsWith("Squad morale up") || o.Hint.StartsWith("Morale up"));
+            if (pick < 0) pick = d.SafeOption;
+            s.Answer(d.Id, pick); decisions++;
+            mediaAnswers[d.Topic + ":" + pick] = mediaAnswers.GetValueOrDefault(d.Topic + ":" + pick) + 1;
+        }
         progress.DaysPlayed += 7;
         if (s.Employed)
         {
@@ -199,6 +209,7 @@ L($"people: longest unhappy spell {longestUnhappy} weeks, unhappy player-weeks {
 L($"money: over the wage budget {overBudgetWeeks} of {weeksEmployed} weeks employed");
 L("board titles: " + string.Join(", ", s.Inbox.Where(m => m.Category == "Board").GroupBy(m => new string(m.Title.TakeWhile(c => c != ':').ToArray())).OrderByDescending(g => g.Count()).Take(10).Select(g => $"{g.Key} x{g.Count()}")));
 L($"recruiting: {recruitCommits} seniors committed to us");
+L($"media: {s.Media.Decisions.Count(d => d.Kind == "press")} press conferences, {s.Media.Decisions.Count(d => d.Kind == "locker")} locker-room moments; answers " + string.Join(", ", mediaAnswers.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} x{kv.Value}")));
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
     L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");

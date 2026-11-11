@@ -124,6 +124,7 @@ public sealed class SaveFile
         // The records book (roadmap 4): one JSON value; older saves simply don't have it.
         Exec(conn, "INSERT INTO meta(key, value) VALUES('record_book', $v)", ("$v", ToJson(league.Records)));
         Exec(conn, "INSERT INTO meta(key, value) VALUES('delegation', $v)", ("$v", ToJson(league.Delegation)));
+        Exec(conn, "INSERT INTO meta(key, value) VALUES('media', $v)", ("$v", ToJson(league.Media)));
 
         foreach (var pk in league.Picks)
             Exec(conn, "INSERT INTO draft_pick(id, year, round, original_team_id, owner_team_id, protected_top) VALUES($id, $y, $r, $o, $w, $p)",
@@ -270,6 +271,11 @@ public sealed class SaveFile
         {
             cmd.CommandText = "SELECT value FROM meta WHERE key = 'delegation'";
             if (cmd.ExecuteScalar() is string json && FromJson<Season.Delegation>(json) is { } d) league.Delegation = d;
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM meta WHERE key = 'media'";
+            if (cmd.ExecuteScalar() is string json && FromJson<People.MediaDesk>(json) is { } m) league.Media = m;
         }
         using (var cmd = conn.CreateCommand())
         {

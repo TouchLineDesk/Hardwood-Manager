@@ -122,6 +122,8 @@ public sealed class League
     public Season.RecordBook Records { get; set; } = new();
     /// <summary>What the manager has handed to his staff (roadmap 12). Saved as JSON in meta; older saves delegate nothing.</summary>
     public Season.Delegation Delegation { get; set; } = new();
+    /// <summary>Press conferences, locker-room moments and the team spirit they leave (people part 2). Saved as JSON in meta.</summary>
+    public People.MediaDesk Media { get; set; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;
 

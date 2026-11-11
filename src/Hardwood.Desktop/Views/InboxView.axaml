@@ -45,6 +45,23 @@
               <TextBlock Text="{Binding Category}" Classes="muted"/>
             </StackPanel>
             <TextBlock Text="{Binding Body}" TextWrapping="Wrap" LineHeight="20"/>
+            <!-- Press conference / locker room: the answers and what each will do (people part 2). -->
+            <Border IsVisible="{Binding HasDecision}" Background="{StaticResource HwPanelAltBrush}" CornerRadius="6" Padding="10" Margin="0,6,0,0">
+              <StackPanel Spacing="8">
+                <TextBlock Text="{Binding DecisionHeading}" FontWeight="SemiBold"/>
+                <ItemsControl ItemsSource="{Binding Answers}" IsVisible="{Binding DecisionOpen}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DecisionButton">
+                      <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,6">
+                        <Button Content="{Binding Label}" Command="{Binding Command}" MinWidth="150" VerticalAlignment="Top"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="muted" TextWrapping="Wrap" Margin="10,4,0,0"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding Outcome}" TextWrapping="Wrap" FontWeight="SemiBold" IsVisible="{Binding !DecisionOpen}"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </Border>

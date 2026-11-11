@@ -9,16 +9,17 @@
   </UserControl.Resources>
   <ScrollViewer>
     <StackPanel Spacing="10">
-      <Border CornerRadius="10" ClipToBounds="True" Height="104">
+      <Border CornerRadius="10" ClipToBounds="True" MinHeight="104">
         <Grid>
           <c:CourtBackdrop Intensity="0.7" Glow="{DynamicResource HwAccent}"/>
-          <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,0">
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,8">
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,16,0" VerticalAlignment="Center">
               <c:TeamLogo Team="{Binding AwayTeam}" Width="64" Height="64"/>
               <c:TeamLogo Team="{Binding HomeTeam}" Width="64" Height="64"/>
             </StackPanel>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-              <TextBlock Text="{Binding Headline}" FontSize="24" FontWeight="Bold"/>
+              <!-- Wraps (and the banner grows) so a long overtime score line fits at big text sizes. -->
+              <TextBlock Text="{Binding Headline}" FontSize="24" FontWeight="Bold" TextWrapping="Wrap"/>
               <TextBlock Text="{Binding Periods}" FontFamily="Consolas,Menlo,monospace" Classes="muted"/>
             </StackPanel>
             <Button Grid.Column="2" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Center"/>
