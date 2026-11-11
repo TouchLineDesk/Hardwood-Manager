@@ -212,11 +212,27 @@ public sealed class HistoryRow
     public string OurRecord { get; init; } = "";
 }
 
+/// <summary>One line of a records table: rank, the number, who and when.</summary>
+public sealed record RecordRow(int Rank, string Value, string Who, string When, bool Ours);
+
+/// <summary>A records-book table (roadmap 4): "Points in a game", top five.</summary>
+public sealed record RecordTable(string Title, IReadOnlyList<RecordRow> Rows)
+{
+    public bool Empty => Rows.Count == 0;
+}
+
 public sealed partial class HistoryViewModel : PageViewModel
 {
     public override string Title => "History";
     public ObservableCollection<HistoryRow> Rows { get; } = new();
     [ObservableProperty] private string _summary = "";
+    // The living history, part 1 (roadmap 4): records book and milestones.
+    [ObservableProperty] private List<RecordTable> _gameRecords = new();
+    [ObservableProperty] private List<RecordTable> _seasonRecords = new();
+    [ObservableProperty] private List<RecordTable> _careerRecords = new();
+    [ObservableProperty] private List<string> _milestones = new();
+    public bool HasMilestones => Milestones.Count > 0;
+    partial void OnMilestonesChanged(List<string> value) => OnPropertyChanged(nameof(HasMilestones));
 
     public HistoryViewModel(MainViewModel shell) : base(shell) { }
 
@@ -239,7 +255,60 @@ public sealed partial class HistoryViewModel : PageViewModel
                 OurRecord = our.teamId == 0 ? "" : $"{our.wins}-{our.losses}" + (h.ChampionTeamId == s.HumanTeam.Id ? " · Champions" : h.RunnerUpTeamId == s.HumanTeam.Id ? " · Finals" : ""),
             });
         }
+        BuildRecords(all);
         int titles = s.League.History.Count(h => h.ChampionTeamId == s.HumanTeam.Id);
         Summary = s.League.History.Count == 0 ? "No completed seasons yet." : $"{s.League.History.Count} season{(s.League.History.Count == 1 ? "" : "s")} played · {titles} title{(titles == 1 ? "" : "s")} for {s.HumanTeam.FullName}";
+    }
+
+    private static string SeasonText(int season) => $"{season}-{(season + 1) % 100:00}";
+
+    /// <summary>The records book: single-game records as kept, single-season bests from the stored stats, and career leaders including this season.</summary>
+    private void BuildRecords(Dictionary<int, Hardwood.Core.Model.Player> players)
+    {
+        var s = Session; var book = s.League.Records; int us = s.HumanTeam.Id;
+        string Abbr(int teamId) => s.FindTeam(teamId)?.Abbreviation ?? "";
+
+        GameRecords = RecordBook.PlayerGame.Select(c => (c.Key, c.Label, c.Unit))
+            .Concat(RecordBook.TeamGame.Select(c => (c.Key, c.Label, c.Unit)))
+            .Select(c => new RecordTable(c.Label, book.Top(c.Key).Take(5).Select((e, i) => new RecordRow(i + 1, $"{e.Value:0}",
+                e.PlayerId != null ? $"{e.PlayerName} ({e.Team})" : e.Team,
+                $"vs {e.Opponent}, {(e.Date is { } d ? d.ToString("MMM d, yyyy") : SeasonText(e.Season))}", e.TeamId == us)).ToList()))
+            .ToList();
+
+        // Single seasons: stored past seasons plus this one so far.
+        var seasons = (s.Save?.LoadStats() ?? new List<PlayerSeasonStats>()).Where(x => x.Season != s.League.Season).Concat(s.Stats.Values).ToList();
+        int minGames = Math.Max(1, s.League.Rules == Hardwood.Core.Model.Rules.Nba ? 41 : 20);
+        RecordTable Season(string title, Func<PlayerSeasonStats, double> of, string fmt, int min) =>
+            new(title, RecordBook.SeasonLeaders(seasons, of, min).Select((x, i) => new RecordRow(i + 1, x.Value.ToString(fmt),
+                $"{(players.TryGetValue(x.Stats.PlayerId, out var p) ? p.Name : "Unknown")} ({Abbr(x.Stats.TeamId)})",
+                SeasonText(x.Stats.Season) + (x.Stats.Season == s.League.Season ? " (so far)" : ""), x.Stats.TeamId == us)).ToList());
+        SeasonRecords = new()
+        {
+            Season("Points per game", x => x.Ppg, "0.0", minGames),
+            Season("Rebounds per game", x => x.Rpg, "0.0", minGames),
+            Season("Assists per game", x => x.Apg, "0.0", minGames),
+            Season("Points in a season", x => x.Points, "N0", 1),
+            Season("Threes in a season", x => x.ThreePM, "N0", 1),
+            Season("Blocks in a season", x => x.Blocks, "N0", 1),
+        };
+
+        var careers = RecordBook.CareerWithCurrent(s.League.Careers, s.Stats);
+        RecordTable Career(string title, Func<CareerTotals, double> of) =>
+            new(title, RecordBook.CareerLeaders(careers, of).Select((c, i) => new RecordRow(i + 1, of(c).ToString("N0"),
+                players.TryGetValue(c.PlayerId, out var p) ? p.Name + (p.TeamId is { } t ? $" ({Abbr(t)})" : s.League.Retired.Contains(p) ? " (retired)" : "") : "Unknown",
+                $"{c.Games:N0} games", players.TryGetValue(c.PlayerId, out var q) && q.TeamId == us)).ToList());
+        CareerRecords = new()
+        {
+            Career("Career points", c => c.Points),
+            Career("Career rebounds", c => c.Rebounds),
+            Career("Career assists", c => c.Assists),
+            Career("Career steals", c => c.Steals),
+            Career("Career blocks", c => c.Blocks),
+            Career("Games played", c => c.Games),
+            Career("Titles", c => c.Titles),
+            Career("MVP awards", c => c.Mvps),
+        };
+
+        Milestones = book.Milestones.OrderByDescending(m => m.Date).Take(40).Select(m => $"{m.Date:MMM d, yyyy}  ·  {m.Text}").ToList();
     }
 }

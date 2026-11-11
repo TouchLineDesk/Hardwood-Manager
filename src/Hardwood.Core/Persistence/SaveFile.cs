@@ -119,6 +119,8 @@ public sealed class SaveFile
             ("$cap", league.Finance.HardCap), ("$min", league.Finance.MinSalary), ("$rmax", league.Finance.RosterMax),
             ("$rmin", league.Finance.RosterMin), ("$rs", league.Finance.RookieScaleFirstPick), ("$npid", league.NextPlayerId), ("$npk", league.NextPickId));
         Exec(conn, "INSERT INTO meta(key, value) VALUES('next_staff_id', $v)", ("$v", league.NextStaffId.ToString()));
+        // The records book (roadmap 4): one JSON value; older saves simply don't have it.
+        Exec(conn, "INSERT INTO meta(key, value) VALUES('record_book', $v)", ("$v", ToJson(league.Records)));
 
         foreach (var pk in league.Picks)
             Exec(conn, "INSERT INTO draft_pick(id, year, round, original_team_id, owner_team_id, protected_top) VALUES($id, $y, $r, $o, $w, $p)",
@@ -255,6 +257,11 @@ public sealed class SaveFile
             cmd.CommandText = "SELECT value FROM meta WHERE key = 'next_staff_id'";
             var v = cmd.ExecuteScalar() as string;
             if (v != null) league.NextStaffId = int.Parse(v);
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM meta WHERE key = 'record_book'";
+            if (cmd.ExecuteScalar() is string json && FromJson<Season.RecordBook>(json) is { } book) league.Records = book;
         }
         using (var cmd = conn.CreateCommand())
         {

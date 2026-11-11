@@ -3,19 +3,77 @@
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              x:Class="Hardwood.Desktop.Views.HistoryView"
              x:DataType="vm:HistoryViewModel">
+  <UserControl.Resources>
+    <!-- A records table (roadmap 4): top five, your club's entries in the accent colour. -->
+    <DataTemplate x:Key="RecordCard" x:DataType="vm:RecordTable">
+      <Border Classes="panel" Width="318" Margin="0,0,10,10" VerticalAlignment="Top">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Text="No record yet: it's set the first time it happens." Classes="muted" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding Empty}"/>
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RecordRow">
+                <Grid ColumnDefinitions="22,58,*" Margin="0,2">
+                  <TextBlock Text="{Binding Rank}" Classes="muted" FontSize="12"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="Bold" FontSize="14"/>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="{Binding Who}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Ours}"/>
+                    <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="History" Classes="h1"/>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" Classes="muted" Margin="0,0,0,8"/>
-    <DataGrid ItemsSource="{Binding Rows}">
-      <DataGrid.Columns>
-        <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="96"/>
-        <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="200"/>
-        <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="200"/>
-        <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="180"/>
-        <DataGridTextColumn Header="Finals MVP" Binding="{Binding FinalsMvp}" Width="170"/>
-        <DataGridTextColumn Header="Scoring leader" Binding="{Binding ScoringLeader}" Width="170"/>
-        <DataGridTextColumn Header="Your record" Binding="{Binding OurRecord}" Width="*"/>
-      </DataGrid.Columns>
-    </DataGrid>
+    <TabControl>
+      <TabItem Header="Seasons">
+        <DataGrid ItemsSource="{Binding Rows}">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="96"/>
+            <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="200"/>
+            <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="200"/>
+            <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="180"/>
+            <DataGridTextColumn Header="Finals MVP" Binding="{Binding FinalsMvp}" Width="170"/>
+            <DataGridTextColumn Header="Scoring leader" Binding="{Binding ScoringLeader}" Width="170"/>
+            <DataGridTextColumn Header="Your record" Binding="{Binding OurRecord}" Width="*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+      <TabItem Header="Records book">
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="Single game (regular season)" Classes="h2"/>
+            <ItemsControl ItemsSource="{Binding GameRecords}" ItemTemplate="{StaticResource RecordCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Single season" Classes="h2"/>
+            <ItemsControl ItemsSource="{Binding SeasonRecords}" ItemTemplate="{StaticResource RecordCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Career (including this season)" Classes="h2"/>
+            <ItemsControl ItemsSource="{Binding CareerRecords}" ItemTemplate="{StaticResource RecordCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Milestones">
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="Career milestones as they happen: 5,000 points and every 5,000 after, rebounds, assists and games played." Classes="muted" TextWrapping="Wrap"/>
+            <TextBlock Text="No milestones yet. They come as careers grow." Classes="muted" IsVisible="{Binding !HasMilestones}"/>
+            <ItemsControl ItemsSource="{Binding Milestones}">
+              <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" Margin="0,3" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </UserControl>

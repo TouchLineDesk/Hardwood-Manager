@@ -29,6 +29,7 @@ public class LayoutCheckTests
             roster.Open(roster.Rows[0]);
         });
         yield return ("Team page", v => v.ShowTeam(v.Session!.League.Teams.First(t => t != v.Session.HumanTeam)));
+        yield return ("Records book", v => v.Navigate("History"));
         yield return ("Box score", v =>
         {
             v.Navigate("Schedule & Results");
@@ -104,12 +105,13 @@ public class LayoutCheckTests
                     open(vm);
                     try { Settle(window); }
                     catch (InvalidOperationException e) { throw new InvalidOperationException($"{name} at {width}px {(guide ? "with" : "without")} the assistant, {scale:P0}: {e.Message}", e); }
-                    // The live screen's Stats tab (highlights and team stats, match day part 2).
-                    if (name == "Live stats")
+                    // Pages behind a tab: the live screen's Stats tab (match day part 2), History's records book (roadmap 4).
+                    if (name is "Live stats" or "Records book")
                     {
                         var tabs = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<TabControl>()
-                            .First(t => Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<LiveGameView>(t) != null);
-                        tabs.SelectedIndex = 2;
+                            .First(t => name == "Live stats" ? Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<LiveGameView>(t) != null
+                                                             : Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<HistoryView>(t) != null);
+                        tabs.SelectedIndex = name == "Live stats" ? 2 : 1;
                         Settle(window);
                     }
                     if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)

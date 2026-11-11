@@ -60,6 +60,10 @@ public sealed partial class HomeViewModel : PageViewModel
     public ObservableCollection<HomeRow> Pulse { get; } = new();
     public ObservableCollection<HomeRow> Injuries { get; } = new();
     public ObservableCollection<HomeRow> News { get; } = new();
+    /// <summary>"On this day" (roadmap 4): records and milestones from earlier seasons around today's date.</summary>
+    [ObservableProperty] private List<string> _onThisDay = new();
+    public bool HasOnThisDay => OnThisDay.Count > 0;
+    partial void OnOnThisDayChanged(List<string> value) => OnPropertyChanged(nameof(HasOnThisDay));
     [ObservableProperty] private IReadOnlyList<LineSeries>? _form;
     [ObservableProperty] private string[]? _formLabels;
     [ObservableProperty] private IReadOnlyList<Bar>? _comparison;
@@ -130,6 +134,9 @@ public sealed partial class HomeViewModel : PageViewModel
                 IconBrush = m.Read ? Muted : new SolidColorBrush(ThemeService.Accent), Title = m.Title, Detail = m.Date.ToString("MMM d"), Highlight = !m.Read,
                 Badge = m.Category.ToUpperInvariant(), BadgeBrush = HomeRow.CategoryBrush(m.Category),
             });
+
+        OnThisDay = s.League.Records.OnThisDay(s.Today).Take(3)
+            .Select(m => $"{(m.YearsAgo <= 0 ? "Last year" : m.YearsAgo == 1 ? "1 year ago" : $"{m.YearsAgo} years ago")}, {m.Date:MMM d}: {m.Text}").ToList();
 
         // Form: running point differential over the season's games.
         double run = 0; var vals = new List<double>();
