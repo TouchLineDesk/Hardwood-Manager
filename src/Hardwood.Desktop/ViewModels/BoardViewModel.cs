@@ -40,6 +40,9 @@ public sealed partial class BoardViewModel : PageViewModel
 {
     /// <summary>The club's money (decision #88).</summary>
     [ObservableProperty] private string _finances = "";
+    /// <summary>Roadmap 1: club finances as stat chips instead of one long sentence.</summary>
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _financeChips = new();
+    public Avalonia.Media.Color Accent => ThemeService.AccentFor(Session.HumanTeam);
     public override string Title => "Board";
     public BoardViewModel(MainViewModel shell) : base(shell) { }
 
@@ -100,6 +103,15 @@ public sealed partial class BoardViewModel : PageViewModel
             long wages = Hardwood.Core.Season.ContractMarket.Payroll(t);
             Finances = $"Revenue {M(m.Revenue)} a season · wage budget {M(m.WageBudget)} · wages {M(wages)} · "
                        + $"transfer budget {M(m.TransferBudget)} · bank balance {M(m.Balance)} · fan base {m.FanBase:0}/100";
+            FinanceChips = new List<Hardwood.Desktop.Controls.Chip>
+            {
+                new("Revenue", M(m.Revenue), "a season", "team"),
+                new("Wages", M(wages), $"of a {M(m.WageBudget)} budget", wages > m.WageBudget ? "bad" : wages > m.WageBudget * 0.95 ? "warn" : "good"),
+                new("Wage room", M(Math.Max(0, m.WageBudget - wages)), wages > m.WageBudget ? $"{M(wages - m.WageBudget)} over" : "to spend on wages", wages > m.WageBudget ? "bad" : ""),
+                new("Transfer budget", M(m.TransferBudget), "for transfer fees"),
+                new("Bank", M(m.Balance), m.Balance < 0 ? "in debt" : "balance", m.Balance < 0 ? "bad" : ""),
+                new("Fan base", $"{m.FanBase:0}", "out of 100", m.FanBase >= 70 ? "good" : m.FanBase < 35 ? "warn" : ""),
+            };
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }

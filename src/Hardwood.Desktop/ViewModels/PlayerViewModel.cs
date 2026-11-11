@@ -57,6 +57,11 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string Tendencies { get; private set; } = "";
     public string Honours { get; private set; } = "";
     public List<AttrGroupVm> Groups { get; private set; } = new();
+    /// <summary>Roadmap 1: the broadcast stat strip (age, size, ability, money, health, mood, this season).</summary>
+    public List<Hardwood.Desktop.Controls.Chip> Chips { get; private set; } = new();
+    /// <summary>His club's colour (the default accent for a free agent), for the header glow and chip edges.</summary>
+    public Avalonia.Media.Color Accent => TeamObj is { } t ? ThemeService.AccentFor(t) : ThemeService.DefaultAccent;
+    public string Hint { get; private set; } = "";
     public double[] RadarValues { get; private set; } = Array.Empty<double>();
     public int[] ZoneAttempts { get; private set; } = new int[5];
     public int[] ZoneMakes { get; private set; } = new int[5];
@@ -86,6 +91,8 @@ public sealed partial class PlayerViewModel : PageViewModel
             : p.InjuryHistory.Count > 0 ? $"Healthy · {p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}" : "Healthy";
         MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested ? " · has asked to be traded" : "")
             + (p.TeamId == s.HumanTeam.Id ? " · talk to him on the Squad page" : "");
+        Chips = BuildChips(p, k);
+        Hint = p.TeamId == s.HumanTeam.Id ? "Talk to him on the Squad page." : "";
         var career = s.League.Careers.GetValueOrDefault(p.Id);
         var hall = s.League.HallOfFame.FirstOrDefault(h => h.PlayerId == p.Id);
         var retiredBy = s.League.Teams.Where(x => x.RetiredNumbers.Contains(p.Id)).Select(x => x.FullName).ToList();
@@ -149,6 +156,37 @@ public sealed partial class PlayerViewModel : PageViewModel
             });
         OnPropertyChanged(string.Empty);
     }
+
+    private List<Hardwood.Desktop.Controls.Chip> BuildChips(Player p, double k)
+    {
+        var s = Session;
+        var chips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Age", p.Age(s.Today).ToString(), $"born {p.BirthDate:MMM d, yyyy}"),
+            new("Height", PlayerRow.FormatHeight(p.HeightCm), $"{p.HeightCm} cm · {p.WingspanCm} span · {p.WeightKg} kg"),
+            new("Ability", Scouting.Ability(p, k).ToString(), k >= 0.999 ? $"overall {p.Overall:F1}" : $"scouted {k * 100:F0}%", "team"),
+            new("Potential", Scouting.Potential(p, k).ToString(), Scouting.Potential(p, k).ToString() == Scouting.Ability(p, k).ToString() ? "at his peak" : "", "team"),
+        };
+        if (p.Contract is { } c)
+            chips.Add(new("Salary", Money(c.Salary), c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} left{(c.TeamOption ? ", team option" : "")}", c.Years <= 0 ? "warn" : ""));
+        else chips.Add(new("Contract", "None", "free agent", "warn"));
+        if (p.Injury is { } inj && inj.IsOut(s.Today))
+            chips.Add(new("Status", $"Out {inj.DaysOut(s.Today)}d", $"{inj.Name}, back {inj.ReturnDate:MMM d}", "bad"));
+        else
+            chips.Add(new("Status", "Healthy", p.InjuryHistory.Count == 0 ? "no injury history" : $"{p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}", "good"));
+        if (p.TeamId != null)
+        {
+            var mood = Hardwood.Core.People.PeopleEngine.Mood(p.Morale);
+            chips.Add(new("Mood", mood, p.TradeRequested ? "has asked to be traded" : $"morale {p.Morale:0}/100",
+                p.TradeRequested || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
+        }
+        if (s.Stats.TryGetValue(p.Id, out var cur) && cur.Games > 0)
+            chips.Add(new("Points", cur.Ppg.ToString("0.0"), $"{cur.Rpg:0.0} reb · {cur.Apg:0.0} ast · {cur.Games} gp", "info"));
+        return chips;
+    }
+
+    /// <summary>$39.6M, $850K.</summary>
+    public static string Money(long v) => Math.Abs(v) >= 1_000_000 ? $"${v / 1e6:0.0#}M" : $"${v / 1e3:0}K";
 
     private static string Pretty(Attr a) => System.Text.RegularExpressions.Regex.Replace(a.ToString(), "(?<=[a-z])([A-Z])", " $1");
 }

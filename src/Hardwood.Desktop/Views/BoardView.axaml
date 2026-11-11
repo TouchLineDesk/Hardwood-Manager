@@ -5,13 +5,14 @@
              x:Class="Hardwood.Desktop.Views.BoardView"
              x:DataType="vm:BoardViewModel">
   <ScrollViewer>
-    <Grid ColumnDefinitions="3*,2*">
-      <StackPanel Spacing="12" Margin="0,0,12,0">
+    <!-- Side by side when wide; the coach drops below the club when narrow (big text sizes), so his bars keep their length. -->
+    <Grid x:Name="Columns" ColumnDefinitions="3*,2*" RowDefinitions="Auto,Auto">
+      <StackPanel x:Name="ClubColumn" Spacing="12" Margin="0,0,12,0">
         <!-- Employed: owner, goals, confidence -->
         <Border Classes="panel" IsVisible="{Binding Employed}">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="DollarSign" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Club finances" Classes="h2" Margin="0"/></StackPanel>
-            <TextBlock Text="{Binding Finances}" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding FinanceChips}" Accent="{Binding Accent}"/>
             <TextBlock Text="Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin." Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
           </StackPanel>
         </Border>
@@ -24,10 +25,10 @@
               <TextBlock Text="{Binding OwnerStyle}" Classes="muted"/>
               <Grid ColumnDefinitions="80,*,30" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
                 <TextBlock Text="Patience" Classes="muted"/>
-                <ProgressBar Grid.Column="1" Value="{Binding Patience}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                <ProgressBar Grid.Column="1" MinWidth="0" Value="{Binding Patience}" Maximum="20" Height="6" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="2" Text="{Binding Patience}" HorizontalAlignment="Right"/>
                 <TextBlock Grid.Row="1" Text="Ambition" Classes="muted"/>
-                <ProgressBar Grid.Row="1" Grid.Column="1" Value="{Binding Ambition}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                <ProgressBar Grid.Row="1" Grid.Column="1" MinWidth="0" Value="{Binding Ambition}" Maximum="20" Height="6" VerticalAlignment="Center"/>
                 <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Ambition}" HorizontalAlignment="Right"/>
               </Grid>
             </StackPanel>
@@ -54,7 +55,7 @@
               <ProgressBar Value="{Binding Confidence}" Maximum="100" Height="10" Foreground="{Binding ConfidenceBrush}" VerticalAlignment="Center"/>
               <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" Margin="10,0,0,0" Foreground="{Binding ConfidenceBrush}" FontWeight="SemiBold"/>
             </Grid>
-            <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" IsVisible="{Binding HasTrend}"/>
+            <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" MinY="0" MaxY="100" IsVisible="{Binding HasTrend}"/>
             <TextBlock Text="Confidence follows your pace against the target each week (faster with impatient owners), and the owner's demands. After the playoffs the board reviews the season against the goal." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
@@ -91,23 +92,23 @@
       </StackPanel>
 
       <!-- Coach profile -->
-      <StackPanel Grid.Column="1" Spacing="12">
+      <StackPanel x:Name="CoachColumn" Grid.Column="1" Spacing="12">
         <Border Classes="panel">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ClipboardList" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Your coach" Classes="h2" Margin="0"/></StackPanel>
             <TextBlock Text="{Binding CoachName}" FontSize="18" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding CoachBio}" Classes="muted" TextWrapping="Wrap"/>
-            <Grid ColumnDefinitions="110,*,40" Margin="0,6,0,4">
+            <Grid ColumnDefinitions="132,*,40" Margin="0,6,0,4">
               <TextBlock Text="Reputation" FontWeight="SemiBold"/>
-              <ProgressBar Grid.Column="1" Value="{Binding Reputation}" Maximum="100" Height="8" VerticalAlignment="Center"/>
+              <ProgressBar Grid.Column="1" MinWidth="0" Value="{Binding Reputation}" Maximum="100" Height="8" VerticalAlignment="Center"/>
               <TextBlock Grid.Column="2" Text="{Binding Reputation, StringFormat={}{0:0}}" HorizontalAlignment="Right"/>
             </Grid>
             <ItemsControl ItemsSource="{Binding CoachAttrs}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:CoachAttrView">
-                  <Grid ColumnDefinitions="110,*,30" Margin="0,2">
+                  <Grid ColumnDefinitions="132,*,30" Margin="0,2">
                     <TextBlock Text="{Binding Label}" Classes="muted"/>
-                    <ProgressBar Grid.Column="1" Value="{Binding Value}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                    <ProgressBar Grid.Column="1" MinWidth="0" Value="{Binding Value}" Maximum="20" Height="6" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="2" Text="{Binding Value}" HorizontalAlignment="Right"/>
                   </Grid>
                 </DataTemplate>
