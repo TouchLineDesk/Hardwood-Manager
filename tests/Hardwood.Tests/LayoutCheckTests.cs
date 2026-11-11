@@ -245,6 +245,20 @@ public class LayoutCheckTests
                     var sched = (ScheduleViewModel)v.CurrentPage!;
                     sched.OpenBox(sched.Games.Last(g => g.Played));
                 }),
+                // The recruiting trail (C3, #173): the coach's board with a scouted, offered prospect selected.
+                ("Recruiting", v =>
+                {
+                    v.Navigate("College");
+                    var col = (CollegeViewModel)v.CurrentPage!;
+                    col.Tab = 5;
+                    col.TrailView = "Best fits";
+                    if (col.SelectedTrail == null && col.TrailRows.Count > 0)
+                    {
+                        col.SelectedTrail = col.TrailRows[0];
+                        col.ScoutTrailCommand.Execute(null);
+                        col.OfferTrailCommand.Execute(null);
+                    }
+                }),
             };
             foreach (var (width, guide, scale) in new[] { (1480, true, 1.0), (1480, false, 1.0), (1280, true, 1.0), (1280, false, 1.0), (1280, true, 1.3) })
             {

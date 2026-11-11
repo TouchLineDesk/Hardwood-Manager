@@ -55,6 +55,17 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-live-game.png"));
             liveVm.SimToEnd();
             liveVm.Continue();
+            if (session.TrailOpen)
+            {
+                // A college coach's recruiting trail (C3) in season, with a prospect scouted and offered.
+                vm.Navigate("College");
+                var trail = (CollegeViewModel)vm.CurrentPage!;
+                trail.Tab = 5;
+                if (trail.TrailRows.Count > 0) { trail.SelectedTrail = trail.TrailRows[0]; trail.ScoutTrailCommand.Execute(null); trail.OfferTrailCommand.Execute(null); }
+                Snap(window, Path.Combine(dir, $"{n++:00}-college-trail.png"));
+                trail.TrailView = "My board";
+                Snap(window, Path.Combine(dir, $"{n++:00}-college-trail-board.png"));
+            }
             foreach (var nav in vm.Nav.ToList())
             {
                 vm.Navigate(nav.Name);
@@ -93,9 +104,9 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-college-prospects.png"));
             college.Tab = 4;
             Snap(window, Path.Combine(dir, $"{n++:00}-college-recruiting.png"));
-            college.Tab = 5;
-            Snap(window, Path.Combine(dir, $"{n++:00}-college-high-school.png"));
             college.Tab = 6;
+            Snap(window, Path.Combine(dir, $"{n++:00}-college-high-school.png"));
+            college.Tab = 7;
             Snap(window, Path.Combine(dir, $"{n++:00}-college-class-rankings.png"));
             vm.Navigate("Offseason");
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-resign.png"));

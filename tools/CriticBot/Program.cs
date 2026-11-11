@@ -196,6 +196,21 @@ while (s.League.Season < startYear + seasons)
     bool wasEmployed = s.Employed;
     var team = s.HumanTeam;
     s.AdvanceDay();
+    // The recruiting trail (C3): the day after signing day, how our class turned out.
+    if (s.TrailOpen && s.World.College is { } tw && s.Today == Hardwood.Core.College.CollegeWorld.SigningDay(tw.Season.Year + 1).AddDays(1))
+    {
+        int cls = tw.Season.Year + 1;
+        var ours = tw.ClassOf(cls).Select(p => tw.Recruits[p.Id]).Where(r => r.CommittedTo == team.Id).ToList();
+        var ranking = tw.ClassRanking(cls);
+        L($"recruiting class of {cls}: {ours.Count} signed ({ours.Count(r => r.Stars == 5)}x5, {ours.Count(r => r.Stars == 4)}x4, {ours.Count(r => r.Stars == 3)}x3, {ours.Count(r => r.Stars <= 2)}x2), best No. {(ours.Count > 0 ? ours.Min(r => r.Rank) : 0)}, class rank {ranking.FindIndex(x => x.Program == team) + 1} of {ranking.Count}; offered {tw.Recruits.Values.Count(r => r.ClassOf == cls && r.CourtedBy == team.Id && r.Offered)}; five-stars in class signed {tw.ClassOf(cls).Count(p => tw.Recruits[p.Id].Stars == 5 && tw.Recruits[p.Id].CommittedTo != null)}; {s.Delegated.LastRecruiting}");
+        var bd = tw.BoardFor(cls);
+        foreach (var p in tw.ClassOf(cls).Where(p => tw.Recruits[p.Id].CommittedTo == team.Id).OrderBy(p => tw.Recruits[p.Id].Rank))
+        {
+            var r = tw.Recruits[p.Id];
+            var best = tw.Programs.Where(o => o != team).Select(o => (o, a: tw.Appeal(o, p, r, bd))).OrderByDescending(x => x.a).First();
+            L($"  recruit No. {r.Rank} {r.Stars}-star on {r.CommittedOn}: interest {Hardwood.Core.College.CollegeWorld.InterestIn(r, team):F0}, offered {r.Offered}, cares about {Hardwood.Core.College.CollegeWorld.PriorityOf(p)}, our appeal {tw.Appeal(team, p, r, bd):F1} vs best rival {best.o.City} {best.a:F1}");
+        }
+    }
     if (wasEmployed && !s.Employed) { sackings++; L($"{s.Today}: SACKED by {team.FullName} at {s.MyRecord.Wins}-{s.MyRecord.Losses}"); }
     if (s.Phase == SessionPhase.Offseason && s.Offseason?.Phase == OffseasonPhase.ReSigning && s.Employed && !log.Last().StartsWith($"end {s.League.Season}"))
     {

@@ -58,11 +58,11 @@ public class CollegeRecruitingTests
         int scholarships = c.Programs.Sum(t => CollegeWorld.Scholarships) - c.Programs.Sum(t => t.Roster.Count(p => p.Age(new DateOnly(2027, 7, 1)) < 23 && !c.WalkOnIds.Contains(p.Id)));
         Assert.Equal(scholarships, cls.Count(r => r.CommittedTo != null));
         // Commitments were spread through the season, not all on signing day.
-        Assert.True(cls.Count(r => r.CommittedOn < new DateOnly(2027, 1, 1)) > 50);
+        Assert.True(cls.Count(r => r.CommittedOn < new DateOnly(2027, 1, 1)) > 50, $"{cls.Count(r => r.CommittedOn < new DateOnly(2027, 1, 1))} of {cls.Count(r => r.CommittedTo != null)}; {string.Join(",", cls.Where(r => r.CommittedOn != null).GroupBy(r => r.CommittedOn!.Value.Month).OrderBy(g => g.Key).Select(g => $"{g.Key}:{g.Count()}"))}");
         // The big programs land the big classes.
         var ranking = c.ClassRanking(2027);
         double Prestige(IEnumerable<Team> ts) => ts.Average(t => c.Prestige[t.Id]);
-        Assert.True(Prestige(ranking.Take(20).Select(x => x.Program)) > Prestige(ranking.Skip(100).Select(x => x.Program)) + 10);
+        Assert.True(Prestige(ranking.Take(20).Select(x => x.Program)) > Prestige(ranking.Skip(100).Select(x => x.Program)) + 10, $"{Prestige(ranking.Take(20).Select(x => x.Program)):F1} vs {Prestige(ranking.Skip(100).Select(x => x.Program)):F1}");
         // Home matters: more players stay in their region than chance alone would send there.
         double home = cls.Where(r => r.CommittedTo != null).Average(r => CollegeWorld.RegionOf(CollegeWorld.HomeState(c.Program(r.CommittedTo!.Value)!)) == CollegeWorld.RegionOf(r.State) ? 1.0 : 0.0);
         Assert.True(home > 0.3, $"{home:P0} stayed in their region");

@@ -124,7 +124,7 @@
           </DataGrid>
         </DockPanel>
       </TabItem>
-      <TabItem Header="Recruiting">
+      <TabItem Header="Recruiting" IsVisible="{Binding IsProRecruiting}">
         <!-- Senior recruiting (decision #157): the board, and the selected senior beside it (or under it when narrow). -->
         <ScrollViewer>
           <StackPanel Spacing="6">
@@ -181,6 +181,64 @@
                     </WrapPanel>
                     <Button Classes="primary" Content="Make the offer" Command="{Binding OfferRecruitCommand}" HorizontalAlignment="Left"/>
                     <TextBlock Text="{Binding RecruitReply}" Classes="accent" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <!-- The recruiting trail (C3, #173): a college coach's own high-school recruiting. -->
+      <TabItem Header="Recruiting" IsVisible="{Binding IsCollegeCoach}">
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding TrailNote}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding TrailChips}" Accent="{DynamicResource HwAccent}"/>
+            <WrapPanel>
+              <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding TrailClass}" MinWidth="220" Margin="0,0,8,4"/>
+              <ComboBox ItemsSource="{Binding TrailViews}" SelectedItem="{Binding TrailView}" MinWidth="170" Margin="0,0,8,4"/>
+              <CheckBox Content="My assistant uses the hours I leave" IsChecked="{Binding AssistantRecruits}" Margin="0,0,8,4"/>
+            </WrapPanel>
+            <Grid x:Name="TrailRowGrid" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+              <DataGrid x:Name="TrailGrid" ItemsSource="{Binding TrailRows}" SelectedItem="{Binding SelectedTrail}" Height="500" VerticalAlignment="Top">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+                  <DataGridTextColumn Header="Stars" Binding="{Binding Stars}" Width="70"/>
+                  <DataGridTextColumn Header="Prospect" Binding="{Binding Name}" Width="140"/>
+                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
+                  <DataGridTextColumn Header="State" Binding="{Binding State}" Width="56"/>
+                  <DataGridTemplateColumn Header="Interest" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:TrailRow">
+                        <Grid ColumnDefinitions="*,Auto" Margin="6,0" VerticalAlignment="Center">
+                          <ProgressBar Value="{Binding Interest}" Maximum="100" Height="6" MinWidth="0" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding InterestText}" FontSize="11" Margin="6,0,0,0"/>
+                        </Grid>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Leaning" Binding="{Binding Leaning}" Width="150"/>
+                  <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*" MinWidth="130"/>
+                </DataGrid.Columns>
+              </DataGrid>
+              <StackPanel x:Name="TrailPanel" Grid.Column="1" Width="330" Margin="10,0,0,0" Spacing="8" VerticalAlignment="Top">
+                <TextBlock Text="Pick a prospect to recruit him." Classes="muted" IsVisible="{Binding !HasTrail}" TextWrapping="Wrap"/>
+                <Border Classes="panel" IsVisible="{Binding HasTrail}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding SelectedTrail.Name}" Classes="h2" Margin="0"/>
+                    <TextBlock Text="{Binding TrailHeader}" Classes="muted" TextWrapping="Wrap"/>
+                    <c:StatStrip ItemsSource="{Binding ProspectChips}" Accent="{DynamicResource HwAccent}"/>
+                    <TextBlock Text="{Binding TrailConsidering}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <WrapPanel>
+                      <Button Content="Scout (1 h)" Command="{Binding ScoutTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Call (1 h)" Command="{Binding CallTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Home visit (4 h)" Command="{Binding HomeVisitTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Official visit (8 h)" Command="{Binding OfficialVisitTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Classes="primary" Content="Offer a scholarship (2 h)" Command="{Binding OfferTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Board +/-" Command="{Binding BoardTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Open player" Command="{Binding OpenTrailCommand}" Margin="0,0,6,6"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding TrailReply}" Classes="accent" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>
               </StackPanel>

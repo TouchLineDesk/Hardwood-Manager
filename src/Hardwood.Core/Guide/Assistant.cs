@@ -175,6 +175,16 @@ public static class Assistant
                     "Unhappy players play worse and want out. A talk on the Squad page shows why; a promise (minutes, a role) helps if you can keep it.", "Squad");
         }
 
+        // ---- the recruiting trail (C3, #177): open scholarships with too few offers out, when you're recruiting alone.
+        if (s.TrailOpen && s.Phase != SessionPhase.Offseason && s.TrailWorld is { } tw)
+        {
+            int cls = tw.Season.Year + 1;
+            int open = tw.OpenScholarships(team, cls), offers = tw.OffersOut(team, cls);
+            if (open > 0 && today < College.CollegeWorld.SigningDay(cls) && today >= College.CollegeWorld.CommitmentsOpen(cls) && offers < open && !s.Delegated.Recruiting)
+                yield return new($"trail-{cls}-{open}-{offers}", 18, $"{open} scholarship{(open == 1 ? "" : "s")} open, {offers} offer{(offers == 1 ? "" : "s")} out",
+                    $"Signing day is {College.CollegeWorld.SigningDay(cls):MMM d}. Seniors only commit to schools that offered. Best fits on the College page's Recruiting tab, or tick \"My assistant uses the hours I leave\".", "College");
+        }
+
         // ---- the board
         if (s.Job.Confidence < 40)
             yield return new($"board-{(int)s.Job.Confidence / 5}", 12, s.InCollege ? "The AD is losing patience" : "The board is losing patience",
@@ -387,6 +397,8 @@ public static class Assistant
     /// <summary>Page tips for a college coach (C2), where they differ from the pros'.</summary>
     private static readonly Dictionary<string, (string Beginner, string Experienced)> CollegePages = new()
     {
+        ["College"] = ("The Recruiting tab is yours: 24 coach hours a week for high-school prospects. Scout to learn what a kid wants, call, visit, then offer. No offer, no commitment.",
+                       "Look at Leaning before you spend hours: a prospect who prefers three schools to you needs an official visit, not a call."),
         ["Home"] = ("Your program at a glance: the overall record, the conference race (from January), the next game and news. Press Continue to move a day forward.",
                     "Non-conference games set your rating; conference games decide the conference tournament's seeds."),
         ["Roster"] = ("Your scholarship players (13, plus up to 2 walk-ons). Nobody is paid. Players stay until they turn 23, then graduate into the pros.",
