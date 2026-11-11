@@ -43,6 +43,22 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.IBrush HomeBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color HomeColor => ThemeService.AccentFor(HomeTeam);
 
+    // Match day (roadmap 2): the game's shape as it happens.
+    public GameResult Result => _live.Result;
+    public Avalonia.Media.Color FlowHome => GameFlowInfo.Colours(_live.Result).Home;
+    public Avalonia.Media.Color FlowAway => GameFlowInfo.Colours(_live.Result).Away;
+    [ObservableProperty] private int _flowVersion;
+    [ObservableProperty] private string _winChance = "";
+    [ObservableProperty] private string? _runAlert;
+    [ObservableProperty] private List<SplitRow> _splits = new();
+    [ObservableProperty] private int[] _awayZoneAttempts = new int[5];
+    [ObservableProperty] private int[] _awayZoneMakes = new int[5];
+    [ObservableProperty] private int[] _homeZoneAttempts = new int[5];
+    [ObservableProperty] private int[] _homeZoneMakes = new int[5];
+    public bool HasRunAlert => RunAlert != null;
+    partial void OnRunAlertChanged(string? value) => OnPropertyChanged(nameof(HasRunAlert));
+    private string? _lastRunKey;
+
     [ObservableProperty] private int _awayScore;
     [ObservableProperty] private int _homeScore;
     [ObservableProperty] private string _clock = "";
@@ -150,7 +166,29 @@ public sealed partial class LiveGameViewModel : PageViewModel
 
         var log = _live.Log;
         for (; _logShown < log.Count; _logShown++) Log.Insert(0, log[_logShown]);
+
+        // Game flow: chart, quarter splits, shots and run alerts.
+        FlowVersion++;
+        WinChance = GameFlowInfo.WinChance(r);
+        Splits = GameFlowInfo.Splits(r);
+        AwayZoneAttempts = ZoneSum(r.Away, l => l.ZoneAttempts); AwayZoneMakes = ZoneSum(r.Away, l => l.ZoneMakes);
+        HomeZoneAttempts = ZoneSum(r.Home, l => l.ZoneAttempts); HomeZoneMakes = ZoneSum(r.Home, l => l.ZoneMakes);
+        var run = GameFlow.CurrentRun(r);
+        RunAlert = run == null ? null : $"{run.Team} on a {run.Score} run";
+        // Call each run out in the play by play once, the first time it qualifies.
+        if (run != null)
+        {
+            string key = $"{run.Team}@{run.StartElapsed:0.0}";
+            if (key != _lastRunKey) { _lastRunKey = key; Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {RunAlert}"); }
+        }
         while (Log.Count > 300) Log.RemoveAt(Log.Count - 1);
+    }
+
+    public static int[] ZoneSum(TeamBox b, Func<PlayerLine, int[]> f)
+    {
+        var z = new int[5];
+        foreach (var l in b.Lines) { var a = f(l); for (int i = 0; i < 5; i++) z[i] += a[i]; }
+        return z;
     }
 
     [RelayCommand]

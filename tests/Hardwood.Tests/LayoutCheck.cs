@@ -34,6 +34,29 @@ public static class LayoutCheck
         var problems = new List<Problem>();
         // Measure positions inside the text-size scale, in the same units as the text widths.
         Visual space = root.GetVisualDescendants().OfType<LayoutTransformControl>().FirstOrDefault()?.Child ?? (Visual)root;
+        // Charts draw their own labels, so text from elsewhere lying on a chart hides one or the other (roadmap 2).
+        var charts = root.GetVisualDescendants().OfType<Control>()
+            .Where(c => c is Hardwood.Desktop.Controls.LineChart or Hardwood.Desktop.Controls.ShotChart or Hardwood.Desktop.Controls.BarChart
+                        or Hardwood.Desktop.Controls.RadarChart or Hardwood.Desktop.Controls.GameFlowChart)
+            .Where(c => c.IsEffectivelyVisible && c.Bounds.Width > 0 && c.Bounds.Height > 0)
+            .Select(c => (chart: c, rect: VisibleRect(c, new Rect(c.Bounds.Size), space)))
+            .Where(x => x.rect is { Width: > 0, Height: > 0 })
+            .ToList();
+        foreach (var gf in charts.Select(x => x.chart).OfType<Hardwood.Desktop.Controls.GameFlowChart>())
+        {
+            if (gf.Result == null) continue;
+            var labels = Hardwood.Desktop.Controls.GameFlowChart.PlaceLabels(gf.Result, gf.Bounds.Size);
+            for (int i = 0; i < labels.Count; i++)
+            {
+                var b = labels[i].Box;
+                double outside = Math.Max(Math.Max(-b.X, b.Right - gf.Bounds.Width), Math.Max(-b.Y, b.Bottom - gf.Bounds.Height));
+                if (outside > Slack) problems.Add(new Problem("chart label", labels[i].Text, Describe(gf) + " outside the chart", outside));
+                for (int j = 0; j < i; j++)
+                    if (labels[j].Box.Intersect(b) is { Width: > 1, Height: > 1 } hit)
+                        problems.Add(new Problem("chart label", labels[i].Text, Describe(gf) + $" on \"{labels[j].Text}\"", Math.Min(hit.Width, hit.Height)));
+            }
+        }
+        var inks = new List<(TextBlock tb, string text, string where, Rect ink)>();
         foreach (var tb in root.GetVisualDescendants().OfType<TextBlock>())
         {
             if (!tb.IsEffectivelyVisible || tb.Bounds.Width <= 0 || tb.Bounds.Height <= 0) continue;
@@ -78,6 +101,21 @@ public static class LayoutCheck
             var ink = new Rect(origin.Value, new Size(inkW, Math.Min(layout.Height, tb.Bounds.Height)));
             if (ink.Width <= 0 || ink.Height <= 0) continue;
 
+            if (VisibleRect(tb, new Rect(tb.Padding.Left + (tb.TextAlignment == TextAlignment.Right ? inner - inkW : tb.TextAlignment == TextAlignment.Center ? (inner - inkW) / 2 : 0), 0, inkW, ink.Height), space) is { Width: > 0, Height: > 0 } seenInk)
+                inks.Add((tb, Short(text), where, seenInk));
+
+            // Text lying on a chart it doesn't belong to.
+            if (charts.Count > 0 && VisibleRect(tb, new Rect(tb.Padding.Left, 0, inkW, ink.Height), space) is { Width: > 0, Height: > 0 } shown)
+            {
+                var under = charts.FirstOrDefault(x => !tb.GetVisualAncestors().Contains(x.chart) && x.rect!.Value.Intersect(shown) is { Width: > 2, Height: > 2 });
+                if (under.chart != null)
+                {
+                    var hit = under.rect!.Value.Intersect(shown);
+                    problems.Add(new Problem("on a chart", Short(text), where + " over " + under.chart.GetType().Name, Math.Min(hit.Width, hit.Height)));
+                    continue;
+                }
+            }
+
             // A table cell is narrower or shorter than its text: the row hides the rest (rows don't clip themselves;
             // the rows panel does, so the generic check below can't see it).
             if (tb.FindAncestorOfType<DataGridCell>() is { } cell && cell.TranslatePoint(new Point(0, 0), space) is { } ctl)
@@ -110,7 +148,38 @@ public static class LayoutCheck
                 }
             }
         }
+        // Two pieces of text drawn on top of each other (a squeezed scoreboard, a badge over a title): both are hard to read.
+        for (int i = 0; i < inks.Count; i++)
+            for (int j = 0; j < i; j++)
+            {
+                var hit = inks[i].ink.Intersect(inks[j].ink);
+                // A sliver (tight line spacing, descenders) isn't an overlap; a third of a line is.
+                double minH = Math.Min(inks[i].ink.Height, inks[j].ink.Height);
+                if (hit.Width > 3 && hit.Height > Math.Max(Slack, minH / 3))
+                {
+                    problems.Add(new Problem("overlaps", inks[i].text, inks[i].where + $" and \"{inks[j].text}\"", Math.Min(hit.Width, hit.Height)));
+                    break;
+                }
+            }
         return problems;
+    }
+
+    /// <summary>The part of <paramref name="local"/> (in <paramref name="v"/>'s coordinates) left showing after every clipping ancestor, in <paramref name="space"/>.</summary>
+    private static Rect? VisibleRect(Visual v, Rect local, Visual space)
+    {
+        var tl = v.TranslatePoint(local.TopLeft, space);
+        if (tl == null) return null;
+        var r = new Rect(tl.Value, local.Size);
+        foreach (var anc in v.GetVisualAncestors().OfType<Visual>())
+        {
+            if (anc is TopLevel) break;
+            if (!anc.ClipToBounds && anc is not ScrollContentPresenter) continue;
+            var at = anc.TranslatePoint(new Point(0, 0), space);
+            if (at == null) continue;
+            r = r.Intersect(new Rect(at.Value, anc.Bounds.Size));
+            if (r.Width <= 0 || r.Height <= 0) return null;
+        }
+        return r;
     }
 
     /// <summary>How wide the text is on one line with nothing in the way.</summary>
