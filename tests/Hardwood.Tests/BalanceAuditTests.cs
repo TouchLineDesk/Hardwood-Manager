@@ -10,6 +10,14 @@ namespace Hardwood.Tests;
 public class BalanceAuditTests
 {
     [Fact]
+    public void Title_streaks_are_counted_per_league()
+    {
+        Assert.Equal(3, BalanceAudit.Streak(new[] { "2026: AAA", "2027: BBB", "2028: BBB", "2029: BBB", "2030: AAA" }));
+        Assert.Equal(1, BalanceAudit.Streak(new[] { "2026: AAA", "2027: BBB" }));
+        Assert.Equal(0, BalanceAudit.Streak(System.Array.Empty<string>()));
+    }
+
+    [Fact]
     public void A_short_audit_runs_and_hard_limits_hold()
     {
         // Seed 8 since v0.49.0: the college changes moved the shared random stream, and seed 7's first two summers then
