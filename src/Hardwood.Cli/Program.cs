@@ -15,7 +15,7 @@ namespace Hardwood.Cli;
 ///   hardwood roster [--seed N] [--team ABBR]
 ///   hardwood audit [--seed N] [--seasons N] [--out report.md] [--full-sim]
 ///                                        play N seasons (NABL + world) and check the results against real basketball
-///   hardwood madness [--seed N] [--tournaments N] [--out report.md]
+///   hardwood madness [--seed N] [--tournaments N] [--out report.md] [--real]   (--real: the real Division I, R3)
 ///                                        the college world alone: March Madness seed results over many tournaments
 /// </summary>
 public static class Program
@@ -72,7 +72,7 @@ public static class Program
         if (cmd == "madness")
         {
             int n = int.Parse(ArgValue(args, "--tournaments") ?? "100");
-            var (tally, elapsed) = Hardwood.Core.Audit.MadnessAudit.Run(seed, n, msg => Console.Error.WriteLine(msg));
+            var (tally, elapsed) = Hardwood.Core.Audit.MadnessAudit.Run(seed, n, msg => Console.Error.WriteLine(msg), args.Contains("--real"));
             var md = Hardwood.Core.Audit.MadnessAudit.Report(tally, seed, elapsed);
             if (ArgValue(args, "--out") is { } outFile) File.WriteAllText(outFile, md);
             Console.WriteLine(md);

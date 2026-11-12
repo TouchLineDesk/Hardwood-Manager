@@ -28,6 +28,8 @@ public sealed class MadnessTally
     /// <summary>Average strength (weighted top-eight ability) of the 1-seeds and of the 16-seeds.</summary>
     public List<double> OneSeedStrength { get; } = new();
     public List<double> SixteenSeedStrength { get; } = new();
+    public List<double> FiveSeedStrength { get; } = new();
+    public List<double> TwelveSeedStrength { get; } = new();
     /// <summary>The ten most prestigious programs' average strength, and the 60th-68th by strength (the bubble).</summary>
     public List<double> TopTenPrestigeStrength { get; } = new();
     public List<double> BubbleStrength { get; } = new();
@@ -75,6 +77,8 @@ public sealed class MadnessTally
         double Str(int id) => QuickSim.Strength(cw.Program(id)!);
         OneSeedStrength.Add(s.Seeds.Where(kv => kv.Value == 1).Average(kv => Str(kv.Key)));
         SixteenSeedStrength.Add(s.Seeds.Where(kv => kv.Value == 16).Average(kv => Str(kv.Key)));
+        FiveSeedStrength.Add(s.Seeds.Where(kv => kv.Value == 5).Average(kv => Str(kv.Key)));
+        TwelveSeedStrength.Add(s.Seeds.Where(kv => kv.Value == 12).Average(kv => Str(kv.Key)));
         TopTenPrestigeStrength.Add(cw.Programs.OrderByDescending(t => cw.Prestige[t.Id]).Take(10).Average(t => QuickSim.Strength(t)));
         BubbleStrength.Add(cw.Programs.Select(t => QuickSim.Strength(t)).OrderByDescending(x => x).Skip(59).Take(9).Average());
         BestRecord.Add(cw.Programs.Select(t => cw.Record(t.Id)).Where(x => x.wins + x.losses > 0).Max(x => x.wins / (double)(x.wins + x.losses)));
@@ -105,6 +109,8 @@ public sealed class MadnessTally
         m.Add(new(g, "March Madness: upsets (4+ seed lines) per game", "0.000", Upsets, null, null, "NCAA ~20-25% of games"));
         m.Add(new(g, "Strength: 1-seeds", "0.0", OneSeedStrength, null, null, ""));
         m.Add(new(g, "Strength: 16-seeds", "0.0", SixteenSeedStrength, null, null, ""));
+        m.Add(new(g, "Strength: 5-seeds", "0.0", FiveSeedStrength, null, null, ""));
+        m.Add(new(g, "Strength: 12-seeds", "0.0", TwelveSeedStrength, null, null, ""));
         m.Add(new(g, "Strength: ten most prestigious programs", "0.0", TopTenPrestigeStrength, null, null, "review #7: 80-84 from year 5"));
         m.Add(new(g, "Strength: 60th-68th best programs", "0.0", BubbleStrength, null, null, ""));
         if (FiveStarsAtTopTwenty.Count > 0)
@@ -119,14 +125,14 @@ public sealed class MadnessTally
 /// <summary>The college world on its own, season after season: March Madness numbers over many tournaments.</summary>
 public static class MadnessAudit
 {
-    public static (MadnessTally Tally, TimeSpan Elapsed) Run(ulong seed, int tournaments, Action<string>? progress = null)
+    public static (MadnessTally Tally, TimeSpan Elapsed) Run(ulong seed, int tournaments, Action<string>? progress = null, bool real = false)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var rng = new Rng(seed);
         var start = new DateOnly(2026, 10, 1);
         int nextId = 2_000_000;
         var gen = new PlayerGenerator(new Rng(seed ^ 0x51), nextId);
-        var cw = CollegeWorld.Generate(gen, rng, start);
+        var cw = CollegeWorld.Generate(gen, rng, start, real: real);
         var sim = new GameSimulator();
         var tally = new MadnessTally();
         int year = 2026;

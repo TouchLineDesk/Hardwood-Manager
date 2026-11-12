@@ -102,10 +102,10 @@
                                     BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
                               <StackPanel>
                                 <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <TextBlock Text="{Binding Record}" FontSize="11" Classes="muted"/>
+                                <WrapPanel>
+                                  <TextBlock Text="{Binding Record}" FontSize="11" Classes="muted" Margin="0,0,6,0"/>
                                   <TextBlock Text="{Binding Tag}" FontSize="10" FontWeight="Bold" Foreground="#58A6FF" IsVisible="{Binding HasTag}" VerticalAlignment="Center"/>
-                                </StackPanel>
+                                </WrapPanel>
                               </StackPanel>
                             </Border>
                           </DataTemplate>
