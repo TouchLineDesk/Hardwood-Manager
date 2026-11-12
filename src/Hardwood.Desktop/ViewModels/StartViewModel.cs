@@ -151,7 +151,7 @@ public sealed partial class StartViewModel : ViewModelBase
         // The world is built from the same seed as the career's, so club ids match.
         _previewWorld = Hardwood.Core.World.GameWorld.Generate(_preview, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
         Hardwood.Core.Names.Brand.Real = RealWorld;
-        if (RealWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(_preview, _previewWorld);
+        if (RealWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(_preview, _previewWorld, seed);
         _topShown = Hardwood.Core.Names.Brand.Top;
         OnPropertyChanged(nameof(WorldText));
         // The picker shows the clubs as the career will: with the name pack's names if there is one.

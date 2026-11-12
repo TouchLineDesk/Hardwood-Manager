@@ -33,11 +33,18 @@ public static class Program
         {
             int seasons = int.Parse(ArgValue(args, "--seasons") ?? "10");
             var full = args.Contains("--full-sim") ? Hardwood.Core.World.Competitions.All.Select(c => c.Key) : null;
-            var report = Hardwood.Core.Audit.BalanceAudit.Run(seed, seasons, full, msg => Console.Error.WriteLine(msg));
+            var report = Hardwood.Core.Audit.BalanceAudit.Run(seed, seasons, full, msg => Console.Error.WriteLine(msg), args.Contains("--real"));
             var md = report.ToMarkdown();
             if (ArgValue(args, "--out") is { } outFile) { File.WriteAllText(outFile, md); Console.WriteLine($"Wrote {outFile}"); }
             else Console.WriteLine(md);
             Console.WriteLine(report.Flags.Any() ? $"{report.Flags.Count()} metric(s) out of range: {string.Join(", ", report.Flags.Select(f => f.Name))}" : "All checked metrics in range.");
+            return 0;
+        }
+
+        if (cmd == "realcheck")
+        {
+            int seasons = int.Parse(ArgValue(args, "--seasons") ?? "3");
+            Console.WriteLine(Hardwood.Core.RealWorld.RealCheck.Run(seed, seasons, msg => Console.Error.WriteLine(msg)));
             return 0;
         }
 

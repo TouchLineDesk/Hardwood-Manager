@@ -22,7 +22,7 @@ public sealed record RealRecord(string Label, string Value, string Holder, strin
 
 /// <summary>
 /// The real world (Danny, Nov 12, decisions #191-#197; `claude/real-world-design.md`, slice R1): the NBA's 30 real teams
-/// at the top of the USA pyramid, and the NBA's real history and records. Players are still generated until R2. The data
+/// at the top of the USA pyramid, and the NBA's real history and records. Since R2 the players are real too (<see cref="RealPlayers"/>). The data
 /// lives in embedded JSON files that record when and where it was checked. A career is a real-world one when its top
 /// league is named <see cref="LeagueName"/>; the fictional world (the NABL) stays as a New career option.
 /// </summary>
@@ -66,8 +66,8 @@ public static class RealWorldData
     };
 
     /// <summary>Turn a freshly generated top league (generated under <see cref="LeagueName"/>) into the NBA: its teams,
-    /// colours, conferences, divisions and arena sizes.</summary>
-    public static void Apply(League league, Hardwood.Core.World.GameWorld world)
+    /// colours, conferences, divisions and arena sizes, and (R2) its real players, rated from their stats.</summary>
+    public static void Apply(League league, Hardwood.Core.World.GameWorld world, ulong seed = 0, bool players = true)
     {
         if (!IsReal(league)) throw new ArgumentException($"Generate the league as \"{LeagueName}\" first.", nameof(league));
         // Renamed here rather than through Pack().ApplyToClubs, which would also rename the static names (Brand.Top)
@@ -80,6 +80,7 @@ public static class RealWorldData
             team.Division = real.Division;
             team.ArenaCapacity = real.Capacity;
         }
+        if (players) RealPlayers.Apply(league, seed);
         Brand.Real = true;
     }
 
