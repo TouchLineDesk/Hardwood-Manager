@@ -52,16 +52,50 @@ public class RealPlayersTests
             Assert.Equal(("Serbia", Position.C), (jokic.Nationality, jokic.PrimaryPosition));
             Assert.InRange(jokic.CurrentAbility, 165, 190);
             Assert.InRange(jokic.Age(new DateOnly(2026, 10, 1)), 30, 31);
-            // Everyone has a valid contract and a unique id; payrolls open inside the cap like a generated league.
+            // Everyone has a valid contract and a unique id; payrolls are the real ones (R2 part 2a, #217), so most
+            // clubs open over the cap, as in the NBA, and every owner's wage budget covers what his club already pays.
             var all = real.League.Teams.SelectMany(t => t.Roster).ToList();
             Assert.Equal(all.Count, all.Select(p => p.Id).Distinct().Count());
             Assert.All(all, p => Assert.True(p.Contract!.Salary >= real.League.Finance.MinSalary));
-            Assert.All(real.League.Teams, t => Assert.InRange(t.Roster.Sum(p => p.Contract!.Salary), real.League.Finance.HardCap * 0.8, real.League.Finance.HardCap * 1.0));
+            Assert.All(real.League.Teams, t => Assert.InRange(t.Roster.Sum(p => p.Contract!.Salary), 100_000_000, 240_000_000));
+            Assert.All(real.League.Teams, t => Assert.True(t.Money.WageBudget >= t.Roster.Sum(p => p.Contract!.Salary)));
+            // Real contracts, birthdays and heights (Basketball-Reference, checked Nov 12, 2026).
+            Assert.Equal((59_030_000L, 2), (jokic.Contract!.Salary, jokic.Contract.Years));
+            Assert.Equal(new DateOnly(1995, 2, 19), jokic.BirthDate);
+            Assert.Equal(211, jokic.HeightCm);
+            var shai = real.League.Teams.First(t => t.Abbreviation == "OKC").Roster.Single(p => p.Name == "Shai Gilgeous-Alexander");
+            Assert.Equal((40_810_000L, 5, "Canada"), (shai.Contract!.Salary, shai.Contract.Years, shai.Nationality));
+            var tatum = real.League.Teams.First(t => t.Abbreviation == "BOS").Roster.Single(p => p.Name == "Jayson Tatum");
+            Assert.Equal(new DateOnly(1998, 3, 3), tatum.BirthDate);
+            var towns = real.League.Teams.First(t => t.Abbreviation == "NYK").Roster.Single(p => p.Name == "Karl-Anthony Towns");
+            Assert.Equal("Dominican Republic", towns.Nationality);
+            Assert.Equal("Joe Mazzulla", real.League.Teams.First(t => t.Abbreviation == "BOS").CoachName);
+            Assert.Equal("Mike Brown", real.League.Teams.First(t => t.Abbreviation == "NYK").CoachName);
             // The talent ladder is the generator's: the same spread of CA as a fictional league from the same seed.
             double Mean(GameSession s) => s.League.Teams.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
             int Stars(GameSession s) => s.League.Teams.SelectMany(t => t.Roster).Count(p => p.CurrentAbility >= 160);
             Assert.InRange(Mean(real) - Mean(fictional), -2.0, 2.0);
             Assert.InRange(Stars(real), Stars(fictional) - 4, Stars(fictional) + 4);
+        }
+        finally { Brand.Real = false; }
+    }
+
+    [Fact]
+    public void Real_stars_are_priced_like_stars()
+    {
+        // Critic review #8: generated deals put the MVP at "Would listen, $17.6-22.1M". With his real five-season deal
+        // the club wants what a franchise player costs, and no star under 31 on a deal of two or more years is cheap.
+        try
+        {
+            var league = RealCheck.Build(2026);
+            var on = new DateOnly(2026, 10, 1);
+            var rows = league.Teams.SelectMany(t => t.Roster.Select(p => (t, p, ask: TransferMarket.Ask(p, t, on, 1, league.Finance)))).ToList();
+            var shai = rows.Single(x => x.p.Name == "Shai Gilgeous-Alexander");
+            Assert.True(shai.ask >= 80_000_000, $"SGA ${shai.ask / 1e6:F1}M");
+            Assert.Equal("Won't sell", TransferMarket.Stance(shai.p, shai.t).Label);
+            var stars = rows.Where(x => x.p.CurrentAbility >= 165 && x.p.Age(on) <= 30 && x.p.Contract!.Years >= 2).ToList();
+            Assert.NotEmpty(stars);
+            Assert.All(stars, x => Assert.True(x.ask >= 60_000_000, $"{x.p.Name} ${x.ask / 1e6:F1}M"));
         }
         finally { Brand.Real = false; }
     }

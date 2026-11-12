@@ -75,7 +75,7 @@ public static class Budgets
     /// <param name="endedSeason">The season that just finished: contracts running past it are already committed, and an
     /// owner who isn't in debt won't set a budget below them (critic review #3: a club whose revenue dipped was "over
     /// budget" all season on deals it signed within budget the year before). -1 leaves budgets purely to revenue.</param>
-    public static void Summer(IReadOnlyList<Team> clubs, double salaryScale, Func<Team, double> winPct, Func<Team, bool> champion, int endedSeason = -1)
+    public static void Summer(IReadOnlyList<Team> clubs, double salaryScale, Func<Team, double> winPct, Func<Team, bool> champion, int endedSeason = -1, bool fillRoster = false)
     {
         if (clubs.Count == 0) return;
         double typical = clubs.Average(t => (double)t.ArenaCapacity);
@@ -98,7 +98,13 @@ public static class Budgets
             {
                 // Contract.Years counts the seasons left including the one just ended (it's decremented after the books close),
                 // so a deal that runs into next season has more than one left.
-                long committed = t.Roster.Where(p => p.Contract is { Years: > 1 }).Sum(p => p.Contract!.Salary);
+                var signed = t.Roster.Where(p => p.Contract is { Years: > 1 }).ToList();
+                long committed = signed.Sum(p => p.Contract!.Salary);
+                // In the real NBA, plus minimum deals to fill the roster to its legal size (run 17, #221): real payrolls
+                // sit at this floor, so a floor of only what's signed left a club over budget the moment it made up its
+                // numbers, and the owner then marked "keep wages within the budget" as failed. (Fictional leagues open
+                // inside their budgets and keep the old floor: the balance audit moved when they got it too.)
+                if (fillRoster) committed += Math.Max(0, MinRoster - signed.Count) * (long)(MinWage * Math.Min(1, salaryScale));
                 m.WageBudget = Math.Max(m.WageBudget, (long)Math.Ceiling(committed / 100_000.0) * 100_000);
             }
             // Deep debt: a transfer embargo until the balance recovers (critic review, Nov 10).
@@ -134,6 +140,10 @@ public static class Budgets
         m.TransferBudget = Round(m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15);
         m.Ready = true;
     }
+
+    /// <summary>The roster a club must carry (Finance.RosterMin) and the league minimum (Finance.MinSalary), for the budget floor.</summary>
+    private const int MinRoster = 13;
+    private static long MinWage => Finance.HardCapDefault.MinSalary;
 
     /// <summary>Wages the club has room for under its budget right now.</summary>
     public static long Room(Team t) => t.Money.WageBudget - ContractMarket.Payroll(t);

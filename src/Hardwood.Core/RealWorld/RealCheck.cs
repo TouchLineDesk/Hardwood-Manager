@@ -51,8 +51,43 @@ public static class RealCheck
         int generated = league.Teams.Sum(t => t.Roster.Count(p => !realNames.Contains(p.Name)));
         sb.AppendLine($"Real players placed: {league.Teams.Sum(t => t.Roster.Count(p => realNames.Contains(p.Name)))} of {RealPlayers.Lines.Count}; generated fillers: {generated}.");
         sb.AppendLine();
+        sb.Append(Market(league));
 
         var wins = league.Teams.ToDictionary(t => t, _ => 0.0);
+        return Seasons(league, seed, seasons, wins, sb, progress);
+    }
+
+    /// <summary>What a star costs (R2 part 2a): each club's asking price for the top 20 by CA, with his real contract,
+    /// the cheapest star of CA 165+, and payrolls against the cap. The target: no CA 165+ player under $60M.</summary>
+    public static string Market(League league)
+    {
+        var sb = new StringBuilder();
+        var on = new DateOnly(league.Season, 10, 1);
+        var rows = league.Teams.SelectMany(t => t.Roster.Select(p => (t, p, ask: TransferMarket.Ask(p, t, on, 1, league.Finance))))
+                               .OrderByDescending(x => x.p.CurrentAbility).ToList();
+        sb.AppendLine("## The market (asking prices on opening day)");
+        sb.AppendLine("| Player | Team | CA | Born | Height | Contract | Asking price |");
+        sb.AppendLine("|---|---|---|---|---|---|---|");
+        foreach (var (t, p, ask) in rows.Take(20))
+            sb.AppendLine($"| {p.Name} | {t.Abbreviation} | {p.CurrentAbility} | {p.BirthDate:yyyy-MM-dd} | {p.HeightCm} cm | ${p.Contract!.Salary / 1e6:F1}M × {p.Contract.Years} | ${ask / 1e6:F1}M |");
+        var stars = rows.Where(x => x.p.CurrentAbility >= 165).ToList();
+        if (stars.Count > 0)
+        {
+            var cheap = stars.MinBy(x => x.ask);
+            sb.AppendLine();
+            sb.AppendLine($"Stars (CA 165+): {stars.Count}; cheapest asking price {cheap.p.Name} ${cheap.ask / 1e6:F1}M; under $60M: {stars.Count(x => x.ask < 60_000_000)}.");
+        }
+        var top10 = rows.Take(10).Select(x => (double)x.ask).ToList();
+        var byAsk = rows.OrderByDescending(x => x.ask).Take(10).Count(x => rows.Take(10).Contains(x));
+        sb.AppendLine($"Of the 10 highest asking prices, {byAsk} belong to the top 10 by CA.");
+        var pays = league.Teams.Select(t => ContractMarket.Payroll(t)).OrderBy(x => x).ToList();
+        sb.AppendLine($"Payrolls: ${pays[0] / 1e6:F0}M-{pays[^1] / 1e6:F0}M, average ${pays.Average() / 1e6:F0}M (cap ${league.Finance.SalaryCap / 1e6:F0}M; the real 2026-27 cap is ${RealPlayers.RealCap / 1e6:F2}M).");
+        sb.AppendLine();
+        return sb.ToString();
+    }
+
+    private static string Seasons(League league, ulong seed, int seasons, Dictionary<Team, double> wins, StringBuilder sb, Action<string>? progress)
+    {
         for (int s = 0; s < seasons; s++)
         {
             var copy = s == 0 ? league : Build(seed + (ulong)s * 101);

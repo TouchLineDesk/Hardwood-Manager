@@ -38,7 +38,9 @@ public static class TransferMarket
         double wage = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin) * sellerScale;
         int years = Math.Clamp(p.Contract?.Years ?? 1, 1, 3);
         int age = p.Age(on);
-        double ageF = age <= 24 ? 1.6 : age <= 27 ? 1.3 : age <= 30 ? 1.0 : 0.6;
+        // Gentler past 30 (#219): a 31-year-old star kept 60% of his value before, so the real MVP runner-up with two
+        // years left cost less than a role player of 24.
+        double ageF = age <= 24 ? 1.6 : age <= 27 ? 1.3 : age <= 30 ? 1.0 : age <= 32 ? 0.8 : 0.6;
         double upside = Math.Clamp((p.PotentialAbility - p.CurrentAbility) / 40.0, 0, 1);
         return Round(Math.Max(wage * 0.25, wage * years * 0.5 * ageF * (1 + upside * 0.5)));
     }

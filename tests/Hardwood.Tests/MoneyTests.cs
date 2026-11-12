@@ -44,4 +44,21 @@ public class MoneyTests
         Budgets.Summer(new[] { t }, 1, _ => 0.2, _ => false, 2026);
         Assert.True(t.Money.WageBudget < committed);
     }
+
+    [Fact]
+    public void A_real_nba_club_at_its_budget_floor_can_still_fill_its_roster()
+    {
+        // Run 17 (#221): a real payroll sits at the floor of what's signed; ten signed players and a $200M payroll
+        // must leave room for three minimum deals, or the club is over budget the day it makes up its numbers.
+        var league = new WorldGenerator(new Rng(6)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+        Budgets.Initialize(league.Teams, 1, new Rng(6));
+        var t = league.Teams[0];
+        foreach (var (p, i) in t.Roster.Select((p, i) => (p, i)))
+            p.Contract = new Contract { StartSeason = 2026, Years = i < 10 ? 3 : 1, Salary = i < 10 ? 20_000_000 : 2_000_000 };
+        t.Money.Balance = 50_000_000;
+        Budgets.Summer(new[] { t }, 1, _ => 0.5, _ => false, 2026, fillRoster: true);
+        Assert.True(t.Money.WageBudget >= 200_000_000 + 3 * league.Finance.MinSalary, $"budget {t.Money.WageBudget:N0}");
+        Budgets.Summer(new[] { t }, 1, _ => 0.5, _ => false, 2026);   // fictional leagues keep the old floor
+        Assert.True(t.Money.WageBudget >= 200_000_000);
+    }
 }

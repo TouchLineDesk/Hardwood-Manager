@@ -1,0 +1,4084 @@
+{
+"checked": "2026-11-12",
+"source": "Basketball-Reference.com, fetched Nov 12, 2026: 2026-27 player contracts (contracts/players.html: this season's salary and the number of seasons with a salary listed) and the 30 team roster pages (height, birth date, birth country, head coach). The 2026-27 salary cap is $164,961,000 (contracts summary).",
+"notes": "Two-way and Exhibit 10 deals are not on the contracts page; those players have no salary here. Birth country is where he was born, not always his national team. Option years are not marked in the source text, so every listed season counts. A player still paid by a club that waived him appears twice in the source; his salary here is his current deal's guaranteed amount.",
+"salaryCap": 164961000,
+"coaches": {
+"BOS": "Joe Mazzulla",
+"GSW": "Steve Kerr",
+"BKN": "Jordi Fernández",
+"PHI": "Nick Nurse",
+"MIA": "Erik Spoelstra",
+"CLE": "Kenny Atkinson",
+"SAC": "Doug Christie",
+"MIL": "Taylor Jenkins",
+"DET": "J.B. Bickerstaff",
+"ATL": "Quin Snyder",
+"LAL": "JJ Redick",
+"DEN": "David Adelman",
+"NYK": "Mike Brown",
+"MEM": "Tuomas Iisalo",
+"HOU": "Ime Udoka",
+"DAL": "Dusty May",
+"POR": "Micah Nori",
+"WAS": "Brian Keefe",
+"PHX": "Jordan Ott",
+"OKC": "Mark Daigneault",
+"SAS": "Mitch Johnson",
+"MIN": "Chris Finch",
+"NOP": "Jamahl Mosley",
+"UTA": "Will Hardy",
+"LAC": "Tyronn Lue",
+"TOR": "Darko Rajaković",
+"ORL": "Sean Sweeney",
+"IND": "Rick Carlisle",
+"CHI": "Tiago Splitter",
+"CHA": "Charles Lee"
+},
+"players": {
+"A.J. Green": {
+"team": "MIL",
+"ht": "6-4",
+"born": "1999-09-27",
+"birth": "US",
+"salary": 10044644,
+"years": 4
+},
+"AJ Dybantsa": {
+"team": "WAS",
+"ht": "6-9",
+"born": "2007-01-29",
+"birth": "US",
+"salary": 14748000,
+"years": 4
+},
+"AJ Johnson": {
+"team": "NOP",
+"ht": "6-5",
+"born": "2004-12-01",
+"birth": "US",
+"salary": 3237120,
+"years": 2
+},
+"Aaron Gordon": {
+"team": "DEN",
+"ht": "6-8",
+"born": "1995-09-16",
+"birth": "US",
+"salary": 33658037,
+"years": 3
+},
+"Aaron Nesmith": {
+"team": "IND",
+"ht": "6-5",
+"born": "1999-10-16",
+"birth": "US",
+"salary": 11000000,
+"years": 3
+},
+"Aaron Wiggins": {
+"team": "ATL",
+"ht": "6-5",
+"born": "1999-01-02",
+"birth": "US",
+"salary": 9224300,
+"years": 3
+},
+"Ace Bailey": {
+"team": "UTA",
+"ht": "6-9",
+"born": "2006-08-13",
+"birth": "US",
+"salary": 9523080,
+"years": 3
+},
+"Aday Mara": {
+"team": "OKC",
+"ht": "7-2",
+"born": "2005-04-07",
+"birth": "ES",
+"salary": 5791680,
+"years": 4
+},
+"Adem Bona": {
+"team": "PHI",
+"ht": "6-10",
+"born": "2003-03-28",
+"birth": "NG",
+"salary": 2296271,
+"years": 2
+},
+"Adou Thiero": {
+"team": "LAL",
+"ht": "6-7",
+"born": "2004-05-08",
+"birth": "US",
+"salary": 2150917,
+"years": 2
+},
+"Ajay Mitchell": {
+"team": "OKC",
+"ht": "6-4",
+"born": "2002-06-25",
+"birth": "BE",
+"salary": 2850000,
+"years": 1
+},
+"Al Horford": {
+"team": "GSW",
+"ht": "6-8",
+"born": "1986-06-03",
+"birth": "DO",
+"salary": 6822000,
+"years": 2
+},
+"Alex Caruso": {
+"team": "OKC",
+"ht": "6-5",
+"born": "1994-02-28",
+"birth": "US",
+"salary": 19550160,
+"years": 3
+},
+"Alex Karaban": {
+"team": "SAC",
+"ht": "6-8",
+"born": "2002-11-11",
+"birth": "US",
+"salary": 2948280,
+"years": 4
+},
+"Alex Morales": {
+"team": "ORL",
+"ht": "6-6",
+"born": "1997-11-21",
+"birth": "US"
+},
+"Alex Sarr": {
+"team": "WAS",
+"ht": "7-0",
+"born": "2005-04-26",
+"birth": "FR",
+"salary": 12370680,
+"years": 2
+},
+"Alijah Martin": {
+"team": "TOR",
+"ht": "6-2",
+"born": "2001-12-26",
+"birth": "US",
+"salary": 2185116,
+"years": 2
+},
+"Allen Graves": {
+"team": "TOR",
+"ht": "6-9",
+"born": "2006-07-28",
+"birth": "US",
+"salary": 4065720,
+"years": 4
+},
+"Alperen Şengün": {
+"team": "HOU",
+"ht": "6-11",
+"born": "2002-07-25",
+"birth": "TR",
+"salary": 35642202,
+"years": 4
+},
+"Alpha Diallo": {
+"team": "DEN",
+"ht": "6-7",
+"born": "1997-06-29",
+"birth": "US",
+"salary": 1357763,
+"years": 1
+},
+"Amari Williams": {
+"team": "BOS",
+"ht": "6-11",
+"born": "2002-01-28",
+"birth": "GB"
+},
+"Amen Thompson": {
+"team": "HOU",
+"ht": "6-7",
+"born": "2003-01-30",
+"birth": "US",
+"salary": 12258609,
+"years": 6
+},
+"Andre Drummond": {
+"team": "NYK",
+"ht": "6-11",
+"born": "1993-08-10",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Andrew Nembhard": {
+"team": "IND",
+"ht": "6-4",
+"born": "2000-01-16",
+"birth": "CA",
+"salary": 19550160,
+"years": 2
+},
+"Andrew Wiggins": {
+"team": "MIA",
+"ht": "6-6",
+"born": "1995-02-23",
+"birth": "CA",
+"salary": 30169644,
+"years": 3
+},
+"Anfernee Simons": {
+"team": "PHI",
+"ht": "6-3",
+"born": "1999-06-08",
+"birth": "US",
+"salary": 6000000,
+"years": 2
+},
+"Anthony Black": {
+"team": "ORL",
+"ht": "6-7",
+"born": "2004-01-20",
+"birth": "US",
+"salary": 10106316,
+"years": 1
+},
+"Anthony Davis": {
+"team": "WAS",
+"ht": "6-10",
+"born": "1993-03-11",
+"birth": "US",
+"salary": 58456566,
+"years": 2
+},
+"Anthony Edwards": {
+"team": "MIN",
+"ht": "6-4",
+"born": "2001-08-05",
+"birth": "US",
+"salary": 48924624,
+"years": 3
+},
+"Anthony Gill": {
+"team": "WAS",
+"ht": "6-7",
+"born": "1992-10-17",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Ariel Hukporti": {
+"team": "PHI",
+"ht": "7-0",
+"born": "2002-04-12",
+"birth": "DE",
+"salary": 3400000,
+"years": 1
+},
+"Arthur Kaluma": {
+"team": "LAL",
+"ht": "6-7",
+"born": "2002-03-01",
+"birth": "US"
+},
+"Asa Newell": {
+"team": "ATL",
+"ht": "6-10",
+"born": "2005-10-05",
+"birth": "US",
+"salary": 3399480,
+"years": 3
+},
+"Ausar Thompson": {
+"team": "DET",
+"ht": "6-7",
+"born": "2003-01-30",
+"birth": "US",
+"salary": 11117925,
+"years": 6
+},
+"Austin Reaves": {
+"team": "LAL",
+"ht": "6-5",
+"born": "1998-05-29",
+"birth": "US",
+"salary": 41240250,
+"years": 4
+},
+"Ayo Dosunmu": {
+"team": "MIN",
+"ht": "6-4",
+"born": "2000-01-17",
+"birth": "US",
+"salary": 19310345,
+"years": 5
+},
+"Baba Miller": {
+"team": "LAC",
+"ht": "6-11",
+"born": "2004-02-07",
+"birth": "ES",
+"salary": 1705630,
+"years": 4
+},
+"Bam Adebayo": {
+"team": "MIA",
+"ht": "6-9",
+"born": "1997-07-18",
+"birth": "US",
+"salary": 49800000,
+"years": 3
+},
+"Baylor Scheierman": {
+"team": "BOS",
+"ht": "6-6",
+"born": "2000-09-26",
+"birth": "US",
+"salary": 2744040,
+"years": 2
+},
+"Ben Saraf": {
+"team": "BKN",
+"ht": "6-6",
+"born": "2006-04-14",
+"birth": "ZA",
+"salary": 3028560,
+"years": 3
+},
+"Ben Sheppard": {
+"team": "IND",
+"ht": "6-6",
+"born": "2001-07-16",
+"birth": "US",
+"salary": 5031669,
+"years": 1
+},
+"Ben Simmons": {
+"team": "SAC",
+"ht": "6-10",
+"born": "1996-07-20",
+"birth": "AU",
+"salary": 2449421,
+"years": 1
+},
+"Bennedict Mathurin": {
+"team": "NOP",
+"ht": "6-5",
+"born": "2002-06-19",
+"birth": "CA",
+"salary": 7804878,
+"years": 2
+},
+"Bennett Stirtz": {
+"team": "OKC",
+"ht": "6-4",
+"born": "2003-10-03",
+"birth": "US",
+"salary": 4717320,
+"years": 4
+},
+"Bilal Coulibaly": {
+"team": "WAS",
+"ht": "6-7",
+"born": "2004-07-26",
+"birth": "FR",
+"salary": 9240012,
+"years": 1
+},
+"Blake Wesley": {
+"team": "LAC"
+},
+"Bobby Portis": {
+"team": "MIA",
+"ht": "6-9",
+"born": "1995-02-10",
+"birth": "US",
+"salary": 14521414,
+"years": 2
+},
+"Bogdan Bogdanović": {
+"team": "HOU",
+"ht": "6-5",
+"born": "1992-08-18",
+"birth": "RS",
+"salary": 2449421,
+"years": 1
+},
+"Bogoljub Markovic": {
+"team": "MIL",
+"ht": "6-11",
+"born": "2005-07-12",
+"birth": "RS",
+"salary": 1357763,
+"years": 4
+},
+"Bones Hyland": {
+"team": "MIN",
+"ht": "6-2",
+"born": "2000-09-14",
+"birth": "US",
+"salary": 2845883,
+"years": 1
+},
+"Braden Smith": {
+"team": "IND",
+"ht": "6-0",
+"born": "2003-07-25",
+"birth": "US"
+},
+"Bradley Beal": {
+"team": "LAC",
+"ht": "6-4",
+"born": "1993-06-28",
+"birth": "US",
+"salary": 6424800,
+"years": 1,
+"note": "waived by another team: salary = this deal's guaranteed amount; years from his July 2025 two-season Clippers deal"
+},
+"Branden Carlson": {
+"team": "POR",
+"ht": "7-0",
+"born": "1999-06-14",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Brandin Podziemski": {
+"team": "GSW",
+"ht": "6-4",
+"born": "2003-02-25",
+"birth": "US",
+"salary": 5679459,
+"years": 6
+},
+"Brandon Ingram": {
+"team": "LAC",
+"ht": "6-8",
+"born": "1997-09-02",
+"birth": "US",
+"salary": 40000000,
+"years": 2
+},
+"Brandon Miller": {
+"team": "CHA",
+"ht": "6-7",
+"born": "2002-11-22",
+"birth": "US",
+"salary": 15104626,
+"years": 6
+},
+"Brandon Williams": {
+"team": "GSW",
+"ht": "6-1",
+"born": "1999-11-22",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Brayden Burries": {
+"team": "MIL",
+"ht": "6-4",
+"born": "2005-09-18",
+"birth": "US",
+"salary": 6417360,
+"years": 4
+},
+"Brice Sensabaugh": {
+"team": "UTA",
+"ht": "6-6",
+"born": "2003-10-30",
+"birth": "US",
+"salary": 4862237,
+"years": 1
+},
+"Bronny James": {
+"team": "LAL",
+"ht": "6-2",
+"born": "2004-10-06",
+"birth": "US",
+"salary": 2296271,
+"years": 2
+},
+"Brook Lopez": {
+"team": "LAC",
+"ht": "7-1",
+"born": "1988-04-01",
+"birth": "US",
+"salary": 9187500,
+"years": 1
+},
+"Brooks Barnhizer": {
+"team": "OKC",
+"ht": "6-5",
+"born": "2002-03-02",
+"birth": "US"
+},
+"Bruce Thornton": {
+"team": "HOU",
+"ht": "6-2",
+"born": "2003-09-14",
+"birth": "US",
+"salary": 1357763,
+"years": 4
+},
+"Bryce Hopkins": {
+"team": "DEN",
+"ht": "6-7",
+"born": "2002-09-07",
+"birth": "US"
+},
+"Bryce McGowens": {
+"team": "NOP",
+"ht": "6-6",
+"born": "2002-11-08",
+"birth": "US",
+"salary": 2584539,
+"years": 2
+},
+"Bub Carrington": {
+"team": "WAS",
+"ht": "6-4",
+"born": "2005-07-21",
+"birth": "US",
+"salary": 4900560,
+"years": 2
+},
+"Buddy Hield": {
+"team": "CHI",
+"ht": "6-4",
+"born": "1992-12-17",
+"birth": "BS",
+"salary": 9658536,
+"years": 2
+},
+"CJ McCollum": {
+"team": "ATL",
+"ht": "6-3",
+"born": "1991-09-19",
+"birth": "US",
+"salary": 21000000,
+"years": 1
+},
+"Cade Cunningham": {
+"team": "DET",
+"ht": "6-6",
+"born": "2001-09-25",
+"birth": "US",
+"salary": 50105628,
+"years": 4
+},
+"Caleb Love": {
+"team": "PHI",
+"ht": "6-3",
+"born": "2001-09-27",
+"birth": "US"
+},
+"Caleb Martin": {
+"team": "DAL",
+"ht": "6-5",
+"born": "1995-09-28",
+"birth": "US",
+"salary": 10001493,
+"years": 2
+},
+"Caleb Wilson": {
+"team": "CHI",
+"ht": "6-10",
+"born": "2006-07-18",
+"birth": "US",
+"salary": 10683720,
+"years": 4
+},
+"Cam Christie": {
+"team": "LAC",
+"ht": "6-5",
+"born": "2005-07-24",
+"birth": "US"
+},
+"Cam Spencer": {
+"team": "MEM",
+"ht": "6-3",
+"born": "2000-04-06",
+"birth": "US",
+"salary": 2411090,
+"years": 3
+},
+"Cam Whitmore": {
+"team": "DEN",
+"ht": "6-6",
+"born": "2004-07-08",
+"birth": "US",
+"salary": 1819437,
+"years": 3
+},
+"Cameron Boozer": {
+"team": "MEM",
+"ht": "6-10",
+"born": "2007-07-18",
+"birth": "US",
+"salary": 11849760,
+"years": 4
+},
+"Cameron Carr": {
+"team": "LAL",
+"ht": "6-5",
+"born": "2004-11-21",
+"birth": "US",
+"salary": 3315360,
+"years": 4
+},
+"Cameron Johnson": {
+"team": "DEN",
+"ht": "6-8",
+"born": "1996-03-03",
+"birth": "US",
+"salary": 23062500,
+"years": 1
+},
+"Caris LeVert": {
+"team": "MIL",
+"ht": "6-7",
+"born": "1994-08-25",
+"birth": "US",
+"salary": 14809200,
+"years": 1
+},
+"Carson Cooper": {
+"team": "MEM"
+},
+"Carter Bryant": {
+"team": "SAS",
+"ht": "6-6",
+"born": "2005-11-26",
+"birth": "US",
+"salary": 5145360,
+"years": 3
+},
+"Cason Wallace": {
+"team": "OKC",
+"ht": "6-3",
+"born": "2003-11-07",
+"birth": "US",
+"salary": 7420806,
+"years": 6
+},
+"Cedric Coward": {
+"team": "MEM",
+"ht": "6-5",
+"born": "2003-09-11",
+"birth": "US",
+"salary": 6001080,
+"years": 3
+},
+"Chaney Johnson": {
+"team": "BKN",
+"ht": "6-7",
+"born": "2002-06-20",
+"birth": "US"
+},
+"Charles Bassey": {
+"team": "GSW",
+"ht": "6-10",
+"born": "2000-10-28",
+"birth": "NG",
+"salary": 2449421,
+"years": 1
+},
+"Chaz Lanier": {
+"team": "DET",
+"ht": "6-3",
+"born": "2001-12-19",
+"birth": "US",
+"salary": 2150917,
+"years": 3
+},
+"Chet Holmgren": {
+"team": "OKC",
+"ht": "7-1",
+"born": "2002-05-01",
+"birth": "US",
+"salary": 41500000,
+"years": 5
+},
+"Chris Cenac Jr.": {
+"team": "BOS",
+"ht": "6-11",
+"born": "2007-02-01",
+"birth": "US",
+"salary": 2988120,
+"years": 4
+},
+"Chris Mañon": {
+"team": "LAL",
+"ht": "6-4",
+"born": "2001-12-09",
+"birth": "US"
+},
+"Chris Youngblood": {
+"team": "POR",
+"ht": "6-4",
+"born": "2002-02-09",
+"birth": "US"
+},
+"Christian Anderson Jr.": {
+"team": "CHA",
+"ht": "6-0",
+"born": "2006-04-02",
+"birth": "US",
+"salary": 4257480,
+"years": 4
+},
+"Christian Braun": {
+"team": "DEN",
+"ht": "6-6",
+"born": "2001-04-17",
+"birth": "US",
+"salary": 21551726,
+"years": 5
+},
+"Clint Capela": {
+"team": "HOU",
+"ht": "6-10",
+"born": "1994-05-18",
+"birth": "CH",
+"salary": 7035000,
+"years": 2
+},
+"Coby White": {
+"team": "CHA",
+"ht": "6-4",
+"born": "2000-02-16",
+"birth": "US",
+"salary": 22839506,
+"years": 3
+},
+"Cody Williams": {
+"team": "MIN",
+"ht": "6-8",
+"born": "2004-11-20",
+"birth": "US",
+"salary": 6015600,
+"years": 2
+},
+"Colin Castleton": {
+"team": "ORL",
+"ht": "6-10",
+"born": "2000-05-25",
+"birth": "US"
+},
+"Collin Gillespie": {
+"team": "PHX",
+"ht": "6-1",
+"born": "1999-06-25",
+"birth": "US",
+"salary": 10714286,
+"years": 4
+},
+"Collin Murray-Boyles": {
+"team": "TOR",
+"ht": "6-7",
+"born": "2005-06-10",
+"birth": "US",
+"salary": 6649560,
+"years": 3
+},
+"Collin Sexton": {
+"team": "LAL",
+"ht": "6-3",
+"born": "1999-01-04",
+"birth": "US",
+"salary": 9366000,
+"years": 2
+},
+"Cooper Flagg": {
+"team": "DAL",
+"ht": "6-9",
+"born": "2006-12-21",
+"birth": "US",
+"salary": 14517480,
+"years": 3
+},
+"Corey Kispert": {
+"team": "ATL",
+"ht": "6-6",
+"born": "1999-03-03",
+"birth": "US",
+"salary": 13975000,
+"years": 3
+},
+"Cormac Ryan": {
+"team": "MIL",
+"ht": "6-5",
+"born": "1998-10-26",
+"birth": "US"
+},
+"Craig Porter Jr.": {
+"team": "CLE",
+"ht": "6-1",
+"born": "2000-02-26",
+"birth": "US",
+"salary": 2406205,
+"years": 1
+},
+"DaRon Holmes": {
+"team": "DEN",
+"ht": "6-9",
+"born": "2002-08-15",
+"birth": "US",
+"salary": 3372120,
+"years": 2
+},
+"Daeqwon Plowden": {
+"team": "SAC",
+"ht": "6-4",
+"born": "1998-08-29",
+"birth": "US",
+"salary": 2449421,
+"years": 2
+},
+"Dailyn Swain": {
+"team": "CHI",
+"ht": "6-7",
+"born": "2005-07-15",
+"birth": "US",
+"salary": 4965480,
+"years": 4
+},
+"Dalen Terry": {
+"team": "OKC"
+},
+"Dalton Knecht": {
+"team": "NYK",
+"ht": "6-6",
+"born": "2001-04-19",
+"birth": "US",
+"salary": 4201080,
+"years": 1
+},
+"Damian Lillard": {
+"team": "POR",
+"ht": "6-2",
+"born": "1990-07-15",
+"birth": "US",
+"salary": 13398800,
+"years": 2,
+"note": "waived by another team: salary = this deal's guaranteed amount; years from his July 2025 three-season Portland deal"
+},
+"Daniel Gafford": {
+"team": "DAL",
+"ht": "6-10",
+"born": "1998-10-01",
+"birth": "US",
+"salary": 17263584,
+"years": 3
+},
+"Daniss Jenkins": {
+"team": "DET",
+"ht": "6-4",
+"born": "2001-08-17",
+"birth": "US",
+"salary": 4000000,
+"years": 1
+},
+"Danny Wolf": {
+"team": "BKN",
+"ht": "6-11",
+"born": "2004-05-05",
+"birth": "US",
+"salary": 2941440,
+"years": 3
+},
+"Darius Acuff Jr.": {
+"team": "SAC",
+"ht": "6-2",
+"born": "2006-11-16",
+"birth": "US",
+"salary": 8021640,
+"years": 4
+},
+"Darius Garland": {
+"team": "LAC",
+"ht": "6-1",
+"born": "2000-01-26",
+"birth": "US",
+"salary": 42166510,
+"years": 2
+},
+"Darryn Peterson": {
+"team": "UTA",
+"ht": "6-6",
+"born": "2007-01-17",
+"birth": "US",
+"salary": 13195320,
+"years": 4
+},
+"David Jones García": {
+"team": "SAS",
+"ht": "6-4",
+"born": "2001-11-24",
+"birth": "DO"
+},
+"Davion Mitchell": {
+"team": "MIA",
+"ht": "6-0",
+"born": "1998-09-05",
+"birth": "US",
+"salary": 12400000,
+"years": 1
+},
+"Day'Ron Sharpe": {
+"team": "BKN",
+"ht": "6-10",
+"born": "2001-11-06",
+"birth": "US",
+"salary": 10000000,
+"years": 2
+},
+"De'Aaron Fox": {
+"team": "SAS",
+"ht": "6-3",
+"born": "1997-12-20",
+"birth": "US",
+"salary": 49800000,
+"years": 4
+},
+"De'Andre Hunter": {
+"team": "SAC",
+"ht": "6-7",
+"born": "1997-12-02",
+"birth": "US",
+"salary": 24910714,
+"years": 1
+},
+"De'Anthony Melton": {
+"team": "GSW",
+"ht": "6-2",
+"born": "1998-05-28",
+"birth": "US",
+"salary": 5477000,
+"years": 2
+},
+"DeAndre Jordan": {
+"team": "NOP",
+"ht": "6-11",
+"born": "1988-07-21",
+"birth": "US",
+"salary": 3876529,
+"years": 2
+},
+"DeMar DeRozan": {
+"team": "DEN",
+"ht": "6-6",
+"born": "1989-08-07",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Dean Wade": {
+"team": "PHI",
+"ht": "6-9",
+"born": "1996-11-20",
+"birth": "US",
+"salary": 9000000,
+"years": 4
+},
+"Deandre Ayton": {
+"team": "WAS",
+"ht": "7-0",
+"born": "1998-07-23",
+"birth": "BS",
+"salary": 8104000,
+"years": 1
+},
+"Dejounte Murray": {
+"team": "NOP",
+"ht": "6-4",
+"born": "1996-09-19",
+"birth": "US",
+"salary": 32785071,
+"years": 2
+},
+"Deni Avdija": {
+"team": "POR",
+"ht": "6-8",
+"born": "2001-01-03",
+"birth": "IL",
+"salary": 13125000,
+"years": 2
+},
+"Dennis Schröder": {
+"team": "CHA",
+"ht": "6-1",
+"born": "1993-09-15",
+"birth": "DE",
+"salary": 14809200,
+"years": 2
+},
+"Dereck Lively II": {
+"team": "DAL",
+"ht": "7-1",
+"born": "2004-02-12",
+"birth": "US",
+"salary": 7239131,
+"years": 1
+},
+"Derik Queen": {
+"team": "NOP",
+"ht": "6-9",
+"born": "2004-12-27",
+"birth": "US",
+"salary": 5416080,
+"years": 3
+},
+"Derrick Jones Jr.": {
+"team": "LAC",
+"ht": "6-6",
+"born": "1997-02-15",
+"birth": "US",
+"salary": 10476190,
+"years": 1
+},
+"Derrick White": {
+"team": "BOS",
+"ht": "6-4",
+"born": "1994-07-02",
+"birth": "US",
+"salary": 30348000,
+"years": 3
+},
+"Desmond Bane": {
+"team": "ORL",
+"ht": "6-6",
+"born": "1998-06-25",
+"birth": "US",
+"salary": 39446090,
+"years": 3
+},
+"Devin Booker": {
+"team": "PHX",
+"ht": "6-5",
+"born": "1996-10-30",
+"birth": "US",
+"salary": 57078728,
+"years": 4
+},
+"Devin Carter": {
+"team": "BOS",
+"ht": "6-2",
+"born": "2002-03-18",
+"birth": "US",
+"salary": 5158080,
+"years": 1
+},
+"Devin Vassell": {
+"team": "SAS",
+"ht": "6-5",
+"born": "2000-08-23",
+"birth": "US",
+"salary": 27000000,
+"years": 3
+},
+"Dillon Brooks": {
+"team": "PHX",
+"ht": "6-7",
+"born": "1996-01-22",
+"birth": "CA",
+"salary": 19992727,
+"years": 4
+},
+"Dillon Mitchell": {
+"team": "BOS",
+"ht": "6-8",
+"born": "2003-10-03",
+"birth": "US"
+},
+"Domantas Sabonis": {
+"team": "SAC",
+"ht": "6-10",
+"born": "1996-05-03",
+"birth": "US",
+"salary": 45472000,
+"years": 2
+},
+"Dominick Barlow": {
+"team": "PHI",
+"ht": "6-9",
+"born": "2003-05-26",
+"birth": "US",
+"salary": 3415000,
+"years": 1
+},
+"Donovan Clingan": {
+"team": "POR",
+"ht": "7-2",
+"born": "2004-02-23",
+"birth": "US",
+"salary": 7519920,
+"years": 2
+},
+"Donovan Mitchell": {
+"team": "CLE",
+"ht": "6-2",
+"born": "1996-09-07",
+"birth": "US",
+"salary": 50105628,
+"years": 5
+},
+"Donte DiVincenzo": {
+"team": "MIN",
+"ht": "6-4",
+"born": "1997-01-31",
+"birth": "US",
+"salary": 12535000,
+"years": 1
+},
+"Dorian Finney-Smith": {
+"team": "ATL",
+"ht": "6-7",
+"born": "1993-05-04",
+"birth": "US",
+"salary": 13335000,
+"years": 3
+},
+"Drake Powell": {
+"team": "BKN",
+"ht": "6-5",
+"born": "2005-09-08",
+"birth": "US",
+"salary": 3540600,
+"years": 3
+},
+"Draymond Green": {
+"team": "GSW",
+"ht": "6-6",
+"born": "1990-03-04",
+"birth": "US",
+"salary": 27678571,
+"years": 1
+},
+"Drew Timme": {
+"team": "PHX",
+"ht": "6-9",
+"born": "2000-09-09",
+"birth": "US"
+},
+"Dru Smith": {
+"team": "MIA",
+"ht": "6-2",
+"born": "1997-12-30",
+"birth": "US",
+"salary": 2584539,
+"years": 2
+},
+"Duncan Robinson": {
+"team": "DET",
+"ht": "6-7",
+"born": "1994-04-22",
+"birth": "US",
+"salary": 15992957,
+"years": 1
+},
+"Duop Reath": {
+"team": "PHX",
+"ht": "6-9",
+"born": "1996-06-26",
+"birth": "SS"
+},
+"Dylan Cardwell": {
+"team": "SAC"
+},
+"Dylan Harper": {
+"team": "SAS",
+"ht": "6-5",
+"born": "2006-03-02",
+"birth": "US",
+"salary": 12989040,
+"years": 3
+},
+"Dyson Daniels": {
+"team": "ATL",
+"ht": "6-7",
+"born": "2003-03-17",
+"birth": "AU",
+"salary": 25000000,
+"years": 4
+},
+"Ebuka Okorie": {
+"team": "DET",
+"ht": "6-2",
+"born": "2007-04-10",
+"birth": "US",
+"salary": 4481280,
+"years": 4
+},
+"Egor Dëmin": {
+"team": "BKN",
+"ht": "6-8",
+"born": "2006-03-03",
+"birth": "RU",
+"salary": 7233720,
+"years": 3
+},
+"Elijah Harkless": {
+"team": "DET",
+"ht": "6-3",
+"born": "2000-02-03",
+"birth": "US"
+},
+"Emanuel Sharp": {
+"team": "SAC",
+"ht": "6-3",
+"born": "2004-03-07",
+"birth": "IL",
+"salary": 1357763,
+"years": 3
+},
+"Ernest Udeh Jr.": {
+"team": "CLE",
+"ht": "6-11",
+"born": "2004-01-08",
+"birth": "US"
+},
+"Evan Mobley": {
+"team": "CLE",
+"ht": "6-11",
+"born": "2001-06-18",
+"birth": "US",
+"salary": 50105628,
+"years": 4
+},
+"Felix Okpara": {
+"team": "WAS",
+"ht": "6-11",
+"born": "2004-04-20",
+"birth": "NG"
+},
+"Franz Wagner": {
+"team": "ORL",
+"ht": "6-10",
+"born": "2001-08-27",
+"birth": "DE",
+"salary": 41754690,
+"years": 4
+},
+"Fred VanVleet": {
+"team": "HOU",
+"ht": "6-0",
+"born": "1994-02-25",
+"birth": "US",
+"salary": 25000000,
+"years": 1
+},
+"GG Jackson II": {
+"team": "MEM",
+"ht": "6-9",
+"born": "2004-12-17",
+"birth": "US",
+"salary": 2406205,
+"years": 1
+},
+"Gary Payton II": {
+"team": "GSW",
+"ht": "6-2",
+"born": "1992-12-01",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Gary Trent Jr.": {
+"team": "MIL",
+"ht": "6-5",
+"born": "1999-01-18",
+"birth": "US",
+"salary": 15200000,
+"years": 4
+},
+"Georges Niang": {
+"team": "GSW",
+"ht": "6-6",
+"born": "1993-06-17",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Giannis Antetokounmpo": {
+"team": "MIA",
+"ht": "6-11",
+"born": "1994-12-06",
+"birth": "GR",
+"salary": 58456566,
+"years": 2
+},
+"Goga Bitadze": {
+"team": "ORL",
+"ht": "6-11",
+"born": "1999-07-20",
+"birth": "GE",
+"salary": 7608696,
+"years": 1
+},
+"Gradey Dick": {
+"team": "LAC",
+"ht": "6-7",
+"born": "2003-11-20",
+"birth": "US",
+"salary": 7131511,
+"years": 1
+},
+"Graham Ike": {
+"team": "GSW",
+"ht": "6-9",
+"born": "2002-08-03",
+"birth": "US"
+},
+"Grant Nelson": {
+"team": "BKN",
+"ht": "7-0",
+"born": "2002-03-18",
+"birth": "US"
+},
+"Grant Williams": {
+"team": "CHA",
+"ht": "6-7",
+"born": "1998-11-30",
+"birth": "US",
+"salary": 14265750,
+"years": 1
+},
+"Grayson Allen": {
+"team": "CHA",
+"ht": "6-3",
+"born": "1995-10-08",
+"birth": "US",
+"salary": 18125000,
+"years": 2
+},
+"Gui Santos": {
+"team": "GSW",
+"ht": "6-7",
+"born": "2002-06-22",
+"birth": "BR",
+"salary": 4629630,
+"years": 3
+},
+"Hannes Steinbach": {
+"team": "CHA",
+"ht": "6-11",
+"born": "2006-05-01",
+"birth": "DE",
+"salary": 5227200,
+"years": 4
+},
+"Harrison Barnes": {
+"team": "SAS",
+"ht": "6-7",
+"born": "1992-05-30",
+"birth": "US",
+"salary": 8000000,
+"years": 1
+},
+"Harrison Ingram": {
+"team": "UTA",
+"ht": "6-5",
+"born": "2002-11-27",
+"birth": "US"
+},
+"Henri Veesaar": {
+"team": "ATL",
+"ht": "7-0",
+"born": "2004-03-28",
+"birth": "EE",
+"salary": 1357763,
+"years": 4
+},
+"Herbert Jones": {
+"team": "NOP",
+"ht": "6-7",
+"born": "1998-10-06",
+"birth": "US",
+"salary": 14898786,
+"years": 4
+},
+"Hugo González": {
+"team": "BOS",
+"ht": "6-6",
+"born": "2006-02-05",
+"birth": "ES",
+"salary": 2923560,
+"years": 3
+},
+"Immanuel Quickley": {
+"team": "TOR",
+"ht": "6-2",
+"born": "1999-06-17",
+"birth": "US",
+"salary": 32500000,
+"years": 3
+},
+"Isaac Jones": {
+"team": "DET",
+"ht": "6-8",
+"born": "2000-07-11",
+"birth": "US"
+},
+"Isaac Okoro": {
+"team": "CHI",
+"ht": "6-4",
+"born": "2001-01-26",
+"birth": "US",
+"salary": 11814814,
+"years": 1
+},
+"Isaiah Collier": {
+"team": "UTA",
+"ht": "6-4",
+"born": "2004-10-08",
+"birth": "US",
+"salary": 2763960,
+"years": 2
+},
+"Isaiah Crawford": {
+"team": "HOU",
+"ht": "6-6",
+"born": "2001-11-01",
+"birth": "US",
+"salary": 2449421,
+"years": 2
+},
+"Isaiah Evans": {
+"team": "MIN",
+"ht": "6-6",
+"born": "2005-12-06",
+"birth": "US",
+"salary": 1357763,
+"years": 4
+},
+"Isaiah Hartenstein": {
+"team": "OKC",
+"ht": "7-0",
+"born": "1998-05-05",
+"birth": "US",
+"salary": 23148148,
+"years": 3
+},
+"Isaiah Jackson": {
+"team": "LAC",
+"ht": "6-8",
+"born": "2002-01-10",
+"birth": "US",
+"salary": 7000000,
+"years": 2
+},
+"Isaiah Joe": {
+"team": "DET",
+"ht": "6-4",
+"born": "1999-07-02",
+"birth": "US",
+"salary": 11323006,
+"years": 2
+},
+"Isaiah Stewart": {
+"team": "MEM",
+"ht": "6-8",
+"born": "2001-05-22",
+"birth": "US",
+"salary": 15000000,
+"years": 2
+},
+"Ivica Zubac": {
+"team": "IND",
+"ht": "7-0",
+"born": "1997-03-18",
+"birth": "BA",
+"salary": 20342140,
+"years": 2
+},
+"Izaiyah Nelson": {
+"team": "ORL",
+"ht": "6-10",
+"born": "2003-10-01",
+"birth": "US"
+},
+"Ja Morant": {
+"team": "POR",
+"ht": "6-2",
+"born": "1999-08-10",
+"birth": "US",
+"salary": 42166510,
+"years": 2
+},
+"Ja'Kobe Walter": {
+"team": "TOR",
+"ht": "6-4",
+"born": "2004-09-04",
+"birth": "US",
+"salary": 3811800,
+"years": 2
+},
+"Ja'Kobi Gillespie": {
+"team": "SAS",
+"ht": "6-1",
+"born": "2004-03-10",
+"birth": "US"
+},
+"Jabari Smith Jr.": {
+"team": "HOU",
+"ht": "6-11",
+"born": "2003-05-13",
+"birth": "US",
+"salary": 23643411,
+"years": 5
+},
+"Jabari Walker": {
+"team": "PHI",
+"ht": "6-7",
+"born": "2002-07-30",
+"birth": "US",
+"salary": 2584539,
+"years": 1
+},
+"Jaden Akins": {
+"team": "NYK",
+"ht": "6-4",
+"born": "2003-02-25",
+"birth": "US"
+},
+"Jaden Bradley": {
+"team": "TOR",
+"ht": "6-3",
+"born": "2003-09-14",
+"birth": "US",
+"salary": 1357763,
+"years": 4
+},
+"Jaden Hardy": {
+"team": "LAL",
+"ht": "6-3",
+"born": "2002-07-05",
+"birth": "US",
+"salary": 6000000,
+"years": 2
+},
+"Jaden McDaniels": {
+"team": "MIN",
+"ht": "6-9",
+"born": "2000-09-29",
+"birth": "US",
+"salary": 26200001,
+"years": 4
+},
+"Jae'Sean Tate": {
+"team": "HOU",
+"ht": "6-4",
+"born": "1995-10-28",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Jahmai Mashack": {
+"team": "MEM",
+"ht": "6-4",
+"born": "2002-11-10",
+"birth": "US"
+},
+"Jahmir Young": {
+"team": "MIA",
+"ht": "6-0",
+"born": "2000-10-07",
+"birth": "US"
+},
+"Jaime Jaquez Jr.": {
+"team": "MIL",
+"ht": "6-6",
+"born": "2001-02-18",
+"birth": "US",
+"salary": 5939141,
+"years": 1
+},
+"Jake LaRavia": {
+"team": "LAL",
+"ht": "6-7",
+"born": "2001-11-03",
+"birth": "US",
+"salary": 6000000,
+"years": 1
+},
+"Jakob Poeltl": {
+"team": "TOR",
+"ht": "7-0",
+"born": "1995-10-15",
+"birth": "AT",
+"salary": 19500000,
+"years": 4
+},
+"Jalen Brunson": {
+"team": "NYK",
+"ht": "6-2",
+"born": "1996-08-31",
+"birth": "US",
+"salary": 37739521,
+"years": 3
+},
+"Jalen Duren": {
+"team": "DET",
+"ht": "6-10",
+"born": "2003-11-18",
+"birth": "US",
+"salary": 40160643,
+"years": 5
+},
+"Jalen Green": {
+"team": "PHX",
+"ht": "6-4",
+"born": "2002-02-09",
+"birth": "US",
+"salary": 36251166,
+"years": 2
+},
+"Jalen Johnson": {
+"team": "ATL",
+"ht": "6-8",
+"born": "2001-12-18",
+"birth": "US",
+"salary": 30000000,
+"years": 4
+},
+"Jalen Pickett": {
+"team": "LAC",
+"ht": "6-2",
+"born": "1999-10-22",
+"birth": "US"
+},
+"Jalen Slawson": {
+"team": "IND",
+"ht": "6-7",
+"born": "1999-10-22",
+"birth": "US"
+},
+"Jalen Smith": {
+"team": "CHI",
+"ht": "6-8",
+"born": "2000-03-16",
+"birth": "US",
+"salary": 9428571,
+"years": 1
+},
+"Jalen Suggs": {
+"team": "ORL",
+"ht": "6-5",
+"born": "2001-06-03",
+"birth": "US",
+"salary": 32400000,
+"years": 4
+},
+"Jalen Williams": {
+"team": "OKC",
+"ht": "6-5",
+"born": "2001-04-14",
+"birth": "US",
+"salary": 41500000,
+"years": 5
+},
+"Jalen Wilson": {
+"team": "ATL",
+"ht": "6-6",
+"born": "2000-11-04",
+"birth": "US"
+},
+"Jamal Cain": {
+"team": "ORL",
+"ht": "6-7",
+"born": "1999-03-20",
+"birth": "US",
+"salary": 2584539,
+"years": 1
+},
+"Jamal Murray": {
+"team": "DEN",
+"ht": "6-4",
+"born": "1997-02-23",
+"birth": "CA",
+"salary": 50105628,
+"years": 3
+},
+"Jamal Shead": {
+"team": "TOR",
+"ht": "6-1",
+"born": "2002-06-24",
+"birth": "US",
+"salary": 2296271,
+"years": 4
+},
+"Jamaree Bouyea": {
+"team": "PHX",
+"ht": "6-2",
+"born": "1999-06-27",
+"birth": "US",
+"salary": 2584539,
+"years": 1
+},
+"James Harden": {
+"team": "CLE",
+"ht": "6-5",
+"born": "1989-08-26",
+"birth": "US",
+"salary": 30647619,
+"years": 3
+},
+"James Wiseman": {
+"team": "NYK",
+"ht": "6-11",
+"born": "2001-03-31",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Jamir Watkins": {
+"team": "WAS",
+"ht": "6-6",
+"born": "2001-07-06",
+"birth": "US"
+},
+"Jamison Battle": {
+"team": "TOR",
+"ht": "6-7",
+"born": "2001-05-10",
+"birth": "US",
+"salary": 2296271,
+"years": 1
+},
+"Jarace Walker": {
+"team": "IND",
+"ht": "6-7",
+"born": "2003-09-04",
+"birth": "US",
+"salary": 8478542,
+"years": 1
+},
+"Jared McCain": {
+"team": "OKC",
+"ht": "6-3",
+"born": "2004-02-20",
+"birth": "US",
+"salary": 4422600,
+"years": 2
+},
+"Jaren Jackson Jr.": {
+"team": "UTA",
+"ht": "6-10",
+"born": "1999-09-15",
+"birth": "US",
+"salary": 49000000,
+"years": 4
+},
+"Jaron Pierre Jr.": {
+"team": "NOP",
+"ht": "6-5",
+"born": "2002-07-12",
+"birth": "US"
+},
+"Jarred Vanderbilt": {
+"team": "LAL",
+"ht": "6-8",
+"born": "1999-04-03",
+"birth": "US",
+"salary": 12428571,
+"years": 2
+},
+"Jarrett Allen": {
+"team": "CLE",
+"ht": "6-9",
+"born": "1998-04-21",
+"birth": "US",
+"salary": 28000000,
+"years": 3
+},
+"Jase Richardson": {
+"team": "ORL",
+"ht": "6-1",
+"born": "2005-10-16",
+"birth": "US",
+"salary": 3132360,
+"years": 3
+},
+"Javon Small": {
+"team": "MEM",
+"ht": "6-1",
+"born": "2002-12-19",
+"birth": "US"
+},
+"Javonte Green": {
+"team": "DET",
+"ht": "6-5",
+"born": "1993-07-23",
+"birth": "US",
+"salary": 3943679,
+"years": 1
+},
+"Jaxson Hayes": {
+"team": "UTA",
+"ht": "7-0",
+"born": "2000-05-23",
+"birth": "US",
+"salary": 6000000,
+"years": 2
+},
+"Jay Huff": {
+"team": "IND",
+"ht": "7-1",
+"born": "1998-08-25",
+"birth": "US",
+"salary": 2667944,
+"years": 2
+},
+"Jayden Quaintance": {
+"team": "SAS",
+"ht": "6-10",
+"born": "2007-07-11",
+"birth": "US",
+"salary": 3902760,
+"years": 4
+},
+"Jaylen Brown": {
+"team": "PHI",
+"ht": "6-6",
+"born": "1996-10-24",
+"birth": "US",
+"salary": 57078728,
+"years": 3
+},
+"Jaylen Clark": {
+"team": "MIN",
+"ht": "6-5",
+"born": "2001-10-13",
+"birth": "US",
+"salary": 3086420,
+"years": 3
+},
+"Jaylen Wells": {
+"team": "MEM",
+"ht": "6-7",
+"born": "2003-08-26",
+"birth": "US",
+"salary": 2296271,
+"years": 2
+},
+"Jaylin Sellers": {
+"team": "CHI",
+"ht": "6-5",
+"born": "2003-06-03",
+"birth": "US"
+},
+"Jaylin Williams": {
+"team": "OKC",
+"ht": "6-9",
+"born": "2002-06-29",
+"birth": "US",
+"salary": 7774648,
+"years": 2
+},
+"Jaylon Tyson": {
+"team": "CLE",
+"ht": "6-6",
+"born": "2002-12-02",
+"birth": "US",
+"salary": 3658560,
+"years": 2
+},
+"Jayson Kent": {
+"team": "POR",
+"ht": "6-8",
+"born": "2002-02-03",
+"birth": "US"
+},
+"Jayson Tatum": {
+"team": "BOS",
+"ht": "6-8",
+"born": "1998-03-03",
+"birth": "US",
+"salary": 58456566,
+"years": 4
+},
+"Jerami Grant": {
+"team": "MEM",
+"ht": "6-7",
+"born": "1994-03-12",
+"birth": "US",
+"salary": 34206898,
+"years": 2
+},
+"Jeremiah Fears": {
+"team": "NOP",
+"ht": "6-3",
+"born": "2006-10-14",
+"birth": "US",
+"salary": 7896240,
+"years": 3
+},
+"Jericho Sims": {
+"team": "MIL",
+"ht": "6-10",
+"born": "1998-10-20",
+"birth": "US",
+"salary": 2801346,
+"years": 1
+},
+"Jett Howard": {
+"team": "DAL",
+"ht": "6-8",
+"born": "2003-09-14",
+"birth": "US"
+},
+"Jevon Carter": {
+"team": "ORL",
+"ht": "6-0",
+"born": "1995-09-14",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Jimmy Butler": {
+"team": "GSW",
+"ht": "6-6",
+"born": "1989-09-14",
+"birth": "US",
+"salary": 56832773,
+"years": 1
+},
+"Joan Beringer": {
+"team": "MIN",
+"ht": "6-11",
+"born": "2006-11-11",
+"birth": "FR",
+"salary": 4411200,
+"years": 3
+},
+"Jock Landale": {
+"team": "ATL",
+"ht": "6-11",
+"born": "1995-10-25",
+"birth": "AU",
+"salary": 14100000,
+"years": 1
+},
+"Joel Embiid": {
+"team": "PHI",
+"ht": "7-0",
+"born": "1994-03-16",
+"birth": "CM",
+"salary": 58100000,
+"years": 3
+},
+"John Collins": {
+"team": "DET",
+"ht": "6-9",
+"born": "1997-09-23",
+"birth": "US",
+"salary": 17000000,
+"years": 3
+},
+"John Tonje": {
+"team": "POR",
+"ht": "6-4",
+"born": "2001-04-23",
+"birth": "US"
+},
+"Johnny Furphy": {
+"team": "IND",
+"ht": "6-8",
+"born": "2004-12-08",
+"birth": "AU",
+"salary": 2296271,
+"years": 2
+},
+"Jonathan Isaac": {
+"team": "ORL",
+"ht": "6-10",
+"born": "1997-10-03",
+"birth": "US",
+"salary": 10449421,
+"years": 1
+},
+"Jonathan Kuminga": {
+"team": "MIN",
+"ht": "6-7",
+"born": "2002-10-06",
+"birth": "CD",
+"salary": 6064000,
+"years": 2
+},
+"Jonathan Mogbo": {
+"team": "SAC",
+"ht": "6-9",
+"born": "2001-10-29",
+"birth": "US"
+},
+"Jordan Clarkson": {
+"team": "NYK",
+"ht": "6-5",
+"born": "1992-06-07",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Jordan Goodwin": {
+"team": "PHX",
+"ht": "6-3",
+"born": "1998-10-23",
+"birth": "US",
+"salary": 5864198,
+"years": 3
+},
+"Jordan Hawkins": {
+"team": "CHI",
+"ht": "6-5",
+"born": "2002-04-29",
+"birth": "US",
+"salary": 7021895,
+"years": 1
+},
+"Jordan McLaughlin": {
+"team": "SAS",
+"ht": "5-11",
+"born": "1996-04-09",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Jordan Miller": {
+"team": "LAC",
+"ht": "6-5",
+"born": "2000-01-23",
+"birth": "US",
+"salary": 5300000,
+"years": 3
+},
+"Jordan Poole": {
+"team": "NOP",
+"ht": "6-4",
+"born": "1999-06-19",
+"birth": "US",
+"salary": 34044642,
+"years": 1
+},
+"Jordan Walsh": {
+"team": "BOS",
+"ht": "6-6",
+"born": "2004-03-03",
+"birth": "US",
+"salary": 2406205,
+"years": 4
+},
+"Jose Alvarado": {
+"team": "NYK",
+"ht": "6-0",
+"born": "1998-04-12",
+"birth": "US",
+"salary": 4500000,
+"years": 3
+},
+"Josh Dix": {
+"team": "OKC",
+"ht": "6-6",
+"born": "2004-06-29",
+"birth": "US"
+},
+"Josh Giddey": {
+"team": "CHI",
+"ht": "6-7",
+"born": "2002-10-10",
+"birth": "AU",
+"salary": 25000000,
+"years": 3
+},
+"Josh Green": {
+"team": "UTA",
+"ht": "6-6",
+"born": "2000-11-16",
+"birth": "AU",
+"salary": 14679012,
+"years": 1
+},
+"Josh Hart": {
+"team": "NYK",
+"ht": "6-5",
+"born": "1995-03-06",
+"birth": "US",
+"salary": 20923760,
+"years": 2
+},
+"Josh Minott": {
+"team": "BKN",
+"ht": "6-8",
+"born": "2002-11-25",
+"birth": "US",
+"salary": 4500000,
+"years": 2
+},
+"Josh Okogie": {
+"team": "UTA",
+"ht": "6-4",
+"born": "1998-09-01",
+"birth": "NG",
+"salary": 6000000,
+"years": 2
+},
+"Joshua Jefferson": {
+"team": "BKN",
+"ht": "6-9",
+"born": "2003-11-21",
+"birth": "US",
+"salary": 2969520,
+"years": 4
+},
+"Jrue Holiday": {
+"team": "POR",
+"ht": "6-4",
+"born": "1990-06-12",
+"birth": "US",
+"salary": 34800000,
+"years": 2
+},
+"Julian Champagnie": {
+"team": "SAS",
+"ht": "6-7",
+"born": "2001-06-29",
+"birth": "US",
+"salary": 13888889,
+"years": 3
+},
+"Julian Phillips": {
+"team": "HOU",
+"ht": "6-6",
+"born": "2003-11-05",
+"birth": "US"
+},
+"Julian Reese": {
+"team": "NOP",
+"ht": "6-9",
+"born": "2003-06-30",
+"birth": "US"
+},
+"Julian Strawther": {
+"team": "DEN",
+"ht": "6-6",
+"born": "2002-04-18",
+"birth": "US",
+"salary": 4826931,
+"years": 1
+},
+"Julius Randle": {
+"team": "BKN",
+"ht": "6-9",
+"born": "1994-11-29",
+"birth": "US",
+"salary": 33333334,
+"years": 2
+},
+"Justin Champagnie": {
+"team": "WAS",
+"ht": "6-6",
+"born": "2001-06-29",
+"birth": "US",
+"salary": 2667944,
+"years": 2
+},
+"Justin Edwards": {
+"team": "PHI",
+"ht": "6-7",
+"born": "2003-12-16",
+"birth": "US",
+"salary": 2411090,
+"years": 2
+},
+"Jusuf Nurkić": {
+"team": "UTA",
+"ht": "6-11",
+"born": "1994-08-23",
+"birth": "BA",
+"salary": 10576923,
+"years": 2
+},
+"Kam Jones": {
+"team": "MIL",
+"ht": "6-4",
+"born": "2002-02-25",
+"birth": "US"
+},
+"Karim López": {
+"team": "MEM",
+"ht": "6-8",
+"born": "2007-04-12",
+"birth": "MX",
+"salary": 3746760,
+"years": 4
+},
+"Karl-Anthony Towns": {
+"team": "NYK",
+"ht": "7-0",
+"born": "1995-11-15",
+"birth": "US",
+"salary": 57078728,
+"years": 2
+},
+"Karlo Matković": {
+"team": "NOP",
+"ht": "6-10",
+"born": "2001-03-30",
+"birth": "BA",
+"salary": 2296271,
+"years": 1
+},
+"Kasparas Jakučionis": {
+"team": "MIL",
+"ht": "6-5",
+"born": "2006-05-29",
+"birth": "LT",
+"salary": 3841680,
+"years": 3
+},
+"Kawhi Leonard": {
+"team": "TOR",
+"ht": "6-6",
+"born": "1991-06-29",
+"birth": "US",
+"salary": 50300000,
+"years": 3
+},
+"Keaton Wagler": {
+"team": "LAC",
+"ht": "6-6",
+"born": "2007-02-03",
+"birth": "US",
+"salary": 9674760,
+"years": 4
+},
+"Keegan Murray": {
+"team": "SAC",
+"ht": "6-8",
+"born": "2000-08-19",
+"birth": "US",
+"salary": 24137936,
+"years": 5
+},
+"Kel'el Ware": {
+"team": "MIL",
+"ht": "7-0",
+"born": "2004-04-20",
+"birth": "US",
+"salary": 4654920,
+"years": 2
+},
+"Keldon Johnson": {
+"team": "SAS",
+"ht": "6-6",
+"born": "1999-10-11",
+"birth": "US",
+"salary": 17500000,
+"years": 1
+},
+"Kelly Oubre Jr.": {
+"team": "IND",
+"ht": "6-8",
+"born": "1995-12-09",
+"birth": "US",
+"salary": 8050000,
+"years": 2
+},
+"Kenrich Williams": {
+"team": "OKC",
+"ht": "6-7",
+"born": "1994-12-02",
+"birth": "US",
+"salary": 5000000,
+"years": 1
+},
+"Kentavious Caldwell-Pope": {
+"team": "PHI",
+"ht": "6-5",
+"born": "1993-02-18",
+"birth": "US",
+"salary": 20194392,
+"years": 2
+},
+"Keon Ellis": {
+"team": "BKN",
+"ht": "6-4",
+"born": "2000-01-08",
+"birth": "US",
+"salary": 8780488,
+"years": 2
+},
+"Keshad Johnson": {
+"team": "MIA",
+"ht": "6-6",
+"born": "2001-06-23",
+"birth": "US"
+},
+"Keshon Gilbert": {
+"team": "ATL",
+"ht": "6-4",
+"born": "2003-06-30",
+"birth": "US"
+},
+"Kevin Durant": {
+"team": "HOU",
+"ht": "6-11",
+"born": "1988-09-29",
+"birth": "US",
+"salary": 43902439,
+"years": 2
+},
+"Kevin Huerter": {
+"team": "DET",
+"ht": "6-6",
+"born": "1998-08-27",
+"birth": "US",
+"salary": 8333333,
+"years": 3
+},
+"Kevin McCullar Jr.": {
+"team": "TOR",
+"ht": "6-6",
+"born": "2001-03-15",
+"birth": "US"
+},
+"Kevon Looney": {
+"team": "LAL",
+"ht": "6-9",
+"born": "1996-02-06",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Keyonte George": {
+"team": "UTA",
+"ht": "6-4",
+"born": "2003-11-08",
+"birth": "US",
+"salary": 6563925,
+"years": 6
+},
+"Khalifa Diop": {
+"team": "CLE",
+"ht": "6-11",
+"born": "2002-01-15",
+"birth": "SN",
+"salary": 1357763,
+"years": 4
+},
+"Khaman Maluach": {
+"team": "PHX",
+"ht": "7-1",
+"born": "2006-09-14",
+"birth": "SS",
+"salary": 6316680,
+"years": 3
+},
+"Khris Middleton": {
+"team": "WAS",
+"ht": "6-7",
+"born": "1991-08-12",
+"birth": "US",
+"salary": 5591122,
+"years": 3
+},
+"Killian Hayes": {
+"team": "SAC",
+"ht": "6-4",
+"born": "2001-07-27",
+"birth": "US"
+},
+"Kingston Flemings": {
+"team": "ATL",
+"ht": "6-4",
+"born": "2007-01-03",
+"birth": "US",
+"salary": 7348680,
+"years": 4
+},
+"Klay Thompson": {
+"team": "MIA",
+"ht": "6-5",
+"born": "1990-02-08",
+"birth": "US",
+"salary": 5600000,
+"years": 1,
+"note": "waived by another team: salary = this deal's guaranteed amount; years unknown, one assumed"
+},
+"Koa Peat": {
+"team": "PHX",
+"ht": "6-8",
+"born": "2007-01-20",
+"birth": "US",
+"salary": 2926800,
+"years": 4
+},
+"Kobe Brown": {
+"team": "IND",
+"ht": "6-7",
+"born": "2000-01-01",
+"birth": "US"
+},
+"Kobe Bufkin": {
+"team": "UTA",
+"ht": "6-4",
+"born": "2003-09-21",
+"birth": "US"
+},
+"Kobe Sanders": {
+"team": "LAC",
+"ht": "6-8",
+"born": "2002-05-30",
+"birth": "US",
+"salary": 2622139,
+"years": 4
+},
+"Kon Knueppel": {
+"team": "CHA",
+"ht": "6-6",
+"born": "2005-08-03",
+"birth": "US",
+"salary": 10516560,
+"years": 3
+},
+"Kris Dunn": {
+"team": "LAC",
+"ht": "6-3",
+"born": "1994-03-18",
+"birth": "US",
+"salary": 5684800,
+"years": 1
+},
+"Kris Murray": {
+"team": "MEM",
+"ht": "6-8",
+"born": "2000-08-19",
+"birth": "US",
+"salary": 5315004,
+"years": 1
+},
+"Kristaps Porziņģis": {
+"team": "GSW",
+"ht": "7-2",
+"born": "1995-08-02",
+"birth": "LV",
+"salary": 19512195,
+"years": 2
+},
+"Kylan Boswell": {
+"team": "CHA",
+"ht": "6-2",
+"born": "2005-04-18",
+"birth": "US"
+},
+"Kyle Anderson": {
+"team": "TOR",
+"ht": "6-8",
+"born": "1993-09-20",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Kyle Filipowski": {
+"team": "UTA",
+"ht": "6-11",
+"born": "2003-11-07",
+"birth": "US",
+"salary": 3000000,
+"years": 1
+},
+"Kyle Kuzma": {
+"team": "MIL",
+"ht": "6-8",
+"born": "1995-07-24",
+"birth": "US",
+"salary": 20345152,
+"years": 1
+},
+"Kyrie Irving": {
+"team": "DAL",
+"ht": "6-2",
+"born": "1992-03-23",
+"birth": "AU",
+"salary": 39491282,
+"years": 2
+},
+"Kyshawn George": {
+"team": "WAS",
+"ht": "6-8",
+"born": "2003-12-12",
+"birth": "CH",
+"salary": 3108000,
+"years": 2
+},
+"LJ Cryer": {
+"team": "GSW",
+"ht": "6-0",
+"born": "2001-10-09",
+"birth": "US"
+},
+"LaMelo Ball": {
+"team": "MIN",
+"ht": "6-7",
+"born": "2001-08-22",
+"birth": "US",
+"salary": 40770520,
+"years": 3
+},
+"Labaron Philon Jr.": {
+"team": "PHI",
+"ht": "6-4",
+"born": "2005-11-24",
+"birth": "US",
+"salary": 3597120,
+"years": 4
+},
+"Landry Shamet": {
+"team": "NYK",
+"ht": "6-5",
+"born": "1997-03-13",
+"birth": "US",
+"salary": 5357143,
+"years": 4
+},
+"Larry Nance Jr.": {
+"team": "IND",
+"ht": "6-6",
+"born": "1993-01-01",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Lauri Markkanen": {
+"team": "UTA",
+"ht": "7-1",
+"born": "1997-05-22",
+"birth": "FI",
+"salary": 46113154,
+"years": 3
+},
+"Lawson Lovering": {
+"team": "LAL",
+"ht": "7-0",
+"born": "2003-05-09",
+"birth": "US"
+},
+"LeBron James": {
+"team": "PHI",
+"ht": "6-9",
+"born": "1984-12-30",
+"birth": "US",
+"salary": 3876529,
+"years": 2
+},
+"Leaky Black": {
+"team": "SAC",
+"ht": "6-6",
+"born": "1999-06-14",
+"birth": "US"
+},
+"Leonard Miller": {
+"team": "CHI",
+"ht": "6-10",
+"born": "2003-11-26",
+"birth": "CA",
+"salary": 2406205,
+"years": 1
+},
+"Liam McNeeley": {
+"team": "CHA",
+"ht": "6-7",
+"born": "2005-10-10",
+"birth": "US",
+"salary": 2902080,
+"years": 3
+},
+"Luguentz Dort": {
+"team": "ATL",
+"ht": "6-4",
+"born": "1999-04-19",
+"birth": "CA",
+"salary": 18222222,
+"years": 1
+},
+"Luka Dončić": {
+"team": "LAL",
+"ht": "6-8",
+"born": "1999-02-28",
+"birth": "SI",
+"salary": 49800000,
+"years": 3
+},
+"Luka Garza": {
+"team": "BOS",
+"ht": "6-10",
+"born": "1998-12-27",
+"birth": "US",
+"salary": 2801346,
+"years": 1
+},
+"Luke Kennard": {
+"team": "PHX",
+"ht": "6-5",
+"born": "1996-06-24",
+"birth": "US",
+"salary": 6064000,
+"years": 2
+},
+"Luke Kornet": {
+"team": "SAS",
+"ht": "7-1",
+"born": "1995-07-15",
+"birth": "US",
+"salary": 10450000,
+"years": 3
+},
+"Malachi Smith": {
+"team": "TOR",
+"ht": "6-4",
+"born": "1999-12-06",
+"birth": "US"
+},
+"Malevy Leons": {
+"team": "GSW",
+"ht": "6-9",
+"born": "1999-09-23",
+"birth": "NL"
+},
+"Malik Dia": {
+"team": "NOP",
+"ht": "6-9",
+"born": "2004-02-04",
+"birth": "US"
+},
+"Malik Monk": {
+"team": "SAC",
+"ht": "6-3",
+"born": "1998-02-04",
+"birth": "US",
+"salary": 20190035,
+"years": 2
+},
+"Maliq Brown": {
+"team": "SAS",
+"ht": "6-9",
+"born": "2003-11-16",
+"birth": "US"
+},
+"Marcus Sasser": {
+"team": "DAL",
+"ht": "6-1",
+"born": "2000-09-21",
+"birth": "US",
+"salary": 5198983,
+"years": 1
+},
+"Marcus Smart": {
+"team": "HOU",
+"ht": "6-3",
+"born": "1994-03-06",
+"birth": "US",
+"salary": 6064000,
+"years": 2
+},
+"Mario Hezonja": {
+"team": "CLE",
+"ht": "6-8",
+"born": "1995-02-25",
+"birth": "HR",
+"salary": 2449421,
+"years": 1
+},
+"Mark Williams": {
+"team": "PHX",
+"ht": "7-1",
+"born": "2001-12-16",
+"birth": "US",
+"salary": 11728395,
+"years": 3
+},
+"Marvin Bagley III": {
+"team": "DEN",
+"ht": "6-10",
+"born": "1999-03-14",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Matas Buzelis": {
+"team": "CHI",
+"ht": "6-8",
+"born": "2004-10-13",
+"birth": "US",
+"salary": 5715360,
+"years": 2
+},
+"Matisse Thybulle": {
+"team": "LAL",
+"ht": "6-5",
+"born": "1997-03-04",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Max Christie": {
+"team": "DAL",
+"ht": "6-5",
+"born": "2003-02-10",
+"birth": "US",
+"salary": 8285714,
+"years": 2
+},
+"Max Strus": {
+"team": "LAC",
+"ht": "6-5",
+"born": "1996-03-28",
+"birth": "US",
+"salary": 16660836,
+"years": 1
+},
+"Maxime Raynaud": {
+"team": "SAC",
+"ht": "7-1",
+"born": "2003-04-07",
+"birth": "FR",
+"salary": 2150917,
+"years": 2
+},
+"Meleek Thomas": {
+"team": "CLE",
+"ht": "6-5",
+"born": "2006-08-06",
+"birth": "US",
+"salary": 1357763,
+"years": 4
+},
+"Micah Peavy": {
+"team": "OKC",
+"ht": "6-7",
+"born": "2001-07-16",
+"birth": "US",
+"salary": 2150917,
+"years": 1
+},
+"Micah Potter": {
+"team": "POR",
+"ht": "6-9",
+"born": "1998-04-06",
+"birth": "US",
+"salary": 2801346,
+"years": 1
+},
+"Michael Ajayi": {
+"team": "CHA",
+"ht": "6-7",
+"born": "2003-05-23",
+"birth": "US"
+},
+"Michael Porter Jr.": {
+"team": "BKN",
+"ht": "6-10",
+"born": "1998-06-29",
+"birth": "US",
+"salary": 40806150,
+"years": 1
+},
+"Mikal Bridges": {
+"team": "NYK",
+"ht": "6-6",
+"born": "1996-08-30",
+"birth": "US",
+"salary": 33482145,
+"years": 4
+},
+"Mike Conley": {
+"team": "BOS",
+"ht": "6-1",
+"born": "1987-10-11",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Mikel Brown Jr.": {
+"team": "BKN",
+"ht": "6-5",
+"born": "2006-04-03",
+"birth": "US",
+"salary": 8787000,
+"years": 4
+},
+"Miles Bridges": {
+"team": "PHX",
+"ht": "6-7",
+"born": "1998-03-21",
+"birth": "US",
+"salary": 22826087,
+"years": 1
+},
+"Miles McBride": {
+"team": "NYK",
+"ht": "6-2",
+"born": "2000-09-08",
+"birth": "US",
+"salary": 3956523,
+"years": 1
+},
+"Mitchell Robinson": {
+"team": "BOS",
+"ht": "7-0",
+"born": "1998-04-01",
+"birth": "US",
+"salary": 15044000,
+"years": 3
+},
+"Mo Bamba": {
+"team": "UTA",
+"ht": "7-0",
+"born": "1998-05-12",
+"birth": "US",
+"salary": 3286399,
+"years": 2
+},
+"Mohamed Diawara": {
+"team": "NYK",
+"ht": "6-9",
+"born": "2005-04-29",
+"birth": "FR",
+"salary": 2232143,
+"years": 4
+},
+"Morez Johnson Jr.": {
+"team": "DAL",
+"ht": "6-9",
+"born": "2006-01-25",
+"birth": "US",
+"salary": 6754800,
+"years": 4
+},
+"Moritz Wagner": {
+"team": "BKN",
+"ht": "6-11",
+"born": "1997-04-26",
+"birth": "DE",
+"salary": 9268293,
+"years": 2
+},
+"Moses Moody": {
+"team": "GSW",
+"ht": "6-5",
+"born": "2002-05-31",
+"birth": "US",
+"salary": 12500000,
+"years": 2
+},
+"Mouhamed Gueye": {
+"team": "ATL",
+"ht": "6-11",
+"born": "2002-11-09",
+"birth": "SN",
+"salary": 2406205,
+"years": 1
+},
+"Moussa Cissé": {
+"team": "DAL",
+"ht": "6-11",
+"born": "2002-09-10",
+"birth": "GN",
+"salary": 2185116,
+"years": 2
+},
+"Moussa Diabaté": {
+"team": "CHA",
+"ht": "6-10",
+"born": "2002-01-21",
+"birth": "FR",
+"salary": 2461462,
+"years": 1
+},
+"Myles Turner": {
+"team": "MIL",
+"ht": "6-11",
+"born": "1996-03-24",
+"birth": "US",
+"salary": 26584164,
+"years": 3
+},
+"Myron Gardner": {
+"team": "MIA",
+"ht": "6-5",
+"born": "2001-05-21",
+"birth": "US",
+"salary": 2150917,
+"years": 2
+},
+"Nae'Qwan Tomlin": {
+"team": "CLE",
+"ht": "6-8",
+"born": "2000-12-10",
+"birth": "US",
+"salary": 2411090,
+"years": 1
+},
+"Naji Marshall": {
+"team": "DAL",
+"ht": "6-6",
+"born": "1998-01-24",
+"birth": "US",
+"salary": 9428571,
+"years": 4
+},
+"Nate Ament": {
+"team": "MIL",
+"ht": "6-10",
+"born": "2006-12-10",
+"birth": "US",
+"salary": 5502000,
+"years": 4
+},
+"Nate Bittle": {
+"team": "TOR",
+"ht": "7-0",
+"born": "2003-06-03",
+"birth": "US"
+},
+"Naz Reid": {
+"team": "CHA",
+"ht": "6-9",
+"born": "1999-08-26",
+"birth": "US",
+"salary": 23275862,
+"years": 4
+},
+"Neemias Queta": {
+"team": "BOS",
+"ht": "7-0",
+"born": "1999-07-13",
+"birth": "PT",
+"salary": 2667944,
+"years": 5
+},
+"Nic Claxton": {
+"team": "CHI",
+"ht": "6-11",
+"born": "1999-04-17",
+"birth": "US",
+"salary": 23147727,
+"years": 2
+},
+"Nick Martinelli": {
+"team": "LAC",
+"ht": "6-7",
+"born": "2004-04-20",
+"birth": "US"
+},
+"Nick Richards": {
+"team": "MIA",
+"ht": "6-11",
+"born": "1997-11-29",
+"birth": "JM",
+"salary": 2449421,
+"years": 1
+},
+"Nick Smith Jr.": {
+"team": "LAL",
+"ht": "6-2",
+"born": "2004-04-18",
+"birth": "US"
+},
+"Nickeil Alexander-Walker": {
+"team": "ATL",
+"ht": "6-5",
+"born": "1998-09-02",
+"birth": "CA",
+"salary": 14403710,
+"years": 3
+},
+"Nicolas Batum": {
+"team": "LAC",
+"ht": "6-7",
+"born": "1988-12-14",
+"birth": "FR",
+"salary": 5881680,
+"years": 1
+},
+"Nikola Jokić": {
+"team": "DEN",
+"ht": "6-11",
+"born": "1995-02-19",
+"birth": "RS",
+"salary": 59033114,
+"years": 2
+},
+"Nikola Jović": {
+"team": "MIA",
+"ht": "6-10",
+"born": "2003-06-09",
+"birth": "GB",
+"salary": 16200000,
+"years": 4
+},
+"Nikola Topić": {
+"team": "OKC",
+"ht": "6-6",
+"born": "2005-08-10",
+"birth": "RS",
+"salary": 5429760,
+"years": 2
+},
+"Nikola Vučević": {
+"team": "ORL",
+"ht": "6-9",
+"born": "1990-10-24",
+"birth": "CH",
+"salary": 2449421,
+"years": 1
+},
+"Nique Clifford": {
+"team": "OKC",
+"ht": "6-5",
+"born": "2002-02-09",
+"birth": "US",
+"salary": 3263400,
+"years": 3
+},
+"Noa Essengue": {
+"team": "CHI",
+"ht": "6-8",
+"born": "2006-12-18",
+"birth": "FR",
+"salary": 5701200,
+"years": 3
+},
+"Noah Clowney": {
+"team": "BKN",
+"ht": "6-10",
+"born": "2004-07-14",
+"birth": "US",
+"salary": 5414034,
+"years": 1
+},
+"Noah Penda": {
+"team": "ORL",
+"ht": "6-7",
+"born": "2005-01-07",
+"birth": "FR",
+"salary": 2150917,
+"years": 3
+},
+"Nolan Traoré": {
+"team": "BKN",
+"ht": "6-3",
+"born": "2006-05-28",
+"birth": "FR",
+"salary": 4002000,
+"years": 3
+},
+"Norchad Omier": {
+"team": "CLE",
+"ht": "6-7",
+"born": "2001-08-28",
+"birth": "NI"
+},
+"Norman Powell": {
+"team": "CHI",
+"ht": "6-3",
+"born": "1993-05-25",
+"birth": "US",
+"salary": 21500000,
+"years": 2
+},
+"OG Anunoby": {
+"team": "NYK",
+"ht": "6-7",
+"born": "1997-07-17",
+"birth": "GB",
+"salary": 42500000,
+"years": 3
+},
+"Obi Toppin": {
+"team": "IND",
+"ht": "6-9",
+"born": "1998-03-04",
+"birth": "US",
+"salary": 15000000,
+"years": 2
+},
+"Olivier-Maxence Prosper": {
+"team": "MEM",
+"ht": "6-7",
+"born": "2002-07-03",
+"birth": "CA",
+"salary": 3500172,
+"years": 3
+},
+"Onyeka Okongwu": {
+"team": "ATL",
+"ht": "6-10",
+"born": "2000-12-11",
+"birth": "US",
+"salary": 16120000,
+"years": 2
+},
+"Oscar Tshiebwe": {
+"team": "HOU",
+"ht": "6-8",
+"born": "1999-11-27",
+"birth": "CD"
+},
+"Oso Ighodaro": {
+"team": "PHX",
+"ht": "6-11",
+"born": "2002-07-14",
+"birth": "US",
+"salary": 2296271,
+"years": 5
+},
+"Ousmane Dieng": {
+"team": "MIL",
+"ht": "6-9",
+"born": "2003-05-21",
+"birth": "FR",
+"salary": 5750000,
+"years": 3
+},
+"P.J. Washington": {
+"team": "DAL",
+"ht": "6-7",
+"born": "1998-08-23",
+"birth": "US",
+"salary": 19813044,
+"years": 4
+},
+"PJ Hall": {
+"team": "CHA",
+"ht": "6-8",
+"born": "2002-02-21",
+"birth": "US"
+},
+"Pacôme Dadiet": {
+"team": "NYK",
+"ht": "6-9",
+"born": "2005-07-27",
+"birth": "FR",
+"salary": 2983680,
+"years": 2
+},
+"Paolo Banchero": {
+"team": "ORL",
+"ht": "6-10",
+"born": "2002-11-12",
+"birth": "US",
+"salary": 41500000,
+"years": 5
+},
+"Pascal Siakam": {
+"team": "IND",
+"ht": "6-8",
+"born": "1994-04-02",
+"birth": "CM",
+"salary": 48924624,
+"years": 2
+},
+"Pat Spencer": {
+"team": "PHX",
+"ht": "6-2",
+"born": "1996-07-04",
+"birth": "US"
+},
+"Patrick Williams": {
+"team": "CHI",
+"ht": "6-6",
+"born": "2001-08-26",
+"birth": "US",
+"salary": 18000000,
+"years": 3
+},
+"Paul George": {
+"team": "BOS",
+"ht": "6-8",
+"born": "1990-05-02",
+"birth": "US",
+"salary": 54126380,
+"years": 2
+},
+"Paul Reed": {
+"team": "DET",
+"ht": "6-9",
+"born": "1999-06-14",
+"birth": "US",
+"salary": 5602689,
+"years": 1
+},
+"Payton Pritchard": {
+"team": "BOS",
+"ht": "6-1",
+"born": "1998-01-28",
+"birth": "US",
+"salary": 7767857,
+"years": 4
+},
+"Pelle Larsson": {
+"team": "MIA",
+"ht": "6-5",
+"born": "2001-02-23",
+"birth": "SE",
+"salary": 2296271,
+"years": 5
+},
+"Pete Nance": {
+"team": "MIL",
+"ht": "6-9",
+"born": "2000-02-19",
+"birth": "US",
+"salary": 2537526,
+"years": 1
+},
+"Peyton Watson": {
+"team": "CLE",
+"ht": "6-8",
+"born": "2002-09-11",
+"birth": "US",
+"salary": 20465116,
+"years": 4
+},
+"Precious Achiuwa": {
+"team": "SAC",
+"ht": "6-8",
+"born": "1999-09-19",
+"birth": "NG",
+"salary": 5477000,
+"years": 2
+},
+"Quadir Copeland": {
+"team": "HOU",
+"ht": "6-6",
+"born": "2003-09-04",
+"birth": "US"
+},
+"Quentin Grimes": {
+"team": "LAL",
+"ht": "6-5",
+"born": "2000-05-08",
+"birth": "US",
+"salary": 13953489,
+"years": 4
+},
+"Quenton Jackson": {
+"team": "IND",
+"ht": "6-4",
+"born": "1998-09-15",
+"birth": "US"
+},
+"Quinten Post": {
+"team": "MEM",
+"ht": "7-0",
+"born": "2000-03-21",
+"birth": "NL",
+"salary": 8285714,
+"years": 3
+},
+"RJ Barrett": {
+"team": "TOR",
+"ht": "6-6",
+"born": "2000-06-14",
+"birth": "CA",
+"salary": 29616071,
+"years": 1
+},
+"Rasheer Fleming": {
+"team": "PHX",
+"ht": "6-9",
+"born": "2004-07-10",
+"birth": "US",
+"salary": 2150917,
+"years": 3
+},
+"RayJ Dennis": {
+"team": "ATL",
+"ht": "6-1",
+"born": "2001-03-30",
+"birth": "US"
+},
+"Rayan Rupert": {
+"team": "PHI",
+"ht": "6-7",
+"born": "2004-05-31",
+"birth": "FR"
+},
+"Reece Beekman": {
+"team": "WAS",
+"ht": "6-3",
+"born": "2001-10-08",
+"birth": "US"
+},
+"Reed Sheppard": {
+"team": "HOU",
+"ht": "6-2",
+"born": "2004-06-24",
+"birth": "US",
+"salary": 11108880,
+"years": 2
+},
+"Richie Saunders": {
+"team": "MEM",
+"ht": "6-5",
+"born": "2001-09-19",
+"birth": "US"
+},
+"Riley Minix": {
+"team": "CLE",
+"ht": "6-7",
+"born": "2000-09-22",
+"birth": "US"
+},
+"Robert Williams": {
+"team": "POR",
+"ht": "6-9",
+"born": "1997-10-17",
+"birth": "US",
+"salary": 13968254,
+"years": 3
+},
+"Rocco Zikarsky": {
+"team": "MIN",
+"ht": "7-3",
+"born": "2006-07-11",
+"birth": "AU"
+},
+"Ron Harper Jr.": {
+"team": "BOS",
+"ht": "6-5",
+"born": "2000-04-12",
+"birth": "US",
+"salary": 3150752,
+"years": 4
+},
+"Ron Holland": {
+"team": "DET",
+"ht": "6-8",
+"born": "2005-07-07",
+"birth": "US",
+"salary": 9069600,
+"years": 2
+},
+"Royce O'Neale": {
+"team": "CHA",
+"ht": "6-6",
+"born": "1993-06-05",
+"birth": "US",
+"salary": 10875000,
+"years": 2
+},
+"Rudy Gobert": {
+"team": "MIN",
+"ht": "7-1",
+"born": "1992-06-26",
+"birth": "FR",
+"salary": 36500000,
+"years": 2
+},
+"Rui Hachimura": {
+"team": "LAC",
+"ht": "6-8",
+"born": "1998-02-08",
+"birth": "JP",
+"salary": 14000000,
+"years": 2
+},
+"Ryan Conwell": {
+"team": "MIA",
+"ht": "6-4",
+"born": "2004-06-15",
+"birth": "US",
+"salary": 1357763,
+"years": 3
+},
+"Ryan Dunn": {
+"team": "PHX",
+"ht": "6-7",
+"born": "2003-01-07",
+"birth": "US",
+"salary": 2784240,
+"years": 2
+},
+"Ryan Kalkbrenner": {
+"team": "CHA",
+"ht": "7-1",
+"born": "2002-01-17",
+"birth": "US",
+"salary": 2411090,
+"years": 3
+},
+"Ryan Nembhard": {
+"team": "DEN",
+"ht": "5-11",
+"born": "2003-03-10",
+"birth": "CA",
+"salary": 2150917,
+"years": 1
+},
+"Ryan Rollins": {
+"team": "MIL",
+"ht": "6-3",
+"born": "2002-07-03",
+"birth": "US",
+"salary": 4000000,
+"years": 2
+},
+"Saddiq Bey": {
+"team": "NOP",
+"ht": "6-8",
+"born": "1999-04-09",
+"birth": "US",
+"salary": 6440678,
+"years": 4
+},
+"Sam Hauser": {
+"team": "BOS",
+"ht": "6-7",
+"born": "1997-12-08",
+"birth": "US",
+"salary": 10848215,
+"years": 3
+},
+"Sam Merrill": {
+"team": "CLE",
+"ht": "6-4",
+"born": "1996-05-15",
+"birth": "US",
+"salary": 9160715,
+"years": 3
+},
+"Sandro Mamukelashvili": {
+"team": "LAL",
+"ht": "6-9",
+"born": "1999-05-23",
+"birth": "US",
+"salary": 13000000,
+"years": 4
+},
+"Santi Aldama": {
+"team": "DAL",
+"ht": "7-0",
+"born": "2001-01-10",
+"birth": "ES",
+"salary": 17007043,
+"years": 2
+},
+"Scoot Henderson": {
+"team": "POR",
+"ht": "6-3",
+"born": "2004-02-03",
+"birth": "US",
+"salary": 13585523,
+"years": 1
+},
+"Scottie Barnes": {
+"team": "TOR",
+"ht": "6-8",
+"born": "2001-08-01",
+"birth": "US",
+"salary": 41754690,
+"years": 4
+},
+"Scotty Pippen Jr.": {
+"team": "MEM",
+"ht": "6-2",
+"born": "2000-11-10",
+"birth": "US",
+"salary": 2461462,
+"years": 2
+},
+"Sean Pedulla": {
+"team": "SAC",
+"ht": "6-1",
+"born": "2002-10-10",
+"birth": "US"
+},
+"Sergio de Larrea": {
+"team": "DAL",
+"ht": "6-5",
+"born": "2005-12-04",
+"birth": "ES",
+"salary": 3182280,
+"years": 4
+},
+"Shaedon Sharpe": {
+"team": "POR",
+"ht": "6-5",
+"born": "2003-05-30",
+"birth": "CA",
+"salary": 20089287,
+"years": 4
+},
+"Shai Gilgeous-Alexander": {
+"team": "OKC",
+"ht": "6-6",
+"born": "1998-07-12",
+"birth": "CA",
+"salary": 40806150,
+"years": 5
+},
+"Sidy Cissoko": {
+"team": "POR",
+"ht": "6-6",
+"born": "2004-04-02",
+"birth": "FR",
+"salary": 2497812,
+"years": 1
+},
+"Simone Fontecchio": {
+"team": "MIA",
+"ht": "6-7",
+"born": "1995-12-09",
+"birth": "IT",
+"salary": 2449421,
+"years": 1
+},
+"Sion James": {
+"team": "CHA",
+"ht": "6-5",
+"born": "2002-12-04",
+"birth": "US",
+"salary": 2411090,
+"years": 3
+},
+"Spencer Jones": {
+"team": "DEN",
+"ht": "6-7",
+"born": "2001-06-14",
+"birth": "US",
+"salary": 6000000,
+"years": 2
+},
+"Stephen Curry": {
+"team": "GSW",
+"ht": "6-2",
+"born": "1988-03-14",
+"birth": "US",
+"salary": 62587158,
+"years": 3
+},
+"Stephon Castle": {
+"team": "SAS",
+"ht": "6-6",
+"born": "2004-11-01",
+"birth": "US",
+"salary": 10015920,
+"years": 2
+},
+"Steven Adams": {
+"team": "HOU",
+"ht": "6-11",
+"born": "1993-07-20",
+"birth": "NZ",
+"salary": 13000000,
+"years": 2
+},
+"Svi Mykhailiuk": {
+"team": "UTA",
+"ht": "6-7",
+"born": "1997-06-10",
+"birth": "UA",
+"salary": 3850000,
+"years": 2
+},
+"T.J. McConnell": {
+"team": "IND",
+"ht": "6-1",
+"born": "1992-03-25",
+"birth": "US",
+"salary": 11000000,
+"years": 3
+},
+"Tacko Fall": {
+"team": "PHI",
+"ht": "7-6",
+"born": "1995-12-10",
+"birth": "SN"
+},
+"Tari Eason": {
+"team": "HOU",
+"ht": "6-8",
+"born": "2001-05-10",
+"birth": "US",
+"salary": 14051724,
+"years": 5
+},
+"Tarik Biberovic": {
+"team": "DAL",
+"ht": "6-7",
+"born": "2001-01-28",
+"birth": "BA",
+"salary": 3000000,
+"years": 2
+},
+"Tarris Reed Jr.": {
+"team": "SAS",
+"ht": "6-11",
+"born": "2003-08-05",
+"birth": "US",
+"salary": 3076920,
+"years": 4
+},
+"Taurean Prince": {
+"team": "DET",
+"ht": "6-6",
+"born": "1994-03-22",
+"birth": "US",
+"salary": 3815861,
+"years": 1
+},
+"Taylor Hendricks": {
+"team": "MEM",
+"ht": "6-9",
+"born": "2003-11-22",
+"birth": "US",
+"salary": 7805900,
+"years": 1
+},
+"Terance Mann": {
+"team": "BKN",
+"ht": "6-6",
+"born": "1996-10-18",
+"birth": "US",
+"salary": 15500000,
+"years": 2
+},
+"Terrence Shannon Jr.": {
+"team": "MIN",
+"ht": "6-6",
+"born": "2000-07-30",
+"birth": "US",
+"salary": 2801640,
+"years": 2
+},
+"Thomas Bryant": {
+"team": "CLE",
+"ht": "6-9",
+"born": "1997-07-31",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Thomas Sorber": {
+"team": "OKC",
+"ht": "6-9",
+"born": "2005-12-25",
+"birth": "US",
+"salary": 4887720,
+"years": 3
+},
+"Tidjane Salaün": {
+"team": "CHA",
+"ht": "6-10",
+"born": "2005-08-10",
+"birth": "FR",
+"salary": 8237880,
+"years": 2
+},
+"Tim Hardaway Jr.": {
+"team": "MIA",
+"ht": "6-5",
+"born": "1992-03-16",
+"birth": "US",
+"salary": 6500000,
+"years": 1
+},
+"Tobe Awaka": {
+"team": "CHI",
+"ht": "6-8",
+"born": "2004-01-30",
+"birth": "US"
+},
+"Tobi Lawal": {
+"team": "DAL",
+"ht": "6-8",
+"born": "2003-05-01",
+"birth": "GB"
+},
+"Tobias Harris": {
+"team": "SAS",
+"ht": "6-8",
+"born": "1992-07-15",
+"birth": "US",
+"salary": 15044000,
+"years": 2
+},
+"Tolu Smith": {
+"team": "DET",
+"ht": "6-11",
+"born": "2000-07-26",
+"birth": "US",
+"salary": 2411090,
+"years": 1
+},
+"Tony Bradley": {
+"team": "UTA",
+"ht": "6-10",
+"born": "1998-01-08",
+"birth": "US"
+},
+"Toumani Camara": {
+"team": "POR",
+"ht": "6-7",
+"born": "2000-05-08",
+"birth": "BE",
+"salary": 18080358,
+"years": 4
+},
+"Trae Young": {
+"team": "WAS",
+"ht": "6-2",
+"born": "1998-09-19",
+"birth": "US",
+"salary": 49488300,
+"years": 4
+},
+"Trayce Jackson-Davis": {
+"team": "TOR",
+"ht": "6-9",
+"born": "2000-02-22",
+"birth": "US",
+"salary": 2406205,
+"years": 1
+},
+"Tre Donaldson": {
+"team": "MIA",
+"ht": "6-3",
+"born": "2003-12-11",
+"birth": "US"
+},
+"Tre Johnson": {
+"team": "WAS",
+"ht": "6-5",
+"born": "2006-03-07",
+"birth": "US",
+"salary": 8649600,
+"years": 3
+},
+"Tre Jones": {
+"team": "CHI",
+"ht": "6-1",
+"born": "2000-01-08",
+"birth": "US",
+"salary": 8000000,
+"years": 2
+},
+"Tre Mann": {
+"team": "WAS",
+"ht": "6-4",
+"born": "2001-02-03",
+"birth": "US",
+"salary": 8000000,
+"years": 2
+},
+"Trendon Watford": {
+"team": "NOP",
+"ht": "6-8",
+"born": "2000-11-09",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Trevon Brazile": {
+"team": "DEN",
+"ht": "6-10",
+"born": "2003-01-07",
+"birth": "US",
+"salary": 1357763,
+"years": 1
+},
+"Trey Alexander": {
+"team": "UTA",
+"ht": "6-5",
+"born": "2003-05-02",
+"birth": "US"
+},
+"Trey Lyles": {
+"team": "MIN",
+"ht": "6-9",
+"born": "1995-11-05",
+"birth": "CA",
+"salary": 2449421,
+"years": 1
+},
+"Trey Murphy III": {
+"team": "NOP",
+"ht": "6-8",
+"born": "2000-06-18",
+"birth": "US",
+"salary": 27000000,
+"years": 3
+},
+"Tristan Da Silva": {
+"team": "ORL",
+"ht": "6-8",
+"born": "2001-05-15",
+"birth": "DE",
+"salary": 3991200,
+"years": 2
+},
+"Tristan Enaruna": {
+"team": "CLE"
+},
+"Tristan Vukcevic": {
+"team": "WAS",
+"ht": "7-0",
+"born": "2003-03-11",
+"birth": "IT"
+},
+"Ty Jerome": {
+"team": "MEM",
+"ht": "6-5",
+"born": "1997-07-08",
+"birth": "US",
+"salary": 9220050,
+"years": 2
+},
+"Tyler Bilodeau": {
+"team": "BKN",
+"ht": "6-9",
+"born": "2004-04-17",
+"birth": "US"
+},
+"Tyler Herro": {
+"team": "MIL",
+"ht": "6-5",
+"born": "2000-01-20",
+"birth": "US",
+"salary": 33000000,
+"years": 1
+},
+"Tyler Kolek": {
+"team": "NYK",
+"ht": "6-2",
+"born": "2001-03-27",
+"birth": "US",
+"salary": 2296271,
+"years": 2
+},
+"Tyler Nickel": {
+"team": "NYK",
+"ht": "6-7",
+"born": "2003-09-05",
+"birth": "US"
+},
+"Tyrese Haliburton": {
+"team": "IND",
+"ht": "6-5",
+"born": "2000-02-29",
+"birth": "US",
+"salary": 48924624,
+"years": 3
+},
+"Tyrese Maxey": {
+"team": "PHI",
+"ht": "6-2",
+"born": "2000-11-04",
+"birth": "US",
+"salary": 40770520,
+"years": 3
+},
+"Tyrese Proctor": {
+"team": "CLE",
+"ht": "6-4",
+"born": "2004-04-01",
+"birth": "AU",
+"salary": 2150917,
+"years": 3
+},
+"Tyus Jones": {
+"team": "DEN",
+"ht": "6-0",
+"born": "1996-05-10",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Ugonna Onyenso": {
+"team": "DET",
+"ht": "6-11",
+"born": "2003-09-25",
+"birth": "NG"
+},
+"VJ Edgecombe": {
+"team": "PHI",
+"ht": "6-4",
+"born": "2005-07-30",
+"birth": "BS",
+"salary": 11663880,
+"years": 3
+},
+"Victor Wembanyama": {
+"team": "SAS",
+"ht": "7-4",
+"born": "2004-01-04",
+"birth": "FR",
+"salary": 16868246,
+"years": 6
+},
+"Vladislav Goldin": {
+"team": "MIA",
+"ht": "7-0",
+"born": "2001-05-12",
+"birth": "RU"
+},
+"Vít Krejčí": {
+"team": "POR",
+"ht": "6-8",
+"born": "2000-06-19",
+"birth": "CZ",
+"salary": 2667944,
+"years": 2
+},
+"Walker Kessler": {
+"team": "LAL",
+"ht": "7-2",
+"born": "2001-07-26",
+"birth": "US",
+"salary": 30232558,
+"years": 4
+},
+"Walter Clayton": {
+"team": "DAL",
+"ht": "6-4",
+"born": "2003-03-06",
+"birth": "US",
+"salary": 4190520,
+"years": 1
+},
+"Wendell Carter Jr.": {
+"team": "ORL",
+"ht": "6-10",
+"born": "1999-04-16",
+"birth": "US",
+"salary": 18102000,
+"years": 3
+},
+"Will Richard": {
+"team": "GSW",
+"ht": "6-3",
+"born": "2002-12-24",
+"birth": "US",
+"salary": 2150917,
+"years": 3
+},
+"Will Riley": {
+"team": "WAS",
+"ht": "6-9",
+"born": "2006-02-10",
+"birth": "CA",
+"salary": 3688320,
+"years": 3
+},
+"Yang Hansen": {
+"team": "POR",
+"ht": "7-1",
+"born": "2005-06-26",
+"birth": "CN",
+"salary": 4643520,
+"years": 3
+},
+"Yanic Konan Niederhäuser": {
+"team": "LAC",
+"ht": "6-11",
+"born": "2003-03-14",
+"birth": "CH",
+"salary": 2880960,
+"years": 3
+},
+"Yaxel Lendeborg": {
+"team": "GSW",
+"ht": "6-9",
+"born": "2002-09-30",
+"birth": "PR",
+"salary": 6096240,
+"years": 4
+},
+"Yves Missi": {
+"team": "NOP",
+"ht": "6-11",
+"born": "2004-05-14",
+"birth": "BE",
+"salary": 3512760,
+"years": 2
+},
+"Zaccharie Risacher": {
+"team": "DAL",
+"ht": "6-8",
+"born": "2005-04-08",
+"birth": "ES",
+"salary": 13826040,
+"years": 2
+},
+"Zach Collins": {
+"team": "CHI",
+"ht": "6-9",
+"born": "1997-11-19",
+"birth": "US",
+"salary": 8292683,
+"years": 2
+},
+"Zach Edey": {
+"team": "MEM",
+"ht": "7-3",
+"born": "2002-05-14",
+"birth": "CA",
+"salary": 6332760,
+"years": 2
+},
+"Zach LaVine": {
+"team": "SAC",
+"ht": "6-5",
+"born": "1995-03-10",
+"birth": "US",
+"salary": 48967380,
+"years": 1
+},
+"Zeke Nnaji": {
+"team": "DEN",
+"ht": "6-10",
+"born": "2001-01-09",
+"birth": "US",
+"salary": 7466667,
+"years": 2
+},
+"Ziaire Williams": {
+"team": "LAL",
+"ht": "6-9",
+"born": "2001-09-12",
+"birth": "US",
+"salary": 2449421,
+"years": 1
+},
+"Zion Williamson": {
+"team": "NOP",
+"ht": "6-6",
+"born": "2000-07-06",
+"birth": "US",
+"salary": 42166510,
+"years": 2
+},
+"Zuby Ejiofor": {
+"team": "ATL",
+"ht": "6-9",
+"born": "2004-04-20",
+"birth": "US",
+"salary": 3453360,
+"years": 4
+},
+"Zyon Pullin": {
+"team": "MIN",
+"ht": "6-4",
+"born": "2001-03-03",
+"birth": "US"
+}
+}
+}
