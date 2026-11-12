@@ -100,6 +100,8 @@ public class CollegeCareerTests
             var games = s.MyGames();
             Assert.All(games, g => Assert.True(g.Played));
             Assert.InRange(games.Count, 24, 40);
+            // No pro-league calendar news for a college coach (critic review #8).
+            Assert.DoesNotContain(s.Inbox, m => m.Title is "All-Star Game" or "Trade deadline has passed" or "The January window has shut");
             // The AD judged the season in college terms (or let a first-year coach go on).
             var review = s.Inbox.Last(m => m.Category == "Board" && (m.Title == "Season review" || m.Title == "You have been sacked"));
             Assert.Matches("Result: (win the national championship|reach the final four|reach the sweet 16|make march madness|build the program)", review.Body);

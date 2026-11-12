@@ -71,7 +71,7 @@ public class MediaTests
         }
         Assert.True(s.Media.AutoAnswered >= mine.Count - 2);
         // Moments ride on the weekly results message; they add a message of their own only in a week without results.
-        Assert.True(mine.Count(d => s.Inbox.Any(m => m.Id == d.MessageId && m.Title.StartsWith("This week"))) >= mine.Count - 2);
+        Assert.True(mine.Count(d => s.Inbox.Any(m => m.Id == d.MessageId && GameSession.IsResultsTitle(m.Title))) >= mine.Count - 2);
     }
 
     [Fact]

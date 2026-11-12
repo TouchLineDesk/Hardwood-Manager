@@ -43,10 +43,21 @@ if (args[0] == "tactics")
 string label = args[0]; int seasons = int.Parse(args[1]); ulong seed = ulong.Parse(args[2]);
 var probe = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
 var probeWorld = GameWorld.Generate(probe, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1));
+// Review #8: real-world careers (R1-R2). The real NBA's strongest and weakest teams after the real players are placed.
+bool real = label.StartsWith("nba-real");
+if (real)
+{
+    probe = new WorldGenerator(new Rng(seed)).Generate(Hardwood.Core.RealWorld.RealWorldData.LeagueName, 2026, new DateOnly(2026, 10, 1));
+    probeWorld = GameWorld.Generate(probe, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1));
+    Hardwood.Core.RealWorld.RealWorldData.Apply(probe, probeWorld, seed);
+}
 int teamId = label switch
 {
     "nabl-weak" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id,
     "nabl-strong" => probe.Teams.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
+    "nba-real-strong" => probe.Teams.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
+    "nba-real-weak" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id,
+    "nba-real-mid" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).ElementAt(14).Id,
     "lithuania" => probeWorld[WorldLeagues.Lithuania].Clubs.OrderBy(t => QuickSim.Strength(t)).First().Id,
     "local" => probeWorld[UsaPyramid.LocalKey("txn")].Clubs.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     "japan" => probeWorld[WorldLeagues.Japan].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(4).Id,
@@ -57,7 +68,7 @@ int teamId = label switch
 };
 var path = Path.Combine(Path.GetTempPath(), $"critic-{label}.hwsave"); if (File.Exists(path)) File.Delete(path);
 var sw = Stopwatch.StartNew();
-var s = GameSession.NewGame(seed, teamId, path);
+var s = GameSession.NewGame(seed, teamId, path, realWorld: real);
 var progress = new GuideProgress();
 var log = new List<string>();
 void L(string x) { log.Add(x); Console.WriteLine($"[{label}] {x}"); }
@@ -72,6 +83,19 @@ var bidOutcomes = new Dictionary<string, int>();
 var rng = new Rng(seed + 7);
 int startYear = s.League.Season;
 int lastDay = 0;
+// Review #8: in a real career, where the real stars are and what they're paid.
+var realNames = Hardwood.Core.RealWorld.RealPlayers.Lines.Select(l => l.Name).ToHashSet();
+void Stars(string when)
+{
+    if (!real) return;
+    var top = s.League.Teams.SelectMany(t => t.Roster.Select(p => (p, t))).OrderByDescending(x => x.p.CurrentAbility).Take(8);
+    L($"{when} top players: " + string.Join("; ", top.Select(x => $"{x.p.Name} {x.t.Abbreviation} CA {x.p.CurrentAbility} age {x.p.Age(s.Today)} ${(x.p.Contract?.Salary ?? 0) / 1e6:F1}M x{x.p.Contract?.Years}")));
+    L($"{when} real players still in the league: {s.League.Teams.Sum(t => t.Roster.Count(p => realNames.Contains(p.Name)))}; ages 35+: {s.League.Teams.Sum(t => t.Roster.Count(p => p.Age(s.Today) >= 35))}");
+    var where = s.World.Clubs.Concat(s.League.Teams).Distinct().SelectMany(t => t.Roster.Where(p => realNames.Contains(p.Name)).Select(p => s.League.Teams.Contains(t) ? "NBA" : s.World.LeagueOf(t)?.Profile.Name ?? "?"))
+        .Concat(s.League.FreeAgents.Where(p => realNames.Contains(p.Name)).Select(_ => "free agent")).GroupBy(x => x).OrderByDescending(g => g.Count());
+    L($"{when} real players by league: " + string.Join(", ", where.Select(g => $"{g.Key} {g.Count()}")) + $"; real teams in the top league: {s.League.Teams.Count(t => t.Id <= 30)}");
+}
+Stars("start");
 while (s.League.Season < startYear + seasons)
 {
     // --- weekly management
@@ -189,6 +213,7 @@ while (s.League.Season < startYear + seasons)
         var before = s.Phase;
         if (off.Phase is OffseasonPhase.FreeAgency or OffseasonPhase.Complete) progress.SeasonsPlayed++;
         s.AdvanceOffseason();
+        if (s.Phase != SessionPhase.Offseason) Stars($"season {s.League.Season}");
         if (s.Phase != SessionPhase.Offseason)
             L($"season {s.League.Season} begins: {s.HumanTeam.FullName} ({s.HumanLeagueName}, level {s.MyLevel}) roster {s.HumanTeam.Roster.Count}, wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M, board {s.Job.Confidence:F0}, goal {s.Job.Current?.Goal}, protected {s.Job.ProtectedSeason} {s.Job.ProtectedReason}");
         continue;

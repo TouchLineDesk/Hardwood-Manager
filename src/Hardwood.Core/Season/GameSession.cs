@@ -217,17 +217,30 @@ public sealed partial class GameSession
 
     public void MarkAllRead() { foreach (var m in Inbox) m.Read = true; }
 
-    /// <summary>This week's regular-season results, posted together once a week.</summary>
+    /// <summary>The regular-season results since the last results message, posted together every other Monday.</summary>
     public List<string> WeekResults { get; } = new();
+
+    /// <summary>A results message's title starts with one of these ("This week: 3-1 …", "Last two weeks: 5-2 …").</summary>
+    public static bool IsResultsTitle(string title) => title.StartsWith("This week") || title.StartsWith("Last two weeks");
 
     private void MaybePostResults(bool now = false)
     {
         if (WeekResults.Count == 0) return;
         if (!now && Today.DayOfWeek != DayOfWeek.Monday) return;
+        // Every other Monday (critic review #8: the weekly results were 58-70 of 230-250 messages per three seasons).
+        // A press conference or locker-room moment still rides on a results message, so its week posts one anyway.
+        bool evenWeek = Today.DayNumber / 7 % 2 == 0;
+        bool decisionWaiting = Media.Decisions.Any(d => (d.Open || d.Created == Today) && d.MessageId == 0 && d.TeamId == HumanTeam.Id);
+        if (!now && !evenWeek && !decisionWaiting) return;
+        bool twoWeeks = WeekResults.Count > 0 && _resultsSince is { } since && Today.DayNumber - since.DayNumber > 7;
         int w = WeekResults.Count(l => l.Contains("  W ")), l = WeekResults.Count - w;
-        Post($"This week: {w}-{l} ({MyRecord.Wins}-{MyRecord.Losses} overall)", string.Join("\n", WeekResults) + "\n\nBox scores are on the Schedule & Results page.", "Game");
+        Post($"{(twoWeeks ? "Last two weeks" : "This week")}: {w}-{l} ({MyRecord.Wins}-{MyRecord.Losses} overall)", string.Join("\n", WeekResults) + "\n\nBox scores are on the Schedule & Results page.", "Game");
         WeekResults.Clear();
+        _resultsSince = null;
     }
+
+    /// <summary>The day of the oldest result waiting in <see cref="WeekResults"/> (not saved: after a load the next message just says "This week").</summary>
+    private DateOnly? _resultsSince;
 
     /// <summary>
     /// Openings while you're out of work, posted together once a week (critic review #3: 104 separate "Job opening"
@@ -412,8 +425,12 @@ public sealed partial class GameSession
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
                 AiTrades();
 
-            if (Today == TradeDeadline)
+            // A college coach doesn't get the pro league's calendar news (critic review #7/#8: about 20 messages per three seasons).
+            if (Today == TradeDeadline && !InCollege && !League.Finance.OpenMarket)
                 Post("Trade deadline has passed", "No more trades until the season ends.", "League");
+            // On the open market there are no trades (#80): the January window has shut instead (critic review #8).
+            if (Today == new DateOnly(League.Season + 1, 2, 1) && !InCollege && League.Finance.OpenMarket)
+                Post("The January window has shut", "No more transfers until the summer window opens.", "League");
 
             if (Today == AllStarDate && Midseason == null)
             {
@@ -421,7 +438,7 @@ public sealed partial class GameSession
                 var all = League.AllActivePlayers.ToDictionary(p => p.Id);
                 string Names(IEnumerable<int> ids) => string.Join(", ", ids.Select(id => all.TryGetValue(id, out var p) ? $"{p.Name} ({League.TeamById(p.TeamId!.Value).Abbreviation})" : "?"));
                 var ours = Midseason.AllStarsEast.Concat(Midseason.AllStarsWest).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => all[id].Name).ToList();
-                Post("All-Star Game", $"{Midseason.AllStarGame}. Game MVP: {(Midseason.AllStarMvpId is { } m && all.TryGetValue(m, out var mp) ? mp.Name : "-")}."
+                if (!InCollege) Post("All-Star Game", $"{Midseason.AllStarGame}. Game MVP: {(Midseason.AllStarMvpId is { } m && all.TryGetValue(m, out var mp) ? mp.Name : "-")}."
                     + (ours.Count > 0 ? $"\n\nYour All-Stars: {string.Join(", ", ours)}." : "\n\nNo one from your team was selected.")
                     + $"\n\nEast: {Names(Midseason.AllStarsEast)}\n\nWest: {Names(Midseason.AllStarsWest)}", "League");
             }
@@ -436,7 +453,7 @@ public sealed partial class GameSession
                     int seed = Standings.Conference(HumanTeam.Conference).FindIndex(r => r.Team == HumanTeam) + 1;
                     Post("Regular season complete",
                         $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(seed)} in the {HumanTeam.Conference}. " +
-                        (seed <= 6 ? "You are in the playoffs." : seed <= 10 ? "You are in the play-in." : "Your season is over; the lottery awaits."), "League");
+                        (seed <= 6 ? "You are in the playoffs." : seed <= 10 ? "You are in the play-in." : (League.Finance.OpenMarket ? "Your season is over." : "Your season is over; the lottery awaits.")), "League");
                 }
             }
         }
@@ -500,6 +517,7 @@ public sealed partial class GameSession
         // Regular-season results go into one weekly message (critic review #2: up to 216 result messages in three
         // seasons buried everything else); playoff games still arrive one by one.
         // Playoff games arrive as one message when the series ends (critic review #4: up to 48 playoff messages in three seasons).
+        if (series == null) _resultsSince ??= r.Date ?? Today;
         if (series == null) WeekResults.Add($"{r.Date ?? Today:ddd MMM d}  {title}  · {line}");
         else if (series.Complete)
         {
@@ -811,7 +829,7 @@ public sealed partial class GameSession
         World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);
         Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
         var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre).OrderByDescending(x => x.player.CurrentAbility).Take(8).ToList();
-        if (abroad.Count > 0)
+        if (abroad.Count > 0 && !InCollege)
             Post("Overseas free agents", "These players' overseas contracts have ended and they're free to sign anywhere:\n"
                 + string.Join("\n", abroad.Select(x => $"{x.player.Name} ({x.player.PrimaryPosition}, {x.player.Age(Offseason.Date)}, {x.player.CurrentAbility} CA), last with {x.from.FullName}")), "World");
         Offseason.AiReSignAll(exceptTeamId: ControlledTeamId);

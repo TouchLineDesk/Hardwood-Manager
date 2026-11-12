@@ -105,7 +105,7 @@ public sealed partial class GameSession
             string ask = d.Open
                 ? $"{d.Text}\nAnswer below. If you haven't by {d.Expires:MMM d}, your assistant will: \"{d.Options[d.SafeOption].Label}\"."
                 : $"{d.Text}\n{d.Outcome}"; // delegated: already handled by your assistant coach
-            var week = Inbox.FirstOrDefault(m => m.Date == Today && m.Category == "Game" && m.Title.StartsWith("This week") && Media.ForMessage(m.Id) == null);
+            var week = Inbox.FirstOrDefault(m => m.Date == Today && m.Category == "Game" && IsResultsTitle(m.Title) && Media.ForMessage(m.Id) == null);
             if (week != null)
             {
                 Inbox[Inbox.IndexOf(week)] = new InboxMessage { Id = week.Id, Date = week.Date, Title = week.Title + (press ? " · press conference" : " · locker room"),
