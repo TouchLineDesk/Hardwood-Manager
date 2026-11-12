@@ -78,6 +78,13 @@ public class ScreenshotTests
                 vm.Navigate(nav.Name);
                 Snap(window, Path.Combine(dir, $"{n++:00}-{nav.Name.Replace(" & ", "-").Replace(' ', '-').ToLower()}.png"));
             }
+            if (Hardwood.Core.RealWorld.RealWorldData.IsReal(session.League))
+            {
+                // The real NBA's past (R1): records to beat, titles by franchise, every season.
+                vm.Navigate("History");
+                ((HistoryViewModel)vm.CurrentPage!).Tab = 2;
+                Snap(window, Path.Combine(dir, $"{n++:00}-nba-history.png"));
+            }
             vm.Navigate("Roster");
             var roster = (RosterViewModel)vm.CurrentPage!;
             roster.Open(roster.Rows[0]);

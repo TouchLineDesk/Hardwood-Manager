@@ -11,8 +11,14 @@ namespace Hardwood.Core.Names;
 public static class Brand
 {
     public const string DefaultTop = "NABL";
-    public static string Top { get; set; } = DefaultTop;
-    public static string TopShort { get; set; } = DefaultTop;
+    private static string _top = DefaultTop, _topShort = DefaultTop;
+
+    /// <summary>The current career (or New career preview) plays in the real world: the top league is the NBA unless a
+    /// name pack renames it (#191). Set by <see cref="Hardwood.Core.RealWorld.RealWorldData.Apply"/> and on loading a career.</summary>
+    public static bool Real { get; set; }
+
+    public static string Top { get => Real && _top == DefaultTop ? Hardwood.Core.RealWorld.RealWorldData.Short : _top; set => _top = value; }
+    public static string TopShort { get => Real && _topShort == DefaultTop ? Hardwood.Core.RealWorld.RealWorldData.Short : _topShort; set => _topShort = value; }
 }
 
 /// <summary>A display name and short name.</summary>

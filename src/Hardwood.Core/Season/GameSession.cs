@@ -74,6 +74,7 @@ public sealed partial class GameSession
                        World.GameWorld? world = null)
     {
         League = league; HumanTeam = humanTeam; Seed = seed; Save = save;
+        Names.Brand.Real = Hardwood.Core.RealWorld.RealWorldData.IsReal(league); // a loaded career wears its own world
         // A save from before the world existed (or a test) gets one built around its NABL; it catches up on load.
         _worldGenerated = world == null;
         World = world ?? Hardwood.Core.World.GameWorld.Generate(league, seed, DefaultFullSim, new DateOnly(league.Season, 10, 1));
@@ -102,10 +103,13 @@ public sealed partial class GameSession
 
     /// <summary>Start a new career from a generated world.</summary>
     public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026, IEnumerable<string>? fullSim = null, Jobs.Coach? coach = null,
-        Names.NamePack? names = null)
+        Names.NamePack? names = null, bool realWorld = false)
     {
-        var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", season, new DateOnly(season, 10, 1));
+        var league = new WorldGenerator(new Rng(seed)).Generate(realWorld ? Hardwood.Core.RealWorld.RealWorldData.LeagueName : "North American Basketball League", season, new DateOnly(season, 10, 1));
         var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? DefaultFullSim, new DateOnly(season, 10, 1));
+        // The real world (R1, #191): the NBA's real teams take the top league's places; the user's name pack goes on top.
+        Names.Brand.Real = realWorld;
+        if (realWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(league, world);
         // A name pack renames the clubs before anything is written about them (the welcome, the first news).
         names?.ApplyToClubs(league, world);
         var team = league.Teams.FirstOrDefault(t => t.Id == humanTeamId) ?? world.TeamById(humanTeamId)
@@ -123,6 +127,8 @@ public sealed partial class GameSession
         var first = session.NextMyGame;
         session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName} ({session.HumanLeagueName}). "
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
+            + (realWorld && Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
+                ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page." : "")
             + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
         session.SaveNow();
         return session;

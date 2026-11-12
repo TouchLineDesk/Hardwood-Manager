@@ -86,7 +86,7 @@ public class PyramidTests
         Assert.Contains(world.TeamById(localChamp)!, world[UsaPyramid.RegionalKey("ne")].Clubs);
         Assert.All(world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
         Assert.Equal(total, world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count)); // nobody lost
-        Assert.Contains(news, n => n.Title.StartsWith("Promoted to the NABL"));
+        Assert.Contains(news, n => n.Title.StartsWith("Promoted to the NABL") || n.Title.StartsWith("Promoted to the NBA")); // the top league is the NBA while a real-world UI test runs alongside (Brand is static)
         // The next season's fixtures include the new arrivals.
         world.StartSeason(2027);
         Assert.All(down, t => Assert.Contains(t.Id, t2.Season.Participants));

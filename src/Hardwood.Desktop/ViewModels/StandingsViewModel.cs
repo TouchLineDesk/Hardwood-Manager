@@ -239,6 +239,15 @@ public sealed class HistoryRow
     public string OurRecord { get; init; } = "";
 }
 
+/// <summary>A real NBA season (R1, #191): the History page's "NBA history" tab.</summary>
+public sealed record RealSeasonRow(string Season, string Champion, string RunnerUp, string FinalsMvp, string Mvp, bool Ours);
+
+/// <summary>A real NBA record card: the mark, its holder and when.</summary>
+public sealed record RealRecordCard(string Label, string Value, string Holder, string When);
+
+/// <summary>A franchise's real titles.</summary>
+public sealed record RealTitlesRow(string Team, int Titles, string Last, bool Ours);
+
 /// <summary>One line of a records table: rank, the number, who and when.</summary>
 public sealed record RecordRow(int Rank, string Value, string Who, string When, bool Ours);
 
@@ -263,6 +272,41 @@ public sealed partial class HistoryViewModel : PageViewModel
 
     public HistoryViewModel(MainViewModel shell) : base(shell) { }
 
+    // The real NBA's past (R1, #191), shown in a real-world career.
+    [ObservableProperty] private bool _isReal;
+    [ObservableProperty] private int _tab;
+    [ObservableProperty] private List<RealSeasonRow> _realSeasons = new();
+    [ObservableProperty] private List<RealRecordCard> _realGameRecords = new();
+    [ObservableProperty] private List<RealRecordCard> _realSeasonRecords = new();
+    [ObservableProperty] private List<RealRecordCard> _realCareerRecords = new();
+    [ObservableProperty] private List<RealTitlesRow> _realTitles = new();
+    [ObservableProperty] private string _realSummary = "";
+    public string RealSource => $"Checked {Hardwood.Core.RealWorld.RealWorldData.HistoryChecked}. {Hardwood.Core.RealWorld.RealWorldData.HistorySource}";
+
+    private void BuildReal()
+    {
+        var s = Session;
+        IsReal = Hardwood.Core.RealWorld.RealWorldData.IsReal(s.League);
+        if (!IsReal) return;
+        // The real past is tied to today's franchises: the club in the Celtics' place inherits Boston's history.
+        var abbrs = Hardwood.Core.RealWorld.RealWorldData.Teams.Select(t => t.Abbr).ToList();
+        // The 30 franchises keep ids 1-30 wherever the pyramid sends them.
+        string? ours = s.HumanTeam.Id is >= 1 and <= 30 && s.HumanTeam.Id <= abbrs.Count ? abbrs[s.HumanTeam.Id - 1] : null;
+        RealSeasons = Hardwood.Core.RealWorld.RealWorldData.Seasons.OrderByDescending(x => x.Season)
+            .Select(x => new RealSeasonRow(x.Label, x.Champion, x.RunnerUp, x.FinalsMvp ?? "-", x.Mvp ?? "-", ours != null && x.ChampionFranchise == ours)).ToList();
+        static RealRecordCard Card(Hardwood.Core.RealWorld.RealRecord r) =>
+            new(r.Label, r.Value, r.Team is { Length: > 0 } t && t != "active" ? $"{r.Holder} ({t})" : r.Team == "active" ? $"{r.Holder} (active)" : r.Holder, r.When);
+        RealGameRecords = Hardwood.Core.RealWorld.RealWorldData.GameRecords.Select(Card).ToList();
+        RealSeasonRecords = Hardwood.Core.RealWorld.RealWorldData.SeasonRecords.Select(Card).ToList();
+        RealCareerRecords = Hardwood.Core.RealWorld.RealWorldData.CareerRecords.Select(Card).ToList();
+        RealTitles = Hardwood.Core.RealWorld.RealWorldData.TitleTable()
+            .Select(x => new RealTitlesRow(x.Team.FullName, x.Titles, x.LastSeason.ToString(), x.Team.Abbr == ours)).ToList();
+        int mine = ours == null ? 0 : Hardwood.Core.RealWorld.RealWorldData.Titles(ours);
+        var last = Hardwood.Core.RealWorld.RealWorldData.Seasons.Last();
+        RealSummary = $"{Hardwood.Core.RealWorld.RealWorldData.Seasons.Count} NBA seasons, 1946-47 to {last.Label}. Reigning champions: {last.Champion}."
+            + (ours != null ? $" {s.HumanTeam.FullName}: {(mine == 0 ? "no titles yet" : $"{mine} title{(mine == 1 ? "" : "s")}")}." : "");
+    }
+
     public override void Refresh()
     {
         Rows.Clear();
@@ -283,6 +327,7 @@ public sealed partial class HistoryViewModel : PageViewModel
             });
         }
         BuildRecords(all);
+        BuildReal();
         int titles = s.League.History.Count(h => h.ChampionTeamId == s.HumanTeam.Id);
         Summary = s.League.History.Count == 0 ? "No completed seasons yet." : $"{s.League.History.Count} season{(s.League.History.Count == 1 ? "" : "s")} played · {titles} title{(titles == 1 ? "" : "s")} for {s.HumanTeam.FullName}";
     }
