@@ -131,6 +131,28 @@ public class FranchiseTests
     }
 
     [Fact]
+    public void The_academy_is_gone_and_a_save_that_had_one_drops_its_projects()
+    {
+        // Danny, #291: four facilities, no G League affiliate & academy.
+        Assert.Equal(new[] { FacilityKind.Practice, FacilityKind.Medical, FacilityKind.Analytics, FacilityKind.Arena }, ClubFacilities.Kinds);
+        Assert.DoesNotContain(Franchise.All, i => i.Kind == FacilityKind.Academy);
+        Assert.Equal(FacilityKind.NewArena, Franchise.Info(FacilityKind.NewArena).Kind);
+        Assert.Equal(FacilityKind.Arena, Franchise.Info(FacilityKind.Arena).Kind);
+        var opts = new System.Text.Json.JsonSerializerOptions { IncludeFields = true };
+        var json = "{\"Revenue\":245000000,\"Balance\":900000000,\"Ready\":true,\"Facilities\":{\"Ready\":true,\"Academy\":{\"Level\":5}," +
+                   "\"Building\":[{\"Kind\":3,\"ToLevel\":4,\"Cost\":9,\"SeasonsLeft\":1}],\"Proposals\":[{\"Kind\":3,\"ToLevel\":4,\"Cost\":9,\"SeasonsLeft\":1}]}}";
+        var t = League()[0];
+        t.Money = System.Text.Json.JsonSerializer.Deserialize<ClubFinance>(json, opts)!;
+        Franchise.Summer(t, Lr, 18000, 2027);
+        Assert.DoesNotContain(t.Money.Facilities.Building, p => p.Kind == FacilityKind.Academy);
+        Assert.DoesNotContain(t.Money.Facilities.Proposals, p => p.Kind == FacilityKind.Academy);
+        // A young player's training no longer depends on the academy's level.
+        var young = new Player { FirstName = "Young", LastName = "Prospect", BirthDate = new DateOnly(2008, 1, 1) };
+        t.Money.Facilities.Academy.Edge = 3; t.Money.Facilities.Practice.Edge = 0;
+        Assert.Equal(0, StaffEffects.FacilityTraining(t, young, new DateOnly(2027, 1, 1)));
+    }
+
+    [Fact]
     public void An_old_save_without_facilities_loads_the_defaults()
     {
         var opts = new System.Text.Json.JsonSerializerOptions { IncludeFields = true };

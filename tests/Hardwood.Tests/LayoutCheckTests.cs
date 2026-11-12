@@ -28,7 +28,7 @@ public class LayoutCheckTests
         f.Proposals = new()
         {
             new() { Kind = Hardwood.Core.Model.FacilityKind.NewArena, ToLevel = 5, Cost = Hardwood.Core.Season.Franchise.CostTo(Hardwood.Core.Model.FacilityKind.NewArena, 5, lr), SeasonsLeft = 3, Instalments = 3, Capacity = 19_800 },
-            new() { Kind = Hardwood.Core.Model.FacilityKind.Academy, ToLevel = Math.Min(5, f.Academy.Level + 1), Cost = Hardwood.Core.Season.Franchise.CostTo(Hardwood.Core.Model.FacilityKind.Academy, 4, lr), SeasonsLeft = 1 },
+            new() { Kind = Hardwood.Core.Model.FacilityKind.Analytics, ToLevel = Math.Min(5, f.Analytics.Level + 1), Cost = Hardwood.Core.Season.Franchise.CostTo(Hardwood.Core.Model.FacilityKind.Analytics, 4, lr), SeasonsLeft = 1 },
             new() { Kind = Hardwood.Core.Model.FacilityKind.Medical, ToLevel = f.Medical.Level, Cost = 26_500_000, SeasonsLeft = 1, Renewal = true },
         };
     }

@@ -13,7 +13,7 @@ public enum FacilityKind
     Medical,
     /// <summary>Analytics and scouting department: tracking data, video, a scouting network. Scouting knowledge.</summary>
     Analytics,
-    /// <summary>G League affiliate and academy: reps and coaching for players 22 and under. Young players' growth.</summary>
+    /// <summary>Retired in v0.57.1 (Danny, #291): never a facility now. The slot stays so saved kinds keep their numbers.</summary>
     Academy,
     /// <summary>Arena renovation and premium seating: suites, courtside clubs, the fan experience. Revenue and fan growth.</summary>
     Arena,
@@ -58,6 +58,7 @@ public sealed class ClubFacilities
     public Facility Practice { get; set; } = new();
     public Facility Medical { get; set; } = new();
     public Facility Analytics { get; set; } = new();
+    /// <summary>Retired (#291): read from older saves and ignored.</summary>
     public Facility Academy { get; set; } = new();
     public Facility Arena { get; set; } = new();
     /// <summary>Projects under way.</summary>
@@ -90,7 +91,14 @@ public sealed class ClubFacilities
         _ => Arena,
     };
 
-    public static readonly FacilityKind[] Kinds = { FacilityKind.Practice, FacilityKind.Medical, FacilityKind.Analytics, FacilityKind.Academy, FacilityKind.Arena };
+    public static readonly FacilityKind[] Kinds = { FacilityKind.Practice, FacilityKind.Medical, FacilityKind.Analytics, FacilityKind.Arena };
+
+    /// <summary>Drop anything left from the retired academy (#291): projects under way and proposals.</summary>
+    public void DropRetired()
+    {
+        Building.RemoveAll(p => p.Kind == FacilityKind.Academy);
+        Proposals.RemoveAll(p => p.Kind == FacilityKind.Academy);
+    }
 
     public bool IsBuilding(FacilityKind k) => Building.Any(b => b.Kind == k || (k == FacilityKind.Arena && b.Kind == FacilityKind.NewArena) || (k == FacilityKind.NewArena && b.Kind == FacilityKind.Arena));
 }
