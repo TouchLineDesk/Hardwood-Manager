@@ -68,6 +68,27 @@ public sealed record BracketCard(string SeedA, string NameA, string ScoreA, bool
     public double OpacityB => WinA ? 0.55 : 1;
 }
 
+/// <summary>One team on a bracketology seed line (C4 part 1).</summary>
+public sealed record SeedCell(string Name, string Record, string Tag, bool Mine)
+{
+    public bool HasTag => Tag.Length > 0;
+}
+
+public static class CollegeConverters
+{
+    /// <summary>Your program's cells get the accent edge; everyone else a quiet one.</summary>
+    public static readonly Avalonia.Data.Converters.IValueConverter MineEdge =
+        new Avalonia.Data.Converters.FuncValueConverter<bool, Avalonia.Media.IBrush>(b => b
+            ? new Avalonia.Media.SolidColorBrush(Hardwood.Desktop.ThemeService.Accent)
+            : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A4654")));
+}
+
+/// <summary>A seed line of the projected field: the seed and its four teams (eight on the 16 line, the First Four).</summary>
+public sealed record SeedLine(string Seed, IReadOnlyList<SeedCell> Teams, bool Mine);
+
+/// <summary>A bubble list: "Last four in", "First four out", "Next four out".</summary>
+public sealed record BubbleList(string Title, IReadOnlyList<SeedCell> Teams, string Tone);
+
 /// <summary>A round of the selected region: its name and boxes.</summary>
 public sealed record BracketColumn(string Title, IReadOnlyList<BracketCard> Cards, int Rows);
 
@@ -106,6 +127,12 @@ public sealed partial class CollegeViewModel : PageViewModel
     partial void OnBracketColumnsChanged(List<BracketColumn> value) => OnPropertyChanged(nameof(HasBracket));
     partial void OnBracketViewChanged(string value) => FillBracket();
     [ObservableProperty] private string _bracketNote = "";
+    // Bracketology (C4 part 1, #190): the field as it would be picked today, until Selection Sunday.
+    [ObservableProperty] private List<SeedLine> _seedLines = new();
+    [ObservableProperty] private List<BubbleList> _bubble = new();
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _bracketologyChips = new();
+    public bool HasBracketology => SeedLines.Count > 0;
+    partial void OnSeedLinesChanged(List<SeedLine> value) => OnPropertyChanged(nameof(HasBracketology));
     public List<string> Ages { get; } = new() { "Turning pro next summer", "College (18-22)", "High school (14-17)", "All" };
     [ObservableProperty] private string _age = "Turning pro next summer";
     public List<string> Positions { get; } = new() { "All", "PG", "SG", "SF", "PF", "C" };
@@ -323,7 +350,8 @@ public sealed partial class CollegeViewModel : PageViewModel
         BracketColumns = new(); MadnessChips = new();
         if (Session.World.College is not { } c) return;
         var s = c.Season;
-        if (!s.Selected) { BracketNote = "The 68-team field is picked on Selection Sunday in mid-March: eight conference tournament champions and 60 at-large teams."; return; }
+        SeedLines = new(); Bubble = new(); BracketologyChips = new();
+        if (!s.Selected) { FillBracketology(c); return; }
         BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Every March Madness game uses the full match engine. Upsets (a seed four or more lines worse winning) are marked.";
         var boxes = MadnessBracket.Boxes(s);
         // Brackets use the school name ("Jersey Christian"), as on TV; the full name is a click away.
@@ -359,7 +387,71 @@ public sealed partial class CollegeViewModel : PageViewModel
             new("Cinderellas", cinderella.Count.ToString(), cinderella.Count == 0 ? "no double-digit seed in the Sweet 16" : string.Join(", ", cinderella.Take(2).Select(id => c.Program(id)?.Name)), cinderella.Count > 0 ? "good" : ""),
         };
         if (s.ChampionId is { } champ) chips.Insert(0, new("Champions", c.Program(champ)!.Name, c.Program(champ)!.City, "good"));
+        // Your program on Selection Sunday and since: its seed and region, and how far it got.
+        if (Session.Employed && Session.InCollege)
+        {
+            int me = Session.HumanTeam.Id;
+            if (s.Seeds.TryGetValue(me, out var seed))
+            {
+                int reached = c.MadnessReached(me), myRegion = c.RegionOf(me);
+                bool alive = s.ChampionId == null && !boxes.Any(b => b.Played && (b.TeamA == me || b.TeamB == me) && b.Winner != me)
+                             && !s.Games.Any(g => g.Event == CollegeWorld.Madness && g.Round == 0 && g.Played && (g.HomeId == me || g.AwayId == me) && g.WinnerId != me);
+                string where = myRegion >= 0 ? MadnessBracket.Regions[myRegion] : "";
+                string status = s.ChampionId == me ? "champions" : s.RunnerUpId == me ? "runners-up" : alive ? "still alive" : $"out in the {CollegeWorld.RoundName(Math.Max(0, reached))}";
+                string tone = alive || s.ChampionId == me ? "good" : s.RunnerUpId == me || reached >= 5 ? "warn" : "bad";
+                chips.Insert(0, new("Our seed", $"No. {seed}", $"{where} · {status}", tone));
+            }
+            else chips.Insert(0, new("Our seed", "Left out", c.Bracketology().StatusOf(me), "bad"));
+        }
         MadnessChips = chips;
+    }
+
+    /// <summary>Bracketology (C4 part 1): seed lines, the bubble and your projection, until the real field is picked.</summary>
+    private void FillBracketology(CollegeWorld c)
+    {
+        var s = c.Season;
+        if (!s.Games.Any(g => g.Played))
+        {
+            int n = c.Active.Count();
+            BracketNote = $"The 68-team field is picked on Selection Sunday in mid-March: the {n} conference tournament champions and {68 - n} at-large teams. Bracketology starts once the season does.";
+            return;
+        }
+        var p = c.Bracketology();
+        int? me = Session.Employed && Session.InCollege ? Session.HumanTeam.Id : null;
+        var today = Session.Today;
+        bool early = today.Month is >= 7 and <= 12 || today.Month == 1;
+        int autos = c.Active.Count();
+        BracketNote = (early ? "Early bracketology: " : "Bracketology: ")
+            + $"the field if it were picked today, from the ratings and each conference's leader (its automatic bid until the conference tournament decides it). "
+            + "Selection Sunday picks the real field the same way.";
+        string Rec(int id) { var (w, l) = c.Record(id); return $"{w}-{l}"; }
+        SeedCell Cell(int id) => new(c.Program(id)?.City ?? "?", Rec(id),
+            p.AutoBids.TryGetValue(id, out var conf) ? conf : p.LastFourIn.Contains(id) ? "LAST IN" : "", id == me);
+        SeedLines = Enumerable.Range(1, 16).Select(seed =>
+        {
+            var teams = p.Field.Where(id => p.Seeds[id] == seed).Select(Cell).ToList();
+            return new SeedLine(seed.ToString(), teams, teams.Any(t => t.Mine));
+        }).ToList();
+        Bubble = new()
+        {
+            new("Last four in", p.LastFourIn.Select(Cell).ToList(), "good"),
+            new("First four out", p.FirstFourOut.Select(id => Cell(id) with { Tag = "" }).ToList(), "warn"),
+            new("Next four out", p.NextFourOut.Select(id => Cell(id) with { Tag = "" }).ToList(), "bad"),
+        };
+        var chips = new List<Hardwood.Desktop.Controls.Chip>();
+        if (me is { } m)
+        {
+            string status = p.StatusOf(m);
+            string tone = !p.In(m) ? "bad" : p.LastFourIn.Contains(m) ? "warn" : "good";
+            string value = p.Seeds.TryGetValue(m, out var sd) ? $"No. {sd}" : status == "Out" ? "Out" : "Bubble";
+            chips.Add(new("Our projection", value, p.In(m) ? (p.LastFourIn.Contains(m) ? "last four in" : p.AutoBids.TryGetValue(m, out var cf) ? $"automatic bid (projected {cf} champions)" : "at-large") : status.ToLowerInvariant(), tone));
+        }
+        chips.Add(new("Automatic bids decided", $"{p.AutoBidsDecided} of {autos}", "conference tournaments", "team"));
+        if (p.LastFourIn.Count > 0) chips.Add(new("Last team in", c.Program(p.LastFourIn[^1])?.City ?? "", Rec(p.LastFourIn[^1]), "warn"));
+        if (p.FirstFourOut.Count > 0) chips.Add(new("First team out", c.Program(p.FirstFourOut[0])?.City ?? "", Rec(p.FirstFourOut[0]), ""));
+        var ones = p.Field.Take(4).ToList();
+        chips.Add(new("Top seed", c.Program(ones[0])?.City ?? "", Rec(ones[0]), "good"));
+        BracketologyChips = chips;
     }
 
     private void FillProspects()

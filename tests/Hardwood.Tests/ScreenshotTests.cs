@@ -66,6 +66,13 @@ public class ScreenshotTests
                 trail.TrailView = "My board";
                 Snap(window, Path.Combine(dir, $"{n++:00}-college-trail-board.png"));
             }
+            if (session.InCollege)
+            {
+                // Bracketology (C4 part 1) in season: the projected field and the bubble.
+                vm.Navigate("College");
+                ((CollegeViewModel)vm.CurrentPage!).Tab = 2;
+                Snap(window, Path.Combine(dir, $"{n++:00}-college-bracketology.png"));
+            }
             foreach (var nav in vm.Nav.ToList())
             {
                 vm.Navigate(nav.Name);

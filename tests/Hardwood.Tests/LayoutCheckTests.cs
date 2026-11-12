@@ -245,6 +245,8 @@ public class LayoutCheckTests
                     var sched = (ScheduleViewModel)v.CurrentPage!;
                     sched.OpenBox(sched.Games.Last(g => g.Played));
                 }),
+                // Bracketology (C4 part 1, #190): the projected field, the bubble and our projection, in January.
+                ("Bracketology", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 2; }),
                 // The recruiting trail (C3, #173): the coach's board with a scouted, offered prospect selected.
                 ("Recruiting", v =>
                 {
