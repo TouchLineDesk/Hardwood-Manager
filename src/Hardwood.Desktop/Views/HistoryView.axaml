@@ -27,11 +27,22 @@
         </StackPanel>
       </Border>
     </DataTemplate>
+    <!-- A real NBA record (R1): the mark, who holds it, and when. -->
+    <DataTemplate x:Key="RealCard" x:DataType="vm:RealRecordCard">
+      <Border Classes="panel" Width="296" Margin="0,0,10,10" VerticalAlignment="Top">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding Value}" FontWeight="Bold" FontSize="22"/>
+          <TextBlock Text="{Binding Holder}" FontSize="12" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
   </UserControl.Resources>
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="History" Classes="h1"/>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" Classes="muted" Margin="0,0,0,8"/>
-    <TabControl>
+    <TabControl SelectedIndex="{Binding Tab}">
       <TabItem Header="Seasons">
         <DataGrid ItemsSource="{Binding Rows}">
           <DataGrid.Columns>
@@ -60,6 +71,54 @@
             <ItemsControl ItemsSource="{Binding CareerRecords}" ItemTemplate="{StaticResource RecordCard}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="NBA history" IsVisible="{Binding IsReal}">
+        <ScrollViewer>
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding RealSummary}" TextWrapping="Wrap"/>
+            <TextBlock Text="Records to beat" Classes="h2"/>
+            <TextBlock Text="Single game" FontWeight="SemiBold"/>
+            <ItemsControl ItemsSource="{Binding RealGameRecords}" ItemTemplate="{StaticResource RealCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Single season" FontWeight="SemiBold"/>
+            <ItemsControl ItemsSource="{Binding RealSeasonRecords}" ItemTemplate="{StaticResource RealCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Career" FontWeight="SemiBold"/>
+            <ItemsControl ItemsSource="{Binding RealCareerRecords}" ItemTemplate="{StaticResource RealCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Championships by franchise" Classes="h2"/>
+            <ItemsControl ItemsSource="{Binding RealTitles}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RealTitlesRow">
+                  <Border Classes="panel" Width="210" Margin="0,0,8,8">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Team}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Ours}"/>
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding Titles}" FontWeight="Bold" FontSize="20"/>
+                        <TextBlock Text="{Binding Last, StringFormat='titles · last {0}'}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Every season" Classes="h2"/>
+            <DataGrid ItemsSource="{Binding RealSeasons}" Height="520">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="90"/>
+                <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="220"/>
+                <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="220"/>
+                <DataGridTextColumn Header="Finals MVP" Binding="{Binding FinalsMvp}" Width="200"/>
+                <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="{Binding RealSource}" Classes="muted" FontSize="10.5" TextWrapping="Wrap"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

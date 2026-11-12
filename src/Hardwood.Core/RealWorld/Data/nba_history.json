@@ -1,0 +1,895 @@
+{
+ "source": "Compiled Nov 12, 2026. Champions, Finals MVPs and MVPs 1947-2025 from the record (basketball-reference/NBA.com); 2025-26 checked on the web Nov 12, 2026: New York Knicks beat the San Antonio Spurs, Finals MVP Jalen Brunson (sny.tv, foxsports.com); MVP Shai Gilgeous-Alexander (pr.nba.com). Career totals for active players through 2025-26: LeBron James 42,184 + 1,256 in 2025-26 (landofbasketball.com); Stephen Curry 4,058 + 190 threes in 2025-26 (landofbasketball.com). Franchise = today's franchise (e.g. Minneapolis Lakers = LAL, Seattle SuperSonics = OKC, Syracuse Nationals = PHI).",
+ "checked": "2026-11-12",
+ "seasons": [
+  {
+   "season": 1946,
+   "champion": "Philadelphia Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Chicago Stags",
+   "runnerUpFranchise": null,
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1947,
+   "champion": "Baltimore Bullets",
+   "championFranchise": null,
+   "runnerUp": "Philadelphia Warriors",
+   "runnerUpFranchise": "GSW",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1948,
+   "champion": "Minneapolis Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Washington Capitols",
+   "runnerUpFranchise": null,
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1949,
+   "champion": "Minneapolis Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Syracuse Nationals",
+   "runnerUpFranchise": "PHI",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1950,
+   "champion": "Rochester Royals",
+   "championFranchise": "SAC",
+   "runnerUp": "New York Knicks",
+   "runnerUpFranchise": "NYK",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1951,
+   "champion": "Minneapolis Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "New York Knicks",
+   "runnerUpFranchise": "NYK",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1952,
+   "champion": "Minneapolis Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "New York Knicks",
+   "runnerUpFranchise": "NYK",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1953,
+   "champion": "Minneapolis Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Syracuse Nationals",
+   "runnerUpFranchise": "PHI",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1954,
+   "champion": "Syracuse Nationals",
+   "championFranchise": "PHI",
+   "runnerUp": "Fort Wayne Pistons",
+   "runnerUpFranchise": "DET",
+   "finalsMvp": null,
+   "mvp": null
+  },
+  {
+   "season": 1955,
+   "champion": "Philadelphia Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Fort Wayne Pistons",
+   "runnerUpFranchise": "DET",
+   "finalsMvp": null,
+   "mvp": "Bob Pettit"
+  },
+  {
+   "season": 1956,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "St. Louis Hawks",
+   "runnerUpFranchise": "ATL",
+   "finalsMvp": null,
+   "mvp": "Bob Cousy"
+  },
+  {
+   "season": 1957,
+   "champion": "St. Louis Hawks",
+   "championFranchise": "ATL",
+   "runnerUp": "Boston Celtics",
+   "runnerUpFranchise": "BOS",
+   "finalsMvp": null,
+   "mvp": "Bill Russell"
+  },
+  {
+   "season": 1958,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Minneapolis Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": null,
+   "mvp": "Bob Pettit"
+  },
+  {
+   "season": 1959,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "St. Louis Hawks",
+   "runnerUpFranchise": "ATL",
+   "finalsMvp": null,
+   "mvp": "Wilt Chamberlain"
+  },
+  {
+   "season": 1960,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "St. Louis Hawks",
+   "runnerUpFranchise": "ATL",
+   "finalsMvp": null,
+   "mvp": "Bill Russell"
+  },
+  {
+   "season": 1961,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": null,
+   "mvp": "Bill Russell"
+  },
+  {
+   "season": 1962,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": null,
+   "mvp": "Bill Russell"
+  },
+  {
+   "season": 1963,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "San Francisco Warriors",
+   "runnerUpFranchise": "GSW",
+   "finalsMvp": null,
+   "mvp": "Oscar Robertson"
+  },
+  {
+   "season": 1964,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": null,
+   "mvp": "Bill Russell"
+  },
+  {
+   "season": 1965,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": null,
+   "mvp": "Wilt Chamberlain"
+  },
+  {
+   "season": 1966,
+   "champion": "Philadelphia 76ers",
+   "championFranchise": "PHI",
+   "runnerUp": "San Francisco Warriors",
+   "runnerUpFranchise": "GSW",
+   "finalsMvp": null,
+   "mvp": "Wilt Chamberlain"
+  },
+  {
+   "season": 1967,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": null,
+   "mvp": "Wilt Chamberlain"
+  },
+  {
+   "season": 1968,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Jerry West",
+   "mvp": "Wes Unseld"
+  },
+  {
+   "season": 1969,
+   "champion": "New York Knicks",
+   "championFranchise": "NYK",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Willis Reed",
+   "mvp": "Willis Reed"
+  },
+  {
+   "season": 1970,
+   "champion": "Milwaukee Bucks",
+   "championFranchise": "MIL",
+   "runnerUp": "Baltimore Bullets",
+   "runnerUpFranchise": "WAS",
+   "finalsMvp": "Kareem Abdul-Jabbar",
+   "mvp": "Kareem Abdul-Jabbar"
+  },
+  {
+   "season": 1971,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "New York Knicks",
+   "runnerUpFranchise": "NYK",
+   "finalsMvp": "Wilt Chamberlain",
+   "mvp": "Kareem Abdul-Jabbar"
+  },
+  {
+   "season": 1972,
+   "champion": "New York Knicks",
+   "championFranchise": "NYK",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Willis Reed",
+   "mvp": "Dave Cowens"
+  },
+  {
+   "season": 1973,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Milwaukee Bucks",
+   "runnerUpFranchise": "MIL",
+   "finalsMvp": "John Havlicek",
+   "mvp": "Kareem Abdul-Jabbar"
+  },
+  {
+   "season": 1974,
+   "champion": "Golden State Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Washington Bullets",
+   "runnerUpFranchise": "WAS",
+   "finalsMvp": "Rick Barry",
+   "mvp": "Bob McAdoo"
+  },
+  {
+   "season": 1975,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Phoenix Suns",
+   "runnerUpFranchise": "PHX",
+   "finalsMvp": "Jo Jo White",
+   "mvp": "Kareem Abdul-Jabbar"
+  },
+  {
+   "season": 1976,
+   "champion": "Portland Trail Blazers",
+   "championFranchise": "POR",
+   "runnerUp": "Philadelphia 76ers",
+   "runnerUpFranchise": "PHI",
+   "finalsMvp": "Bill Walton",
+   "mvp": "Kareem Abdul-Jabbar"
+  },
+  {
+   "season": 1977,
+   "champion": "Washington Bullets",
+   "championFranchise": "WAS",
+   "runnerUp": "Seattle SuperSonics",
+   "runnerUpFranchise": "OKC",
+   "finalsMvp": "Wes Unseld",
+   "mvp": "Bill Walton"
+  },
+  {
+   "season": 1978,
+   "champion": "Seattle SuperSonics",
+   "championFranchise": "OKC",
+   "runnerUp": "Washington Bullets",
+   "runnerUpFranchise": "WAS",
+   "finalsMvp": "Dennis Johnson",
+   "mvp": "Moses Malone"
+  },
+  {
+   "season": 1979,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Philadelphia 76ers",
+   "runnerUpFranchise": "PHI",
+   "finalsMvp": "Magic Johnson",
+   "mvp": "Kareem Abdul-Jabbar"
+  },
+  {
+   "season": 1980,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Houston Rockets",
+   "runnerUpFranchise": "HOU",
+   "finalsMvp": "Cedric Maxwell",
+   "mvp": "Julius Erving"
+  },
+  {
+   "season": 1981,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Philadelphia 76ers",
+   "runnerUpFranchise": "PHI",
+   "finalsMvp": "Magic Johnson",
+   "mvp": "Moses Malone"
+  },
+  {
+   "season": 1982,
+   "champion": "Philadelphia 76ers",
+   "championFranchise": "PHI",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Moses Malone",
+   "mvp": "Moses Malone"
+  },
+  {
+   "season": 1983,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Larry Bird",
+   "mvp": "Larry Bird"
+  },
+  {
+   "season": 1984,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Boston Celtics",
+   "runnerUpFranchise": "BOS",
+   "finalsMvp": "Kareem Abdul-Jabbar",
+   "mvp": "Larry Bird"
+  },
+  {
+   "season": 1985,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Houston Rockets",
+   "runnerUpFranchise": "HOU",
+   "finalsMvp": "Larry Bird",
+   "mvp": "Larry Bird"
+  },
+  {
+   "season": 1986,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Boston Celtics",
+   "runnerUpFranchise": "BOS",
+   "finalsMvp": "Magic Johnson",
+   "mvp": "Magic Johnson"
+  },
+  {
+   "season": 1987,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Detroit Pistons",
+   "runnerUpFranchise": "DET",
+   "finalsMvp": "James Worthy",
+   "mvp": "Michael Jordan"
+  },
+  {
+   "season": 1988,
+   "champion": "Detroit Pistons",
+   "championFranchise": "DET",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Joe Dumars",
+   "mvp": "Magic Johnson"
+  },
+  {
+   "season": 1989,
+   "champion": "Detroit Pistons",
+   "championFranchise": "DET",
+   "runnerUp": "Portland Trail Blazers",
+   "runnerUpFranchise": "POR",
+   "finalsMvp": "Isiah Thomas",
+   "mvp": "Magic Johnson"
+  },
+  {
+   "season": 1990,
+   "champion": "Chicago Bulls",
+   "championFranchise": "CHI",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Michael Jordan",
+   "mvp": "Michael Jordan"
+  },
+  {
+   "season": 1991,
+   "champion": "Chicago Bulls",
+   "championFranchise": "CHI",
+   "runnerUp": "Portland Trail Blazers",
+   "runnerUpFranchise": "POR",
+   "finalsMvp": "Michael Jordan",
+   "mvp": "Michael Jordan"
+  },
+  {
+   "season": 1992,
+   "champion": "Chicago Bulls",
+   "championFranchise": "CHI",
+   "runnerUp": "Phoenix Suns",
+   "runnerUpFranchise": "PHX",
+   "finalsMvp": "Michael Jordan",
+   "mvp": "Charles Barkley"
+  },
+  {
+   "season": 1993,
+   "champion": "Houston Rockets",
+   "championFranchise": "HOU",
+   "runnerUp": "New York Knicks",
+   "runnerUpFranchise": "NYK",
+   "finalsMvp": "Hakeem Olajuwon",
+   "mvp": "Hakeem Olajuwon"
+  },
+  {
+   "season": 1994,
+   "champion": "Houston Rockets",
+   "championFranchise": "HOU",
+   "runnerUp": "Orlando Magic",
+   "runnerUpFranchise": "ORL",
+   "finalsMvp": "Hakeem Olajuwon",
+   "mvp": "David Robinson"
+  },
+  {
+   "season": 1995,
+   "champion": "Chicago Bulls",
+   "championFranchise": "CHI",
+   "runnerUp": "Seattle SuperSonics",
+   "runnerUpFranchise": "OKC",
+   "finalsMvp": "Michael Jordan",
+   "mvp": "Michael Jordan"
+  },
+  {
+   "season": 1996,
+   "champion": "Chicago Bulls",
+   "championFranchise": "CHI",
+   "runnerUp": "Utah Jazz",
+   "runnerUpFranchise": "UTA",
+   "finalsMvp": "Michael Jordan",
+   "mvp": "Karl Malone"
+  },
+  {
+   "season": 1997,
+   "champion": "Chicago Bulls",
+   "championFranchise": "CHI",
+   "runnerUp": "Utah Jazz",
+   "runnerUpFranchise": "UTA",
+   "finalsMvp": "Michael Jordan",
+   "mvp": "Michael Jordan"
+  },
+  {
+   "season": 1998,
+   "champion": "San Antonio Spurs",
+   "championFranchise": "SAS",
+   "runnerUp": "New York Knicks",
+   "runnerUpFranchise": "NYK",
+   "finalsMvp": "Tim Duncan",
+   "mvp": "Karl Malone"
+  },
+  {
+   "season": 1999,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Indiana Pacers",
+   "runnerUpFranchise": "IND",
+   "finalsMvp": "Shaquille O'Neal",
+   "mvp": "Shaquille O'Neal"
+  },
+  {
+   "season": 2000,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Philadelphia 76ers",
+   "runnerUpFranchise": "PHI",
+   "finalsMvp": "Shaquille O'Neal",
+   "mvp": "Allen Iverson"
+  },
+  {
+   "season": 2001,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "New Jersey Nets",
+   "runnerUpFranchise": "BKN",
+   "finalsMvp": "Shaquille O'Neal",
+   "mvp": "Tim Duncan"
+  },
+  {
+   "season": 2002,
+   "champion": "San Antonio Spurs",
+   "championFranchise": "SAS",
+   "runnerUp": "New Jersey Nets",
+   "runnerUpFranchise": "BKN",
+   "finalsMvp": "Tim Duncan",
+   "mvp": "Tim Duncan"
+  },
+  {
+   "season": 2003,
+   "champion": "Detroit Pistons",
+   "championFranchise": "DET",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Chauncey Billups",
+   "mvp": "Kevin Garnett"
+  },
+  {
+   "season": 2004,
+   "champion": "San Antonio Spurs",
+   "championFranchise": "SAS",
+   "runnerUp": "Detroit Pistons",
+   "runnerUpFranchise": "DET",
+   "finalsMvp": "Tim Duncan",
+   "mvp": "Steve Nash"
+  },
+  {
+   "season": 2005,
+   "champion": "Miami Heat",
+   "championFranchise": "MIA",
+   "runnerUp": "Dallas Mavericks",
+   "runnerUpFranchise": "DAL",
+   "finalsMvp": "Dwyane Wade",
+   "mvp": "Steve Nash"
+  },
+  {
+   "season": 2006,
+   "champion": "San Antonio Spurs",
+   "championFranchise": "SAS",
+   "runnerUp": "Cleveland Cavaliers",
+   "runnerUpFranchise": "CLE",
+   "finalsMvp": "Tony Parker",
+   "mvp": "Dirk Nowitzki"
+  },
+  {
+   "season": 2007,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Los Angeles Lakers",
+   "runnerUpFranchise": "LAL",
+   "finalsMvp": "Paul Pierce",
+   "mvp": "Kobe Bryant"
+  },
+  {
+   "season": 2008,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Orlando Magic",
+   "runnerUpFranchise": "ORL",
+   "finalsMvp": "Kobe Bryant",
+   "mvp": "LeBron James"
+  },
+  {
+   "season": 2009,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Boston Celtics",
+   "runnerUpFranchise": "BOS",
+   "finalsMvp": "Kobe Bryant",
+   "mvp": "LeBron James"
+  },
+  {
+   "season": 2010,
+   "champion": "Dallas Mavericks",
+   "championFranchise": "DAL",
+   "runnerUp": "Miami Heat",
+   "runnerUpFranchise": "MIA",
+   "finalsMvp": "Dirk Nowitzki",
+   "mvp": "Derrick Rose"
+  },
+  {
+   "season": 2011,
+   "champion": "Miami Heat",
+   "championFranchise": "MIA",
+   "runnerUp": "Oklahoma City Thunder",
+   "runnerUpFranchise": "OKC",
+   "finalsMvp": "LeBron James",
+   "mvp": "LeBron James"
+  },
+  {
+   "season": 2012,
+   "champion": "Miami Heat",
+   "championFranchise": "MIA",
+   "runnerUp": "San Antonio Spurs",
+   "runnerUpFranchise": "SAS",
+   "finalsMvp": "LeBron James",
+   "mvp": "LeBron James"
+  },
+  {
+   "season": 2013,
+   "champion": "San Antonio Spurs",
+   "championFranchise": "SAS",
+   "runnerUp": "Miami Heat",
+   "runnerUpFranchise": "MIA",
+   "finalsMvp": "Kawhi Leonard",
+   "mvp": "Kevin Durant"
+  },
+  {
+   "season": 2014,
+   "champion": "Golden State Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Cleveland Cavaliers",
+   "runnerUpFranchise": "CLE",
+   "finalsMvp": "Andre Iguodala",
+   "mvp": "Stephen Curry"
+  },
+  {
+   "season": 2015,
+   "champion": "Cleveland Cavaliers",
+   "championFranchise": "CLE",
+   "runnerUp": "Golden State Warriors",
+   "runnerUpFranchise": "GSW",
+   "finalsMvp": "LeBron James",
+   "mvp": "Stephen Curry"
+  },
+  {
+   "season": 2016,
+   "champion": "Golden State Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Cleveland Cavaliers",
+   "runnerUpFranchise": "CLE",
+   "finalsMvp": "Kevin Durant",
+   "mvp": "Russell Westbrook"
+  },
+  {
+   "season": 2017,
+   "champion": "Golden State Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Cleveland Cavaliers",
+   "runnerUpFranchise": "CLE",
+   "finalsMvp": "Kevin Durant",
+   "mvp": "James Harden"
+  },
+  {
+   "season": 2018,
+   "champion": "Toronto Raptors",
+   "championFranchise": "TOR",
+   "runnerUp": "Golden State Warriors",
+   "runnerUpFranchise": "GSW",
+   "finalsMvp": "Kawhi Leonard",
+   "mvp": "Giannis Antetokounmpo"
+  },
+  {
+   "season": 2019,
+   "champion": "Los Angeles Lakers",
+   "championFranchise": "LAL",
+   "runnerUp": "Miami Heat",
+   "runnerUpFranchise": "MIA",
+   "finalsMvp": "LeBron James",
+   "mvp": "Giannis Antetokounmpo"
+  },
+  {
+   "season": 2020,
+   "champion": "Milwaukee Bucks",
+   "championFranchise": "MIL",
+   "runnerUp": "Phoenix Suns",
+   "runnerUpFranchise": "PHX",
+   "finalsMvp": "Giannis Antetokounmpo",
+   "mvp": "Nikola Jokić"
+  },
+  {
+   "season": 2021,
+   "champion": "Golden State Warriors",
+   "championFranchise": "GSW",
+   "runnerUp": "Boston Celtics",
+   "runnerUpFranchise": "BOS",
+   "finalsMvp": "Stephen Curry",
+   "mvp": "Nikola Jokić"
+  },
+  {
+   "season": 2022,
+   "champion": "Denver Nuggets",
+   "championFranchise": "DEN",
+   "runnerUp": "Miami Heat",
+   "runnerUpFranchise": "MIA",
+   "finalsMvp": "Nikola Jokić",
+   "mvp": "Joel Embiid"
+  },
+  {
+   "season": 2023,
+   "champion": "Boston Celtics",
+   "championFranchise": "BOS",
+   "runnerUp": "Dallas Mavericks",
+   "runnerUpFranchise": "DAL",
+   "finalsMvp": "Jaylen Brown",
+   "mvp": "Nikola Jokić"
+  },
+  {
+   "season": 2024,
+   "champion": "Oklahoma City Thunder",
+   "championFranchise": "OKC",
+   "runnerUp": "Indiana Pacers",
+   "runnerUpFranchise": "IND",
+   "finalsMvp": "Shai Gilgeous-Alexander",
+   "mvp": "Shai Gilgeous-Alexander"
+  },
+  {
+   "season": 2025,
+   "champion": "New York Knicks",
+   "championFranchise": "NYK",
+   "runnerUp": "San Antonio Spurs",
+   "runnerUpFranchise": "SAS",
+   "finalsMvp": "Jalen Brunson",
+   "mvp": "Shai Gilgeous-Alexander"
+  }
+ ],
+ "records": {
+  "game": [
+   {
+    "label": "Points",
+    "value": "100",
+    "holder": "Wilt Chamberlain",
+    "team": "Philadelphia Warriors",
+    "when": "vs New York, Mar 2, 1962"
+   },
+   {
+    "label": "Rebounds",
+    "value": "55",
+    "holder": "Wilt Chamberlain",
+    "team": "Philadelphia Warriors",
+    "when": "vs Boston, Nov 24, 1960"
+   },
+   {
+    "label": "Assists",
+    "value": "30",
+    "holder": "Scott Skiles",
+    "team": "Orlando Magic",
+    "when": "vs Denver, Dec 30, 1990"
+   },
+   {
+    "label": "Steals",
+    "value": "11",
+    "holder": "Larry Kenon; Kendall Gill",
+    "team": "San Antonio Spurs; New Jersey Nets",
+    "when": "Dec 26, 1976; Apr 3, 1999"
+   },
+   {
+    "label": "Blocks",
+    "value": "17",
+    "holder": "Elmore Smith",
+    "team": "Los Angeles Lakers",
+    "when": "vs Portland, Oct 28, 1973"
+   },
+   {
+    "label": "Three-pointers made",
+    "value": "14",
+    "holder": "Klay Thompson",
+    "team": "Golden State Warriors",
+    "when": "vs Chicago, Oct 29, 2018"
+   },
+   {
+    "label": "Team points",
+    "value": "186",
+    "holder": "Detroit Pistons",
+    "team": "",
+    "when": "vs Denver (186-184, triple overtime), Dec 13, 1983"
+   }
+  ],
+  "season": [
+   {
+    "label": "Points per game",
+    "value": "50.4",
+    "holder": "Wilt Chamberlain",
+    "team": "Philadelphia Warriors",
+    "when": "1961-62"
+   },
+   {
+    "label": "Points",
+    "value": "4,029",
+    "holder": "Wilt Chamberlain",
+    "team": "Philadelphia Warriors",
+    "when": "1961-62"
+   },
+   {
+    "label": "Rebounds per game",
+    "value": "27.2",
+    "holder": "Wilt Chamberlain",
+    "team": "Philadelphia Warriors",
+    "when": "1960-61"
+   },
+   {
+    "label": "Assists per game",
+    "value": "14.5",
+    "holder": "John Stockton",
+    "team": "Utah Jazz",
+    "when": "1989-90"
+   },
+   {
+    "label": "Steals per game",
+    "value": "3.67",
+    "holder": "Alvin Robertson",
+    "team": "San Antonio Spurs",
+    "when": "1985-86"
+   },
+   {
+    "label": "Blocks per game",
+    "value": "5.56",
+    "holder": "Mark Eaton",
+    "team": "Utah Jazz",
+    "when": "1984-85"
+   },
+   {
+    "label": "Three-pointers made",
+    "value": "402",
+    "holder": "Stephen Curry",
+    "team": "Golden State Warriors",
+    "when": "2015-16"
+   },
+   {
+    "label": "Best record",
+    "value": "73-9",
+    "holder": "Golden State Warriors",
+    "team": "",
+    "when": "2015-16"
+   },
+   {
+    "label": "Worst record (win %)",
+    "value": "7-59",
+    "holder": "Charlotte Bobcats",
+    "team": "",
+    "when": "2011-12 (.106, a 66-game season)"
+   }
+  ],
+  "career": [
+   {
+    "label": "Points",
+    "value": "43,440",
+    "holder": "LeBron James",
+    "team": "active",
+    "when": "through 2025-26"
+   },
+   {
+    "label": "Rebounds",
+    "value": "23,924",
+    "holder": "Wilt Chamberlain",
+    "team": "",
+    "when": "1959-1973"
+   },
+   {
+    "label": "Assists",
+    "value": "15,806",
+    "holder": "John Stockton",
+    "team": "",
+    "when": "1984-2003"
+   },
+   {
+    "label": "Steals",
+    "value": "3,265",
+    "holder": "John Stockton",
+    "team": "",
+    "when": "1984-2003"
+   },
+   {
+    "label": "Blocks",
+    "value": "3,830",
+    "holder": "Hakeem Olajuwon",
+    "team": "",
+    "when": "1984-2002 (blocks counted since 1973-74)"
+   },
+   {
+    "label": "Three-pointers made",
+    "value": "4,248",
+    "holder": "Stephen Curry",
+    "team": "active",
+    "when": "through 2025-26"
+   },
+   {
+    "label": "Championships",
+    "value": "11",
+    "holder": "Bill Russell",
+    "team": "Boston Celtics",
+    "when": "1957-1969"
+   }
+  ]
+ }
+}

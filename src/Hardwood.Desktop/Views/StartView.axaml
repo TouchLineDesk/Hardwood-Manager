@@ -53,6 +53,8 @@
       <Border Classes="panel">
         <StackPanel Spacing="8">
           <TextBlock Text="New career" Classes="h2" Margin="0"/>
+          <CheckBox Content="Real world" IsChecked="{Binding RealWorld}" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding WorldText}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
           <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
             <TextBlock Text="World seed" VerticalAlignment="Center"/>
             <TextBox Grid.Column="1" Text="{Binding SeedText}"/>

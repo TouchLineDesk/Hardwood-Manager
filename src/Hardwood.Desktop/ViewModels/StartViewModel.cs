@@ -99,13 +99,27 @@ public sealed partial class StartViewModel : ViewModelBase
     private League? _preview;
     private Hardwood.Core.World.GameWorld? _previewWorld;
 
-    /// <summary>Where you can start (stage 3): the NABL, any league abroad, or a college program (C2, #168).</summary>
-    public List<string> PlayLeagues { get; } = new[] { Hardwood.Core.Names.Brand.Top }.Concat(Hardwood.Core.World.Competitions.Current
+    /// <summary>Where you can start (stage 3): the top league (the NBA or the NABL), any league abroad, or a college program (C2, #168).</summary>
+    public List<string> PlayLeagues => new[] { Hardwood.Core.Names.Brand.Top }.Concat(Hardwood.Core.World.Competitions.Current
         .Where(c => c.Kind == Hardwood.Core.World.CompetitionKind.Domestic).Select(c => c.Name)).Append(CollegeChoice).ToList();
     public const string CollegeChoice = "College basketball";
-    [ObservableProperty] private string _playLeague = Hardwood.Core.Names.Brand.Top;
+    [ObservableProperty] private string _playLeague = "";
     partial void OnPlayLeagueChanged(string value) => FillTeams();
     public string ChooseTitle => PlayLeague == Hardwood.Core.Names.Brand.Top ? "Choose your franchise" : PlayLeague == CollegeChoice ? "Choose your program · College basketball" : $"Choose your club · {PlayLeague}";
+
+    /// <summary>The real world (R1, #191): the NBA's real teams and history. Off gives the fictional world (the NABL).</summary>
+    [ObservableProperty] private bool _realWorld = true;
+    partial void OnRealWorldChanged(bool value)
+    {
+        bool top = PlayLeague == _topShown;
+        Preview();
+        OnPropertyChanged(nameof(PlayLeagues));
+        if (top) PlayLeague = Hardwood.Core.Names.Brand.Top;
+    }
+    private string _topShown = "";
+    public string WorldText => RealWorld
+        ? $"Real NBA teams, cities, conferences and history (champions since 1947, MVPs and records; checked {Hardwood.Core.RealWorld.RealWorldData.HistoryChecked}). Players are generated for now: real rosters come next."
+        : "The fictional world: the NABL and its 30 made-up franchises.";
 
     public StartViewModel(MainViewModel shell)
     {
@@ -113,6 +127,8 @@ public sealed partial class StartViewModel : ViewModelBase
         _shell = shell;
         Graphics = new GraphicsSettingsViewModel(PreviewLeagues);
         Preview();
+        _playLeague = Hardwood.Core.Names.Brand.Top;
+        FillTeams();
     }
 
     public static string DefaultSavePath()
@@ -131,9 +147,13 @@ public sealed partial class StartViewModel : ViewModelBase
     {
         if (!ulong.TryParse(SeedText, out var seed)) { Status = "Seed must be a number."; return; }
         Status = "";
-        _preview = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", 2026, new DateOnly(2026, 10, 1));
+        _preview = new WorldGenerator(new Rng(seed)).Generate(RealWorld ? Hardwood.Core.RealWorld.RealWorldData.LeagueName : "North American Basketball League", 2026, new DateOnly(2026, 10, 1));
         // The world is built from the same seed as the career's, so club ids match.
         _previewWorld = Hardwood.Core.World.GameWorld.Generate(_preview, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
+        Hardwood.Core.Names.Brand.Real = RealWorld;
+        if (RealWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(_preview, _previewWorld);
+        _topShown = Hardwood.Core.Names.Brand.Top;
+        OnPropertyChanged(nameof(WorldText));
         // The picker shows the clubs as the career will: with the name pack's names if there is one.
         Hardwood.Desktop.Graphics.NamePackService.Current(out _)?.ApplyToClubs(_preview, _previewWorld);
         FillTeams();
@@ -207,7 +227,7 @@ public sealed partial class StartViewModel : ViewModelBase
             if (File.Exists(SavePath)) File.Delete(SavePath);
             Status = "";
             var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath, fullSim: Leagues.Where(l => l.FullSim).Select(l => l.Key).ToList(), coach: BuildCoach(),
-                names: Hardwood.Desktop.Graphics.NamePackService.Current(out _));
+                names: Hardwood.Desktop.Graphics.NamePackService.Current(out _), realWorld: RealWorld);
             Hardwood.Desktop.Graphics.LogoPackService.Reload();
             _shell.AttachSession(session);
         }

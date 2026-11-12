@@ -12,7 +12,7 @@ public sealed class Team
     public required string Abbreviation { get; set; }
     public Conference Conference { get; set; }
     public required string Division { get; set; }
-    public int ArenaCapacity { get; init; } = 18000;
+    public int ArenaCapacity { get; set; } = 18000;
     /// <summary>Brand colours as #RRGGBB and a logo style index (0 shield, 1 circle, 2 hexagon, 3 diamond, 4 banner).</summary>
     public string PrimaryColor { get; set; } = "#1D3FA3";
     public string SecondaryColor { get; set; } = "#F0A33A";
