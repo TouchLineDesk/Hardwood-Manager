@@ -106,4 +106,25 @@ public sealed class EngineConfig
     public int OvertimeMinutes { get; set; } = 5;
 
     public static EngineConfig Default => new();
+
+    /// <summary>
+    /// A copy in which every player-against-player edge counts <paramref name="k"/> times as much: shooting skill against
+    /// the contest, ball security against pressure, rebounding. Each is a difference (or centred on both sides alike), so
+    /// even teams score about the same and only the gaps grow. Used for college games (C4 step 0, #185).
+    /// </summary>
+    public EngineConfig ForTalentScale(double k)
+    {
+        var c = (EngineConfig)MemberwiseClone();
+        c.SkillBeta *= k; c.ContestBeta *= k; c.TurnoverSkillBeta *= k; c.ReboundSkillBeta *= k;
+        return c;
+    }
+
+    /// <summary>The settings a game under these rules plays with: talent scaled, and no home edge on a neutral court.</summary>
+    public EngineConfig For(Model.Rules rules)
+    {
+        if (rules.TalentScale == 1.0 && !rules.NeutralSite) return this;
+        var c = rules.TalentScale == 1.0 ? (EngineConfig)MemberwiseClone() : ForTalentScale(rules.TalentScale);
+        if (rules.NeutralSite) c.HomeLogit = 0;
+        return c;
+    }
 }

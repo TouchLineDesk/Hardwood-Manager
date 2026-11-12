@@ -207,7 +207,8 @@ while (s.League.Season < startYear + seasons)
         foreach (var p in tw.ClassOf(cls).Where(p => tw.Recruits[p.Id].CommittedTo == team.Id).OrderBy(p => tw.Recruits[p.Id].Rank))
         {
             var r = tw.Recruits[p.Id];
-            var best = tw.Programs.Where(o => o != team).Select(o => (o, a: tw.Appeal(o, p, r, bd))).OrderByDescending(x => x.a).First();
+            var ranks = tw.PrestigeRanks(); // the best rival that was recruiting him (C4 step 0: computer schools have a reach)
+            var best = tw.Programs.Where(o => o != team && r.Rank <= Hardwood.Core.College.CollegeWorld.Reach(ranks[o.Id], 2)).Select(o => (o, a: tw.Appeal(o, p, r, bd))).DefaultIfEmpty((team, 0)).OrderByDescending(x => x.a).First();
             L($"  recruit No. {r.Rank} {r.Stars}-star on {r.CommittedOn}: interest {Hardwood.Core.College.CollegeWorld.InterestIn(r, team):F0}, offered {r.Offered}, cares about {Hardwood.Core.College.CollegeWorld.PriorityOf(p)}, our appeal {tw.Appeal(team, p, r, bd):F1} vs best rival {best.o.City} {best.a:F1}");
         }
     }

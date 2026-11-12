@@ -248,6 +248,9 @@ public sealed partial class CollegeWorld
             var (w, l) = Record(t.Id);
             double runs = s.Games.Count(g => g.Event == Madness && g.Round >= 1 && g.WinnerId == t.Id);
             double change = (w + l > 0 ? (w / (double)(w + l) - 0.5) * 10 : 0) + runs * 1.5 + (s.ChampionId == t.Id ? 4 : 0);
+            // C4 step 0 (#186): gains shrink near the top, so only a run of titles holds a program at the very top
+            // (review #7: after 8 seasons eight programs sat at 99, and the Elo prestige bonus seeded them all alike).
+            if (change > 0) change *= Math.Clamp((100 - Prestige[t.Id]) / 30.0, 0, 1);
             Prestige[t.Id] = Math.Clamp(Prestige[t.Id] + change + ((conf.Power ? 68 : 42) - Prestige[t.Id]) * 0.08, 10, 99);
         }
         if (Recruiting)
@@ -402,14 +405,17 @@ public sealed partial class CollegeWorld
         var home = Program(g.HomeId)!; var away = Program(g.AwayId)!;
         // March Madness gets the full match engine (decision #95), and so does every game of a program you coach (C2, #168).
         if (g.Event == Madness || g.HomeId == ManagedProgramId || g.AwayId == ManagedProgramId)
-            Record(g, sim.Simulate(home, away, Rules.College, rng.NextULong(), false, g.Date));
+            Record(g, sim.Simulate(home, away, RulesFor(g), rng.NextULong(), false, g.Date));
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72); // NCAA ~72 a side
+            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
             UpdateElo(g);
         }
     }
+
+    /// <summary>College rules for a game: events (invitationals, showcases, tournaments) are on a neutral court.</summary>
+    public static Rules RulesFor(CollegeGame g) => g.Event != null ? Rules.CollegeNeutral : Rules.College;
 
     /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
     public int? ManagedProgramId { get; set; }

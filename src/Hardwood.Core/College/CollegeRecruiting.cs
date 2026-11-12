@@ -299,12 +299,35 @@ public sealed partial class CollegeWorld
     /// <summary>The coached program can only land a prospect it has offered (C3): no scholarship, no commitment.</summary>
     private bool CanTake(Team t, Recruit r) => t.Id != ManagedProgramId || (r.Offered && r.CourtedBy == t.Id);
 
-    private Team? Choose(Player p, Recruit r, ClassBoard board, Rng rng)
+    /// <summary>
+    /// C4 step 0 (#184): a computer school only recruits prospects inside its reach: those ranked within 3 × its prestige
+    /// rank + 20 (the best program chases the top 23, the 50th the top 170), twice that in March and April, and anyone on
+    /// signing day. Without it the blue bloods' few scholarships filled with early-committing 3-stars before the 5-stars
+    /// chose, and after four seasons the top programs were no stronger than the bubble (review #7). The coached program
+    /// has no limit: who you chase is your call.
+    /// </summary>
+    public Dictionary<int, int> PrestigeRanks() =>
+        Programs.OrderByDescending(t => Prestige[t.Id]).ThenBy(t => t.Id).Select((t, i) => (t.Id, i + 1)).ToDictionary(x => x.Id, x => x.Item2);
+
+    /// <summary>The worst national rank a program of this prestige rank recruits (scale 2 in spring).</summary>
+    public static int Reach(int prestigeRank, double scale = 1) => (int)Math.Round(scale * (3 * prestigeRank + 20));
+
+    /// <summary>How far the computer schools reach today: double in March and April, when the leftovers are picked over.</summary>
+    public double ReachScale => RecruitingDay is { Month: >= 3 and <= 4 } ? 2 : 1;
+
+    private bool InReach(Team t, Recruit r, Dictionary<int, int>? ranks, double scale) =>
+        ranks == null || t.Id == ManagedProgramId || r.Rank <= Reach(ranks.GetValueOrDefault(t.Id, Programs.Count), scale);
+
+    /// <summary>Whether a program would recruit him today: a scholarship left, within its reach, and for the coached program an offer.</summary>
+    public bool CouldTake(Team t, Recruit r, ClassBoard board, Dictionary<int, int>? ranks = null) =>
+        board.Open[t.Id] > 0 && CanTake(t, r) && InReach(t, r, ranks ?? PrestigeRanks(), ReachScale);
+
+    private Team? Choose(Player p, Recruit r, ClassBoard board, Rng rng, Dictionary<int, int>? ranks = null, double scale = 1)
     {
         Team? best = null; double top = double.MinValue;
         foreach (var t in Programs)
         {
-            if (board.Open[t.Id] <= 0 || !CanTake(t, r)) continue;
+            if (board.Open[t.Id] <= 0 || !CanTake(t, r) || !InReach(t, r, ranks, scale)) continue;
             double a = Appeal(t, p, r, board, rng);
             if (a > top) { top = a; best = t; }
         }
@@ -339,6 +362,7 @@ public sealed partial class CollegeWorld
             // everyone hurries in spring. Prospects ranked below the scholarships still open wait to see who's left.
             bool spring = day.Month is >= 3 and <= 4, early = day.Month == 11 && day.Day >= 8 && day.Day <= 21;
             var board = BoardFor(cls);
+            var ranks = PrestigeRanks();
             int open = board.Open.Values.Sum(v => Math.Max(0, v)), waiting = 0;
             foreach (var p in ClassOf(cls).OrderBy(p => Recruits[p.Id].Rank).ToList())
             {
@@ -347,7 +371,7 @@ public sealed partial class CollegeWorld
                 if (++waiting > open * 1.2) break;
                 double chance = spring ? 0.22 : (0.01 + 0.008 * r.Stars + (r.Stars >= 4 ? 0.02 : 0)) * (early ? 2.5 : 1); // C3: the best decide earlier still, so few top-50 recruits are left for spring
                 if (!rng.Chance(chance)) continue;
-                if (Choose(p, r, board, rng) is { } pick) Commit(p, r, pick, day, board);
+                if (Choose(p, r, board, rng, ranks, spring ? 2 : 1) is { } pick) Commit(p, r, pick, day, board);
             }
         }
         if (RecruitingDay == null || date > RecruitingDay) RecruitingDay = date;

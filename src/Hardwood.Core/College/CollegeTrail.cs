@@ -162,7 +162,8 @@ public sealed partial class CollegeWorld
     public List<(Team Program, double Appeal)> Considering(Player p, Recruit r, ClassBoard? board = null)
     {
         board ??= BoardFor(r.ClassOf);
-        return Programs.Where(t => board.Open[t.Id] > 0 && CanTake(t, r))
+        var ranks = PrestigeRanks();
+        return Programs.Where(t => CouldTake(t, r, board, ranks))
                        .Select(t => (t, Appeal(t, p, r, board)))
                        .OrderByDescending(x => x.Item2).ToList();
     }
@@ -180,10 +181,11 @@ public sealed partial class CollegeWorld
     {
         if (r.CommittedTo is { } to) return Program(to);
         board ??= BoardFor(r.ClassOf);
+        var ranks = PrestigeRanks();
         Team? best = null; double top = double.MinValue;
         foreach (var t in Programs)
         {
-            if (board.Open[t.Id] <= 0 || !CanTake(t, r)) continue;
+            if (!CouldTake(t, r, board, ranks)) continue;
             double a = Appeal(t, p, r, board);
             if (a > top) { top = a; best = t; }
         }
@@ -256,6 +258,8 @@ public sealed partial class CollegeWorld
         board ??= BoardFor(cls);
         var targets = new List<(Player p, Recruit r)>();
         if (board.Open[t.Id] <= 0) return targets; // nothing to offer: no one is a realistic target
+        var ranks = PrestigeRanks();
+        double scale = ReachScale;
         var rivals = Programs.Where(o => o != t && board.Open[o.Id] > 0).ToList();
         foreach (var p in ClassOf(cls).OrderBy(p => Recruits[p.Id].Rank))
         {
@@ -263,7 +267,9 @@ public sealed partial class CollegeWorld
             if (r.CommittedTo != null) continue;
             double mine = InterestIn(r, t);
             double ours = Appeal(t, p, r, board) - CourtingEdge(r, t.Id, mine) + CourtingEdge(r, t.Id, Math.Max(60, mine));
-            double rival = rivals.Count == 0 ? double.MinValue : rivals.Max(o => Appeal(o, p, r, board));
+            // Only the schools recruiting him are rivals (#184: a blue blood isn't chasing the No. 400 prospect in the autumn).
+            var chasing = rivals.Where(o => InReach(o, r, ranks, scale)).ToList();
+            double rival = chasing.Count == 0 ? double.MinValue : chasing.Max(o => Appeal(o, p, r, board));
             if (ours - rival > -4) targets.Add((p, r));
             if (targets.Count >= want) break;
         }

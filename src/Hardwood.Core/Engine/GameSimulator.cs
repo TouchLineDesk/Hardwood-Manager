@@ -24,9 +24,10 @@ public sealed class GameSimulator
             Seed = seed,
             Date = date,
         };
-        var h = new Side(home, result.Home, rng, _cfg, isHome: true, date);
-        var a = new Side(away, result.Away, rng, _cfg, isHome: false, date);
-        var game = new GameState(h, a, rules, rng, _cfg, result, keepLog);
+        var cfg = _cfg.For(rules);
+        var h = new Side(home, result.Home, rng, cfg, isHome: true, date);
+        var a = new Side(away, result.Away, rng, cfg, isHome: false, date);
+        var game = new GameState(h, a, rules, rng, cfg, result, keepLog);
         game.Run();
 
         if (date is { } d)
@@ -48,10 +49,11 @@ public sealed class GameSimulator
         CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date);
         var rng = new Rng(seed);
         var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date };
-        var h = new Side(home, result.Home, rng, _cfg, isHome: true, date);
-        var a = new Side(away, result.Away, rng, _cfg, isHome: false, date);
-        var game = new GameState(h, a, rules, rng, _cfg, result, log: true);
-        return new LiveGame(game, result, rng, _cfg, date);
+        var cfg = _cfg.For(rules);
+        var h = new Side(home, result.Home, rng, cfg, isHome: true, date);
+        var a = new Side(away, result.Away, rng, cfg, isHome: false, date);
+        var game = new GameState(h, a, rules, rng, cfg, result, log: true);
+        return new LiveGame(game, result, rng, cfg, date);
     }
 
     /// <summary>A game in progress. Step one possession at a time; tactics and depth-chart changes on the Team objects take effect immediately.</summary>
@@ -244,7 +246,7 @@ public sealed class GameSimulator
             {
                 // The pregame line, as the quick sim sees it: strength gap plus home court, spread scaled to game length.
                 double spread = rules.GameMinutes / 40.0;
-                result.PregameEdge = (World.QuickSim.Strength(home.Team) - World.QuickSim.Strength(away.Team)) * 0.55 * spread + 2.5;
+                result.PregameEdge = (World.QuickSim.Strength(home.Team) - World.QuickSim.Strength(away.Team)) * 0.55 * spread + (rules.NeutralSite ? 0 : 2.5);
                 result.MarginSpread = 11 * spread;
             }
         }
@@ -429,7 +431,9 @@ public sealed class GameSimulator
             _fitLogit = FitFor(off, def) * (off.Team.Coach?.FitMultiplier ?? 1);
             // Fourth-quarter game flow: a team well ahead eases off (rests starters, runs clock, loses focus) and the
             // team behind presses; leads shrink. Without it overtime came in ~3% of games, half the NBA's rate (critic review #2).
-            if (_period >= _rules.Periods)
+            // The last quarter of the game's length: a whole fourth quarter, but only the last 10 minutes of a college
+            // second half (C4 step 0, #187: it ran for all 20, which squeezed every college margin).
+            if (_period > _rules.Periods || (_period == _rules.Periods && _clock <= _rules.GameMinutes * 60 / 4.0))
             {
                 int lead = Score(off) - Score(def);
                 if (lead <= -6) _fitLogit += _cfg.CatchUpLogit;
@@ -438,7 +442,7 @@ public sealed class GameSimulator
 
             double pace = (off.Tac.Pace + def.Tac.Pace) / 2.0 + Tactics.PaceShift(off.Tac.System);
             // Pace is possessions per 48 minutes (Tactic.Pace), so a 40-minute FIBA game has 5/6 as many possessions.
-            double meanSeconds = 48 * 60.0 / (2.0 * pace);
+            double meanSeconds = 48 * 60.0 / (2.0 * pace * _rules.PaceScale);
             double seconds = _transition
                 ? Math.Clamp(_rng.NextGaussian(_cfg.TransitionSeconds, 2.0), 2, 12)
                 : Math.Clamp(_rng.NextGaussian(meanSeconds, _cfg.SecondsPerPossessionSd), 3, _rules.ShotClockSeconds);

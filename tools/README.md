@@ -11,3 +11,5 @@ Neither project is part of the solution, the game or CI.
 | Screenshots | `HW_SCREENSHOT_DIR=shots dotnet test tests/Hardwood.Tests --filter ScreenshotTests` | 32 page screenshots at 1480 px |
 
 The careers write saves to the temp folder as `critic-<label>.hwsave`.
+| March Madness audit | `dotnet run --project src/Hardwood.Cli -c Release -- madness --seed 31 --tournaments 150 --out mm.md` | The college world alone: seed-v-seed win rates, titles by seed, top programs' strength against the bubble, college scoring (about 30 s for 100) |
+| College margin check | `dotnet run --project src/Hardwood.Cli -c Release -- calib --seed 3 --games 3000` | Full-engine college games (neutral court): margin per point of strength gap and the spread around it. The college quick results use the same two numbers (`QuickSim`, #188) |

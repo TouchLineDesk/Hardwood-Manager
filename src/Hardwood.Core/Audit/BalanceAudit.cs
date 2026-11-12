@@ -103,6 +103,7 @@ public static class BalanceAudit
         var overBudget = new List<double>(); var budgetUse = new List<double>(); var gradsSigned = new List<double>(); var bestGrad = new List<double>();
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
+        var college = new MadnessTally();
 
         for (int s = 0; s < seasons; s++)
         {
@@ -135,6 +136,7 @@ public static class BalanceAudit
             progress?.Invoke($"Season {year}-{(year + 1) % 100:00}");
             // The world: its seasons end before the NABL summer starts; measure them, then the summer moves players.
             world.FinishSeasons(sim);
+            if (world.College != null) college.Add(world.College); // C4 step 0: March Madness and college scoring
             foreach (var c in world.Playing)
             {
                 var regular = c.Season.Fixtures.Where(f => f.Played && f.Stage == CompetitionSeason.RegularSeason).ToList();
@@ -269,6 +271,7 @@ public static class BalanceAudit
         }
         foreach (var (name, list) in worldCa)
             m.Add(new("Overseas", $"{name}: mean ability (CA)", "0.0", list, list[0] - 6, list[0] + 6, "stable within ±6 of season 1"));
+        if (college.Tournaments > 0) college.AddMetrics(m, seasons);
         report.Elapsed = sw.Elapsed;
         return report;
     }

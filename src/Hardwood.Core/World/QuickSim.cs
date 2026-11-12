@@ -21,13 +21,17 @@ public static class QuickSim
     }
 
     /// <summary>Play one game. Returns the score and adds each player's line to <paramref name="stats"/>.</summary>
-    public static (int home, int away) Play(Team home, Team away, DateOnly date, Rng rng, Dictionary<int, StatLine> stats, Rules? rules = null, double perTeam = 0)
+    public static (int home, int away) Play(Team home, Team away, DateOnly date, Rng rng, Dictionary<int, StatLine> stats, Rules? rules = null, double perTeam = 0, bool neutral = false)
     {
         // FIBA's 40 minutes score ~80 a side; NBA rules (48 minutes, the USA pyramid) ~100; each league can set its own level.
         bool long48 = (rules?.GameMinutes ?? 40) >= 48;
         double level = perTeam > 0 ? perTeam : long48 ? 101 : 80;
         double spread = level / 80.0;
-        double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * 0.55 * spread + 2.5, 11 * spread);
+        // College (C4 step 0, #188): matched to the full engine under college rules, so a computer program's record means
+        // what yours does (`hardwood calib`: 0.52 points of margin a strength point, 8.9 either side).
+        bool college = rules is { TalentScale: > 1 };
+        double perPoint = college ? 0.52 : 0.55 * spread, sd = college ? 9.0 : 11 * spread;
+        double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * perPoint + (neutral ? 0 : 2.5), sd);
         double total = rng.NextGaussian(level * 2, 12 * spread);
         int hp = (int)Math.Round((total + margin) / 2), ap = (int)Math.Round((total - margin) / 2);
         if (hp == ap) { if (rng.Chance(0.5)) hp += rng.Next(1, 6); else ap += rng.Next(1, 6); }
