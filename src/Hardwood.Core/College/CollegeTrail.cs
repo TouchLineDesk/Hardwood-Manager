@@ -283,7 +283,9 @@ public sealed partial class CollegeWorld
         string who = $"{StarText(r.Stars)} {p.PrimaryPosition} {p.Name} (No. {r.Rank}, {r.HighSchool}, {StateName(r.State)})";
         if (to.Id == me)
             CoachNews.Add(($"{p.Name} commits to you", $"{who} {(signingDay ? "signed with you on signing day" : "has committed to you")}. He enrolls in the summer of {r.ClassOf}."));
-        else if (r.CourtedBy == me && (r.Offered || r.OnBoard))
+        // Only a prospect you'd offered gets a message when he goes elsewhere (critic review #8: a college coach's inbox had
+        // about 100 of these in three seasons, most for prospects the assistant had only put on the board).
+        else if (r.CourtedBy == me && r.Offered)
             CoachNews.Add(($"{p.Name} picks {to.FullName}", $"{who}, whom you were recruiting{(r.Offered ? " with a scholarship offer" : "")}, {(signingDay ? "signed with" : "has committed to")} {to.FullName}. Interest in you was {r.Interest:0}."));
     }
 }
