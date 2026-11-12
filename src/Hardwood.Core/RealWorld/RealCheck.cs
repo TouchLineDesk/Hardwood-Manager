@@ -51,6 +51,19 @@ public static class RealCheck
         int generated = league.Teams.Sum(t => t.Roster.Count(p => !realNames.Contains(p.Name)));
         sb.AppendLine($"Real players placed: {league.Teams.Sum(t => t.Roster.Count(p => realNames.Contains(p.Name)))} of {RealPlayers.Lines.Count}; generated fillers: {generated}.");
         sb.AppendLine();
+        // R2 part 2b: the players on real rosters who hadn't played yet this season, rated from last season alone.
+        var notYet = RealPlayers.Lines.Where(l => l.NotYet).ToList();
+        var byName = all.GroupBy(x => x.p.Name).ToDictionary(g => g.Key, g => g.First());
+        sb.AppendLine($"## Not yet seen in 2026-27 ({notYet.Count}; rated from 2025-26 alone, bench level with no line)");
+        sb.AppendLine(string.Join("; ", notYet.Select(l => byName.TryGetValue(l.Name, out var x)
+            ? $"{l.Name} {x.t.Abbreviation} {x.p.CurrentAbility}" : $"{l.Name} ({l.Team}, cut)")));
+        sb.AppendLine();
+        // Real careers carried in (R2 part 2b): the all-time view the records book starts from.
+        var careers = all.Where(x => league.Careers.ContainsKey(x.p.Id)).Select(x => (x.p, c: league.Careers[x.p.Id])).ToList();
+        sb.AppendLine($"## Real careers carried in: {careers.Count} players");
+        sb.AppendLine(string.Join("; ", careers.OrderByDescending(x => x.c.Points).Take(10)
+            .Select(x => $"{x.p.Name} {x.c.Points:N0} pts, {x.c.Games:N0} g, {x.c.Seasons} seasons, {x.c.Mvps} MVP")));
+        sb.AppendLine();
         sb.Append(Market(league));
 
         var wins = league.Teams.ToDictionary(t => t, _ => 0.0);

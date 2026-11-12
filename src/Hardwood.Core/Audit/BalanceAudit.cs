@@ -96,7 +96,7 @@ public static class BalanceAudit
         var pts = new List<double>(); var poss = new List<double>(); var fg = new List<double>(); var tp = new List<double>();
         var tpRate = new List<double>(); var ftRate = new List<double>(); var home = new List<double>(); var ot = new List<double>();
         var rimShare = new List<double>(); var astPer = new List<double>(); var andOnes = new List<double>();
-        var best = new List<double>(); var worst = new List<double>(); var spread = new List<double>(); var leader = new List<double>();
+        var best = new List<double>(); var worst = new List<double>(); var spread = new List<double>(); var leader = new List<double>(); var threesLeader = new List<double>();
         var meanCa = new List<double>(); var stars = new List<double>(); var meanAge = new List<double>();
         var devYoung = new List<double>(); var devPrime = new List<double>(); var devOld = new List<double>();
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
@@ -168,6 +168,7 @@ public static class BalanceAudit
             double mw = table.Average(r => r.Wins);
             spread.Add(Math.Sqrt(table.Average(r => (r.Wins - mw) * (r.Wins - mw))));
             leader.Add(played.Stats.Values.Where(x => x.Games >= 58).Select(x => x.Ppg).DefaultIfEmpty(0).Max());
+            threesLeader.Add(played.Stats.Values.Select(x => (double)x.ThreePM).DefaultIfEmpty(0).Max());
             report.Champions.Add($"{year}: {played.Outcome.Champion?.Abbreviation ?? "?"}");
 
             var off = played.Offseason;
@@ -207,6 +208,9 @@ public static class BalanceAudit
         m.Add(new("NABL competitive balance", "Worst record (wins)", "0", worst, 12, 26, "NBA 2015-25"));
         m.Add(new("NABL competitive balance", "Spread of wins (std dev)", "0.0", spread, 10, 14.5, "NBA 2015-25"));
         m.Add(new("NABL competitive balance", "Scoring leader (points per game)", "0.0", leader, 28, 36, "NBA 2015-25"));
+        // Not gated yet (R2 part 2b): the real record chase showed a made-up shooter passing Curry's 402. NBA leaders
+        // 2015-25 made about 240-400 threes; this measures the tail before anything is tuned (roadmap 15).
+        m.Add(new("NABL competitive balance", "Threes leader (made in a season)", "0", threesLeader, null, null, "NBA 2015-25: about 240-400 (record 402)"));
         int distinct = report.Champions.Select(c => c[(c.IndexOf(':') + 2)..]).Distinct().Count();
         // Real leagues have dynasties and repeat winners: the NBA had 7 different champions in 2015-24, 6 in 2005-14.
         // NBA: 6-7 different champions in a decade, but only ~20 franchises in 77 years: repeat winners pile up over

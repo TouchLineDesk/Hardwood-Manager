@@ -58,6 +58,8 @@ int teamId = label switch
     "nba-real-strong" => probe.Teams.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     "nba-real-weak" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id,
     "nba-real-mid" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).ElementAt(14).Id,
+    // A chosen real franchise: nba-real-OKC, nba-real-MIA, ...
+    _ when label.StartsWith("nba-real-") && label.Length == 12 => probe.Teams.First(t => t.Abbreviation == label[9..]).Id,
     "lithuania" => probeWorld[WorldLeagues.Lithuania].Clubs.OrderBy(t => QuickSim.Strength(t)).First().Id,
     "local" => probeWorld[UsaPyramid.LocalKey("txn")].Clubs.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     "japan" => probeWorld[WorldLeagues.Japan].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(4).Id,
@@ -216,6 +218,9 @@ while (s.League.Season < startYear + seasons)
         if (s.Phase != SessionPhase.Offseason) Stars($"season {s.League.Season}");
         if (s.Phase != SessionPhase.Offseason)
             L($"season {s.League.Season} begins: {s.HumanTeam.FullName} ({s.HumanLeagueName}, level {s.MyLevel}) roster {s.HumanTeam.Roster.Count}, wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M, board {s.Job.Confidence:F0}, goal {s.Job.Current?.Goal}, protected {s.Job.ProtectedSeason} {s.Job.ProtectedReason}");
+        if (s.Phase != SessionPhase.Offseason && s.MyCommittedWages > s.HumanTeam.Money.WageBudget)
+            L("  over budget at the start; roster: " + string.Join(", ", s.HumanTeam.Roster.OrderByDescending(p => p.Contract?.Salary ?? 0)
+                .Select(p => $"{p.Name} ${(p.Contract?.Salary ?? 0) / 1e6:F2}M x{p.Contract?.Years} from {p.Contract?.StartSeason}")));
         continue;
     }
     bool wasEmployed = s.Employed;
@@ -260,6 +265,9 @@ L($"recruiting: {recruitCommits} seniors committed to us");
 L($"staff: extended {staffExtended}, on staff now {s.HumanTeam.Staff.Count}; coach " + string.Join(" ", Enum.GetValues<Hardwood.Core.Jobs.CoachAttr>().Select(a => $"{a} {s.Coach[a]}")));
 L($"media: {s.Media.Decisions.Count(d => d.Kind == "press")} press conferences, {s.Media.Decisions.Count(d => d.Kind == "locker")} locker-room moments; answers " + string.Join(", ", mediaAnswers.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} x{kv.Value}")));
 L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categories: " + string.Join(", ", s.Inbox.GroupBy(m => m.Category).Select(g => $"{g.Key} {g.Count()}")));
+// R2 part 2b: the real record chase (records broken, record watch, legends passed), in full.
+foreach (var m in s.Inbox.Where(m => m.Title.StartsWith("NBA record") || m.Title.StartsWith("Record watch") || m.Title.Contains("all-time scoring list") || m.Title.Contains("ties an NBA record")).Reverse())
+    L($"record chase {m.Date:MM/dd/yyyy}: {m.Title} | {m.Body}");
 L("inbox titles: " + string.Join(", ", s.Inbox.GroupBy(m => System.Text.RegularExpressions.Regex.Replace(m.Title.Split(':')[0], @"\d+(\.\d+)?", "#")).OrderByDescending(g => g.Count()).Take(25).Select(g => $"{g.Key} x{g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
     L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");

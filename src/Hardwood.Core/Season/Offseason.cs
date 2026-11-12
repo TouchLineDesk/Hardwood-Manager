@@ -735,6 +735,8 @@ public sealed class Offseason
         _league.HallOfFame.Add(new HallOfFamer(p.Id, Season + 1, Math.Round(c.HallScore, 1)));
         Report.HallOfFame.Add(p);
         // A franchise retires the number of a Hall of Famer who gave it at least six seasons' worth of games.
+        // (A real player's career before the game has no games by team; only games played here count. R2 part 2b.)
+        if (c.GamesByTeam.Count == 0) return;
         var home = c.GamesByTeam.OrderByDescending(kv => kv.Value).First();
         // (His franchise may since have been relegated out of the NABL; a club down the pyramid doesn't retire numbers.
         // Looking it up in the NABL alone crashed the summer, 35 seasons into a 100-season run; critic audit, Nov 10.)
