@@ -214,7 +214,7 @@ while (s.League.Season < startYear + seasons)
             foreach (var p in s.MyExpiring.ToList())
             {
                 decisions++;
-                if (keep.Contains(p) && s.CannotTalk(p) == null) { var d = s.DemandOf(p); if (s.Offer(p, d.Wage, d.Years).Accepted) { renewed++; continue; } }
+                if (keep.Contains(p) && s.CannotTalk(p) == null) { var d = s.DemandOf(p); if (s.Offer(p, d.Wage, d.Years).Accepted) { renewed++; L($"{s.Today}: renewed {p.Name} ${d.Wage / 1e6:F2}M x{d.Years}; wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M"); continue; } }
                 s.ReleaseExpiring(p); released++;
             }
         }
@@ -227,7 +227,7 @@ while (s.League.Season < startYear + seasons)
                 if (s.CannotTalk(fa) != null) continue;
                 var d = s.DemandOf(fa); decisions++;
                 var reply = s.Offer(fa, d.Wage, d.Years);
-                if (reply.Accepted) signings++;
+                if (reply.Accepted) { signings++; L($"{s.Today}: signed {fa.Name} ${d.Wage / 1e6:F2}M x{d.Years}; wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M"); }
             }
         }
         int season = s.League.Season;

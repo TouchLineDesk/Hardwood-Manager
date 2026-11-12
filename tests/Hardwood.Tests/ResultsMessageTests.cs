@@ -7,18 +7,20 @@ using Xunit;
 namespace Hardwood.Tests;
 
 /// <summary>
-/// Critic review #8: the weekly results message was 58-70 of the 230-250 messages a career gets in three seasons.
-/// Results now arrive every other Monday (or in a week that has a press conference or locker-room moment to carry),
-/// and no game is lost or counted twice on the way.
+/// Critic review #8 moved the results to every other Monday; since v0.56.0 (Danny, #243) they arrive every Monday again,
+/// because the inbox can be cleaned, and every other Monday is an inbox setting. Either way no game is lost or counted twice.
 /// </summary>
 public class ResultsMessageTests
 {
-    [Fact]
-    public void Results_arrive_every_other_week_and_every_regular_season_game_is_in_exactly_one_message()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Results_arrive_weekly_or_every_other_week_and_every_regular_season_game_is_in_exactly_one_message(bool everyOtherWeek)
     {
         var probe = new WorldGenerator(new Rng(92)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
         var id = probe.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ElementAt(15).Id;
         var s = GameSession.NewGame(92, id, null);
+        s.InboxSettings.ResultsEveryOtherWeek = everyOtherWeek;
         var start = s.Today;
         while (s.Phase != SessionPhase.Postseason && s.Phase != SessionPhase.Offseason) s.AdvanceDay();
 
@@ -34,10 +36,18 @@ public class ResultsMessageTests
         }
         Assert.Equal(s.MyRecord.Wins + s.MyRecord.Losses, games);
 
-        // About one message a fortnight (plus weeks carrying a press conference), not one a week.
         int weeks = (s.Today.DayNumber - start.DayNumber) / 7;
-        Assert.InRange(results.Count, weeks / 3, weeks * 3 / 4);
-        Assert.Contains(results, m => m.Title.StartsWith("Last two weeks"));
+        if (everyOtherWeek)
+        {
+            // About one message a fortnight (plus weeks carrying a press conference), not one a week.
+            Assert.InRange(results.Count, weeks / 3, weeks * 3 / 4);
+            Assert.Contains(results, m => m.Title.StartsWith("Last two weeks"));
+        }
+        else
+        {
+            Assert.InRange(results.Count, weeks * 3 / 4, weeks + 1);
+            Assert.DoesNotContain(results, m => m.Title.StartsWith("Last two weeks"));
+        }
 
         // The open market has no trades and no draft (#80): the calendar news says so.
         Assert.True(s.League.Finance.OpenMarket);

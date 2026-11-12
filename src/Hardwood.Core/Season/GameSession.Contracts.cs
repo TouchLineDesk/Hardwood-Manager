@@ -34,6 +34,16 @@ public sealed partial class GameSession
     /// <summary>Wages already committed for the season a new contract would start in.</summary>
     public long MyCommittedWages => HumanTeam.Roster.Where(p => !MyExpiring.Contains(p)).Sum(p => p.Contract?.Salary ?? 0);
 
+    /// <summary>
+    /// In the summer, the wages of college seniors committed to you who haven't signed yet (they sign on graduation day).
+    /// The summer budget makes room for them (#256), so a renewal or free agent can't take that room (run 22: three
+    /// signings filled the budget to $10k, then two committed seniors signed and the club was $2.4M over all season).
+    /// </summary>
+    public long MyReservedWages => Phase == SessionPhase.Offseason ? PendingCommitments(HumanTeam).wages : 0;
+
+    /// <summary>What's left for a new deal: the budget less committed wages and the summer's reserved seniors.</summary>
+    public long MyWageRoom => HumanTeam.Money.WageBudget - MyCommittedWages - MyReservedWages;
+
     private readonly Dictionary<int, (ContractDemand opening, int round)> _talks = new();
     private readonly HashSet<int> _talksOver = new();
 
@@ -99,9 +109,11 @@ public sealed partial class GameSession
         // Over the budget only for a minimum deal that fills the roster to the league's minimum (critic review #3:
         // renewals and minimum deals let the strong club creep over its budget every summer).
         bool fillsRoster = wage <= (long)(League.Finance.MinSalary * MySalaryScale) && HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) < MyRosterMin;
-        if (MyCommittedWages + wage > budget && !fillsRoster)
+        long reserved = MyReservedWages;
+        if (MyCommittedWages + reserved + wage > budget && !fillsRoster)
             return new TalkReply(false, false, demand,
-                $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget."
+                $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + reserved + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget"
+                + (reserved > 0 ? $", counting ${reserved / 1e6:F1}M for your committed college seniors." : ".")
                 + (MyExpiring.Contains(p) ? " Free up wages first (sell or release someone), or let him go." : ""));
 
         var (opening, round) = _talks[p.Id];

@@ -14,23 +14,42 @@
         </StackPanel>
       </Grid>
     </Border>
-    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
       <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding Filter}" MinWidth="170" Margin="0,0,8,4"/>
       <Button Content="Mark all read" Command="{Binding MarkAllReadCommand}" Margin="0,0,8,4"/>
-      <TextBlock Text="World news arrives once a week as one 'Around the world' message." Classes="muted" VerticalAlignment="Center" Margin="0,0,0,4"/>
+      <Button Command="{Binding DeleteSelectedCommand}" IsEnabled="{Binding CanDeleteSelected}" Margin="0,0,8,4" ToolTip.Tip="Delete the open message (Delete key)">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <c:Icon Kind="Trash" Width="14" Height="14"/>
+          <TextBlock Text="Delete"/>
+        </StackPanel>
+      </Button>
+      <Button Content="{Binding DeleteReadLabel}" Command="{Binding DeleteReadCommand}" IsEnabled="{Binding CanDeleteRead}" Margin="0,0,8,4" ToolTip.Tip="Delete every message you've read. Questions you haven't answered stay."/>
+      <Button Content="{Binding DeleteShownLabel}" Command="{Binding DeleteShownCommand}" IsEnabled="{Binding CanDeleteShown}" Margin="0,0,8,4" ToolTip.Tip="Delete every message in this list (asks once). Questions you haven't answered stay."/>
+    </WrapPanel>
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <ComboBox ItemsSource="{Binding ResultsOptions}" SelectedItem="{Binding ResultsCadence}" MinWidth="170" Margin="0,0,8,4"/>
+      <ComboBox ItemsSource="{Binding AutoClearOptions}" SelectedItem="{Binding AutoClear}" MinWidth="170" Margin="0,0,8,4"/>
+      <TextBlock Text="{Binding CleanupNote}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,4"/>
+      <TextBlock Text="World news arrives every other week as one 'Around the world' message." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
     </WrapPanel>
     <Grid ColumnDefinitions="2*,3*">
       <Border Classes="panel" Padding="0">
         <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" Background="Transparent">
+          <ListBox.KeyBindings>
+            <KeyBinding Gesture="Delete" Command="{Binding DeleteSelectedCommand}"/>
+          </ListBox.KeyBindings>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:InboxItem">
-              <Grid ColumnDefinitions="26,56,*,Auto" Margin="2,2">
-                <c:Icon Kind="{Binding Icon}" Width="15" Height="15" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="{Binding Date}" Classes="muted" FontSize="11.5" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="{Binding Weight}" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                <Border Grid.Column="3" Background="{StaticResource HwPanelAltBrush}" CornerRadius="3" Padding="6,1">
-                  <TextBlock Text="{Binding Category}" FontSize="10.5" Classes="muted"/>
-                </Border>
+              <!-- Two lines (run 22): the title gets the row's full width, so it never wraps letter by letter at 1280 px / 130%. -->
+              <Grid ColumnDefinitions="26,*" RowDefinitions="Auto,Auto" Margin="2,2">
+                <c:Icon Kind="{Binding Icon}" Width="15" Height="15" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="{Binding Weight}" TextWrapping="Wrap"/>
+                <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                  <TextBlock Text="{Binding Date}" Classes="muted" FontSize="11.5" VerticalAlignment="Center"/>
+                  <Border Background="{StaticResource HwPanelAltBrush}" CornerRadius="3" Padding="6,1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Category}" FontSize="10.5" Classes="muted"/>
+                  </Border>
+                </StackPanel>
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>

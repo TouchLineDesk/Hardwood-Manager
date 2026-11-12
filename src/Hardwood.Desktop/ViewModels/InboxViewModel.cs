@@ -69,6 +69,93 @@ public sealed partial class InboxViewModel : PageViewModel
         Refresh();
     }
 
+    // ---- The inbox clean-up (Danny, #243, D4) ----
+
+    /// <summary>What the last clean-up did ("Deleted 34 messages."), shown beside the buttons.</summary>
+    [ObservableProperty] private string _cleanupNote = "";
+    [ObservableProperty] private string _deleteReadLabel = "Delete read";
+    [ObservableProperty] private string _deleteShownLabel = "Delete these";
+    [ObservableProperty] private bool _canDeleteSelected;
+    [ObservableProperty] private bool _canDeleteRead;
+    [ObservableProperty] private bool _canDeleteShown;
+    /// <summary>"Delete these" asks once: the first click arms it, the second deletes.</summary>
+    private bool _deleteShownArmed;
+
+    [RelayCommand]
+    private void DeleteSelected()
+    {
+        if (Selected == null) return;
+        int index = Items.IndexOf(Selected);
+        if (!Session.DeleteMessage(Selected.Message.Id)) { CleanupNote = "Answer the question in this message first."; return; }
+        CleanupNote = "Message deleted.";
+        AfterDelete(index);
+    }
+
+    [RelayCommand]
+    private void DeleteRead()
+    {
+        int n = Session.DeleteAllRead();
+        CleanupNote = n == 0 ? "No read messages to delete." : $"Deleted {Plural(n, "read message")}.";
+        AfterDelete(0);
+    }
+
+    [RelayCommand]
+    private void DeleteShown()
+    {
+        if (!_deleteShownArmed)
+        {
+            _deleteShownArmed = true;
+            DeleteShownLabel = $"Click again to delete {Items.Count(i => Session.CanDelete(i.Message))}";
+            return;
+        }
+        var ids = Items.Select(i => i.Message.Id).ToHashSet();
+        int n = Session.DeleteWhere(m => ids.Contains(m.Id));
+        CleanupNote = $"Deleted {Plural(n, "message")}" + (n < ids.Count ? $"; {Plural(ids.Count - n, "message")} with a question to answer stayed." : ".");
+        AfterDelete(0);
+    }
+
+    private void AfterDelete(int index)
+    {
+        Session.SaveNow();
+        Shell.RefreshHeader();
+        Selected = null;
+        Refresh();
+        if (Items.Count > 0) Selected = Items[Math.Clamp(index, 0, Items.Count - 1)];
+    }
+
+    public List<string> AutoClearOptions { get; } = InboxSettings.AutoClearChoices
+        .Select(w => w == 0 ? "Auto-clear: off" : $"Auto-clear read after {w} weeks").ToList();
+    public string AutoClear
+    {
+        get => AutoClearOptions[Math.Max(0, Array.IndexOf(InboxSettings.AutoClearChoices, Session.InboxSettings.AutoClearWeeks))];
+        set
+        {
+            int i = AutoClearOptions.IndexOf(value);
+            if (i < 0 || InboxSettings.AutoClearChoices[i] == Session.InboxSettings.AutoClearWeeks) return;
+            Session.InboxSettings.AutoClearWeeks = InboxSettings.AutoClearChoices[i];
+            Session.SaveNow();
+            OnPropertyChanged();
+            CleanupNote = i == 0 ? "Auto-clear is off." : $"Every Monday, read messages older than {InboxSettings.AutoClearChoices[i]} weeks are cleared. Unread ones stay.";
+        }
+    }
+
+    public List<string> ResultsOptions { get; } = new() { "Results every week", "Results every other week" };
+    public string ResultsCadence
+    {
+        get => ResultsOptions[Session.InboxSettings.ResultsEveryOtherWeek ? 1 : 0];
+        set
+        {
+            bool other = value == ResultsOptions[1];
+            if (other == Session.InboxSettings.ResultsEveryOtherWeek) return;
+            Session.InboxSettings.ResultsEveryOtherWeek = other;
+            Session.SaveNow();
+            OnPropertyChanged();
+            CleanupNote = other ? "Your results arrive every other Monday." : "Your results arrive every Monday.";
+        }
+    }
+
+    private static string Plural(int n, string word) => $"{n} {word}{(n == 1 ? "" : "s")}";
+
     private bool Shows(InboxMessage m) => Filter switch
     {
         "Unread" => !m.Read,
@@ -80,6 +167,7 @@ public sealed partial class InboxViewModel : PageViewModel
 
     partial void OnSelectedChanged(InboxItem? value)
     {
+        CanDeleteSelected = value != null && Session.CanDelete(value.Message);
         if (value == null || value.IsRead) return;
         value.Message.Read = true;
         value.IsRead = true;
@@ -92,6 +180,14 @@ public sealed partial class InboxViewModel : PageViewModel
         Items.Clear();
         foreach (var m in Session.Inbox.Where(Shows)) Items.Add(MakeItem(m));
         Selected = Items.FirstOrDefault(i => i.Message.Id == selectedId) ?? Items.FirstOrDefault();
+        CanDeleteSelected = Selected != null && Session.CanDelete(Selected.Message);
+        int read = Session.Inbox.Count(m => m.Read && Session.CanDelete(m));
+        DeleteReadLabel = read > 0 ? $"Delete read ({read})" : "Delete read";
+        CanDeleteRead = read > 0;
+        _deleteShownArmed = false;
+        int shown = Items.Count(i => Session.CanDelete(i.Message));
+        DeleteShownLabel = Filter == "All messages" ? $"Delete all ({shown})" : $"Delete these ({shown})";
+        CanDeleteShown = shown > 0;
         var s = Session;
         var rec = s.MyRecord;
         int rank = s.MyRank;

@@ -97,6 +97,15 @@ public class ScreenshotTests
                     sv.Offset = new Vector(0, sv.Extent.Height);
                 Snap(window, Path.Combine(dir, $"{n++:00}-records-book-careers.png"));
             }
+            // The inbox clean-up (#243): read messages deleted, "Delete these" armed on a filter, auto-clear on.
+            vm.Navigate("Inbox");
+            var inbox = (InboxViewModel)vm.CurrentPage!;
+            if (inbox.Items.Count > 1) inbox.Selected = inbox.Items[1];
+            inbox.DeleteReadCommand.Execute(null);
+            inbox.Filter = inbox.Filters[^1];
+            inbox.AutoClear = inbox.AutoClearOptions[2];
+            inbox.DeleteShownCommand.Execute(null);
+            Snap(window, Path.Combine(dir, $"{n++:00}-inbox-cleanup.png"));
             vm.Navigate("Roster");
             var roster = (RosterViewModel)vm.CurrentPage!;
             roster.Open(roster.Rows[0]);
