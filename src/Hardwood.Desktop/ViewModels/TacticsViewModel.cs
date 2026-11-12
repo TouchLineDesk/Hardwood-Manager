@@ -107,6 +107,10 @@ public sealed partial class TacticsViewModel : PageViewModel
     [ObservableProperty] private bool _doubleStar;
     partial void OnSelectedStopperChanged(StopperOption? value) { if (!_loading) { Tac.StarStopperId = value?.Player?.Id; Changed(); } }
     partial void OnDoubleStarChanged(bool value) { if (!_loading) { Tac.DoubleStar = value; Changed(); } }
+    [ObservableProperty] private bool _halftimeAdjust;
+    partial void OnHalftimeAdjustChanged(bool value) { if (!_loading) { Tac.HalftimeAdjust = value; Changed(); } }
+    [ObservableProperty] private bool _assistantPlans;
+    partial void OnAssistantPlansChanged(bool value) { if (!_loading) { Tac.AssistantPlans = value; Changed(); } }
 
     public ObservableCollection<string> Presets { get; } = new();
     public ObservableCollection<string> LateGameOptions { get; } = new();
@@ -132,9 +136,9 @@ public sealed partial class TacticsViewModel : PageViewModel
 
         // What the next opponent will probably run, to show each option's matchup.
         var nextOpp = Session.NextMyGame?.Opponent;
-        var nextRot = nextOpp == null ? null : CoachAi.Rotation(nextOpp, Session.Today);
-        DefensiveScheme? theirScheme = nextOpp == null ? null : nextOpp.Tactic.Auto ? CoachAi.BestScheme(nextRot!) : nextOpp.Tactic.Scheme;
-        OffensiveSystem? theirSystem = nextOpp == null ? null : nextOpp.Tactic.Auto ? CoachAi.BestSystem(nextRot!) : nextOpp.Tactic.System;
+        var theirPlan = nextOpp == null ? ((OffensiveSystem, DefensiveScheme)?)null : CoachAi.TheirPlan(nextOpp, team, Session.NextMyGame?.Date ?? Session.Today);
+        DefensiveScheme? theirScheme = theirPlan?.Item2;
+        OffensiveSystem? theirSystem = theirPlan?.Item1;
         var bestSystem = CoachAi.BestSystem(rot, theirScheme);
         var bestScheme = CoachAi.BestScheme(rot, theirSystem);
         Systems.Clear();
@@ -174,6 +178,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         foreach (var p in team.Roster.OrderByDescending(p => p.Attributes[Attr.PerimeterDefense])) Stoppers.Add(new StopperOption { Player = p });
         SelectedStopper = Stoppers.FirstOrDefault(s => s.Player?.Id == t.StarStopperId) ?? Stoppers[0];
         DoubleStar = t.DoubleStar;
+        HalftimeAdjust = t.HalftimeAdjust;
+        AssistantPlans = t.AssistantPlans;
 
         Presets.Clear();
         foreach (var pr in t.Presets) Presets.Add(pr.Name);
@@ -246,9 +252,9 @@ public sealed partial class TacticsViewModel : PageViewModel
         var team = Session.HumanTeam;
         var opp = next.Opponent;
         var rot = CoachAi.Rotation(team, next.Date);
-        var oppRot = CoachAi.Rotation(opp, next.Date);
-        Tac.System = CoachAi.BestSystem(rot, opp.Tactic.Auto ? CoachAi.BestScheme(oppRot) : opp.Tactic.Scheme);
-        Tac.Scheme = CoachAi.BestScheme(rot, opp.Tactic.Auto ? CoachAi.BestSystem(oppRot) : opp.Tactic.System);
+        var (theirSystem, theirScheme) = CoachAi.TheirPlan(opp, team, next.Date);
+        Tac.System = CoachAi.BestSystem(rot, theirScheme);
+        Tac.Scheme = CoachAi.BestScheme(rot, theirSystem);
         var (star, dbl) = CoachAi.TheirStar(opp, next.Date);
         Tac.StarStopperId = star != null ? CoachAi.Stopper(rot)?.Id : null;
         Tac.DoubleStar = dbl;

@@ -15,7 +15,7 @@ public sealed class GameSimulator
 
     public GameResult Simulate(Team home, Team away, Rules rules, ulong seed, bool keepLog = false, DateOnly? date = null)
     {
-        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date);
+        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date); CoachAi.Remember(home); CoachAi.Remember(away);
         var rng = new Rng(seed);
         var result = new GameResult
         {
@@ -46,13 +46,13 @@ public sealed class GameSimulator
     /// <summary>Begin a game that the caller steps through; call <see cref="LiveGame.Finish"/> or step to the end, then read Result.</summary>
     public LiveGame StartLive(Team home, Team away, Rules rules, ulong seed, DateOnly? date = null)
     {
-        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date);
+        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date); CoachAi.Remember(home); CoachAi.Remember(away);
         var rng = new Rng(seed);
         var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date };
         var cfg = _cfg.For(rules);
         var h = new Side(home, result.Home, rng, cfg, isHome: true, date);
         var a = new Side(away, result.Away, rng, cfg, isHome: false, date);
-        var game = new GameState(h, a, rules, rng, cfg, result, log: true);
+        var game = new GameState(h, a, rules, rng, cfg, result, log: true) { Interactive = true };
         return new LiveGame(game, result, rng, cfg, date);
     }
 
@@ -138,9 +138,12 @@ public sealed class GameSimulator
         /// <summary>The tactics in force this possession (the team's, or its late-game preset).</summary>
         public Tactic Tac { get; set; } = new();
         private Tactic? _clutch;
+        /// <summary>The second-half tactics after a halftime adjustment (#268), or null to play the team's own.</summary>
+        public Tactic? Adjusted;
+
         public Tactic ClutchTactic(TacticPreset preset)
         {
-            var t = Team.Tactic;
+            var t = Adjusted ?? Team.Tactic;
             _clutch ??= new Tactic();
             _clutch.Roles = t.Roles; _clutch.StarStopperId = t.StarStopperId;
             preset.ApplyTo(_clutch);
@@ -382,7 +385,30 @@ public sealed class GameSimulator
                 Complete = true;
                 return;
             }
+            if (_period * 2 == _rules.Periods) { HalftimeAdjust(_home, _away); HalftimeAdjust(_away, _home); }
             _period++;
+        }
+
+        /// <summary>A game the human is watching live: he makes his own halftime changes.</summary>
+        public bool Interactive { get; set; }
+
+        /// <summary>
+        /// The halftime read (#268): a manual coach who asked for it gets the counter to what the other bench is really
+        /// running, for the second half only. Auto coaches plan before the game and don't adjust.
+        /// </summary>
+        private void HalftimeAdjust(Side us, Side them)
+        {
+            var t = us.Team.Tactic;
+            if (t.Auto || !t.HalftimeAdjust || Interactive) return;
+            var rot = us.Dressed.Where(p => !us.Line(p).FouledOut).OrderByDescending(p => p.CurrentAbility).Take(9).ToList();
+            if (rot.Count == 0) return;
+            var (sys, sch) = CoachAi.Counter(rot, them.Team.Tactic.System, them.Team.Tactic.Scheme);
+            if (sys == t.System && sch == t.Scheme) return;
+            var adj = new Tactic { Auto = false, Roles = t.Roles, StarStopperId = t.StarStopperId, Presets = t.Presets, LateGamePreset = t.LateGamePreset };
+            TacticPreset.From(t, "halftime").ApplyTo(adj);
+            adj.System = sys; adj.Scheme = sch;
+            us.Adjusted = adj;
+            Log($"Halftime adjustment: {us.Team.Abbreviation} switch to {Systems.Name(sys).ToLower()} and {Systems.Name(sch).ToLower()} defense.");
         }
 
         /// <summary>Ask for a specific five at the next dead ball. Players who are hurt, fouled out or not on the roster are ignored.</summary>
@@ -607,7 +633,7 @@ public sealed class GameSimulator
 
         private void SetTactics(Side s)
         {
-            var t = s.Team.Tactic;
+            var t = s.Adjusted ?? s.Team.Tactic;
             if (t.LateGamePreset is { } name && _period >= _rules.Periods && _clock <= 300 && Math.Abs(HomeScore - AwayScore) <= 6
                 && t.Presets.FirstOrDefault(p => p.Name == name) is { } preset)
                 s.Tac = s.ClutchTactic(preset);

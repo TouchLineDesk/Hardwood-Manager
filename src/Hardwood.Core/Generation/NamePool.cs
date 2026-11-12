@@ -1,6 +1,6 @@
 namespace Hardwood.Core.Generation;
 
-/// <summary>Name pools for the default fictional world. All names are generic; no real players.</summary>
+/// <summary>Name pools for the default fictional world. All names are generic; the best-known real NBA surnames were taken out in run 21 (#263), and a full name that matches a real NBA player is re-rolled (<see cref="RealNames"/>).</summary>
 public static class NamePool
 {
     public static readonly string[] FirstNames =
@@ -26,15 +26,15 @@ public static class NamePool
         "Stewart","Morris","Murphy","Cook","Rogers","Morgan","Cooper","Reed","Bailey","Bell",
         "Howard","Ward","Cox","Richardson","Wood","Watson","Brooks","Bennett","Gray","James",
         "Hughes","Price","Sanders","Myers","Long","Ross","Foster","Powell","Jenkins","Perry",
-        "Petrovic","Jokovic","Markovic","Nikolic","Stojanovic","Bogdanovic","Saric","Hezonja","Zubac","Vucevic",
-        "Fournier","Batum","Gobert","Yabusele","Maledon","Hayes","Okobo","Lessort","Poirier","Cordinier",
-        "Schroder","Wagner","Theis","Bonga","Kleber","Voigtmann","Hartenstein","Obst","Thiemann","Lo",
-        "Hernangomez","Rubio","Llull","Abalde","Brizuela","Garuba","Aldama","Fernandez","Claver","Sastre",
-        "Antetokounmpo","Papanikolaou","Sloukas","Calathes","Dorsey","Mitoglou","Larentzakis","Papagiannis","Bochoridis","Walkup",
-        "Watanabe","Hachimura","Togashi","Hiejima","Kawamura","Baba","Yoshii","Tominaga","Hawkinson","Josh",
-        "Giddey","Mills","Exum","Ingles","Dellavedova","Baynes","Landale","Bogut","Kay","Thybulle",
+        "Petrovic","Jovanovic","Markovic","Nikolic","Stojanovic","Pavlovic","Popovic","Vukovic","Djordjevic","Ilic",
+        "Fournier","Moreau","Girard","Diallo","Traore","Hayes","Lambert","Bonnet","Rousseau","Fontaine",
+        "Schroder","Wagner","Becker","Hoffmann","Krause","Schmidt","Weber","Fischer","Meyer","Koch",
+        "Garcia","Ortega","Romero","Torres","Ruiz","Moreno","Jimenez","Fernandez","Alonso","Serrano",
+        "Papadopoulos","Georgiou","Nikolaidis","Konstantinou","Dorsey","Alexiou","Dimitriou","Karras","Vlachos","Walkup",
+        "Watanabe","Suzuki","Takahashi","Ito","Yamamoto","Nakamura","Kobayashi","Kato","Yoshida","Yamada",
+        "Murray","Mills","Kelly","Ryan","O'Brien","Walsh","Hunter","Fraser","Kay","Byrne",
         "Dieng","Fall","Ndour","Diop","Sarr","Sow","Ba","Gueye","Seck","Mbaye",
-        "Bolmaro","Campazzo","Deck","Laprovittola","Scola","Garino","Delia","Brussino","Vildoza","Redivo",
+        "Gomez","Diaz","Alvarez","Acosta","Benitez","Medina","Herrera","Sosa","Silva","Pereira",
     };
 
     public static readonly (string City, string Name, string Abbr)[] Franchises =

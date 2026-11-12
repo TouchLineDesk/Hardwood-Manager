@@ -100,6 +100,8 @@
             <TextBlock Text="{Binding OpponentHeadline}" Classes="h2" Margin="0"/>
             <TextBlock Text="{Binding ScoutingReport}" TextWrapping="Wrap" FontSize="12"/>
             <Button Content="Use the assistant's game plan" Command="{Binding UseSuggestionCommand}"/>
+            <CheckBox IsChecked="{Binding AssistantPlans}" ToolTip.Tip="Before every game the assistant sets the system, scheme and star matchup from his scouting report. Your roles, sliders and presets stay yours."><TextBlock Text="Assistant plans every game" TextWrapping="Wrap" FontSize="12"/></CheckBox>
+            <CheckBox IsChecked="{Binding HalftimeAdjust}" ToolTip.Tip="In games you don't watch live, the assistant reads what the other bench is really running at halftime and switches to the counter for the second half. Your saved tactics don't change."><TextBlock Text="Halftime read (games you don't watch)" TextWrapping="Wrap" FontSize="12"/></CheckBox>
           </StackPanel>
         </Border>
         <Border Classes="panel">
