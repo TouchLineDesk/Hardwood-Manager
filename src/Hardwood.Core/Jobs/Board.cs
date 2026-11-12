@@ -146,26 +146,33 @@ public static class Board
     {
         SeasonGoal.Title => "Win the national championship",
         SeasonGoal.Finals => "Reach the Final Four",
-        SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => "Reach the Sweet 16",
+        SeasonGoal.ConferenceFinals => "Reach the Elite Eight",
+        SeasonGoal.SecondRound => "Reach the Sweet 16",
         SeasonGoal.Playoffs or SeasonGoal.PlayIn => "Make March Madness",
         _ => "Build the program and show progress",
     };
 
-    /// <summary>A goal's place on the college ladder: 0 build, 1 in the field, 2 Sweet 16, 3 Final Four, 4 champion.</summary>
-    public static int CollegeStep(SeasonGoal g) => g switch
+    /// <summary>
+    /// A goal's place on the college ladder: 0 build, 1 in the field, 2 Sweet 16, 2.5 Elite Eight, 3 Final Four, 4 champion.
+    /// The Elite Eight is a half step (C4 part 2, #304), so a Sweet 16 goal reached with an Elite Eight run counts as more
+    /// than met without making a 1-seed's early exit any harsher than before.
+    /// </summary>
+    public static double CollegeStep(SeasonGoal g) => g switch
     {
         SeasonGoal.Title => 4,
         SeasonGoal.Finals => 3,
-        SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => 2,
+        SeasonGoal.ConferenceFinals => 2.5,
+        SeasonGoal.SecondRound => 2,
         SeasonGoal.Playoffs or SeasonGoal.PlayIn => 1,
         _ => 0,
     };
 
-    /// <summary>How far a program got: champion, Final Four, Sweet 16, in the field, or not.</summary>
+    /// <summary>How far a program got: champion, Final Four, Elite Eight, Sweet 16, in the field, or not.</summary>
     public static SeasonGoal Achieved(College.CollegeWorld cw, int teamId) => cw.MadnessReached(teamId) switch
     {
         7 => SeasonGoal.Title,
         >= 5 => SeasonGoal.Finals,
+        4 => SeasonGoal.ConferenceFinals,
         >= 3 => SeasonGoal.SecondRound,
         >= 1 => SeasonGoal.Playoffs,
         _ => SeasonGoal.Develop,
@@ -250,7 +257,7 @@ public static class Board
         {
             // About 148 programs: the favourite is asked for the title, the top four the Final Four, the top 16 the Sweet 16,
             // roughly the top 45 a tournament bid (the at-large line sits around 45th once the automatic bids are in).
-            goal = r == 1 ? SeasonGoal.Title : r <= 4 ? SeasonGoal.Finals : r <= 16 ? SeasonGoal.SecondRound
+            goal = r == 1 ? SeasonGoal.Title : r <= 4 ? SeasonGoal.Finals : r <= 8 ? SeasonGoal.ConferenceFinals : r <= 16 ? SeasonGoal.SecondRound
                  : r <= 45 ? SeasonGoal.Playoffs : SeasonGoal.Develop;
             target = (int)Math.Round(ctx.SeasonGames * (0.80 - ctx.Fraction(r) * 0.52));
         }
@@ -458,7 +465,7 @@ public static class Board
         double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
         // College goals sit on a shorter ladder (in the field, Sweet 16, Final Four, title): a 1-seed set "win it all" who
         // goes out in the round of 32 is three steps short, not four (the college-strong critic career, C2).
-        int diff = ctx.IsCollege ? CollegeStep(achieved) - CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
+        double diff = ctx.IsCollege ? CollegeStep(achieved) - CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
         double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);

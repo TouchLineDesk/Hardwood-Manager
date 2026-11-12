@@ -526,6 +526,7 @@ public sealed partial class CollegeWorld
             {
                 // First Four winners take their slots in the bracket; the Round of 64 begins.
                 foreach (var g in current) s.Bracket[g.Slot] = g.WinnerId!.Value;
+                MadnessRoundNews(0, current);
                 for (int i = 0; i < 64; i += 2)
                     s.Games.Add(new CollegeGame { Date = dates[1].AddDays(i < 32 ? 0 : 1), HomeId = s.Bracket[i], AwayId = s.Bracket[i + 1], Stage = Madness, Event = Madness, Round = 1, Slot = i / 2 });
                 changed = true;
@@ -537,6 +538,7 @@ public sealed partial class CollegeWorld
                 continue;
             }
             int next = round + 1;
+            if (name == Madness) MadnessRoundNews(round, current);
             int dateIndex = name == Madness ? next : next;
             var date = dateIndex < dates.Count ? dates[dateIndex] : current.Max(g => g.Date).AddDays(1);
             for (int i = 0; i < current.Count; i += 2)
@@ -587,10 +589,135 @@ public sealed partial class CollegeWorld
             s.ChampionId = champ; s.RunnerUpId = final.HomeId == champ ? final.AwayId : final.HomeId;
             var c = Program(champ)!; var r = Program(s.RunnerUpId.Value)!;
             History.Add(new CollegeChampion(s.Year, champ, c.FullName, r.Id, r.FullName));
-            News.Add(($"{c.FullName} win March Madness", $"{c.FullName} beat {r.FullName} in the final to win the {s.Year + 1} college championship."));
+            News.Add(ChampionNews(final));
             return true;
         }
         return false;
+    }
+
+    /// <summary>"12 Vermont" — a team with its seed, as the bracket shows it.</summary>
+    public string WithSeed(int id) => $"{Season.Seeds.GetValueOrDefault(id)} {Program(id)!.FullName}";
+
+    private string Score(CollegeGame g)
+    {
+        int w = g.WinnerId!.Value, l = g.HomeId == w ? g.AwayId : g.HomeId;
+        int wp = Math.Max(g.HomePts!.Value, g.AwayPts!.Value), lp = Math.Min(g.HomePts!.Value, g.AwayPts!.Value);
+        return $"{WithSeed(w)} beat {WithSeed(l)} {wp}-{lp}";
+    }
+
+    /// <summary>A win by a seed at least four lines worse (the bracket's own rule).</summary>
+    public bool IsUpset(CollegeGame g)
+    {
+        if (g.WinnerId is not { } w) return false;
+        int l = g.HomeId == w ? g.AwayId : g.HomeId;
+        return Season.Seeds.GetValueOrDefault(w) - Season.Seeds.GetValueOrDefault(l) >= 4;
+    }
+
+    /// <summary>A double-digit seed still alive in the Sweet 16 or later (or a 7-seed or worse in the Final Four).</summary>
+    public static bool IsCinderella(int seed, int round) => round >= 5 ? seed >= 7 : seed >= 10;
+
+    /// <summary>
+    /// The news after each round of March Madness (C4 part 2, #303): who went through, the upsets with their scores, and
+    /// a Cinderella story when a double-digit seed goes deep. World news goes to the digest unless it names your team.
+    /// </summary>
+    private void MadnessRoundNews(int round, List<CollegeGame> games)
+    {
+        var s = Season;
+        int y = s.Year + 1;
+        var winners = games.Select(g => g.WinnerId!.Value).ToList();
+        var upsets = games.Where(IsUpset).ToList();
+        string UpsetLines() => upsets.Count == 0 ? "" : "\nUpsets: " + string.Join("; ", upsets.Select(Score)) + ".";
+        switch (round)
+        {
+            case 0:
+                News.Add(("March Madness: the First Four", $"Through to the round of 64: {string.Join(", ", winners.Select(WithSeed))}."
+                    + "\n" + string.Join("\n", games.Select(Score))));
+                break;
+            case 1:
+            {
+                var big = upsets.Where(g => s.Seeds.GetValueOrDefault(g.WinnerId!.Value) >= 15).ToList();
+                foreach (var g in big)
+                {
+                    int w = g.WinnerId!.Value; int sw = s.Seeds.GetValueOrDefault(w);
+                    int l = g.HomeId == w ? g.AwayId : g.HomeId;
+                    News.Add(($"{char.ToUpper(Article(sw)[0])}{Article(sw)[1..]}-seed beats {Article(s.Seeds.GetValueOrDefault(l))}-seed: {Program(w)!.FullName} stun {Program(l)!.FullName}",
+                        $"{Score(g)} in the round of 64, one of the biggest upsets the tournament can produce."));
+                }
+                string title = upsets.Count switch
+                {
+                    0 => "March Madness: the favourites hold in the round of 64",
+                    1 => "March Madness: one upset in the round of 64",
+                    _ => $"March Madness: {upsets.Count} upsets in the round of 64",
+                };
+                News.Add((title, $"32 teams go through to the round of 32.{UpsetLines()}"));
+                break;
+            }
+            case 2:
+                News.Add(("March Madness: the Sweet 16 is set", RegionLines(winners, 4) + UpsetLines()));
+                CinderellaNews(winners, 3);
+                break;
+            case 3:
+                News.Add(("March Madness: the Elite Eight is set", RegionLines(winners, 2) + UpsetLines()));
+                CinderellaNews(winners, 4);
+                break;
+            case 4:
+            {
+                var ff = winners.Select((w, i) => $"{WithSeed(w)} ({MadnessBracket.Regions[i]})");
+                News.Add(($"The Final Four: {string.Join(", ", winners.Select(w => Program(w)!.FullName))}",
+                    $"The {y} Final Four: {string.Join(", ", ff)}. The semi-finals are on {s.RoundDates[Madness][5]:MMMM d}." + UpsetLines()));
+                CinderellaNews(winners, 5);
+                break;
+            }
+            case 5:
+            {
+                var (a, b) = (winners[0], winners[1]);
+                News.Add(($"The final: {Program(a)!.FullName} v {Program(b)!.FullName}",
+                    $"{string.Join(". ", games.Select(Score))}. The {y} championship game is on {s.RoundDates[Madness][6]:MMMM d}."));
+                break;
+            }
+        }
+    }
+
+    /// <summary>The teams still in, region by region ("East: 1 Duke, 4 Purdue, ...").</summary>
+    private string RegionLines(List<int> winners, int perRegion) =>
+        string.Join("\n", winners.Chunk(perRegion).Select((c, r) => $"{MadnessBracket.Regions[r]}: {string.Join(", ", c.Select(WithSeed))}."));
+
+    private void CinderellaNews(List<int> alive, int reached)
+    {
+        string stage = reached switch { 3 => "the Sweet 16", 4 => "the Elite Eight", _ => "the Final Four" };
+        foreach (var id in alive.Where(i => IsCinderella(Season.Seeds.GetValueOrDefault(i), reached)))
+        {
+            var t = Program(id)!;
+            var beaten = Season.Games.Where(g => g.Event == Madness && g.Round >= 1 && g.WinnerId == id)
+                .Select(g => WithSeed(g.HomeId == id ? g.AwayId : g.HomeId)).ToList();
+            News.Add(($"Cinderella: {Season.Seeds.GetValueOrDefault(id)}-seed {t.FullName} reach {stage}",
+                $"{t.FullName}, {Article(Season.Seeds.GetValueOrDefault(id))}-seed from the {ConferenceShort(id)}, are into {stage} after beating {string.Join(", then ", beaten)}."));
+        }
+    }
+
+    /// <summary>A March Madness story's title (the field, each round, a Cinderella, the champion).</summary>
+    public static bool IsMadnessHeadline(string title) =>
+        title.StartsWith("March Madness:") || title.StartsWith("The Final Four:") || title.StartsWith("The final: ")
+        || title.StartsWith("Cinderella") || title.EndsWith("win March Madness") || title.Contains("-seed beats ");
+
+    /// <summary>"an 11", "an 8", "a 12".</summary>
+    public static string Article(int n) => (n is 8 or 11 or 18 ? "an " : "a ") + n;
+
+    private string ConferenceShort(int id) =>
+        ConferenceOf.TryGetValue(id, out var key) && Active.FirstOrDefault(c => c.Key == key) is { } c ? c.Short : "field";
+
+    /// <summary>The champion's story: the seed, the final's score and the road there.</summary>
+    private (string, string) ChampionNews(CollegeGame final)
+    {
+        var s = Season;
+        int champ = final.WinnerId!.Value;
+        var c = Program(champ)!;
+        int seed = s.Seeds.GetValueOrDefault(champ);
+        var road = s.Games.Where(g => g.Event == Madness && g.Round >= 1 && g.Round <= 5 && g.WinnerId == champ).OrderBy(g => g.Round)
+            .Select(g => WithSeed(g.HomeId == champ ? g.AwayId : g.HomeId)).ToList();
+        string title = seed >= 7 ? $"Cinderella's crown: {seed}-seed {c.FullName} win March Madness" : $"{c.FullName} win March Madness";
+        return (title, $"{Score(final)} in the final to win the {s.Year + 1} college championship as {Article(seed)}-seed."
+            + (road.Count > 0 ? $"\nThe road: {string.Join(", ", road)}." : ""));
     }
 
     private void Crowned(string name, CollegeGame final)
@@ -611,26 +738,57 @@ public sealed partial class CollegeWorld
         var field = p.Field;
         s.SelectionOrder = field.ToList(); s.LastFourIn = p.LastFourIn; s.FirstFourOut = p.FirstFourOut; s.NextFourOut = p.NextFourOut;
         // Seed lines 1-15: four teams each, snaked across four regions; line 16: the First Four winners.
-        var regions = new List<int>[4];
-        for (int r = 0; r < 4; r++) regions[r] = new List<int>();
-        for (int line = 0; line < 15; line++)
-        {
-            var four = field.Skip(line * 4).Take(4).ToList();
-            if (line % 2 == 1) four.Reverse();
-            for (int r = 0; r < 4; r++) { regions[r].Add(four[r]); s.Seeds[four[r]] = line + 1; }
-        }
-        var firstFour = field.Skip(60).ToList();
-        foreach (var t in firstFour) s.Seeds[t] = 16;
         int[] order = { 1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15 };
-        s.Bracket = new List<int>();
-        for (int r = 0; r < 4; r++)
-            foreach (int seed in order) s.Bracket.Add(seed == 16 ? 0 : regions[r][seed - 1]);
         int y = s.Year + 1;
         var dates = new List<DateOnly> { new(y, 3, 17), new(y, 3, 19), new(y, 3, 21), new(y, 3, 26), new(y, 3, 28), new(y, 4, 4), new(y, 4, 6) };
         s.RoundDates[Madness] = dates;
-        var slots = Enumerable.Range(0, 64).Where(i => s.Bracket[i] == 0).ToList();
-        for (int i = 0; i < 4; i++)
-            s.Games.Add(new CollegeGame { Date = dates[0], HomeId = firstFour[i * 2], AwayId = firstFour[i * 2 + 1], Stage = Madness, Event = Madness, Round = 0, Slot = slots[i] });
+        // Seed lines from the projection, best first; a line of six (the real First Four, #305) puts its two direct teams
+        // in the regions the snake gives them and its two First Four games in the other two.
+        var lines = Enumerable.Range(1, 16).Select(l => field.Where(i => p.Seeds[i] == l).ToList()).ToList();
+        if (lines.Take(15).All(l => l.Count == 4))
+        {
+            // Lines 1-15 hold four teams each; the bottom eight are the First Four's 16-seeds (as before v0.59.0).
+            var regions = new List<int>[4];
+            for (int r = 0; r < 4; r++) regions[r] = new List<int>();
+            for (int line = 0; line < 15; line++)
+            {
+                var four = lines[line].ToList();
+                if (line % 2 == 1) four.Reverse();
+                for (int r = 0; r < 4; r++) { regions[r].Add(four[r]); s.Seeds[four[r]] = line + 1; }
+            }
+            var firstFour = lines[15];
+            foreach (var t in firstFour) s.Seeds[t] = 16;
+            s.Bracket = new List<int>();
+            for (int r = 0; r < 4; r++)
+                foreach (int seed in order) s.Bracket.Add(seed == 16 ? 0 : regions[r][seed - 1]);
+            var slots = Enumerable.Range(0, 64).Where(i => s.Bracket[i] == 0).ToList();
+            for (int i = 0; i < 4; i++)
+                s.Games.Add(new CollegeGame { Date = dates[0], HomeId = firstFour[i * 2], AwayId = firstFour[i * 2 + 1], Stage = Madness, Event = Madness, Round = 0, Slot = slots[i] });
+        }
+        else
+        {
+            var grid = new int[4, 16];
+            var playIns = new List<(int A, int B, int Region, int Seed)>();
+            for (int line = 0; line < 16; line++)
+            {
+                var regionOrder = line % 2 == 1 ? new[] { 3, 2, 1, 0 } : new[] { 0, 1, 2, 3 };
+                var teams = lines[line];
+                foreach (var t in teams) s.Seeds[t] = line + 1;
+                if (teams.Count == 4) { for (int k = 0; k < 4; k++) grid[regionOrder[k], line] = teams[k]; continue; }
+                // Six on the line: the direct pair first, then the First Four's two games (the last four in on line 11,
+                // the weakest automatic qualifiers on line 16).
+                var playIn = line == 10 ? teams.Where(p.LastFourIn.Contains).ToList() : teams.Skip(teams.Count - 4).ToList();
+                var direct = teams.Where(t => !playIn.Contains(t)).ToList();
+                grid[regionOrder[0], line] = direct[0]; grid[regionOrder[1], line] = direct[1];
+                playIns.Add((playIn[0], playIn[1], regionOrder[2], line + 1));
+                playIns.Add((playIn[2], playIn[3], regionOrder[3], line + 1));
+            }
+            s.Bracket = new List<int>();
+            for (int r = 0; r < 4; r++)
+                foreach (int seed in order) s.Bracket.Add(grid[r, seed - 1]);
+            foreach (var (a, b, r, seed) in playIns.OrderBy(x => x.Seed))
+                s.Games.Add(new CollegeGame { Date = dates[0], HomeId = a, AwayId = b, Stage = Madness, Event = Madness, Round = 0, Slot = r * 16 + Array.IndexOf(order, seed) });
+        }
         s.Selected = true;
         var ones = field.Take(4).Select(i => Program(i)!.FullName);
         string Names(List<int> ids) => string.Join(", ", ids.Select(i => Program(i)!.FullName));

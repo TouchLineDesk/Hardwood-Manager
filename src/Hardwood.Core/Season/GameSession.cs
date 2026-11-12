@@ -192,6 +192,9 @@ public sealed partial class GameSession
     public void PostWorld(string title, string body)
     {
         if (Employed && (title.Contains(HumanTeam.FullName) || body.Contains(HumanTeam.FullName))) { Post(title, body, "World"); return; }
+        // March Madness is a college coach's own event (C4 part 2, #306): its round-by-round stories come straight to the
+        // inbox. Pro careers read them in the world digest.
+        if (Employed && InCollege && Hardwood.Core.College.CollegeWorld.IsMadnessHeadline(title)) { Post(title, body, "World"); return; }
         WorldDigest.Add(new DigestItem(Today, title, FirstSentence(body)));
         if (WorldDigest.Count > 200) WorldDigest.RemoveRange(0, WorldDigest.Count - 200);
     }

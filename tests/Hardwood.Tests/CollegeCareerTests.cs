@@ -153,7 +153,10 @@ public class CollegeCareerTests
         Assert.Equal(cw.Programs.Count, ctx.Teams.Count);
         Assert.Equal("Reach the Final Four", Board.Describe(SeasonGoal.Finals, ctx));
         Assert.Equal("Make March Madness", Board.Describe(SeasonGoal.Playoffs, ctx));
-        Assert.Equal(3, Board.CollegeStep(SeasonGoal.Title) - Board.CollegeStep(SeasonGoal.Playoffs));
+        Assert.Equal(3.0, Board.CollegeStep(SeasonGoal.Title) - Board.CollegeStep(SeasonGoal.Playoffs));
+        // The Elite Eight is its own step (review #8's ride-along, #304): a 30-4 Elite Eight run isn't read as the Sweet 16.
+        Assert.Equal("Reach the Elite Eight", Board.Describe(SeasonGoal.ConferenceFinals, ctx));
+        Assert.True(Board.CollegeStep(SeasonGoal.ConferenceFinals) > Board.CollegeStep(SeasonGoal.SecondRound));
         // The favourite's goal is the title, the field's tail is asked to build; no pro demands.
         var best = cw.Programs.OrderBy(t => Board.ProjectedRank(ctx, t)).First();
         Assert.Equal(SeasonGoal.Title, Board.SetExpectations(LeagueContext.College(cw, best), best, 2026).Goal);

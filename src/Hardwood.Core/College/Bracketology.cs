@@ -67,12 +67,26 @@ public sealed partial class CollegeWorld
         int atLargeCount = FieldSize - autoIds.Count;
         var atLarge = others.Take(atLargeCount).ToList();
         var field = autoIds.Concat(atLarge).OrderByDescending(Rating).ToList();
+        var lastFour = atLarge.Skip(Math.Max(0, atLarge.Count - 4)).ToList();
         var seeds = new Dictionary<int, int>();
-        for (int i = 0; i < field.Count; i++) seeds[field[i]] = i < 60 ? i / 4 + 1 : 16;
+        if (IsReal && lastFour.Count == 4 && field.Count == FieldSize)
+        {
+            // The real First Four (C4 part 2, #305): the last four at-large teams play for two 11-seeds, and the four
+            // lowest-rated other teams (the weakest automatic qualifiers) for two 16-seeds. Lines 11 and 16 hold six teams.
+            var rest = field.Where(i => !lastFour.Contains(i)).ToList();
+            var lowFour = rest.Skip(rest.Count - 4).ToList();
+            rest = rest.Take(rest.Count - 4).ToList();
+            for (int i = 0; i < rest.Count; i++)
+                seeds[rest[i]] = i < 40 ? i / 4 + 1 : i < 42 ? 11 : i < 58 ? (i - 42) / 4 + 12 : 16;
+            foreach (var i in lastFour) seeds[i] = 11;
+            foreach (var i in lowFour) seeds[i] = 16;
+        }
+        else
+            for (int i = 0; i < field.Count; i++) seeds[field[i]] = i < 60 ? i / 4 + 1 : 16;
         return new BracketProjection
         {
             Field = field, Seeds = seeds, AutoBids = new Dictionary<int, string>(auto), Final = final, AutoBidsDecided = decided,
-            LastFourIn = atLarge.Skip(Math.Max(0, atLarge.Count - 4)).ToList(),
+            LastFourIn = lastFour,
             FirstFourOut = others.Skip(atLargeCount).Take(4).ToList(),
             NextFourOut = others.Skip(atLargeCount + 4).Take(4).ToList(),
         };
@@ -141,8 +155,8 @@ public sealed partial class CollegeWorld
             if (first != null)
             {
                 int opp = first.HomeId == me ? first.AwayId : first.HomeId;
-                int top = Enumerable.Range(region * 16, 16).Select(i => s.Bracket[i]).FirstOrDefault(i => i > 0 && s.Seeds.GetValueOrDefault(i) == 1);
-                opener = $"First Four, {first.Date:ddd MMM d}: vs No. 16 {Named(opp)}. The winner plays No. 1 {Named(top)}.";
+                int next = s.Bracket[first.Slot ^ 1];
+                opener = $"First Four, {first.Date:ddd MMM d}: vs No. {seed} {Named(opp)}. The winner plays No. {s.Seeds.GetValueOrDefault(next)} {Named(next)}.";
             }
             else
             {
