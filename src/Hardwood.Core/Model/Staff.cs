@@ -96,7 +96,8 @@ public static class StaffEffects
         var asst = Find(t, StaffRole.AssistantCoach);
         double q = ((dev?.Development ?? 7) * 0.7 + (asst?.Coaching ?? 7) * 0.3);
         return q + (t.Training.Intensity - 50) / 50.0 * 2.0 // intensity shifts it ±2
-               + (t.Coach?.TrainingBonus ?? 0);                 // your Development rating (decision #70)
+               + (t.Coach?.TrainingBonus ?? 0)                  // your Development rating (decision #70)
+               + 0.4 * t.Money.Facilities.Practice.Edge;        // the practice facility against the league's (item M, #281)
     }
 
     /// <summary>
@@ -112,8 +113,14 @@ public static class StaffEffects
         if (dev?.Is("Teacher") == true) tilt += young ? 1.0 : -0.3;
         if (dev?.Is("Craftsman") == true) tilt += young ? -0.3 : 0.5;
         if (Find(t, StaffRole.AssistantCoach)?.Is("Mentor") == true) tilt += young ? 0.3 : -0.2;
-        return TrainingQuality(t) + tilt;
+        return TrainingQuality(t) + tilt + AcademyEdge(t, p, on);
     }
+
+    /// <summary>The G League affiliate and academy: players 22 and under train better at a club ahead of the league (item M, #281).</summary>
+    public static double AcademyEdge(Team t, Player p, DateOnly on) => p.Age(on) <= 22 ? 0.5 * t.Money.Facilities.Academy.Edge : 0;
+
+    /// <summary>Facilities' training edge alone (clubs abroad have no staff model: they train at 10 plus this).</summary>
+    public static double FacilityTraining(Team t, Player p, DateOnly on) => 0.4 * t.Money.Facilities.Practice.Edge + AcademyEdge(t, p, on);
 
     /// <summary>Injury probability multiplier.</summary>
     public static double InjuryRiskFactor(Team t)
@@ -121,7 +128,8 @@ public static class StaffEffects
         var sc = Find(t, StaffRole.StrengthCoach);
         double fit = sc?.Fitness ?? 7;
         return (1.25 - fit / 20.0 * 0.5) * (0.85 + t.Training.Intensity / 330.0)
-               * (sc?.Is("Conditioner") == true ? 0.95 : sc?.Is("Builder") == true ? 0.97 : 1) * (Find(t, StaffRole.Physio)?.Is("Preventer") == true ? 0.96 : 1);
+               * (sc?.Is("Conditioner") == true ? 0.95 : sc?.Is("Builder") == true ? 0.97 : 1) * (Find(t, StaffRole.Physio)?.Is("Preventer") == true ? 0.96 : 1)
+               * Math.Clamp(1 - 0.05 * t.Money.Facilities.Medical.Edge, 0.8, 1.2); // sports science (item M, #281)
     }
 
     /// <summary>Injury duration multiplier.</summary>
@@ -129,7 +137,8 @@ public static class StaffEffects
     {
         var ph = Find(t, StaffRole.Physio);
         double med = ph?.Medical ?? 7;
-        return (1.25 - med / 20.0 * 0.5) * (ph?.Is("Healer") == true ? 0.93 : 1) * (Find(t, StaffRole.StrengthCoach)?.Is("Builder") == true ? 0.97 : 1);
+        return (1.25 - med / 20.0 * 0.5) * (ph?.Is("Healer") == true ? 0.93 : 1) * (Find(t, StaffRole.StrengthCoach)?.Is("Builder") == true ? 0.97 : 1)
+               * Math.Clamp(1 - 0.06 * t.Money.Facilities.Medical.Edge, 0.76, 1.24); // the medical centre (item M, #281)
     }
 
     /// <summary>How much of the truth the team sees about outsiders: 0.3 (no scout) to 0.95.</summary>
@@ -138,6 +147,6 @@ public static class StaffEffects
         var sc = Find(t, StaffRole.Scout);
         double judge = sc?.Scouting ?? 4;
         double style = (sc?.Is("Analyst") == true ? 0.05 : 0) + (Find(t, StaffRole.AssistantCoach)?.Is("Film junkie") == true ? 0.03 : 0);
-        return Math.Clamp(0.3 + judge / 20.0 * 0.65 + style, 0.3, 0.97);
+        return Math.Clamp(0.3 + judge / 20.0 * 0.65 + style + 0.03 * t.Money.Facilities.Analytics.Edge, 0.3, 0.97); // analytics (item M, #281)
     }
 }

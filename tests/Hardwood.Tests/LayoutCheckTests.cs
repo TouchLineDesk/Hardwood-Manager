@@ -16,6 +16,23 @@ namespace Hardwood.Tests;
 public class LayoutCheckTests
 {
     /// <summary>The pages the check covers: every sidebar page, plus a player, another team, and a box score.</summary>
+    /// <summary>Item M (#281): your club mid-project, with a new arena, a renewal and an upgrade proposed.</summary>
+    internal static void FacilityDemo(Hardwood.Core.Season.GameSession s)
+    {
+        var f = s.MyFacilities; var t = s.HumanTeam; long lr = s.MyLeagueRevenue;
+        t.Money.Balance = Math.Max(t.Money.Balance, 900_000_000);
+        f.Medical.Age = Hardwood.Core.Season.Franchise.Info(Hardwood.Core.Model.FacilityKind.Medical).Lifespan;
+        f.Analytics.Age = Hardwood.Core.Season.Franchise.Info(Hardwood.Core.Model.FacilityKind.Analytics).Lifespan - 2;
+        f.Building.Clear();
+        f.Building.Add(new Hardwood.Core.Model.FacilityProject { Kind = Hardwood.Core.Model.FacilityKind.Practice, ToLevel = Math.Min(5, f.Practice.Level + 1), Cost = 78_400_000, SeasonsLeft = 1 });
+        f.Proposals = new()
+        {
+            new() { Kind = Hardwood.Core.Model.FacilityKind.NewArena, ToLevel = 5, Cost = Hardwood.Core.Season.Franchise.CostTo(Hardwood.Core.Model.FacilityKind.NewArena, 5, lr), SeasonsLeft = 3, Instalments = 3, Capacity = 19_800 },
+            new() { Kind = Hardwood.Core.Model.FacilityKind.Academy, ToLevel = Math.Min(5, f.Academy.Level + 1), Cost = Hardwood.Core.Season.Franchise.CostTo(Hardwood.Core.Model.FacilityKind.Academy, 4, lr), SeasonsLeft = 1 },
+            new() { Kind = Hardwood.Core.Model.FacilityKind.Medical, ToLevel = f.Medical.Level, Cost = 26_500_000, SeasonsLeft = 1, Renewal = true },
+        };
+    }
+
     private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null)
     {
         if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); live.ShowBreakCard(final: false); });
@@ -69,6 +86,12 @@ public class LayoutCheckTests
             inbox.Filter = inbox.Filters[^1];
             inbox.DeleteShownCommand.Execute(null);
             inbox.AutoClear = inbox.AutoClearOptions[^1];
+        });
+        // Money buys things (item M, #281): facilities with a project under way and the longest proposals.
+        yield return ("Facilities", v =>
+        {
+            FacilityDemo(v.Session!);
+            v.Navigate("Board");
         });
         // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
         yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });

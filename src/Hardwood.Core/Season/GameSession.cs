@@ -853,6 +853,7 @@ public sealed partial class GameSession
         Postseason!.FillOutcome(outcome);
 
         Phase = SessionPhase.Offseason;
+        MarkFacilityDecider();
         Offseason = new Offseason(League, outcome, Stats, _rng) { HumanTeamId = ControlledTeamId, PendingCommitments = PendingCommitments };
         Offseason.Begin();
         if (Employed && Offseason.Report.StaffLeft.Count > 0)
@@ -873,6 +874,7 @@ public sealed partial class GameSession
         SignCommittedGraduates(recruiting);
 
         AnnounceAwards(Offseason.Summary!);
+        FacilitiesSummerNews();
         if (!Employed) return; // out of work: the rest of these messages are about your team
         if (collegeBefore != null)
         {

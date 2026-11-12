@@ -16,6 +16,52 @@
             <TextBlock Text="{Binding FinanceNote}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
           </StackPanel>
         </Border>
+        <!-- Item M (#281): facilities -->
+        <Border Classes="panel" IsVisible="{Binding HasFacilities}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="House" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Facilities" Classes="h2" Margin="0"/></StackPanel>
+            <c:StatStrip ItemsSource="{Binding FacilityChips}" Accent="{Binding Accent}"/>
+            <ItemsControl ItemsSource="{Binding Facilities}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FacilityRow">
+                  <StackPanel Margin="0,4" ToolTip.Tip="{Binding Pitch}">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                      <TextBlock Grid.Column="1" Text="{Binding LevelText}" Classes="muted" Margin="8,0,0,0"/>
+                    </Grid>
+                    <ProgressBar MinWidth="0" Value="{Binding Level}" Maximum="5" Height="6" Margin="0,3"/>
+                    <TextBlock Text="{Binding Effect}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Status}" Foreground="{Binding StatusBrush}" FontSize="11.5" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding Building}" IsVisible="{Binding HasBuilding}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+            <TextBlock Text="Proposals" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <TextBlock Text="{Binding ProposalNote}" Classes="muted" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding Proposals}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ProposalRow">
+                  <Border Background="{StaticResource HwPanelAltBrush}" CornerRadius="8" Padding="10" Margin="0,4">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,0,0">
+                        <Button Classes="primary" Content="Approve" Command="{Binding Approve}"/>
+                        <Button Content="Decline" Command="{Binding Decline}"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <CheckBox Content="Let the GM decide each summer" IsChecked="{Binding GmDecides}"/>
+            <TextBlock Text="{Binding FacilityStatus}" Classes="accent" TextWrapping="Wrap"/>
+            <TextBlock Text="Each facility counts against the league's average: keeping up holds your ground, getting ahead pays. Facilities date and drop a level unless they're renewed, and they cost money to run. The owner keeps a reserve in the bank (less if he's ambitious) and funds projects from the rest." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
         <Border Classes="panel" IsVisible="{Binding Employed}">
           <Grid ColumnDefinitions="Auto,*">
             <c:TeamLogo Team="{Binding Team}" Width="72" Height="72" VerticalAlignment="Top" Margin="0,0,14,0"/>
