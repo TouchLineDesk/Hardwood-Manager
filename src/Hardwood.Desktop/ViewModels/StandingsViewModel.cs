@@ -294,11 +294,23 @@ public sealed partial class HistoryViewModel : PageViewModel
         string? ours = s.HumanTeam.Id is >= 1 and <= 30 && s.HumanTeam.Id <= abbrs.Count ? abbrs[s.HumanTeam.Id - 1] : null;
         RealSeasons = Hardwood.Core.RealWorld.RealWorldData.Seasons.OrderByDescending(x => x.Season)
             .Select(x => new RealSeasonRow(x.Label, x.Champion, x.RunnerUp, x.FinalsMvp ?? "-", x.Mvp ?? "-", ours != null && x.ChampionFranchise == ours)).ToList();
-        static RealRecordCard Card(Hardwood.Core.RealWorld.RealRecord r) =>
-            new(r.Label, r.Value, r.Team is { Length: > 0 } t && t != "active" ? $"{r.Holder} ({t})" : r.Team == "active" ? $"{r.Holder} (active)" : r.Holder, r.When);
-        RealGameRecords = Hardwood.Core.RealWorld.RealWorldData.GameRecords.Select(Card).ToList();
-        RealSeasonRecords = Hardwood.Core.RealWorld.RealWorldData.SeasonRecords.Select(Card).ToList();
-        RealCareerRecords = Hardwood.Core.RealWorld.RealWorldData.CareerRecords.Select(Card).ToList();
+        var marks = s.League.Records.RealMarks;
+        // The records as they stand in this career (R2 part 2b): a broken record shows its new holder, and an active
+        // holder's career mark (LeBron's points) grows as he plays.
+        RealRecordCard Card(Hardwood.Core.RealWorld.RealRecord r, string section)
+        {
+            string holder = r.Team is { Length: > 0 } t && t != "active" ? $"{r.Holder} ({t})" : r.Team == "active" ? $"{r.Holder} (active)" : r.Holder;
+            if (Hardwood.Core.RealWorld.RealRecordChase.KeyFor(section, r.Label) is { } key && marks.TryGetValue(key, out var m))
+            {
+                if (m.Holder != r.Holder) return new(r.Label, $"{m.Value:N0}", $"{m.Holder} · new record", $"{m.When} · was {r.Value} by {r.Holder}");
+                if (decimal.TryParse(r.Value.Replace(",", ""), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && (double)v < m.Value)
+                    return new(r.Label, $"{m.Value:N0}", holder, "and counting");
+            }
+            return new(r.Label, r.Value, holder, r.When);
+        }
+        RealGameRecords = Hardwood.Core.RealWorld.RealWorldData.GameRecords.Select(r => Card(r, "game")).ToList();
+        RealSeasonRecords = Hardwood.Core.RealWorld.RealWorldData.SeasonRecords.Select(r => Card(r, "season")).ToList();
+        RealCareerRecords = Hardwood.Core.RealWorld.RealWorldData.CareerRecords.Select(r => Card(r, "career")).ToList();
         RealTitles = Hardwood.Core.RealWorld.RealWorldData.TitleTable()
             .Select(x => new RealTitlesRow(x.Team.FullName, x.Titles, x.LastSeason.ToString(), x.Team.Abbr == ours)).ToList();
         int mine = ours == null ? 0 : Hardwood.Core.RealWorld.RealWorldData.Titles(ours);

@@ -1,0 +1,921 @@
+{
+"checked": "2026-11-12",
+"source": "Basketball-Reference.com active career leaders (regular season), fetched Nov 12, 2026 (site updated Nov 12, 5:01 AM): games, points, total rebounds, assists, steals and blocks, the top 100 active players in each. The scoring ladder is the retired players with 25,000+ points in the top 40 of Basketball-Reference's career points list (pts_career.html, fetched Nov 12, 2026), NBA-only careers: players with ABA points in that list (Erving, Moses Malone, Issel, Gervin, Barry, Gilmore) are left out.",
+"notes": "Totals run through 2025-26: the source's totals include 2026-27 so far, so this season's games (games x per-game, from nba_players.json) are taken off; a total can be a few out from rounding. A player who isn't in a list's top 100 has no number for that stat here (the list's cut-off is in \"cutoff\"), and the game counts his career from his first game in the game. Seasons, titles and All-Star selections are not in the source.",
+"cutoff": {
+"g": 551,
+"pts": 6938,
+"reb": 2554,
+"ast": 1541,
+"stl": 483,
+"blk": 268
+},
+"players": {
+"LeBron James": {
+"g": 1622,
+"pts": 43440,
+"reb": 12095,
+"ast": 12016,
+"stl": 2417,
+"blk": 1185
+},
+"DeMar DeRozan": {
+"g": 1265,
+"pts": 26719,
+"reb": 5435,
+"ast": 5189,
+"stl": 1250,
+"blk": 417
+},
+"James Harden": {
+"g": 1222,
+"pts": 29371,
+"reb": 6811,
+"ast": 8877,
+"stl": 1796,
+"blk": 683
+},
+"Mike Conley": {
+"g": 1226,
+"pts": 16715,
+"reb": 3547,
+"ast": 6782,
+"stl": 1638
+},
+"Kevin Durant": {
+"g": 1202,
+"pts": 32617,
+"reb": 8258,
+"ast": 5285,
+"stl": 1236,
+"blk": 1344
+},
+"Al Horford": {
+"g": 1184,
+"pts": 15079,
+"reb": 9163,
+"ast": 3749,
+"stl": 896,
+"blk": 1351
+},
+"Brook Lopez": {
+"g": 1180,
+"pts": 18151,
+"reb": 7010,
+"ast": 1712,
+"stl": 678,
+"blk": 2147
+},
+"DeAndre Jordan": {
+"g": 1124,
+"pts": 9536,
+"reb": 10864,
+"stl": 576,
+"blk": 1579
+},
+"Jrue Holiday": {
+"g": 1091,
+"pts": 17306,
+"reb": 4588,
+"ast": 6767,
+"stl": 1529,
+"blk": 541
+},
+"Harrison Barnes": {
+"g": 1071,
+"pts": 14575,
+"reb": 4956,
+"ast": 1887,
+"stl": 722
+},
+"Stephen Curry": {
+"g": 1070,
+"pts": 26531,
+"reb": 4973,
+"ast": 6743,
+"stl": 1602,
+"blk": 282
+},
+"Nikola Vučević": {
+"g": 1037,
+"pts": 17687,
+"reb": 10712,
+"ast": 3026,
+"stl": 860,
+"blk": 885
+},
+"Tobias Harris": {
+"g": 1033,
+"pts": 16440,
+"reb": 6292,
+"ast": 2450,
+"stl": 827,
+"blk": 565
+},
+"Andre Drummond": {
+"g": 968,
+"pts": 11696,
+"reb": 11517,
+"stl": 1171,
+"blk": 1198
+},
+"Kentavious Caldwell-Pope": {
+"g": 963,
+"pts": 10599,
+"reb": 2832,
+"ast": 1791,
+"stl": 1099,
+"blk": 273
+},
+"Draymond Green": {
+"g": 950,
+"pts": 8242,
+"reb": 6467,
+"ast": 5331,
+"stl": 1244,
+"blk": 931
+},
+"Paul George": {
+"g": 945,
+"pts": 19338,
+"reb": 5880,
+"ast": 3502,
+"stl": 1601,
+"blk": 417
+},
+"Klay Thompson": {
+"g": 934,
+"pts": 17346,
+"reb": 3183,
+"ast": 2084,
+"stl": 759,
+"blk": 465
+},
+"Dennis Schröder": {
+"g": 912,
+"pts": 12494,
+"reb": 2624,
+"ast": 4438,
+"stl": 749
+},
+"Rudy Gobert": {
+"g": 905,
+"pts": 11287,
+"reb": 10572,
+"stl": 634,
+"blk": 1842
+},
+"Damian Lillard": {
+"g": 901,
+"pts": 22616,
+"reb": 3848,
+"ast": 6072,
+"stl": 875,
+"blk": 267
+},
+"Jimmy Butler": {
+"g": 907,
+"pts": 16658,
+"reb": 4858,
+"ast": 3957,
+"stl": 1455,
+"blk": 387
+},
+"Giannis Antetokounmpo": {
+"g": 895,
+"pts": 21531,
+"reb": 8882,
+"ast": 4484,
+"stl": 995,
+"blk": 1088
+},
+"Tim Hardaway Jr.": {
+"g": 893,
+"pts": 12230,
+"reb": 2544,
+"ast": 1594,
+"stl": 537
+},
+"CJ McCollum": {
+"g": 863,
+"pts": 16838,
+"reb": 3118,
+"ast": 3298,
+"stl": 768,
+"blk": 361
+},
+"Andrew Wiggins": {
+"g": 834,
+"pts": 15214,
+"reb": 3754,
+"ast": 1937,
+"stl": 817,
+"blk": 587
+},
+"Khris Middleton": {
+"g": 839,
+"pts": 13541,
+"reb": 3931,
+"ast": 3242,
+"stl": 944
+},
+"Jordan Clarkson": {
+"g": 825,
+"pts": 12651,
+"reb": 2650,
+"ast": 2307,
+"stl": 644
+},
+"Nikola Jokić": {
+"g": 811,
+"pts": 18036,
+"reb": 8988,
+"ast": 6088,
+"stl": 1042,
+"blk": 590
+},
+"Anthony Davis": {
+"g": 808,
+"pts": 19406,
+"reb": 8650,
+"ast": 2065,
+"stl": 1056,
+"blk": 1850
+},
+"Bradley Beal": {
+"g": 807,
+"pts": 17306,
+"reb": 3251,
+"ast": 3442,
+"stl": 885,
+"blk": 339
+},
+"Julius Randle": {
+"g": 790,
+"pts": 15201,
+"reb": 7027,
+"ast": 3113,
+"stl": 572,
+"blk": 302
+},
+"Kawhi Leonard": {
+"g": 798,
+"pts": 16546,
+"reb": 5075,
+"ast": 2470,
+"stl": 1377,
+"blk": 498
+},
+"Steven Adams": {
+"g": 796,
+"reb": 6391,
+"stl": 668,
+"blk": 723
+},
+"Kyrie Irving": {
+"g": 779,
+"pts": 18433,
+"reb": 3173,
+"ast": 4364,
+"stl": 1022,
+"blk": 337
+},
+"Jerami Grant": {
+"g": 777,
+"pts": 10502,
+"reb": 3026,
+"stl": 527,
+"blk": 784
+},
+"Buddy Hield": {
+"g": 765,
+"pts": 11122,
+"reb": 3052,
+"ast": 1846,
+"stl": 653
+},
+"Aaron Gordon": {
+"g": 757,
+"pts": 10348,
+"reb": 4686,
+"ast": 2037,
+"stl": 544,
+"blk": 457
+},
+"Kyle Anderson": {
+"g": 758,
+"reb": 3220,
+"ast": 2108,
+"stl": 744,
+"blk": 468
+},
+"T.J. McConnell": {
+"g": 763,
+"ast": 3836,
+"stl": 906
+},
+"Tyus Jones": {
+"g": 750,
+"ast": 3185,
+"stl": 704
+},
+"Devin Booker": {
+"g": 737,
+"pts": 18120,
+"reb": 2966,
+"ast": 3908,
+"stl": 628
+},
+"Clint Capela": {
+"g": 739,
+"pts": 8236,
+"reb": 7330,
+"stl": 486,
+"blk": 1014
+},
+"Bobby Portis": {
+"g": 721,
+"pts": 8733,
+"reb": 5113
+},
+"Karl-Anthony Towns": {
+"g": 721,
+"pts": 16405,
+"reb": 8036,
+"ast": 2271,
+"stl": 588,
+"blk": 812
+},
+"Myles Turner": {
+"g": 713,
+"pts": 9877,
+"reb": 4728,
+"stl": 490,
+"blk": 1527
+},
+"Kelly Oubre Jr.": {
+"g": 706,
+"pts": 9415,
+"reb": 3290,
+"stl": 758,
+"blk": 351
+},
+"Marcus Smart": {
+"g": 698,
+"pts": 7320,
+"ast": 3081,
+"stl": 1081
+},
+"Zach LaVine": {
+"g": 693,
+"pts": 14338,
+"reb": 2773,
+"ast": 2684,
+"stl": 599
+},
+"Pascal Siakam": {
+"g": 692,
+"pts": 12838,
+"reb": 4602,
+"ast": 2502,
+"stl": 639,
+"blk": 399
+},
+"Royce O'Neale": {
+"g": 678,
+"reb": 3246,
+"ast": 1644,
+"stl": 567,
+"blk": 295
+},
+"Jaylen Brown": {
+"g": 674,
+"pts": 13474,
+"reb": 3700,
+"ast": 1953,
+"stl": 684
+},
+"Norman Powell": {
+"g": 675,
+"pts": 9418,
+"stl": 571
+},
+"Domantas Sabonis": {
+"g": 665,
+"pts": 10702,
+"reb": 7096,
+"ast": 3240,
+"stl": 514,
+"blk": 301
+},
+"Trey Lyles": {
+"g": 650,
+"reb": 2826
+},
+"Bam Adebayo": {
+"g": 640,
+"pts": 10391,
+"reb": 5757,
+"ast": 2276,
+"stl": 693,
+"blk": 538
+},
+"Jakob Poeltl": {
+"g": 642,
+"reb": 4485,
+"blk": 790
+},
+"Mikal Bridges": {
+"g": 639,
+"pts": 9387,
+"reb": 2520,
+"ast": 1823,
+"stl": 757,
+"blk": 379
+},
+"Ivica Zubac": {
+"g": 633,
+"reb": 5263,
+"blk": 617
+},
+"Jarrett Allen": {
+"g": 625,
+"pts": 8159,
+"reb": 5729,
+"blk": 751
+},
+"Jusuf Nurkić": {
+"g": 631,
+"pts": 7438,
+"reb": 5644,
+"ast": 1664,
+"stl": 588,
+"blk": 669
+},
+"Dorian Finney-Smith": {
+"g": 628,
+"reb": 2765,
+"stl": 501,
+"blk": 271
+},
+"Kevon Looney": {
+"g": 621,
+"reb": 3511,
+"blk": 332
+},
+"Kyle Kuzma": {
+"g": 611,
+"pts": 10115,
+"reb": 3726,
+"ast": 1631,
+"blk": 309
+},
+"Jamal Murray": {
+"g": 612,
+"pts": 11558,
+"ast": 3052,
+"stl": 608
+},
+"Donovan Mitchell": {
+"g": 610,
+"pts": 15295,
+"reb": 2646,
+"ast": 2934,
+"stl": 846
+},
+"De'Aaron Fox": {
+"g": 604,
+"pts": 12752,
+"ast": 3716,
+"stl": 848
+},
+"Jayson Tatum": {
+"g": 602,
+"pts": 14156,
+"reb": 4460,
+"ast": 2336,
+"stl": 661,
+"blk": 389
+},
+"Taurean Prince": {
+"g": 608,
+"stl": 491
+},
+"Josh Hart": {
+"g": 597,
+"reb": 4197,
+"ast": 2008,
+"stl": 630
+},
+"Malik Monk": {
+"g": 585,
+"pts": 7216,
+"ast": 1842
+},
+"Larry Nance Jr.": {
+"g": 582,
+"reb": 3434,
+"stl": 642,
+"blk": 274
+},
+"Caris LeVert": {
+"g": 584,
+"pts": 7717,
+"ast": 2264,
+"stl": 599
+},
+"Derrick White": {
+"g": 572,
+"pts": 7685,
+"ast": 2486,
+"stl": 494,
+"blk": 547
+},
+"Brandon Ingram": {
+"g": 572,
+"pts": 11311,
+"reb": 2996,
+"ast": 2414,
+"blk": 335
+},
+"Jalen Brunson": {
+"g": 562,
+"pts": 10775,
+"ast": 2957
+},
+"OG Anunoby": {
+"g": 560,
+"pts": 7465,
+"reb": 2501,
+"stl": 743,
+"blk": 338
+},
+"Kevin Huerter": {
+"g": 551,
+"ast": 1592,
+"stl": 507
+},
+"Fred VanVleet": {
+"g": 551,
+"pts": 8222,
+"ast": 3127,
+"stl": 760
+},
+"Dillon Brooks": {
+"g": 548,
+"pts": 8101,
+"stl": 506
+},
+"Georges Niang": {
+"g": 545
+},
+"Derrick Jones Jr.": {
+"g": 547,
+"blk": 364
+},
+"John Collins": {
+"g": 541,
+"pts": 8488,
+"reb": 4172,
+"blk": 529
+},
+"Luka Dončić": {
+"pts": 15053,
+"reb": 4381,
+"ast": 4235,
+"stl": 663
+},
+"Shai Gilgeous-Alexander": {
+"pts": 13443,
+"reb": 2508,
+"ast": 2812,
+"stl": 762,
+"blk": 422
+},
+"Joel Embiid": {
+"pts": 13544,
+"reb": 5280,
+"ast": 1808,
+"blk": 784
+},
+"Trae Young": {
+"pts": 12504,
+"ast": 4872,
+"stl": 519
+},
+"Anthony Edwards": {
+"pts": 10854,
+"ast": 1826,
+"stl": 587,
+"blk": 282
+},
+"Kristaps Porziņģis": {
+"pts": 10372,
+"reb": 4055,
+"blk": 947
+},
+"Lauri Markkanen": {
+"pts": 9323,
+"reb": 3490
+},
+"Collin Sexton": {
+"pts": 8718,
+"ast": 1731
+},
+"RJ Barrett": {
+"pts": 8403
+},
+"Jaren Jackson Jr.": {
+"pts": 8449,
+"blk": 846
+},
+"Tyrese Maxey": {
+"pts": 8182,
+"ast": 1864
+},
+"Darius Garland": {
+"pts": 8049,
+"ast": 2859,
+"stl": 490
+},
+"Dejounte Murray": {
+"pts": 8042,
+"reb": 3002,
+"ast": 2811,
+"stl": 765
+},
+"Miles Bridges": {
+"pts": 7956,
+"reb": 3077,
+"blk": 328
+},
+"Tyler Herro": {
+"pts": 7691,
+"ast": 1603
+},
+"Jordan Poole": {
+"pts": 7480,
+"ast": 1672
+},
+"Deandre Ayton": {
+"pts": 7441,
+"reb": 4744,
+"blk": 450
+},
+"Desmond Bane": {
+"pts": 7252,
+"ast": 1519
+},
+"Bogdan Bogdanović": {
+"pts": 7344,
+"ast": 1667,
+"stl": 515
+},
+"Ja Morant": {
+"pts": 7331,
+"ast": 2428
+},
+"Coby White": {
+"pts": 7273,
+"ast": 1818
+},
+"Michael Porter Jr.": {
+"pts": 6878,
+"reb": 2582
+},
+"Keldon Johnson": {
+"pts": 6852
+},
+"Wendell Carter Jr.": {
+"reb": 3757,
+"blk": 330
+},
+"Mitchell Robinson": {
+"reb": 3166,
+"blk": 690
+},
+"Alperen Şengün": {
+"reb": 3099,
+"ast": 1614,
+"blk": 323
+},
+"Evan Mobley": {
+"reb": 3000,
+"blk": 533
+},
+"Isaiah Hartenstein": {
+"reb": 2877,
+"blk": 387
+},
+"Nic Claxton": {
+"reb": 2881,
+"blk": 612
+},
+"Jalen Duren": {
+"reb": 2848
+},
+"Ben Simmons": {
+"reb": 2840,
+"ast": 2754,
+"stl": 568
+},
+"P.J. Washington": {
+"reb": 2676,
+"blk": 442
+},
+"Deni Avdija": {
+"reb": 2693
+},
+"Scottie Barnes": {
+"reb": 2664,
+"ast": 1842,
+"blk": 383
+},
+"Onyeka Okongwu": {
+"reb": 2620,
+"blk": 406
+},
+"Josh Giddey": {
+"reb": 2550,
+"ast": 2204
+},
+"Daniel Gafford": {
+"reb": 2504,
+"blk": 653
+},
+"Naz Reid": {
+"reb": 2459,
+"blk": 444
+},
+"Tyrese Haliburton": {
+"ast": 2947,
+"stl": 490
+},
+"LaMelo Ball": {
+"ast": 2224
+},
+"Cade Cunningham": {
+"ast": 2164
+},
+"Kris Dunn": {
+"ast": 1912,
+"stl": 728
+},
+"Tre Jones": {
+"ast": 1743
+},
+"Immanuel Quickley": {
+"ast": 1622
+},
+"Davion Mitchell": {
+"ast": 1447
+},
+"Alex Caruso": {
+"stl": 632
+},
+"Matisse Thybulle": {
+"stl": 606,
+"blk": 296
+},
+"Donte DiVincenzo": {
+"stl": 599
+},
+"De'Anthony Melton": {
+"stl": 579
+},
+"Dyson Daniels": {
+"stl": 506
+},
+"Gary Trent Jr.": {
+"stl": 514
+},
+"Victor Wembanyama": {
+"blk": 632
+},
+"Walker Kessler": {
+"blk": 475
+},
+"Robert Williams": {
+"blk": 476
+},
+"Mo Bamba": {
+"blk": 465
+},
+"Isaiah Stewart": {
+"blk": 430
+},
+"Goga Bitadze": {
+"blk": 398
+},
+"Chet Holmgren": {
+"blk": 392
+},
+"Jonathan Isaac": {
+"blk": 391
+},
+"Jaden McDaniels": {
+"blk": 379
+},
+"Luke Kornet": {
+"blk": 362
+},
+"Jaxson Hayes": {
+"blk": 299
+},
+"Precious Achiuwa": {
+"blk": 259
+},
+"Peyton Watson": {
+"blk": 257
+},
+"Isaiah Jackson": {
+"blk": 263
+}
+},
+"scoringLadder": [
+{
+"name": "Kareem Abdul-Jabbar",
+"pts": 38387
+},
+{
+"name": "Karl Malone",
+"pts": 36928
+},
+{
+"name": "Kobe Bryant",
+"pts": 33643
+},
+{
+"name": "Michael Jordan",
+"pts": 32292
+},
+{
+"name": "Dirk Nowitzki",
+"pts": 31560
+},
+{
+"name": "Wilt Chamberlain",
+"pts": 31419
+},
+{
+"name": "Shaquille O'Neal",
+"pts": 28596
+},
+{
+"name": "Carmelo Anthony",
+"pts": 28289
+},
+{
+"name": "Elvin Hayes",
+"pts": 27313
+},
+{
+"name": "Russell Westbrook",
+"pts": 27176
+},
+{
+"name": "Hakeem Olajuwon",
+"pts": 26946
+},
+{
+"name": "Oscar Robertson",
+"pts": 26710
+},
+{
+"name": "Dominique Wilkins",
+"pts": 26668
+},
+{
+"name": "Tim Duncan",
+"pts": 26496
+},
+{
+"name": "Paul Pierce",
+"pts": 26397
+},
+{
+"name": "John Havlicek",
+"pts": 26395
+},
+{
+"name": "Kevin Garnett",
+"pts": 26071
+},
+{
+"name": "Vince Carter",
+"pts": 25728
+},
+{
+"name": "Alex English",
+"pts": 25613
+},
+{
+"name": "Reggie Miller",
+"pts": 25279
+},
+{
+"name": "Jerry West",
+"pts": 25192
+}
+]
+}

@@ -84,6 +84,14 @@ public class ScreenshotTests
                 vm.Navigate("History");
                 ((HistoryViewModel)vm.CurrentPage!).Tab = 2;
                 Snap(window, Path.Combine(dir, $"{n++:00}-nba-history.png"));
+                // The records book starts from the real careers (R2 part 2b).
+                ((HistoryViewModel)vm.CurrentPage!).Tab = 1;
+                Snap(window, Path.Combine(dir, $"{n++:00}-records-book.png"));
+                window.UpdateLayout();
+                foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                    .Where(x => x.IsEffectivelyVisible && x.Extent.Height > x.Viewport.Height + 1))
+                    sv.Offset = new Vector(0, sv.Extent.Height);
+                Snap(window, Path.Combine(dir, $"{n++:00}-records-book-careers.png"));
             }
             vm.Navigate("Roster");
             var roster = (RosterViewModel)vm.CurrentPage!;

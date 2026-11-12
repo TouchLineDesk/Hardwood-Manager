@@ -48,6 +48,9 @@ public sealed class RecordBook
     public List<Milestone> Milestones { get; set; } = new();
     /// <summary>The first season the book saw. Records only make news after it: in a brand-new world every big night "breaks" one.</summary>
     public int FirstSeason { get; set; }
+    /// <summary>In a real-world career, the real NBA records as they stand (R2 part 2b): seeded from the real record book,
+    /// replaced when a player beats one. Empty in a fictional career (and in a save from before part 2b, until the next game).</summary>
+    public Dictionary<string, RealWorld.RealMark> RealMarks { get; set; } = new();
 
     /// <summary>The single-game player categories: key, heading, unit, and how to read a box-score line.</summary>
     public static readonly (string Key, string Label, string Unit, Func<PlayerLine, int> Of)[] PlayerGame =

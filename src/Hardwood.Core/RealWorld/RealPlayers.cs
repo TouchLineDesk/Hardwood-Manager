@@ -4,8 +4,10 @@ using Hardwood.Core.Model;
 
 namespace Hardwood.Core.RealWorld;
 
-/// <summary>One real NBA player's line in the data pack (Data/nba_players.json): this season so far and last season (with last season's team; "2TM" when traded).</summary>
-public sealed record RealPlayerLine(string Name, int Age, string Team, string Pos, double?[] Cur, double?[]? Prev, string? PrevTeam = null);
+/// <summary>One real NBA player's line in the data pack (Data/nba_players.json): this season so far and last season (with last season's team; "2TM" when traded).
+/// <paramref name="NotYet"/>: on a real roster but hadn't played in 2026-27 when the data was checked (R2 part 2b); <paramref name="Cur"/> is then null,
+/// and a player with no 2025-26 NBA line either (a 2026 rookie, or out all last season) has no <paramref name="Prev"/> and is rated at bench level.</summary>
+public sealed record RealPlayerLine(string Name, int Age, string Team, string Pos, double?[]? Cur, double?[]? Prev, string? PrevTeam = null, bool NotYet = false);
 
 /// <summary>A team's real record in a season (data pack).</summary>
 public sealed record RealRecordLine(string Team, int W, int L)
@@ -28,6 +30,8 @@ public sealed record RealRating(RealPlayerLine Line, double Per36, double Minute
 /// spread of talent the game is balanced for. The attributes are then shaped by what each player does: shooting from
 /// his percentages, playmaking from assists, rebounding, steals and blocks from his rates. Since R2 part 2a his
 /// contract, birthday, height and birth country are real (Data/nba_rosters.json), and each club has its real head coach.
+/// Since R2 part 2b the players on real rosters who hadn't played yet this season are in too (rated from last season),
+/// and the leading veterans' careers carry in (<see cref="RealCareers"/>).
 /// </summary>
 public static class RealPlayers
 {
@@ -49,6 +53,10 @@ public static class RealPlayers
     /// <summary>Team context, as box plus-minus does it: box scores miss defence and team play, so a player's ranking
     /// moves with how his team did while he played (win % above .500, times his minutes share).</summary>
     public const double ContextWeight = 16;
+    /// <summary>A real player's room to grow is this share of what the generator would give a made-up player of his age
+    /// and ability (#227): a real 22-year-old already playing like an All-Star is a known quantity, not a lottery ticket,
+    /// and full headroom put two real 22-year-olds at PA 200 and made dynasties of their clubs in the audit.</summary>
+    public const double PotentialHeadroom = 0.75;
 
     private static readonly string[] Cols = { "G", "MP", "FGA", "FG%", "3PA", "3P%", "FTA", "FT%", "ORB", "DRB", "AST", "STL", "BLK", "TOV", "PTS" };
 
@@ -114,13 +122,16 @@ public static class RealPlayers
         var ladder = teams.SelectMany(t => t.Roster).Select(p => p.CurrentAbility).OrderByDescending(x => x).ToList();
         var rated = Rate().Where(r => byAbbr.ContainsKey(r.Line.Team)).ToList();
         var kept = rated.GroupBy(r => r.Line.Team).SelectMany(g => g.OrderByDescending(r => r.Score).Take(RosterMax)).ToList();
-        var order = rated.OrderByDescending(r => r.Score).ToList();
+        // The ladder is dealt to the players who make a roster (R2 part 2b: with the 68 not yet seen this season there
+        // are more real players than places, and the ones left out mustn't take the bottom of the ladder with them).
+        var order = kept.OrderByDescending(r => r.Score).ToList();
         var caOf = new Dictionary<RealRating, int>();
         for (int i = 0; i < order.Count; i++)
             caOf[order[i]] = ladder[(int)Math.Round((double)i / Math.Max(1, order.Count - 1) * (ladder.Count - 1))];
 
         var ageDay = new DateOnly(league.Season + 1, 2, 1); // Basketball-Reference ages are on February 1 of the season
         var rng = new Rng(seed ^ 0x5245414CUL);
+        var ids = new Dictionary<string, int>();
         foreach (var team in teams)
         {
             var mine = kept.Where(r => r.Line.Team == team.Abbreviation).OrderByDescending(r => r.Score).ToList();
@@ -138,6 +149,9 @@ public static class RealPlayers
                 };
                 int at = team.Roster.IndexOf(old);
                 team.Roster[at] = p;
+                ids[real.Line.Name] = p.Id;
+                // His real career so far (R2 part 2b, #224): the records book, milestones and Hall of Fame start from it.
+                if (RealCareers.Totals(real.Line, p.Id) is { } career) league.Careers[p.Id] = career;
                 team.Tactic.Roles.Remove(old.Id);
             }
             team.DepthChart = null;
@@ -146,6 +160,8 @@ public static class RealPlayers
             // back down as deals run out, as real teams over the cap do.
             if (CoachesByTeam.TryGetValue(team.Abbreviation, out var coach)) team.CoachName = coach;
         }
+        // The real record book, with LeBron's id on his career points (#225).
+        RealRecordChase.Seed(league.Records, ids);
     }
 
     /// <summary>His real deal (#217): this season's salary, for every season the contracts page lists. Null if the
@@ -183,7 +199,7 @@ public static class RealPlayers
             BirthDate = bio?.Born ?? t.BirthDate, Nationality = nat, Ethnicity = Heritages.Backfill(id, nat),
             HeightCm = height, WingspanCm = t.WingspanCm + grow, WeightKg = Math.Max(70, t.WeightKg + (int)Math.Round(grow * 1.1)),
             PrimaryPosition = pos, SecondaryPosition = t.SecondaryPosition,
-            CurrentAbility = t.CurrentAbility, PotentialAbility = t.PotentialAbility,
+            CurrentAbility = t.CurrentAbility, PotentialAbility = t.CurrentAbility + (int)Math.Round((t.PotentialAbility - t.CurrentAbility) * PotentialHeadroom),
             Attributes = t.Attributes, Hidden = t.Hidden, Tendencies = t.Tendencies,
         };
         Shape(p, r);
@@ -364,8 +380,10 @@ public static class RealPlayers
         double?[] Row(JsonElement e) => e.EnumerateArray().Select(v => v.ValueKind == JsonValueKind.Null ? (double?)null : v.GetDouble()).ToArray();
         var players = root.GetProperty("players").EnumerateArray().Select(e => new RealPlayerLine(
             e.GetProperty("name").GetString()!, e.GetProperty("age").GetInt32(), e.GetProperty("team").GetString()!, e.GetProperty("pos").GetString()!,
-            Row(e.GetProperty("cur")), e.GetProperty("prev").ValueKind == JsonValueKind.Null ? null : Row(e.GetProperty("prev")),
-            e.TryGetProperty("prevTeam", out var pt) && pt.ValueKind == JsonValueKind.String ? pt.GetString() : null)).ToList();
+            e.GetProperty("cur").ValueKind == JsonValueKind.Null ? null : Row(e.GetProperty("cur")),
+            e.GetProperty("prev").ValueKind == JsonValueKind.Null ? null : Row(e.GetProperty("prev")),
+            e.TryGetProperty("prevTeam", out var pt) && pt.ValueKind == JsonValueKind.String ? pt.GetString() : null,
+            e.TryGetProperty("notYet", out var ny) && ny.ValueKind == JsonValueKind.True)).ToList();
         List<RealRecordLine> Rec(string k) => root.GetProperty(k).GetProperty("records").EnumerateArray()
             .Select(e => new RealRecordLine(e.GetProperty("team").GetString()!, e.GetProperty("w").GetInt32(), e.GetProperty("l").GetInt32())).ToList();
         return new Pack(players, Rec("lastSeason"), Rec("thisSeason"), root.GetProperty("checked").GetString() ?? "", root.GetProperty("source").GetString() ?? "");

@@ -129,7 +129,7 @@ public sealed partial class GameSession
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
             + (realWorld && Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
                 ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page."
-                + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players who haven't played yet this season (injured or unsigned) aren't in yet." : "")
+                + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players on real rosters who hadn't played yet this season are rated from last season (everyone starts healthy). Careers before this season are real for the league's leading veterans (checked {Hardwood.Core.RealWorld.RealCareers.Checked}), so the records book and the NBA's records to beat start from the real past." : "")
             + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
         session.SaveNow();
         return session;
@@ -358,6 +358,15 @@ public sealed partial class GameSession
     {
         Results[g.Index] = r;
         Standings.Record(r);
+        bool ours = r.Home.Team == HumanTeam || r.Away.Team == HumanTeam;
+        // The real NBA's record book (R2 part 2b, #225): only in a real-world career's NBA.
+        bool real = RealWorld.RealWorldData.IsReal(League);
+        if (real) RealWorld.RealRecordChase.EnsureSeeded(League);
+        void Chase(RealWorld.ChaseNews n)
+        {
+            // A broken NBA record reaches everyone; a record watch or a legend passed is yours, or the digest's.
+            if (n.Broken || ours) Post(n.Title, n.Body, "League"); else PostWorld(n.Title, n.Body);
+        }
         foreach (var box in new[] { r.Home, r.Away })
         foreach (var l in box.Lines)
         {
@@ -367,19 +376,39 @@ public sealed partial class GameSession
             // Career milestones (roadmap 4): completed seasons plus this one, before and after this game.
             var career = League.Careers.GetValueOrDefault(l.Player.Id);
             int pts = (career?.Points ?? 0) + s.Points, reb = (career?.Rebounds ?? 0) + s.OReb + s.DReb, ast = (career?.Assists ?? 0) + s.Assists, gp = (career?.Games ?? 0) + s.Games;
+            int stl = (career?.Steals ?? 0) + s.Steals, blk = (career?.Blocks ?? 0) + s.Blocks, seasonPts = s.Points, season3 = s.ThreePM;
             s.Add(l);
+            if (real)
+            {
+                var opp = box == r.Home ? r.Away.Team : r.Home.Team;
+                foreach (var n in RealWorld.RealRecordChase.Check(League.Records, l.Player, box.Team, opp.Abbreviation, Today, League.Season,
+                    new Dictionary<string, int> { ["pts"] = l.Points, ["reb"] = l.Rebounds, ["ast"] = l.Assists, ["stl"] = l.Steals, ["blk"] = l.Blocks, ["3pm"] = l.ThreePM },
+                    new Dictionary<string, (int, int)> { ["pts"] = (seasonPts, s.Points), ["3pm"] = (season3, s.ThreePM) },
+                    new Dictionary<string, (int, int)>
+                    {
+                        ["pts"] = (pts, pts + l.Points), ["reb"] = (reb, reb + l.Rebounds), ["ast"] = (ast, ast + l.Assists),
+                        ["stl"] = (stl, stl + l.Steals), ["blk"] = (blk, blk + l.Blocks),
+                    }))
+                    Chase(n);
+            }
             var passed = League.Records.CheckMilestones(l.Player, box.Team, Today, League.Season, new Dictionary<string, (int, int)>
             {
                 ["points"] = (pts, pts + l.Points), ["rebounds"] = (reb, reb + l.Rebounds), ["assists"] = (ast, ast + l.Assists), ["games"] = (gp, gp + 1),
             });
             // Yours arrive on their own; other clubs' big ones wait for the fortnightly digest (dial-in item 5: inbox volume).
+            // Since real careers carry in (R2 part 2b), veterans pass round numbers often: your players' smaller steps go
+            // to the digest with everyone else's, and the big ones still arrive on their own (inbox volume, #226).
             foreach (var m in passed)
-                if (box.Team == HumanTeam)
+                if (box.Team == HumanTeam && m.Threshold >= (m.Stat == "points" ? 10_000 : m.Stat == "games" ? 750 : m.Stat == "rebounds" ? 5_000 : 4_000))
                     Post($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.", "League");
+                else if (box.Team == HumanTeam)
+                    PostWorld($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.");
                 else if (m.Threshold >= (m.Stat == "points" ? 20_000 : m.Stat == "games" ? 1_000 : 10_000))
                     PostWorld($"Milestone: {m.PlayerName} passes {m.Threshold:N0} {m.Stat}", $"{m.Text} on {Today:MMM d}.");
         }
-        bool ours = r.Home.Team == HumanTeam || r.Away.Team == HumanTeam;
+        if (real)
+            foreach (var (box, opp) in new[] { (r.Home, r.Away), (r.Away, r.Home) })
+                if (RealWorld.RealRecordChase.CheckTeam(League.Records, box.Team, opp.Team.Abbreviation, box.Points, opp.Points, Today) is { } n) Chase(n);
         foreach (var line in League.Records.Consider(r, Today, League.Season))
             if (ours) Post("New league record", line, "League"); else PostWorld("New league record", line);
         ReportGame(r);

@@ -19,11 +19,15 @@ public class RealPlayersTests
     public void The_pack_holds_every_player_who_has_played_this_season_with_its_source()
     {
         var lines = RealPlayers.Lines;
-        Assert.InRange(lines.Count, 440, 480);
+        // Everyone who has played this season, plus (R2 part 2b) the 68 on real rosters who hadn't yet.
+        Assert.InRange(lines.Count(l => !l.NotYet), 440, 480);
+        Assert.Equal(68, lines.Count(l => l.NotYet));
+        Assert.All(lines.Where(l => l.NotYet), l => Assert.Null(l.Cur));
+        Assert.All(lines.Where(l => !l.NotYet), l => Assert.NotNull(l.Cur));
         var abbrs = RealWorldData.Teams.Select(t => t.Abbr).ToHashSet();
         Assert.All(lines, l => Assert.Contains(l.Team, abbrs));
         Assert.Equal(lines.Count, lines.Select(l => l.Name).Distinct().Count());
-        Assert.All(abbrs, a => Assert.InRange(lines.Count(l => l.Team == a), 13, 20));
+        Assert.All(abbrs, a => Assert.InRange(lines.Count(l => l.Team == a), 13, 24));
         Assert.Contains(lines, l => l.Name == "Nikola Jokić" && l.Team == "DEN" && l.Pos == "C");
         Assert.Contains(lines, l => l.Name == "Giannis Antetokounmpo" && l.Team == "MIA");
         Assert.Equal(30, RealPlayers.LastSeason.Count);
