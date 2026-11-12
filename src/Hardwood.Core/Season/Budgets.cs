@@ -41,7 +41,9 @@ public static class Budgets
     {
         double fan = Math.Clamp(t.Money.FanBase, 0, 100) / 100.0;
         double arena = Math.Clamp(t.ArenaCapacity / Math.Max(1, typicalArena), 0.5, 1.5);
-        double f = 0.85 + 0.3 * fan + 0.08 * (arena - 1) + 0.12 * (lastWinPct - 0.5);
+        // Item M (#281): premium seating and a renovated arena earn more than the league's average arena.
+        double premium = 0.02 * t.Money.Facilities.Arena.Edge;
+        double f = 0.85 + 0.3 * fan + 0.08 * (arena - 1) + 0.12 * (lastWinPct - 0.5) + premium;
         return Round(leagueRevenue * Math.Clamp(f, 0.8, 1.2));
     }
 
@@ -66,6 +68,9 @@ public static class Budgets
             m.Balance = Round(m.Revenue * rng.NextDouble() * 0.2);
             m.Ready = true;
         }
+        // Item M (#281): facilities, seeded per club without touching the random stream.
+        foreach (var t in clubs) Franchise.Seed(t, typical);
+        Franchise.SetEdges(clubs);
     }
 
     /// <summary>
@@ -89,7 +94,9 @@ public static class Budgets
             double wp = winPct(t);
             long staff = t.Staff.Sum(s => s.Salary);
             m.Balance += m.Income - ContractMarket.Payroll(t) - staff;
-            m.FanBase = Math.Clamp(m.FanBase + (wp - 0.5) * 10 + (champion(t) ? 3 : 0) + (50 - m.FanBase) * 0.06, 5, 100);
+            // Item M (#281): running costs, projects, ageing, and the owner's investments (or your proposals).
+            Franchise.Summer(t, lr, typical, endedSeason + 1);
+            m.FanBase = Math.Clamp(m.FanBase + (wp - 0.5) * 10 + (champion(t) ? 3 : 0) + (50 - m.FanBase) * 0.06 + 0.6 * m.Facilities.Arena.Edge, 5, 100);
             m.Revenue = Revenue(t, lr, typical, wp);
             // The parachute halves each year and stops after two.
             if (m.ParachuteYears > 0) { m.ParachuteYears--; m.Parachute = m.ParachuteYears > 0 ? m.Parachute / 2 : 0; }
@@ -121,6 +128,7 @@ public static class Budgets
             m.TransferBudget = m.Embargo ? 0 : Round(Math.Max(0, m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15));
             m.Ready = true;
         }
+        Franchise.SetEdges(clubs);
     }
 
     /// <summary>

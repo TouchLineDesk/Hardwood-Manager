@@ -563,7 +563,7 @@ public sealed class GameWorld
             foreach (var p in team.Roster.ToList())
             {
                 double mpg = Mpg(p.Id);
-                dev.Develop(p, date, mpg);
+                dev.Develop(p, date, mpg, 10 + StaffEffects.FacilityTraining(team, p, date)); // facilities (item M, #281)
                 bool expiring = p.Contract == null || --p.Contract.Years <= 0;
                 if (p.Contract != null && !expiring) p.Contract.Buyout = BuyoutFor(p, p.Contract.Salary, p.Contract.Years, date);
                 var locals = LocalsOf(comp.Profile, ClubOf(comp, team));

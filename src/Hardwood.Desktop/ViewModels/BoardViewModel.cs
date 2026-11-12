@@ -35,6 +35,27 @@ public sealed class VacancyRow
     public required IRelayCommand Decline { get; init; }
 }
 
+/// <summary>Item M (#281): one of your club's facilities.</summary>
+public sealed class FacilityRow
+{
+    public string Name { get; init; } = "";
+    public string Pitch { get; init; } = "";
+    public int Level { get; init; }
+    public string LevelText { get; init; } = "";
+    public string Effect { get; init; } = "";
+    public string Status { get; init; } = "";
+    public IBrush StatusBrush { get; init; } = Brushes.Gray;
+}
+
+/// <summary>Item M (#281): a project the front office proposes.</summary>
+public sealed class ProposalRow
+{
+    public string Title { get; init; } = "";
+    public string Detail { get; init; } = "";
+    public required IRelayCommand Approve { get; init; }
+    public required IRelayCommand Decline { get; init; }
+}
+
 /// <summary>The Board page (decisions #70-74): owner, expectations, board confidence, your coach profile, and jobs when out of work.</summary>
 public sealed partial class BoardViewModel : PageViewModel
 {
@@ -77,6 +98,26 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private string _jobHistory = "";
 
     public ObservableCollection<VacancyRow> Vacancies { get; } = new();
+
+    // Item M (#281): facilities.
+    [ObservableProperty] private bool _hasFacilities;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _facilityChips = new();
+    public ObservableCollection<FacilityRow> Facilities { get; } = new();
+    public ObservableCollection<ProposalRow> Proposals { get; } = new();
+    [ObservableProperty] private bool _hasProposals;
+    [ObservableProperty] private string _proposalNote = "";
+    [ObservableProperty] private string _facilityStatus = "";
+    [ObservableProperty] private string _building = "";
+    [ObservableProperty] private bool _hasBuilding;
+    private bool _refreshing;
+    [ObservableProperty] private bool _gmDecides;
+    partial void OnGmDecidesChanged(bool value)
+    {
+        if (_refreshing) return;
+        Session.DelegateFacilities(value);
+        FacilityStatus = value ? "From next summer your general manager approves the projects the owner will fund." : "From next summer the proposals come to you.";
+        Session.SaveNow();
+    }
     [ObservableProperty] private string _status = "";
 
     public static (string label, string colour) Mood(double c) => c switch
@@ -135,10 +176,12 @@ public sealed partial class BoardViewModel : PageViewModel
                 : $"Heading toward {outlook.Level:0} (now {job.Confidence:0}): each week it closes {outlook.Rate * 100:0}% of the gap. "
                   + (o.Patience <= 7 ? $"An impatient {s.BossTitle}: it moves fast." : o.Patience >= 14 ? $"A patient {s.BossTitle}: it moves slowly." : "");
             ConfidenceRecent = Recent(job);
+            RefreshFacilities();
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }
 
+        else HasFacilities = false;
         CoachName = coach.Name;
         CoachBio = $"Age {coach.Age(s.Today)} · {coach.Nationality} · {Bio(coach.Background)} · licence {coach.Licence}";
         Reputation = coach.Reputation;
@@ -166,6 +209,61 @@ public sealed partial class BoardViewModel : PageViewModel
                 Decline = new RelayCommand(() => { Session.DeclineOffer(id); Status = "Offer declined."; Refresh(); }),
             });
         }
+    }
+
+    private void RefreshFacilities()
+    {
+        var s = Session;
+        HasFacilities = s.HasFacilities;
+        if (!HasFacilities) return;
+        var t = s.HumanTeam; var f = s.MyFacilities; var m = t.Money;
+        string M(long v) => Hardwood.Core.Season.Franchise.Money(v);
+        long reserve = Hardwood.Core.Season.Franchise.Reserve(t), budget = s.FacilityBudget;
+        FacilityChips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Owner will fund", M(budget), $"keeps {M(reserve)} in the bank", budget > 0 ? "good" : ""),
+            new("Running costs", M(Hardwood.Core.Season.Franchise.Upkeep(f, s.MyLeagueRevenue)), "a season", ""),
+            new("Invested", M(f.LastInvested), "last summer", ""),
+            new("Arena", $"{t.ArenaCapacity:N0}", $"seats · {f.ArenaYears} years old", f.ArenaYears >= Hardwood.Core.Season.Franchise.ArenaLife ? "warn" : "team"),
+        };
+        Facilities.Clear();
+        foreach (var k in Hardwood.Core.Model.ClubFacilities.Kinds)
+        {
+            var fac = f.Get(k); var info = Hardwood.Core.Season.Franchise.Info(k);
+            var build = f.Building.FirstOrDefault(b => b.Kind == k || (k == Hardwood.Core.Model.FacilityKind.Arena && b.Kind == Hardwood.Core.Model.FacilityKind.NewArena));
+            int left = info.Lifespan - fac.Age;
+            string status = build != null ? (build.Kind == Hardwood.Core.Model.FacilityKind.NewArena ? $"New arena: opens in {build.SeasonsLeft} summer{(build.SeasonsLeft == 1 ? "" : "s")}" : build.Renewal ? "Being renewed: done next summer" : $"Building level {build.ToLevel}: opens next summer")
+                : left <= 1 ? "Dated: drops a level next summer unless it's renewed" : left <= 3 ? $"Ageing: dates in {left} seasons" : $"Modern: good for {left} more seasons";
+            string tone = build != null ? "#58A6FF" : left <= 1 ? "#F85149" : left <= 3 ? "#D29922" : "#3FB950";
+            Facilities.Add(new FacilityRow
+            {
+                Name = info.Name, Pitch = info.Pitch, Level = fac.Level,
+                LevelText = $"{fac.Level}/5 · {(fac.Edge >= 0.05 ? "+" : "")}{fac.Edge:0.0} on the league",
+                Effect = info.Effect, Status = status, StatusBrush = new SolidColorBrush(Color.Parse(tone)),
+            });
+        }
+        HasBuilding = f.Building.Count > 0;
+        Building = HasBuilding ? "Under way: " + string.Join("; ", f.Building.Select(Hardwood.Core.Season.Franchise.Describe)) : "";
+        Proposals.Clear();
+        for (int i = 0; i < f.Proposals.Count; i++)
+        {
+            int idx = i; var p = f.Proposals[i]; var info = Hardwood.Core.Season.Franchise.Info(p.Kind);
+            string title = p.Kind == Hardwood.Core.Model.FacilityKind.NewArena ? $"A new arena: {p.Capacity:N0} seats" : p.Renewal ? $"Renew the {info.Name.ToLower()} (level {p.ToLevel})" : $"{info.Name} to level {p.ToLevel}";
+            string cost = p.Instalments > 1 ? $"{M(p.Cost)} in {p.Instalments} payments of {M(p.Instalment)}" : M(p.Cost);
+            string when = p.SeasonsLeft <= 1 ? "opens next summer" : $"opens in {p.SeasonsLeft} summers";
+            Proposals.Add(new ProposalRow
+            {
+                Title = title,
+                Detail = $"{cost} · {when} · {info.Effect}",
+                Approve = new RelayCommand(() => { FacilityStatus = Session.ApproveFacility(idx) ?? $"Approved: {title}."; Refresh(); }),
+                Decline = new RelayCommand(() => { Session.DeclineFacility(idx); FacilityStatus = $"Declined: {title}."; Refresh(); }),
+            });
+        }
+        HasProposals = Proposals.Count > 0;
+        ProposalNote = !s.Delegated.Facilities
+            ? (HasProposals ? "The front office's proposals. The owner will fund any of these from the bank; each summer brings new ones." : "No proposals right now. They come each summer, when the owner has money above his reserve.")
+            : "Your general manager decides each summer, within what the owner will fund.";
+        _refreshing = true; GmDecides = s.Delegated.Facilities; _refreshing = false;
     }
 
     /// <summary>Each thing the board weighs as a chip: the points it adds to or takes off where confidence settles.</summary>

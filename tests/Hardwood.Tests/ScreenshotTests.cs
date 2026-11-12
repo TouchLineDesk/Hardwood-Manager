@@ -97,6 +97,18 @@ public class ScreenshotTests
                     sv.Offset = new Vector(0, sv.Extent.Height);
                 Snap(window, Path.Combine(dir, $"{n++:00}-records-book-careers.png"));
             }
+            if (session.HasFacilities)
+            {
+                // Money buys things (item M, #281): facilities, a project under way and the front office's proposals.
+                LayoutCheckTests.FacilityDemo(session);
+                vm.Navigate("Board");
+                Snap(window, Path.Combine(dir, $"{n++:00}-facilities.png"));
+                window.UpdateLayout();
+                foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                    .Where(x => x.IsEffectivelyVisible && x.Extent.Height > x.Viewport.Height + 1))
+                    sv.Offset = new Vector(0, 520);
+                Snap(window, Path.Combine(dir, $"{n++:00}-facilities-proposals.png"));
+            }
             // The inbox clean-up (#243): read messages deleted, "Delete these" armed on a filter, auto-clear on.
             vm.Navigate("Inbox");
             var inbox = (InboxViewModel)vm.CurrentPage!;

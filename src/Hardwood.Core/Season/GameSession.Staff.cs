@@ -14,6 +14,8 @@ public sealed class Delegation
     public bool Recruiting { get; set; }
     /// <summary>The assistant coach fronts the press and handles the locker room (staff part 2), in his own way.</summary>
     public bool Media { get; set; }
+    /// <summary>The general manager decides the summer's facility projects within the owner's budget (item M, #281; D10).</summary>
+    public bool Facilities { get; set; }
     /// <summary>What the staff did last (shown on the Staff page).</summary>
     public string LastTraining { get; set; } = "";
     public string LastRecruiting { get; set; } = "";

@@ -24,6 +24,9 @@ public sealed class ClubFinance
     /// <summary>Deep in debt (balance below half a season's revenue): no transfer fees until it recovers.</summary>
     public bool Embargo { get; set; }
 
+    /// <summary>Money buys things (item M, #281): the club's facilities, projects and proposals.</summary>
+    public ClubFacilities Facilities { get; set; } = new();
+
     /// <summary>Money in for a season: revenue plus any parachute.</summary>
     public long Income => Revenue + Parachute;
 }
