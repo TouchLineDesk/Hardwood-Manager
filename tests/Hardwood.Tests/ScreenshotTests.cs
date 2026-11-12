@@ -139,6 +139,33 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-boxscore.png"));
 
             int guard = 0;
+            if (session.InCollege && session.World.College is { } cw)
+            {
+                // A walk through March Madness (C4 part 2): the bracket after each round, the Final Four, and the inbox.
+                int Played() => cw.Season.Games.Count(g => g.Event == Hardwood.Core.College.CollegeWorld.Madness && g.Played);
+                int[] after = { 4, 36, 52, 60, 64, 66, 67 };
+                string[] label = { "first-four", "round-of-64", "round-of-32", "sweet-16", "elite-eight", "final-four", "final" };
+                int k = 0;
+                while (k < after.Length && session.Phase != SessionPhase.Offseason && guard++ < 400)
+                {
+                    session.AdvanceDay();
+                    if (Played() < after[k]) continue;
+                    while (k + 1 < after.Length && Played() >= after[k + 1]) k++;
+                    vm.AfterTick();
+                    vm.Navigate("College");
+                    var cv = (CollegeViewModel)vm.CurrentPage!;
+                    cv.Tab = 2;
+                    int region = cw.RegionOf(session.HumanTeam.Id);
+                    cv.BracketView = k >= 4 ? "Final Four" : region >= 0 ? Hardwood.Core.College.MadnessBracket.Regions[region] : "East";
+                    Snap(window, Path.Combine(dir, $"{n++:00}-madness-{label[k]}.png"));
+                    k++;
+                }
+                vm.Navigate("Inbox");
+                var mail = (InboxViewModel)vm.CurrentPage!;
+                var story = mail.Items.FirstOrDefault(i => Hardwood.Core.College.CollegeWorld.IsMadnessHeadline(i.Message.Title));
+                if (story != null) mail.Selected = story;
+                Snap(window, Path.Combine(dir, $"{n++:00}-madness-inbox.png"));
+            }
             while (session.Phase != SessionPhase.Offseason && guard++ < 400) session.AdvanceDay();
             vm.AfterTick();
             vm.Navigate("Awards");

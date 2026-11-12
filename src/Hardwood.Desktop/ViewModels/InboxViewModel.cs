@@ -193,7 +193,8 @@ public sealed partial class InboxViewModel : PageViewModel
         int rank = s.MyRank;
         var hurt = s.HumanTeam.Roster.Where(p => !p.IsAvailable(s.Today)).ToList();
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
-                  + $" · {Budgets.Describe(s.HumanTeam)}"
+                  // College programs pay no wages (#307): the line read "wages $0.0M of a $0.0M budget".
+                  + (s.InCollege ? "" : $" · {Budgets.Describe(s.HumanTeam)}")
                   + (hurt.Count > 0 ? $" · Injured: {string.Join(", ", hurt.Select(p => $"{p.LastName} ({p.Injury!.DaysOut(s.Today)}d)"))}" : "");
     }
 

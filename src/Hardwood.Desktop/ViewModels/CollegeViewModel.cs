@@ -127,6 +127,8 @@ public sealed partial class CollegeViewModel : PageViewModel
     partial void OnBracketColumnsChanged(List<BracketColumn> value) => OnPropertyChanged(nameof(HasBracket));
     partial void OnBracketViewChanged(string value) => FillBracket();
     [ObservableProperty] private string _bracketNote = "";
+    /// <summary>A region's bracket needs the room for eight games; the Final Four view only two rows (C4 part 2).</summary>
+    [ObservableProperty] private double _bracketHeight = 620;
     // Bracketology (C4 part 1, #191): the field as it would be picked today, until Selection Sunday.
     [ObservableProperty] private List<SeedLine> _seedLines = new();
     [ObservableProperty] private List<BubbleList> _bubble = new();
@@ -367,7 +369,8 @@ public sealed partial class CollegeViewModel : PageViewModel
                 var cards = boxes.Where(b => b.Round == r && MadnessBracket.RegionOf(b) == region).OrderBy(b => b.Slot).Select(Card).ToList();
                 return new BracketColumn(CollegeWorld.RoundName(r), cards, cards.Count);
             }).ToList();
-        else
+        BracketHeight = region >= 0 ? 620 : 200;
+        if (region < 0)
             BracketColumns = new()
             {
                 new BracketColumn("Final Four", boxes.Where(b => b.Round == 5).OrderBy(b => b.Slot).Select(Card).ToList(), 2),

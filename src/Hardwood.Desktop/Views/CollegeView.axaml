@@ -118,7 +118,7 @@
             </StackPanel>
             <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding HasBracket}"/>
             <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding HasBracket}"/>
-            <ItemsControl ItemsSource="{Binding BracketColumns}" Height="620" IsVisible="{Binding HasBracket}">
+            <ItemsControl ItemsSource="{Binding BracketColumns}" Height="{Binding BracketHeight}" IsVisible="{Binding HasBracket}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:BracketColumn">
