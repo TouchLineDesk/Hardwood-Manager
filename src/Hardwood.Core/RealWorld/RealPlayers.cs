@@ -26,8 +26,8 @@ public sealed record RealRating(RealPlayerLine Line, double Per36, double Minute
 /// (Game Score per 36, shrunk toward a bench level for small samples) plus the minutes their coaches give them, then
 /// hands out the generated league's own Current Ability values in that order, so the real league has exactly the
 /// spread of talent the game is balanced for. The attributes are then shaped by what each player does: shooting from
-/// his percentages, playmaking from assists, rebounding, steals and blocks from his rates. Heights, birthdays and
-/// contracts are generated; nationality is set for well-known internationals and is otherwise USA.
+/// his percentages, playmaking from assists, rebounding, steals and blocks from his rates. Since R2 part 2a his
+/// contract, birthday, height and birth country are real (Data/nba_rosters.json), and each club has its real head coach.
 /// </summary>
 public static class RealPlayers
 {
@@ -119,7 +119,6 @@ public static class RealPlayers
         for (int i = 0; i < order.Count; i++)
             caOf[order[i]] = ladder[(int)Math.Round((double)i / Math.Max(1, order.Count - 1) * (ladder.Count - 1))];
 
-        var today = new DateOnly(league.Season, 10, 1);
         var ageDay = new DateOnly(league.Season + 1, 2, 1); // Basketball-Reference ages are on February 1 of the season
         var rng = new Rng(seed ^ 0x5245414CUL);
         foreach (var team in teams)
@@ -132,24 +131,34 @@ public static class RealPlayers
             {
                 var p = Build(real, caOf[real], old.Id, rng, ageDay, league);
                 p.TeamId = team.Id;
-                p.Contract = new Contract
+                p.Contract = RealContract(real.Line.Name, league) ?? new Contract
                 {
-                    Years = Math.Clamp(1 + (int)Math.Round(rng.NextDouble() * 3), 1, 4),
-                    Salary = Season.ContractMarket.MarketSalary(p.CurrentAbility, p.Age(today), league.Finance),
-                    StartSeason = league.Season,
+                    // Not on the contracts page: a two-way or Exhibit 10 deal. The league minimum for this season.
+                    Years = 1, Salary = league.Finance.MinSalary, StartSeason = league.Season,
                 };
                 int at = team.Roster.IndexOf(old);
                 team.Roster[at] = p;
                 team.Tactic.Roles.Remove(old.Id);
             }
             team.DepthChart = null;
-            // The same payroll band the generator opens with (82-98% of the cap).
-            long cap = league.Finance.HardCap, payroll = team.Roster.Sum(x => x.Contract!.Salary);
-            double factor = cap * (0.82 + rng.NextDouble() * 0.16) / Math.Max(1, payroll);
-            foreach (var x in team.Roster)
-                x.Contract!.Salary = Math.Max(league.Finance.MinSalary, (long)Math.Round(x.Contract.Salary * factor / 10_000) * 10_000);
+            // Real salaries are kept as they are (#217): the real 2026-27 cap ($164.96M) is the game's own $165M, so a
+            // real payroll means the same thing here as in the NBA. Clubs open over their owners' wage share and work
+            // back down as deals run out, as real teams over the cap do.
+            if (CoachesByTeam.TryGetValue(team.Abbreviation, out var coach)) team.CoachName = coach;
         }
     }
+
+    /// <summary>His real deal (#217): this season's salary, for every season the contracts page lists. Null if the
+    /// source has no salary for him.</summary>
+    public static Contract? RealContract(string name, League league) =>
+        Bios.TryGetValue(name, out var b) && b.Salary is long salary
+            ? new Contract
+            {
+                Years = Math.Clamp(b.Years ?? 1, 1, 6),
+                Salary = Math.Max(league.Finance.MinSalary, (long)Math.Round(salary / 10_000.0) * 10_000),
+                StartSeason = league.Season,
+            }
+            : null;
 
     private static Position PosOf(string pos) => pos switch
     {
@@ -164,12 +173,15 @@ public static class RealPlayers
         var gen = new PlayerGenerator(rng, id);
         var t = gen.Generate(pos, ca, r.Line.Age, ageDay);
         var (first, last) = Split(r.Line.Name);
-        string nat = Nationality(r.Line.Name);
+        Bios.TryGetValue(r.Line.Name, out var bio);
+        string nat = Nationality(r.Line.Name, bio?.Birth);
+        // Real birthday and height when the roster page has them (#218); the generated build moves with the height.
+        int height = bio?.HeightCm ?? t.HeightCm, grow = height - t.HeightCm;
         var p = new Player
         {
             Id = id, FirstName = first, LastName = last,
-            BirthDate = t.BirthDate, Nationality = nat, Ethnicity = Heritages.Backfill(id, nat),
-            HeightCm = t.HeightCm, WingspanCm = t.WingspanCm, WeightKg = t.WeightKg,
+            BirthDate = bio?.Born ?? t.BirthDate, Nationality = nat, Ethnicity = Heritages.Backfill(id, nat),
+            HeightCm = height, WingspanCm = t.WingspanCm + grow, WeightKg = Math.Max(70, t.WeightKg + (int)Math.Round(grow * 1.1)),
             PrimaryPosition = pos, SecondaryPosition = t.SecondaryPosition,
             CurrentAbility = t.CurrentAbility, PotentialAbility = t.PotentialAbility,
             Attributes = t.Attributes, Hidden = t.Hidden, Tendencies = t.Tendencies,
@@ -242,8 +254,26 @@ public static class RealPlayers
         return i < 0 ? (name, "") : (name[..i], name[(i + 1)..]);
     }
 
-    /// <summary>Well-known internationals (their national team); everyone else is listed as USA.</summary>
-    public static string Nationality(string name) => Intl.TryGetValue(name, out var n) ? n : "USA";
+    /// <summary>His nationality (#218): his national team for well-known internationals; otherwise his country of birth
+    /// from the roster page; USA when neither is known.</summary>
+    public static string Nationality(string name, string? birthCountry = null) =>
+        Intl.TryGetValue(name, out var n) ? n
+        : birthCountry != null && Countries.TryGetValue(birthCountry, out var c) ? c
+        : "USA";
+
+    /// <summary>Basketball-Reference's birth-country codes, as the game names the countries.</summary>
+    private static readonly Dictionary<string, string> Countries = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["US"] = "USA", ["FR"] = "France", ["CA"] = "Canada", ["AU"] = "Australia", ["ES"] = "Spain", ["NG"] = "Nigeria",
+        ["DE"] = "Germany", ["GB"] = "Great Britain", ["RS"] = "Serbia", ["CH"] = "Switzerland", ["BA"] = "Bosnia and Herzegovina",
+        ["BE"] = "Belgium", ["BS"] = "Bahamas", ["SN"] = "Senegal", ["DO"] = "Dominican Republic", ["IL"] = "Israel",
+        ["SS"] = "South Sudan", ["RU"] = "Russia", ["CM"] = "Cameroon", ["CD"] = "Congo DR", ["NL"] = "Netherlands",
+        ["IT"] = "Italy", ["TR"] = "Turkey", ["ZA"] = "South Africa", ["GR"] = "Greece", ["GE"] = "Georgia", ["BR"] = "Brazil",
+        ["EE"] = "Estonia", ["AT"] = "Austria", ["MX"] = "Mexico", ["LT"] = "Lithuania", ["LV"] = "Latvia", ["FI"] = "Finland",
+        ["SI"] = "Slovenia", ["HR"] = "Croatia", ["GN"] = "Guinea", ["PT"] = "Portugal", ["JM"] = "Jamaica", ["NI"] = "Nicaragua",
+        ["SE"] = "Sweden", ["JP"] = "Japan", ["NZ"] = "New Zealand", ["UA"] = "Ukraine", ["CZ"] = "Czechia", ["CN"] = "China",
+        ["PR"] = "Puerto Rico",
+    };
 
     private static readonly Dictionary<string, string> Intl = new()
     {
@@ -276,7 +306,51 @@ public static class RealPlayers
         ["Ajay Mitchell"] = "Belgium", ["Quinten Post"] = "Netherlands", ["Charles Bassey"] = "Nigeria",
         ["Malevy Leons"] = "Netherlands", ["Aday Mara"] = "Spain", ["Hannes Steinbach"] = "Germany",
         ["Kevin Durant"] = "USA",
+        // Born abroad, but they play for the USA; born in the USA, but they play for another country.
+        ["Kyrie Irving"] = "USA", ["Joel Embiid"] = "USA", ["Isaiah Hartenstein"] = "Germany", ["OG Anunoby"] = "Great Britain",
+        ["Karl-Anthony Towns"] = "Dominican Republic",
     };
+
+    /// <summary>One real player's roster-page and contract facts (Data/nba_rosters.json).</summary>
+    public sealed record Bio(string Team, int? HeightCm, DateOnly? Born, string? Birth, long? Salary, int? Years);
+
+    private static readonly Lazy<(Dictionary<string, Bio> Bios, Dictionary<string, string> Coaches, string Checked, string Source, long Cap)> _rosters = new(LoadRosters);
+    /// <summary>Real birthdays, heights, birth countries and contracts, by player name (R2 part 2a).</summary>
+    public static IReadOnlyDictionary<string, Bio> Bios => _rosters.Value.Bios;
+    public static IReadOnlyDictionary<string, string> CoachesByTeam => _rosters.Value.Coaches;
+    public static string RostersChecked => _rosters.Value.Checked;
+    public static string RostersSource => _rosters.Value.Source;
+    /// <summary>The real 2026-27 salary cap, from the source.</summary>
+    public static long RealCap => _rosters.Value.Cap;
+
+    /// <summary>"6-11" → 211 cm.</summary>
+    public static int? HeightCm(string? ht)
+    {
+        if (string.IsNullOrEmpty(ht)) return null;
+        var parts = ht.Split('-');
+        return parts.Length == 2 && int.TryParse(parts[0], out int ft) && int.TryParse(parts[1], out int inch)
+            ? (int)Math.Round((ft * 12 + inch) * 2.54) : null;
+    }
+
+    private static (Dictionary<string, Bio>, Dictionary<string, string>, string, string, long) LoadRosters()
+    {
+        var asm = typeof(RealPlayers).Assembly;
+        string name = asm.GetManifestResourceNames().Single(n => n.EndsWith("nba_rosters.json", StringComparison.Ordinal));
+        using var stream = asm.GetManifestResourceStream(name)!;
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        string? Str(JsonElement e, string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        long? Num(JsonElement e, string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
+        var bios = new Dictionary<string, Bio>();
+        foreach (var p in root.GetProperty("players").EnumerateObject())
+        {
+            var e = p.Value;
+            DateOnly? born = DateOnly.TryParseExact(Str(e, "born") ?? "", "yyyy-MM-dd", out var d) ? d : null;
+            bios[p.Name] = new Bio(Str(e, "team") ?? "", HeightCm(Str(e, "ht")), born, Str(e, "birth"), Num(e, "salary"), (int?)Num(e, "years"));
+        }
+        var coaches = root.GetProperty("coaches").EnumerateObject().ToDictionary(c => c.Name, c => c.Value.GetString() ?? "");
+        return (bios, coaches, Str(root, "checked") ?? "", Str(root, "source") ?? "", Num(root, "salaryCap") ?? 0);
+    }
 
     private sealed record Pack(List<RealPlayerLine> Players, List<RealRecordLine> Last, List<RealRecordLine> This, string Checked, string Source);
 

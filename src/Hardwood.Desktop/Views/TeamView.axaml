@@ -36,9 +36,9 @@
               </DataGridTemplateColumn>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="52"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
-              <DataGridTextColumn Header="Nat" Binding="{Binding Nat}" Width="100"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="76"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="76"/>
+              <DataGridTextColumn Header="Nat" Binding="{Binding Nat}" Width="150"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="56"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="56"/>
               <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="120"/>
               <DataGridTextColumn Header="G" Binding="{Binding G}" Width="44"/>
               <DataGridTextColumn Header="PPG" Binding="{Binding Ppg}" Width="56"/>

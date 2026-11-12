@@ -129,7 +129,7 @@ public sealed partial class GameSession
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
             + (realWorld && Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
                 ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page."
-                + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Heights, birthdays and contracts are the game's own for now." : "")
+                + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players who haven't played yet this season (injured or unsigned) aren't in yet." : "")
             + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
         session.SaveNow();
         return session;

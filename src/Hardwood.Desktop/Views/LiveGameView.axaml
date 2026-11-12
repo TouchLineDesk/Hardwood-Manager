@@ -103,7 +103,9 @@
           <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
           <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
           <!-- Match day part 3: the break card, like a broadcast's quarter-break graphic. -->
-          <Border DockPanel.Dock="Top" IsVisible="{Binding ShowBreak}" Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
+          <!-- Scrolls rather than being cut when its chips wrap onto extra lines (big text, narrow window). -->
+          <ScrollViewer DockPanel.Dock="Top" IsVisible="{Binding ShowBreak}" MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Border Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
                   CornerRadius="6" Padding="10,8" Margin="4,0,4,8">
             <StackPanel Spacing="4">
               <StackPanel Orientation="Horizontal" Spacing="10">
@@ -114,6 +116,7 @@
               <c:StatStrip ItemsSource="{Binding BreakChips}" Accent="{DynamicResource HwAccent}"/>
             </StackPanel>
           </Border>
+          </ScrollViewer>
           <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>

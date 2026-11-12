@@ -125,7 +125,7 @@ public sealed class Offseason
             // The books close and owners set next season's budgets (decision #88). No draft rights on the open market.
             Budgets.Initialize(_league.Teams, 1, _rng);
             var champ = _outcome.Playoffs.Count > 0 ? _outcome.Playoffs.Last().Series.Winner : null;
-            Budgets.Summer(_league.Teams, 1, LastWinPct, t => t == champ, Season);
+            Budgets.Summer(_league.Teams, 1, LastWinPct, t => t == champ, Season, RealWorld.RealWorldData.IsReal(_league));
             foreach (var p in _league.AllActivePlayers.Concat(_league.FreeAgents)) p.DraftRightsTeamId = null;
             _league.Picks.Clear();
         }
