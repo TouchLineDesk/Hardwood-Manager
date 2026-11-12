@@ -66,6 +66,8 @@ public sealed class Offseason
 
     /// <summary>The club you manage: its staff contracts are your call (staff part 2), so they aren't renewed for you.</summary>
     public int? HumanTeamId { get; init; }
+    /// <summary>Wages and count of college seniors committed to a club, who sign after the budgets are set (#256).</summary>
+    public Func<Team, (long wages, int count)>? PendingCommitments { get; init; }
 
     public Offseason(League league, SeasonOutcome outcome, Dictionary<int, PlayerSeasonStats> stats, Rng rng, DevelopmentConfig? devConfig = null)
     {
@@ -125,7 +127,7 @@ public sealed class Offseason
             // The books close and owners set next season's budgets (decision #88). No draft rights on the open market.
             Budgets.Initialize(_league.Teams, 1, _rng);
             var champ = _outcome.Playoffs.Count > 0 ? _outcome.Playoffs.Last().Series.Winner : null;
-            Budgets.Summer(_league.Teams, 1, LastWinPct, t => t == champ, Season, RealWorld.RealWorldData.IsReal(_league));
+            Budgets.Summer(_league.Teams, 1, LastWinPct, t => t == champ, Season, RealWorld.RealWorldData.IsReal(_league), PendingCommitments);
             foreach (var p in _league.AllActivePlayers.Concat(_league.FreeAgents)) p.DraftRightsTeamId = null;
             _league.Picks.Clear();
         }

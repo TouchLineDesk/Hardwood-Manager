@@ -627,7 +627,11 @@ public sealed class GameSimulator
             var baseW = _cfg.ZoneBaseWeight;
             double threeEmphasis = off.Tac.ThreePointEmphasis / 50.0;
             var w = new double[5];
-            double threeFactor = (t.ThreePointRate / 35.0) * threeEmphasis;
+            double rate = t.ThreePointRate <= _cfg.ThreeRateKnee ? t.ThreePointRate
+                : _cfg.ThreeRateKnee + (t.ThreePointRate - _cfg.ThreeRateKnee) * _cfg.ThreeRateAboveKnee;
+            double threeFactor = (rate / 35.0) * threeEmphasis;
+            if (_cfg.ThreeGameKnee > 0 && off.Line(shooter).ThreePA is var tpa && tpa >= _cfg.ThreeGameKnee)
+                threeFactor *= Math.Pow(1 - _cfg.ThreeGameDecay, tpa - _cfg.ThreeGameKnee + 1);
             double driveFactor = (t.DriveRate + t.PostUpRate) / 40.0;
             double midFactor = 1.0 + t.IsolationRate / 40.0 - threeFactor * 0.25;
 
@@ -712,7 +716,7 @@ public sealed class GameSimulator
             if (def.Tac.DoubleStar && _offStar != null && off.OnCourt.Contains(_offStar))
                 contest += shooter == _offStar ? _cfg.DoubleStarContest : -_cfg.DoubleStarOpenLook;
             double logit = _cfg.ZoneBaseLogit[z]
-                           + _cfg.SkillBeta * (Skill(shooter, zone) - 11)
+                           + _cfg.SkillBeta * (zone.IsThree() ? _cfg.ThreeSkillShare : 1.0) * (Skill(shooter, zone) - 11)
                            - _cfg.ContestBeta * (contest - 11)
                            - _cfg.FatigueBeta * (1 - off.Energy[shooter])
                            + (off.IsHome ? _cfg.HomeLogit : 0)

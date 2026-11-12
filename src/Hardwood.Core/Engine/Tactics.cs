@@ -41,7 +41,7 @@ public static class Tactics
     {
         OffensiveSystem.PickAndRoll => new[] { 1.35, 1.0, 0.8, 1.05, 1.0 },   // review #4: rolls and kick-outs, fewer long twos
         OffensiveSystem.Motion => new[] { 1.0, 0.95, 0.85, 1.3, 1.05 },
-        OffensiveSystem.PostCentric => new[] { 1.25, 1.35, 0.9, 0.8, 0.75 },
+        OffensiveSystem.PostCentric => new[] { 1.3, 1.3, 0.85, 0.85, 0.8 }, // run 19 (#255): fewer long twos, a few more kick-outs once threes were tuned
         OffensiveSystem.PaceAndSpace => new[] { 1.05, 0.85, 0.75, 1.18, 1.15 }, // review #4: was a near-free 6-7 win-% edge
         OffensiveSystem.Balanced => new[] { 1.03, 1.0, 0.92, 1.04, 1.0 }, // review #4: a touch more modern than the raw average
         OffensiveSystem.Isolation => new[] { 1.18, 1.1, 0.95, 0.9, 1.0 },  // review #4: drives over long twos (it was the weakest again)

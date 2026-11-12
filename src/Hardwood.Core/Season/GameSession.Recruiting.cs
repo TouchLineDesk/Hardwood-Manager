@@ -137,6 +137,14 @@ public sealed partial class GameSession
     public const int MaxCommitments = 4;
 
     /// <summary>Seniors committed to you this season.</summary>
+    /// <summary>The seniors committed to this club and what they'll be paid (#256): the summer budget floor counts them.</summary>
+    internal (long wages, int count) PendingCommitments(Team t)
+    {
+        if (!Employed || t != HumanTeam || Recruiting is not { } board) return (0, 0);
+        var mine = board.Prospects.Values.Where(x => x.CommittedTeamId == t.Id && x.OfferWage > 0).ToList();
+        return (mine.Sum(x => x.OfferWage), mine.Count);
+    }
+
     public int MyCommitments => Recruiting?.Prospects.Values.Count(x => x.CommittedTeamId == HumanTeam.Id) ?? 0;
 
     /// <summary>

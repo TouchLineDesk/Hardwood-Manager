@@ -208,9 +208,9 @@ public static class BalanceAudit
         m.Add(new("NABL competitive balance", "Worst record (wins)", "0", worst, 12, 26, "NBA 2015-25"));
         m.Add(new("NABL competitive balance", "Spread of wins (std dev)", "0.0", spread, 10, 14.5, "NBA 2015-25"));
         m.Add(new("NABL competitive balance", "Scoring leader (points per game)", "0.0", leader, 28, 36, "NBA 2015-25"));
-        // Not gated yet (R2 part 2b): the real record chase showed a made-up shooter passing Curry's 402. NBA leaders
-        // 2015-25 made about 240-400 threes; this measures the tail before anything is tuned (roadmap 15).
-        m.Add(new("NABL competitive balance", "Threes leader (made in a season)", "0", threesLeader, null, null, "NBA 2015-25: about 240-400 (record 402)"));
+        // Gated since run 19 (#255): the leader averaged 424-514 before the engine's three-point volume was tuned
+        // (seasons up to 618). NBA leaders 2015-25 made about 240-400 threes (record 402).
+        m.Add(new("NABL competitive balance", "Threes leader (made in a season)", "0", threesLeader, 250, 410, "NBA 2015-25: about 240-400 (record 402)"));
         int distinct = report.Champions.Select(c => c[(c.IndexOf(':') + 2)..]).Distinct().Count();
         // Real leagues have dynasties and repeat winners: the NBA had 7 different champions in 2015-24, 6 in 2005-14.
         // NBA: 6-7 different champions in a decade, but only ~20 franchises in 77 years: repeat winners pile up over
