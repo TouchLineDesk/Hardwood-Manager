@@ -127,7 +127,7 @@ public sealed partial class CollegeViewModel : PageViewModel
     partial void OnBracketColumnsChanged(List<BracketColumn> value) => OnPropertyChanged(nameof(HasBracket));
     partial void OnBracketViewChanged(string value) => FillBracket();
     [ObservableProperty] private string _bracketNote = "";
-    // Bracketology (C4 part 1, #190): the field as it would be picked today, until Selection Sunday.
+    // Bracketology (C4 part 1, #191): the field as it would be picked today, until Selection Sunday.
     [ObservableProperty] private List<SeedLine> _seedLines = new();
     [ObservableProperty] private List<BubbleList> _bubble = new();
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _bracketologyChips = new();

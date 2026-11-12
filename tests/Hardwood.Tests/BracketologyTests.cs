@@ -7,7 +7,7 @@ using Xunit;
 namespace Hardwood.Tests;
 
 /// <summary>
-/// C4 part 1 (#190-#192): bracketology projects the field the way Selection Sunday picks it, the bubble is the next
+/// C4 part 1 (#191-#193): bracketology projects the field the way Selection Sunday picks it, the bubble is the next
 /// teams by rating, and a college coach hears his seed (or that he's out) on Selection Sunday.
 /// </summary>
 public class BracketologyTests

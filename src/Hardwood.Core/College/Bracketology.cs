@@ -1,7 +1,7 @@
 namespace Hardwood.Core.College;
 
 /// <summary>
-/// The March Madness field as the committee would pick it today (C4 part 1, #190): automatic bids for the conference
+/// The March Madness field as the committee would pick it today (C4 part 1, #191): automatic bids for the conference
 /// tournament champions (or, before the tournaments, each conference's leader), at-large bids by rating, seed lines and
 /// the bubble. On Selection Sunday the real field is picked the same way, so the last projection is the bracket.
 /// </summary>
