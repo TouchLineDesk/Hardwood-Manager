@@ -318,7 +318,7 @@ public static class Assistant
         // Money.
         if (team.Money.Ready)
         {
-            long room = team.Money.WageBudget - s.MyCommittedWages;
+            long room = s.MyWageRoom;
             if (room > team.Money.WageBudget * 0.08)
                 tips.Add(new($"room-{s.League.Season}-{s.WindowOpen}", $"There's ${room / 1e6:F1}M of wage room. A free agent or a transfer could use it{(s.WindowOpen ? " while the window is open" : "")}."));
         }

@@ -26,6 +26,7 @@ public static class CareerStore
         Put("money", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Money)));
         Put("transfers", SaveFile.ToJson(new TransferState(s.TransferLog, s.IncomingBids, s.AgreedFees)));
         Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest, s.WeekResults)));
+        Put("inbox", SaveFile.ToJson(s.InboxSettings));
         if (s.NamePackApplied is { } pack) Put("name_pack", pack);
         tx.Commit();
     }
@@ -62,6 +63,7 @@ public static class CareerStore
                 if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
         if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
         s.NamePackApplied = Get("name_pack");
+        s.InboxSettings = Get("inbox") is { } ij && SaveFile.FromJson<InboxSettings>(ij) is { } inbox ? inbox : new InboxSettings();
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
         s.World.ManagedClubId = s.Employed && s.Abroad ? s.HumanTeam.Id : null;

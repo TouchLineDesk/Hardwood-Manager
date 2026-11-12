@@ -53,9 +53,8 @@ public sealed partial class TalkViewModel : ViewModelBase
     private string Context(Player p)
     {
         var s = Session;
-        var t = s.HumanTeam;
-        long room = t.Money.WageBudget - s.MyCommittedWages;
-        return $" You have ${room / 1e6:F1}M of wage budget to spend." + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "");
+        long room = s.MyWageRoom;
+        return $" You have ${room / 1e6:F1}M of wage budget to spend" + (s.MyReservedWages > 0 ? $" (after ${s.MyReservedWages / 1e6:F1}M kept for your committed college seniors)." : ".") + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "");
     }
 
     [RelayCommand]

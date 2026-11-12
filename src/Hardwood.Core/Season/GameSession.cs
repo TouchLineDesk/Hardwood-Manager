@@ -217,7 +217,7 @@ public sealed partial class GameSession
 
     public void MarkAllRead() { foreach (var m in Inbox) m.Read = true; }
 
-    /// <summary>The regular-season results since the last results message, posted together every other Monday.</summary>
+    /// <summary>The regular-season results since the last results message, posted together every Monday (or every other, by setting).</summary>
     public List<string> WeekResults { get; } = new();
 
     /// <summary>A results message's title starts with one of these ("This week: 3-1 …", "Last two weeks: 5-2 …").</summary>
@@ -227,9 +227,10 @@ public sealed partial class GameSession
     {
         if (WeekResults.Count == 0) return;
         if (!now && Today.DayOfWeek != DayOfWeek.Monday) return;
-        // Every other Monday (critic review #8: the weekly results were 58-70 of 230-250 messages per three seasons).
-        // A press conference or locker-room moment still rides on a results message, so its week posts one anyway.
-        bool evenWeek = Today.DayNumber / 7 % 2 == 0;
+        // Every Monday again since v0.56.0 (Danny, #243): the inbox can be cleaned, so volume is his choice. The inbox
+        // settings keep the every-other-Monday rhythm (critic review #8) as an option; a press conference or
+        // locker-room moment still rides on a results message, so its week posts one anyway.
+        bool evenWeek = !InboxSettings.ResultsEveryOtherWeek || Today.DayNumber / 7 % 2 == 0;
         bool decisionWaiting = Media.Decisions.Any(d => (d.Open || d.Created == Today) && d.MessageId == 0 && d.TeamId == HumanTeam.Id);
         if (!now && !evenWeek && !decisionWaiting) return;
         bool twoWeeks = WeekResults.Count > 0 && _resultsSince is { } since && Today.DayNumber - since.DayNumber > 7;
@@ -449,6 +450,7 @@ public sealed partial class GameSession
         MaybePostJobs();
         MaybePostResults(now: Phase is SessionPhase.Postseason or SessionPhase.Offseason);
         AttachPressToResults();
+        MaybeAutoClear();
         if (Phase == SessionPhase.RegularSeason)
         {
             if (Today == TradeDeadline.AddDays(-10) || Today == new DateOnly(League.Season, 12, 15))
@@ -493,9 +495,12 @@ public sealed partial class GameSession
             if (Postseason.Complete)
             {
                 string title = $"{Postseason.Champion!.FullName} are champions";
-                if (!Inbox.Any(m => m.Title == title && m.Date >= OpeningNight))
+                if (_championPostedSeason != League.Season && !Inbox.Any(m => m.Title == title && m.Date >= OpeningNight))
+                {
+                    _championPostedSeason = League.Season;
                     Post(title, $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
                         (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""), "League");
+                }
                 // A club abroad may still be playing (overseas playoffs run into June): the summer waits for it.
                 if (!HumanSeasonOver && Today < new DateOnly(League.Season + 1, 7, 20))
                 {

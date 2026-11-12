@@ -17,7 +17,7 @@ public static class SessionStore
 
         SaveFile.Exec(conn, "INSERT INTO session(id, human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage, midseason_json) VALUES(1, $t, $d, $p, $s, $r, $m, $ps, $mid)",
             ("$t", s.HumanTeam.Id), ("$d", s.Today.ToString("yyyy-MM-dd")), ("$p", (int)s.Phase), ("$s", (long)s.Seed), ("$r", (long)s.NextRngSeed),
-            ("$m", s.Inbox.Count == 0 ? 1 : s.Inbox.Max(m => m.Id) + 1), ("$ps", (object?)s.Postseason?.Stage ?? DBNull.Value),
+            ("$m", Math.Max(s.NextMessageId, s.Inbox.Count == 0 ? 1 : s.Inbox.Max(m => m.Id) + 1)), ("$ps", (object?)s.Postseason?.Stage ?? DBNull.Value),
             ("$mid", s.Midseason != null ? SaveFile.ToJson(s.Midseason) : DBNull.Value));
 
         foreach (var g in s.Schedule)

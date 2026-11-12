@@ -58,7 +58,17 @@ public class LayoutCheckTests
             }
             v.Navigate("Inbox");
             var inbox = (InboxViewModel)v.CurrentPage!;
+            inbox.Filter = inbox.Filters[0];
             inbox.Selected = inbox.Items.First(i => i.HasDecision);
+        });
+        // The inbox clean-up (#243): the delete buttons armed, both settings and the longest note on screen.
+        yield return ("Inbox clean-up", v =>
+        {
+            v.Navigate("Inbox");
+            var inbox = (InboxViewModel)v.CurrentPage!;
+            inbox.Filter = inbox.Filters[^1];
+            inbox.DeleteShownCommand.Execute(null);
+            inbox.AutoClear = inbox.AutoClearOptions[^1];
         });
         // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
         yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });

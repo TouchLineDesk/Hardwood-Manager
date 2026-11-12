@@ -9,6 +9,7 @@ public static class IconData
     public static readonly IReadOnlyDictionary<string, string> Paths = new Dictionary<string, string>
     {
         ["House"] = "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8 M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+        ["Trash"] = "M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11v6 M14 11v6",
         ["Inbox"] = "M22,12 L16,12 L14,15 L10,15 L8,12 L2,12 M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z",
         ["Users"] = "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M5,7 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75",
         ["Repeat"] = "M17 2 l4 4-4 4 M3 11v-1a4 4 0 0 1 4-4h14 M7 22 l-4-4 4-4 M21 13v1a4 4 0 0 1-4 4H3",
