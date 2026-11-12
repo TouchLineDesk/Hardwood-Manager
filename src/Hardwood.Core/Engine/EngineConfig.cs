@@ -24,19 +24,22 @@ public sealed class EngineConfig
     /// Run 19 (#255): the skill term on threes counts this much of <see cref="SkillBeta"/>. The best volume shooters made
     /// .43-.45 on 10-12 attempts a game, and the season threes leader made 424-462 (NBA 240-402).
     /// </summary>
-    public double ThreeSkillShare { get; set; } = 0.75;
+    /// Run 20 (#259, Danny's D15 B): loosened from 0.75 to 0.85, so the leader makes about 350-395 and Curry's 402 falls now and then.
+    public double ThreeSkillShare { get; set; } = 0.85;
     /// <summary>
     /// Run 19 (#255): a player's three-point tendency counts in full up to this rate; above it, only
     /// <see cref="ThreeRateAboveKnee"/> of each extra point counts, so the most trigger-happy shooters don't take
     /// three-quarters of their shots from deep at star usage.
     /// </summary>
     public double ThreeRateKnee { get; set; } = 45;
-    public double ThreeRateAboveKnee { get; set; } = 0.4;
+    /// Run 20 (#259, D15 B): 0.4 -> 0.7.
+    public double ThreeRateAboveKnee { get; set; } = 0.7;
     /// <summary>
     /// Run 19 (#255): after this many three-point attempts in a game, each further attempt makes another three
     /// <see cref="ThreeGameDecay"/> less likely (multiplicatively), as defences run him off the line. 0 = off.
     /// </summary>
-    public int ThreeGameKnee { get; set; } = 8;
+    /// Run 20 (#259, D15 B): 8 -> 9.
+    public int ThreeGameKnee { get; set; } = 9;
     public double ThreeGameDecay { get; set; } = 0.2;
     public double ContestBeta { get; set; } = 0.060;
     public double FatigueBeta { get; set; } = 0.55;

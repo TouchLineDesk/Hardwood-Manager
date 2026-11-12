@@ -98,6 +98,25 @@ void Stars(string when)
     L($"{when} real players by league: " + string.Join(", ", where.Select(g => $"{g.Key} {g.Count()}")) + $"; real teams in the top league: {s.League.Teams.Count(t => t.Id <= 30)}");
 }
 Stars("start");
+// Review #9 (#235): a long career's health, season by season: messages created (the inbox keeps only 400),
+// save size and load time every 5 seasons, and club balances against a season's revenue.
+int msgMark = s.Inbox.Count == 0 ? 0 : s.Inbox.Max(m => m.Id), overMark = 0, seasonNo = 0;
+void Health()
+{
+    seasonNo++;
+    int top = s.Inbox.Count == 0 ? msgMark : s.Inbox.Max(m => m.Id);
+    var clubs = s.League.Teams.Concat(s.World.Clubs).Distinct().Where(t => t.Money.Revenue > 0).ToList();
+    var bal = s.League.Teams.Select(t => t.Money.Balance / 1e6).OrderBy(x => x).ToList();
+    string line = $"health season {s.League.Season} (#{seasonNo}): messages created {top - msgMark}, over budget weeks {overBudgetWeeks - overMark}; top-league balances median ${bal[bal.Count / 2]:F0}M max ${bal[^1]:F0}M min ${bal[0]:F0}M; clubs holding over a season's revenue {clubs.Count(t => t.Money.Balance > t.Money.Revenue)} of {clubs.Count}; save {new FileInfo(path).Length / 1e6:F1} MB";
+    msgMark = top; overMark = overBudgetWeeks;
+    if (seasonNo % 5 == 0)
+    {
+        var lw = Stopwatch.StartNew();
+        try { var again = GameSession.Load(path); line += $"; load {lw.Elapsed.TotalSeconds:F1} s ({again.League.Teams.Count} teams, {again.World.Players.Count()} world players)"; }
+        catch (Exception e) { line += $"; LOAD FAILED: {e.GetType().Name}: {e.Message}"; }
+    }
+    L(line);
+}
 while (s.League.Season < startYear + seasons)
 {
     // --- weekly management
@@ -215,7 +234,7 @@ while (s.League.Season < startYear + seasons)
         var before = s.Phase;
         if (off.Phase is OffseasonPhase.FreeAgency or OffseasonPhase.Complete) progress.SeasonsPlayed++;
         s.AdvanceOffseason();
-        if (s.Phase != SessionPhase.Offseason) Stars($"season {s.League.Season}");
+        if (s.Phase != SessionPhase.Offseason) { Health(); Stars($"season {s.League.Season}"); }
         if (s.Phase != SessionPhase.Offseason)
             L($"season {s.League.Season} begins: {s.HumanTeam.FullName} ({s.HumanLeagueName}, level {s.MyLevel}) roster {s.HumanTeam.Roster.Count}, wages ${s.MyCommittedWages / 1e6:F2}M / ${s.HumanTeam.Money.WageBudget / 1e6:F2}M, board {s.Job.Confidence:F0}, goal {s.Job.Current?.Goal}, protected {s.Job.ProtectedSeason} {s.Job.ProtectedReason}");
         if (s.Phase != SessionPhase.Offseason && s.MyCommittedWages > s.HumanTeam.Money.WageBudget)

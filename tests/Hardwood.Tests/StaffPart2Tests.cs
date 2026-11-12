@@ -23,7 +23,9 @@ public class StaffPart2Tests
         while (s.Phase != SessionPhase.Offseason)
         {
             s.AdvanceDay();
-            if (weekly != null && s.Today.DayNumber - last >= 7) { last = s.Today.DayNumber; weekly(s); }
+            // Not on the day the season ends: the coach's season totals have just been reset (run 20 hit this when the
+            // engine change moved the last day onto a weekly step).
+            if (weekly != null && s.Phase != SessionPhase.Offseason && s.Today.DayNumber - last >= 7) { last = s.Today.DayNumber; weekly(s); }
         }
     }
 

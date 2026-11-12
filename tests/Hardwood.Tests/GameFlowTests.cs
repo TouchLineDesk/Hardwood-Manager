@@ -52,7 +52,7 @@ public class GameFlowTests
     {
         var r = Played(9, log: false);
         Assert.Empty(r.Flow);
-        Assert.True(r.Elapsed >= 2880); // the clock is still tracked
+        Assert.True(r.Elapsed >= 2880 - 1e-6, $"elapsed {r.Elapsed}"); // the clock is still tracked (a sum of doubles)
     }
 
     [Fact]

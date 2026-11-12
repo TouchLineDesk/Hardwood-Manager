@@ -9,7 +9,8 @@ namespace Hardwood.Tests;
 /// <summary>
 /// Run 19 (#255): the season threes leader averaged 424-514 (seasons up to 618; NBA 240-402). The engine now bends the
 /// three-point tendency above 45, counts shooting skill on threes at 0.75 and runs a shooter off the line after eight
-/// attempts in a game.
+/// attempts in a game. Run 20 (#259, Danny's D15 B) loosened it a little (0.7 above the knee, skill share 0.85, nine
+/// attempts before the run-off), so the leader makes about 350-395 and the record falls now and then.
 /// </summary>
 public class ThreesLeaderTests
 {

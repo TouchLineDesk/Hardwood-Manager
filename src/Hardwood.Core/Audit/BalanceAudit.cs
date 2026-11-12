@@ -209,8 +209,9 @@ public static class BalanceAudit
         m.Add(new("NABL competitive balance", "Spread of wins (std dev)", "0.0", spread, 10, 14.5, "NBA 2015-25"));
         m.Add(new("NABL competitive balance", "Scoring leader (points per game)", "0.0", leader, 28, 36, "NBA 2015-25"));
         // Gated since run 19 (#255): the leader averaged 424-514 before the engine's three-point volume was tuned
-        // (seasons up to 618). NBA leaders 2015-25 made about 240-400 threes (record 402).
-        m.Add(new("NABL competitive balance", "Threes leader (made in a season)", "0", threesLeader, 250, 410, "NBA 2015-25: about 240-400 (record 402)"));
+        // (seasons up to 618). NBA leaders 2015-25 made about 240-400 threes (record 402). Run 20 (#259, Danny's D15 B):
+        // a little looser, so the record falls now and then; the gate is 250-425.
+        m.Add(new("NABL competitive balance", "Threes leader (made in a season)", "0", threesLeader, 250, 425, "NBA 2015-25: about 240-400 (record 402)"));
         int distinct = report.Champions.Select(c => c[(c.IndexOf(':') + 2)..]).Distinct().Count();
         // Real leagues have dynasties and repeat winners: the NBA had 7 different champions in 2015-24, 6 in 2005-14.
         // NBA: 6-7 different champions in a decade, but only ~20 franchises in 77 years: repeat winners pile up over
@@ -219,6 +220,11 @@ public static class BalanceAudit
         m.Add(new("NABL competitive balance", "Different champions", "0", new() { distinct }, seasons >= 5 ? champLo : null, seasons >= 5 ? champHi : null, "NBA: 6-7 per decade; ~20 in 77 years"));
         int mostTitles = report.Champions.GroupBy(c => c[(c.IndexOf(':') + 2)..]).Select(g => g.Count()).DefaultIfEmpty(0).Max();
         m.Add(new("NABL competitive balance", "Most titles by one team", "0", new() { mostTitles }, seasons >= 5 ? 1 : null, seasons >= 5 ? Math.Ceiling(seasons * 0.4) : null, "NBA: 4 in 10 (GSW 2015-24)"));
+        // Review #9 (#261): title streaks abroad (review #8 found six leagues with 8+ in 100 seasons). Information for now;
+        // the target is at most 2 leagues with an 8+ streak per 100 seasons.
+        var streaks = report.WorldChampions.Select(kv => Streak(kv.Value)).ToList();
+        m.Add(new("Overseas", "Longest title streak in any league abroad", "0", new() { streaks.DefaultIfEmpty(0).Max() }, null, null, "Maccabi Tel Aviv: 23 (Israel, 1970-92)"));
+        m.Add(new("Overseas", "Leagues abroad with a title streak of 8+", "0", new() { streaks.Count(x => x >= 8) }, null, null, "target: at most 2 per 100 seasons"));
         // Players: league talent should neither inflate nor collapse; stars ~1-2 per 3 teams.
         m.Add(new("NABL players", "Mean ability (CA) of rostered players", "0.0", meanCa, meanCa[0] - 5, meanCa[0] + 5, "stable within ±5 of season 1"));
         m.Add(new("NABL players", "Stars (CA 160+)", "0.0", stars, Math.Max(3, stars[0] * 0.6), stars[0] * 1.5 + 1, "stable around season 1"));
@@ -280,5 +286,18 @@ public static class BalanceAudit
         if (college.Tournaments > 0) college.AddMetrics(m, seasons);
         report.Elapsed = sw.Elapsed;
         return report;
+    }
+
+    /// <summary>The longest run of titles by one club in a "year: ABC" champions list.</summary>
+    public static int Streak(IReadOnlyList<string> champions)
+    {
+        int best = 0, run = 0; string? prev = null;
+        foreach (var c in champions)
+        {
+            var who = c[(c.IndexOf(':') + 2)..];
+            run = who == prev ? run + 1 : 1; prev = who;
+            if (run > best) best = run;
+        }
+        return best;
     }
 }
