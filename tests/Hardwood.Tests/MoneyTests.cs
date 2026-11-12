@@ -61,4 +61,19 @@ public class MoneyTests
         Budgets.Summer(new[] { t }, 1, _ => 0.5, _ => false, 2026);   // fictional leagues keep the old floor
         Assert.True(t.Money.WageBudget >= 200_000_000);
     }
+
+    [Fact]
+    public void A_committed_college_senior_fits_inside_the_summer_budget()
+    {
+        // Run 19 (#256): a senior committed at $3.1M a year signs after the budgets are set. The floor counts him as
+        // signed, so the club still has room for its minimum deals (run 18: SAS and POR opened $0.9-1.9M over).
+        var league = new WorldGenerator(new Rng(6)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+        Budgets.Initialize(league.Teams, 1, new Rng(6));
+        var t = league.Teams[0];
+        foreach (var (p, i) in t.Roster.Select((p, i) => (p, i)))
+            p.Contract = new Contract { StartSeason = 2026, Years = i < 10 ? 3 : 1, Salary = i < 10 ? 20_000_000 : 2_000_000 };
+        t.Money.Balance = 50_000_000;
+        Budgets.Summer(new[] { t }, 1, _ => 0.5, _ => false, 2026, fillRoster: true, pending: x => x == t ? (3_100_000, 1) : (0, 0));
+        Assert.True(t.Money.WageBudget >= 200_000_000 + 3_100_000 + 2 * league.Finance.MinSalary, $"budget {t.Money.WageBudget:N0}");
+    }
 }

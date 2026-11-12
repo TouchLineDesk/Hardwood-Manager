@@ -848,7 +848,7 @@ public sealed partial class GameSession
         Postseason!.FillOutcome(outcome);
 
         Phase = SessionPhase.Offseason;
-        Offseason = new Offseason(League, outcome, Stats, _rng) { HumanTeamId = ControlledTeamId };
+        Offseason = new Offseason(League, outcome, Stats, _rng) { HumanTeamId = ControlledTeamId, PendingCommitments = PendingCommitments };
         Offseason.Begin();
         if (Employed && Offseason.Report.StaffLeft.Count > 0)
             Post($"{Count(Offseason.Report.StaffLeft.Count, "staff contract")} ran out",

@@ -16,10 +16,28 @@ public sealed class EngineConfig
         0.265,  // Rim           ≈ 65% after shooter selection bias (review #4: the rebalanced systems drive more)
         -0.425, // ShortMid      ≈ 44%
         -0.545, // LongMid       ≈ 41%
-        -0.585, // CornerThree   ≈ 39%
-        -0.765, // AboveBreak3   ≈ 35%
+        -0.535, // CornerThree   ≈ 39% (run 19, #255: +0.05 with the skill term at 0.75)
+        -0.715, // AboveBreak3   ≈ 35%
     };
     public double SkillBeta { get; set; } = 0.060;
+    /// <summary>
+    /// Run 19 (#255): the skill term on threes counts this much of <see cref="SkillBeta"/>. The best volume shooters made
+    /// .43-.45 on 10-12 attempts a game, and the season threes leader made 424-462 (NBA 240-402).
+    /// </summary>
+    public double ThreeSkillShare { get; set; } = 0.75;
+    /// <summary>
+    /// Run 19 (#255): a player's three-point tendency counts in full up to this rate; above it, only
+    /// <see cref="ThreeRateAboveKnee"/> of each extra point counts, so the most trigger-happy shooters don't take
+    /// three-quarters of their shots from deep at star usage.
+    /// </summary>
+    public double ThreeRateKnee { get; set; } = 45;
+    public double ThreeRateAboveKnee { get; set; } = 0.4;
+    /// <summary>
+    /// Run 19 (#255): after this many three-point attempts in a game, each further attempt makes another three
+    /// <see cref="ThreeGameDecay"/> less likely (multiplicatively), as defences run him off the line. 0 = off.
+    /// </summary>
+    public int ThreeGameKnee { get; set; } = 8;
+    public double ThreeGameDecay { get; set; } = 0.2;
     public double ContestBeta { get; set; } = 0.060;
     public double FatigueBeta { get; set; } = 0.55;
     public double HomeLogit { get; set; } = 0.07;
@@ -79,7 +97,8 @@ public sealed class EngineConfig
     public double[] AssistedShareByZone { get; set; } = { 0.57, 0.46, 0.49, 0.92, 0.80 };
 
     // --- Shot zone mix (league baseline, before player tendencies)
-    public double[] ZoneBaseWeight { get; set; } = { 0.285, 0.19, 0.12, 0.10, 0.30 };
+    // Run 19 (#255): rim 0.285 ×0.94 and mid-range ×1.06, so the threes the knee takes away don't all become rim shots.
+    public double[] ZoneBaseWeight { get; set; } = { 0.2679, 0.2014, 0.1272, 0.10, 0.30 };
 
     // --- Clock and fatigue
     public double SecondsPerPossessionSd { get; set; } = 5.0;

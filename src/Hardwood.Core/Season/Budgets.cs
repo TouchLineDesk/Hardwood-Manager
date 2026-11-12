@@ -75,7 +75,10 @@ public static class Budgets
     /// <param name="endedSeason">The season that just finished: contracts running past it are already committed, and an
     /// owner who isn't in debt won't set a budget below them (critic review #3: a club whose revenue dipped was "over
     /// budget" all season on deals it signed within budget the year before). -1 leaves budgets purely to revenue.</param>
-    public static void Summer(IReadOnlyList<Team> clubs, double salaryScale, Func<Team, double> winPct, Func<Team, bool> champion, int endedSeason = -1, bool fillRoster = false)
+    /// <param name="pending">College seniors who committed to a club during the season, with their agreed wage: they sign
+    /// on graduation day, after these budgets are set, so the floor makes room for them (run 19, #256).</param>
+    public static void Summer(IReadOnlyList<Team> clubs, double salaryScale, Func<Team, double> winPct, Func<Team, bool> champion, int endedSeason = -1, bool fillRoster = false,
+        Func<Team, (long wages, int count)>? pending = null)
     {
         if (clubs.Count == 0) return;
         double typical = clubs.Average(t => (double)t.ArenaCapacity);
@@ -100,11 +103,17 @@ public static class Budgets
                 // so a deal that runs into next season has more than one left.
                 var signed = t.Roster.Where(p => p.Contract is { Years: > 1 }).ToList();
                 long committed = signed.Sum(p => p.Contract!.Salary);
+                // Committed seniors are signings the owner already approved (the offer was checked against the budget),
+                // so they count as signed: without them a commitment signed on top of the floor and the club opened the
+                // season over budget (run 18: SAS and POR, 29 weeks each).
+                var (owed, owedCount) = pending?.Invoke(t) ?? (0, 0);
+                committed += owed;
+                int filled = signed.Count + owedCount;
                 // In the real NBA, plus minimum deals to fill the roster to its legal size (run 17, #221): real payrolls
                 // sit at this floor, so a floor of only what's signed left a club over budget the moment it made up its
                 // numbers, and the owner then marked "keep wages within the budget" as failed. (Fictional leagues open
                 // inside their budgets and keep the old floor: the balance audit moved when they got it too.)
-                if (fillRoster) committed += Math.Max(0, MinRoster - signed.Count) * (long)(MinWage * Math.Min(1, salaryScale));
+                if (fillRoster) committed += Math.Max(0, MinRoster - filled) * (long)(MinWage * Math.Min(1, salaryScale));
                 m.WageBudget = Math.Max(m.WageBudget, (long)Math.Ceiling(committed / 100_000.0) * 100_000);
             }
             // Deep debt: a transfer embargo until the balance recovers (critic review, Nov 10).
