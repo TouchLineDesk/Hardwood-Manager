@@ -19,9 +19,11 @@ public class InboxDigestTests
             s.PostWorld("First headline", "A club far away won something. Details follow.");
             s.PostWorld($"{s.HumanTeam.FullName} linked with a star", "Rumours.");   // about your club: straight in
             Assert.Contains(s.Inbox, m => m.Title.Contains("linked with a star"));
+            // The digest is fortnightly (or sooner when 40 stories pile up), so it comes within 15 days.
             var mark = s.Today;
-            while (s.Today < mark.AddDays(8)) s.AdvanceDay();
-            var digest = s.Inbox.First(m => m.Title.StartsWith("Around the world"));
+            bool Arrived() => s.Inbox.Any(m => m.Title.StartsWith("Around the world") && m.Body.Contains("First headline"));
+            while (!Arrived() && s.Today < mark.AddDays(15)) s.AdvanceDay();
+            var digest = s.Inbox.First(m => m.Title.StartsWith("Around the world") && m.Body.Contains("First headline"));
             Assert.Contains("• First headline: A club far away won something.", digest.Body);
             Assert.Empty(s.WorldDigest);
             s.PostWorld("Test headline", "Something happened somewhere. More detail.");
