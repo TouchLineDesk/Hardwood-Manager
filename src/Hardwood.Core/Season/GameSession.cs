@@ -109,7 +109,7 @@ public sealed partial class GameSession
         var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? DefaultFullSim, new DateOnly(season, 10, 1));
         // The real world (R1, #191): the NBA's real teams take the top league's places; the user's name pack goes on top.
         Names.Brand.Real = realWorld;
-        if (realWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(league, world);
+        if (realWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(league, world, seed);
         // A name pack renames the clubs before anything is written about them (the welcome, the first news).
         names?.ApplyToClubs(league, world);
         var team = league.Teams.FirstOrDefault(t => t.Id == humanTeamId) ?? world.TeamById(humanTeamId)
@@ -128,7 +128,8 @@ public sealed partial class GameSession
         session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName} ({session.HumanLeagueName}). "
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
             + (realWorld && Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
-                ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page." : "")
+                ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page."
+                + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Heights, birthdays and contracts are the game's own for now." : "")
             + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
         session.SaveNow();
         return session;

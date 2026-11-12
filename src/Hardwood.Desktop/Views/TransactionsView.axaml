@@ -24,15 +24,16 @@
           <DataGrid Grid.Row="1" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
             <DataGrid.Columns>
               <!-- The deal columns sit before Club (critic review #6): at 1480 px Club stance ran off the table's edge. -->
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="44"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="44"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="44"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="44"/>
-              <DataGridTextColumn Header="Joins?" Binding="{Binding Interest}" Width="110"/>
-              <DataGridTextColumn Header="Club stance" Binding="{Binding Stance}" Width="122"/>
-              <DataGridTextColumn Header="Likely fee" Binding="{Binding Ask}" Width="124"/>
-              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="186"/>
+              <!-- Real names (R2) need 188 px: "Shai Gilgeous-Alexander"; the number columns gave up 4 px each. -->
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="188"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="40"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="40"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="40"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="40"/>
+              <DataGridTextColumn Header="Joins?" Binding="{Binding Interest}" Width="102"/>
+              <DataGridTextColumn Header="Club stance" Binding="{Binding Stance}" Width="118"/>
+              <DataGridTextColumn Header="Likely fee" Binding="{Binding Ask}" Width="120"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="190"/>
               <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="108"/>
               <DataGridTextColumn Header="Clause" Binding="{Binding Clause}" Width="70"/>
               <DataGridTextColumn Header="" Binding="{Binding Status}" Width="SizeToCells" MinWidth="40"/>
@@ -93,8 +94,8 @@
           </ScrollViewer>
           <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="192"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="50"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="46"/>
               <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="52"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="52"/>
@@ -113,9 +114,9 @@
           <TextBlock Text="Select a player in 'You send' on the trade builder and use the button below to release him outright." Classes="muted"/>
           <DataGrid Grid.Row="1" ItemsSource="{Binding Ours}" x:Name="WaiveGrid">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="196"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
               <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112"/>
               <DataGridTemplateColumn Header="" Width="*">
@@ -144,9 +145,9 @@
               <DataGrid ItemsSource="{Binding Ours}" IsReadOnly="False">
                 <DataGrid.Columns>
                   <DataGridCheckBoxColumn Header="" Binding="{Binding Included}" Width="66"/>
-                  <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="186" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52" IsReadOnly="True"/>
                   <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84" IsReadOnly="True"/>
                   <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84" IsReadOnly="True"/>
                   <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112" IsReadOnly="True"/>
@@ -159,9 +160,9 @@
               <DataGrid ItemsSource="{Binding Theirs}" IsReadOnly="False">
                 <DataGrid.Columns>
                   <DataGridCheckBoxColumn Header="" Binding="{Binding Included}" Width="66"/>
-                  <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="186" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56" IsReadOnly="True"/>
+                  <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52" IsReadOnly="True"/>
                   <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84" IsReadOnly="True"/>
                   <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84" IsReadOnly="True"/>
                   <DataGridTextColumn Header="Contract" Binding="{Binding Salary}" Width="112" IsReadOnly="True"/>

@@ -14,7 +14,7 @@
     <DataGrid ItemsSource="{Binding Rows}">
       <DataGrid.Columns>
         <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="66"/>
-        <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="180"/>
+        <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="200"/>
         <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="64"/>
         <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
         <DataGridTextColumn Header="GP" Binding="{Binding GP}" Width="66"/>
