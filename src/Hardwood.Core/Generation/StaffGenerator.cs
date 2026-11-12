@@ -10,11 +10,19 @@ public sealed class StaffGenerator
     public Staff Generate(League league, StaffRole role, DateOnly today, int quality)
     {
         int Attr(bool key) => (int)Math.Round(Math.Clamp(_rng.NextGaussian(key ? quality : quality - 4, 2.5), 1, 20));
+        int id = league.NextStaffId++;
+        string first = _rng.Pick(NamePool.FirstNames), last = _rng.Pick(NamePool.LastNames);
+        // No made-up coach carries a real NBA name either (#263); the re-roll uses its own stream so the main one doesn't move.
+        if (RealWorld.RealNames.IsReal(first, last))
+        {
+            var side = new Rng(unchecked(_rng.Seed * 0x9E3779B97F4A7C15UL ^ (ulong)id * 0xC2B2AE3D27D4EB4FUL));
+            for (int tries = 0; tries < 12 && RealWorld.RealNames.IsReal(first, last); tries++) last = side.Pick(NamePool.LastNames);
+        }
         var s = new Staff
         {
-            Id = league.NextStaffId++,
-            FirstName = _rng.Pick(NamePool.FirstNames),
-            LastName = _rng.Pick(NamePool.LastNames),
+            Id = id,
+            FirstName = first,
+            LastName = last,
             BirthDate = today.AddYears(-_rng.Next(32, 66)).AddDays(-_rng.Next(0, 365)),
             Role = role,
             Coaching = Attr(role == StaffRole.AssistantCoach),

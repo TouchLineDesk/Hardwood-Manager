@@ -82,6 +82,23 @@ public sealed class Tactic
     /// <summary>Preset used in the last five minutes of the fourth quarter and overtime when the score is within six (null = keep the current tactics).</summary>
     public string? LateGamePreset { get; set; }
 
+    /// <summary>
+    /// The systems and schemes this team ran in its last few games, newest last (run 21, #267). Other coaches scout it:
+    /// a team that has run the same thing three games running is expected to run it again.
+    /// </summary>
+    public List<OffensiveSystem> RecentSystems { get; set; } = new();
+    /// <summary>
+    /// Manual coaches only (run 21, #268): at halftime of a game you don't watch live, the assistant reads what the other
+    /// bench is actually running and switches to the counter for the second half. Your saved tactics don't change.
+    /// </summary>
+    public bool HalftimeAdjust { get; set; } = true;
+    /// <summary>
+    /// Manual coaches only (#268): before every game the assistant sets the system, scheme and star matchup from his
+    /// scouting report, as an auto coach would. Your roles, sliders and presets stay yours.
+    /// </summary>
+    public bool AssistantPlans { get; set; }
+    public List<DefensiveScheme> RecentSchemes { get; set; } = new();
+
     public Role RoleOf(Player p) => Roles.TryGetValue(p.Id, out var r) ? r : Hardwood.Core.Model.Roles.Best(p);
 
     /// <summary>Target pace, possessions per 48 minutes.</summary>

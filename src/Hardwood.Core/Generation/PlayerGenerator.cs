@@ -42,11 +42,20 @@ public sealed class PlayerGenerator
         var side = Heritages.StreamFor(_rng.Seed, id);
         var heritage = heritageOverride ?? Heritages.Pick(side);
 
+        string first = _rng.Pick(heritage.FirstNames), last = _rng.Pick(heritage.LastNames);
+        // No made-up player carries a real NBA player's full name (#263). The re-roll has its own stream, so the main
+        // sequence (ratings, results) and the heritage stream don't move.
+        if (RealWorld.RealNames.IsReal(first, last))
+        {
+            var reroll = Heritages.StreamFor(_rng.Seed ^ 0x52454E414D45UL, id);
+            for (int tries = 0; tries < 12 && RealWorld.RealNames.IsReal(first, last); tries++) last = reroll.Pick(heritage.LastNames);
+        }
+
         var player = new Player
         {
             Id = id,
-            FirstName = _rng.Pick(heritage.FirstNames),
-            LastName = _rng.Pick(heritage.LastNames),
+            FirstName = first,
+            LastName = last,
             Nationality = nationality ?? side.Pick(heritage.Nationalities),
             Ethnicity = Heritages.PickEthnicity(heritage, side),
             BirthDate = birth,

@@ -183,6 +183,18 @@ public sealed partial class LiveGameViewModel : PageViewModel
         string Pct(TeamBox b) => b.FGA == 0 ? "-" : $"{100.0 * b.FGM / b.FGA:0}%";
         chips.Add(new("Shooting", $"{Pct(r.Away)} · {Pct(r.Home)}", $"{r.Away.Team.Abbreviation} · {r.Home.Team.Abbreviation} from the field", "info"));
         chips.Add(new("Win chance", WinChance, final ? "" : "heading into the next period", "info"));
+        if (!final)
+        {
+            // The in-game read (#268): what the other bench is really running, and the assistant's counter.
+            var them = r.Home.Team == Us ? r.Away.Team : r.Home.Team;
+            var (cs, cd) = Hardwood.Core.Engine.CoachAi.Counter(Hardwood.Core.Engine.CoachAi.Rotation(Us, null), them.Tactic.System, them.Tactic.Scheme);
+            bool already = cs == Us.Tactic.System && cd == Us.Tactic.Scheme;
+            string N(Hardwood.Core.Model.OffensiveSystem x) => Hardwood.Core.Model.Systems.Name(x).ToLower();
+            string D(Hardwood.Core.Model.DefensiveScheme x) => Hardwood.Core.Model.Systems.Name(x).ToLower();
+            chips.Add(new($"{them.Abbreviation} tactics", already ? "Countered" : "Switch?",
+                $"They run {N(them.Tactic.System)} and {D(them.Tactic.Scheme)}. " + (already ? "You're in the counter." : $"Counter: {N(cs)} and {D(cd)}."),
+                already ? "good" : "warn"));
+        }
         if (final)
             foreach (var h in Hardwood.Core.Engine.GameHighlights.For(r, final: true, max: 3))
                 chips.Add(new(h.Title, h.Value, h.Detail, h.Tone));

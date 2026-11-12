@@ -17,7 +17,10 @@ public class CommentaryTests
         var sim = new GameSimulator();
         for (ulong seed = 1; seed <= 8; seed++)
         {
+            // Each game puts both teams on film (#267), so start both runs from the same tactics state.
+            World.Teams[0].Tactic = new Tactic(); World.Teams[1].Tactic = new Tactic();
             var quiet = sim.Simulate(World.Teams[0], World.Teams[1], Rules.Nba, seed, keepLog: false);
+            World.Teams[0].Tactic = new Tactic(); World.Teams[1].Tactic = new Tactic();
             var loud = sim.Simulate(World.Teams[0], World.Teams[1], Rules.Nba, seed, keepLog: true);
             Assert.Equal(quiet.Home.Points, loud.Home.Points);
             Assert.Equal(quiet.Away.Points, loud.Away.Points);
