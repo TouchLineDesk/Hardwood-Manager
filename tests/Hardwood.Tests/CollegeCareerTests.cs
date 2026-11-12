@@ -121,6 +121,8 @@ public class CollegeCareerTests
             Assert.Equal(SessionPhase.Preseason, s.Phase);
             if (s.Employed)
             {
+                // The pros' summer stays out of a college coach's inbox (review #8): no free agency, no pro coaching changes.
+                Assert.DoesNotContain(s.Inbox, m => m.Title == "Free agency is open" || m.Title == "Overseas free agents" || (m.Title.EndsWith(" change coach") && m.Category == "League"));
                 Assert.True(s.InCollege);
                 Assert.Equal("college", s.Job.Current!.League);
                 Assert.Equal(s.League.Season, s.Job.Current.Season);

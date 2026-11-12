@@ -626,7 +626,9 @@ public sealed partial class GameSession
         else
         {
             t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
-            if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
+            if (InCollege && League.Teams.Contains(t))
+                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}."); // pro news: the digest for a college coach
+            else if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
                 Post($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", "League");
         }
     }
@@ -922,7 +924,7 @@ public sealed partial class GameSession
                     if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
                     foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
                     World.News.Clear();
-                    if (Employed)
+                    if (Employed && !InCollege) // college programs don't sign pros (C2)
                     {
                         var grads = League.FreeAgents.Where(p => p.RookieSeason == League.Season + 1).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
                         Post("Free agency is open", $"Make offers to free agents on the Offseason page. {Budgets.Describe(HumanTeam)}."
