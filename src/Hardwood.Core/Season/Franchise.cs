@@ -7,7 +7,7 @@ public sealed record FacilityInfo(FacilityKind Kind, string Name, string Short, 
     double CostPerLevel, int Lifespan, int BuildSeasons);
 
 /// <summary>
-/// Money buys things, part 1 (item M; Danny's #237, D10 #249, D17 A #273). Every pro club owns five facilities rated
+/// Money buys things, part 1 (item M; Danny's #237, D10 #249, D17 A #273). Every pro club owns four facilities rated
 /// 1-5. Each summer the books close, the club pays its facilities' running costs, projects move on, old facilities date,
 /// and the owner puts surplus cash into upgrades, renewals or a new arena, by his appetite. Your club gets the front
 /// office's proposals instead, to approve or decline (or you let the GM decide).
@@ -30,9 +30,6 @@ public static class Franchise
         new(FacilityKind.Analytics, "Analytics & scouting", "Analytics",
             "Tracking data, a video team and scouts on every continent.",
             "Scouting knowledge: +3 points a level above average", 0.03, 7, 1),
-        new(FacilityKind.Academy, "G League affiliate & academy", "Affiliate",
-            "Your own development team: reps, coaching and a pathway for players 22 and under.",
-            "Players 22 and under: training quality +0.5 a level above average", 0.04, 10, 1),
         new(FacilityKind.Arena, "Arena & premium seating", "Arena",
             "Suites, courtside clubs, a new scoreboard and concourses: the fan experience, and the money it brings.",
             "Revenue +2% and the fan base +0.6 a season, a level above average", 0.16, 15, 1),
@@ -41,10 +38,10 @@ public static class Franchise
             "More seats, and the arena at level 5 for 15 seasons", 2.6, 15, 3),
     };
 
-    public static FacilityInfo Info(FacilityKind k) => All[(int)k];
+    public static FacilityInfo Info(FacilityKind k) => Array.Find(All, i => i.Kind == k) ?? All[0];
 
     /// <summary>Running costs a season, as a share of the league's revenue, times the level squared: the best costs most to run
-    /// (all five at 3: about 6%, $14M in the NBA; all at 5: about 16%, $40M).</summary>
+    /// (all four at 3: about 5%, $11M in the NBA; all at 5: about 13%, $32M).</summary>
     public const double UpkeepPerLevel = 0.0013;
     /// <summary>An arena is replaced after about this many seasons (NBA arenas last 25-35 years).</summary>
     public const int ArenaLife = 30;
@@ -74,7 +71,6 @@ public static class Franchise
             FacilityKind.Practice => winNow ? 1.3 : 1.0,
             FacilityKind.Analytics => winNow ? 1.2 : careful ? 0.85 : 1.0,
             FacilityKind.Medical => winNow ? 1.15 : 1.0,
-            FacilityKind.Academy => careful ? 1.15 : o.Patience >= 14 ? 1.15 : 0.95,
             FacilityKind.Arena => careful ? 1.4 : 1.05,
             _ => 1.0,
         };
@@ -84,6 +80,7 @@ public static class Franchise
     public static void Seed(Team t, double typicalArena)
     {
         var f = t.Money.Facilities;
+        f.DropRetired();
         if (f.Ready) return;
         var rng = new Rng((ulong)t.Id * 0x9E3779B97F4A7C15UL + 0x51A7);
         double baseLevel = 2.2 + Math.Clamp(t.Money.FanBase, 0, 100) / 50.0 + (t.ArenaCapacity / Math.Max(1, typicalArena) - 1) * 2;

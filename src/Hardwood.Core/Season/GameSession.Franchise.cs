@@ -10,7 +10,8 @@ public sealed partial class GameSession
 {
     /// <summary>Your club runs facilities (pro clubs only; college programs come in part 2).</summary>
     public bool HasFacilities => Employed && !InCollege;
-    public ClubFacilities MyFacilities => HumanTeam.Money.Facilities;
+    /// <summary>Your club's facilities (anything left from the retired academy, #291, is dropped as you look).</summary>
+    public ClubFacilities MyFacilities { get { var f = HumanTeam.Money.Facilities; f.DropRetired(); return f; } }
 
     /// <summary>The league revenue facility prices are quoted in (your league's average club).</summary>
     public long MyLeagueRevenue => Budgets.LeagueRevenue(InNabl ? 1 : HumanLeague?.Profile.SalaryScale ?? 1);

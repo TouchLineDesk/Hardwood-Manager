@@ -113,14 +113,11 @@ public static class StaffEffects
         if (dev?.Is("Teacher") == true) tilt += young ? 1.0 : -0.3;
         if (dev?.Is("Craftsman") == true) tilt += young ? -0.3 : 0.5;
         if (Find(t, StaffRole.AssistantCoach)?.Is("Mentor") == true) tilt += young ? 0.3 : -0.2;
-        return TrainingQuality(t) + tilt + AcademyEdge(t, p, on);
+        return TrainingQuality(t) + tilt;
     }
 
-    /// <summary>The G League affiliate and academy: players 22 and under train better at a club ahead of the league (item M, #281).</summary>
-    public static double AcademyEdge(Team t, Player p, DateOnly on) => p.Age(on) <= 22 ? 0.5 * t.Money.Facilities.Academy.Edge : 0;
-
     /// <summary>Facilities' training edge alone (clubs abroad have no staff model: they train at 10 plus this).</summary>
-    public static double FacilityTraining(Team t, Player p, DateOnly on) => 0.4 * t.Money.Facilities.Practice.Edge + AcademyEdge(t, p, on);
+    public static double FacilityTraining(Team t, Player p, DateOnly on) => 0.4 * t.Money.Facilities.Practice.Edge;
 
     /// <summary>Injury probability multiplier.</summary>
     public static double InjuryRiskFactor(Team t)
