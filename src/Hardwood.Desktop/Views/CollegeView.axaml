@@ -61,6 +61,61 @@
         <ScrollViewer>
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap"/>
+            <!-- Bracketology (C4 part 1): the projected field by seed line, then the bubble, until Selection Sunday. -->
+            <StackPanel Spacing="6" IsVisible="{Binding HasBracketology}">
+              <c:StatStrip ItemsSource="{Binding BracketologyChips}" Accent="{DynamicResource HwAccent}"/>
+              <ItemsControl ItemsSource="{Binding Bubble}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:BubbleList">
+                    <Border Background="#1C232C" CornerRadius="6" Padding="10,6" Margin="0,0,8,0">
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Classes="muted"/>
+                        <ItemsControl ItemsSource="{Binding Teams}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SeedCell">
+                              <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Record}" FontSize="12" Classes="muted" Margin="8,0,0,0"/>
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Projected seed lines" FontWeight="SemiBold" Classes="muted" Margin="2,4,0,0"/>
+              <ItemsControl ItemsSource="{Binding SeedLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SeedLine">
+                    <Grid ColumnDefinitions="40,*" Margin="0,1">
+                      <Border Background="{DynamicResource HwAccentBrush}" CornerRadius="4" Width="32" Height="24" VerticalAlignment="Top" Margin="0,2,0,0">
+                        <TextBlock Text="{Binding Seed}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
+                      </Border>
+                      <ItemsControl Grid.Column="1" ItemsSource="{Binding Teams}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:SeedCell">
+                            <Border Background="#1C232C" CornerRadius="4" Padding="6,3" Margin="0,1,6,1" BorderThickness="3,0,0,0"
+                                    BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                              <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <TextBlock Text="{Binding Record}" FontSize="11" Classes="muted"/>
+                                  <TextBlock Text="{Binding Tag}" FontSize="10" FontWeight="Bold" Foreground="#58A6FF" IsVisible="{Binding HasTag}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
             <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding HasBracket}"/>
             <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding HasBracket}"/>
             <ItemsControl ItemsSource="{Binding BracketColumns}" Height="620" IsVisible="{Binding HasBracket}">

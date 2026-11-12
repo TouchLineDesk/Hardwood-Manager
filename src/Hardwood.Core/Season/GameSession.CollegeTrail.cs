@@ -48,8 +48,10 @@ public sealed partial class GameSession
     private void PostCoachNews()
     {
         if (World.College is not { } c || c.CoachNews.Count == 0) return;
-        if (TrailOpen)
-            foreach (var (title, body) in c.CoachNews) Post(title, body, "Roster");
+        // Recruiting news needs the trail; Selection Sunday (C4 part 1) comes to any college coach.
+        foreach (var (title, body) in c.CoachNews)
+            if (title.StartsWith("Selection Sunday")) { if (Employed && InCollege) Post(title, body, "League"); }
+            else if (TrailOpen) Post(title, body, "Roster");
         c.CoachNews.Clear();
     }
 }

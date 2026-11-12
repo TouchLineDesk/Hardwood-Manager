@@ -45,6 +45,11 @@ public sealed class CollegeSeason
     public int? ChampionId { get; set; }
     public int? RunnerUpId { get; set; }
     public bool Selected { get; set; }
+    /// <summary>Selection Sunday (C4 part 1): the field best first, and the bubble as it stood. Empty in seasons picked before v0.50.0.</summary>
+    public List<int> SelectionOrder { get; set; } = new();
+    public List<int> LastFourIn { get; set; } = new();
+    public List<int> FirstFourOut { get; set; } = new();
+    public List<int> NextFourOut { get; set; } = new();
     /// <summary>Pro clubs courting this season's seniors (roadmap 11, college depth). Older saves start with an empty board.</summary>
     public RecruitingBoard Recruiting { get; set; } = new();
 }
@@ -560,9 +565,12 @@ public sealed partial class CollegeWorld
     private void Select(Rng rng)
     {
         var s = Season;
-        var auto = s.ConferenceChampions.Values.Distinct().ToList();
-        var atLarge = Programs.Select(t => t.Id).Where(i => !auto.Contains(i)).OrderByDescending(i => s.Elo[i]).Take(68 - auto.Count);
-        var field = auto.Concat(atLarge).OrderByDescending(i => s.Elo[i]).ToList();
+        var auto = new Dictionary<int, string>();
+        foreach (var conf in Active)
+            if (s.ConferenceChampions.TryGetValue(conf.Key, out var champ)) auto.TryAdd(champ, conf.Short);
+        var p = Project(auto, final: true, auto.Count);
+        var field = p.Field;
+        s.SelectionOrder = field.ToList(); s.LastFourIn = p.LastFourIn; s.FirstFourOut = p.FirstFourOut; s.NextFourOut = p.NextFourOut;
         // Seed lines 1-15: four teams each, snaked across four regions; line 16: the First Four winners.
         var regions = new List<int>[4];
         for (int r = 0; r < 4; r++) regions[r] = new List<int>();
@@ -586,7 +594,10 @@ public sealed partial class CollegeWorld
             s.Games.Add(new CollegeGame { Date = dates[0], HomeId = firstFour[i * 2], AwayId = firstFour[i * 2 + 1], Stage = Madness, Event = Madness, Round = 0, Slot = slots[i] });
         s.Selected = true;
         var ones = field.Take(4).Select(i => Program(i)!.FullName);
-        News.Add(("March Madness: the field is set", $"68 teams are in. The No. 1 seeds: {string.Join(", ", ones)}."));
+        string Names(List<int> ids) => string.Join(", ", ids.Select(i => Program(i)!.FullName));
+        News.Add(("March Madness: the field is set", $"68 teams are in. The No. 1 seeds: {string.Join(", ", ones)}."
+            + (p.LastFourIn.Count > 0 ? $"\nLast four in: {Names(p.LastFourIn)}.\nFirst four out: {Names(p.FirstFourOut)}." : "")));
+        SelectionNews(p);
     }
 
     /// <summary>A conference's regular-season table.</summary>
