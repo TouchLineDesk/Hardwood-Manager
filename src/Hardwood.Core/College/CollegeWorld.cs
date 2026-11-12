@@ -7,7 +7,7 @@ using Hardwood.Core.World;
 namespace Hardwood.Core.College;
 
 /// <summary>A college conference: five power conferences of 14, three mid-majors of 16 (decision #82).</summary>
-public sealed record ConferenceInfo(string Key, string Name, string Short, bool Power, int Size);
+public sealed record ConferenceInfo(string Key, string Name, string Short, bool Power, int Size, bool Real = false);
 
 /// <summary>One college game. Knockout games (invitationals, conference tournaments, March Madness) carry an event, a round and a slot.</summary>
 public sealed class CollegeGame
@@ -68,7 +68,7 @@ public sealed partial class CollegeWorld
     public const int RosterSize = 30, FirstId = 90_001, YoungestAge = 14, GraduateAge = 23;
     public const string Madness = "March Madness";
 
-    public static readonly ConferenceInfo[] Conferences =
+    public static readonly ConferenceInfo[] Conferences = new ConferenceInfo[]
     {
         new("aca", "Atlantic Coast Alliance", "ACA", true, 14), new("bmw", "Big Midwest", "BMW", true, 14),
         new("sac", "Southern Athletic Conference", "SAC", true, 14), new("pcu", "Pacific Union", "PCU", true, 14),
@@ -78,7 +78,7 @@ public sealed partial class CollegeWorld
         // Danny (Nov 10, decision #121): more big programs. Older careers keep their eight conferences (see Active).
         new("mpc", "Mountain Plains Conference", "MPC", true, 14),
         new("lvc", "Lakes & Valleys Conference", "LVC", false, 16),
-    };
+    }.Concat(Hardwood.Core.RealWorld.RealColleges.ConferenceInfos()).ToArray(); // R3: the real 2026-27 conferences (a real career's)
 
     /// <summary>The programs in the original eight conferences: the elite share of each recruiting class is scaled to keep
     /// the number of NABL-ready graduates as it was, so extra programs add depth for the pyramid rather than more stars.</summary>
@@ -90,6 +90,13 @@ public sealed partial class CollegeWorld
     public List<Team> Programs { get; } = new();
     public Dictionary<int, string> ConferenceOf { get; } = new();
     public Dictionary<int, double> Prestige { get; } = new();
+    /// <summary>R3: a real program's long-run standing (its starting prestige); prestige drifts back toward it rather than a
+    /// conference's level. Empty in fictional worlds and older saves, which keep the conference levels (68 power, 42 others).</summary>
+    public Dictionary<int, double> Tradition { get; } = new();
+    /// <summary>Where prestige drifts back to each summer.</summary>
+    public double Baseline(Team t, ConferenceInfo conf) => Tradition.TryGetValue(t.Id, out var b) ? b : conf.Power ? 68 : 42;
+    /// <summary>A real world's programs (R3).</summary>
+    public bool IsReal => Active.Any(c => c.Real);
     /// <summary>The ability each player is heading for at 23 (his development path).</summary>
     public Dictionary<int, int> Destined { get; } = new();
     public CollegeSeason Season { get; set; } = new();
@@ -111,15 +118,21 @@ public sealed partial class CollegeWorld
     /// How good a recruit will be at 23. Calibrated so each year's graduates look like the old draft classes at the top
     /// (a handful ready for the NABL, a few dozen for the tiers below) with most heading for the lower leagues or out.
     /// </summary>
-    private static int DestinedAbility(Rng rng, double eliteScale = 1)
+    private static int DestinedAbility(Rng rng, double eliteScale = 1, double goodScale = 1)
     {
         double u = rng.NextDouble(), elite = 0.012 * eliteScale;
-        return u < elite ? rng.Next(110, 131) : u < 0.065 ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
+        // R3: in a world of more than 148 programs the class is capped at the thousand tracked, so the 90-110 band is
+        // scaled too (the fictional world's 148 keep exactly the old draw).
+        double good = goodScale >= 1 ? 0.065 : elite + 0.053 * goodScale;
+        return u < elite ? rng.Next(110, 131) : u < good ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
     }
+
+    /// <summary>The 90-110 band's share against a 148-program world (1 there and below).</summary>
+    private double GoodScale => Math.Min(1, 148.0 / Math.Max(1, Programs.Count));
 
     private Player NewRecruit(PlayerGenerator gen, Rng rng, int age, DateOnly on, int? destined = null)
     {
-        int g = destined ?? DestinedAbility(rng, Math.Min(1, BasePrograms / (double)Math.Max(1, Programs.Count)));
+        int g = destined ?? DestinedAbility(rng, Math.Min(1, BasePrograms / (double)Math.Max(1, Programs.Count)), GoodScale);
         int ca = Math.Max(20, (int)Math.Round(g * Share(age) + rng.NextGaussian(0, 2)));
         var p = gen.Generate((Position)rng.Next(0, 5), ca, age, on, Heritages.All.First(h => h.Key == "us"), "USA");
         p.PotentialAbility = Math.Max(ca, g + (int)Math.Round(Math.Max(0, rng.NextGaussian(g >= 100 ? 10 : 5, 6))));
@@ -162,12 +175,13 @@ public sealed partial class CollegeWorld
     };
 
     /// <summary>Build every program with a full roster (new careers): the recruiting model (#162) unless asked for the old one.</summary>
-    public static CollegeWorld Generate(PlayerGenerator gen, Rng rng, DateOnly today, bool recruiting = true)
+    public static CollegeWorld Generate(PlayerGenerator gen, Rng rng, DateOnly today, bool recruiting = true, bool real = false)
     {
         var c = new CollegeWorld();
         var used = new HashSet<string>();
         int id = FirstId, n = 0;
-        foreach (var conf in Conferences)
+        if (real) c.AddRealPrograms(rng, ref id);
+        foreach (var conf in Conferences.Where(x => !x.Real && !real))
         {
             for (int i = 0; i < conf.Size; i++, n++)
             {
@@ -208,6 +222,29 @@ public sealed partial class CollegeWorld
         }
         c.StartSeason(today.Month >= 7 ? today.Year : today.Year - 1, rng);
         return c;
+    }
+
+    /// <summary>R3: every Division I program in its 2026-27 conference, with real names, nicknames, colours and starting
+    /// prestige from real standing (<see cref="Hardwood.Core.RealWorld.RealColleges"/>). Arenas are sized from prestige.</summary>
+    private void AddRealPrograms(Rng rng, ref int id)
+    {
+        var abbrs = Hardwood.Core.RealWorld.RealColleges.Abbreviations();
+        foreach (var rp in Hardwood.Core.RealWorld.RealColleges.Programs)
+        {
+            var conf = Conferences.First(x => x.Key == Hardwood.Core.RealWorld.RealColleges.KeyPrefix + rp.Conference);
+            double prestige = Hardwood.Core.RealWorld.RealColleges.Prestige(rp);
+            var team = new Team
+            {
+                Id = id++, City = rp.School, Name = rp.Nickname, Abbreviation = abbrs[rp.School], Conference = Conference.East, Division = conf.Short,
+                ArenaCapacity = (int)Math.Round(Math.Clamp(1500 + prestige * 190 + rng.NextGaussian(0, 1500), 1500, 22000) / 100) * 100,
+                PrimaryColor = rp.Primary, SecondaryColor = rp.Secondary,
+                LogoStyle = rng.Next(0, 5), Tactic = new Tactic { Pace = Math.Round(rng.NextGaussian(90, 3), 1) },
+            };
+            Programs.Add(team);
+            ConferenceOf[team.Id] = conf.Key;
+            Prestige[team.Id] = prestige;
+            Tradition[team.Id] = prestige;
+        }
     }
 
     private static string Hsv(double h, double s, double v)
@@ -256,7 +293,7 @@ public sealed partial class CollegeWorld
             // C4 step 0 (#186): gains shrink near the top, so only a run of titles holds a program at the very top
             // (review #7: after 8 seasons eight programs sat at 99, and the Elo prestige bonus seeded them all alike).
             if (change > 0) change *= Math.Clamp((100 - Prestige[t.Id]) / 30.0, 0, 1);
-            Prestige[t.Id] = Math.Clamp(Prestige[t.Id] + change + ((conf.Power ? 68 : 42) - Prestige[t.Id]) * 0.08, 10, 99);
+            Prestige[t.Id] = Math.Clamp(Prestige[t.Id] + change + (Baseline(t, conf) - Prestige[t.Id]) * 0.08, 10, 99);
         }
         if (Recruiting)
         {
@@ -333,11 +370,13 @@ public sealed partial class CollegeWorld
             var dates = new List<DateOnly> { new(year, 11, 25), new(year, 11, 26), new(year, 11, 27) };
             AddKnockout(s, Invitationals[e], "Invitational", Seeded(field), dates);
         }
-        // Conference play: a single round robin, Tuesdays and Saturdays from early January.
+        // Conference play: a single round robin, Tuesdays and Saturdays from early January. R3: a real conference of ten
+        // or fewer plays home and away (as the Ivy and most small leagues do), so every program plays about 30 games.
         foreach (var conf in Active)
         {
             var members = InConference(conf.Key).Select(t => t.Id).ToList();
             var rounds = RoundRobin(members);
+            if (members.Count <= 10) rounds = rounds.Concat(rounds.Select(r => r.Select(g => (g.Item2, g.Item1)).ToList())).ToList();
             var d = new DateOnly(year + 1, 1, 3);
             foreach (var r in rounds)
             {

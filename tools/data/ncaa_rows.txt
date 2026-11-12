@@ -1,0 +1,366 @@
+# short|nickname|conf|state|arena|apps|final4|titles|primary|secondary
+Albany|Great Danes|ae|NY|SEFCU Arena|5|0|0|#46166B|#EEB211
+Binghamton|Bearcats|ae|NY|Binghamton University Events Center|1|0|0|#005A43|#FFFFFF
+Bryant|Bulldogs|ae|RI|Chace Athletic Center|2|0|0|#000000|#C5B783
+Maine|Black Bears|ae|ME|Memorial Gymnasium|0|0|0|#003263|#B0D7FF
+UMBC|Retrievers|ae|MD|Chesapeake Employers Insurance Arena|3|0|0|#000000|#FDB515
+UMass Lowell|River Hawks|ae|MA|Tsongas Center / Costello Athletic Center|0|0|0|#0067B1|#C8102E
+New Hampshire|Wildcats|ae|NH|Lundholm Gym|0|0|0|#041E42|#BBBCBC
+NJIT|Highlanders|ae|NJ|Wellness and Events Center|0|0|0|#D22630|#071D49
+Vermont|Catamounts|ae|VT|Patrick Gym|10|0|0|#154734|#FFD416
+Charlotte|49ers|aac|NC|Dale F. Halton Arena|11|1|0|#005035|#A49665
+East Carolina|Pirates|aac|NC|Williams Arena at Minges Coliseum|2|0|0|#592A8A|#FDC82F
+Florida Atlantic|Owls|aac|FL|Eleanor R. Baldwin Arena|3|1|0|#003366|#CC0000
+Memphis|Tigers|aac|TN|FedExForum|29|3|0|#003087|#898D8D
+North Texas|Mean Green|aac|TX|UNT Coliseum|4|0|0|#00853E|#FFFFFF
+Rice|Owls|aac|TX|Tudor Fieldhouse|4|0|0|#00205B|#7C7E7F
+South Florida|Bulls|aac|FL|Yuengling Center|4|0|0|#006747|#CFC493
+Temple|Owls|aac|PA|Liacouras Center|32|2|0|#9D2235|#FFFFFF
+UAB|Blazers|aac|AL|Bartow Arena|17|0|0|#1E6B52|#F4C300
+UTSA|Roadrunners|aac|TX|Convocation Center|4|0|0|#0C2340|#F15A22
+Tulane|Green Wave|aac|LA|Devlin Fieldhouse|3|0|0|#006747|#418FDE
+Tulsa|Golden Hurricane|aac|OK|Reynolds Center|16|0|0|#002D72|#C5B783
+Wichita State|Shockers|aac|KS|Charles Koch Arena|16|2|0|#000000|#FFCD00
+Boston College|Eagles|acc|MA|Conte Forum|18|0|0|#8A100B|#BC9B6A
+California|Golden Bears|acc|CA|Haas Pavilion|19|3|1|#003262|#FDB515
+Clemson|Tigers|acc|SC|Littlejohn Coliseum|16|0|0|#F56600|#522D80
+Duke|Blue Devils|acc|NC|Cameron Indoor Stadium|49|18|5|#003087|#FFFFFF
+Florida State|Seminoles|acc|FL|Donald L. Tucker Center|18|1|0|#782F40|#CEB888
+Georgia Tech|Yellow Jackets|acc|GA|Hank McCamish Pavilion|17|2|0|#B3A369|#003057
+Louisville|Cardinals|acc|KY|KFC Yum! Center|45|10|3|#AD0000|#000000
+Miami (FL)|Hurricanes|acc|FL|Watsco Center|13|1|0|#F47321|#005030
+North Carolina|Tar Heels|acc|NC|Dean Smith Center|55|21|6|#7BAFD4|#13294B
+NC State|Wolfpack|acc|NC|PNC Arena|30|4|2|#CC0000|#000000
+Notre Dame|Fighting Irish|acc|IN|Edmund P. Joyce Center|38|1|0|#0C2340|#C99700
+Pittsburgh|Panthers|acc|PA|Petersen Events Center|27|1|0|#003594|#FFB81C
+SMU|Mustangs|acc|TX|Moody Coliseum|13|1|0|#C8102E|#0033A0
+Stanford|Cardinal|acc|CA|Maples Pavilion|17|2|1|#8C1515|#FFFFFF
+Syracuse|Orange|acc|NY|Carrier Dome|41|6|1|#F76900|#000E54
+Virginia|Cavaliers|acc|VA|John Paul Jones Arena|28|3|1|#232D4B|#F84C1E
+Virginia Tech|Hokies|acc|VA|Cassell Coliseum|13|0|0|#630031|#CF4420
+Wake Forest|Demon Deacons|acc|NC|Lawrence Joel Veterans Memorial Coliseum|24|1|0|#9E7E38|#000000
+Bellarmine|Knights|asun|KY|Knights Hall|0|0|0|#B70F0A|#7A7C7F
+Florida Gulf Coast|Eagles|asun|FL|Alico Arena|3|0|0|#002D72|#00885A
+Jacksonville|Dolphins|asun|FL|Swisher Gymnasium|5|1|0|#004D44|#FFFFFF
+Lipscomb|Bisons|asun|TN|Allen Arena|2|0|0|#331E54|#F4AA00
+North Florida|Ospreys|asun|FL|UNF Arena|1|0|0|#003366|#8996A0
+Queens|Royals|asun|NC|Curry Arena|1|0|0|#002855|#B9975B
+Stetson|Hatters|asun|FL|Edmunds Center|1|0|0|#0A5640|#FFFFFF
+West Florida|Argonauts|asun|FL|UWF Field House|0|0|0|#004C97|#8DC63F
+Davidson|Wildcats|a10|NC|John M. Belk Arena|15|0|0|#AC1A2F|#000000
+Dayton|Flyers|a10|OH|University of Dayton Arena|20|1|0|#CE1141|#004B8D
+Duquesne|Dukes|a10|PA|UPMC Cooper Fieldhouse|6|1|0|#041E42|#BA0C2F
+Fordham|Rams|a10|NY|Rose Hill Gymnasium|4|0|0|#860038|#FFFFFF
+George Mason|Patriots|a10|VA|EagleBank Arena|6|1|0|#006633|#FFCC33
+George Washington|Revolutionaries|a10|DC|Charles E. Smith Athletic Center|11|0|0|#033C5A|#AA9868
+La Salle|Explorers|a10|PA|Tom Gola Arena|12|2|1|#00264D|#FFC72C
+Loyola Chicago|Ramblers|a10|IL|Joseph J. Gentile Arena|8|2|1|#582C34|#FFC72C
+Rhode Island|Rams|a10|RI|Ryan Center|10|0|0|#75B2DD|#002147
+Richmond|Spiders|a10|VA|Robins Center|10|0|0|#990000|#000066
+St. Bonaventure|Bonnies|a10|NY|Reilly Center|8|1|0|#54261A|#FFFFFF
+Saint Joseph's|Hawks|a10|PA|Hagan Arena|21|1|0|#9E1B32|#7F7F7F
+Saint Louis|Billikens|a10|MO|Chaifetz Arena|11|0|0|#003DA5|#FFFFFF
+VCU|Rams|a10|VA|Stuart C. Siegel Center|22|1|0|#000000|#FFB300
+Butler|Bulldogs|bige|IN|Hinkle Fieldhouse|16|2|0|#13294B|#FFFFFF
+Creighton|Bluejays|bige|NE|CHI Health Center Omaha|26|0|0|#005CA9|#FFFFFF
+DePaul|Blue Demons|bige|IL|Wintrust Arena|22|2|0|#005EB8|#E4002B
+Georgetown|Hoyas|bige|DC|Capital One Arena|31|5|1|#041E42|#63666A
+Marquette|Golden Eagles|bige|WI|Fiserv Forum|37|3|1|#003366|#FFCC00
+Providence|Friars|bige|RI|Amica Mutual Pavilion|22|2|0|#000000|#A2AAAD
+St. John's|Red Storm|bige|NY|Madison Square Garden / Carnesecca Arena|32|2|0|#BA0C2F|#FFFFFF
+Seton Hall|Pirates|bige|NJ|Prudential Center|14|1|0|#004488|#A2AAAD
+UConn|Huskies|bige|CT|Harry A. Gampel Pavilion / PeoplesBank Arena|39|8|6|#000E2F|#FFFFFF
+Villanova|Wildcats|bige|PA|Finneran Pavilion / Xfinity Mobile Arena|44|7|3|#00205B|#13B5EA
+Xavier|Musketeers|bige|OH|Cintas Center|30|0|0|#0C2340|#9EA2A2
+Eastern Washington|Eagles|bsky|WA|Reese Court|3|0|0|#A10022|#000000
+Idaho|Vandals|bsky|ID|Idaho Central Credit Union Arena|5|0|0|#B5985A|#000000
+Idaho State|Bengals|bsky|ID|Holt Arena|10|0|0|#F47920|#000000
+Montana|Grizzlies|bsky|MT|Dahlberg Arena|13|0|0|#70263D|#999999
+Montana State|Bobcats|bsky|MT|Worthington Arena|6|0|0|#003875|#B9975B
+Northern Arizona|Lumberjacks|bsky|AZ|Walkup Skydome|2|0|0|#003466|#FFD200
+Northern Colorado|Bears|bsky|CO|Butler-Hancock Sports Pavilion|1|0|0|#013C65|#F6B000
+Portland State|Vikings|bsky|OR|Viking Pavilion|2|0|0|#154734|#FFFFFF
+Southern Utah|Thunderbirds|bsky|UT|America First Event Center|1|0|0|#C8102E|#FFFFFF
+Utah Tech|Trailblazers|bsky|UT|Burns Arena|0|0|0|#BA1C21|#003058
+Weber State|Wildcats|bsky|UT|Dee Events Center|15|0|0|#492365|#FFFFFF
+Charleston Southern|Buccaneers|bsou|SC|CSU Field House|1|0|0|#002649|#A89968
+Gardner-Webb|Runnin' Bulldogs|bsou|NC|Paul Porter Arena|1|0|0|#BF2C37|#000000
+High Point|Panthers|bsou|NC|Qubein Center|2|0|0|#330072|#FFFFFF
+Longwood|Lancers|bsou|VA|Joan Perry Brock Center|2|0|0|#002B5C|#9EA2A2
+Presbyterian|Blue Hose|bsou|SC|Templeton Physical Education Center|0|0|0|#0060A9|#9D2235
+Radford|Highlanders|bsou|VA|Dedmon Center|3|0|0|#C2011B|#FFFFFF
+UNC Asheville|Bulldogs|bsou|NC|Kimmel Arena|5|0|0|#003DA5|#FFFFFF
+USC Upstate|Spartans|bsou|SC|G. B. Hodge Center|0|0|0|#00703C|#000000
+Winthrop|Eagles|bsou|SC|Winthrop Coliseum|11|0|0|#872434|#FFC72C
+UCLA|Bruins|b1g|CA|Pauley Pavilion|54|19|11|#2D68C4|#F2A900
+Illinois|Fighting Illini|b1g|IL|State Farm Center|36|6|0|#E84A27|#13294B
+Indiana|Hoosiers|b1g|IN|Simon Skjodt Assembly Hall|49|8|5|#990000|#EEEDEB
+Iowa|Hawkeyes|b1g|IA|Carver-Hawkeye Arena|30|3|0|#FFCD00|#000000
+Maryland|Terrapins|b1g|MD|Xfinity Center|31|2|1|#E03A3E|#FFD520
+Michigan|Wolverines|b1g|MI|Crisler Center|33|9|2|#00274C|#FFCB05
+Michigan State|Spartans|b1g|MI|Breslin Student Events Center|39|10|2|#18453B|#FFFFFF
+Minnesota|Golden Gophers|b1g|MN|Williams Arena|14|1|0|#7A0019|#FFCC33
+Nebraska|Cornhuskers|b1g|NE|Pinnacle Bank Arena|9|0|0|#E41C38|#F5F1E7
+Northwestern|Wildcats|b1g|IL|Welsh-Ryan Arena|3|0|0|#4E2A84|#FFFFFF
+Ohio State|Buckeyes|b1g|OH|Value City Arena|36|11|1|#BB0000|#666666
+Oregon|Ducks|b1g|OR|Matthew Knight Arena|19|2|1|#154733|#FEE123
+Penn State|Nittany Lions|b1g|PA|Bryce Jordan Center|10|1|0|#041E42|#FFFFFF
+Purdue|Boilermakers|b1g|IN|Mackey Arena|37|3|0|#CEB888|#000000
+Rutgers|Scarlet Knights|b1g|NJ|Jersey Mike's Arena|8|1|0|#CC0033|#5F6A72
+USC|Trojans|b1g|CA|Galen Center|21|2|0|#990000|#FFC72C
+Washington|Huskies|b1g|WA|Alaska Airlines Arena at Hec Edmundson Pavilion|17|1|0|#4B2E83|#B7A57A
+Wisconsin|Badgers|b1g|WI|Kohl Center|29|4|1|#C5050C|#FFFFFF
+Arizona|Wildcats|b12|AZ|McKale Center|40|5|1|#CC0033|#003366
+Arizona State|Sun Devils|b12|AZ|Desert Financial Arena|17|0|0|#8C1D40|#FFC627
+Baylor|Bears|b12|TX|Foster Pavilion|17|3|1|#154734|#FFB81C
+BYU|Cougars|b12|UT|Marriott Center|33|0|0|#002E5D|#FFFFFF
+UCF|Knights|b12|FL|Addition Financial Arena|6|0|0|#000000|#BA9B37
+Cincinnati|Bearcats|b12|OH|Fifth Third Arena|33|6|2|#E00122|#000000
+Colorado|Buffaloes|b12|CO|CU Events Center|16|2|0|#CFB87C|#000000
+Houston|Cougars|b12|TX|Fertitta Center|27|7|0|#C8102E|#FFFFFF
+Iowa State|Cyclones|b12|IA|Hilton Coliseum|25|1|0|#C8102E|#F1BE48
+Kansas|Jayhawks|b12|KS|Allen Fieldhouse|54|16|4|#0051BA|#E8000D
+Kansas State|Wildcats|b12|KS|Bramlage Coliseum|32|4|0|#512888|#FFFFFF
+Oklahoma State|Cowboys|b12|OK|Gallagher-Iba Arena|29|6|2|#FF7300|#000000
+TCU|Horned Frogs|b12|TX|Schollmaier Arena|12|0|0|#4D1979|#A3A9AC
+Texas Tech|Red Raiders|b12|TX|United Supermarkets Arena|22|1|0|#CC0000|#000000
+Utah|Utes|b12|UT|Jon M. Huntsman Center|30|4|1|#CC0000|#FFFFFF
+West Virginia|Mountaineers|b12|WV|WVU Coliseum|31|2|0|#002855|#EAAA00
+Cal Baptist|Lancers|bw|CA|Fowler Events Center|1|0|0|#002554|#A27D2E
+Cal Poly|Mustangs|bw|CA|Mott Gym|1|0|0|#154734|#C69214
+CSU Bakersfield|Roadrunners|bw|CA|Icardo Center|1|0|0|#003594|#FFC72C
+Cal State Fullerton|Titans|bw|CA|Titan Gym|4|0|0|#00274C|#FF7900
+CSUN|Matadors|bw|CA|Matadome|2|0|0|#CE1126|#000000
+Long Beach State|The Beach|bw|CA|Walter Pyramid|10|0|0|#000000|#F0B323
+Sacramento State|Hornets|bw|CA|Colberg Court|0|0|0|#043927|#C4B581
+UC Irvine|Anteaters|bw|CA|Bren Events Center|2|0|0|#0064A4|#FFD200
+UC Riverside|Highlanders|bw|CA|UC Riverside Student Recreation Center|0|0|0|#003DA5|#FFB81C
+UC San Diego|Tritons|bw|CA|LionTree Arena|1|0|0|#182B49|#C69214
+UC Santa Barbara|Gauchos|bw|CA|UC Santa Barbara Events Center|7|0|0|#003660|#FEBC11
+Utah Valley|Wolverines|bw|UT|UCCU Center|0|0|0|#275D38|#FFFFFF
+Campbell|Fighting Camels|caa|NC|John W. Pope Jr. Convocation Center|1|0|0|#F58025|#000000
+Charleston|Cougars|caa|SC|TD Arena|7|0|0|#800000|#C5B783
+Drexel|Dragons|caa|PA|Daskalakis Athletic Center|5|0|0|#07294D|#FFC600
+Elon|Phoenix|caa|NC|Schar Center|0|0|0|#73000A|#B59A57
+Hampton|Pirates|caa|VA|Hampton Convocation Center|6|0|0|#0067B1|#FFFFFF
+Hofstra|Pride|caa|NY|Hofstra Arena|5|0|0|#00338D|#FFC72C
+Monmouth|Hawks|caa|NJ|OceanFirst Bank Center|4|0|0|#041E42|#FFFFFF
+North Carolina A&T|Aggies|caa|NC|Corbett Sports Center|10|0|0|#004684|#FDB927
+Northeastern|Huskies|caa|MA|Matthews Arena|9|0|0|#C8102E|#000000
+Stony Brook|Seawolves|caa|NY|Island Federal Credit Union Arena|1|0|0|#990000|#16243E
+Towson|Tigers|caa|MD|SECU Arena|2|0|0|#FFBB00|#000000
+UNC Wilmington|Seahawks|caa|NC|Trask Coliseum|7|0|0|#006666|#FFD600
+William & Mary|Tribe|caa|VA|Kaplan Arena|0|0|0|#115740|#B9975B
+Delaware|Fightin' Blue Hens|cusa|DE|Bob Carpenter Center|6|0|0|#00539F|#FFD200
+FIU|Panthers|cusa|FL|FIU Arena|1|0|0|#081E3F|#B6862C
+Jacksonville State|Gamecocks|cusa|AL|Pete Mathews Coliseum|2|0|0|#CC0000|#FFFFFF
+Kennesaw State|Owls|cusa|GA|KSU Convocation Center|2|0|0|#FDBB30|#000000
+Liberty|Flames|cusa|VA|Liberty Arena / Vines Center|6|0|0|#002D62|#C41230
+Middle Tennessee|Blue Raiders|cusa|TN|Murphy Center|9|0|0|#0066CC|#FFFFFF
+Missouri State|Bears|cusa|MO|Great Southern Bank Arena|6|0|0|#5E0009|#FFFFFF
+New Mexico State|Aggies|cusa|NM|Pan American Center|26|1|0|#861F41|#FFFFFF
+Sam Houston|Bearkats|cusa|TX|Bernard Johnson Coliseum|2|0|0|#F76800|#FFFFFF
+Western Kentucky|Hilltoppers|cusa|KY|E. A. Diddle Arena|24|1|0|#C60C30|#FFFFFF
+Cleveland State|Vikings|hl|OH|Wolstein Center|3|0|0|#006747|#FFFFFF
+Detroit Mercy|Titans|hl|MI|Calihan Hall|6|0|0|#A6192E|#002D72
+IU Indy|Jaguars|hl|IN|James T. Morris Arena|1|0|0|#990000|#FFC72C
+Milwaukee|Panthers|hl|WI|UW-Milwaukee Panther Arena|4|0|0|#000000|#FFBD00
+Northern Illinois|Huskies|hl|IL|Convocation Center|3|0|0|#BA0C2F|#000000
+Northern Kentucky|Norse|hl|KY|Truist Arena|3|0|0|#000000|#FFC72C
+Oakland|Golden Grizzlies|hl|MI|OU Credit Union O'rena|4|0|0|#000000|#B59A57
+Purdue Fort Wayne|Mastodons|hl|IN|Hilliard Gates Sports Center / Allen County War Memorial Coliseum|0|0|0|#003976|#CFB991
+Robert Morris|Colonials|hl|PA|UPMC Events Center|9|0|0|#14234B|#A6192E
+Green Bay|Phoenix|hl|WI|Resch Center|5|0|0|#006F44|#FFFFFF
+Wright State|Raiders|hl|OH|Nutter Center|5|0|0|#007A33|#CBA052
+Youngstown State|Penguins|hl|OH|Beeghly Center|0|0|0|#C8102E|#FFFFFF
+Brown|Bears|ivy|RI|Pizzitola Sports Center|2|0|0|#4E3629|#ED1C24
+Columbia|Lions|ivy|NY|Levien Gymnasium|3|0|0|#9BCBEB|#1D4F91
+Cornell|Big Red|ivy|NY|Newman Arena|5|0|0|#B31B1B|#FFFFFF
+Dartmouth|Big Green|ivy|NH|Leede Arena|7|2|0|#00693E|#FFFFFF
+Harvard|Crimson|ivy|MA|Lavietes Pavilion|5|0|0|#A51C30|#000000
+Penn|Quakers|ivy|PA|The Palestra|25|1|0|#011F5B|#990000
+Princeton|Tigers|ivy|NJ|Jadwin Gymnasium|26|1|0|#FF8F00|#000000
+Yale|Bulldogs|ivy|CT|John J. Lee Amphitheater|8|0|0|#00356B|#FFFFFF
+Canisius|Golden Griffins|maac|NY|Koessler Athletic Center|4|0|0|#0E2756|#FFBA00
+Fairfield|Stags|maac|CT|Webster Bank Arena|6|0|0|#C8102E|#000000
+Iona|Gaels|maac|NY|Hynes Athletic Center|16|0|0|#6F2C3F|#FFB81C
+Manhattan|Jaspers|maac|NY|Draddy Gymnasium|8|0|0|#00703C|#FFFFFF
+Marist|Red Foxes|maac|NY|McCann Field House|2|0|0|#C8102E|#FFFFFF
+Merrimack|Warriors|maac|MA|Hammel Court|0|0|0|#003768|#FFC72C
+Mount St. Mary's|Mountaineers|maac|MD|Knott Arena|7|0|0|#005596|#B9975B
+Niagara|Purple Eagles|maac|NY|Gallagher Center|3|0|0|#582C83|#FFFFFF
+Quinnipiac|Bobcats|maac|CT|TD Bank Sports Center|0|0|0|#0C2340|#FFB81C
+Rider|Broncs|maac|NJ|Alumni Gymnasium|3|0|0|#9D2235|#FFFFFF
+Sacred Heart|Pioneers|maac|CT|William H. Pitt Center|0|0|0|#CE1141|#A2AAAD
+Saint Peter's|Peacocks|maac|NJ|Run Baby Run Arena|5|0|0|#0057B8|#FFFFFF
+Siena|Saints|maac|NY|MVP Arena|7|0|0|#006747|#FFC72C
+Akron|Zips|mac|OH|James A. Rhodes Arena|8|0|0|#041E42|#A89968
+Ball State|Cardinals|mac|IN|John E. Worthen Arena|7|0|0|#BA0C2F|#FFFFFF
+Bowling Green|Falcons|mac|OH|Stroh Center|4|0|0|#FE5000|#4F2C1D
+Buffalo|Bulls|mac|NY|Alumni Arena|4|0|0|#005BBB|#FFFFFF
+Central Michigan|Chippewas|mac|MI|McGuirk Arena|4|0|0|#6A0032|#FFC82E
+Eastern Michigan|Eagles|mac|MI|Convocation Center|4|0|0|#046A38|#FFFFFF
+Kent State|Golden Flashes|mac|OH|Memorial Athletic and Convocation Center|7|0|0|#002664|#EAAB00
+UMass|Minutemen|mac|MA|Mullins Center|9|1|0|#881C1C|#000000
+Miami (OH)|RedHawks|mac|OH|Millett Hall|18|0|0|#C3142D|#FFFFFF
+Ohio|Bobcats|mac|OH|Convocation Center|14|0|0|#00694E|#FFFFFF
+Toledo|Rockets|mac|OH|Savage Arena|4|0|0|#15397F|#FFDA00
+Western Michigan|Broncos|mac|MI|University Arena|4|0|0|#6C4023|#B5A167
+Coppin State|Eagles|meac|MD|Physical Education Complex|4|0|0|#2D2926|#C1A875
+Delaware State|Hornets|meac|DE|Memorial Hall|1|0|0|#E31837|#00AEEF
+Howard|Bison|meac|DC|Burr Gymnasium|5|0|0|#003A63|#E51937
+Maryland Eastern Shore|Hawks|meac|MD|Hytche Athletic Center|0|0|0|#862633|#9EA2A2
+Morgan State|Bears|meac|MD|Talmadge L. Hill Field House|2|0|0|#0033A1|#F47937
+Norfolk State|Spartans|meac|VA|Joseph G. Echols Memorial Hall|4|0|0|#007A53|#F2A900
+North Carolina Central|Eagles|meac|NC|McLendon-McDougald Gymnasium|4|0|0|#880023|#A2AAAD
+South Carolina State|Bulldogs|meac|SC|SHM Memorial Center|5|0|0|#841F27|#2E5090
+Belmont|Bruins|mvc|TN|Curb Event Center|8|0|0|#002469|#C8102E
+Bradley|Braves|mvc|IL|Carver Arena|9|2|0|#A50000|#FFFFFF
+Drake|Bulldogs|mvc|IA|Knapp Center|8|1|0|#004477|#FFFFFF
+Evansville|Purple Aces|mvc|IN|Ford Center|5|0|0|#4F2683|#F47B20
+Illinois State|Redbirds|mvc|IL|Redbird Arena|6|0|0|#CE1126|#FFFFFF
+Indiana State|Sycamores|mvc|IN|Hulman Center|4|1|0|#00669A|#FFFFFF
+Murray State|Racers|mvc|KY|CFSB Center|18|0|0|#002144|#ECAC00
+Northern Iowa|Panthers|mvc|IA|McLeod Center|9|0|0|#4B116F|#FFCC00
+Southern Illinois|Salukis|mvc|IL|Banterra Center|10|0|0|#720000|#FFFFFF
+UIC|Flames|mvc|IL|Credit Union 1 Arena|3|0|0|#001E62|#D50032
+Valparaiso|Beacons|mvc|IN|Athletics-Recreation Center|9|0|0|#613318|#FFCC00
+Air Force|Falcons|mwc|CO|Clune Arena|4|0|0|#003087|#8A8D8F
+Grand Canyon|Antelopes|mwc|AZ|Global Credit Union Arena|4|0|0|#522398|#000000
+Hawaii|Rainbow Warriors|mwc|HI|Stan Sheriff Center|6|0|0|#024731|#FFFFFF
+Nevada|Wolf Pack|mwc|NV|Lawlor Events Center|11|0|0|#003366|#807F84
+New Mexico|Lobos|mwc|NM|Dreamstyle Arena|17|0|0|#BA0C2F|#A7A8AA
+San Jose State|Spartans|mwc|CA|Provident Credit Union Event Center|3|0|0|#0055A2|#E5A823
+UC Davis|Aggies|mwc|CA|University Credit Union Center|1|0|0|#022851|#FFBF00
+UNLV|Runnin' Rebels|mwc|NV|Thomas & Mack Center|20|4|1|#CF0A2C|#666666
+UTEP|Miners|mwc|TX|Don Haskins Center|17|1|1|#041E42|#FF8200
+Wyoming|Cowboys|mwc|WY|Arena-Auditorium|16|1|1|#492F24|#FFC425
+Central Connecticut|Blue Devils|nec|CT|William H. Detrick Gymnasium|3|0|0|#1B49A2|#FFFFFF
+Chicago State|Cougars|nec|IL|Emil and Patricia Jones Convocation Center|0|0|0|#006666|#FFFFFF
+Fairleigh Dickinson|Knights|nec|NJ|Rothman Center|7|0|0|#72293C|#003C71
+Le Moyne|Dolphins|nec|NY|Ted Grant Court|0|0|0|#00573F|#FFC72C
+LIU|Sharks|nec|NY|Steinberg Wellness Center|8|0|0|#69B3E7|#FFC72C
+Mercyhurst|Lakers|nec|PA|Mercyhurst Athletic Center|0|0|0|#004B23|#002855
+New Haven|Chargers|nec|CT|Jeffrey P. Hazell Athletics Center|0|0|0|#002D72|#FFC72C
+Stonehill|Skyhawks|nec|MA|Merkert Gymnasium|0|0|0|#2F2A5E|#FFFFFF
+Wagner|Seahawks|nec|NY|Spiro Sports Center|2|0|0|#00483A|#FFFFFF
+Eastern Illinois|Panthers|ovc|IL|Lantz Arena|2|0|0|#004B83|#A2AAAD
+Lindenwood|Lions|ovc|MO|Robert F. Hyland Performance Arena|0|0|0|#000000|#B5A36A
+Morehead State|Eagles|ovc|KY|Ellis Johnson Arena|9|0|0|#005EB8|#FFCF00
+Southeast Missouri|Redhawks|ovc|MO|Show Me Center|2|0|0|#C8102E|#000000
+SIU Edwardsville|Cougars|ovc|IL|Vadalabene Center|1|0|0|#E31837|#000000
+Southern Indiana|Screaming Eagles|ovc|IN|Liberty Arena|0|0|0|#002D72|#C8102E
+UT Martin|Skyhawks|ovc|TN|Tom and Kathleen Elam Center|0|0|0|#FF6700|#002649
+Tennessee State|Tigers|ovc|TN|Gentry Complex|3|0|0|#00539F|#FFFFFF
+Western Illinois|Leathernecks|ovc|IL|Western Hall|0|0|0|#663399|#FFCC00
+Boise State|Broncos|pac|ID|ExtraMile Arena|10|0|0|#0033A0|#D64309
+Colorado State|Rams|pac|CO|Moby Arena|13|0|0|#1E4D2B|#C8C372
+Fresno State|Bulldogs|pac|CA|Save Mart Center|6|0|0|#DB0032|#002E6D
+Gonzaga|Bulldogs|pac|WA|McCarthey Athletic Center|28|2|0|#041E42|#C8102E
+Oregon State|Beavers|pac|OR|Gill Coliseum|18|2|0|#DC4405|#000000
+San Diego State|Aztecs|pac|CA|Viejas Arena|17|1|0|#A6192E|#000000
+Texas State|Bobcats|pac|TX|Strahan Coliseum|2|0|0|#501214|#8D734A
+Utah State|Aggies|pac|UT|Smith Spectrum|26|0|0|#0F2439|#8A8D8F
+Washington State|Cougars|pac|WA|Beasley Coliseum|7|1|0|#981E32|#5E6A71
+American|Eagles|pat|DC|Bender Arena|4|0|0|#C4122F|#00205B
+Army|Black Knights|pat|NY|Christl Arena|0|0|0|#000000|#D4BF91
+Boston University|Terriers|pat|MA|Case Gym|7|0|0|#CC0000|#FFFFFF
+Bucknell|Bison|pat|PA|Sojka Pavilion|8|0|0|#E87722|#003865
+Colgate|Raiders|pat|NY|Cotterell Court|7|0|0|#821019|#FFFFFF
+Holy Cross|Crusaders|pat|MA|Hart Center|13|2|1|#602D89|#FFFFFF
+Lafayette|Leopards|pat|PA|Kirby Sports Center|4|0|0|#98002E|#FFFFFF
+Lehigh|Mountain Hawks|pat|PA|Stabler Arena|6|0|0|#653600|#FFFFFF
+Loyola Maryland|Greyhounds|pat|MD|Reitz Arena|2|0|0|#006A4D|#A2AAAD
+Navy|Midshipmen|pat|MD|Alumni Hall|11|0|0|#00205B|#C5B783
+Alabama|Crimson Tide|sec|AL|Coleman Coliseum|27|1|0|#9E1B32|#828A8F
+Arkansas|Razorbacks|sec|AR|Bud Walton Arena|37|6|1|#9D2235|#FFFFFF
+Auburn|Tigers|sec|AL|Neville Arena|14|2|0|#0C2340|#E87722
+Florida|Gators|sec|FL|Exactech Arena at O'Connell Center|26|5|3|#0021A5|#FA4616
+Georgia|Bulldogs|sec|GA|Stegeman Coliseum|14|1|0|#BA0C2F|#000000
+Kentucky|Wildcats|sec|KY|Rupp Arena|64|17|8|#0033A0|#FFFFFF
+LSU|Tigers|sec|LA|Pete Maravich Assembly Center|24|4|0|#461D7C|#FDD023
+Ole Miss|Rebels|sec|MS|The Sandy and John Black Pavilion at Ole Miss|10|0|0|#CE1126|#14213D
+Mississippi State|Bulldogs|sec|MS|Humphrey Coliseum|14|1|0|#5D1725|#FFFFFF
+Missouri|Tigers|sec|MO|Mizzou Arena|31|0|0|#F1B82D|#000000
+Oklahoma|Sooners|sec|OK|Lloyd Noble Center|34|5|0|#841617|#FDF9D8
+South Carolina|Gamecocks|sec|SC|Colonial Life Arena|10|1|0|#73000A|#000000
+Tennessee|Volunteers|sec|TN|Thompson-Boling Arena|28|0|0|#FF8200|#FFFFFF
+Texas|Longhorns|sec|TX|Moody Center|40|3|0|#BF5700|#FFFFFF
+Texas A&M|Aggies|sec|TX|Reed Arena|18|0|0|#500000|#FFFFFF
+Vanderbilt|Commodores|sec|TN|Memorial Gymnasium|17|0|0|#866D4B|#000000
+Chattanooga|Mocs|socon|TN|McKenzie Arena|12|0|0|#00386B|#E0AA0F
+The Citadel|Bulldogs|socon|SC|McAlister Field House|0|0|0|#3975B7|#FFFFFF
+East Tennessee State|Buccaneers|socon|TN|Freedom Hall Civic Center|10|0|0|#041E42|#FFC72C
+Furman|Paladins|socon|SC|Timmons Arena|8|0|0|#582C83|#FFFFFF
+Mercer|Bears|socon|GA|Hawkins Arena|3|0|0|#F76800|#000000
+Samford|Bulldogs|socon|AL|Pete Hanna Center|3|0|0|#002649|#C8102E
+Tennessee Tech|Golden Eagles|socon|TN|Eblen Center|2|0|0|#4F2984|#FFDD00
+UNC Greensboro|Spartans|socon|NC|Greensboro Coliseum|4|0|0|#0F2044|#FFB71B
+VMI|Keydets|socon|VA|Cameron Hall|3|0|0|#AE122A|#FFD619
+Western Carolina|Catamounts|socon|NC|Ramsey Center|1|0|0|#592C88|#C1A875
+Wofford|Terriers|socon|SC|Jerry Richardson Indoor Stadium|6|0|0|#886E4C|#000000
+East Texas A&M|Lions|slc|TX|The Field House|0|0|0|#00386C|#FFC333
+Houston Christian|Huskies|slc|TX|Sharp Gymnasium|1|0|0|#00539B|#F47B20
+Incarnate Word|Cardinals|slc|TX|McDermott Convocation Center|0|0|0|#CB333B|#000000
+Lamar|Cardinals|slc|TX|Montagne Center|6|0|0|#E51937|#FFFFFF
+New Orleans|Privateers|slc|LA|Lakefront Arena|5|0|0|#003399|#A7A9AC
+McNeese|Cowboys|slc|LA|The Legacy Center|5|0|0|#00529B|#FFD204
+Nicholls|Colonels|slc|LA|Stopher Gymnasium|2|0|0|#C41230|#A2AAAD
+Northwestern State|Demons|slc|LA|Prather Coliseum|3|0|0|#492F92|#F58025
+Southeastern Louisiana|Lions|slc|LA|University Center|1|0|0|#006341|#EAAA00
+Stephen F. Austin|Lumberjacks|slc|TX|William R. Johnson Coliseum|5|0|0|#5F259F|#FFFFFF
+Texas A&M-Corpus Christi|Islanders|slc|TX|American Bank Center|3|0|0|#0067C5|#007F3E
+UTRGV|Vaqueros|slc|TX|UTRGV Fieldhouse|0|0|0|#F05023|#646469
+Alabama A&M|Bulldogs|swac|AL|Alabama A&M Events Center|1|0|0|#660000|#FFFFFF
+Alabama State|Hornets|swac|AL|Dunn-Oliver Acadome|5|0|0|#000000|#FDB913
+Alcorn State|Braves|swac|MS|Davey Whitney Complex|6|0|0|#46166B|#E9A900
+Arkansas-Pine Bluff|Golden Lions|swac|AR|K. L. Johnson Complex|1|0|0|#000000|#E2A60C
+Bethune-Cookman|Wildcats|swac|FL|Moore Gymnasium|0|0|0|#6F263D|#F2A900
+Florida A&M|Rattlers|swac|FL|Lawson Multipurpose Center|3|0|0|#F47A20|#00843D
+Grambling State|Tigers|swac|LA|Fredrick C. Hobdy Assembly Center|1|0|0|#000000|#FDB913
+Jackson State|Tigers|swac|MS|Williams Assembly Center|3|0|0|#002147|#FFFFFF
+Mississippi Valley State|Delta Devils|swac|MS|Harrison HPER Complex|5|0|0|#006A4E|#E31837
+Prairie View A&M|Panthers|swac|TX|William Nicks Building|3|0|0|#4F2D7F|#FDB913
+Southern|Jaguars|swac|LA|F. G. Clark Center|9|0|0|#0067B1|#FDB827
+Texas Southern|Tigers|swac|TX|Health and Physical Education Arena|11|0|0|#7A0019|#A2AAAD
+Kansas City|Roos|summit|MO|Swinney Recreation Center|0|0|0|#0067B1|#FFD100
+North Dakota|Fighting Hawks|summit|ND|Betty Engelstad Sioux Center|1|0|0|#009A44|#000000
+North Dakota State|Bison|summit|ND|Bison Sports Arena|5|0|0|#0A5640|#FFC72A
+Omaha|Mavericks|summit|NE|Baxter Arena|1|0|0|#D71920|#000000
+Oral Roberts|Golden Eagles|summit|OK|Mabee Center|7|0|0|#002D62|#C5B783
+St. Thomas|Tommies|summit|MN|Lee and Penny Anderson Arena|0|0|0|#510C76|#A2AAAD
+South Dakota|Coyotes|summit|SD|Sanford Coyote Sports Center|0|0|0|#AD0000|#FFFFFF
+South Dakota State|Jackrabbits|summit|SD|Frost Arena|7|0|0|#0033A0|#FFD100
+Appalachian State|Mountaineers|sbc|NC|George M. Holmes Convocation Center|3|0|0|#222222|#FFCC00
+Arkansas State|Red Wolves|sbc|AR|Convocation Center|1|0|0|#CC092F|#000000
+Coastal Carolina|Chanticleers|sbc|SC|HTC Center|4|0|0|#006F71|#A27752
+Georgia Southern|Eagles|sbc|GA|Hanner Fieldhouse|3|0|0|#041E42|#A3AAAE
+Georgia State|Panthers|sbc|GA|GSU Sports Arena|6|0|0|#0039A6|#C8102E
+James Madison|Dukes|sbc|VA|Atlantic Union Bank Center|6|0|0|#450084|#CBB677
+Louisiana|Ragin' Cajuns|sbc|LA|Cajundome|9|0|0|#CE181E|#0A0A0A
+Louisiana-Monroe|Warhawks|sbc|LA|Fant-Ewing Coliseum|7|0|0|#840029|#BA9446
+Louisiana Tech|Bulldogs|sbc|LA|Thomas Assembly Center|5|0|0|#002F8B|#E31B23
+Marshall|Thundering Herd|sbc|WV|Cam Henderson Center|6|0|0|#00B140|#FFFFFF
+Old Dominion|Monarchs|sbc|VA|Chartway Arena|12|0|0|#003057|#7C878E
+South Alabama|Jaguars|sbc|AL|Mitchell Center|8|0|0|#00205B|#BF0D3E
+Southern Miss|Golden Eagles|sbc|MS|Reed Green Coliseum|3|0|0|#000000|#FFAB00
+Troy|Trojans|sbc|AL|Trojan Arena|4|0|0|#8A2432|#B3B5B8
+Abilene Christian|Wildcats|uac|TX|Moody Coliseum|2|0|0|#4F2170|#FFFFFF
+Austin Peay|Governors|uac|TN|F&M Bank Arena|7|0|0|#C41E3A|#FFFFFF
+Central Arkansas|Bears|uac|AR|Farris Center|0|0|0|#4F2D7F|#A7A9AC
+Eastern Kentucky|Colonels|uac|KY|Baptist Health Arena|8|0|0|#861F41|#FFFFFF
+Little Rock|Trojans|uac|AR|Jack Stephens Center|5|0|0|#6F263D|#A2AAAD
+North Alabama|Lions|uac|AL|Flowers Hall|0|0|0|#46166B|#DB9F11
+Tarleton State|Texans|uac|TX|EECU Center|0|0|0|#4F2D7F|#FFFFFF
+UT Arlington|Mavericks|uac|TX|College Park Center|1|0|0|#0064B1|#F58025
+West Georgia|Wolves|uac|GA|The Coliseum|0|0|0|#0656A5|#DA291C
+Denver|Pioneers|wcc|CO|Magness Arena|0|0|0|#8B2332|#8B6F4E
+Loyola Marymount|Lions|wcc|CA|Gersten Pavilion|5|0|0|#00345B|#AB0C2F
+Pacific|Tigers|wcc|CA|Alex G. Spanos Center|9|0|0|#F47920|#000000
+Pepperdine|Waves|wcc|CA|Firestone Fieldhouse|13|0|0|#00205B|#E35205
+Portland|Pilots|wcc|OR|Chiles Center|2|0|0|#1E1656|#FFFFFF
+Saint Mary's|Gaels|wcc|CA|University Credit Union Pavilion|15|0|0|#06315B|#D80024
+San Diego|Toreros|wcc|CA|Jenny Craig Pavilion|4|0|0|#002D62|#75B2DD
+San Francisco|Dons|wcc|CA|The Sobrato Center|16|3|2|#00543C|#FDBB30
+Santa Clara|Broncos|wcc|CA|Leavey Center|12|1|0|#862633|#FFFFFF
+Seattle U|Redhawks|wcc|WA|Climate Pledge Arena / Redhawk Center|11|1|0|#AA0000|#FFFFFF

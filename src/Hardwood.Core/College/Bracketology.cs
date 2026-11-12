@@ -50,10 +50,18 @@ public sealed partial class CollegeWorld
     /// and the bottom eight are the First Four's 16-seeds. <see cref="Select"/> picks the real field with this, so a
     /// projection made once the conference tournaments are over is exactly the bracket.
     /// </summary>
+    /// <summary>How much of its conference's strength a real world's selection rating carries (R3).</summary>
+    public static double ScheduleWeight = 0.5;
+
     private BracketProjection Project(IReadOnlyDictionary<int, string> auto, bool final, int decided)
     {
         var elo = Season.Elo;
-        double Rating(int id) => elo.GetValueOrDefault(id, 1500);
+        // R3: with 32 real conferences, a champion of a weak one runs up its rating against weak opponents. The committee
+        // weighs the schedule: a real world's rating counts half the gap between the program's conference and the average,
+        // so weak-conference champions seed 13-16 and the strong at-large teams fill lines 10-12, as in the real bracket.
+        var confElo = IsReal ? Programs.GroupBy(t => ConferenceOf[t.Id]).ToDictionary(g => g.Key, g => g.Average(t => elo.GetValueOrDefault(t.Id, 1500))) : null;
+        double avg = confElo == null ? 1500 : Programs.Average(t => elo.GetValueOrDefault(t.Id, 1500));
+        double Rating(int id) => elo.GetValueOrDefault(id, 1500) + (confElo == null ? 0 : ScheduleWeight * (confElo[ConferenceOf[id]] - avg));
         var autoIds = auto.Keys.ToHashSet();
         var others = Programs.Select(t => t.Id).Where(i => !autoIds.Contains(i)).OrderByDescending(Rating).ToList();
         int atLargeCount = FieldSize - autoIds.Count;

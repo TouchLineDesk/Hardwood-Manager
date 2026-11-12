@@ -26,7 +26,7 @@ public class CollegeTests
         var c = world.College!;
         Assert.True(nabl.CollegeActive);
         Assert.Equal(6 * 14 + 4 * 16, c.Programs.Count); // decision #121: two more conferences
-        foreach (var conf in CollegeWorld.Conferences) Assert.Equal(conf.Size, c.InConference(conf.Key).Count());
+        foreach (var conf in CollegeWorld.Conferences.Where(x => !x.Real)) Assert.Equal(conf.Size, c.InConference(conf.Key).Count());
         Assert.True(c.Recruiting);
         Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.Squad, t.Roster.Count));
         var on = new DateOnly(2026, 7, 1); // ages as of the summer the school year began (classes enroll and graduate then)
@@ -57,14 +57,14 @@ public class CollegeTests
         Assert.Equal(68, s.Seeds.Count);
         Assert.Equal(67, s.Games.Count(g => g.Event == CollegeWorld.Madness)); // First Four + 63
         Assert.NotNull(s.ChampionId);
-        Assert.Equal(CollegeWorld.Conferences.Length, s.ConferenceChampions.Count);
+        Assert.Equal(c.Active.Count(), s.ConferenceChampions.Count);
         Assert.All(s.ConferenceChampions.Values, id => Assert.Contains(id, s.Seeds.Keys)); // automatic bids
         Assert.Equal(8, s.Games.Where(g => g.Stage == "Invitational").Select(g => g.Event).Distinct().Count());
         var records = c.Programs.Select(t => c.Record(t.Id)).Select(r => r.wins + r.losses).ToList();
         Assert.InRange(records.Average(), 24, 32);
         Assert.Contains(c.History, h => h.Year == s.Year && h.ChampionId == s.ChampionId);
         Assert.Equal(25, c.Top25().Count);
-        Assert.All(CollegeWorld.Conferences, conf => Assert.Equal(conf.Size, c.ConferenceTable(conf.Key).Count));
+        Assert.All(c.Active, conf => Assert.Equal(conf.Size, c.ConferenceTable(conf.Key).Count));
         Assert.Contains(world.News, n => n.Title.EndsWith("win March Madness"));
     }
 

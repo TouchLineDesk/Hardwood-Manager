@@ -119,6 +119,7 @@ public sealed partial class CollegeWorld
 
     private static string FindHomeState(string city)
     {
+        if (Hardwood.Core.RealWorld.RealColleges.StateOf(city) is { } real) return real; // R3: a real program
         foreach (var place in PlacesLongestFirst)
             if (city.Contains(place, StringComparison.Ordinal)) return PlaceToState[place];
         return "TX";
