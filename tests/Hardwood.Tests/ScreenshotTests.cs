@@ -227,6 +227,11 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-college-class-rankings.png"));
             vm.Navigate("Offseason");
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-resign.png"));
+            if (session.Offseason?.CollegeDraftOn == true)
+            {
+                ((OffseasonViewModel)vm.CurrentPage!).Tab = 4;
+                Snap(window, Path.Combine(dir, $"{n++:00}-offseason-draft-lottery.png"));
+            }
             session.AdvanceOffseason(); vm.AfterTick();
             Snap(window, Path.Combine(dir, $"{n++:00}-offseason-draft.png"));
             while (session.Offseason!.Phase == OffseasonPhase.Draft && !session.Offseason.DraftComplete) session.MakePick(session.Offseason.Prospects.First());

@@ -900,6 +900,8 @@ public sealed partial class GameSession
         Offseason.AiReSignAll(exceptTeamId: ControlledTeamId);
         // Seniors who committed during the season sign before free agency opens (decision #157).
         SignCommittedGraduates(recruiting);
+        // Danny's draft (D40, real careers): the lottery runs now, and the picks are made before free agency opens.
+        if (CollegeDraft.SetUp(Offseason, League, World, _rng)) AnnounceDraftLottery();
 
         AnnounceAwards(Offseason.Summary!);
         FacilitiesSummerNews();
@@ -978,27 +980,27 @@ public sealed partial class GameSession
         {
             case OffseasonPhase.ReSigning:
                 Offseason.AdvanceToDraft();
+                if (Offseason.CollegeDraftOn)
+                {
+                    // D40: the computer clubs pick until you're on the clock (or the draft is over).
+                    Offseason.AutoDraftUntil(ControlledTeamId);
+                    if (Offseason.DraftComplete) AdvanceOffseason();
+                    else Post("You're on the clock", $"Pick {Offseason.NextPickIndex + 1} of {Offseason.PickOwners.Count}. {Offseason.Prospects.Count} graduates remain. Choose on the Offseason page (Draft), or press Continue and your scouts pick for you.", "Draft");
+                    break;
+                }
                 if (League.Finance.OpenMarket)
                 {
-                    // No draft: free agency opens at once (the graduates are in the pool).
-                    NewWindow();
-                    Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
-                    Offseason.AiFreeAgency(ControlledTeamId);
-                    AiTransferRound(15); // the summer transfer market (decision #87)
-                    if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
-                    foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
-                    World.News.Clear();
-                    if (Employed && !InCollege) // college programs don't sign pros (C2)
-                    {
-                        var grads = League.FreeAgents.Where(p => p.RookieSeason == League.Season + 1).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
-                        Post("Free agency is open", $"Make offers to free agents on the Offseason page. {Budgets.Describe(HumanTeam)}."
-                            + (grads.Count > 0 ? $"\n\nThe best of this year's college graduates still available: {string.Join(", ", grads.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : ""), "Roster");
-                    }
+                    OpenFreeAgencyOnTheOpenMarket();
                     break;
                 }
                 Offseason.AutoDraftUntil(ControlledTeamId);
                 if (Offseason.DraftComplete) AdvanceOffseason();
                 else Post("You're on the clock", $"Pick {Offseason.NextPickIndex + 1} (round {Offseason.CurrentRound}). {Offseason.Prospects.Count} prospects remain.", "Draft");
+                break;
+            case OffseasonPhase.Draft when Offseason.CollegeDraftOn:
+                Offseason.AdvanceToFreeAgency(); // your scouts make any pick you haven't
+                AnnounceDraft();
+                OpenFreeAgencyOnTheOpenMarket();
                 break;
             case OffseasonPhase.Draft:
                 Offseason.AdvanceToFreeAgency();
@@ -1056,6 +1058,48 @@ public sealed partial class GameSession
         Post($"{p.Name} stashed", $"{p.Name} will play for {club.FullName}. You keep his rights and can bring him over in a later summer (buyout ${p.Contract!.Buyout / 1e6:F2}M).", "Roster");
         SaveNow();
         return null;
+    }
+
+    /// <summary>Free agency opens on the open market: the world and the computer clubs move, then your offers.</summary>
+    private void OpenFreeAgencyOnTheOpenMarket()
+    {
+        NewWindow();
+        Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason!, ControlledTeamId);
+        Offseason.AiFreeAgency(ControlledTeamId);
+        AiTransferRound(15); // the summer transfer market (decision #87)
+        if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
+        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
+        World.News.Clear();
+        if (Employed && !InCollege) // college programs don't sign pros (C2)
+        {
+            var grads = League.FreeAgents.Where(p => p.RookieSeason == League.Season + 1).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
+            Post("Free agency is open", $"Make offers to free agents on the Offseason page. {Budgets.Describe(HumanTeam)}."
+                + (grads.Count > 0 ? $"\n\nThe best of this year's college graduates still available: {string.Join(", ", grads.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : ""), "Roster");
+        }
+    }
+
+    /// <summary>D40: the lottery's order, posted when the summer opens.</summary>
+    private void AnnounceDraftLottery()
+    {
+        var o = Offseason!;
+        string Line(int i) => $"{i + 1}. {o.PickOwners[i].FullName}" + (i == o.PickOwners.Count - 1 && o.Outcome.ThirdPlaceWinner == o.PickOwners[i] ? " (the third-place tournament's extra pick)" : "");
+        var ours = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == HumanTeam).Select(i => i + 1).ToList();
+        string mine = !Employed || InCollege ? "" : ours.Count == 0 ? "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.\n\n"
+            : $"You pick {string.Join(" and ", ours.Select(Ordinal))}.\n\n";
+        Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates who haven't committed to a club go in a one-round draft before free agency. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
+    }
+
+    /// <summary>D40: who went where.</summary>
+    private void AnnounceDraft()
+    {
+        var picks = Offseason!.Report.Draft;
+        if (picks.Count == 0) return;
+        string Row(DraftPick d) => $"{d.Pick}. {d.Team.Abbreviation}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility})";
+        var first = picks[0];
+        PostWorld($"Draft: {first.Player.Name} goes first to the {first.Team.FullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
+        var ours = picks.Where(d => d.Team == HumanTeam).ToList();
+        if (Employed && !InCollege && ours.Count > 0)
+            Post("Your draft", string.Join("\n", ours.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}), ${d.Player.Contract!.Salary / 1e6:F2}M a year for {d.Player.Contract.Years} years (your option on the last).")), "Draft");
     }
 
     /// <summary>Human draft pick; then AI picks run until the human is on the clock again or the draft ends.</summary>
@@ -1177,7 +1221,8 @@ public sealed partial class GameSession
         Dictionary<int, List<Player>> expiring, List<DraftPick> picksMade)
     {
         Phase = SessionPhase.Offseason;
-        Offseason = Offseason.Restore(League, _rng, phase, draftOrder, pickOwners, prospects, nextPick, expiring, picksMade);
+        // The college draft (D40) gives tier-2 clubs picks too: look teams up in the world as well.
+        Offseason = Offseason.Restore(League, _rng, phase, draftOrder, pickOwners, prospects, nextPick, expiring, picksMade, FindTeam);
         Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
     }
 

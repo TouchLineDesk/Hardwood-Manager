@@ -94,6 +94,13 @@ public sealed partial class OffseasonViewModel : PageViewModel
     [ObservableProperty] private bool _showContracts;
     [ObservableProperty] private bool _showFreeAgency;
     [ObservableProperty] private bool _showBuyouts;
+    /// <summary>Danny's college draft (D40, real careers): the pool and the order, from the lottery until free agency.</summary>
+    [ObservableProperty] private bool _showDraft;
+    [ObservableProperty] private bool _onTheClock;
+    [ObservableProperty] private string _draftText = "";
+    public ObservableCollection<ProspectRow> DraftPool { get; } = new();
+    [ObservableProperty] private ProspectRow? _selectedProspect;
+    public ObservableCollection<DraftSlotRow> DraftSlots { get; } = new();
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _capText = "";
     [ObservableProperty] private int _tab;
@@ -120,7 +127,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
     {
         var s = Session; var o = s.Offseason;
         InOffseason = s.Phase == SessionPhase.Offseason && o != null;
-        Expiring.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear();
+        Expiring.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear(); DraftPool.Clear(); DraftSlots.Clear();
+        ShowDraft = InOffseason && o!.CollegeDraftOn && o.Phase is OffseasonPhase.ReSigning or OffseasonPhase.Draft;
+        OnTheClock = false; DraftText = "";
         if (!InOffseason || !s.Employed)
         {
             Headline = InOffseason ? "Summer" : "The offseason has not started.";
@@ -143,7 +152,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
         CapText = $"Wages committed {M(committed)} of a {M(budget)} budget · {(budget >= committed ? $"{M(budget - committed)} to spend" : $"{M(committed - budget)} over")}"
                   + $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {fin.RosterMin}-{fin.RosterMax})";
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
-        Instructions = (s.InNabl && renewing
+        Instructions = o.Phase == OffseasonPhase.Draft && o.CollegeDraftOn
+            ? "The college draft: one round, in the lottery's order. When you're on the clock, pick a graduate on the Draft tab; press Continue and your scouts pick for you. Free agency opens when the draft ends."
+            : (s.InNabl && renewing
                 ? "Contract decisions: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), or release him. Then continue to free agency."
                 : "Free agency: make offers to free agents, including this year's college graduates (age 23). Players ask more to join a weaker team, and the owner won't let you go over the wage budget.")
             + (s.Abroad ? " Anyone you haven't renewed by the end of the summer leaves." : "");
@@ -181,9 +192,48 @@ public sealed partial class OffseasonViewModel : PageViewModel
                     Terms = terms.Possible ? $"Yes: ${terms.NablSalary / 1e6:F1}M a year. {terms.Note}" : terms.Note,
                 });
             }
-        if (Tab == 0 && !ShowContracts) Tab = 1;
+        if (ShowDraft) FillDraft(s, o, team);
+        if (Tab == 0 && !ShowContracts) Tab = ShowDraft ? 4 : 1;
+        if (Tab == 4 && !ShowDraft) Tab = 1;
         if (Talk.Player == null || (!s.MyExpiring.Contains(Talk.Player) && !s.League.FreeAgents.Contains(Talk.Player) && !Talk.Signed))
             Talk.Show(Expiring.FirstOrDefault()?.Player ?? FreeAgents.FirstOrDefault()?.Player);
+    }
+
+    private void FillDraft(GameSession s, Offseason o, Hardwood.Core.Model.Team team)
+    {
+        OnTheClock = o.Phase == OffseasonPhase.Draft && o.OnTheClock == team;
+        var mine = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == team).Select(i => i + 1).ToList();
+        DraftText = OnTheClock ? $"You're on the clock with pick {o.NextPickIndex + 1}. Choose a graduate and press Draft, or press Continue and your scouts pick."
+            : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : "You have no pick this year. The draft follows contract decisions.")
+            : "The draft is under way.";
+        int rank = 1;
+        foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
+            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(o.Date), Knowledge = Scouting.Knowledge(team, p) });
+        var made = o.Report.Draft.ToDictionary(d => d.Pick);
+        for (int i = 0; i < o.PickOwners.Count; i++)
+        {
+            made.TryGetValue(i + 1, out var d);
+            bool extra = i == o.PickOwners.Count - 1 && o.Outcome.ThirdPlaceWinner == o.PickOwners[i];
+            DraftSlots.Add(new DraftSlotRow
+            {
+                Pick = i + 1, Team = o.PickOwners[i].FullName + (extra ? " (extra pick)" : ""),
+                Player = d != null ? $"{d.Player.Name} ({d.Player.PrimaryPosition})" : i == o.NextPickIndex && o.Phase == OffseasonPhase.Draft ? "On the clock" : "",
+                Ours = o.PickOwners[i] == team,
+            });
+        }
+        SelectedProspect ??= DraftPool.FirstOrDefault();
+    }
+
+    [RelayCommand]
+    public void Draft()
+    {
+        var p = SelectedProspect?.Player;
+        if (p == null || !OnTheClock) return;
+        var pick = Session.MakePick(p);
+        Status = $"You drafted {p.Name} with pick {pick.Pick}: ${p.Contract!.Salary / 1e6:F2}M a year for {p.Contract.Years} years.";
+        SelectedProspect = null;
+        Shell.AfterTick();
+        Refresh();
     }
 
     [RelayCommand]
@@ -215,6 +265,16 @@ public sealed partial class OffseasonViewModel : PageViewModel
     {
         if (p != null) Shell.ShowPlayer(p);
     }
+}
+
+/// <summary>One pick in the college draft (D40): who holds it and who was taken.</summary>
+public sealed class DraftSlotRow
+{
+    public int Pick { get; init; }
+    public string Team { get; init; } = "";
+    public string Player { get; init; } = "";
+    public bool Ours { get; init; }
+    public string Mark => Ours ? "You" : "";
 }
 
 /// <summary>A free agent with his ask of your club.</summary>

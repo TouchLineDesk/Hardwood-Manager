@@ -184,6 +184,17 @@ public class UiSmokeTests
             session.AdvanceOffseason();
             vm.AfterTick();
             off.Refresh();
+            // A real career drafts first (D40): on the clock, the Draft tab picks the selected graduate.
+            if (session.Offseason!.Phase == OffseasonPhase.Draft)
+            {
+                Assert.True(off.ShowDraft);
+                Assert.True(off.OnTheClock);
+                window.UpdateLayout();
+                var pick = off.SelectedProspect!.Player;
+                off.DraftCommand.Execute(null);
+                Assert.Contains(pick, session.HumanTeam.Roster);
+                off.Refresh();
+            }
             Assert.True(off.ShowFreeAgency);
             Assert.Contains(off.FreeAgents, f => f.Graduate);
             window.UpdateLayout();
