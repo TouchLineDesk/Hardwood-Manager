@@ -14,6 +14,11 @@ public sealed record LeagueContext(string Name, IReadOnlyList<Team> Teams, int S
     /// <summary>The semi-pro and amateur levels of the USA pyramid (4 regional, 5 local): owners there are patient and modest.</summary>
     public bool Grassroots => PyramidLevel >= 4;
 
+    /// <summary>Danny's division format (D36): the top two in each division make the playoffs and the third-placed teams play
+    /// their own tournament, so the board's "play-in" goal reads as a top-three finish in the division.</summary>
+    public bool DivisionFormat => !IsCollege
+        && ((IsNabl && Season.Postseason.UsesDivisions(Teams.ToList())) || (PyramidLevel is 2 or 3 && Teams.Count == UsaPyramid.ProSize));
+
     public static LeagueContext Nabl(League league) =>
         new(league.Name, league.Teams, 82, 16, true, league.Finance, 0);
 

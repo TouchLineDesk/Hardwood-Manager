@@ -59,7 +59,8 @@ public sealed class StatLine
 }
 
 /// <summary>A finished season of a competition.</summary>
-public sealed record ChampionRecord(int Season, int ChampionId, int RunnerUpId, string ChampionName, string RunnerUpName);
+public sealed record ChampionRecord(int Season, int ChampionId, int RunnerUpId, string ChampionName, string RunnerUpName,
+    string? ThirdPlaceName = null);
 
 /// <summary>A standings row computed from regular-season fixtures.</summary>
 public sealed record TableRow(int TeamId, int Wins, int Losses, int PointsFor, int PointsAgainst)
@@ -81,6 +82,9 @@ public sealed class CompetitionSeason
     public string Stage { get; set; } = RegularSeason;
     public int? ChampionId { get; set; }
     public int? RunnerUpId { get; set; }
+    /// <summary>The third-place tournament's winner and runner-up (the division format, D36).</summary>
+    public int? ThirdPlaceId { get; set; }
+    public int? ThirdPlaceRunnerUpId { get; set; }
     public Dictionary<int, StatLine> Stats { get; set; } = new();
 
     public bool IsComplete => Stage == Complete;

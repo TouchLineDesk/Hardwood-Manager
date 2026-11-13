@@ -410,6 +410,7 @@ public sealed class GameWorld
         var p = comp.Profile;
         if (s.Fixtures.Any(f => !f.Played)) return false;
 
+        if (p.DivisionPlayoffs) return AdvanceDivisions(comp);
         if (s.Stage == CompetitionSeason.RegularSeason)
         {
             if (p.Playoffs.Length == 0) { Crown(comp, s.Table()[0].TeamId, s.Table()[1].TeamId); return true; }
@@ -448,13 +449,92 @@ public sealed class GameWorld
         return true;
     }
 
+    public const string ThirdQuarters = Postseason.ThirdQuarters, ThirdSemis = Postseason.ThirdSemis, ThirdFinal = Postseason.ThirdFinal;
+
+    /// <summary>
+    /// The division format (D36, #364): at the end of the regular season each conference's eight seeds play 1v8, 4v5, 3v6, 2v7,
+    /// winners of adjacent series meet, the conference champions play the final; the third-placed teams play their own bracket
+    /// (best of three) in step with the first three rounds. The tournament's winner takes a trophy and prize money.
+    /// </summary>
+    private bool AdvanceDivisions(WorldCompetition comp)
+    {
+        var s = comp.Season;
+        var p = comp.Profile;
+        if (s.Stage == CompetitionSeason.RegularSeason)
+        {
+            var table = s.Table();
+            var clubs = s.Participants.Select(id => _teams[id]).ToList();
+            if (UsaPyramid.DivisionField(p.Key, clubs, table) is not { } field)
+            {
+                Crown(comp, table[0].TeamId, table[1].TeamId);   // not (yet) four divisions of four: the table decides
+                return true;
+            }
+            var first = p.Playoffs[0];
+            foreach (var seeds in new[] { field.East, field.West })
+                foreach (var (a, b) in new[] { (0, 7), (3, 4), (2, 5), (1, 6) })
+                    s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = first.Name, BestOf = first.BestOf, HighId = seeds[a], LowId = seeds[b] });
+            foreach (var (a, b) in new[] { (0, 7), (3, 4), (2, 5), (1, 6) })
+                s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = ThirdQuarters, BestOf = 3, HighId = field.Thirds[a], LowId = field.Thirds[b] });
+            s.Stage = first.Name;
+            ScheduleNextGames(comp);
+            return true;
+        }
+        if (s.Series.Any(x => !x.Complete)) { ScheduleNextGames(comp); return true; }
+
+        var tableIds = s.Table().Select(r => r.TeamId).ToList();
+        int Seed(int id) { int i = tableIds.IndexOf(id); return i < 0 ? int.MaxValue : i; }
+        SeriesState Pair(SeriesState x, SeriesState y, int ri, string round, int bestOf)
+        {
+            int a = x.WinnerId!.Value, b = y.WinnerId!.Value;
+            bool aHigh = Seed(a) <= Seed(b);
+            return new SeriesState { Id = s.Series.Count + 1, RoundIndex = ri, Round = round, BestOf = bestOf, HighId = aHigh ? a : b, LowId = aHigh ? b : a };
+        }
+
+        var main = s.Series.Where(x => x.Round == s.Stage).ToList();
+        int ri = main[0].RoundIndex;
+        if (ri == p.Playoffs.Length - 1)
+        {
+            Crown(comp, main[0].WinnerId!.Value, main[0].LoserId!.Value);
+            return true;
+        }
+        var next = p.Playoffs[ri + 1];
+        for (int i = 0; i + 1 < main.Count; i += 2) s.Series.Add(Pair(main[i], main[i + 1], ri + 1, next.Name, next.BestOf));
+
+        // The third-place bracket: quarter-finals, semi-finals, final, alongside the first three rounds.
+        string? thirdFrom = ri == 0 ? ThirdQuarters : ri == 1 ? ThirdSemis : null;
+        if (thirdFrom != null)
+        {
+            var done = s.Series.Where(x => x.Round == thirdFrom).ToList();
+            string to = ri == 0 ? ThirdSemis : ThirdFinal;
+            for (int i = 0; i + 1 < done.Count; i += 2) s.Series.Add(Pair(done[i], done[i + 1], ri + 1, to, 3));
+        }
+        else if (s.Series.FirstOrDefault(x => x.Round == ThirdFinal) is { Complete: true } tf && s.ThirdPlaceId == null)
+            CrownThirdPlace(comp, tf.WinnerId!.Value, tf.LoserId!.Value);
+
+        s.Stage = next.Name;
+        ScheduleNextGames(comp);
+        return true;
+    }
+
+    /// <summary>The third-place tournament's trophy and prize money (D36c A): a share of the league's revenue, half to the runner-up.</summary>
+    private void CrownThirdPlace(WorldCompetition comp, int winner, int runnerUp)
+    {
+        var s = comp.Season;
+        s.ThirdPlaceId = winner; s.ThirdPlaceRunnerUpId = runnerUp;
+        long prize = (long)(Budgets.LeagueRevenue(comp.Profile.SalaryScale) * Postseason.ThirdPlacePrize);
+        _teams[winner].Money.Balance += prize;
+        _teams[runnerUp].Money.Balance += prize / 2;
+        News.Add(($"{_teams[winner].FullName} win the {comp.Profile.Name}'s {Postseason.ThirdPlaceName}",
+            $"{_teams[winner].FullName} beat {_teams[runnerUp].FullName} in the {comp.Profile.Name}'s third-place final and take the trophy and {Franchise.Money(prize)} in prize money."));
+    }
+
     /// <summary>Add the next game for every series in the current round that needs one.</summary>
     private void ScheduleNextGames(WorldCompetition comp)
     {
         var s = comp.Season;
         var p = comp.Profile;
         var lastPlayed = s.Fixtures.Where(f => f.Played).Select(f => f.Date).DefaultIfEmpty(new DateOnly(s.Year, p.Start.Month, p.Start.Day)).Max();
-        foreach (var series in s.Series.Where(x => x.Round == s.Stage && !x.Complete))
+        foreach (var series in s.Series.Where(x => (x.Round == s.Stage || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round))) && !x.Complete))
         {
             if (s.Fixtures.Any(f => f.SeriesId == series.Id && !f.Played)) continue;
             int gameNo = series.HighWins + series.LowWins + 1;
@@ -487,7 +567,8 @@ public sealed class GameWorld
         var s = comp.Season;
         s.ChampionId = champion; s.RunnerUpId = runnerUp; s.Stage = CompetitionSeason.Complete;
         var c = _teams[champion]; var r = _teams[runnerUp];
-        comp.History.Add(new ChampionRecord(s.Year, champion, runnerUp, c.FullName, r.FullName));
+        comp.History.Add(new ChampionRecord(s.Year, champion, runnerUp, c.FullName, r.FullName,
+            s.ThirdPlaceId is { } tp && _teams.TryGetValue(tp, out var tpt) ? tpt.FullName : null));
         News.Add(($"{c.FullName} win the {comp.Profile.Name}", $"{c.FullName} beat {r.FullName} to win the {s.Year}-{(s.Year + 1) % 100:00} {comp.Profile.Name}."));
     }
 

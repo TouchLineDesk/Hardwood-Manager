@@ -482,7 +482,18 @@ public sealed partial class GameSession
             {
                 Phase = SessionPhase.Postseason;
                 Postseason = new Postseason(League, Standings);
-                if (InNabl)
+                if (InNabl && Postseason.DivisionFormat)
+                {
+                    var rec = Standings[HumanTeam];
+                    int place = Standings.Conference(HumanTeam.Conference).Where(r => r.Team.Division == HumanTeam.Division).ToList().FindIndex(r => r.Team == HumanTeam) + 1;
+                    int seed = Postseason.DivisionSeeds(Standings, HumanTeam.Conference).IndexOf(HumanTeam) + 1;
+                    Post("Regular season complete",
+                        $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(place)} in the {HumanTeam.Conference} · {HumanTeam.Division}. " +
+                        (seed > 0 ? $"You are in the playoffs as the {HumanTeam.Conference}'s {Ordinal(seed)} seed."
+                         : place == 3 ? $"You play in the {Postseason.ThirdPlaceName} with the other seven third-placed teams."
+                         : "Your season is over."), "League");
+                }
+                else if (InNabl)
                 {
                     var rec = Standings[HumanTeam];
                     int seed = Standings.Conference(HumanTeam.Conference).FindIndex(r => r.Team == HumanTeam) + 1;
@@ -494,8 +505,19 @@ public sealed partial class GameSession
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
         {
-            if (Postseason.Stage != _stageBefore && !Postseason.Complete && Postseason.Active.Any(x => x.Higher == HumanTeam || x.Lower == HumanTeam))
-                Post($"{Postseason.Stage} begins", string.Join("\n", Postseason.Active.Select(s => $"{s.Higher.FullName} vs {s.Lower.FullName}")), "League");
+            if (Postseason.Stage != _stageBefore && !Postseason.Complete && Postseason.Active.FirstOrDefault(x => x.Higher == HumanTeam || x.Lower == HumanTeam) is { } mineNow)
+            {
+                bool third = Postseason.IsThirdPlace(mineNow.Round);
+                var round = Postseason.Active.Where(x => Postseason.IsThirdPlace(x.Round) == third).ToList();
+                Post(third ? $"{mineNow.Round} begin" : $"{Postseason.Stage} begins", string.Join("\n", round.Select(s => $"{s.Higher.FullName} vs {s.Lower.FullName}")), "League");
+            }
+            if (Postseason.DivisionFormat && _stageBefore == "Conference Finals" && Postseason.Stage == "Finals" && Postseason.ThirdPlaceWinner is { } tw)
+            {
+                bool ours = tw == HumanTeam || Postseason.ThirdPlaceRunnerUp == HumanTeam;
+                Post($"{tw.FullName} win the {Postseason.ThirdPlaceName}",
+                    $"{tw.FullName} beat {Postseason.ThirdPlaceRunnerUp!.FullName} in the {Postseason.ThirdFinal} and take the trophy and {Franchise.Money(Postseason.ThirdPlacePrizeFor(true))} in prize money " +
+                    $"({Franchise.Money(Postseason.ThirdPlacePrizeFor(false))} to the runner-up)." + (tw == HumanTeam ? " Congratulations: silverware for your club." : ours ? " The runner-up's prize is in your accounts." : ""), "League");
+            }
             if (Postseason.Complete)
             {
                 string title = $"{Postseason.Champion!.FullName} are champions";

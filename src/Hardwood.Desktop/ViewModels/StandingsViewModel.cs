@@ -28,11 +28,19 @@ public sealed class StandingRow
     public Avalonia.Media.IBrush ZoneBrush => Zone switch
     {
         "Playoffs" => PlayoffBrush,
-        "Play-in" => PlayInBrush,
+        "Play-in" or "Third place" => PlayInBrush,
+        "Promotion" => PromotionBrush,
         "Relegation" => RelegationBrush,
         _ => Avalonia.Media.Brushes.Transparent,
     };
-    public string ZoneTip => Zone == "" ? "Outside the postseason places" : Zone;
+    public string ZoneTip => Zone switch
+    {
+        "" => "Outside the postseason places",
+        "Third place" => "Third in the division: the third-place tournament",
+        "Promotion" => "Division winner: promoted, and in the playoffs",
+        _ => Zone,
+    };
+    public static readonly Avalonia.Media.IBrush PromotionBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2F6FB3"));
     public static readonly Avalonia.Media.IBrush PlayoffBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E8B57"));
     public static readonly Avalonia.Media.IBrush PlayInBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B7832A"));
     public static readonly Avalonia.Media.IBrush RelegationBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B23A3A"));
@@ -47,6 +55,9 @@ public sealed partial class StandingsViewModel : PageViewModel
     /// <summary>The green chip's meaning: the playoffs, or a college conference tournament.</summary>
     [ObservableProperty] private string _playoffLabel = "Playoffs";
     [ObservableProperty] private bool _showPlayIn = true;
+    /// <summary>The amber chip's meaning: the play-in, or the third-place tournament in the division format (D36).</summary>
+    [ObservableProperty] private string _playInLabel = "Play-in";
+    [ObservableProperty] private bool _showPromotion;
     [ObservableProperty] private string _leftTitle = "Eastern Conference";
     [ObservableProperty] private string _rightTitle = "Western Conference";
     /// <summary>Conference order (playoff places) or division order (Danny, #318).</summary>
@@ -83,7 +94,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
             return;
         }
-        PlayoffLabel = "Playoffs"; ShowPlayIn = true; CanDivide = false; ShowRelegation = false;
+        PlayoffLabel = "Playoffs"; ShowPlayIn = true; CanDivide = false; ShowRelegation = false; ShowPromotion = false; PlayInLabel = "Play-in";
         if (s.HumanLeague is { } hl)
         {
             // Abroad: your league on the left, the NABL on the right.
@@ -94,6 +105,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             {
                 // A pyramid league by division (#318-#319), with its promotion and relegation places.
                 var book = Hardwood.Core.Season.LeagueBook.Get(s, hl.Key);
+                bool divisional = hl.Profile.DivisionPlayoffs && hl.Clubs.Count == Hardwood.Core.World.UsaPyramid.ProSize;
                 if (book != null)
                 {
                     var rows = book.Table();
@@ -107,15 +119,23 @@ public sealed partial class StandingsViewModel : PageViewModel
                             East.Add(new StandingRow
                             {
                                 Rank = ++k, Team = r.Team, W = r.W, L = r.L, Div = g.Key, Pct = r.G == 0 ? ".000" : r.Pct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
-                                Diff = r.G == 0 ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"), Zone = r.Zone == "Promotion" ? "Playoffs" : r.Zone, IsHuman = r.Team == s.HumanTeam,
+                                Diff = r.G == 0 ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"), Zone = divisional || r.Zone != "Promotion" ? r.Zone : "Playoffs", IsHuman = r.Team == s.HumanTeam,
                             });
                         }
                     }
-                    PlayoffLabel = "Promotion"; ShowPlayIn = false; ShowRelegation = true;
+                    if (divisional)
+                    {
+                        // Tiers 2-3 in the division format (D36): winners go up and play the playoffs, 2nd plays them, 3rd the
+                        // third-place tournament, 4th goes down.
+                        ShowPromotion = true; PlayoffLabel = "Playoffs"; ShowPlayIn = true; PlayInLabel = "Third-place tournament"; ShowRelegation = true;
+                    }
+                    else { PlayoffLabel = "Promotion"; ShowPlayIn = false; ShowRelegation = true; }
                 }
             }
             LeftTitle = hl.Profile.Name; RightTitle = Hardwood.Core.Names.Brand.Top;
-            Note = playoff > 0 ? $"Top {playoff} reach the playoffs ({string.Join(", ", hl.Profile.Playoffs.Select(p => p.Name.ToLower()))})." : "";
+            Note = hl.Profile.DivisionPlayoffs
+                ? (hl.Clubs.Count == Hardwood.Core.World.UsaPyramid.ProSize ? "Colours by place in each division." : "The table decides the title this season.")
+                : playoff > 0 ? $"Top {playoff} reach the playoffs ({string.Join(", ", hl.Profile.Playoffs.Select(p => p.Name.ToLower()))})." : "";
             Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
             OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
             return;
@@ -123,9 +143,13 @@ public sealed partial class StandingsViewModel : PageViewModel
         LeftTitle = "Eastern Conference"; RightTitle = "Western Conference";
         CanDivide = true;
         ShowRelegation = ByDivision && s.World.Competitions.Any(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2);
-        Fill(East, Conference.East);
-        Fill(West, Conference.West);
-        Note = ByDivision ? "By division: ranks and games back within each division; the playoff colours still follow the conference table."
+        bool divisions = Postseason.UsesDivisions(s.League);
+        if (divisions) PlayInLabel = "Third-place tournament";
+        Fill(East, Conference.East, divisions);
+        Fill(West, Conference.West, divisions);
+        Note = divisions
+            ? (ByDivision ? "Colours by place in each division." : "Colours by place in each division; seeds by record.")
+            : ByDivision ? "By division: ranks and games back within each division; the playoff colours still follow the conference table."
             : "Top 6 qualify directly; 7-10 play in.";
         BuildRace();
     }
@@ -180,10 +204,12 @@ public sealed partial class StandingsViewModel : PageViewModel
         }
     }
 
-    private void Fill(ObservableCollection<StandingRow> list, Conference conf)
+    private void Fill(ObservableCollection<StandingRow> list, Conference conf, bool divisions = false)
     {
         list.Clear();
         var confTable = Session.Standings.Conference(conf);
+        // The division format (D36): a team's zone comes from its place in its division, whichever way the table is shown.
+        var placeInDivision = confTable.GroupBy(r => r.Team.Division).SelectMany(g => g.Select((r, i) => (r.Team, i))).ToDictionary(x => x.Team, x => x.i + 1);
         var confRank = confTable.Select((r, i) => (r.Team, i)).ToDictionary(x => x.Team, x => x.i + 1);
         var table = ByDivision ? confTable.GroupBy(r => r.Team.Division).OrderBy(g => g.Key).SelectMany(g => g).ToList() : confTable;
         var leader = table.FirstOrDefault();
@@ -199,7 +225,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 .OrderByDescending(g => g.Index).Take(10).Select(g => Session.Results[g.Index].Winner.Team == r.Team).ToList();
             list.Add(new StandingRow
             {
-                Rank = rank, Zone = lastInDivision ? "Relegation" : cr <= 6 ? "Playoffs" : cr <= 10 ? "Play-in" : "", Team = r.Team, W = r.Wins, L = r.Losses, Div = r.Team.Division,
+                Rank = rank, Zone = lastInDivision ? "Relegation" : divisions ? LeagueBook.DivisionZone(placeInDivision[r.Team]) : cr <= 6 ? "Playoffs" : cr <= 10 ? "Play-in" : "", Team = r.Team, W = r.Wins, L = r.Losses, Div = r.Team.Division,
                 Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
                 Last10 = last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "",

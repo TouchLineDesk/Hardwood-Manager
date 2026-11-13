@@ -11,6 +11,9 @@ public sealed class SeasonOutcome
     public List<GameResult> RegularSeason { get; } = new();
     public List<(string Round, SeriesResult Series)> Playoffs { get; } = new();
     public Team? Champion { get; set; }
+    /// <summary>The third-place tournament's winner and runner-up (the division format only, D36).</summary>
+    public Team? ThirdPlaceWinner { get; set; }
+    public Team? ThirdPlaceRunnerUp { get; set; }
     /// <summary>Mid-season All-Star selections and result, if the season produced them.</summary>
     public SeasonAwards? Midseason { get; set; }
 }
@@ -75,6 +78,15 @@ public sealed class SeasonSimulator
         }
 
         _date = schedule.Count > 0 ? schedule.Last().Date.AddDays(2) : null;
+        if (Postseason.UsesDivisions(league))
+        {
+            // Danny's division format (D36): the same bracket the game plays, one day at a time.
+            var post = new Postseason(league, standings);
+            var day = _date ?? new DateOnly(league.Season + 1, 4, 16);
+            while (!post.Complete) { post.PlayDay(_sim, _rng, day); day = day.AddDays(1); }
+            post.FillOutcome(outcome);
+            return outcome;
+        }
         var east = Seed(standings, Conference.East, league.Rules, outcome);
         var west = Seed(standings, Conference.West, league.Rules, outcome);
 
