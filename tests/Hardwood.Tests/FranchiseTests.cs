@@ -121,7 +121,7 @@ public class FranchiseTests
         Franchise.Summer(t, Lr, 18000, 2027);
         var f = t.Money.Facilities;
         Assert.True(f.LastDistribution > 500_000_000, $"{f.LastDistribution:N0}");
-        Assert.True(t.Money.Balance < 2 * t.Money.Revenue + Franchise.Reserve(t) + f.Proposals.Sum(p => p.Cost), $"{t.Money.Balance:N0}");
+        Assert.True(t.Money.Balance < 2 * t.Money.Revenue + Franchise.Reserve(t) + f.Proposals.Sum(p => p.Instalment), $"{t.Money.Balance:N0}");
         Assert.InRange(f.Proposals.Count, 1, 3);
         Assert.All(f.Proposals, p => Assert.True(p.Instalment <= Franchise.Spendable(t)));
         Assert.Contains(f.LastNews, n => n.StartsWith("The owner took "));

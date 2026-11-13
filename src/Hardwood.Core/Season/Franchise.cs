@@ -173,8 +173,8 @@ public static class Franchise
             // Your club: the front office has proposals for you on the Board page. The owner keeps enough for all of them on top
             // of the usual reserve and takes the rest as a distribution, as every other owner does (D24 A; review #11 found a
             // managed club holding $606M in tier 2, 15 seasons of its revenue, because only computer clubs paid out).
-            long paid = Distribute(t, Reserve(t) + f.Proposals.Sum(p => p.Cost));
-            if (paid > 0) f.LastNews.Add($"The owner took {Money(paid)} out of the club as a distribution: the club keeps about a season's revenue, his reserve and the cost of the projects on the table.");
+            long paid = Distribute(t, Reserve(t) + f.Proposals.Sum(p => p.Instalment));
+            if (paid > 0) f.LastNews.Add($"The owner took {Money(paid)} out of the club as a distribution: the club keeps about a season's revenue, his reserve and the first payment on each project on the table.");
             return;
         }
         // The owner invests: the best project he'll fund, then the next while money lasts (at most three a summer).
