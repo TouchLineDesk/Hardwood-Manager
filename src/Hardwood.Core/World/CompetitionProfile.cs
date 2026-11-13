@@ -80,6 +80,10 @@ public sealed class CompetitionProfile
     public PlayoffRound[] Playoffs { get; init; } = Array.Empty<PlayoffRound>();
     /// <summary>Final Four: the last two rounds are single games at one venue on fixed days in late May of Y+1.</summary>
     public bool FinalFour { get; init; }
+    /// <summary>Danny's division format (D36, run 30): with two conferences of four divisions of four, the top two in each division
+    /// play a 16-team bracket by conference (<see cref="Playoffs"/>: first round, conference semi-finals, conference finals, final)
+    /// and the third-placed teams play their own tournament alongside. Any other layout crowns the table's leader.</summary>
+    public bool DivisionPlayoffs { get; init; }
 
     /// <summary>Continental competition: how many clubs each domestic league sends (by key), plus the guest pool.</summary>
     public (string LeagueKey, int Clubs)[] Entrants { get; init; } = Array.Empty<(string, int)>();

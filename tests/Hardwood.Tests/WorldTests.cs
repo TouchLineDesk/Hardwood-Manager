@@ -74,7 +74,8 @@ public class WorldTests
             int regular = s.Fixtures.Count(f => f.Stage == CompetitionSeason.RegularSeason);
             Assert.Equal(teams * (teams - 1) / 2 * comp.Profile.RoundRobins, regular);
             Assert.All(s.Series, x => Assert.True(x.Complete));
-            Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2), s.Series.Count);
+            // The division format (D36) adds the third-place tournament's seven series.
+            Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2) + (comp.Profile.DivisionPlayoffs ? 7 : 0), s.Series.Count);
         }
         // No club plays twice on one day, across all competitions.
         var games = world.Playing.SelectMany(c => c.Season.Fixtures).SelectMany(f => new[] { (f.HomeId, f.Date), (f.AwayId, f.Date) }).ToList();

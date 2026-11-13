@@ -126,7 +126,7 @@ public sealed class Offseason
         {
             // The books close and owners set next season's budgets (decision #88). No draft rights on the open market.
             Budgets.Initialize(_league.Teams, 1, _rng);
-            var champ = _outcome.Playoffs.Count > 0 ? _outcome.Playoffs.Last().Series.Winner : null;
+            var champ = _outcome.Playoffs.Count > 0 ? _outcome.Playoffs.Last(x => !Postseason.IsThirdPlace(x.Round)).Series.Winner : null;
             Budgets.Summer(_league.Teams, 1, LastWinPct, t => t == champ, Season, RealWorld.RealWorldData.IsReal(_league), PendingCommitments);
             foreach (var p in _league.AllActivePlayers.Concat(_league.FreeAgents)) p.DraftRightsTeamId = null;
             _league.Picks.Clear();
@@ -620,7 +620,7 @@ public sealed class Offseason
 
     private void RecordHistory()
     {
-        var finals = _outcome.Playoffs.Last().Series;
+        var finals = _outcome.Playoffs.Last(x => !Postseason.IsThirdPlace(x.Round)).Series;
         var scoring = _stats.Values.Where(s => s.Games >= 50).OrderByDescending(s => s.Ppg).FirstOrDefault();
         var awards = new AwardsEngine(_league, _outcome.Standings, _stats, _rng).EndOfSeason(_league.Season, _outcome.Midseason);
 
@@ -645,6 +645,7 @@ public sealed class Offseason
             FinalsMvpPlayerId = finalsMvp,
             Awards = awards,
         };
+        awards.ThirdPlaceWinnerId = _outcome.ThirdPlaceWinner?.Id;
         _league.History.Add(Summary);
         AccumulateCareers(Summary);
     }

@@ -93,7 +93,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
             }
         if (s.Postseason != null)
             foreach (var se in s.Postseason.Series)
-                Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{se.Higher.FullName} vs {se.Lower.FullName}", Score = se.Complete ? $"{se.Winner!.Abbreviation} wins {se.Score}" : se.Score, Involved = se.Higher == us || se.Lower == us });
+                Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{se.Higher.FullName} vs {se.Lower.FullName}", Score = se.Complete ? $"{se.Winner!.Abbreviation} wins {Math.Max(se.HigherWins, se.LowerWins)}-{Math.Min(se.HigherWins, se.LowerWins)}" : se.Score, Involved = se.Higher == us || se.Lower == us });
 
         LeagueScores.Clear();
         var yesterday = s.Today.AddDays(-1);

@@ -100,6 +100,7 @@ public sealed class LeagueBook
                 // By division (Danny, #318): playoff places still come from the conference table; the last in each
                 // division drops to tier 2 when the world has a pyramid (#319).
                 bool pyramid = s.World.Competitions.Any(c => c.Key == UsaPyramid.Tier2);
+                bool divisional = Postseason.UsesDivisions(lg);
                 var rows = new List<BookTableRow>();
                 foreach (var conf in Enum.GetValues<Conference>())
                 {
@@ -111,7 +112,9 @@ public sealed class LeagueBook
                         for (int i = 0; i < list.Count; i++)
                         {
                             var r = list[i]; int rank = confRank[r.Team];
-                            string zone = pyramid && i == list.Count - 1 && list.Count > 1 && r.Wins + r.Losses > 0 ? "Relegation"
+                            bool started = r.Wins + r.Losses > 0;
+                            string zone = pyramid && i == list.Count - 1 && list.Count > 1 && started ? "Relegation"
+                                : divisional ? DivisionZone(i + 1)
                                 : rank <= 6 ? "Playoffs" : rank <= 10 ? "Play-in" : "";
                             rows.Add(new(r.Team, r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, Group(r.Team), zone));
                         }
@@ -141,15 +144,18 @@ public sealed class LeagueBook
                     : "The top league in the USA, in six divisions. The last team in each division drops to The Championship; its division winners come up."),
                 ("Game", RulesText(lg.Rules)),
                 ("Season", $"{lg.Teams.Count} teams in two conferences of {lg.Teams.Select(t => t.Division).Distinct().Count() / 2} divisions; 82 games from late October to mid-April."),
-                ("Playoffs", "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
+                ("Playoffs", Postseason.UsesDivisions(lg)
+                    ? $"The top two in each division (16 teams), seeded 1-8 by record within their conference. Four rounds, best of seven. The eight third-placed teams play the {Postseason.ThirdPlaceName} (best of three) for a trophy and {Franchise.Money(Postseason.ThirdPlacePrizeFor(true))} in prize money."
+                    : "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
                 ("Rosters", $"{fin.RosterMin}-{fin.RosterMax} players. Americans turn pro at 23 (college before that)."),
                 ("Money", fin.OpenMarket
                     ? "Open market: no draft and no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January."
                     : $"Salary cap ${fin.HardCap / 1e6:F0}M."),
             },
             Champions = lg.History.AsEnumerable().Reverse().Select(h =>
-                $"{h.Season}-{(h.Season + 1) % 100:00}  {lg.Teams.FirstOrDefault(t => t.Id == h.ChampionTeamId)?.FullName ?? "?"}"
-                + (lg.Teams.FirstOrDefault(t => t.Id == h.RunnerUpTeamId) is { } ru ? $" (beat {ru.FullName})" : "")).ToList(),
+                $"{h.Season}-{(h.Season + 1) % 100:00}  {s.World.TeamById(h.ChampionTeamId)?.FullName ?? lg.Teams.FirstOrDefault(t => t.Id == h.ChampionTeamId)?.FullName ?? "?"}"
+                + ((s.World.TeamById(h.RunnerUpTeamId) ?? lg.Teams.FirstOrDefault(t => t.Id == h.RunnerUpTeamId)) is { } ru ? $" (beat {ru.FullName})" : "")
+                + (h.Awards?.ThirdPlaceWinnerId is { } tp && (s.World.TeamById(tp) ?? lg.Teams.FirstOrDefault(t => t.Id == tp)) is { } tpt ? $" · third-place tournament: {tpt.FullName}" : "")).ToList(),
         };
     }
 
@@ -206,9 +212,14 @@ public sealed class LeagueBook
             Series = () => se.Series.Select(x => $"{x.Round}: {T(x.HighId).Abbreviation} {x.HighWins}-{x.LowWins} {T(x.LowId).Abbreviation}"
                 + (x.Complete ? $" ({T(x.WinnerId!.Value).Abbreviation} win)" : "")).ToList(),
             Rules = WorldRules(c, teams.Count),
-            Champions = c.History.AsEnumerable().Reverse().Select(h => $"{h.Season}-{(h.Season + 1) % 100:00}  {h.ChampionName} (beat {h.RunnerUpName})").ToList(),
+            Champions = c.History.AsEnumerable().Reverse().Select(h => $"{h.Season}-{(h.Season + 1) % 100:00}  {h.ChampionName} (beat {h.RunnerUpName})"
+                + (h.ThirdPlaceName is { } tp ? $" · third-place tournament: {tp}" : "")).ToList(),
         };
     }
+
+    /// <summary>A zone by place in a division in the division format (D36): the top two make the playoffs, third plays the
+    /// third-place tournament (4th, relegated, is marked by the caller where there's a league below).</summary>
+    public static string DivisionZone(int placeInDivision) => placeInDivision <= 2 ? "Playoffs" : placeInDivision == 3 ? "Third place" : "";
 
     /// <summary>A pyramid club's zone (#319): tiers 2-3 send each division winner up; a regional league sends its champion up;
     /// a local league its champion; the last in each division of tiers 2-4 goes down.</summary>
@@ -218,6 +229,8 @@ public sealed class LeagueBook
         bool up = level is 2 or 3 ? rankInDivision == 1 : overallRank == 1;
         if (up) return "Promotion";
         if (level is 2 or 3 or 4 && divisionSize > 1 && rankInDivision == divisionSize) return "Relegation";
+        // Tiers 2 and 3 play the division format's playoffs too (D36): 2nd makes them, 3rd plays the third-place tournament.
+        if (level is 2 or 3 && divisionSize == 4) return DivisionZone(rankInDivision) is { Length: > 0 } z ? z : null;
         return null;
     }
 
@@ -248,7 +261,10 @@ public sealed class LeagueBook
         int perOpp = p.RoundRobins;
         list.Add(("Season", $"{(perOpp == 1 ? "Everyone plays everyone once" : perOpp == 2 ? "Home and away against everyone" : $"Everyone plays everyone {perOpp} times")}"
                            + $" ({(clubs - 1) * perOpp} games), from {new DateOnly(2000, p.Start.Month, p.Start.Day):MMMM d}."));
-        list.Add(("Playoffs", p.Playoffs.Length == 0 ? "None: the table decides the title."
+        list.Add(("Playoffs", p.DivisionPlayoffs && clubs == UsaPyramid.ProSize
+            ? $"The top two in each division (16 teams), seeded 1-8 by record within their conference: first round and conference semi-finals best of five, conference finals and the final best of seven. The eight third-placed teams play the {Postseason.ThirdPlaceName} (best of three) for a trophy and prize money."
+            : p.DivisionPlayoffs ? "None this season: the table decides the title (the division playoffs start once the league has four divisions of four in each conference)."
+            : p.Playoffs.Length == 0 ? "None: the table decides the title."
             : $"Top {p.Playoffs[0].Teams}: " + string.Join(", ", p.Playoffs.Select(r => r.BestOf == 1 ? $"{r.Name} (one game)" : $"{r.Name} (best of {r.BestOf})"))
               + (p.FinalFour ? ". The last four meet at a Final Four in late May." : ".")));
         list.Add(("Simulation", c.FullSim ? "Full match engine (box scores for every game)." : "Quick results (scores and player lines, no box scores)."));

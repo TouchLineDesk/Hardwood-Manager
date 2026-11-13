@@ -21,6 +21,8 @@ public sealed class SeasonAwards
     public List<int> AllStarsWest { get; init; } = new();
     public string AllStarGame { get; init; } = "";
     public int? AllStarMvpId { get; init; }
+    /// <summary>The third-place tournament's winner (the division format, D36; null before v0.64.0 and in older leagues).</summary>
+    public int? ThirdPlaceWinnerId { get; set; }
 
     public int? Mvp => MvpVoting.FirstOrDefault()?.PlayerId;
     public int? Roy => RoyVoting.FirstOrDefault()?.PlayerId;

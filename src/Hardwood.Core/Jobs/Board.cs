@@ -132,7 +132,9 @@ public static class Board
     };
 
     /// <summary>Goal wording for a league: leagues without playoffs are judged on the final table.</summary>
-    public static string Describe(SeasonGoal g, LeagueContext ctx) => ctx.IsCollege ? DescribeCollege(g) : ctx.IsNabl || ctx.PlayoffTeams > 1 ? Describe(g) : g switch
+    public static string Describe(SeasonGoal g, LeagueContext ctx) => ctx.IsCollege ? DescribeCollege(g)
+        : ctx.DivisionFormat && g == SeasonGoal.PlayIn ? "Finish in your division's top three"
+        : ctx.IsNabl || ctx.PlayoffTeams > 1 ? Describe(g) : g switch
     {
         SeasonGoal.Title => "Win the league",
         SeasonGoal.Finals => "Finish in the top two",
@@ -273,7 +275,7 @@ public static class Board
             // Without playoffs (the USA pyramid) the goal is a table position: top half instead of "make the playoffs".
             int topHalf = ctx.PlayoffTeams > 1 ? ctx.PlayoffTeams : Math.Max(3, ctx.Teams.Count / 2);
             goal = r == 1 ? SeasonGoal.Title : r <= 2 ? SeasonGoal.Finals : r <= Math.Max(3, ctx.PlayoffTeams / 2) ? SeasonGoal.SecondRound
-                 : r <= topHalf ? SeasonGoal.Playoffs : SeasonGoal.Develop;
+                 : r <= topHalf ? SeasonGoal.Playoffs : ctx.DivisionFormat && r <= 20 ? SeasonGoal.PlayIn : SeasonGoal.Develop;
             target = (int)Math.Round(ctx.SeasonGames * (0.73 - ctx.Fraction(r) * 0.46));
             // Local and regional owners are modest (critic review #4: a 17-13 first season at tier 5 left the board at 20
             // with a "win the title" goal): favourites aim for the top three, the rest for the top half.
@@ -423,6 +425,8 @@ public static class Board
     public static SeasonGoal? RoundReached(string round)
     {
         if (round == "Finals") return SeasonGoal.Finals;
+        // The third-place tournament (D36) is the division format's step below the playoffs, where the play-in was.
+        if (Season.Postseason.IsThirdPlace(round)) return SeasonGoal.PlayIn;
         if (round.Contains("Play-In")) return null;
         if (round.EndsWith("First Round")) return SeasonGoal.Playoffs;
         if (round.EndsWith("Semifinals")) return SeasonGoal.SecondRound;
@@ -433,9 +437,9 @@ public static class Board
     /// <summary>How far a club got in an overseas league's playoffs (title, final, won a round, made them, or not).</summary>
     public static SeasonGoal Achieved(int teamId, World.CompetitionSeason season, World.CompetitionProfile profile)
     {
-        if (profile.Playoffs.Length == 0)
+        if (profile.Playoffs.Length == 0 || (profile.DivisionPlayoffs && season.Series.Count == 0))
         {
-            // Judged on the final table.
+            // Judged on the final table (also a pyramid tier's last season before it reaches four divisions of four).
             var table = season.Table();
             int rank = table.FindIndex(r => r.TeamId == teamId) + 1;
             if (rank <= 0) return SeasonGoal.Develop;
@@ -446,7 +450,11 @@ public static class Board
         if (season.RunnerUpId == teamId) return SeasonGoal.Finals;
         var mine = season.Series.Where(x => x.HighId == teamId || x.LowId == teamId).ToList();
         if (mine.Count == 0) return SeasonGoal.Develop;
-        return mine.Max(x => x.RoundIndex) >= 1 ? SeasonGoal.SecondRound : SeasonGoal.Playoffs;
+        // The third-place tournament (D36) stands where the play-in did.
+        var main = mine.Where(x => !Season.Postseason.IsThirdPlace(x.Round)).ToList();
+        if (main.Count == 0) return SeasonGoal.PlayIn;
+        int top = main.Max(x => x.RoundIndex);
+        return top >= 2 && profile.Playoffs.Length >= 4 ? SeasonGoal.ConferenceFinals : top >= 1 ? SeasonGoal.SecondRound : SeasonGoal.Playoffs;
     }
 
     /// <summary>

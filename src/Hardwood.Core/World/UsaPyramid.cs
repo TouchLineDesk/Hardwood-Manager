@@ -312,7 +312,32 @@ public static class UsaPyramid
         Key = key, Name = name, Short = shortName, Country = "USA", LocalNationalities = new[] { "USA" },
         StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 23,
         Start = (10, 21), RoundDays = new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Saturday }, Clubs = clubs.ToArray(), // 62 games in 32-club tiers (#355)
+        // The division format's playoffs (D36, #364): 16 teams by conference, then the final; third place plays its own tournament.
+        DivisionPlayoffs = true,
+        Playoffs = new[] { new PlayoffRound("First round", 5, 16), new PlayoffRound("Conference semi-finals", 5, 8), new PlayoffRound("Conference finals", 7, 4), new PlayoffRound("Final", 7, 2) },
     };
+
+    /// <summary>
+    /// The division format's playoff field for a tier-2/3 league (D36): each conference's eight seeds (the top two in each of its
+    /// four divisions, best record first) and the eight third-placed teams (best record first). Null when the league isn't laid
+    /// out in two conferences of four divisions of four (an older save's 24 before its summer).
+    /// </summary>
+    public static (List<int> East, List<int> West, List<int> Thirds)? DivisionField(string key, IReadOnlyList<Team> clubs, List<TableRow> table)
+    {
+        var divs = Divisions(key, clubs);
+        if (divs.Count != 8 || divs.Any(d => d.Teams.Count != 4)) return null;
+        var order = table.Select((r, i) => (r.TeamId, i)).ToDictionary(x => x.TeamId, x => x.i);
+        int Rank(Team t) => order.TryGetValue(t.Id, out var i) ? i : int.MaxValue;
+        var east = new List<int>(); var west = new List<int>(); var thirds = new List<int>();
+        foreach (var (name, teams) in divs)
+        {
+            var ranked = teams.OrderBy(Rank).ThenBy(t => t.Id).ToList();
+            (name.StartsWith("East") ? east : west).AddRange(ranked.Take(2).Select(t => t.Id));
+            thirds.Add(ranked[2].Id);
+        }
+        List<int> Sort(List<int> ids) => ids.OrderBy(id => order.GetValueOrDefault(id, int.MaxValue)).ToList();
+        return (Sort(east), Sort(west), Sort(thirds));
+    }
 
     private static CompetitionProfile Lower(string key, string name, string shortName, int strength, double wages, int imports, double prestige, int roundsPerWeek, IEnumerable<ClubSeed> clubs) => new()
     {

@@ -177,8 +177,40 @@ public class ScreenshotTests
                 if (story != null) mail.Selected = story;
                 Snap(window, Path.Combine(dir, $"{n++:00}-madness-inbox.png"));
             }
+            if (!session.InCollege && !session.Abroad)
+            {
+                // The division format's postseason (D36, run 30): the bracket and the third-place tournament mid-way, the
+                // standings with their playoff and third-place colours, and the league's rules.
+                while (session.Phase != SessionPhase.Offseason && guard++ < 400 && (session.Postseason == null || session.Postseason.Stage == "First Round"))
+                    session.AdvanceDay();
+                vm.AfterTick();
+                vm.Navigate("Schedule & Results");
+                Snap(window, Path.Combine(dir, $"{n++:00}-playoffs-series.png"));
+                vm.Navigate("Standings");
+                ((StandingsViewModel)vm.CurrentPage!).View = "By conference";
+                Snap(window, Path.Combine(dir, $"{n++:00}-standings-playoff-places.png"));
+                vm.Navigate("Leagues");
+                var lp = (WorldViewModel)vm.CurrentPage!;
+                if (lp.Competitions.FirstOrDefault(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2) is { } t2)
+                {
+                    lp.Selected = t2;
+                    lp.Tab = 0;
+                    Snap(window, Path.Combine(dir, $"{n++:00}-leagues-tier2-table.png"));
+                    lp.Tab = 4;
+                    Snap(window, Path.Combine(dir, $"{n++:00}-leagues-tier2-playoffs.png"));
+                }
+            }
             while (session.Phase != SessionPhase.Offseason && guard++ < 400) session.AdvanceDay();
             vm.AfterTick();
+            vm.Navigate("Leagues");
+            if (!session.InCollege)
+            {
+                var lp2 = (WorldViewModel)vm.CurrentPage!;
+                lp2.Tab = 4;
+                Snap(window, Path.Combine(dir, $"{n++:00}-leagues-history-after.png"));
+                lp2.Tab = 3;
+                Snap(window, Path.Combine(dir, $"{n++:00}-leagues-rules-after.png"));
+            }
             vm.Navigate("Awards");
             Snap(window, Path.Combine(dir, $"{n++:00}-awards.png"));
             vm.Navigate("College");

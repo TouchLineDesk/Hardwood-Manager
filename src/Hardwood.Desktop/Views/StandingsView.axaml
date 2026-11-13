@@ -11,10 +11,18 @@
     <TextBlock Text="Standings" Classes="h1"/>
     <WrapPanel Margin="0,0,0,8">
       <TextBlock Text="{Binding Note}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0"/>
-      <Border Background="{x:Static vm:StandingRow.PlayoffBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-      <TextBlock Text="{Binding PlayoffLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0"/>
-      <Border Background="{x:Static vm:StandingRow.PlayInBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0" IsVisible="{Binding ShowPlayIn}"/>
-      <TextBlock Text="Play-in" Classes="muted" VerticalAlignment="Center" IsVisible="{Binding ShowPlayIn}" Margin="0,0,12,0"/>
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowPromotion}" Margin="0,0,12,0">
+        <Border Background="{x:Static vm:StandingRow.PromotionBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+        <TextBlock Text="Division winner: promoted" Classes="muted" VerticalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+        <Border Background="{x:Static vm:StandingRow.PlayoffBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+        <TextBlock Text="{Binding PlayoffLabel}" Classes="muted" VerticalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowPlayIn}" Margin="0,0,12,0">
+        <Border Background="{x:Static vm:StandingRow.PlayInBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+        <TextBlock Text="{Binding PlayInLabel}" Classes="muted" VerticalAlignment="Center"/>
+      </StackPanel>
       <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowRelegation}" Margin="0,0,12,0">
         <Border Background="{x:Static vm:StandingRow.RelegationBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
         <TextBlock Text="Last in division: relegated" Classes="muted" VerticalAlignment="Center"/>
