@@ -63,6 +63,8 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private bool _canHire;
     [ObservableProperty] private bool _delegateTraining;
     [ObservableProperty] private bool _delegateRecruiting;
+    /// <summary>A pro club in a real career has no senior recruiting to delegate (D48 B): the draft replaces it.</summary>
+    public bool ShowDelegateRecruiting => Session.InCollege || Session.SeniorRecruiting;
     public string DelegateRecruitingText => Session.TrailOpen ? "Assistant recruits high-schoolers with the hours you leave unused (offers included)" : "Head scout courts college seniors (spends the recruiting points; offers stay with you)";
     [ObservableProperty] private bool _delegateTactics;
     [ObservableProperty] private string _delegationNote = "";

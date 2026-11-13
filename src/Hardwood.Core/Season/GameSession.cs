@@ -1086,7 +1086,7 @@ public sealed partial class GameSession
         var ours = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == HumanTeam).Select(i => i + 1).ToList();
         string mine = !Employed || InCollege ? "" : ours.Count == 0 ? "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.\n\n"
             : $"You pick {string.Join(" and ", ours.Select(Ordinal))}.\n\n";
-        Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates who haven't committed to a club go in a one-round draft before free agency. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
+        Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates go in a one-round draft before free agency; everyone else from the class is a free agent. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
     }
 
     /// <summary>D40: who went where.</summary>
