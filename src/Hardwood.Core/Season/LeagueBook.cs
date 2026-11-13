@@ -89,7 +89,7 @@ public sealed class LeagueBook
         var lg = s.League;
         var post = s.Postseason;
         var fin = lg.Finance;
-        string Group(Team t) => t.Conference.ToString();
+        string Group(Team t) => $"{t.Conference} · {t.Division}";
         return new LeagueBook
         {
             Key = NablKey, Name = Hardwood.Core.Names.Brand.Top, Region = "USA", Season = $"{lg.Season}-{(lg.Season + 1) % 100:00}",
@@ -97,15 +97,24 @@ public sealed class LeagueBook
             Teams = lg.Teams,
             Table = () =>
             {
+                // By division (Danny, #318): playoff places still come from the conference table; the last in each
+                // division drops to tier 2 when the world has a pyramid (#319).
+                bool pyramid = s.World.Competitions.Any(c => c.Key == UsaPyramid.Tier2);
                 var rows = new List<BookTableRow>();
                 foreach (var conf in Enum.GetValues<Conference>())
                 {
-                    int rank = 0;
-                    foreach (var r in s.Standings.Conference(conf))
+                    var confTable = s.Standings.Conference(conf);
+                    var confRank = confTable.Select((r, i) => (r.Team, i)).ToDictionary(x => x.Team, x => x.i + 1);
+                    foreach (var div in confTable.GroupBy(r => r.Team.Division).OrderBy(g => g.Key))
                     {
-                        rank++;
-                        string zone = rank <= 6 ? "Playoffs" : rank <= 10 ? "Play-in" : "";
-                        rows.Add(new(r.Team, r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, Group(r.Team), zone));
+                        var list = div.ToList();
+                        for (int i = 0; i < list.Count; i++)
+                        {
+                            var r = list[i]; int rank = confRank[r.Team];
+                            string zone = pyramid && i == list.Count - 1 && list.Count > 1 && r.Wins + r.Losses > 0 ? "Relegation"
+                                : rank <= 6 ? "Playoffs" : rank <= 10 ? "Play-in" : "";
+                            rows.Add(new(r.Team, r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, Group(r.Team), zone));
+                        }
                     }
                 }
                 return rows;
@@ -127,7 +136,7 @@ public sealed class LeagueBook
                 + (x.Complete ? $" ({x.Winner!.Abbreviation} win)" : "")).ToList(),
             Rules = new List<(string, string)>
             {
-                ("Level", "The top league in the USA. The bottom three by record drop to The Championship; its top three come up."),
+                ("Level", "The top league in the USA, in six divisions. The last team in each division drops to The Championship; its six division winners come up."),
                 ("Game", RulesText(lg.Rules)),
                 ("Season", $"{lg.Teams.Count} teams in two conferences of three divisions; 82 games from late October to mid-April."),
                 ("Playoffs", "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
@@ -160,14 +169,30 @@ public sealed class LeagueBook
             Teams = teams,
             Table = () =>
             {
-                int rank = 0, n = se.Participants.Count;
-                return se.Table().Select(r =>
+                int rank = 0;
+                var table = se.Table();
+                if (!pyramid)
+                    return table.Select(r =>
+                    {
+                        rank++;
+                        return new BookTableRow(T(r.TeamId), r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, "", playoffTeams > 0 && rank <= playoffTeams ? "Playoffs" : "");
+                    }).ToList();
+                // The pyramid by division (Danny, #318-#319), each in table order, divisions in the order they're listed.
+                var clubs = table.Select(r => T(r.TeamId)).ToList();
+                var order = table.Select((r, i) => (r.TeamId, i)).ToDictionary(x => x.TeamId, x => x.i);
+                var rows = new List<BookTableRow>();
+                foreach (var (name, members) in UsaPyramid.Divisions(p.Key, clubs))
                 {
-                    rank++;
-                    string zone = playoffTeams > 0 && rank <= playoffTeams ? "Playoffs" : "";
-                    if (pyramid) zone = PyramidZone(p.Key, rank, n) ?? zone;
-                    return new BookTableRow(T(r.TeamId), r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, "", zone);
-                }).ToList();
+                    var div = table.Where(r => members.Any(m => m.Id == r.TeamId)).ToList();
+                    int k = 0;
+                    foreach (var r in div)
+                    {
+                        k++;
+                        rows.Add(new BookTableRow(T(r.TeamId), r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, name,
+                            PyramidZone(p.Key, order[r.TeamId] + 1, k, div.Count) ?? ""));
+                    }
+                }
+                return rows;
             },
             Games = () => se.Fixtures.OrderBy(f => f.Date).ThenBy(f => f.Index).Select(f =>
             {
@@ -183,13 +208,14 @@ public sealed class LeagueBook
         };
     }
 
-    private static string? PyramidZone(string key, int rank, int n)
+    /// <summary>A pyramid club's zone (#319): tiers 2-3 send each division winner up; a regional league sends its champion up;
+    /// a local league its champion; the last in each division of tiers 2-4 goes down.</summary>
+    private static string? PyramidZone(string key, int overallRank, int rankInDivision, int divisionSize)
     {
         int level = UsaPyramid.Level(key);
-        int up = level switch { 2 or 3 => UsaPyramid.NationalSwaps, 4 or 5 => 1, _ => 0 };
-        int down = level switch { 2 => UsaPyramid.NationalSwaps, 3 => 6, _ => 0 };
-        if (rank <= up) return "Promotion";
-        if (down > 0 && rank > n - down) return "Relegation";
+        bool up = level is 2 or 3 ? rankInDivision == 1 : overallRank == 1;
+        if (up) return "Promotion";
+        if (level is 2 or 3 or 4 && divisionSize > 1 && rankInDivision == divisionSize) return "Relegation";
         return null;
     }
 
@@ -205,9 +231,9 @@ public sealed class LeagueBook
         {
             string level = UsaPyramid.IsPyramid(p.Key) ? UsaPyramid.Level(p.Key) switch
             {
-                2 => $"Tier 2 of the USA pyramid. Top 3 go up to the {Hardwood.Core.Names.Brand.Top}; bottom 3 drop to {Hardwood.Core.World.Competitions.All.First(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier3).Name}.",
-                3 => "Tier 3. Top 3 go up to The Championship; bottom 6 drop to the regional leagues.",
-                4 => "Regional (tier 4, semi-pro). The champion goes up to National League One; the bottom drop to local leagues.",
+                2 => $"Tier 2 of the USA pyramid, in six regional divisions. Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; the last in each division drops to {Hardwood.Core.World.Competitions.All.First(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier3).Name}.",
+                3 => "Tier 3, in six regional divisions. Each division winner goes up to The Championship; the last in each division drops to its regional league.",
+                4 => "Regional (tier 4, semi-pro), one division per local area. The champion (the best division winner) goes up to National League One; the last in each division drops to its local league.",
                 _ => "Local (tier 5, near-amateur). The champion goes up to its regional league.",
             } : "Top flight. One division, no promotion or relegation.";
             list.Add(("Level", level));

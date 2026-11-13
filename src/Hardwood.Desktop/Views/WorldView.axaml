@@ -33,7 +33,7 @@
                 <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLink Team="{Binding Team}" FontWeight="{Binding Mine, Converter={x:Static c:Converters.BoldIf}}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="90"/>
+            <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="136"/>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="50"/>
             <DataGridTextColumn Header="L" Binding="{Binding L}" Width="50"/>
             <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="70"/>

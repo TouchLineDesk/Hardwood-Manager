@@ -643,6 +643,8 @@ public sealed partial class GameSession
             var rec = MyRecord;
             var achieved = InCollege ? Jobs.Board.Achieved(World.College!, HumanTeam.Id)
                 : HumanLeague is { } c ? Jobs.Board.Achieved(HumanTeam.Id, c.Season, c.Profile) : Jobs.Board.Achieved(HumanTeam, Postseason);
+            // A division winner in tiers 2-3 goes up (#319): the board counts that as a top-three finish at least.
+            if (HumanLeague is { } hc && UsaPyramid.WonDivision(hc, HumanTeam) && achieved < Jobs.SeasonGoal.SecondRound) achieved = Jobs.SeasonGoal.SecondRound;
             var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season);
             Post(Boss(title), Boss(body), "Board");
             if (sacked) Fire();
