@@ -61,12 +61,27 @@ public sealed partial class CollegeWorld
     /// <summary>A program can have this many offers out in a class: its open scholarships plus 3 (coaches over-offer; not everyone says yes).</summary>
     public int OfferLimit(Team t, int classOf) => OpenScholarships(t, classOf) is var open and > 0 ? open + 3 : 0;
 
+    /// <summary>
+    /// Danny, #320 (D34 A): college coaches recruit high-school seniors only, the coached program and the computer schools
+    /// alike (the computer schools only ever took commitments from seniors). The class being recruited is this year's
+    /// seniors until their signing day, then next year's (rising seniors can be courted from the spring; they commit from
+    /// September 1). Juniors and younger stay in the world but can't be courted yet.
+    /// </summary>
+    public int RecruitingClass(DateOnly today) => today >= SigningDay(SeniorClass) ? SeniorClass + 1 : SeniorClass;
+
+    public bool Recruitable(Recruit r, DateOnly today) => r.ClassOf == RecruitingClass(today);
+
+    /// <summary>Why he can't be recruited yet (too young), or null.</summary>
+    public string? NotASenior(Player p, Recruit r, DateOnly today) =>
+        r.ClassOf <= RecruitingClass(today) ? null
+        : $"You recruit high-school seniors only: {p.Name} is in the Class of {r.ClassOf}, so you can recruit him from {SigningDay(r.ClassOf - 1):MMMM d, yyyy}.";
+
     /// <summary>Why he can't be courted right now, or null.</summary>
     private string? Closed(Player p, Recruit r, DateOnly today)
     {
         if (r.CommittedTo is { } to) return $"{p.Name} has committed to {Program(to)?.FullName ?? "another school"}.";
         if (today >= SigningDay(r.ClassOf)) return $"Signing day has passed for the Class of {r.ClassOf}.";
-        return null;
+        return NotASenior(p, r, today);
     }
 
     private string? Spend(int hours, DateOnly today)
@@ -85,8 +100,9 @@ public sealed partial class CollegeWorld
     }
 
     /// <summary>Put him on (or take him off) your board. Free.</summary>
-    public string ToggleBoard(Team t, Player p, Recruit r)
+    public string ToggleBoard(Team t, Player p, Recruit r, DateOnly today)
     {
+        if (NotASenior(p, r, today) is { } junior && !(r.CourtedBy == t.Id && r.OnBoard)) return junior; // taking an old pick off stays possible
         Courting(r, t);
         r.OnBoard = !r.OnBoard;
         return r.OnBoard ? $"{p.Name} is on your board." : $"{p.Name} is off your board.";
@@ -95,6 +111,7 @@ public sealed partial class CollegeWorld
     /// <summary>Scout him (1 hour): your staff's own read of his ceiling, and what he cares about most.</summary>
     public string Scout(Team t, Player p, Recruit r, DateOnly today)
     {
+        if (NotASenior(p, r, today) is { } junior) return junior;
         Courting(r, t);
         if (r.Scouted) return $"You've already scouted {p.Name}.";
         if (Spend(ScoutHours, today) is { } no) return no;
@@ -108,8 +125,8 @@ public sealed partial class CollegeWorld
     /// <summary>A phone call (1 hour, once a week): a little goodwill, less each time.</summary>
     public string Call(Team t, Player p, Recruit r, DateOnly today)
     {
-        Courting(r, t);
         if (Closed(p, r, today) is { } c) return c;
+        Courting(r, t);
         if (r.CalledWeek == MondayOf(today)) return $"You've already called {p.Name} this week.";
         if (Spend(CallHours, today) is { } no) return no;
         r.CalledWeek = MondayOf(today); r.OnBoard = true;
@@ -121,8 +138,8 @@ public sealed partial class CollegeWorld
     /// <summary>A home visit (4 hours, once): sitting down with the family.</summary>
     public string VisitHome(Team t, Player p, Recruit r, DateOnly today)
     {
-        Courting(r, t);
         if (Closed(p, r, today) is { } c) return c;
+        Courting(r, t);
         if (r.HomeVisit) return $"You've already been to {p.Name}'s home.";
         if (Spend(HomeVisitHours, today) is { } no) return no;
         r.HomeVisit = true; r.OnBoard = true;
@@ -132,8 +149,8 @@ public sealed partial class CollegeWorld
     /// <summary>An official visit (8 hours, once, seniors only from September 1): a weekend on campus.</summary>
     public string OfficialVisit(Team t, Player p, Recruit r, DateOnly today)
     {
-        Courting(r, t);
         if (Closed(p, r, today) is { } c) return c;
+        Courting(r, t);
         if (r.OfficialVisit) return $"{p.Name} has already taken his official visit to you.";
         if (today < CommitmentsOpen(r.ClassOf)) return $"Official visits open for the Class of {r.ClassOf} on {CommitmentsOpen(r.ClassOf):MMM d, yyyy}.";
         if (Spend(OfficialVisitHours, today) is { } no) return no;
@@ -144,8 +161,8 @@ public sealed partial class CollegeWorld
     /// <summary>A scholarship offer (2 hours): needed before he can commit to you, and a boost on its own.</summary>
     public string Offer(Team t, Player p, Recruit r, DateOnly today)
     {
-        Courting(r, t);
         if (Closed(p, r, today) is { } c) return c;
+        Courting(r, t);
         if (r.Offered) return $"{p.Name} already has your offer.";
         int limit = OfferLimit(t, r.ClassOf), outNow = OffersOut(t, r.ClassOf);
         if (limit == 0)
@@ -211,15 +228,15 @@ public sealed partial class CollegeWorld
 
     /// <summary>
     /// The assistant's recruiting (delegation, and the critic bot): offer the seniors he can land who fill a need, bring
-    /// them on official visits, then home visits and calls; spare hours go on calls to the best juniors who'd come.
+    /// them on official visits, then home visits and calls. Seniors only (#320): spare hours are left unspent.
     /// <paramref name="week"/> is the Monday whose hours he spends.
     /// </summary>
     public string? AutoRecruit(Team t, DateOnly week)
     {
         var day = week.AddDays(6); // spend them as of Sunday of that week
-        int senior = Season.Year + 1;
+        int senior = RecruitingClass(day);
         var names = new List<string>();
-        foreach (int cls in new[] { senior, senior + 1 })
+        foreach (int cls in new[] { senior })
         {
             if (day >= SigningDay(cls)) continue;
             var board = BoardFor(cls);

@@ -30,7 +30,7 @@ public sealed partial class GameSession
         return reply;
     }
 
-    public string BoardProspect(Player p) => Trail(p, (c, r) => c.ToggleBoard(HumanTeam, p, r));
+    public string BoardProspect(Player p) => Trail(p, (c, r) => c.ToggleBoard(HumanTeam, p, r, Today));
     public string ScoutProspect(Player p) => Trail(p, (c, r) => c.Scout(HumanTeam, p, r, Today));
     public string CallProspect(Player p) => Trail(p, (c, r) => c.Call(HumanTeam, p, r, Today));
     public string HomeVisitProspect(Player p) => Trail(p, (c, r) => c.VisitHome(HumanTeam, p, r, Today));

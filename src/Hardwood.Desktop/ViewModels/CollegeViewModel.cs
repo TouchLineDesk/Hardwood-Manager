@@ -209,15 +209,22 @@ public sealed partial class CollegeViewModel : PageViewModel
         FillRecruits();
         if (c.Recruiting)
         {
-            int senior = c.SeniorClass;
-            var classes = Enumerable.Range(senior, 4).Select(y => ClassLabel(c, y)).ToList();
-            if (!classes.SequenceEqual(Classes)) { Classes = classes; OnPropertyChanged(nameof(Classes)); }
+            // Seniors only (Danny, #320, D34 A): this year's seniors, and after their signing day next year's too (the class
+            // being recruited from then on). Younger classes stay in the world but aren't scouted.
+            int senior = c.SeniorClass, recruiting = c.RecruitingClass(Session.Today);
+            var classes = Enumerable.Range(senior, recruiting - senior + 1).Reverse().Select(y => ClassLabel(c, y)).ToList();
+            if (!classes.SequenceEqual(Classes))
+            {
+                Classes = classes; OnPropertyChanged(nameof(Classes));
+                TrailClass = Classes[0]; // after signing day the rising seniors come first
+                if (HighSchoolClass != Classes[0]) HighSchoolClass = Classes[0];
+            }
             if (!Classes.Contains(HighSchoolClass)) HighSchoolClass = Classes[0]; else FillHighSchool();
         }
         FillTrail();
     }
 
-    private string ClassLabel(CollegeWorld c, int year) => $"Class of {year}" + (year == c.SeniorClass ? " (seniors)" : year == c.SeniorClass + 3 ? " (freshmen)" : "");
+    private string ClassLabel(CollegeWorld c, int year) => $"Class of {year}" + (year == c.SeniorClass ? " (seniors)" : " (rising seniors)");
     private int ClassYear => int.TryParse(HighSchoolClass.Replace("Class of ", "").Split(' ')[0], out var y) ? y : 0;
 
     private void FillHighSchool()
@@ -229,7 +236,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         var all = c.ClassOf(year).Select(p => (p, r: c.Recruits[p.Id])).OrderBy(x => x.r.Rank).ToList();
         int committed = all.Count(x => x.r.CommittedTo != null);
         var signing = CollegeWorld.SigningDay(year);
-        HighSchoolChips.Add(new Chip("Class", $"{year}", year == c.SeniorClass ? "seniors: enroll next summer" : $"enrolls in {year - today.Year} summers", "info"));
+        HighSchoolChips.Add(new Chip("Class", $"{year}", year == c.SeniorClass ? "seniors: enroll next summer" : "rising seniors: commit from Sep 1", "info"));
         HighSchoolChips.Add(new Chip("Committed", $"{committed} of {all.Count}", today < CollegeWorld.CommitmentsOpen(year) ? $"commitments open {CollegeWorld.CommitmentsOpen(year):MMM d, yyyy}" : "tracked prospects", committed > 0 ? "good" : ""));
         HighSchoolChips.Add(new Chip("Five-stars signed", $"{all.Count(x => x.r.Stars == 5 && x.r.CommittedTo != null)} of {CollegeWorld.FiveStars}", "the top 25 in the class", "info"));
         HighSchoolChips.Add(new Chip("Signing day", $"{signing:MMM d}", today > signing ? "done: the class is set" : $"{(signing.DayNumber - today.DayNumber)} days away", today > signing ? "good" : "warn"));

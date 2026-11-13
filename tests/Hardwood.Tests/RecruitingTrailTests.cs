@@ -103,4 +103,39 @@ public class RecruitingTrailTests
         Assert.False(old.Offered);
         Assert.Equal(0, old.Interest);
     }
+
+    [Fact]
+    public void Only_seniors_are_recruited_and_the_rising_class_opens_on_signing_day()
+    {
+        // Danny, #320 (D34 A): you and the computer schools recruit high-school seniors only.
+        var s = GameSession.NewGame(9, MidProgram(9), null);
+        var c = s.TrailWorld!;
+        var me = s.HumanTeam;
+        int senior = c.SeniorClass;
+        Assert.Equal(senior, c.RecruitingClass(s.Today));
+        var junior = c.ClassOf(senior + 1).OrderBy(p => c.Recruits[p.Id].Rank).First();
+        var jr = c.Recruits[junior.Id];
+        int hours = s.TrailHoursLeft;
+        foreach (var reply in new[] { s.BoardProspect(junior), s.ScoutProspect(junior), s.CallProspect(junior), s.HomeVisitProspect(junior), s.OfferProspect(junior) })
+            Assert.Contains("seniors only", reply);
+        Assert.Equal(hours, s.TrailHoursLeft);
+        Assert.False(jr.OnBoard || jr.Scouted || jr.Offered);
+        Assert.NotEqual(me.Id, jr.CourtedBy);
+
+        // Through signing day: no one below the senior class commits, the assistant courts seniors only, and the class
+        // still has about 25 five-stars, all signed.
+        var signing = CollegeWorld.SigningDay(senior);
+        while (s.Today <= signing) s.AdvanceDay();
+        Assert.All(c.Recruits.Values.Where(r => r.ClassOf > senior), r => Assert.Null(r.CommittedTo));
+        Assert.All(c.Recruits.Values.Where(r => r.ClassOf > senior), r => Assert.NotEqual(me.Id, r.CourtedBy));
+        Assert.InRange(c.ClassOf(senior).Count(p => c.Recruits[p.Id].Stars == 5), 20, 30);
+        Assert.All(c.ClassOf(senior).Where(p => c.Recruits[p.Id].Stars == 5), p => Assert.NotNull(c.Recruits[p.Id].CommittedTo));
+
+        // After signing day the rising seniors are the class to recruit (they commit from September 1).
+        Assert.Equal(senior + 1, c.RecruitingClass(s.Today));
+        Assert.Contains("Scouted", s.ScoutProspect(junior));
+        Assert.Contains("Signing day has passed", s.CallProspect(c.ClassOf(senior).First(p => c.Recruits[p.Id].CommittedTo == null)));
+        var younger = c.ClassOf(senior + 2).First();
+        Assert.Contains("seniors only", s.CallProspect(younger));
+    }
 }
