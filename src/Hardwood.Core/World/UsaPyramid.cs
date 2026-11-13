@@ -426,23 +426,6 @@ public static class UsaPyramid
         if (topPlayed)
         {
             RealignTop(nabl, up);
-            // Room to sign at the new level (#356): eight clubs come up a year, with rosters built for tier 2 and wages to match.
-            // Each lets its players well below a typical top-league 10th man go (up to five, keeping nine), so it can use its new
-            // budget in free agency, which follows. The coach's own club decides for itself.
-            var stayed = nabl.Teams.Except(up).ToList();
-            if (stayed.Count > 0)
-            {
-                var tenth = stayed.Select(t => t.Roster.Select(p => p.CurrentAbility).OrderByDescending(x => x).Skip(9).DefaultIfEmpty(0).First())
-                    .OrderBy(x => x).ToList();
-                int bar = tenth[tenth.Count / 2] - 4;
-                foreach (var t in up.Where(t => t.Id != world.ManagedClubId))
-                {
-                    var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(5, Math.Max(0, t.Roster.Count - 9))).ToList();
-                    foreach (var p in gone) { t.Roster.Remove(p); p.TeamId = null; p.Contract = null; nabl.FreeAgents.Add(p); }
-                    if (gone.Count > 0)
-                        news.Add(($"{t.FullName} clear room for the {Hardwood.Core.Names.Brand.Top}", $"{t.FullName} let {string.Join(", ", gone.Select(p => p.Name))} go to make room for signings at their new level."));
-                }
-            }
             news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
                 + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
             news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
@@ -504,7 +487,55 @@ public static class UsaPyramid
                 if (fell) news.AddRange(RelegationReleases(world, nabl, t, c, on));
             }
         }
+        news.AddRange(RebuildPromoted(world, nabl, up, on));
         world.Index();
+        return news;
+    }
+
+    /// <summary>
+    /// Promoted clubs rebuild for the top league (#356). Promotion comes after the top league's free agency, so each club
+    /// (not the coach's own) lets go of up to five players well below a typical top-league 10th man (keeping nine), then signs
+    /// the best free agents it can fit in its new wage budget at top-league market wages, and fills any gap to the roster
+    /// minimum with minimum deals. Eight tier-2 rosters a year otherwise left the worst records too low.
+    /// </summary>
+    private static List<(string, string)> RebuildPromoted(GameWorld world, League top, List<Team> up, DateOnly on)
+    {
+        var news = new List<(string, string)>();
+        var stayed = top.Teams.Except(up).ToList();
+        if (up.Count == 0 || stayed.Count == 0) return news;
+        var fin = top.Finance;
+        var tenth = stayed.Select(t => t.Roster.Select(p => p.CurrentAbility).OrderByDescending(x => x).Skip(9).DefaultIfEmpty(0).First()).OrderBy(x => x).ToList();
+        int bar = tenth[tenth.Count / 2] - 4;
+        var rng = new Rng((ulong)(on.Year * 7919 + up.Count));
+        foreach (var t in up.Where(t => t.Id != world.ManagedClubId))
+        {
+            var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(5, Math.Max(0, t.Roster.Count - 9))).ToList();
+            foreach (var p in gone) { t.Roster.Remove(p); p.TeamId = null; p.Contract = null; top.FreeAgents.Add(p); }
+            var signed = new List<Player>();
+            void Sign(Player p, long salary)
+            {
+                top.FreeAgents.Remove(p);
+                p.Contract = new Contract { Years = Season.ContractMarket.ContractLength(p, on, rng), Salary = salary, StartSeason = on.Year };
+                p.TeamId = t.Id; p.DraftRightsTeamId = null;
+                t.Roster.Add(p); signed.Add(p);
+            }
+            foreach (var p in top.FreeAgents.Where(p => !gone.Contains(p) && p.DraftRightsTeamId == null && p.CurrentAbility >= bar && p.Age(on) <= 33)
+                         .OrderByDescending(p => p.CurrentAbility).ToList())
+            {
+                if (t.Roster.Count >= 14) break;
+                long salary = Math.Max(fin.MinSalary, Season.ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin));
+                if (Season.ContractMarket.Payroll(t) + salary <= t.Money.WageBudget) Sign(p, salary);
+            }
+            foreach (var p in top.FreeAgents.Where(p => !gone.Contains(p) && p.DraftRightsTeamId == null).OrderByDescending(p => p.CurrentAbility).ToList())
+            {
+                if (t.Roster.Count >= fin.RosterMin) break;
+                Sign(p, fin.MinSalary);
+            }
+            if (gone.Count + signed.Count > 0)
+                news.Add(($"{t.FullName} rebuild for the {Hardwood.Core.Names.Brand.Top}",
+                    (gone.Count > 0 ? $"{t.FullName} let {string.Join(", ", gone.Select(p => p.Name))} go. " : "")
+                    + (signed.Count > 0 ? $"In: {string.Join(", ", signed.Select(p => $"{p.Name} ({p.PrimaryPosition})"))}." : "")));
+        }
         return news;
     }
 
@@ -524,6 +555,9 @@ public static class UsaPyramid
         {
             t2.Clubs.Remove(p); top.Teams.Add(p); newcomers.Add(p);
             p.Tactic.Pace = new Tactic().Pace;
+            // They start the career in the top league, so their deals are top-league ones (at least the minimum).
+            foreach (var pl in p.Roster)
+                if (pl.Contract is { } c) c.Salary = Math.Max(top.Finance.MinSalary, Season.ContractMarket.MarketSalary(pl.CurrentAbility, pl.Age(on), top.Finance));
             if (p.Staff.Count == 0)
                 foreach (var role in Enum.GetValues<StaffRole>()) { var st = staffGen.Generate(top, role, on, 8); st.TeamId = p.Id; p.Staff.Add(st); }
         }

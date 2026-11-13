@@ -577,6 +577,15 @@ public sealed class Offseason
             }
         }
         AiFreeAgency(null);
+        // Every club reaches the roster minimum before opening night (review #10: a promoted club opened with 10; #362): the
+        // best players still unsigned take a one-year minimum deal.
+        foreach (var team in _league.Teams.Where(t => t.Roster.Count < fin.RosterMin))
+            foreach (var p in _league.FreeAgents.Where(p => p.DraftRightsTeamId == null || p.DraftRightsTeamId == team.Id)
+                         .OrderByDescending(p => ContractMarket.Value(p, Date)).ToList())
+            {
+                if (team.Roster.Count >= fin.RosterMin) break;
+                SignFreeAgent(team, p, 1, fin.MinSalary);
+            }
         AiHireStaff(null);
 
         // The rest of the world signs from the pool before the leftovers retire (decision #41).

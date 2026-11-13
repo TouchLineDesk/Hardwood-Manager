@@ -34,7 +34,8 @@ public class ResultsMessageTests
             Assert.Equal(n, m.Body.Split('\n').Count(l => l.Contains("  W ") || l.Contains("  L ")));
             games += n;
         }
-        Assert.Equal(s.MyRecord.Wins + s.MyRecord.Losses, games);
+        // Games since the last message wait for the next one (the regular season can end mid-week, #265).
+        Assert.Equal(s.MyRecord.Wins + s.MyRecord.Losses, games + s.WeekResults.Count);
 
         int weeks = (s.Today.DayNumber - start.DayNumber) / 7;
         if (everyOtherWeek)

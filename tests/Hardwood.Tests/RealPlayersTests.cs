@@ -45,7 +45,9 @@ public class RealPlayersTests
             var fictional = GameSession.NewGame(2026, 1, null);
             var real = GameSession.NewGame(2026, 16, null, realWorld: true);
             var names = RealPlayers.Lines.Select(l => l.Name).ToHashSet();
-            Assert.All(real.League.Teams, t =>
+            // The 30 real franchises; the two tier-2 clubs that joined to make 32 (#355) keep their own made-up rosters.
+            Assert.All(real.League.Teams.Skip(30), t => Assert.DoesNotContain(t.Roster, p => names.Contains(p.Name)));
+            Assert.All(real.League.Teams.Take(30), t =>
             {
                 Assert.Equal(15, t.Roster.Count);
                 Assert.InRange(t.Roster.Count(p => names.Contains(p.Name)), 13, 15);
@@ -61,7 +63,7 @@ public class RealPlayersTests
             var all = real.League.Teams.SelectMany(t => t.Roster).ToList();
             Assert.Equal(all.Count, all.Select(p => p.Id).Distinct().Count());
             Assert.All(all, p => Assert.True(p.Contract!.Salary >= real.League.Finance.MinSalary));
-            Assert.All(real.League.Teams, t => Assert.InRange(t.Roster.Sum(p => p.Contract!.Salary), 100_000_000, 240_000_000));
+            Assert.All(real.League.Teams.Take(30), t => Assert.InRange(t.Roster.Sum(p => p.Contract!.Salary), 100_000_000, 240_000_000));
             Assert.All(real.League.Teams, t => Assert.True(t.Money.WageBudget >= t.Roster.Sum(p => p.Contract!.Salary)));
             // Real contracts, birthdays and heights (Basketball-Reference, checked Nov 12, 2026).
             Assert.Equal((59_030_000L, 2), (jokic.Contract!.Salary, jokic.Contract.Years));

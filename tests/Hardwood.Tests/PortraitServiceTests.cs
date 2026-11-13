@@ -37,7 +37,7 @@ public class PortraitServiceTests
         var dir = Path.Combine(Path.GetTempPath(), $"hw-auto-{Guid.NewGuid():N}");
         var pack = Path.Combine(dir, "FMNEWGANv2");
         Directory.CreateDirectory(dir);
-        MakePack(pack, 400);
+        MakePack(pack, 520); // 32 teams since #355: more than 400 cards of one ethnicity
         var savePath = Path.Combine(dir, "career.hwsave");
         AppSettings.Use(new AppSettings { FaceFolder = pack });
         var svc = PortraitService.Instance;
