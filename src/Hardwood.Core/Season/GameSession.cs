@@ -1064,7 +1064,7 @@ public sealed partial class GameSession
     private void OpenFreeAgencyOnTheOpenMarket()
     {
         NewWindow();
-        Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
+        Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason!, ControlledTeamId);
         Offseason.AiFreeAgency(ControlledTeamId);
         AiTransferRound(15); // the summer transfer market (decision #87)
         if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
