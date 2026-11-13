@@ -494,9 +494,9 @@ public static class UsaPyramid
 
     /// <summary>
     /// Promoted clubs rebuild for the top league (#356). Promotion comes after the top league's free agency, so each club
-    /// (not the coach's own) lets go of up to five players well below a typical top-league 10th man (keeping nine), then signs
-    /// the best free agents it can fit in its new wage budget at top-league market wages, and fills any gap to the roster
-    /// minimum with minimum deals. Eight tier-2 rosters a year otherwise left the worst records too low.
+    /// (not the coach's own) lets go of up to three players well below a typical top-league 10th man (keeping ten), then signs
+    /// rotation-level free agents (about a typical 10th man) it can fit in its new wage budget at top-league wages up to the roster minimum, and fills
+    /// any gap left with minimum deals. Eight tier-2 rosters a year otherwise left the worst records too low.
     /// </summary>
     private static List<(string, string)> RebuildPromoted(GameWorld world, League top, List<Team> up, DateOnly on)
     {
@@ -509,7 +509,7 @@ public static class UsaPyramid
         var rng = new Rng((ulong)(on.Year * 7919 + up.Count));
         foreach (var t in up.Where(t => t.Id != world.ManagedClubId))
         {
-            var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(5, Math.Max(0, t.Roster.Count - 9))).ToList();
+            var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(3, Math.Max(0, t.Roster.Count - 10))).ToList();
             foreach (var p in gone) { t.Roster.Remove(p); p.TeamId = null; p.Contract = null; top.FreeAgents.Add(p); }
             var signed = new List<Player>();
             void Sign(Player p, long salary)
@@ -520,9 +520,9 @@ public static class UsaPyramid
                 t.Roster.Add(p); signed.Add(p);
             }
             foreach (var p in top.FreeAgents.Where(p => !gone.Contains(p) && p.DraftRightsTeamId == null && p.CurrentAbility >= bar && p.Age(on) <= 33)
-                         .OrderByDescending(p => p.CurrentAbility).ToList())
+                         .OrderBy(p => Math.Abs(p.CurrentAbility - (bar + 6))).ThenBy(p => p.Id).ToList()) // rotation players, not the pool's stars
             {
-                if (t.Roster.Count >= 14) break;
+                if (t.Roster.Count >= fin.RosterMin) break;
                 long salary = Math.Max(fin.MinSalary, Season.ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin));
                 if (Season.ContractMarket.Payroll(t) + salary <= t.Money.WageBudget) Sign(p, salary);
             }
