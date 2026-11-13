@@ -101,7 +101,9 @@ public sealed class GameWorld
     /// Build the world around an NABL league: clubs, players (ids continue after the NABL's), and the first season's
     /// fixtures. Uses its own random stream, so the NABL built from a seed is unchanged.
     /// </summary>
-    public static GameWorld Generate(League nabl, ulong seed, IEnumerable<string> fullSim, DateOnly today)
+    /// <param name="expandTop">Grow the top league to 32 now (a new career). False when a world is built around a league that is
+    /// already playing (a save from before the world, a test's session): its schedule stands, and it grows at the next summer.</param>
+    public static GameWorld Generate(League nabl, ulong seed, IEnumerable<string> fullSim, DateOnly today, bool expandTop = true)
     {
         var world = new GameWorld(nabl, seed ^ 0x574F524C44UL);
         var rng = world._rng;
@@ -129,6 +131,8 @@ public sealed class GameWorld
             real: Hardwood.Core.RealWorld.RealWorldData.IsReal(nabl));
         nabl.CollegeActive = true;
         nabl.NextPlayerId = gen.NextId;
+        // The top league grows to 32 with the two strongest tier-2 clubs (Danny's D33 design, D36a A, #355).
+        if (expandTop) UsaPyramid.ExpandTop(world, nabl, new StaffGenerator(new Rng(seed ^ 0x3332544F50UL)), today);
         world.Index();
         foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic))
             world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility), 1);

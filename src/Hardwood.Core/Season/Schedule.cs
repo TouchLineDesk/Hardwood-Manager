@@ -5,8 +5,9 @@ namespace Hardwood.Core.Season;
 public sealed record ScheduledGame(int Index, DateOnly Date, Team Home, Team Away);
 
 /// <summary>
-/// Builds an 82-game schedule for a 30-team, two-conference league:
-/// 4 games vs each division rival (16), 3 or 4 vs the rest of the conference (36), 2 vs each other-conference team (30).
+/// Builds an 82-game schedule for a two-conference league: 30 teams in six divisions of five (4 games vs each division rival,
+/// 3 or 4 vs the rest of the conference, 2 vs each other-conference team), or 32 in eight divisions of four (#355:
+/// 4 × 3 division rivals, 3 or 4 vs the other 12 in the conference, 2 × 16 against the other conference).
 /// Dates are spread over ~170 days with no team playing twice on one day.
 /// </summary>
 public static class ScheduleBuilder
@@ -28,13 +29,40 @@ public static class ScheduleBuilder
                 pairs.Add(g % 2 == 0 ? (a, b) : (b, a));
         }
 
-        // Top up to 82: each team needs 6 extra conference games (a 4th game vs 6 of its 10 non-division rivals).
-        // For each pair of divisions (A,B), team i of A plays team (i+k) mod 5 of B for k = 0..2: a 6-regular pairing.
+        // Top up to 82 with extra conference games against teams outside the division.
         foreach (var conf in new[] { Conference.East, Conference.West })
         {
             var divisions = teams.Where(t => t.Conference == conf)
                 .GroupBy(t => t.Division).OrderBy(g => g.Key)
                 .Select(g => g.OrderBy(t => t.Id).ToList()).ToList();
+            int size = divisions.Count > 0 ? divisions[0].Count : 0;
+            if (divisions.Count % 2 == 0 && divisions.Count > 0 && divisions.All(d => d.Count == size))
+            {
+                // Four divisions of four (Danny's D33 design, #344, #355): 12 division games, 36 against the other 12 conference
+                // teams, 32 against the other conference, so 2 more: perfect matchings between division pairs (round r of a
+                // round robin of the divisions; offset o within the pair), one extra game each.
+                int confSize = divisions.Count * size, others = teams.Count - confSize;
+                int extra = 82 - (4 * (size - 1) + 3 * (confSize - size) + 2 * others);
+                int n = divisions.Count, rounds = n - 1;
+                for (int m = 0; m < extra && m < rounds * size; m++)
+                {
+                    int r = m % rounds, o = m / rounds;
+                    var order = Enumerable.Range(0, n).ToList();
+                    for (int i = 0; i < r; i++) { order.Insert(1, order[^1]); order.RemoveAt(order.Count - 1); }
+                    for (int i = 0; i < n / 2; i++)
+                    {
+                        var A = divisions[order[i]]; var B = divisions[order[n - 1 - i]];
+                        for (int j = 0; j < size; j++)
+                        {
+                            var a = A[j]; var b = B[(j + o) % size];
+                            pairs.Add(rng.Chance(0.5) ? (a, b) : (b, a));
+                        }
+                    }
+                }
+                continue;
+            }
+            // Three divisions of five (the NBA's real layout): each team needs 6 extra conference games (a 4th game vs 6 of its
+            // 10 non-division rivals). For each pair of divisions (A,B), team i of A plays team (i+k) mod 5 of B for k = 0..2.
             for (int dA = 0; dA < divisions.Count; dA++)
             for (int dB = dA + 1; dB < divisions.Count; dB++)
             {

@@ -53,7 +53,10 @@ public class WorldTests
     {
         var plain = new WorldGenerator(new Rng(77)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
         var (nabl, _) = Build(77);
-        Assert.Equal(plain.AllActivePlayers.Select(p => (p.Id, p.Name, p.CurrentAbility)), nabl.AllActivePlayers.Select(p => (p.Id, p.Name, p.CurrentAbility)));
+        // The two tier-2 clubs that join the league to make 32 (#355) come after the generated thirty.
+        Assert.Equal(plain.AllActivePlayers.Select(p => (p.Id, p.Name, p.CurrentAbility)),
+            nabl.AllActivePlayers.Where(p => p.Id < plain.NextPlayerId).Select(p => (p.Id, p.Name, p.CurrentAbility)));
+        Assert.Equal(32, nabl.Teams.Count);
     }
 
     [Fact]

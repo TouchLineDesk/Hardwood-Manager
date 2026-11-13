@@ -24,9 +24,16 @@ public class PyramidTests
         var (nabl, world) = NewWorld();
         var pyramid = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).ToList();
         Assert.Equal(2 + 6 + 16, pyramid.Count);
-        Assert.Equal(24, world[UsaPyramid.Tier2].Clubs.Count);
-        Assert.Equal(24, world[UsaPyramid.Tier3].Clubs.Count);
+        // Danny's D33 design (#344, #355): 32 clubs in each pro tier, the top league too (two strongest tier-2 clubs joined it).
+        Assert.Equal(32, nabl.Teams.Count);
+        Assert.Equal(32, world[UsaPyramid.Tier2].Clubs.Count);
+        Assert.Equal(32, world[UsaPyramid.Tier3].Clubs.Count);
         Assert.All(pyramid.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
+        // Two conferences of four divisions of four in the top league.
+        Assert.Equal(16, nabl.Teams.Count(t => t.Conference == Conference.East));
+        Assert.All(nabl.Teams.GroupBy(t => (t.Conference, t.Division)), g => Assert.Equal(4, g.Count()));
+        Assert.Equal(8, nabl.Teams.Select(t => t.Division).Distinct().Count());
+        Assert.All(nabl.Teams.Skip(30), t => Assert.NotEmpty(t.Staff));
         int total = pyramid.Sum(c => c.Clubs.Count);
         Assert.InRange(total, 360, 400); // about 400 with the NABL (decision #78)
 
@@ -51,22 +58,22 @@ public class PyramidTests
     {
         var (nabl, world) = NewWorld(5);
         world.FinishSeasons(new GameSimulator());
-        // The NABL's season: the last team in each of the six divisions goes down (Danny, #319).
+        // The top league's season: the 4th-placed (last) team in each of the eight divisions goes down (Danny, #319, #344).
         var order = nabl.Teams.OrderBy(t => t.Id).ToList();
         var summary = new SeasonSummary { Season = 2026, Records = order.Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() };
         nabl.History.Add(summary);
         var down = nabl.Teams.GroupBy(t => t.Division).Select(g => g.OrderBy(t => t.Id).First()).ToList();
-        var divisionOf = down.ToDictionary(t => t, t => (t.Division, t.Conference));
-        Assert.Equal(6, down.Count);
+        Assert.Equal(8, down.Count);
         var wagesBefore = down.SelectMany(t => t.Roster).Where(p => p.Contract != null).ToDictionary(p => p.Id, p => p.Contract!.Salary);
         var t2 = world[UsaPyramid.Tier2];
-        // Each tier-2 and tier-3 division winner goes up; the divisions are regional and six of four.
+        // Each tier-2 and tier-3 division winner goes up; the divisions are regional, eight of four.
         List<Team> Winners(WorldCompetition c)
         {
             var table = c.Season.Table().Select(r => world.TeamById(r.TeamId)!).ToList();
             var divs = UsaPyramid.Divisions(c.Key, c.Clubs);
-            Assert.Equal(6, divs.Count);
+            Assert.Equal(8, divs.Count);
             Assert.All(divs, d => Assert.Equal(4, d.Teams.Count));
+            Assert.Equal(4, divs.Count(d => d.Name.StartsWith("East · ")));
             return divs.Select(d => table.First(d.Teams.Contains)).ToList();
         }
         var up = Winners(t2);
@@ -78,11 +85,12 @@ public class PyramidTests
 
         var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
 
-        Assert.Equal(30, nabl.Teams.Count);
+        Assert.Equal(32, nabl.Teams.Count);
         Assert.All(down, t => Assert.Contains(t, t2.Clubs));
         Assert.All(up, t => Assert.Contains(t, nabl.Teams));
         Assert.All(up, t => Assert.NotEmpty(t.Staff));
-        Assert.Equal(down.Select(t => t.Conference).OrderBy(c => c), up.Select(t => t.Conference).OrderBy(c => c));
+        // Room to sign at the new level (#356): up to three players well below a typical top-league 10th man go, and the club signs back up to the roster minimum.
+        Assert.All(up, t => Assert.InRange(t.Roster.Count, 13, 15));
         Assert.All(up, t => Assert.True(t.Money.WageBudget > 100_000_000, $"{t.FullName}: {t.Money.WageBudget:N0}")); // NABL money now
         Assert.All(down, t => Assert.True(t.Money.Revenue < 50_000_000)); // tier-2 money
         // Relegation clauses halve the wages; a parachute (half the lost revenue, for two seasons) covers the rest.
@@ -93,11 +101,11 @@ public class PyramidTests
         Assert.All(up, t => Assert.Equal(0, t.Money.Parachute));
         Assert.All(t3Up, t => Assert.Contains(t, t2.Clubs));
         Assert.All(t2Last, t => Assert.Contains(t, world[UsaPyramid.Tier3].Clubs));
-        // Every top-league division is still five strong.
-        Assert.All(nabl.Teams.GroupBy(t => t.Division), g => Assert.Equal(5, g.Count()));
-        Assert.Equal(6, nabl.Teams.Select(t => t.Division).Distinct().Count());
-        Assert.Equal(24, t2.Clubs.Count);
-        Assert.Equal(24, world[UsaPyramid.Tier3].Clubs.Count);
+        // Every top-league division is still four strong, sixteen a conference.
+        Assert.All(nabl.Teams.GroupBy(t => (t.Conference, t.Division)), g => Assert.Equal(4, g.Count()));
+        Assert.Equal(8, nabl.Teams.Select(t => t.Division).Distinct().Count());
+        Assert.Equal(32, t2.Clubs.Count);
+        Assert.Equal(32, world[UsaPyramid.Tier3].Clubs.Count);
         Assert.Contains(world.TeamById(regionalChamp)!, world[UsaPyramid.Tier3].Clubs);
         Assert.Contains(world.TeamById(localChamp)!, world[UsaPyramid.RegionalKey("ne")].Clubs);
         Assert.All(world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
@@ -106,6 +114,63 @@ public class PyramidTests
         // The next season's fixtures include the new arrivals.
         world.StartSeason(2027);
         Assert.All(down, t => Assert.Contains(t.Id, t2.Season.Participants));
+    }
+
+    [Fact]
+    public void An_older_world_grows_to_thirty_two_in_each_pro_tier_at_its_next_summer()
+    {
+        // Rebuild the shape of a save from before Danny's D33 design (#344, #355): a top league of 30 in six divisions of five,
+        // tiers 2 and 3 of 24.
+        var (nabl, world) = NewWorld(7);
+        var t2 = world[UsaPyramid.Tier2]; var t3 = world[UsaPyramid.Tier3];
+        foreach (var t in nabl.Teams.Skip(30).ToList()) { nabl.Teams.Remove(t); t2.Clubs.Add(t); }
+        string[] old = { "Atlantic", "Central", "Southeast", "Northwest", "Pacific", "Southwest" };
+        for (int i = 0; i < 30; i++) { nabl.Teams[i].Conference = i < 15 ? Conference.East : Conference.West; nabl.Teams[i].Division = old[i / 5]; }
+        foreach (var t in t2.Clubs.OrderBy(GameWorld.Strength).Take(10).ToList()) { t2.Clubs.Remove(t); t3.Clubs.Add(t); }
+        foreach (var t in t3.Clubs.OrderBy(GameWorld.Strength).Take(18).ToList())
+        { t3.Clubs.Remove(t); world[UsaPyramid.RegionalKey(UsaPyramid.RegionOf(t))].Clubs.Add(t); }
+        Assert.Equal((30, 24, 24), (nabl.Teams.Count, t2.Clubs.Count, t3.Clubs.Count));
+        world.Index();
+        world.StartSeason(2026);
+        world.FinishSeasons(new GameSimulator());
+        nabl.History.Add(new SeasonSummary { Season = 2026, Records = nabl.Teams.Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() });
+        int total = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count) + nabl.Teams.Count;
+
+        var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
+
+        Assert.Equal((32, 32, 32), (nabl.Teams.Count, t2.Clubs.Count, t3.Clubs.Count));
+        Assert.All(world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
+        Assert.Equal(total, world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count) + nabl.Teams.Count);
+        Assert.All(nabl.Teams.GroupBy(t => (t.Conference, t.Division)), g => Assert.Equal(4, g.Count()));
+        Assert.Equal(16, nabl.Teams.Count(t => t.Conference == Conference.East));
+        Assert.All(nabl.Teams, t => Assert.NotEmpty(t.Staff));
+        Assert.Contains(news, n => n.Body.Contains("grows to 32"));
+        // The next season's schedule: 82 games each, 41 at home, 4 against each division rival.
+        var schedule = ScheduleBuilder.Build(nabl, new DateOnly(2027, 10, 21), new Rng(4));
+        Assert.All(nabl.Teams, t =>
+        {
+            var mine = schedule.Where(g => g.Home == t || g.Away == t).ToList();
+            Assert.Equal(82, mine.Count);
+            Assert.Equal(41, mine.Count(g => g.Home == t));
+            foreach (var rival in nabl.Teams.Where(x => x != t && x.Division == t.Division))
+                Assert.Equal(4, mine.Count(g => g.Home == rival || g.Away == rival));
+            foreach (var other in nabl.Teams.Where(x => x.Conference != t.Conference))
+                Assert.Equal(2, mine.Count(g => g.Home == other || g.Away == other));
+        });
+    }
+
+    [Fact]
+    public void The_real_top_league_keeps_its_conferences_in_eight_regional_divisions()
+    {
+        var (nabl, _) = NewWorld(11);
+        var east = nabl.Teams.Where(t => t.Conference == Conference.East).Select(t => t.City).ToHashSet();
+        // The pro divisions are regional: Boston and New York together; Los Angeles in the Pacific.
+        var bos = nabl.Teams.First(t => t.City == "Boston"); var nyk = nabl.Teams.First(t => t.City == "New York");
+        Assert.Equal(bos.Division, nyk.Division);
+        Assert.Equal("Atlantic", bos.Division);
+        Assert.Contains(nabl.Teams, t => t.City == "Los Angeles" && t.Division == "Pacific");
+        Assert.All(nabl.Teams.Where(t => t.Conference == Conference.East), t => Assert.Contains(t.Division, UsaPyramid.EastDivisions));
+        Assert.All(nabl.Teams.Where(t => t.Conference == Conference.West), t => Assert.Contains(t.Division, UsaPyramid.WestDivisions));
     }
 
     [Fact]

@@ -77,7 +77,7 @@ public sealed partial class GameSession
         Names.Brand.Real = Hardwood.Core.RealWorld.RealWorldData.IsReal(league); // a loaded career wears its own world
         // A save from before the world existed (or a test) gets one built around its NABL; it catches up on load.
         _worldGenerated = world == null;
-        World = world ?? Hardwood.Core.World.GameWorld.Generate(league, seed, DefaultFullSim, new DateOnly(league.Season, 10, 1));
+        World = world ?? Hardwood.Core.World.GameWorld.Generate(league, seed, DefaultFullSim, new DateOnly(league.Season, 10, 1), expandTop: false);
         _rng = new Rng(rngState ?? (seed ^ 0x5E5510));
         _sim = new GameSimulator(engine);
         Standings = new Standings(league);

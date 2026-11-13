@@ -80,6 +80,8 @@ public static class RealWorldData
             team.Division = real.Division;
             team.ArenaCapacity = real.Capacity;
         }
+        // The real conferences and divisions, then the eight regional divisions of the 32-team league (#344, #355).
+        Hardwood.Core.World.UsaPyramid.RealignTop(league, league.Teams.Skip(Teams.Count));
         if (players) RealPlayers.Apply(league, seed);
         Brand.Real = true;
     }
