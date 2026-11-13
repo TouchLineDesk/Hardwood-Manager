@@ -219,8 +219,11 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-college-bracket.png"));
             college.Tab = 3;
             Snap(window, Path.Combine(dir, $"{n++:00}-college-prospects.png"));
-            college.Tab = 4;
-            Snap(window, Path.Combine(dir, $"{n++:00}-college-recruiting.png"));
+            if (session.InCollege || session.SeniorRecruiting) // real pro careers draft instead (D48 B): no senior Recruiting tab
+            {
+                college.Tab = 4;
+                Snap(window, Path.Combine(dir, $"{n++:00}-college-recruiting.png"));
+            }
             college.Tab = 6;
             Snap(window, Path.Combine(dir, $"{n++:00}-college-high-school.png"));
             college.Tab = 7;

@@ -27,7 +27,7 @@ public sealed partial class CollegeViewModel
 {
     /// <summary>You coach a college program: the Recruiting tab is your high-school trail, not the pros' senior board.</summary>
     public bool IsCollegeCoach => Session.TrailOpen;
-    public bool IsProRecruiting => !Session.InCollege;
+    public bool IsProRecruiting => !Session.InCollege && Session.SeniorRecruiting; // D48 B: real careers draft instead
     public List<string> TrailViews { get; } = new() { "Best fits", "My board", "Committed to you", "All uncommitted", "5-star", "4-star" };
     [ObservableProperty] private string _trailView = "Best fits";
     [ObservableProperty] private string _trailClass = "";

@@ -71,7 +71,7 @@
         <StackPanel Spacing="4">
           <TextBlock Text="Delegate" FontWeight="SemiBold"/>
           <CheckBox Content="Development coach plans training (focus and intensity, every Monday)" IsChecked="{Binding DelegateTraining}"/>
-          <CheckBox Content="{Binding DelegateRecruitingText}" IsChecked="{Binding DelegateRecruiting}"/>
+          <CheckBox Content="{Binding DelegateRecruitingText}" IsChecked="{Binding DelegateRecruiting}" IsVisible="{Binding ShowDelegateRecruiting}"/>
           <CheckBox Content="Assistant picks tactics for each opponent" IsChecked="{Binding DelegateTactics}"/>
           <CheckBox Content="Assistant coach fronts the press and handles the locker room" IsChecked="{Binding DelegateMedia}"/>
           <TextBlock Text="{Binding DelegationNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>

@@ -16,7 +16,10 @@ public sealed partial class GameSession
     public DateOnly GraduationDay => new(World.College?.Season.Year + 1 ?? Today.Year, 7, 1);
 
     /// <summary>Recruiting runs from the college season's start in November until the NABL season ends, while you have a club.</summary>
-    public bool RecruitingOpen => World.College is { } c && Employed && !InCollege && Phase != SessionPhase.Offseason && Today >= new DateOnly(c.Season.Year, 11, 1) && Today < GraduationDay;
+    /// <summary>D48 B (Danny, #429): in real careers the draft replaces senior recruiting; the made-up world keeps it (#157).</summary>
+    public bool SeniorRecruiting => !Hardwood.Core.RealWorld.RealWorldData.IsReal(League);
+
+    public bool RecruitingOpen => SeniorRecruiting && World.College is { } c && Employed && !InCollege && Phase != SessionPhase.Offseason && Today >= new DateOnly(c.Season.Year, 11, 1) && Today < GraduationDay;
 
     public RecruitingBoard? Recruiting => World.College?.Season.Recruiting;
 
@@ -51,6 +54,7 @@ public sealed partial class GameSession
     {
         why = null;
         if (InCollege) { why = "Pro clubs court the seniors; as a college coach you recruit high-schoolers."; return null; }
+        if (!SeniorRecruiting) { why = "College seniors turn pro through the draft in real careers; there's no senior recruiting."; return null; }
         if (!RecruitingOpen) { why = "Recruiting is closed: it runs from November until the season ends and the seniors turn pro."; return null; }
         if (!Seniors().Contains(p)) { why = $"{p.Name} isn't a senior this season."; return null; }
         var st = Recruiting!.For(p.Id);

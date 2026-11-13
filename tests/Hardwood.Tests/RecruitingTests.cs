@@ -28,6 +28,20 @@ public class RecruitingTests
     }
 
     [Fact]
+    public void A_real_career_drafts_instead_of_recruiting_seniors()
+    {
+        // D48 B (Danny, #429): no senior recruiting in real careers; nobody commits, and the whole class goes to the draft.
+        var probe = GameSession.NewGame(71, 1, null, realWorld: true);
+        int id = probe.League.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ElementAt(3).Id;
+        var s = GameSession.NewGame(71, id, null, realWorld: true);
+        while (s.Today < new DateOnly(2027, 2, 1)) s.AdvanceDay();
+        Assert.False(s.SeniorRecruiting);
+        Assert.False(s.RecruitingOpen);
+        Assert.StartsWith("College seniors turn pro through the draft", s.CallRecruit(s.Seniors()[10]));
+        Assert.DoesNotContain(s.Recruiting?.Prospects.Values ?? Enumerable.Empty<Hardwood.Core.College.RecruitState>(), st => st.CommittedTeamId != null);
+    }
+
+    [Fact]
     public void Courting_a_senior_wins_his_commitment_and_he_signs_on_graduation_day()
     {
         var s = Season(71);
