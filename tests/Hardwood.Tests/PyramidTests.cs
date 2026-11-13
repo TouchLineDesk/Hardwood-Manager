@@ -89,6 +89,8 @@ public class PyramidTests
         Assert.All(down, t => Assert.Contains(t, t2.Clubs));
         Assert.All(up, t => Assert.Contains(t, nabl.Teams));
         Assert.All(up, t => Assert.NotEmpty(t.Staff));
+        // Room to sign at the new level (#356): players below a typical top-league 10th man go, keeping at least eight.
+        Assert.All(up, t => Assert.InRange(t.Roster.Count, 8, 15));
         Assert.All(up, t => Assert.True(t.Money.WageBudget > 100_000_000, $"{t.FullName}: {t.Money.WageBudget:N0}")); // NABL money now
         Assert.All(down, t => Assert.True(t.Money.Revenue < 50_000_000)); // tier-2 money
         // Relegation clauses halve the wages; a parachute (half the lost revenue, for two seasons) covers the rest.

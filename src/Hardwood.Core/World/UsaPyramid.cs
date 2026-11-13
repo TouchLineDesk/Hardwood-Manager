@@ -426,6 +426,23 @@ public static class UsaPyramid
         if (topPlayed)
         {
             RealignTop(nabl, up);
+            // Room to sign at the new level (#356): eight clubs come up a year, with rosters built for tier 2 and wages to match.
+            // Each lets its players below a typical top-league 10th man go (up to six, keeping eight), so it can use its new
+            // budget in free agency, which follows. The coach's own club decides for itself.
+            var stayed = nabl.Teams.Except(up).ToList();
+            if (stayed.Count > 0)
+            {
+                var tenth = stayed.Select(t => t.Roster.Select(p => p.CurrentAbility).OrderByDescending(x => x).Skip(9).DefaultIfEmpty(0).First())
+                    .OrderBy(x => x).ToList();
+                int bar = tenth[tenth.Count / 2];
+                foreach (var t in up.Where(t => t.Id != world.ManagedClubId))
+                {
+                    var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(6, Math.Max(0, t.Roster.Count - 8))).ToList();
+                    foreach (var p in gone) { t.Roster.Remove(p); p.TeamId = null; p.Contract = null; nabl.FreeAgents.Add(p); }
+                    if (gone.Count > 0)
+                        news.Add(($"{t.FullName} clear room for the {Hardwood.Core.Names.Brand.Top}", $"{t.FullName} let {string.Join(", ", gone.Select(p => p.Name))} go to make room for signings at their new level."));
+                }
+            }
             news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
                 + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
             news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
@@ -465,7 +482,15 @@ public static class UsaPyramid
         var before = tables.SelectMany(kv => kv.Value.Select(t => (t, kv.Key))).GroupBy(x => x.t).ToDictionary(g => g.Key, g => g.First().Key);
         double nablArena = nabl.Teams.Average(t => (double)t.ArenaCapacity);
         double ScaleOf(string key) => Competitions.Get(key).SalaryScale;
-        foreach (var t in nabl.Teams.Where(t => before.ContainsKey(t))) Season.Budgets.Rescale(t, 1, nablArena, ScaleOf(before[t]));
+        foreach (var t in nabl.Teams.Where(t => before.ContainsKey(t)))
+        {
+            Season.Budgets.Rescale(t, 1, nablArena, ScaleOf(before[t]));
+            // Promotion clauses (#357), the mirror of the relegation ones: wages double on reaching the top league (tier-2 deals
+            // are a tenth of its scale), so a promoted club's payroll is a top-league one, not a tier-2 one in a big budget.
+            if (t.Id != world.ManagedClubId)
+                foreach (var p in t.Roster)
+                    if (p.Contract is { } c) c.Salary = (long)Math.Round(c.Salary * Math.Min(2.0, 1 / Math.Max(0.01, ScaleOf(before[t]))) / 1000) * 1000;
+        }
         foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key)))
         {
             double arena = c.Clubs.Average(t => (double)t.ArenaCapacity);
