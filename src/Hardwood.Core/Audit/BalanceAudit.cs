@@ -256,7 +256,7 @@ public static class BalanceAudit
         if (fin.OpenMarket)
         {
             // Open market (decisions #80, #88, #90): college graduates instead of a draft; budgets instead of a cap.
-            m.Add(new("NABL graduates", "College graduates signed by NABL clubs", "0.0", gradsSigned, 8, 45, "a draft placed ~30-45 rookies a year; 32 teams and eight promoted clubs a year since #355 (gate 40 before, #358)"));
+            m.Add(new("NABL graduates", "College graduates signed by NABL clubs", "0.0", gradsSigned, 8, 40, "a draft placed ~30-45 rookies a year"));
             m.Add(new("NABL graduates", "Best graduate signed (CA)", "0", bestGrad, null, null, ""));
             m.Add(new("NABL money", "Clubs over their wage budget at season start", "0.0", overBudget, 0, 8, "a few overspend"));
             m.Add(new("NABL money", "Average payroll as share of budget", "0.00", budgetUse, 0.80, 1.05, "clubs spend most of it"));
