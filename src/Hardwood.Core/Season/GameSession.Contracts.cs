@@ -41,8 +41,24 @@ public sealed partial class GameSession
     /// </summary>
     public long MyReservedWages => Phase == SessionPhase.Offseason ? PendingCommitments(HumanTeam).wages : 0;
 
-    /// <summary>What's left for a new deal: the budget less committed wages and the summer's reserved seniors.</summary>
-    public long MyWageRoom => HumanTeam.Money.WageBudget - MyCommittedWages - MyReservedWages;
+    /// <summary>
+    /// The minimum deals still needed to reach the league's roster minimum after one more signing. Those deals may go over the
+    /// budget (they fill the roster), so a bigger deal that takes their room leaves the club over for the season (review #10:
+    /// `nba-real-mid` opened year 3 over after a $5.85M deal and three minimums). The owner keeps that room back.
+    /// </summary>
+    public long MyRosterFillReserve
+    {
+        get
+        {
+            int signed = HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) + (Phase == SessionPhase.Offseason ? PendingCommitments(HumanTeam).count : 0);
+            int missing = Math.Max(0, MyRosterMin - signed - 1);
+            return missing * (long)(League.Finance.MinSalary * MySalaryScale);
+        }
+    }
+
+    /// <summary>What's left for a new deal: the budget less committed wages, the summer's reserved seniors and the minimum deals
+    /// the roster will still need.</summary>
+    public long MyWageRoom => HumanTeam.Money.WageBudget - MyCommittedWages - MyReservedWages - MyRosterFillReserve;
 
     private readonly Dictionary<int, (ContractDemand opening, int round)> _talks = new();
     private readonly HashSet<int> _talksOver = new();
@@ -110,10 +126,12 @@ public sealed partial class GameSession
         // renewals and minimum deals let the strong club creep over its budget every summer).
         bool fillsRoster = wage <= (long)(League.Finance.MinSalary * MySalaryScale) && HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) < MyRosterMin;
         long reserved = MyReservedWages;
-        if (MyCommittedWages + reserved + wage > budget && !fillsRoster)
+        long fill = fillsRoster ? 0 : MyRosterFillReserve;
+        if (MyCommittedWages + reserved + fill + wage > budget && !fillsRoster)
             return new TalkReply(false, false, demand,
-                $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + reserved + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget"
-                + (reserved > 0 ? $", counting ${reserved / 1e6:F1}M for your committed college seniors." : ".")
+                $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + reserved + fill + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget"
+                + (reserved > 0 ? $", counting ${reserved / 1e6:F1}M for your committed college seniors" : "")
+                + (fill > 0 ? $", counting ${fill / 1e6:F1}M for the minimum deals the roster still needs" : "") + "."
                 + (MyExpiring.Contains(p) ? " Free up wages first (sell or release someone), or let him go." : ""));
 
         var (opening, round) = _talks[p.Id];
