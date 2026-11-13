@@ -13,6 +13,8 @@ public sealed class StandingRow
     public string? Label { get; init; }
     public string Name => Label ?? Team.FullName;
     public string Division => Team.Division;
+    /// <summary>The division column (#318): the NABL's divisions, a pyramid league's, or blank.</summary>
+    public string Div { get; init; } = "";
     public int W { get; init; }
     public int L { get; init; }
     public string Pct { get; init; } = "";
@@ -27,11 +29,13 @@ public sealed class StandingRow
     {
         "Playoffs" => PlayoffBrush,
         "Play-in" => PlayInBrush,
+        "Relegation" => RelegationBrush,
         _ => Avalonia.Media.Brushes.Transparent,
     };
     public string ZoneTip => Zone == "" ? "Outside the postseason places" : Zone;
     public static readonly Avalonia.Media.IBrush PlayoffBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E8B57"));
     public static readonly Avalonia.Media.IBrush PlayInBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B7832A"));
+    public static readonly Avalonia.Media.IBrush RelegationBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B23A3A"));
 }
 
 public sealed partial class StandingsViewModel : PageViewModel
@@ -45,6 +49,13 @@ public sealed partial class StandingsViewModel : PageViewModel
     [ObservableProperty] private bool _showPlayIn = true;
     [ObservableProperty] private string _leftTitle = "Eastern Conference";
     [ObservableProperty] private string _rightTitle = "Western Conference";
+    /// <summary>Conference order (playoff places) or division order (Danny, #318).</summary>
+    public string[] Views { get; } = { "By conference", "By division" };
+    [ObservableProperty] private string _view = "By conference";
+    [ObservableProperty] private bool _canDivide;
+    [ObservableProperty] private bool _showRelegation;
+    partial void OnViewChanged(string value) => Refresh();
+    private bool ByDivision => View == "By division";
     public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Race { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
     public string[] RaceLabels { get; private set; } = Array.Empty<string>();
     public bool HasRace => RaceLabels.Length >= 3;
@@ -72,13 +83,37 @@ public sealed partial class StandingsViewModel : PageViewModel
             OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
             return;
         }
-        PlayoffLabel = "Playoffs"; ShowPlayIn = true;
+        PlayoffLabel = "Playoffs"; ShowPlayIn = true; CanDivide = false; ShowRelegation = false;
         if (s.HumanLeague is { } hl)
         {
             // Abroad: your league on the left, the NABL on the right.
             int playoff = hl.Profile.Playoffs.Length > 0 ? hl.Profile.Playoffs[0].Teams : 0;
             FillRecords(East, s.MyStandings.All(), r => r <= playoff ? "Playoffs" : "");
             FillRecords(West, s.Standings.All(), _ => "");
+            if (Hardwood.Core.World.UsaPyramid.IsPyramid(hl.Key))
+            {
+                // A pyramid league by division (#318-#319), with its promotion and relegation places.
+                var book = Hardwood.Core.Season.LeagueBook.Get(s, hl.Key);
+                if (book != null)
+                {
+                    var rows = book.Table();
+                    East.Clear();
+                    foreach (var g in rows.GroupBy(r => r.Group))
+                    {
+                        int k = 0; var lead = g.First();
+                        foreach (var r in g)
+                        {
+                            double gb = ((lead.W - r.W) + (r.L - lead.L)) / 2.0;
+                            East.Add(new StandingRow
+                            {
+                                Rank = ++k, Team = r.Team, W = r.W, L = r.L, Div = g.Key, Pct = r.G == 0 ? ".000" : r.Pct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
+                                Diff = r.G == 0 ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"), Zone = r.Zone == "Promotion" ? "Playoffs" : r.Zone, IsHuman = r.Team == s.HumanTeam,
+                            });
+                        }
+                    }
+                    PlayoffLabel = "Promotion"; ShowPlayIn = false; ShowRelegation = true;
+                }
+            }
             LeftTitle = hl.Profile.Name; RightTitle = Hardwood.Core.Names.Brand.Top;
             Note = playoff > 0 ? $"Top {playoff} reach the playoffs ({string.Join(", ", hl.Profile.Playoffs.Select(p => p.Name.ToLower()))})." : "";
             Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
@@ -86,9 +121,12 @@ public sealed partial class StandingsViewModel : PageViewModel
             return;
         }
         LeftTitle = "Eastern Conference"; RightTitle = "Western Conference";
+        CanDivide = true;
+        ShowRelegation = ByDivision && s.World.Competitions.Any(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2);
         Fill(East, Conference.East);
         Fill(West, Conference.West);
-        Note = "Top 6 qualify directly; 7-10 play in.";
+        Note = ByDivision ? "By division: ranks and games back within each division; the playoff colours still follow the conference table."
+            : "Top 6 qualify directly; 7-10 play in.";
         BuildRace();
     }
 
@@ -145,17 +183,23 @@ public sealed partial class StandingsViewModel : PageViewModel
     private void Fill(ObservableCollection<StandingRow> list, Conference conf)
     {
         list.Clear();
-        var table = Session.Standings.Conference(conf);
+        var confTable = Session.Standings.Conference(conf);
+        var confRank = confTable.Select((r, i) => (r.Team, i)).ToDictionary(x => x.Team, x => x.i + 1);
+        var table = ByDivision ? confTable.GroupBy(r => r.Team.Division).OrderBy(g => g.Key).SelectMany(g => g).ToList() : confTable;
         var leader = table.FirstOrDefault();
         int rank = 1;
+        string? division = null;
         foreach (var r in table)
         {
+            if (ByDivision && r.Team.Division != division) { division = r.Team.Division; leader = r; rank = 1; }
+            int cr = confRank[r.Team];
+            bool lastInDivision = ByDivision && ShowRelegation && table.LastOrDefault(x => x.Team.Division == r.Team.Division) == r && r.Wins + r.Losses > 0;
             double gb = leader == null ? 0 : ((leader.Wins - r.Wins) + (r.Losses - leader.Losses)) / 2.0;
             var last10 = Session.Schedule.Where(g => (g.Home == r.Team || g.Away == r.Team) && Session.Results.ContainsKey(g.Index))
                 .OrderByDescending(g => g.Index).Take(10).Select(g => Session.Results[g.Index].Winner.Team == r.Team).ToList();
             list.Add(new StandingRow
             {
-                Rank = rank, Zone = rank <= 6 ? "Playoffs" : rank <= 10 ? "Play-in" : "", Team = r.Team, W = r.Wins, L = r.Losses,
+                Rank = rank, Zone = lastInDivision ? "Relegation" : cr <= 6 ? "Playoffs" : cr <= 10 ? "Play-in" : "", Team = r.Team, W = r.Wins, L = r.Losses, Div = r.Team.Division,
                 Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
                 Last10 = last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "",

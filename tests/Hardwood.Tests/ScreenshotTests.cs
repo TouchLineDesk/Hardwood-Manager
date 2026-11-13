@@ -133,6 +133,17 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-leagues-rules.png"));
             leagues.Tab = 1;
             Snap(window, Path.Combine(dir, $"{n++:00}-leagues-schedule.png"));
+            // Divisions everywhere (Danny, #318-#319): the top league and tier 2 by division, and Standings by division.
+            leagues.Tab = 0;
+            Snap(window, Path.Combine(dir, $"{n++:00}-leagues-divisions.png"));
+            if (leagues.Competitions.FirstOrDefault(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2) is { } tier2)
+            {
+                leagues.Selected = tier2;
+                Snap(window, Path.Combine(dir, $"{n++:00}-leagues-tier2-divisions.png"));
+            }
+            vm.Navigate("Standings");
+            ((StandingsViewModel)vm.CurrentPage!).View = "By division";
+            Snap(window, Path.Combine(dir, $"{n++:00}-standings-divisions.png"));
             vm.Navigate("Schedule & Results");
             var sched = (ScheduleViewModel)vm.CurrentPage!;
             sched.OpenBox(sched.Games.First(g => g.Played));

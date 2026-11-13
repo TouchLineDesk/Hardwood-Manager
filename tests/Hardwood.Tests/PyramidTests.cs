@@ -51,15 +51,27 @@ public class PyramidTests
     {
         var (nabl, world) = NewWorld(5);
         world.FinishSeasons(new GameSimulator());
-        // The NABL's season: the last three by wins go down.
+        // The NABL's season: the last team in each of the six divisions goes down (Danny, #319).
         var order = nabl.Teams.OrderBy(t => t.Id).ToList();
         var summary = new SeasonSummary { Season = 2026, Records = order.Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() };
         nabl.History.Add(summary);
-        var down = order.Take(3).ToList();
+        var down = nabl.Teams.GroupBy(t => t.Division).Select(g => g.OrderBy(t => t.Id).First()).ToList();
+        var divisionOf = down.ToDictionary(t => t, t => (t.Division, t.Conference));
+        Assert.Equal(6, down.Count);
         var wagesBefore = down.SelectMany(t => t.Roster).Where(p => p.Contract != null).ToDictionary(p => p.Id, p => p.Contract!.Salary);
         var t2 = world[UsaPyramid.Tier2];
-        var up = t2.Season.Table().Take(3).Select(r => world.TeamById(r.TeamId)!).ToList();
-        var t3Up = world[UsaPyramid.Tier3].Season.Table().Take(3).Select(r => world.TeamById(r.TeamId)!).ToList();
+        // Each tier-2 and tier-3 division winner goes up; the divisions are regional and six of four.
+        List<Team> Winners(WorldCompetition c)
+        {
+            var table = c.Season.Table().Select(r => world.TeamById(r.TeamId)!).ToList();
+            var divs = UsaPyramid.Divisions(c.Key, c.Clubs);
+            Assert.Equal(6, divs.Count);
+            Assert.All(divs, d => Assert.Equal(4, d.Teams.Count));
+            return divs.Select(d => table.First(d.Teams.Contains)).ToList();
+        }
+        var up = Winners(t2);
+        var t3Up = Winners(world[UsaPyramid.Tier3]);
+        var t2Last = UsaPyramid.Divisions(t2.Key, t2.Clubs).Select(d => t2.Season.Table().Select(r => world.TeamById(r.TeamId)!).Last(d.Teams.Contains)).ToList();
         var regionalChamp = world[UsaPyramid.RegionalKey("ne")].Season.Table()[0].TeamId;
         var localChamp = world[UsaPyramid.LocalKey("nen")].Season.Table()[0].TeamId;
         int total = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count);
@@ -80,6 +92,10 @@ public class PyramidTests
         Assert.All(down, t => Assert.True(t.Money.Income > ContractMarket.Payroll(t), $"{t.FullName}: income {t.Money.Income:N0} vs payroll {ContractMarket.Payroll(t):N0}"));
         Assert.All(up, t => Assert.Equal(0, t.Money.Parachute));
         Assert.All(t3Up, t => Assert.Contains(t, t2.Clubs));
+        Assert.All(t2Last, t => Assert.Contains(t, world[UsaPyramid.Tier3].Clubs));
+        // Every top-league division is still five strong.
+        Assert.All(nabl.Teams.GroupBy(t => t.Division), g => Assert.Equal(5, g.Count()));
+        Assert.Equal(6, nabl.Teams.Select(t => t.Division).Distinct().Count());
         Assert.Equal(24, t2.Clubs.Count);
         Assert.Equal(24, world[UsaPyramid.Tier3].Clubs.Count);
         Assert.Contains(world.TeamById(regionalChamp)!, world[UsaPyramid.Tier3].Clubs);
