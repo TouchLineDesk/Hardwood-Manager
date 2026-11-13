@@ -16,7 +16,7 @@ public sealed class WorldGenerator
     public League Generate(string leagueName, int season, DateOnly today)
     {
         var league = new League { Name = leagueName, Season = season, Rules = Rules.Nba };
-        var players = new PlayerGenerator(_rng);
+        var players = new PlayerGenerator(_rng) { Names = new NameBook() };
         try
         {
 

@@ -109,7 +109,7 @@ public sealed class GameWorld
     {
         var world = new GameWorld(nabl, seed ^ 0x574F524C44UL);
         var rng = world._rng;
-        var gen = new PlayerGenerator(new Rng(seed ^ 0x504C415945525321UL), nabl.NextPlayerId);
+        var gen = new PlayerGenerator(new Rng(seed ^ 0x504C415945525321UL), nabl.NextPlayerId) { Names = NameBook.Of(nabl.AllActivePlayers, nabl.FreeAgents) };
         var full = new HashSet<string>(fullSim);
         int block = 0;
         var profiles = legacyPyramid
@@ -630,7 +630,7 @@ public sealed class GameWorld
         if (College != null)
         {
             // Graduation, growth and the new recruiting class (decisions #84, #98).
-            var cgen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
+            var cgen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId) { Names = NameBook.Of(this, freeAgents) };
             College.Summer(date, freeAgents, cgen, new DevelopmentEngine(_rng), _rng);
             Nabl.NextPlayerId = cgen.NextId;
             News.AddRange(College.News); College.News.Clear();
@@ -730,7 +730,7 @@ public sealed class GameWorld
                     LeftClub.Add((p, club));
                 }
         AwaitingDecision.Clear();
-        var gen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId);
+        var gen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId) { Names = NameBook.Of(this, freeAgents) };
         // Each club replaces the players it lost like for like: an import for an import (within the foreign limit),
         // at about the same level. Clubs take turns, best first, one replacement at a time, so the pool spreads out.
         // The pool is tried first; if nobody there fits, the club finds a new player (sometimes a younger prospect).

@@ -41,6 +41,24 @@ public static class Program
             return 0;
         }
 
+        if (cmd == "names")
+        {
+            // D18 (run 35): shared full names among living made-up players in a new world (`--real` for the real NBA on top).
+            if (args.Contains("--real")) league = new WorldGenerator(new Rng(seed)).Generate(Hardwood.Core.RealWorld.RealWorldData.LeagueName, 2026, today);
+            var gw = Hardwood.Core.World.GameWorld.Generate(league, seed, Array.Empty<string>(), today);
+            if (args.Contains("--real")) Hardwood.Core.RealWorld.RealWorldData.Apply(league, gw, seed);
+            var everyone = league.AllActivePlayers.Concat(league.FreeAgents).Concat(gw.Players).Concat(gw.College?.Players ?? Enumerable.Empty<Player>()).ToList();
+            var (madeUp, sharing) = NameBook.Census(everyone);
+            var dup = everyone.GroupBy(p => NameBook.Key(p.FirstName, p.LastName)).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
+            var top = league.AllActivePlayers.ToList();
+            int topShare = top.Count(p => !Hardwood.Core.RealWorld.RealNames.IsReal(p.FirstName, p.LastName) && dup.Contains(NameBook.Key(p.FirstName, p.LastName)));
+            Console.WriteLine($"living players {everyone.Count}, made up {madeUp}, sharing a full name {sharing} ({sharing / (double)Math.Max(1, madeUp):P1})");
+            Console.WriteLine($"top league: {top.Count} players, {topShare} made-up sharing a full name with someone alive");
+            foreach (var g in everyone.GroupBy(p => p.Nationality).OrderByDescending(g => g.Count()).Take(80))
+                Console.WriteLine($"  {g.Key}: {g.Count()} players, {g.Select(p => NameBook.Key(p.FirstName, p.LastName)).Distinct().Count()} distinct names");
+            return 0;
+        }
+
         if (cmd == "realcheck")
         {
             int seasons = int.Parse(ArgValue(args, "--seasons") ?? "3");

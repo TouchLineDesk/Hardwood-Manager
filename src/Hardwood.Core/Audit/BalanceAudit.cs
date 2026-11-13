@@ -110,6 +110,7 @@ public static class BalanceAudit
         var lowerOver = new List<double>(); var lowerWorst = new List<double>(); var smallestLocal = new List<double>();
         var overBudget = new List<double>(); var budgetUse = new List<double>(); var gradsSigned = new List<double>(); var bestGrad = new List<double>();
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
+        var namesShared = new List<double>(); var namesTop = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
         var college = new MadnessTally();
 
@@ -130,6 +131,12 @@ public static class BalanceAudit
                 budgetUse.Add(league.Teams.Average(t => ContractMarket.Payroll(t) / (double)Math.Max(1, t.Money.WageBudget)));
             }
             faPool.Add(league.FreeAgents.Count);
+            // D18 (run 35): made-up players sharing a full name with another living player (review #11: 46 of 463 in the top league).
+            var everyoneAlive = players.Concat(league.FreeAgents).Concat(world.Players).Concat(world.College?.Players ?? Enumerable.Empty<Player>());
+            var (madeUp, sharing) = Generation.NameBook.Census(everyoneAlive);
+            namesShared.Add(sharing / (double)Math.Max(1, madeUp));
+            var topNames = everyoneAlive.GroupBy(p => Generation.NameBook.Key(p.FirstName, p.LastName)).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
+            namesTop.Add(players.Count(p => !Hardwood.Core.RealWorld.RealNames.IsReal(p.FirstName, p.LastName) && topNames.Contains(Generation.NameBook.Key(p.FirstName, p.LastName))));
             if (league.Teams.All(t => t.Money.Ready))
             {
                 // Item M (#281): money has somewhere to go. Review #9 found the median balance at 7.5 seasons' revenue after 25 seasons.
@@ -315,6 +322,8 @@ public static class BalanceAudit
         m.Add(new("Player movement", "Overseas players joining NABL teams (free agency + buyouts)", "0.0", cameOver, 3, fin.OpenMarket ? 40 : 15,
             fin.OpenMarket ? "open market, 45 leagues to come from: more players cross over without a draft" : "rough estimate: NBA ~5-15 a summer incl. players returning from abroad"));
         m.Add(new("Player movement", "Free agents signed by overseas clubs", "0", signedAbroad, null, null, ""));
+        m.Add(new("Players", "Made-up players sharing a full name with another living player (share)", "0.000", namesShared, 0, 0.01, "D18: rare (review #11: 46 of 463 top-league players)"));
+        m.Add(new("Players", "Top-league made-up players whose full name someone else alive has", "0.0", namesTop, null, null, "review #11: 46"));
         // Overseas: EuroLeague ~80-84 pts per team, ACB ~82-85, Turkish BSL ~82-86, NBL ~88-92, CBA ~100-105 (fast, high-scoring).
         foreach (var (name, list) in worldPts)
         {

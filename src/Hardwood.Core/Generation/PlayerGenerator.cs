@@ -20,6 +20,9 @@ public sealed class PlayerGenerator
 
     public int NextId => _nextId;
 
+    /// <summary>Names already in use (D18, run 35). When set, a new player never takes one of them, and his own is added.</summary>
+    public NameBook? Names { get; set; }
+
     /// <summary>Mean visible attribute implied by a CA value. CA 100 → ~11, CA 180 → ~16.6.</summary>
     public static double MeanAttributeFor(int ca) => 4.0 + ca / 200.0 * 14.0;
 
@@ -49,6 +52,23 @@ public sealed class PlayerGenerator
         {
             var reroll = Heritages.StreamFor(_rng.Seed ^ 0x52454E414D45UL, id);
             for (int tries = 0; tries < 12 && RealWorld.RealNames.IsReal(first, last); tries++) last = reroll.Pick(heritage.LastNames);
+        }
+        // No two living players share a full name (D18, run 35): a name already in the book is re-rolled from the same
+        // heritage, on a stream of its own, so ratings, results and the heritage stream don't move.
+        if (Names != null)
+        {
+            if (Names.Taken(first, last))
+            {
+                var unique = Heritages.StreamFor(_rng.Seed ^ 0x554E49515545UL, id);
+                for (int tries = 0; tries < 60; tries++)
+                {
+                    string f = unique.Pick(heritage.FirstNames), l = unique.Pick(heritage.LastNames);
+                    if (Names.Taken(f, l) || RealWorld.RealNames.IsReal(f, l)) continue;
+                    (first, last) = (f, l);
+                    break;
+                }
+            }
+            Names.Add(first, last);
         }
 
         var player = new Player

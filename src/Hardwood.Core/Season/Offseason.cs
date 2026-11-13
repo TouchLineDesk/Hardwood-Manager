@@ -335,7 +335,7 @@ public sealed class Offseason
     /// </summary>
     private List<Player> GenerateGraduates()
     {
-        var gen = new PlayerGenerator(_rng, _league.NextPlayerId);
+        var gen = new PlayerGenerator(_rng, _league.NextPlayerId) { Names = NameBook.Of(_league.AllActivePlayers, _league.FreeAgents) };
         var grads = new List<Player>();
         var positions = Enum.GetValues<Position>();
         for (int i = 0; i < 70; i++)
@@ -354,7 +354,7 @@ public sealed class Offseason
 
     private List<Player> GenerateProspects()
     {
-        var gen = new PlayerGenerator(_rng, _league.NextPlayerId);
+        var gen = new PlayerGenerator(_rng, _league.NextPlayerId) { Names = NameBook.Of(_league.AllActivePlayers, _league.FreeAgents) };
         var prospects = new List<Player>();
         var positions = Enum.GetValues<Position>();
         for (int i = 0; i < 75; i++)
