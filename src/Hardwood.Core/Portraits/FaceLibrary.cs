@@ -70,13 +70,15 @@ public sealed class FaceLibrary
     /// and no face is used twice in a save (<paramref name="everyone"/> includes retired players so
     /// their faces are never handed out again). The pick is stable for a player id: a hash of the id
     /// picks a starting point in the ethnicity's folder, then the first unused face from there.
-    /// Returns the number of faces assigned.
+    /// Players are served in the order given. Returns the number of faces assigned.
     /// </summary>
     public int AssignMissing(IEnumerable<Player> everyone, IEnumerable<Player> targets)
     {
         var used = new HashSet<string>(everyone.Where(p => p.FaceFile != null).Select(p => p.FaceFile!), StringComparer.OrdinalIgnoreCase);
         int assigned = 0;
-        foreach (var p in targets.OrderBy(p => p.Id))
+        // In the order given (the game lists the top league first), so a small pack runs out abroad, not in your league:
+        // promoted clubs' players have high ids from the world (#355).
+        foreach (var p in targets)
         {
             if (p.FaceFile != null) continue;
             var list = Faces(p.Ethnicity);
