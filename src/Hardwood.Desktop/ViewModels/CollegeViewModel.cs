@@ -242,7 +242,7 @@ public sealed partial class CollegeViewModel : PageViewModel
                  }).Take(300))
             HighSchoolers.Add(new HighSchoolRow
             {
-                Player = p, Rank = r.Rank, Stars = CollegeWorld.StarText(r.Stars), Age = p.Age(today), HighSchool = r.HighSchool,
+                Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", Age = p.Age(today), HighSchool = r.HighSchool,
                 State = r.State, Committed = r.CommittedTo is { } to ? c.Program(to)!.City : "Uncommitted",
             });
         int rank = 1;

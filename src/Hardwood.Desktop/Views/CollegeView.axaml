@@ -258,7 +258,13 @@
               <DataGrid x:Name="TrailGrid" ItemsSource="{Binding TrailRows}" SelectedItem="{Binding SelectedTrail}" Height="500" VerticalAlignment="Top">
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
-                  <DataGridTextColumn Header="Stars" Binding="{Binding Stars}" Width="70"/>
+                  <DataGridTemplateColumn Header="Stars" Width="92">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:TrailRow">
+                        <TextBlock Text="{Binding Stars}" Foreground="#FFC83D" FontSize="15" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Header="Prospect" Binding="{Binding Name}" Width="140"/>
                   <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
                   <DataGridTextColumn Header="State" Binding="{Binding State}" Width="56"/>
@@ -316,7 +322,13 @@
           <DataGrid ItemsSource="{Binding HighSchoolers}" SelectedItem="{Binding SelectedHighSchool}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
-              <DataGridTextColumn Header="Stars" Binding="{Binding Stars}" Width="70"/>
+              <DataGridTemplateColumn Header="Stars" Width="92">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:HighSchoolRow">
+                        <TextBlock Text="{Binding Stars}" Foreground="#FFC83D" FontSize="15" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="50"/>

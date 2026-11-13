@@ -85,7 +85,7 @@ public sealed partial class CollegeViewModel
             var lean = c.LeaningTo(p, r, board);
             TrailRows.Add(new TrailRow
             {
-                Player = p, Rank = r.Rank, Stars = CollegeWorld.StarText(r.Stars), State = r.State,
+                Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", State = r.State,
                 Interest = interest, InterestText = $"{interest:0}",
                 Leaning = lean == null ? "-" : lean == me ? "You" : lean.City,
                 Status = r.CommittedTo is { } to ? (to == me.Id ? "Committed to you" : $"Committed: {c.Program(to)!.City}")
