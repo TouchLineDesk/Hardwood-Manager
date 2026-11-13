@@ -107,6 +107,7 @@ public static class BalanceAudit
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
         var college = new MadnessTally();
+        var nablDown = new List<double>(); var offSize = new List<double>();
 
         for (int s = 0; s < seasons; s++)
         {
@@ -158,7 +159,15 @@ public static class BalanceAudit
                 if (regular.Count > 0) (worldPts.TryGetValue(c.Profile.Name, out var l) ? l : worldPts[c.Profile.Name] = new()).Add(regular.Average(f => (f.HomePts!.Value + f.AwayPts!.Value) / 2.0));
                 if (c.Season.ChampionId is { } id) (report.WorldChampions.TryGetValue(c.Profile.Name, out var w) ? w : report.WorldChampions[c.Profile.Name] = new()).Add($"{year}: {world.TeamById(id)?.Abbreviation}");
             }
+            var nablBefore = league.Teams.Select(t => t.Id).ToHashSet();
             var played = career.PlaySeason(league, world: world, worldSim: sim);
+            if (world.Competitions.Any(c => c.Key == UsaPyramid.Tier2))
+            {
+                // Divisions (Danny, #318-#319): the last in each division goes down; the pyramid's leagues keep their sizes.
+                nablDown.Add(nablBefore.Count(id => league.Teams.All(t => t.Id != id)));
+                offSize.Add(world.Competitions.Count(c => UsaPyramid.Level(c.Key) switch { 2 or 3 => c.Clubs.Count != UsaPyramid.NationalSize, 4 => c.Clubs.Count != UsaPyramid.RegionalSize, _ => false })
+                    + league.Teams.GroupBy(t => t.Division).Count(g => g.Count() != 5));
+            }
             buyouts.Add(world.BuyoutMoves.Count);
             stashes.Add(world.Stashes.Count);
             signedAbroad.Add(world.SignedAbroad.Count);
@@ -252,6 +261,11 @@ public static class BalanceAudit
         m.Add(new("NABL development", "Yearly ability change, age 32+", "+0.0;-0.0", devOld, -10, -1, "decline"));
         // Here many veterans finish their careers abroad or down the pyramid instead of retiring from the NABL.
         m.Add(new("NABL development", "Retirements per season", "0", retiredN, 8, 50, "NBA ~20-40; veterans here often move abroad first"));
+        if (nablDown.Count > 0)
+        {
+            m.Add(new("USA pyramid", "Clubs relegated from the NABL a season", "0.0", nablDown, null, null, "the last in each of six divisions (Danny, #319)"));
+            m.Add(new("USA pyramid", "Leagues or top-league divisions off their size after the summer", "0", offSize, 0, 0, "must be 0"));
+        }
         m.Add(new("NABL development", "Average retirement age", "0.0", retiredAge, 32, 37, "NBA ~33-35"));
         if (fin.OpenMarket)
         {

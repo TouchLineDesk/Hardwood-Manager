@@ -159,6 +159,7 @@ public static class WorldStore
                 nabl.CollegeActive = true;
             }
         }
+        UsaPyramid.AssignDivisions(world); // divisions are drawn from the clubs, not saved (#318)
         world.Index();
         using (var cmd = conn.CreateCommand())
         {

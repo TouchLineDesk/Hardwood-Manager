@@ -34,8 +34,46 @@ public sealed class StandingRow
     public static readonly Avalonia.Media.IBrush PlayInBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B7832A"));
 }
 
+/// <summary>One team in a division card (Danny, #318).</summary>
+public sealed class DivisionRow
+{
+    public int Rank { get; init; }
+    public required Team Team { get; init; }
+    public string Record { get; init; } = "";
+    public string GB { get; init; } = "";
+    public bool IsHuman { get; init; }
+    /// <summary>"Promotion", "Relegation" or "".</summary>
+    public string Zone { get; init; } = "";
+    public Avalonia.Media.IBrush ZoneBrush => Zone switch
+    {
+        "Promotion" => StandingRow.PlayoffBrush,
+        "Relegation" => RelegationBrush,
+        _ => Avalonia.Media.Brushes.Transparent,
+    };
+    public string ZoneTip => Zone switch
+    {
+        "Promotion" => "Goes up if the season ended today",
+        "Relegation" => "Goes down if the season ended today",
+        _ => "",
+    };
+    public static readonly Avalonia.Media.IBrush RelegationBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B23A3A"));
+}
+
+/// <summary>A division's table (Danny, #318).</summary>
+public sealed class DivisionCard
+{
+    public string Name { get; init; } = "";
+    public List<DivisionRow> Rows { get; init; } = new();
+}
+
 public sealed partial class StandingsViewModel : PageViewModel
 {
+    /// <summary>The league's divisions (Danny, #318–#319): who leads each, and who would go up or down today.</summary>
+    public ObservableCollection<DivisionCard> Divisions { get; } = new();
+    [ObservableProperty] private bool _hasDivisions;
+    [ObservableProperty] private string _divisionTitle = "Divisions";
+    [ObservableProperty] private string _divisionNote = "";
+
     public override string Title => "Standings";
     public ObservableCollection<StandingRow> East { get; } = new();
     public ObservableCollection<StandingRow> West { get; } = new();
@@ -54,6 +92,7 @@ public sealed partial class StandingsViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session;
+        FillDivisions();
         if (s.InCollege && s.World.College is { } cw)
         {
             // College (C2): your conference on the left (its top eight play the conference tournament), the Top 25 on the right.
@@ -90,6 +129,62 @@ public sealed partial class StandingsViewModel : PageViewModel
         Fill(West, Conference.West);
         Note = "Top 6 qualify directly; 7-10 play in.";
         BuildRace();
+    }
+
+    private static readonly string[] TopOrder = { "Atlantic", "Central", "Southeast", "Northwest", "Pacific", "Southwest" };
+
+    /// <summary>The division tables: the top league's six, or your pyramid league's.</summary>
+    private void FillDivisions()
+    {
+        var s = Session;
+        Divisions.Clear();
+        HasDivisions = false;
+        if (s.InCollege) return;
+        var plan = LeagueBook.Moves(s);
+        var up = plan?.Promoted ?? new HashSet<Team>();
+        var down = plan?.Relegated ?? new HashSet<Team>();
+        List<List<Hardwood.Core.World.UsaPyramid.Standing>> divs;
+        if (s.HumanLeague is { } hl)
+        {
+            if (!Hardwood.Core.World.UsaPyramid.IsPyramid(hl.Key) || hl.Clubs.Select(t => t.Division).Distinct().Count() < 2) return;
+            divs = Hardwood.Core.World.UsaPyramid.Divisions(s.World, hl);
+            DivisionTitle = $"{hl.Profile.Name} by division";
+            DivisionNote = Hardwood.Core.World.UsaPyramid.Level(hl.Key) == 2
+                ? $"Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; each division's last team goes down. Marked as the tables stand today."
+                : "Each division winner goes up and each division's last team goes down; the closest records make up the numbers between levels. Marked as the tables stand today.";
+        }
+        else
+        {
+            var rows = s.Standings.All().Select(r => new Hardwood.Core.World.UsaPyramid.Standing(r.Team, r.Wins, r.Losses)).ToList();
+            divs = Hardwood.Core.World.UsaPyramid.ByDivision(rows, r => r.Team)
+                .OrderBy(d => d[0].Team.Conference).ThenBy(d => Array.IndexOf(TopOrder, d[0].Team.Division) is var i and >= 0 ? i : 99).ToList();
+            DivisionTitle = "Divisions";
+            DivisionNote = plan == null ? "" : "The last team in each division is relegated at the end of the season, playoffs or not. Marked as the tables stand today.";
+        }
+        // East on the left and West on the right, as the conference tables above (two cards a row).
+        var east = divs.Where(d => d[0].Team.Conference == Conference.East).ToList();
+        var west = divs.Where(d => d[0].Team.Conference == Conference.West).ToList();
+        if (east.Count == west.Count && east.Count > 0)
+            divs = east.Zip(west).SelectMany(x => new[] { x.First, x.Second }).ToList();
+        foreach (var d in divs)
+        {
+            var leader = d[0];
+            Divisions.Add(new DivisionCard
+            {
+                Name = s.HumanLeague == null ? $"{d[0].Team.Division} ({d[0].Team.Conference})" : d[0].Team.Division,
+                Rows = d.Select((r, i) =>
+                {
+                    double gb = ((leader.Wins - r.Wins) + (r.Losses - leader.Losses)) / 2.0;
+                    return new DivisionRow
+                    {
+                        Rank = i + 1, Team = r.Team, Record = $"{r.Wins}-{r.Losses}", GB = gb <= 0 ? "-" : gb.ToString("0.#"),
+                        IsHuman = r.Team == s.HumanTeam,
+                        Zone = up.Contains(r.Team) ? "Promotion" : down.Contains(r.Team) ? "Relegation" : "",
+                    };
+                }).ToList(),
+            });
+        }
+        HasDivisions = Divisions.Count > 1;
     }
 
     /// <summary>Games above .500 by week for the human team's conference; your team is emphasised.</summary>

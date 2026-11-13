@@ -129,6 +129,7 @@ public sealed class GameWorld
             real: Hardwood.Core.RealWorld.RealWorldData.IsReal(nabl));
         nabl.CollegeActive = true;
         nabl.NextPlayerId = gen.NextId;
+        UsaPyramid.AssignDivisions(world); // Danny, #318
         world.Index();
         foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic))
             world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility), 1);

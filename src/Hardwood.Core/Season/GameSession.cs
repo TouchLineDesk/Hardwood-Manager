@@ -617,7 +617,7 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, avoid the relegation places" : Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower())} (around {e.TargetWins} wins)."
+            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, don't finish last in your division" : Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)).ToLower())} (around {e.TargetWins} wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
 

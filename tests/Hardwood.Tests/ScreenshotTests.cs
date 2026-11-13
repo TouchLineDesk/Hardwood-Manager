@@ -109,6 +109,21 @@ public class ScreenshotTests
                     sv.Offset = new Vector(0, 520);
                 Snap(window, Path.Combine(dir, $"{n++:00}-facilities-proposals.png"));
             }
+            // Divisions (Danny, #318-#319): the Standings page's division tables, below the conference tables.
+            vm.Navigate("Standings");
+            window.UpdateLayout();
+            foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                .Where(x => x.IsEffectivelyVisible && x.Extent.Height > x.Viewport.Height + 1))
+                sv.Offset = new Vector(0, sv.Extent.Height);
+            Snap(window, Path.Combine(dir, $"{n++:00}-standings-divisions.png"));
+            // A pyramid league's table by division on the Leagues page (tier 2, or your own league).
+            vm.Navigate("Leagues");
+            var pyr = (WorldViewModel)vm.CurrentPage!;
+            if (pyr.Competitions.FirstOrDefault(c => c.Key == (session.HumanLeague?.Key ?? Hardwood.Core.World.UsaPyramid.Tier2)) is { } choice)
+            {
+                pyr.Selected = choice;
+                Snap(window, Path.Combine(dir, $"{n++:00}-leagues-divisions.png"));
+            }
             // The inbox clean-up (#243): read messages deleted, "Delete these" armed on a filter, auto-clear on.
             vm.Navigate("Inbox");
             var inbox = (InboxViewModel)vm.CurrentPage!;

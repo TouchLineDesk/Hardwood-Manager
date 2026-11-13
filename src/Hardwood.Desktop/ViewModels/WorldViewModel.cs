@@ -133,7 +133,7 @@ public sealed partial class WorldViewModel : PageViewModel
             foreach (var r in grp)
                 Table.Add(new WorldTableRow
                 {
-                    Rank = ++rank, Team = r.Team, Group = r.Group, W = r.W, L = r.L, Pct = r.G == 0 ? "-" : r.Pct.ToString(".000"),
+                    Rank = ++rank, Team = r.Team, Group = r.Division.Length > 0 ? $"{r.Group} · {r.Division}" : r.Group, W = r.W, L = r.L, Pct = r.G == 0 ? "-" : r.Pct.ToString(".000"),
                     Diff = r.G == 0 || (r.PointsFor == 0 && r.PointsAgainst == 0) ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"), Zone = r.Zone, Mine = r.Team == me,
                 });
         }

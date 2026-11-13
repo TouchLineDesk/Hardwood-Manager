@@ -84,6 +84,49 @@
         </DataGrid>
       </DockPanel>
     </Grid>
+    <!-- Divisions (Danny, #318-#319): each division's table, with the clubs going up and down marked. -->
+    <StackPanel IsVisible="{Binding HasDivisions}" Margin="0,4,0,8">
+      <TextBlock Text="{Binding DivisionTitle}" Classes="h2" Margin="0,0,0,2"/>
+      <WrapPanel Margin="0,0,0,6">
+        <TextBlock Text="{Binding DivisionNote}" Classes="muted" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,14,0"/>
+        <Border Background="{x:Static vm:StandingRow.PlayoffBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+        <TextBlock Text="Promotion" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <Border Background="{x:Static vm:DivisionRow.RelegationBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+        <TextBlock Text="Relegation" Classes="muted" VerticalAlignment="Center"/>
+      </WrapPanel>
+      <ItemsControl ItemsSource="{Binding Divisions}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:DivisionCard">
+            <Border Classes="panel" Width="384" Margin="0,0,10,10" Padding="10,8">
+              <StackPanel Spacing="2">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <Grid ColumnDefinitions="32,28,*,62,42" Margin="0,0,0,2">
+                  <TextBlock Grid.Column="2" Text="Team" Classes="muted" Margin="4,0"/>
+                  <TextBlock Grid.Column="3" Text="W-L" Classes="muted" HorizontalAlignment="Right"/>
+                  <TextBlock Grid.Column="4" Text="GB" Classes="muted" HorizontalAlignment="Right"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Rows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DivisionRow">
+                      <Grid ColumnDefinitions="32,28,*,62,42" Height="26">
+                        <Border Background="{Binding ZoneBrush}" CornerRadius="4" Width="26" Height="20" HorizontalAlignment="Left" ToolTip.Tip="{Binding ZoneTip}">
+                          <TextBlock Text="{Binding Rank}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        </Border>
+                        <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="20" Height="20" ShowText="False"/>
+                        <c:TeamLink Grid.Column="2" Team="{Binding Team}" FontWeight="{Binding IsHuman, Converter={x:Static c:Converters.BoldIf}}" Margin="4,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Record}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="{Binding GB}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
     <StackPanel IsVisible="{Binding HasRace}" Margin="0,4,0,0">
       <TextBlock Text="Conference race: games above .500 by week (your team highlighted)" Classes="h2" Margin="0,0,0,6"/>
       <Border Classes="panel" Padding="6"><c:LineChart Series="{Binding Race}" XLabels="{Binding RaceLabels}" ZeroLine="True" Height="220"/></Border>
