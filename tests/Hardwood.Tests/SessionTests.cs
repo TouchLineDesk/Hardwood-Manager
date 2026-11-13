@@ -68,7 +68,7 @@ public class SessionTests
             Assert.Equal(SessionPhase.Offseason, loaded.Phase);
             Assert.NotNull(loaded.Offseason);
             Assert.Single(loaded.League.History);
-            Assert.Equal(1230, loaded.Results.Count);
+            Assert.Equal(loaded.League.Teams.Count * 41, loaded.Results.Count); // 32 teams since #344 (1,312 games)
             Assert.Equal(82, loaded.Standings[loaded.HumanTeam].Games);
             Assert.True(loaded.Postseason!.Complete);
             Assert.Equal(OffseasonPhase.ReSigning, loaded.Offseason!.Phase);

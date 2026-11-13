@@ -27,9 +27,10 @@ public class LeagueBookTests
         Assert.Equal(LeagueBook.NablKey, nabl.Key);
         Assert.Contains(nabl.Games(), g => g.Played && g.Box != null);
         Assert.NotEmpty(nabl.Stats());
-        // By conference and division (Danny, #318): six groups of five.
+        // By conference and division (Danny, #318, #344): eight groups of four.
         Assert.All(nabl.Table(), r => Assert.Matches("^(East|West) · .+", r.Group));
-        Assert.Equal(6, nabl.Table().Select(r => r.Group).Distinct().Count());
+        Assert.Equal(8, nabl.Table().Select(r => r.Group).Distinct().Count());
+        Assert.All(nabl.Table().GroupBy(r => r.Group), g => Assert.Equal(4, g.Count()));
         // The team page finds each team's own league and cups.
         var club = s.World[Competitions.Elite].Season.Participants.Select(id => s.World.TeamById(id)!).First();
         Assert.Equal(2, LeagueBook.Of(s, club).Count());
@@ -38,8 +39,9 @@ public class LeagueBookTests
         var t2 = LeagueBook.Get(s, UsaPyramid.Tier2)!.Table();
         Assert.Equal("Promotion", t2[0].Zone);
         Assert.Equal("Relegation", t2[^1].Zone);
-        // Six regional divisions of four: one promotion and one relegation place in each (#319).
-        Assert.Equal(6, t2.Select(r => r.Group).Distinct().Count());
+        // Eight regional divisions of four, four a conference: one promotion and one relegation place in each (#319, #344).
+        Assert.Equal(8, t2.Select(r => r.Group).Distinct().Count());
+        Assert.All(t2, r => Assert.Matches("^(East|West) · .+", r.Group));
         Assert.All(t2.GroupBy(r => r.Group), g => { Assert.Equal(4, g.Count()); Assert.Equal(1, g.Count(r => r.Zone == "Promotion")); Assert.Equal(1, g.Count(r => r.Zone == "Relegation")); });
     }
 }

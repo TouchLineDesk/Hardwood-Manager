@@ -136,9 +136,11 @@ public sealed class LeagueBook
                 + (x.Complete ? $" ({x.Winner!.Abbreviation} win)" : "")).ToList(),
             Rules = new List<(string, string)>
             {
-                ("Level", "The top league in the USA, in six divisions. The last team in each division drops to The Championship; its six division winners come up."),
+                ("Level", lg.Teams.Count == UsaPyramid.ProSize
+                    ? "The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops to The Championship; its eight division winners come up."
+                    : "The top league in the USA, in six divisions. The last team in each division drops to The Championship; its division winners come up."),
                 ("Game", RulesText(lg.Rules)),
-                ("Season", $"{lg.Teams.Count} teams in two conferences of three divisions; 82 games from late October to mid-April."),
+                ("Season", $"{lg.Teams.Count} teams in two conferences of {lg.Teams.Select(t => t.Division).Distinct().Count() / 2} divisions; 82 games from late October to mid-April."),
                 ("Playoffs", "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
                 ("Rosters", $"{fin.RosterMin}-{fin.RosterMax} players. Americans turn pro at 23 (college before that)."),
                 ("Money", fin.OpenMarket
@@ -231,9 +233,9 @@ public sealed class LeagueBook
         {
             string level = UsaPyramid.IsPyramid(p.Key) ? UsaPyramid.Level(p.Key) switch
             {
-                2 => $"Tier 2 of the USA pyramid, in six regional divisions. Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; the last in each division drops to {Hardwood.Core.World.Competitions.All.First(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier3).Name}.",
-                3 => "Tier 3, in six regional divisions. Each division winner goes up to The Championship; the last in each division drops to its regional league.",
-                4 => "Regional (tier 4, semi-pro), one division per local area. The champion (the best division winner) goes up to National League One; the last in each division drops to its local league.",
+                2 => $"Tier 2 of the USA pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; the 4th-placed team in each division drops to {Hardwood.Core.World.Competitions.All.First(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier3).Name}.",
+                3 => "Tier 3: an East and a West conference, each with four regional divisions. Each division winner goes up to The Championship; the 4th-placed team in each division drops to its regional league.",
+                4 => "Regional (tier 4, semi-pro), one division per local area. The champion goes up to National League One, with the two best other division winners in the six regional leagues; the last in each division drops to its local league.",
                 _ => "Local (tier 5, near-amateur). The champion goes up to its regional league.",
             } : "Top flight. One division, no promotion or relegation.";
             list.Add(("Level", level));
