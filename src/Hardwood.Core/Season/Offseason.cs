@@ -59,6 +59,20 @@ public sealed class Offseason
     /// <summary>Index of the next pick to be made (0-based into PickOwners).</summary>
     public int NextPickIndex { get; private set; }
     public bool DraftComplete => NextPickIndex >= PickOwners.Count;
+    /// <summary>Danny's college draft on the open market (D40, real careers): one round, a lottery order (<see cref="CollegeDraft"/>).</summary>
+    public bool CollegeDraftOn => _league.Finance.OpenMarket && PickOwners.Count > 0;
+    /// <summary>The season that just ended (standings, playoffs, the third-place tournament).</summary>
+    public SeasonOutcome Outcome => _outcome;
+
+    /// <summary>Starts the college draft (D40): the lottery order, one pick each, and the pool taken out of free agency.</summary>
+    public void StartCollegeDraft(List<Team> order, List<Player> pool)
+    {
+        DraftOrder = order.ToList();
+        PickOwners = order.ToList();
+        NextPickIndex = 0;
+        foreach (var p in pool) _league.FreeAgents.Remove(p);
+        Prospects = pool.ToList();
+    }
     public Team? OnTheClock => DraftComplete ? null : PickOwners[NextPickIndex];
     public int CurrentRound => NextPickIndex / Math.Max(1, DraftOrder.Count) + 1;
     /// <summary>Original team for a given pick index.</summary>
@@ -80,14 +94,15 @@ public sealed class Offseason
 
     /// <summary>Rebuild an in-progress offseason from saved state (development, retirements and lottery already applied).</summary>
     public static Offseason Restore(League league, Rng rng, OffseasonPhase phase, List<int> draftOrderTeamIds, List<int> pickOwnerTeamIds,
-        List<Player> prospects, int nextPickIndex, Dictionary<int, List<Player>> expiring, List<DraftPick> picksMade)
+        List<Player> prospects, int nextPickIndex, Dictionary<int, List<Player>> expiring, List<DraftPick> picksMade, Func<int, Team?>? findTeam = null)
     {
+        Team Find(int id) => findTeam?.Invoke(id) ?? league.TeamById(id);
         var outcome = new SeasonOutcome { Standings = new Standings(league) };
         var o = new Offseason(league, outcome, new Dictionary<int, PlayerSeasonStats>(), rng)
         {
             Phase = phase,
-            DraftOrder = draftOrderTeamIds.Select(league.TeamById).ToList(),
-            PickOwners = pickOwnerTeamIds.Select(league.TeamById).ToList(),
+            DraftOrder = draftOrderTeamIds.Select(Find).ToList(),
+            PickOwners = pickOwnerTeamIds.Select(Find).ToList(),
             Prospects = prospects,
             NextPickIndex = nextPickIndex,
         };
@@ -105,6 +120,7 @@ public sealed class Offseason
         o.Begin();
         if (world != null) { world.BeginSummer(o.Season + 1, worldSim ?? new Engine.GameSimulator(), league.FreeAgents); World.WorldMarket.Attach(world, o, worldSim); }
         o.AiReSignAll();
+        if (world != null) CollegeDraft.SetUp(o, league, world, rng);
         o.AdvanceToDraft();
         o.AutoDraftUntil(null);
         o.AdvanceToFreeAgency();
@@ -325,8 +341,9 @@ public sealed class Offseason
         // Anyone still undecided is released.
         foreach (var team in _league.Teams) foreach (var p in Expiring[team.Id].ToList()) Release(team, p);
         Phase = OffseasonPhase.Draft;
-        // Open market: no draft; straight on to free agency, where the graduates are waiting.
-        if (_league.Finance.OpenMarket) AdvanceToFreeAgency();
+        // Open market: no draft (straight on to free agency, where the graduates are waiting), except Danny's college draft
+        // in real careers (D40), which is made before free agency opens.
+        if (_league.Finance.OpenMarket && !CollegeDraftOn) AdvanceToFreeAgency();
     }
 
     /// <summary>
@@ -389,7 +406,18 @@ public sealed class Offseason
         var pick = new DraftPick(round, overall, team, prospect, OriginalTeamAt(NextPickIndex));
         Report.Draft.Add(pick);
         prospect.Draft = new DraftRecord(Date.Year, round, overall);
-        if (round == 1)
+        if (fin.OpenMarket)
+        {
+            // D40: a drafted graduate signs at his market wage for three years (the club holds an option on the last). A tier-2
+            // club drafts as next season's NBA club: its promotion clause doubles the deal when it goes up (#357), so the deal
+            // starts at half.
+            long salary = Math.Max(fin.MinSalary, ContractMarket.MarketSalary(prospect.CurrentAbility, prospect.Age(Date), fin));
+            if (!_league.Teams.Contains(team)) salary = Math.Max(fin.MinSalary / 2, salary / 2);
+            prospect.Contract = new Contract { Years = 3, Salary = salary, StartSeason = Season + 1, TeamOption = true };
+            prospect.TeamId = team.Id;
+            team.Roster.Add(prospect);
+        }
+        else if (round == 1)
         {
             long salary = (long)(fin.RookieScaleFirstPick * Math.Pow(0.93, overall - 1));
             prospect.Contract = new Contract { Years = 4, Salary = Math.Max(salary, fin.MinSalary), StartSeason = Season + 1, TeamOption = true };

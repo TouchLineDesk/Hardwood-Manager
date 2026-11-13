@@ -100,6 +100,8 @@ public static class SessionStore
         var human = league.Teams.FirstOrDefault(t => t.Id == humanId) ?? world?.TeamById(humanId) ?? league.Teams[0];
         var session = new GameSession(league, human, seed, file, rngState: rngSeed, world: world) { Midseason = midseason };
         var players = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(file.LoadedProspects).ToDictionary(p => p.Id);
+        // A tier-2 club's draft pick (D40) is on a world roster.
+        if (world != null) foreach (var wp in world.Players) players.TryAdd(wp.Id, wp);
 
         var boxes = new Dictionary<int, Dictionary<int, List<PlayerLine>>>(); // game -> team -> lines
         using (var cmd = conn.CreateCommand())
@@ -206,7 +208,7 @@ public static class SessionStore
                     using var r3 = c3.ExecuteReader();
                     while (r3.Read())
                         if (players.TryGetValue(r3.GetInt32(3), out var p))
-                            picksMade.Add(new DraftPick(r3.GetInt32(1), r3.GetInt32(0), league.TeamById(r3.GetInt32(2)), p, r3.IsDBNull(4) ? null : league.TeamById(r3.GetInt32(4))));
+                            picksMade.Add(new DraftPick(r3.GetInt32(1), r3.GetInt32(0), session.FindTeam(r3.GetInt32(2)) ?? league.TeamById(r3.GetInt32(2)), p, r3.IsDBNull(4) ? null : session.FindTeam(r3.GetInt32(4)) ?? league.TeamById(r3.GetInt32(4))));
                 }
                 session.RestoreOffseason(oPhase, order, owners, file.LoadedProspects, nextPick, expiring, picksMade);
                 using (var c4 = conn.CreateCommand())

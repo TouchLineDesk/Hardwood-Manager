@@ -198,11 +198,8 @@ public sealed partial class GameSession
         if (World.College is not { } c || InCollege || !RecruitingOpen || Recruiting is not { } board) return;
         bool first = board.PointsMonth == 0;
         TopUpRecruitingPoints();
-        // Review #11 (run 33, #391): the pro side of senior recruiting is introduced once, in your first season at a club,
-        // and reads as your club's business, not college news. Later seasons open quietly (the College page's Recruiting tab).
-        if (first && Job.HiredSeason == League.Season)
-            Post("Recruit college seniors for your club",
-                $"With no draft, college seniors choose their pro club. This season's {Seniors().Count} seniors turn pro when the season ends. Court the ones you want on the College page (Recruiting): calls and visits build interest, and a senior who commits to you signs before free agency opens. Rival clubs are recruiting too, and the best seniors go early. Recruiting opens each November.", "Roster");
+        // D45 C (Danny, #413): no introduction message at all; senior recruiting lives on the College page's Recruiting tab.
+        _ = first;
         var seniors = Seniors();
         foreach (var p in seniors)
         {

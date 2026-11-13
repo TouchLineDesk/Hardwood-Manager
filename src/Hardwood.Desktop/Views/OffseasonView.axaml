@@ -82,6 +82,37 @@
             </DataGrid>
           </Grid>
         </TabItem>
+        <TabItem Header="Draft" IsVisible="{Binding ShowDraft}">
+          <Grid RowDefinitions="Auto,Auto,2*,Auto,*">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Classes="primary" Content="Draft selected" Command="{Binding DraftCommand}" IsEnabled="{Binding OnTheClock}"/>
+              <TextBlock Text="College draft" Classes="h2" Margin="0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" Text="{Binding DraftText}" TextWrapping="Wrap" Opacity="0.8" Margin="0,4,0,6"/>
+            <DataGrid Grid.Row="2" ItemsSource="{Binding DraftPool}" SelectedItem="{Binding SelectedProspect}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="48"/>
+                <DataGridTextColumn Header="Graduate" Binding="{Binding Name}" Width="200"/>
+                <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
+                <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
+                <DataGridTextColumn Header="Height" Binding="{Binding Height}" Width="76"/>
+                <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="84"/>
+                <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="84"/>
+                <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="84"/>
+                <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Grid.Row="3" Text="The order (an equal-odds lottery)" Classes="h2" Margin="0,10,0,4"/>
+            <DataGrid Grid.Row="4" ItemsSource="{Binding DraftSlots}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Pick" Binding="{Binding Pick}" Width="60"/>
+                <DataGridTextColumn Header="" Binding="{Binding Mark}" Width="56"/>
+                <DataGridTextColumn Header="Club" Binding="{Binding Team}" Width="*"/>
+                <DataGridTextColumn Header="Selection" Binding="{Binding Player}" Width="240"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Grid>
+        </TabItem>
       </TabControl>
       <ScrollViewer Grid.Column="1" Margin="12,0,0,0">
         <ContentControl Content="{Binding Talk}"/>

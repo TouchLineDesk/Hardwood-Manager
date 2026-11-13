@@ -19,21 +19,12 @@ public class RecruitingTests
     }
 
     [Fact]
-    public void The_recruiting_note_comes_once_in_your_first_season_at_a_club()
+    public void No_recruiting_note_reaches_a_pro_inbox()
     {
-        // Review #11 (run 33, #391): a pro career's inbox gets the senior-recruiting introduction in its first season only.
-        const string title = "Recruit college seniors for your club";
+        // D45 C (Danny, #413): no senior-recruiting introduction at all; recruiting still opens on the College page.
         var first = Season(71);
-        Assert.Single(first.Inbox, m => m.Title == title);
-        Assert.DoesNotContain(first.Inbox, m => m.Title == "Senior recruiting is open");
-
-        var probe = new WorldGenerator(new Rng(71)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
-        var id = probe.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ElementAt(3).Id;
-        var later = GameSession.NewGame(71, id, null);
-        later.Job.HiredSeason = later.League.Season - 1; // as if this were his second season at the club
-        while (later.Today < new DateOnly(2026, 12, 1)) later.AdvanceDay();
-        Assert.True(later.RecruitingOpen);
-        Assert.DoesNotContain(later.Inbox, m => m.Title == title);
+        Assert.True(first.RecruitingOpen);
+        Assert.DoesNotContain(first.Inbox, m => m.Title is "Recruit college seniors for your club" or "Senior recruiting is open");
     }
 
     [Fact]
