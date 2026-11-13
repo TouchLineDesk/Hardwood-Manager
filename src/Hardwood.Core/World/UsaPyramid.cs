@@ -131,6 +131,15 @@ public static class UsaPyramid
         return new() { (name1, clubs.ToList()) };
     }
 
+    /// <summary>Won its division in tier 2 or 3 this season (so it goes up, #319).</summary>
+    public static bool WonDivision(WorldCompetition c, Team t)
+    {
+        if (Level(c.Key) is not (2 or 3) || !c.Season.Fixtures.Any(f => f.Played)) return false;
+        var table = c.Season.Table().Select(r => r.TeamId).ToList();
+        var div = Divisions(c.Key, c.Clubs).FirstOrDefault(d => d.Teams.Contains(t)).Teams;
+        return div != null && table.FirstOrDefault(id => div.Any(x => x.Id == id)) == t.Id;
+    }
+
     /// <summary>The division a pyramid club plays in this season ("" outside the pyramid).</summary>
     public static string DivisionOf(string key, IReadOnlyList<Team> clubs, Team t) =>
         IsPyramid(key) ? Divisions(key, clubs).FirstOrDefault(d => d.Teams.Contains(t)).Name ?? "" : "";
