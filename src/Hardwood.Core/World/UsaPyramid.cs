@@ -281,6 +281,39 @@ public static class UsaPyramid
             foreach (var t in teams) { t.Conference = conf; t.Division = name; }
     }
 
+    /// <summary>A pyramid club's division in the paired layout (#424): one of its conference's four names.</summary>
+    public static bool Labeled(Team t) => (t.Conference == Conference.East ? EastDivisions : WestDivisions).Contains(t.Division);
+
+    /// <summary>Each of the eight divisions has an equal share of the clubs (four in a league of 32).</summary>
+    public static bool Balanced(IReadOnlyCollection<Team> clubs) =>
+        clubs.Count > 0 && clubs.Count % 8 == 0 && clubs.All(Labeled)
+        && clubs.GroupBy(t => (t.Conference, t.Division)).Count() == 8 && clubs.GroupBy(t => (t.Conference, t.Division)).All(g => g.Count() == clubs.Count / 8);
+
+    /// <summary>The geographic layout (#344, #355): the eastern half by longitude in the East, each half split in four.</summary>
+    private static List<(string Name, List<Team> Teams)> Geographic(IReadOnlyList<Team> clubs)
+    {
+        var (east, west) = ProConferences(clubs);
+        return ConferenceDivisions(Conference.East, east).Select(d => ($"East · {d.Name}", d.Teams))
+            .Concat(ConferenceDivisions(Conference.West, west).Select(d => ($"West · {d.Name}", d.Teams))).ToList();
+    }
+
+    /// <summary>
+    /// Writes a national tier's divisions onto its clubs (Danny's paired divisions, #424). A tier already laid out keeps its
+    /// divisions; one that isn't (a new world, an older save, a tier that just grew) is laid out by geography once. After
+    /// that, clubs carry their division up and down: the 4th-placed club in a division drops into the same-named division
+    /// of the tier below, and that division's winner takes its place.
+    /// </summary>
+    public static void LabelDivisions(WorldCompetition c, bool force = false)
+    {
+        if (!IsNational(c.Key) || (!force && Balanced(c.Clubs))) return;
+        foreach (var (name, teams) in Geographic(c.Clubs))
+        {
+            var parts = name.Split(" · ");
+            var conf = parts[0] == "East" ? Conference.East : Conference.West;
+            foreach (var t in teams) { t.Conference = conf; t.Division = parts[1]; }
+        }
+    }
+
     /// <summary>
     /// A pyramid league's divisions (Danny, #318), worked out from its clubs each time (no save change), East first:
     /// tiers 2 and 3 in six divisions of equal size, made of clubs close together (the eastern half split north to south in
@@ -293,10 +326,13 @@ public static class UsaPyramid
         int level = Level(key);
         if (IsNational(key))
         {
-            // Two conferences of four regional divisions (Danny's D33 design, #344, #355), East first.
-            var (east, west) = ProConferences(clubs);
-            return ConferenceDivisions(Conference.East, east).Select(d => ($"East · {d.Name}", d.Teams))
-                .Concat(ConferenceDivisions(Conference.West, west).Select(d => ($"West · {d.Name}", d.Teams))).ToList();
+            // Danny's paired divisions (#424): once laid out, a tier's clubs carry their division with them and keep it.
+            if (clubs.Count > 0 && clubs.All(Labeled))
+                return new[] { Conference.East, Conference.West }
+                    .SelectMany(conf => (conf == Conference.East ? EastDivisions : WestDivisions)
+                        .Select(d => ($"{conf} · {d}", clubs.Where(t => t.Conference == conf && t.Division == d).OrderBy(t => t.Id).ToList())))
+                    .Where(d => d.Item2.Count > 0).ToList();
+            return Geographic(clubs);
         }
         if (level == 4)
         {
@@ -471,6 +507,8 @@ public static class UsaPyramid
         var t2 = world.Competitions.FirstOrDefault(c => c.Key == Tier2);
         var t3 = world.Competitions.FirstOrDefault(c => c.Key == Tier3);
         if (t2 == null || t3 == null) return news;
+        // Paired divisions (#424): a tier not yet laid out (an older save) is laid out as it played this season, by geography.
+        foreach (var c in world.Competitions.Where(c => IsNational(c.Key))) LabelDivisions(c);
         // Final tables, all taken before anyone moves.
         List<Team> Table(WorldCompetition c) =>
             c.Season.Fixtures.Any(f => f.Played)
@@ -518,7 +556,8 @@ public static class UsaPyramid
             int L(Team t) => wins.TryGetValue(t.Id, out var w) ? w.losses : 41;
             foreach (var div in nabl.Teams.GroupBy(t => (t.Conference, t.Division)).OrderBy(g => g.Key.Conference).ThenBy(g => g.Key.Division).ToList())
                 down.Add(div.OrderBy(W).ThenByDescending(L).ThenBy(t => t.Id).First());
-            foreach (var r in down) { nabl.Teams.Remove(r); t2.Clubs.Add(r); r.Division = t2.Profile.Short; }
+            // Paired divisions (#424): a club keeps its division's name going down, and a tier-2 winner keeps its own going up.
+            foreach (var r in down) { nabl.Teams.Remove(r); t2.Clubs.Add(r); }
             foreach (var d in t2Divs) JoinTop(d.Teams[0], t2);
         }
         // Tier 2 ↔ tier 3: the last in each tier-2 division ↔ the tier-3 division winners.
@@ -561,9 +600,11 @@ public static class UsaPyramid
             Fill(t2, t3, t2Down, fill2);
             Fill(t3, t4, t3Down, fill3);
             Fill(t4, t5, t4Down, fill4);
+            // A tier that grew (an older save) is laid out again; otherwise every division is still four.
+            foreach (var c in new[] { t2, t3, t4, t5 }) LabelDivisions(c);
             if (topPlayed)
             {
-                RealignTop(nabl, up);
+                if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled)) RealignTop(nabl, up);
                 news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
                     + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
                 news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
@@ -612,7 +653,7 @@ public static class UsaPyramid
             }
             if (topPlayed)
             {
-                RealignTop(nabl, up);
+                if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled)) RealignTop(nabl, up);
                 news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
                     + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
                 news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
@@ -675,7 +716,7 @@ public static class UsaPyramid
             double arena = c.Clubs.Average(t => (double)t.ArenaCapacity);
             foreach (var t in c.Clubs)
             {
-                t.Division = c.Profile.Short;
+                if (!IsNational(c.Key)) t.Division = c.Profile.Short;
                 if (nabl.Teams.Any(x => x.Id == t.Id)) continue;
                 bool fell = false;
                 if (!before.TryGetValue(t, out var was)) { Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, 1); fell = true; } // down from the NABL
@@ -728,7 +769,7 @@ public static class UsaPyramid
         }
         foreach (var c in new[] { t4, t5 })
         {
-            foreach (var t in c.Clubs) t.Division = c.Profile.Short;
+            LabelDivisions(c, force: true);
             world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(70).Average(), 1);
         }
         int left = ranked.Count - keep.Count;
@@ -822,7 +863,7 @@ public static class UsaPyramid
             // Five tiers (D39 A): each tier fills from the one below; tier 5 starts with two extra clubs for this.
             Fill(t3, t4.Clubs.Select(t => (t, t4)));
             Fill(t4, t5.Clubs.Select(t => (t, t5)));
-            foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) foreach (var t in c.Clubs) t.Division = c.Profile.Short;
+            foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) { if (IsNational(c.Key)) LabelDivisions(c, force: true); else foreach (var t in c.Clubs) t.Division = c.Profile.Short; }
             RealignTop(top, newcomers);
             return;
         }
@@ -838,7 +879,7 @@ public static class UsaPyramid
                 from.Clubs.Remove(t); reg.Clubs.Add(t);
             }
         }
-        foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) foreach (var t in c.Clubs) t.Division = c.Profile.Short;
+        foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) { if (IsNational(c.Key)) LabelDivisions(c, force: true); else foreach (var t in c.Clubs) t.Division = c.Profile.Short; }
         RealignTop(top, newcomers);
     }
 

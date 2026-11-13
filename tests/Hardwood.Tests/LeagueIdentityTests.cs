@@ -81,3 +81,67 @@ public class LeagueIdentityTests
         Assert.Equal("Southeast", mia.Division);
     }
 }
+
+/// <summary>Danny's paired divisions (#424): a club drops to, or rises from, the same-named division one tier away.</summary>
+public class PairedDivisionTests
+{
+    private static readonly DateOnly On = new(2026, 10, 1);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Clubs_move_between_same_named_divisions_and_every_division_stays_at_four(bool real)
+    {
+        var league = new WorldGenerator(new Rng(31)).Generate(real ? RealWorldData.LeagueName : "NABL", 2026, On);
+        var world = GameWorld.Generate(league, 31, Array.Empty<string>(), On);
+        if (real) RealWorldData.Apply(league, world, 31);
+        Hardwood.Core.Jobs.Board.EnsureOwnersAndCoaches(league, 31);
+        Hardwood.Core.Jobs.Board.EnsureOwnersAndCoaches(world.Clubs, 31);
+        var tiers = UsaPyramid.LowerTiers.Select(k => world.Competitions.First(c => c.Key == k)).ToList();
+        Assert.True(UsaPyramid.Balanced(league.Teams));
+        Assert.All(tiers, c => Assert.True(UsaPyramid.Balanced(c.Clubs), c.Key));
+        string Level(Team t) => league.Teams.Contains(t) ? "top" : world.HomeOf(t).Key;
+        var sim = new GameSimulator();
+        var career = new Career(new Rng(9));
+        for (int season = 0; season < 2; season++)
+        {
+            var before = league.Teams.Concat(tiers.SelectMany(c => c.Clubs)).ToDictionary(t => t, t => (Level(t), t.Conference, t.Division));
+            world.FinishSeasons(sim);
+            career.PlaySeason(league, world: world, worldSim: sim);
+            Assert.True(UsaPyramid.Balanced(league.Teams));
+            Assert.All(tiers, c => Assert.True(UsaPyramid.Balanced(c.Clubs), c.Key));
+            int moved = 0;
+            foreach (var (t, (lvl, conf, div)) in before)
+            {
+                // Up, down or staying: a club keeps its conference and division name.
+                Assert.Equal((conf, div), (t.Conference, t.Division));
+                if (Level(t) != lvl) moved++;
+            }
+            Assert.Equal(64, moved); // eight up and eight down at each of the four boundaries
+        }
+    }
+
+    [Fact]
+    public void The_lower_tiers_divisions_survive_a_save()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"hw-pair-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var path = Path.Combine(dir, "career.hwsave");
+            var s = GameSession.NewGame(5, 1, path, realWorld: true);
+            var t2 = s.World.Competitions.First(c => c.Key == UsaPyramid.Tier2);
+            Assert.True(UsaPyramid.Balanced(t2.Clubs));
+            // Shuffle two clubs' divisions so a geographic redraw on load would be caught.
+            var a = t2.Clubs.First(t => t.Conference == Conference.East && t.Division == "Atlantic");
+            var b = t2.Clubs.First(t => t.Conference == Conference.East && t.Division == "South");
+            (a.Division, b.Division) = (b.Division, a.Division);
+            var labels = t2.Clubs.ToDictionary(t => t.Id, t => (t.Conference, t.Division));
+            s.SaveNow();
+            var back = GameSession.Load(path);
+            var t2b = back.World.Competitions.First(c => c.Key == UsaPyramid.Tier2);
+            Assert.All(t2b.Clubs, t => Assert.Equal(labels[t.Id], (t.Conference, t.Division)));
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+}
