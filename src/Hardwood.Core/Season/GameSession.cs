@@ -1114,7 +1114,10 @@ public sealed partial class GameSession
             Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
         }
         if (Employed && m.Parachute > 0)
-            Post("Parachute payment", $"After relegation the league pays a parachute of ${m.Parachute / 1e6:F1}M this season ({(m.ParachuteYears > 1 ? "it halves next season, then stops" : "the last one")}). Every contract's relegation clause has cut wages by half. Use the time to bring the payroll down to this level.", "Board");
+            Post("Parachute payment", $"After relegation the league pays a parachute of ${m.Parachute / 1e6:F1}M this season ({(m.ParachuteYears > 1 ? "it halves next season, then stops" : "the last one")})."
+                + (m.ParachuteCarried > 0 ? $" ${m.ParachuteCarried / 1e6:F1}M of it is what was left of the last relegation's parachute, carried over after this second drop." : "")
+                + (m.ParachuteYears > 1 ? " Every contract's relegation clause has cut wages by half." : "")
+                + " Use the time to bring the payroll down to what this league pays.", "Board");
     }
 
     // ------------------------------------------------------------------------------------------

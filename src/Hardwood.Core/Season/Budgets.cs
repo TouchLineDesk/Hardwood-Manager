@@ -100,6 +100,7 @@ public static class Budgets
             m.Revenue = Revenue(t, lr, typical, wp);
             // The parachute halves each year and stops after two.
             if (m.ParachuteYears > 0) { m.ParachuteYears--; m.Parachute = m.ParachuteYears > 0 ? m.Parachute / 2 : 0; }
+            m.ParachuteCarried = 0;
             double share = WageShare(t.Owner);
             if (m.Balance < -m.Revenue * 0.25) share -= 0.06;       // in debt: the owner cuts back
             else if (m.Balance > m.Revenue * 0.5) share += 0.02;    // flush: a little more to spend
@@ -135,7 +136,8 @@ public static class Budgets
     /// A club that changed league (promotion or relegation): revenue and budgets for its new league straight away.
     /// Its balance and fan base carry over. Going down (critic review, Nov 10): every contract has a relegation
     /// clause that halves the wage (never below what the new league would pay him), and the club gets parachute
-    /// money worth half the revenue it lost, then a quarter, so it can see out its old contracts. Going up, wages stay.
+    /// money worth half the revenue it lost, then a quarter, so it can see out its old contracts; a parachute still being
+    /// paid from an earlier drop carries over on top (#363). Going up, the parachute stops.
     /// </summary>
     public static void Rescale(Team t, double salaryScale, double typicalArena, double oldScale = 0)
     {
@@ -148,12 +150,22 @@ public static class Budgets
             foreach (var p in t.Roster)
                 if (p.Contract is { } c)
                     c.Salary = (long)Math.Round(Math.Max(c.Salary * 0.5, c.Salary * ratio) / 1000) * 1000;
-            m.Parachute = Round(Math.Max(0, oldRevenue - m.Revenue) * 0.5);
+            // A second drop while a parachute is still being paid (#363, run 31): the unpaid part carries into the new
+            // league on top of the new parachute. Overwriting it left a club that fell NBA → tier 2 → tier 3 in two
+            // summers with tier-3 money and half-cut NBA contracts (nabl-weak: 30 weeks over budget).
+            long carried = m.ParachuteYears > 0 ? m.Parachute : 0;
+            m.Parachute = Round(Math.Max(0, oldRevenue - m.Revenue) * 0.5) + carried;
             m.ParachuteYears = m.Parachute > 0 ? 2 : 0;
+            m.ParachuteCarried = carried;
         }
-        else if (oldScale > 0 && oldScale < salaryScale) { m.Parachute = 0; m.ParachuteYears = 0; }
+        else if (oldScale > 0 && oldScale < salaryScale) { m.Parachute = 0; m.ParachuteYears = 0; m.ParachuteCarried = 0; }
         if (oldScale > 0 && Math.Abs(oldScale - salaryScale) > 1e-9 && t.Staff.Count > 0) ScaleStaff(t, salaryScale);
         m.WageBudget = Round(m.Income * WageShare(t.Owner));
+        // Going down (#363, run 31): the contracts the club carries were signed within its old budget and already cut by
+        // the relegation clauses, so an owner who isn't in debt funds them, as the summer budget does (critic review #3).
+        // Without it a relegated club was "over budget" (and failing the board's wage goal) for deals it couldn't shed.
+        if (oldScale > salaryScale && m.Balance >= 0)
+            m.WageBudget = Math.Max(m.WageBudget, (long)Math.Ceiling(ContractMarket.Payroll(t) / 100_000.0) * 100_000);
         m.TransferBudget = Round(m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15);
         m.Ready = true;
     }

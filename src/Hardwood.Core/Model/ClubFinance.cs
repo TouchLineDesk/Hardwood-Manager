@@ -21,6 +21,8 @@ public sealed class ClubFinance
     /// <summary>Parachute money after relegation, paid on top of revenue: this season's amount and the seasons left (critic review, Nov 10).</summary>
     public long Parachute { get; set; }
     public int ParachuteYears { get; set; }
+    /// <summary>The part of this season's parachute carried over from an earlier relegation that hadn't finished paying (#363): a club that drops twice keeps it.</summary>
+    public long ParachuteCarried { get; set; }
     /// <summary>Deep in debt (balance below half a season's revenue): no transfer fees until it recovers.</summary>
     public bool Embargo { get; set; }
 
