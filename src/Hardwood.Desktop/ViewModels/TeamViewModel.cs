@@ -52,6 +52,11 @@ public sealed partial class TeamViewModel : PageViewModel
     /// <summary>Roadmap 1: the club at a glance as stat chips (record, coach, owner, arena, money).</summary>
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
     public Avalonia.Media.Color Accent => ThemeService.AccentFor(Team);
+
+    /// <summary>From Danny's graphics pack (#350): the club's banner behind the header, and its jerseys (home first).</summary>
+    public Avalonia.Media.Imaging.Bitmap? Banner => Graphics.GraphicsPackService.BannerFor(Team);
+    public IReadOnlyList<Avalonia.Media.Imaging.Bitmap> Jerseys => Graphics.GraphicsPackService.JerseysFor(Team);
+    public bool HasJerseys => Jerseys.Count > 0;
     public ObservableCollection<TeamPlayerRow> Players { get; } = new();
     public ObservableCollection<TeamGameRow> Games { get; } = new();
     [ObservableProperty] private TeamPlayerRow? _selectedPlayer;

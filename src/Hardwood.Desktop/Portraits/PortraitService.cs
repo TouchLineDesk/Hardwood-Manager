@@ -83,7 +83,8 @@ public sealed class PortraitService
         var shown = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Concat(prospects ?? new List<Player>()).Concat(world.Players)
             .Concat(college.SelectMany(t => t.Roster)).ToList();
         lib.AssignMissing(shown.Concat(league.Retired), shown);
-        var cards = PortraitCard.For(league, prospects, world.Clubs.Concat(college), Graphics.LogoPackService.FileFor);
+        var cards = PortraitCard.For(league, prospects, world.Clubs.Concat(college), Graphics.LogoPackService.FileFor,
+            jerseys: AppSettings.Current.CardJerseys, photoOf: Graphics.GraphicsPackService.PhotoFor);
         // Your own squad first, then your league, then everyone else: a new world has ~13,000 cards to draw, and at a
         // club abroad your players used to wait behind the whole NABL and every league before yours.
         var mine = session.HumanTeam.Roster.Select(p => p.Id).ToHashSet();
@@ -121,7 +122,7 @@ public sealed class PortraitService
         {
             try
             {
-                var face = lib.FullPath(card.FaceFile);
+                var face = card.Photo is { } photo && File.Exists(photo) ? photo : lib.FullPath(card.FaceFile);
                 if (!File.Exists(face)) { failed++; }
                 else
                 {

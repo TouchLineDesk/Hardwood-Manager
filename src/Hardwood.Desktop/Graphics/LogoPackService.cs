@@ -42,6 +42,7 @@ public static class LogoPackService
     public static void Reload()
     {
         _pack = null; Matches.Clear();
+        GraphicsPackService.Reload();
         foreach (var b in Bitmaps.Values) b?.Dispose();
         Bitmaps.Clear();
         Changed?.Invoke();
@@ -50,7 +51,8 @@ public static class LogoPackService
     public static string? FileFor(Team team)
     {
         var pack = Pack;
-        if (!Matches.TryGetValue(team.Id, out var f)) Matches[team.Id] = f = pack.Find(team, AllTeams);
+        // The chosen logo pack wins; then Danny's graphics pack for real NBA teams and college programs (#350).
+        if (!Matches.TryGetValue(team.Id, out var f)) Matches[team.Id] = f = pack.Find(team, AllTeams) ?? GraphicsPackService.LogoFor(team);
         return f;
     }
 

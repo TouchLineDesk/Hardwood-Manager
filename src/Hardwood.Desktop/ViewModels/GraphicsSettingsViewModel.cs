@@ -19,6 +19,32 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
     [ObservableProperty] private string _logoFolderStatus = "";
     [ObservableProperty] private string _logoNote = "";
 
+    // Graphics pack and cards (#350-351).
+    [ObservableProperty] private bool _useGraphicsPack = AppSettings.Current.UseGraphicsPack;
+    [ObservableProperty] private bool _realPlayerPhotos = AppSettings.Current.RealPlayerPhotos;
+    [ObservableProperty] private bool _cardJerseys = AppSettings.Current.CardJerseys;
+    [ObservableProperty] private string _graphicsStatus = "";
+
+    partial void OnUseGraphicsPackChanged(bool value) { AppSettings.Current.UseGraphicsPack = value; GraphicsChanged(); }
+    partial void OnRealPlayerPhotosChanged(bool value) { AppSettings.Current.RealPlayerPhotos = value; GraphicsChanged(); }
+    partial void OnCardJerseysChanged(bool value) { AppSettings.Current.CardJerseys = value; GraphicsChanged(); }
+
+    private void GraphicsChanged()
+    {
+        AppSettings.Current.Save();
+        LogoPackService.Reload();
+        UpdateLogoStatus();
+        UpdateGraphicsStatus();
+        _changed?.Invoke();
+    }
+
+    public void UpdateGraphicsStatus()
+    {
+        var g = GraphicsPackService.Pack;
+        GraphicsStatus = !AppSettings.Current.UseGraphicsPack ? "Off." : g.IsEmpty ? "No graphics pack found (looked for prographics / collegegraphics in the face and logo folders)."
+            : $"Found in {g.Root}: {g.Summary()}.";
+    }
+
     /// <summary>A sample of clubs, to see the pack at a glance (pack logo or drawn crest).</summary>
     public ObservableCollection<Team> Sample { get; } = new();
 
@@ -45,6 +71,7 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
         UpdateFaceStatus();
         UpdateLogoStatus();
         UpdateNameStatus();
+        UpdateGraphicsStatus();
     }
 
     partial void OnNamePackFileChanged(string value)
@@ -85,7 +112,9 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
         AppSettings.Current.FaceFolder = value;
         AppSettings.Current.Save();
         Portraits.PortraitService.Instance.ResetLibrary();
+        LogoPackService.Reload();
         UpdateFaceStatus();
+        UpdateGraphicsStatus();
         _changed?.Invoke();
     }
 

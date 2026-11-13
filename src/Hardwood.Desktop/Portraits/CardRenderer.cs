@@ -13,7 +13,7 @@ namespace Hardwood.Desktop.Portraits;
 public static class CardRenderer
 {
     /// <summary>Bump when the card's look changes, so every portrait is redrawn once.</summary>
-    public const int Version = 1;
+    public const int Version = 2; // 2: jerseys and real photos (#350-351)
 
     private const float W = 512f;
     private static readonly Lazy<(SKTypeface bs, SKTypeface bc)> Fonts = new(LoadFonts);
@@ -111,10 +111,13 @@ public static class CardRenderer
             c.DrawCircle(ctr, 180, p);
         }
 
-        // .face  430x430 at right:-44 bottom:-6, drop-shadow(0 10px 16px rgba(0,0,0,.45))
-        using (var resized = face.Resize(new SKImageInfo(430, 430, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High))
-        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+        if (card.Photo != null) PhotoFace(c, face);
+        else if (card.Jersey is { } kit) JerseyFace(c, face, kit, bc);
+        else
         {
+            // .face  430x430 at right:-44 bottom:-6, drop-shadow(0 10px 16px rgba(0,0,0,.45))
+            using var resized = face.Resize(new SKImageInfo(430, 430, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High);
+            using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
             p.ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 8, 8, new SKColor(0, 0, 0, A(.45f)));
             c.DrawBitmap(resized ?? face, new SKRect(126, 88, 556, 518), p);
         }
@@ -141,6 +144,97 @@ public static class CardRenderer
     }
 
     // ---- badges -------------------------------------------------------------------------------
+    // ---- jersey and photo (#350-351) -----------------------------------------------------------
+
+    /// <summary>A real photo from Danny's graphics pack (a 260x190 head-and-shoulders cut-out, already in his jersey).</summary>
+    private static void PhotoFace(SKCanvas c, SKBitmap photo)
+    {
+        float w = 480, h = w * photo.Height / photo.Width;
+        var dst = new SKRect(W - w + 34, W - h + 6, W + 34, W + 6);
+        using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
+        p.ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 8, 8, new SKColor(0, 0, 0, A(.45f)));
+        c.DrawBitmap(photo, dst, p);
+    }
+
+    /// <summary>
+    /// The generated face, a little smaller and higher, wearing his club's jersey: the neck carried down from the face,
+    /// then a tank top in the club's colours with trim and his number.
+    /// </summary>
+    private static void JerseyFace(SKCanvas c, SKBitmap face, JerseySpec kit, SKTypeface bc)
+    {
+        const float fs = 372, x0 = 158, y0 = 40;
+        float k = fs / 256f, sx = face.Width / 256f, sy = face.Height / 256f;
+        // Neck: a strip just above the face picture's collar, stretched down under the jersey.
+        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+        {
+            var src = new SKRect(88 * sx, 226 * sy, 168 * sx, 234 * sy);
+            var dst = new SKRect(x0 + 88 * k, y0 + 226 * k, x0 + 168 * k, y0 + 226 * k + 110);
+            c.Save();
+            c.ClipRoundRect(new SKRoundRect(dst, 14), SKClipOperation.Intersect, true);
+            c.DrawBitmap(face, src, dst, p);
+            c.Restore();
+        }
+        using (var resized = face.Resize(new SKImageInfo((int)fs, (int)fs, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High))
+        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+        {
+            p.ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 8, 8, new SKColor(0, 0, 0, A(.40f)));
+            c.DrawBitmap(resized ?? face, new SKRect(x0, y0, x0 + fs, y0 + fs), p);
+        }
+
+        SKColor prim = Hex(kit.PrimaryColor), sec = Hex(kit.SecondaryColor);
+        // A trim that disappears into the shirt (e.g. white on white) falls back to dark or light.
+        if (Distance(prim, sec) < 90) sec = Luma(prim) > 140 ? Hex("#111418") : SKColors.White;
+        float cx = x0 + fs / 2, top = y0 + 232 * k, sh = 136;
+        float nL = cx - 52, nR = cx + 52, sY = top + 44;
+        using var neck = new SKPath();
+        neck.MoveTo(nL, top);
+        neck.CubicTo(nL + 6, sY, nR - 6, sY, nR, top);
+        using var body = new SKPath();
+        body.MoveTo(cx - sh - 70, W + 40);
+        body.LineTo(cx - sh - 46, top + 64);
+        body.QuadTo(cx - sh - 30, top + 14, cx - sh + 14, top + 6);
+        body.LineTo(nL, top);
+        body.CubicTo(nL + 6, sY, nR - 6, sY, nR, top);
+        body.LineTo(cx + sh - 14, top + 6);
+        body.QuadTo(cx + sh + 30, top + 14, cx + sh + 46, top + 64);
+        body.LineTo(cx + sh + 70, W + 40);
+        body.Close();
+        using (var p = new SKPaint { IsAntialias = true, Color = prim })
+        {
+            p.ImageFilter = SKImageFilter.CreateDropShadow(0, -3, 6, 6, new SKColor(0, 0, 0, A(.35f)));
+            c.DrawPath(body, p);
+        }
+        // Soft shading so the shirt isn't flat: lighter across the chest, darker at the sides.
+        using (var p = new SKPaint { IsAntialias = true })
+        {
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(cx - sh - 70, 0), new SKPoint(cx + sh + 70, 0),
+                new[] { new SKColor(0, 0, 0, A(.28f)), new SKColor(255, 255, 255, A(.10f)), new SKColor(0, 0, 0, A(.28f)) }, new[] { 0f, .5f, 1f }, SKShaderTileMode.Clamp);
+            c.DrawPath(body, p);
+        }
+        using (var p = new SKPaint { IsAntialias = true, Color = sec, Style = SKPaintStyle.Stroke, StrokeWidth = 10, StrokeCap = SKStrokeCap.Round })
+        {
+            c.DrawPath(neck, p);
+            p.StrokeWidth = 8;
+            using var armL = new SKPath(); armL.MoveTo(cx - sh + 14, top + 6); armL.QuadTo(cx - sh - 8, top + 60, cx - sh - 12, W + 20);
+            using var armR = new SKPath(); armR.MoveTo(cx + sh - 14, top + 6); armR.QuadTo(cx + sh + 8, top + 60, cx + sh + 12, W + 20);
+            c.DrawPath(armL, p);
+            c.DrawPath(armR, p);
+        }
+        using (var font = new SKFont(bc, 58))
+        using (var p = new SKPaint { IsAntialias = true, Color = sec })
+        {
+            var text = kit.Number.ToString();
+            float tw = Measure(font, text);
+            using var outline = new SKPaint { IsAntialias = true, Color = new SKColor(0, 0, 0, A(.35f)), Style = SKPaintStyle.Stroke, StrokeWidth = 4 };
+            c.DrawText(text, cx - tw / 2, sY + 58, font, outline);
+            c.DrawText(text, cx - tw / 2, sY + 58, font, p);
+        }
+    }
+
+    private static double Luma(SKColor c) => 0.299 * c.Red + 0.587 * c.Green + 0.114 * c.Blue;
+    private static double Distance(SKColor a, SKColor b) =>
+        Math.Sqrt(Math.Pow(a.Red - b.Red, 2) + Math.Pow(a.Green - b.Green, 2) + Math.Pow(a.Blue - b.Blue, 2));
+
     private static void Badge(SKCanvas c, int pa, bool dia, SKColor pd, SKColor pb, SKColor pl, SKColor pi, SKTypeface bs, SKTypeface bc)
     {
         // .badges: left 22, top 22. The hex is wider than the 132px container, so the grid track grows to the hex

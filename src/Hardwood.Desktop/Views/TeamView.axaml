@@ -9,13 +9,21 @@
     <Border DockPanel.Dock="Top" CornerRadius="10" ClipToBounds="True" MinHeight="84" Margin="0,0,0,10">
       <Grid>
         <c:CourtBackdrop Glow="{Binding Accent}" Intensity="0.8"/>
-        <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,10" VerticalAlignment="Center">
+        <!-- The banner is a background, so it never sizes the header (an Image here stretched the header to the whole page). -->
+        <Border Opacity="0.35" IsVisible="{Binding Banner, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <Border.Background><ImageBrush Source="{Binding Banner}" Stretch="UniformToFill"/></Border.Background>
+        </Border>
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="16,10" VerticalAlignment="Center">
           <c:TeamLogo Team="{Binding Team}" Width="64" Height="64" ShowText="False" VerticalAlignment="Center"/>
           <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2" VerticalAlignment="Center">
             <TextBlock Text="{Binding Team.FullName}" FontSize="28" FontWeight="Bold" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding League}" Classes="muted" TextWrapping="Wrap"/>
           </StackPanel>
-          <Button Grid.Column="2" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
+          <ItemsControl Grid.Column="2" ItemsSource="{Binding Jerseys}" IsVisible="{Binding HasJerseys}" VerticalAlignment="Center" Margin="8,0" ToolTip.Tip="Home, road and alternate jerseys">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate><DataTemplate><Image Source="{Binding}" Width="46" Height="52" Stretch="Uniform"/></DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Grid.Column="3" Content="Back" Command="{Binding BackCommand}" VerticalAlignment="Top"/>
         </Grid>
       </Grid>
     </Border>

@@ -41,6 +41,18 @@
         <TextBlock Text="{Binding LogoNote}" TextWrapping="Wrap" FontSize="11.5" IsVisible="{Binding LogoNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
       </StackPanel>
     </Border>
+    <!-- Graphics pack (#350): Danny's prographics / collegegraphics folders, read from his PC at start-up. -->
+    <Border Classes="panel">
+      <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Shield" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Graphics pack and player cards" Classes="h2" Margin="0"/></StackPanel>
+        <TextBlock Text="{Binding GraphicsStatus}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        <CheckBox Content="Use the graphics pack (NBA and college logos, banners, jerseys)" IsChecked="{Binding UseGraphicsPack}"/>
+        <CheckBox Content="Real player photos on NBA players' cards" IsChecked="{Binding RealPlayerPhotos}"/>
+        <CheckBox Content="Players wear their club's jersey on their cards" IsChecked="{Binding CardJerseys}"/>
+        <TextBlock Text="The game looks for prographics and collegegraphics folders inside the face pack folder (or the logo folder) every time it starts. Your own logo pack still wins where it has a club."
+                   Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+      </StackPanel>
+    </Border>
     <!-- Name pack: real names for clubs, leagues and conferences, from a file the player keeps (the game ships fictional). -->
     <Border Classes="panel">
       <StackPanel Spacing="8">

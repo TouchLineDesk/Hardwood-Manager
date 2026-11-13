@@ -17,6 +17,15 @@ public sealed class AppSettings
     /// <summary>A name pack file or folder (real names for clubs, leagues and conferences); empty = Documents\Hardwood Manager\Names.</summary>
     public string NamePackFile { get; set; } = "";
 
+    /// <summary>Read Danny's graphics packs (prographics / collegegraphics folders inside the face folder) for logos, banners and jerseys (#350).</summary>
+    public bool UseGraphicsPack { get; set; } = true;
+
+    /// <summary>Use the graphics pack's photos for real NBA players' cards instead of a generated face (#350).</summary>
+    public bool RealPlayerPhotos { get; set; } = true;
+
+    /// <summary>Player cards show the player in his club's jersey (#351).</summary>
+    public bool CardJerseys { get; set; } = true;
+
     /// <summary>Let the game draw player card portraits automatically.</summary>
     public bool AutoPortraits { get; set; } = true;
 
