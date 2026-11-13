@@ -99,7 +99,7 @@
       <c:StatStrip ItemsSource="{Binding AwayChips}" Accent="{Binding AwayAccent}"/>
       <DataGrid ItemsSource="{Binding Away}" Height="300">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="192"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
           <DataGridCheckBoxColumn Header="St" Binding="{Binding Started}" Width="66"/>
           <DataGridTextColumn Header="MIN" Binding="{Binding Min}" Width="66"/>
@@ -121,7 +121,7 @@
       <c:StatStrip ItemsSource="{Binding HomeChips}" Accent="{Binding HomeAccent}"/>
       <DataGrid ItemsSource="{Binding Home}" Height="300">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="192"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
           <DataGridCheckBoxColumn Header="St" Binding="{Binding Started}" Width="66"/>
           <DataGridTextColumn Header="MIN" Binding="{Binding Min}" Width="66"/>
