@@ -61,7 +61,7 @@ int teamId = label switch
     // A chosen real franchise: nba-real-OKC, nba-real-MIA, ...
     _ when label.StartsWith("nba-real-") && label.Length == 12 => probe.Teams.First(t => t.Abbreviation == label[9..]).Id,
     "lithuania" => probeWorld[WorldLeagues.Lithuania].Clubs.OrderBy(t => QuickSim.Strength(t)).First().Id,
-    "local" => probeWorld[UsaPyramid.LocalKey("txn")].Clubs.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
+    "local" => probeWorld[UsaPyramid.Tier5].Clubs.OrderByDescending(t => QuickSim.Strength(t)).First().Id, // the bottom tier's strongest (D39 A)
     "japan" => probeWorld[WorldLeagues.Japan].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(4).Id,
     // College sim C2 (#168): a mid-table program (the 50th strongest of 148) and a blue blood.
     "college" => probeWorld.College!.Programs.OrderByDescending(t => QuickSim.Strength(t)).ElementAt(49).Id,
