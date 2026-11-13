@@ -117,6 +117,54 @@ public class PyramidTests
     }
 
     [Fact]
+    public void A_second_drop_keeps_what_is_left_of_the_first_parachute()
+    {
+        // #363 (run 29's nabl-weak): NBA -> tier 2 -> tier 3 in two summers. The second drop used to overwrite the
+        // unpaid half of the first parachute with a small tier-2-to-tier-3 one, leaving half-cut NBA wages on tier-3 money.
+        var (nabl, world) = NewWorld(11);
+        var t = nabl.Teams.OrderBy(x => x.Id).First();
+        double t2Scale = world[UsaPyramid.Tier2].Profile.SalaryScale, t3Scale = world[UsaPyramid.Tier3].Profile.SalaryScale;
+        double arena = world[UsaPyramid.Tier2].Clubs.Average(x => (double)x.ArenaCapacity);
+        Budgets.Rescale(t, t2Scale, arena, 1);
+        long first = t.Money.Parachute;
+        Assert.True(first > 50_000_000);
+        Assert.Equal(2, t.Money.ParachuteYears);
+        Assert.Equal(0, t.Money.ParachuteCarried); // a first drop carries nothing
+        // A season in tier 2, then the summer's books: the parachute halves.
+        Budgets.Summer(new[] { t }, t2Scale, _ => 0.2, _ => false);
+        long left = t.Money.Parachute;
+        Assert.Equal(first / 2, left);
+        Assert.Equal(1, t.Money.ParachuteYears);
+        long payrollBefore = ContractMarket.Payroll(t);
+        // Down again: the new parachute comes on top of what was left, for two more seasons.
+        Budgets.Rescale(t, t3Scale, arena, t2Scale);
+        Assert.Equal(left, t.Money.ParachuteCarried);
+        Assert.True(t.Money.Parachute > left, $"{t.Money.Parachute:N0} vs {left:N0}");
+        Assert.Equal(2, t.Money.ParachuteYears);
+        Assert.True(ContractMarket.Payroll(t) <= payrollBefore);
+        Assert.True(t.Money.WageBudget >= ContractMarket.Payroll(t), $"budget {t.Money.WageBudget:N0} vs payroll {ContractMarket.Payroll(t):N0}");
+        // The next summer halves it again and the carried part is spent.
+        Budgets.Summer(new[] { t }, t3Scale, _ => 0.4, _ => false);
+        Assert.Equal(0, t.Money.ParachuteCarried);
+        Assert.Equal(1, t.Money.ParachuteYears);
+        // Promotion stops it.
+        Budgets.Rescale(t, t2Scale, arena, t3Scale);
+        Assert.Equal(0, t.Money.Parachute);
+        Assert.Equal(0, t.Money.ParachuteCarried);
+        // An owner who isn't in debt funds the contracts a relegated club carries down (the summer budget's rule); one in debt doesn't.
+        var rich = nabl.Teams.OrderBy(x => x.Id).Skip(1).First();
+        rich.Money.Balance = 1;
+        foreach (var p in rich.Roster) if (p.Contract is { } c) c.Salary *= 3;
+        Budgets.Rescale(rich, t2Scale, arena, 1);
+        Assert.True(rich.Money.WageBudget >= ContractMarket.Payroll(rich), $"budget {rich.Money.WageBudget:N0} vs payroll {ContractMarket.Payroll(rich):N0}");
+        var broke = nabl.Teams.OrderBy(x => x.Id).Skip(2).First();
+        broke.Money.Balance = -500_000_000;
+        foreach (var p in broke.Roster) if (p.Contract is { } c) c.Salary *= 3;
+        Budgets.Rescale(broke, t2Scale, arena, 1);
+        Assert.True(broke.Money.WageBudget < ContractMarket.Payroll(broke));
+    }
+
+    [Fact]
     public void An_older_world_grows_to_thirty_two_in_each_pro_tier_at_its_next_summer()
     {
         // Rebuild the shape of a save from before Danny's D33 design (#344, #355): a top league of 30 in six divisions of five,

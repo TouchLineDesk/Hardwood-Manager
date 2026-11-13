@@ -103,6 +103,7 @@ public static class BalanceAudit
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
         var medBalance = new List<double>(); var richClubs = new List<double>(); var facLevel = new List<double>(); var arenas = new List<double>(); var invested = new List<double>(); var paidOut = new List<double>();
+        var lowerOver = new List<double>(); var lowerWorst = new List<double>();
         var overBudget = new List<double>(); var budgetUse = new List<double>(); var gradsSigned = new List<double>(); var bestGrad = new List<double>();
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
@@ -136,6 +137,13 @@ public static class BalanceAudit
                 arenas.Add(league.Teams.Sum(t => t.Money.Facilities.ArenasBuilt));
                 invested.Add(league.Teams.Average(t => t.Money.Facilities.LastInvested + t.Money.Facilities.LastUpkeep) / 1e6);
                 paidOut.Add(league.Teams.Average(t => t.Money.Facilities.LastDistribution) / 1e6);
+            }
+            // #363 (run 31): relegated clubs carry top-league contracts into tiers 2 and 3. Information, not a gate.
+            var lower = world.Competitions.Where(c => UsaPyramid.Level(c.Key) is 2 or 3).SelectMany(c => c.Clubs).Where(t => t.Money.Ready && t.Money.WageBudget > 0).ToList();
+            if (lower.Count > 0)
+            {
+                lowerOver.Add(lower.Count(t => ContractMarket.Payroll(t) > t.Money.WageBudget * 1.05));
+                lowerWorst.Add(lower.Max(t => ContractMarket.Payroll(t) / (double)t.Money.WageBudget));
             }
             foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
             {
@@ -264,6 +272,8 @@ public static class BalanceAudit
             m.Add(new("NABL money", "Median bank balance (seasons of revenue)", "0.00", medBalance, -0.5, 1.2, "item M target: under about one season's revenue"));
             m.Add(new("NABL money", "Clubs anywhere holding more than a season's revenue", "0.00", richClubs, 0, 0.5, "review #9: all 748 by season 15"));
             m.Add(new("NABL money", "Average facility level (1-5)", "0.00", facLevel, 2, 4.6, "an arms race, not inflation: effects are relative"));
+            m.Add(new("NABL money", "USA tiers 2-3: clubs over their wage budget at season start", "0.0", lowerOver, null, null, "#363: relegated clubs' old contracts"));
+            m.Add(new("NABL money", "USA tiers 2-3: worst payroll as share of budget", "0.00", lowerWorst, null, null, "#363: nabl-weak was 2.9 after two drops"));
             m.Add(new("NABL money", "Spent on facilities a club a season ($M)", "0.0", invested, null, null, "running costs plus projects"));
             m.Add(new("NABL money", "Owners' distributions a club a season ($M)", "0.0", paidOut, null, null, "the last resort when there's nothing to build"));
             m.Add(new("NABL money", "New arenas opened (career total)", "0", new() { arenas.DefaultIfEmpty(0).Max() }, null, null, "NBA: 13 opened 2000-2024"));
