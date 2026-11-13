@@ -59,9 +59,8 @@ public sealed partial class CollegeViewModel
         _trailLoading = true; AssistantRecruits = Session.Delegated.Recruiting; _trailLoading = false;
         if (!Classes.Contains(TrailClass))
         {
-            // Start on the first class with a scholarship to give (the seniors are often spoken for by the time you look).
-            var first = Classes.FirstOrDefault(x => int.TryParse(x.Replace("Class of ", "").Split(' ')[0], out var y) && c.OpenScholarships(Session.HumanTeam, y) > 0);
-            if (Classes.Count > 0) TrailClass = first ?? Classes[0];
+            // Seniors only (#320): start on the class being recruited (Classes lists it first).
+            if (Classes.Count > 0) TrailClass = Classes[0];
             return;
         }
         var me = Session.HumanTeam;
@@ -104,10 +103,12 @@ public sealed partial class CollegeViewModel
             new("Committed to you", c.Commits(me, year).ToString(), year == senior ? $"signing day {CollegeWorld.SigningDay(year):MMM d}" : "early pledges", c.Commits(me, year) > 0 ? "good" : ""),
             new("Class rank", ourRank >= 0 ? $"No. {ourRank + 1}" : "-", ourRank >= 0 ? $"{ranking[ourRank].Points} pts" : "no commitments yet", ourRank is >= 0 and < 25 ? "good" : ""),
         };
-        string full = open == 0 ? $"No scholarships left in the Class of {year}: build for the next class. " : "";
+        bool closed = !c.Recruitable(new Recruit { ClassOf = year }, Session.Today);
+        string full = closed ? $"Signing day has passed for the Class of {year}: the rising seniors are the class to recruit now. "
+            : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). " : "";
         TrailNote = full + (Session.Delegated.Recruiting
-            ? "Your assistant spends the hours you leave unused each week on the best fits. A prospect can only commit to you once you've offered."
-            : "You have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");
+            ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits. A prospect can only commit to you once you've offered."
+            : "You recruit high-school seniors only, and you have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");
         SelectedTrail = keep == null ? null : TrailRows.FirstOrDefault(x => x.Player == keep);
         FillTrailPanel();
     }
