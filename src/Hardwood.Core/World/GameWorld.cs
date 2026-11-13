@@ -409,6 +409,8 @@ public sealed class GameWorld
         var s = comp.Season;
         var p = comp.Profile;
         if (s.Fixtures.Any(f => !f.Played)) return false;
+        // A league with fewer than two clubs has nothing to play and no champion (review #11: a drained local league crashed here).
+        if (s.Stage == CompetitionSeason.RegularSeason && s.Participants.Count < 2) { s.Stage = CompetitionSeason.Complete; return true; }
 
         if (p.DivisionPlayoffs) return AdvanceDivisions(comp);
         if (s.Stage == CompetitionSeason.RegularSeason)

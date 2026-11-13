@@ -112,6 +112,22 @@ public class FranchiseTests
     }
 
     [Fact]
+    public void Your_owner_takes_a_distribution_but_keeps_the_proposals_fundable()
+    {
+        // Review #11: only computer clubs paid their owners, so a managed club that didn't build sat on $606M in tier 2.
+        var t = League()[0];
+        t.Money.Balance = 2_000_000_000;
+        t.Money.Facilities.YouDecide = true;
+        Franchise.Summer(t, Lr, 18000, 2027);
+        var f = t.Money.Facilities;
+        Assert.True(f.LastDistribution > 500_000_000, $"{f.LastDistribution:N0}");
+        Assert.True(t.Money.Balance <= Math.Max(t.Money.Revenue, Franchise.Reserve(t) + f.Proposals.Sum(p => p.Instalment)) + 1_000_000, $"{t.Money.Balance:N0}");
+        Assert.InRange(f.Proposals.Count, 1, 3);
+        Assert.All(f.Proposals, p => Assert.True(p.Instalment <= Franchise.Spendable(t)));
+        Assert.Contains(f.LastNews, n => n.StartsWith("The owner took "));
+    }
+
+    [Fact]
     public void Facilities_ahead_of_the_league_help_and_behind_it_hurt()
     {
         var t = League()[0];
