@@ -158,6 +158,28 @@ public class LayoutCheckTests
             var start = (StartViewModel)vm.CurrentPage!;
             start.SavePath = path; start.SeedText = "2026";
             start.SelectedTeam = start.Teams.First(t => t.Team.Abbreviation == "BOS");
+            // Review #11 (run 33): the start page itself, the first screen a new player sees (the real world's NBA list).
+            foreach (var (width, guide, scale) in new[] { (1480, true, 1.0), (1480, false, 1.0), (1280, true, 1.0), (1280, false, 1.0), (1480, true, 1.3), (1280, true, 1.2), (1280, true, 1.3) })
+            {
+                window.Width = width;
+                window.ApplyScale(scale);
+                vm.Guide.On = guide;
+                Settle(window);
+                if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } startShots)
+                {
+                    Directory.CreateDirectory(startShots);
+                    using var frame = window.CaptureRenderedFrame();
+                    frame?.Save(Path.Combine(startShots, $"{width}-{(guide ? "a" : "n")}-{scale * 100:0}-start.png"));
+                }
+                foreach (var p in LayoutCheck.Scan(window))
+                {
+                    string line = $"{width}px {(guide ? "assistant" : "no-assist")} {scale:P0} | {"Start",-20} | {p}";
+                    lines.Add(line);
+                    gate.Add(line);
+                }
+            }
+            window.Width = 1480;
+            window.ApplyScale(1.0);
             start.NewGame();
             var session = vm.Session!;
             for (int i = 0; i < 45; i++) session.AdvanceDay();

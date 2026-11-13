@@ -21,7 +21,14 @@ public sealed class TeamChoice
     public string? Outlook { get; init; }
     public string Strength => Outlook ?? (CoreCa - LeagueCoreCa >= 6 ? "Contender" : CoreCa - LeagueCoreCa >= 1.5 ? "Playoff team" : CoreCa - LeagueCoreCa >= -4 ? "Middle of the pack" : "Rebuilding");
     public string Payroll { get; init; } = "";
+    /// <summary>The second line under the outlook: the core ability and the payroll (review #11, run 33).</summary>
+    public string Detail => $"core {CoreCa:F0} · {Payroll}";
+    /// <summary>The best player's name: in full, or with an initial when it's long ("G. Antetokounmpo"), so the column never cuts it off.</summary>
     public string Star { get; init; } = "";
+    /// <summary>His position and ability, on the line under his name.</summary>
+    public string StarDetail { get; init; } = "";
+
+    public static string ShortName(Player p) => p.Name.Length <= 16 ? p.Name : $"{p.FirstName[0]}. {p.LastName}";
 }
 
 /// <summary>A league outside the NABL and whether it runs the full match engine in the new career (decision #40).</summary>
@@ -118,7 +125,7 @@ public sealed partial class StartViewModel : ViewModelBase
     }
     private string _topShown = "";
     public string WorldText => RealWorld
-        ? $"Real NBA teams, cities, conferences and history (champions since 1947, MVPs and records; checked {Hardwood.Core.RealWorld.RealWorldData.HistoryChecked}). Players are generated for now: real rosters come next."
+        ? $"Real NBA teams, cities, players, contracts and history (champions since 1947, MVPs and records; checked {Hardwood.Core.RealWorld.RealWorldData.HistoryChecked}), and all 365 Division I college programs. Made up: the lower USA leagues, the clubs abroad and every college player."
         : "The fictional world: the NABL and its 30 made-up franchises.";
 
     public StartViewModel(MainViewModel shell)
@@ -187,7 +194,7 @@ public sealed partial class StartViewModel : ViewModelBase
             {
                 Team = t, CoreCa = Core(t), LeagueCoreCa = leagueCore, League = nabl ? "" : PlayLeague,
                 Payroll = pay >= 10_000_000 ? $"${pay / 1e6:F0}M" : $"${pay / 1e6:F1}M",
-                Star = $"{star.Name} ({star.PrimaryPosition}, {star.CurrentAbility})",
+                Star = TeamChoice.ShortName(star), StarDetail = $"{star.PrimaryPosition} · ability {star.CurrentAbility}",
             });
         }
         SelectedTeam = Teams.FirstOrDefault();
@@ -211,7 +218,7 @@ public sealed partial class StartViewModel : ViewModelBase
                 Team = t, CoreCa = Core(t), LeagueCoreCa = national, League = $"{conf.Short} · {(conf.Power ? "power" : "mid-major")}",
                 Outlook = i < 8 ? "National contender" : i < 30 ? "Tournament team" : i < 60 ? "On the bubble" : "Rebuilding",
                 Payroll = "No wages",
-                Star = $"{star.FirstName[0]}. {star.LastName} ({star.PrimaryPosition}, {star.CurrentAbility})",
+                Star = TeamChoice.ShortName(star), StarDetail = $"{star.PrimaryPosition} · ability {star.CurrentAbility}",
             });
         }
         SelectedTeam = Teams.FirstOrDefault();
