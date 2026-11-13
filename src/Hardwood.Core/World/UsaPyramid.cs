@@ -427,17 +427,17 @@ public static class UsaPyramid
         {
             RealignTop(nabl, up);
             // Room to sign at the new level (#356): eight clubs come up a year, with rosters built for tier 2 and wages to match.
-            // Each lets its players below a typical top-league 10th man go (up to six, keeping eight), so it can use its new
+            // Each lets its players well below a typical top-league 10th man go (up to five, keeping nine), so it can use its new
             // budget in free agency, which follows. The coach's own club decides for itself.
             var stayed = nabl.Teams.Except(up).ToList();
             if (stayed.Count > 0)
             {
                 var tenth = stayed.Select(t => t.Roster.Select(p => p.CurrentAbility).OrderByDescending(x => x).Skip(9).DefaultIfEmpty(0).First())
                     .OrderBy(x => x).ToList();
-                int bar = tenth[tenth.Count / 2];
+                int bar = tenth[tenth.Count / 2] - 4;
                 foreach (var t in up.Where(t => t.Id != world.ManagedClubId))
                 {
-                    var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(6, Math.Max(0, t.Roster.Count - 8))).ToList();
+                    var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(5, Math.Max(0, t.Roster.Count - 9))).ToList();
                     foreach (var p in gone) { t.Roster.Remove(p); p.TeamId = null; p.Contract = null; nabl.FreeAgents.Add(p); }
                     if (gone.Count > 0)
                         news.Add(($"{t.FullName} clear room for the {Hardwood.Core.Names.Brand.Top}", $"{t.FullName} let {string.Join(", ", gone.Select(p => p.Name))} go to make room for signings at their new level."));

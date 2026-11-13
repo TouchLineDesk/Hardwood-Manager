@@ -23,7 +23,8 @@ public static class RealCheck
     public static League Build(ulong seed)
     {
         var league = new WorldGenerator(new Rng(seed)).Generate(RealWorldData.LeagueName, 2026, new DateOnly(2026, 10, 1));
-        var world = Hardwood.Core.World.GameWorld.Generate(league, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1));
+        // The ratings check is about the 30 real teams in their real divisions, so the league isn't grown to 32 here (#355).
+        var world = Hardwood.Core.World.GameWorld.Generate(league, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1), expandTop: false);
         RealWorldData.Apply(league, world, seed);
         return league;
     }
