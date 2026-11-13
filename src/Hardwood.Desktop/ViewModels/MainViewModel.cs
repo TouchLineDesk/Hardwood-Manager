@@ -77,7 +77,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Session = session;
         HasSession = true;
         Controls.Portraits.UseSave(session.Save?.Path);
-        Graphics.LogoPackService.UseTeams(session.League.Teams.Concat(session.World.Clubs));
+        Graphics.LogoPackService.UseTeams(session.League.Teams.Concat(session.World.Clubs).Concat(session.World.College?.Programs ?? new List<Team>()));
         Portraits.PortraitService.Instance.Request(session);
         _pages.Clear();
         Nav.Clear();
