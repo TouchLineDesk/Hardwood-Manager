@@ -140,7 +140,7 @@ public sealed class LeagueBook
             Rules = new List<(string, string)>
             {
                 ("Level", lg.Teams.Count == UsaPyramid.ProSize
-                    ? $"The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops to {Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name}; its eight division winners come up."
+                    ? $"The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops into the same division of {The(Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name)}, and that division's winner takes its place. Divisions keep their clubs from season to season."
                     : $"The top league in the USA, in six divisions. The last team in each division drops to {Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name}; its division winners come up."),
                 ("Game", RulesText(lg.Rules)),
                 ("Season", $"{lg.Teams.Count} teams in two conferences of {lg.Teams.Select(t => t.Division).Distinct().Count() / 2} divisions; 82 games from late October to mid-April."),
@@ -149,7 +149,7 @@ public sealed class LeagueBook
                     : "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
                 ("Rosters", $"{fin.RosterMin}-{fin.RosterMax} players. Americans turn pro at 23 (college before that)."),
                 ("Money", fin.OpenMarket
-                    ? "Open market: no draft and no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January."
+                    ? (Hardwood.Core.RealWorld.RealWorldData.IsReal(lg) ? "Open market: no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January. A one-round college draft each summer, before free agency: the top three in each division and the clubs coming up, in an equal-odds lottery." : "Open market: no draft and no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January.")
                     : $"Salary cap ${fin.HardCap / 1e6:F0}M."),
             },
             Champions = lg.History.AsEnumerable().Reverse().Select(h =>
@@ -239,6 +239,9 @@ public sealed class LeagueBook
         return null;
     }
 
+    /// <summary>"the NBA G League", but "The Championship" as it is.</summary>
+    private static string The(string name) => name.StartsWith("The ") ? name : "the " + name;
+
     private static string TierName(string key) => Hardwood.Core.World.Competitions.All.First(c => c.Key == key).Name;
 
     private static List<(string, string)> WorldRules(WorldCompetition c, int clubs)
@@ -253,10 +256,10 @@ public sealed class LeagueBook
         {
             string level = UsaPyramid.IsPyramid(p.Key) ? UsaPyramid.Level(p.Key) switch
             {
-                2 => $"Tier 2 of the USA pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; the 4th-placed team in each division drops to {TierName(UsaPyramid.Tier3)}.",
-                3 => $"Tier 3: an East and a West conference, each with four regional divisions. Each division winner goes up to {TierName(UsaPyramid.Tier2)}; the 4th-placed team in each division drops to {TierName(UsaPyramid.Tier4)}.",
-                4 when UsaPyramid.IsNational(p.Key) => $"Tier 4: an East and a West conference, each with four regional divisions. Each division winner goes up to {TierName(UsaPyramid.Tier3)}; the 4th-placed team in each division drops to {TierName(UsaPyramid.Tier5)}.",
-                5 when UsaPyramid.IsNational(p.Key) => $"Tier 5, the bottom of the pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to {TierName(UsaPyramid.Tier4)}; nobody goes down.",
+                2 => $"Tier 2 of the USA pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to the same division of the {Hardwood.Core.Names.Brand.Top}; the 4th-placed team in each division drops to the same division of {The(TierName(UsaPyramid.Tier3))}. Divisions keep their clubs from season to season.",
+                3 => $"Tier 3: an East and a West conference, each with four regional divisions. Each division winner goes up to the same division of {The(TierName(UsaPyramid.Tier2))}; the 4th-placed team in each division drops to the same division of {The(TierName(UsaPyramid.Tier4))}.",
+                4 when UsaPyramid.IsNational(p.Key) => $"Tier 4: an East and a West conference, each with four regional divisions. Each division winner goes up to the same division of {The(TierName(UsaPyramid.Tier3))}; the 4th-placed team in each division drops to the same division of {The(TierName(UsaPyramid.Tier5))}.",
+                5 when UsaPyramid.IsNational(p.Key) => $"Tier 5, the bottom of the pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to the same division of {The(TierName(UsaPyramid.Tier4))}; nobody goes down.",
                 4 => "Regional (tier 4, semi-pro), one division per local area. This league becomes part of the 32-club tier 4 at the end of the season.",
                 _ => "Local (tier 5, near-amateur). This league becomes part of the 32-club tier 5 at the end of the season.",
             } : "Top flight. One division, no promotion or relegation.";

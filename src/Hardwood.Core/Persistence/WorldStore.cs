@@ -21,6 +21,11 @@ public static class WorldStore
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_ended', $v)", ("$v", world.SummerEnded.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('departed', $v)", ("$v", SaveFile.ToJson(world.Departed)));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('levels', $v)", ("$v", SaveFile.ToJson(world.Levels)));
+        // Paired divisions (#424): the national tiers' clubs keep their division from season to season (no schema change: a
+        // save without this row lays them out by geography at its next summer).
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('pyramid_divisions', $v)", ("$v", SaveFile.ToJson(
+            world.Competitions.Where(c => UsaPyramid.IsNational(c.Key)).SelectMany(c => c.Clubs).Where(UsaPyramid.Labeled)
+                .ToDictionary(t => t.Id, t => $"{(int)t.Conference}|{t.Division}"))));
         if (world.College is { } col)
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college', $v)", ("$v", SaveFile.ToJson(new CollegeState(
                 col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
@@ -114,6 +119,11 @@ public static class WorldStore
             cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'levels'";
             if (cmd.ExecuteScalar() is string lj && SaveFile.FromJson<Dictionary<string, double>>(lj) is { } levels)
                 foreach (var (k, lv) in levels) world.Levels[k] = lv;
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'pyramid_divisions'";
+            if (cmd.ExecuteScalar() is string pj && SaveFile.FromJson<Dictionary<int, string>>(pj) is { } divs)
+                foreach (var (id, label) in divs)
+                    if (teams.TryGetValue(id, out var club) && label.Split('|') is [var conf, var div] && int.TryParse(conf, out var ci))
+                    { club.Conference = (Conference)ci; club.Division = div; }
         }
         var asOf = new DateOnly(nabl.Season, 10, 1);
         foreach (var p in overseasPlayers)
