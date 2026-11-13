@@ -168,7 +168,15 @@ public static class Franchise
         }
 
         f.Proposals = Candidates(t, leagueRevenue, typicalArena, season, Spendable(t)).Take(3).ToList();
-        if (f.YouDecide) return; // your club: the front office has proposals for you on the Board page
+        if (f.YouDecide)
+        {
+            // Your club: the front office has proposals for you on the Board page. The owner keeps enough for all of them on top
+            // of the usual reserve and takes the rest as a distribution, as every other owner does (D24 A; review #11 found a
+            // managed club holding $606M in tier 2, 15 seasons of its revenue, because only computer clubs paid out).
+            long paid = Distribute(t, Reserve(t) + f.Proposals.Sum(p => p.Cost));
+            if (paid > 0) f.LastNews.Add($"The owner took {Money(paid)} out of the club as a distribution: the club keeps about a season's revenue, his reserve and the cost of the projects on the table.");
+            return;
+        }
         // The owner invests: the best project he'll fund, then the next while money lasts (at most three a summer).
         f.Proposals.Clear();
         for (int i = 0; i < 3; i++)
@@ -185,10 +193,10 @@ public static class Franchise
     /// owner the excess as a distribution (NBA owners take profits too). Facilities come first; this keeps balances realistic.
     /// </summary>
     public const double KeepShare = 0.9;
-    public static long Distribute(Team t)
+    public static long Distribute(Team t, long alsoKeep = 0)
     {
         var m = t.Money;
-        long excess = m.Balance - (long)(m.Revenue * KeepShare);
+        long excess = m.Balance - (long)(m.Revenue * KeepShare) - Math.Max(0, alsoKeep);
         if (excess <= 0) return 0;
         long paid = Round(excess);
         m.Balance -= paid;
