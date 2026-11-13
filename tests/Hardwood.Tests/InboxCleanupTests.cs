@@ -123,7 +123,7 @@ public class ReservedWagesTests
         foreach (var pid in new[] { -901, -902 })
             board!.Prospects[pid] = new Hardwood.Core.College.RecruitState { TeamId = s.HumanTeam.Id, OfferWage = 1_200_000, OfferYears = 3, CommittedTeamId = s.HumanTeam.Id };
         Assert.Equal(2_400_000, s.MyReservedWages);
-        Assert.Equal(s.HumanTeam.Money.WageBudget - s.MyCommittedWages - 2_400_000, s.MyWageRoom);
+        Assert.Equal(s.HumanTeam.Money.WageBudget - s.MyCommittedWages - 2_400_000 - s.MyRosterFillReserve, s.MyWageRoom);
 
         // A renewal whose wage fits the budget only without the reserve is refused, and the refusal says why.
         var fa = s.MyExpiring.First(p => s.CannotTalk(p) == null);
@@ -131,6 +131,44 @@ public class ReservedWagesTests
         var reply = s.Offer(fa, 4_000_000, 2);
         Assert.False(reply.Accepted);
         Assert.Contains("committed college seniors", reply.Text);
-        Assert.Equal(2_600_000, s.MyWageRoom);
+        Assert.Equal(2_600_000 - s.MyRosterFillReserve, s.MyWageRoom);
+    }
+}
+
+/// <summary>
+/// The wage-budget line (review #10): minimum deals that fill the roster may go over the budget, so a bigger deal that takes
+/// their room left the club over for the whole season (`nba-real-mid`, year 3: a $5.85M deal, then three minimums).
+/// The owner now keeps room back for the minimum deals the roster will still need.
+/// </summary>
+public class RosterFillReserveTests
+{
+    [Fact]
+    public void Summer_offers_leave_room_for_the_minimum_deals_still_needed()
+    {
+        var probe = new WorldGenerator(new Rng(57)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+        var id = probe.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ElementAt(14).Id;
+        var s = GameSession.NewGame(57, id, null);
+        int guard = 0;
+        while (s.Phase != SessionPhase.Offseason && guard++ < 400) s.AdvanceDay();
+        Assert.Equal(SessionPhase.Offseason, s.Phase);
+
+        // Thin the roster so it needs minimum deals: keep the seven best under contract.
+        var keep = s.HumanTeam.Roster.Where(p => !s.MyExpiring.Contains(p)).OrderByDescending(p => p.CurrentAbility).Take(7).ToHashSet();
+        foreach (var p in s.HumanTeam.Roster.Where(p => !keep.Contains(p) && !s.MyExpiring.Contains(p)).ToList()) s.HumanTeam.Roster.Remove(p);
+        if (s.Recruiting is { } board) board.Prospects.Clear(); // no committed seniors in this test
+        int signed = s.HumanTeam.Roster.Count(p => !s.MyExpiring.Contains(p));
+        long min = (long)(s.League.Finance.MinSalary * s.MySalaryScale);
+        long expected = Math.Max(0, s.MyRosterMin - signed - 1) * min;
+        Assert.True(expected > 0);
+        Assert.Equal(expected, s.MyRosterFillReserve);
+        Assert.Equal(s.HumanTeam.Money.WageBudget - s.MyCommittedWages - s.MyReservedWages - expected, s.MyWageRoom);
+
+        // A renewal that fits the budget only by taking the minimum deals' room is refused, and the refusal says why.
+        var p0 = s.MyExpiring.First(p => s.CannotTalk(p) == null);
+        s.HumanTeam.Money.WageBudget = s.MyCommittedWages + s.MyReservedWages + 5_000_000;
+        var reply = s.Offer(p0, 4_000_000, 2);
+        Assert.False(reply.Accepted);
+        Assert.Contains("minimum deals the roster still needs", reply.Text);
+        Assert.True(s.MyWageRoom < 4_000_000);
     }
 }

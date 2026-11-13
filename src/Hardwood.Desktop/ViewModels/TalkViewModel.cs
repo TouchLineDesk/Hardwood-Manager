@@ -54,7 +54,15 @@ public sealed partial class TalkViewModel : ViewModelBase
     {
         var s = Session;
         long room = s.MyWageRoom;
-        return $" You have ${room / 1e6:F1}M of wage budget to spend" + (s.MyReservedWages > 0 ? $" (after ${s.MyReservedWages / 1e6:F1}M kept for your committed college seniors)." : ".") + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "");
+        return $" You have ${room / 1e6:F1}M of wage budget to spend" + Kept(s.MyReservedWages, s.MyRosterFillReserve) + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "");
+    }
+
+    private static string Kept(long seniors, long fill)
+    {
+        var parts = new List<string>();
+        if (seniors > 0) parts.Add($"${seniors / 1e6:F1}M kept for your committed college seniors");
+        if (fill > 0) parts.Add($"${fill / 1e6:F1}M kept for the minimum deals the roster still needs");
+        return parts.Count == 0 ? "." : $" (after {string.Join(" and ", parts)}).";
     }
 
     [RelayCommand]

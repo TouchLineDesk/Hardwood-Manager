@@ -25,16 +25,17 @@ foreach (ulong seed in new ulong[] { 11, 12, 13, 14, 15, 16 })
     void Add(string k, double v) { (results.TryGetValue(k, out var l) ? l : results[k] = new()).Add(v); }
     double auto = Win(_ => { });
     Add("auto", 0);
+    // The halftime read is on by default (D20), so every row but "scout+half" turns it off to measure the choice alone (review #10).
     // A manual coach who copies, before the game, exactly what auto would pick: measures the cost of being "read".
-    Add("M mirror-auto", Win(t => { t.Tactic.Auto = true; CoachAi.Prepare(t, b, null); t.Tactic.Auto = false; }, everyGame: true) - auto);
+    Add("M mirror-auto", Win(t => { t.Tactic.Auto = true; CoachAi.Prepare(t, b, null); t.Tactic.Auto = false; t.Tactic.HalftimeAdjust = false; }, everyGame: true) - auto);
     // A manual coach who takes the assistant's suggestion before every game (the Tactics page's "Use suggestion").
-    Add("M scout", Win(t => { t.Tactic.Auto = false; var rot = CoachAi.Rotation(t, null); var (ts, td) = CoachAi.TheirPlan(b, t, null);
+    Add("M scout", Win(t => { t.Tactic.Auto = false; t.Tactic.HalftimeAdjust = false; var rot = CoachAi.Rotation(t, null); var (ts, td) = CoachAi.TheirPlan(b, t, null);
         t.Tactic.System = CoachAi.BestSystem(rot, td); t.Tactic.Scheme = CoachAi.BestScheme(rot, ts); }, everyGame: true) - auto);
     // The same, plus the halftime read (#268): the assistant counters what they're really running for the second half.
     Add("M scout+half", Win(t => { t.Tactic.Auto = false; t.Tactic.HalftimeAdjust = true; var rot = CoachAi.Rotation(t, null); var (ts, td) = CoachAi.TheirPlan(b, t, null);
         t.Tactic.System = CoachAi.BestSystem(rot, td); t.Tactic.Scheme = CoachAi.BestScheme(rot, ts); }, everyGame: true) - auto);
-    foreach (var os in Enum.GetValues<OffensiveSystem>()) Add($"O {os}", Win(t => { t.Tactic.Auto = false; t.Tactic.System = os; t.Tactic.Scheme = CoachAi.BestScheme(CoachAi.Rotation(t, null)); }) - auto);
-    foreach (var d in Enum.GetValues<DefensiveScheme>()) Add($"D {d}", Win(t => { t.Tactic.Auto = false; t.Tactic.Scheme = d; t.Tactic.System = CoachAi.BestSystem(CoachAi.Rotation(t, null)); }) - auto);
+    foreach (var os in Enum.GetValues<OffensiveSystem>()) Add($"O {os}", Win(t => { t.Tactic.Auto = false; t.Tactic.HalftimeAdjust = false; t.Tactic.System = os; t.Tactic.Scheme = CoachAi.BestScheme(CoachAi.Rotation(t, null)); }) - auto);
+    foreach (var d in Enum.GetValues<DefensiveScheme>()) Add($"D {d}", Win(t => { t.Tactic.Auto = false; t.Tactic.HalftimeAdjust = false; t.Tactic.Scheme = d; t.Tactic.System = CoachAi.BestSystem(CoachAi.Rotation(t, null)); }) - auto);
     Console.Error.WriteLine($"seed {seed} auto {auto:F1}");
 }
 foreach (var (k, l) in results) Console.WriteLine($"{k,-22} {l.Average():+0.0;-0.0}  [{string.Join(" ", l.Select(x => x.ToString("+0;-0")))}]");
