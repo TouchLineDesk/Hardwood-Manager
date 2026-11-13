@@ -12,10 +12,10 @@ namespace Hardwood.Tests;
 /// <summary>The USA pyramid (decisions #78-79, #91-94): structure, levels, promotion and relegation, goals without playoffs.</summary>
 public class PyramidTests
 {
-    private static (League nabl, GameWorld world) NewWorld(ulong seed = 3)
+    private static (League nabl, GameWorld world) NewWorld(ulong seed = 3, bool legacy = false)
     {
         var nabl = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
-        return (nabl, GameWorld.Generate(nabl, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1)));
+        return (nabl, GameWorld.Generate(nabl, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1), legacyPyramid: legacy));
     }
 
     [Fact]
@@ -23,19 +23,27 @@ public class PyramidTests
     {
         var (nabl, world) = NewWorld();
         var pyramid = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).ToList();
-        Assert.Equal(2 + 6 + 16, pyramid.Count);
+        Assert.Equal(4, pyramid.Count); // five tiers of 32 with the top league (Danny's D39 A, #385)
         // Danny's D33 design (#344, #355): 32 clubs in each pro tier, the top league too (two strongest tier-2 clubs joined it).
         Assert.Equal(32, nabl.Teams.Count);
         Assert.Equal(32, world[UsaPyramid.Tier2].Clubs.Count);
         Assert.Equal(32, world[UsaPyramid.Tier3].Clubs.Count);
-        Assert.All(pyramid.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
+        Assert.Equal(32, world[UsaPyramid.Tier4].Clubs.Count);
+        Assert.Equal(32, world[UsaPyramid.Tier5].Clubs.Count);
+        // Every lower tier in two conferences of four divisions of four.
+        Assert.All(pyramid, c =>
+        {
+            var divs = UsaPyramid.Divisions(c.Key, c.Clubs);
+            Assert.Equal(8, divs.Count);
+            Assert.All(divs, d => Assert.Equal(4, d.Teams.Count));
+        });
         // Two conferences of four divisions of four in the top league.
         Assert.Equal(16, nabl.Teams.Count(t => t.Conference == Conference.East));
         Assert.All(nabl.Teams.GroupBy(t => (t.Conference, t.Division)), g => Assert.Equal(4, g.Count()));
         Assert.Equal(8, nabl.Teams.Select(t => t.Division).Distinct().Count());
         Assert.All(nabl.Teams.Skip(30), t => Assert.NotEmpty(t.Staff));
         int total = pyramid.Sum(c => c.Clubs.Count);
-        Assert.InRange(total, 360, 400); // about 400 with the NABL (decision #78)
+        Assert.Equal(128, total); // 160 with the top league
 
         // No abbreviation is shared with the NABL or another club in the pyramid.
         var abbrs = nabl.Teams.Concat(pyramid.SelectMany(c => c.Clubs)).Select(t => t.Abbreviation).ToList();
@@ -48,9 +56,6 @@ public class PyramidTests
         double nablCa = nabl.Teams.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
         Assert.True(nablCa > Level(2) && Level(2) > Level(3) && Level(3) > Level(4) && Level(4) > Level(5),
             $"{nablCa:F0} {Level(2):F0} {Level(3):F0} {Level(4):F0} {Level(5):F0}");
-        // Every club has a home area in its region.
-        Assert.All(pyramid.Where(c => UsaPyramid.Level(c.Key) == 5).SelectMany(c => c.Clubs.Select(t => (c, t))),
-            x => Assert.Equal(x.c.Key, UsaPyramid.LocalKey(UsaPyramid.AreaOf(x.t))));
     }
 
     [Fact]
@@ -79,8 +84,10 @@ public class PyramidTests
         var up = Winners(t2);
         var t3Up = Winners(world[UsaPyramid.Tier3]);
         var t2Last = UsaPyramid.Divisions(t2.Key, t2.Clubs).Select(d => t2.Season.Table().Select(r => world.TeamById(r.TeamId)!).Last(d.Teams.Contains)).ToList();
-        var regionalChamp = world[UsaPyramid.RegionalKey("ne")].Season.Table()[0].TeamId;
-        var localChamp = world[UsaPyramid.LocalKey("nen")].Season.Table()[0].TeamId;
+        var t4Up = Winners(world[UsaPyramid.Tier4]);
+        var t5Up = Winners(world[UsaPyramid.Tier5]);
+        var t4 = world[UsaPyramid.Tier4];
+        var t4Last = UsaPyramid.Divisions(t4.Key, t4.Clubs).Select(d => t4.Season.Table().Select(r => world.TeamById(r.TeamId)!).Last(d.Teams.Contains)).ToList();
         int total = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count);
 
         var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
@@ -106,9 +113,11 @@ public class PyramidTests
         Assert.Equal(8, nabl.Teams.Select(t => t.Division).Distinct().Count());
         Assert.Equal(32, t2.Clubs.Count);
         Assert.Equal(32, world[UsaPyramid.Tier3].Clubs.Count);
-        Assert.Contains(world.TeamById(regionalChamp)!, world[UsaPyramid.Tier3].Clubs);
-        Assert.Contains(world.TeamById(localChamp)!, world[UsaPyramid.RegionalKey("ne")].Clubs);
-        Assert.All(world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
+        // The same even swap further down (D39 A): tier-4 and tier-5 division winners up, tier 4's last places down.
+        Assert.All(t4Up, t => Assert.Contains(t, world[UsaPyramid.Tier3].Clubs));
+        Assert.All(t5Up, t => Assert.Contains(t, t4.Clubs));
+        Assert.All(t4Last, t => Assert.Contains(t, world[UsaPyramid.Tier5].Clubs));
+        Assert.All(UsaPyramid.LowerTiers, k => Assert.Equal(32, world[k].Clubs.Count));
         Assert.Equal(total, world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count)); // nobody lost
         Assert.Contains(news, n => n.Title.StartsWith("Promoted to the NABL") || n.Title.StartsWith("Promoted to the NBA")); // the top league is the NBA while a real-world UI test runs alongside (Brand is static)
         // The next season's fixtures include the new arrivals.
@@ -117,29 +126,41 @@ public class PyramidTests
     }
 
     [Fact]
-    public void A_drained_local_league_neither_crashes_the_world_nor_is_drained_further()
+    public void An_older_career_turns_its_regional_and_local_leagues_into_tiers_four_and_five_at_its_next_summer()
     {
-        // Review #11 (run 32): in a 100-season audit the Rockies League was down to one club by 2070 and the world crashed crowning
-        // a runner-up it didn't have. The regional refill now takes from the biggest local leagues and never below the floor.
-        var (nabl, world) = NewWorld(5);
-        var rky = world[UsaPyramid.LocalKey("rky")];
-        var region = UsaPyramid.Areas.First(a => a.Key == "rky").Region;
-        var regional = world[UsaPyramid.RegionalKey(region)];
-        // Drain the Rockies League to one club (its others parked in a neighbouring local league of the same region).
-        var neighbour = world.Competitions.First(c => UsaPyramid.Level(c.Key) == 5 && c != rky && UsaPyramid.Areas.First(a => UsaPyramid.LocalKey(a.Key) == c.Key).Region == region);
-        foreach (var t in rky.Clubs.Skip(1).ToList()) { rky.Clubs.Remove(t); neighbour.Clubs.Add(t); }
-        Assert.Single(rky.Clubs);
-        world.StartSeason(2026);
-        world.FinishSeasons(new GameSimulator());   // crashed here before
-        Assert.True(rky.Season.IsComplete);
-        Assert.Null(rky.Season.ChampionId);
-        Assert.Empty(rky.History.Where(h => h.Season == 2026));
+        // Danny's D39 A (#385): five tiers of 32. A career from before it has six regional and sixteen local leagues below tier 3;
+        // at its next summer the strongest of their clubs make tiers 4 and 5 and the rest leave the game world.
+        var (nabl, world) = NewWorld(5, legacy: true);
+        Assert.Contains(world.Competitions, c => c.Key.StartsWith("usa-l-"));
+        var mine = world.Competitions.First(c => c.Key.StartsWith("usa-l-")).Clubs.OrderBy(GameWorld.Strength).First(); // the weakest local club
+        world.ManagedClubId = mine.Id;
+        world.FinishSeasons(new GameSimulator());
+        nabl.History.Add(new SeasonSummary { Season = 2026, Records = nabl.Teams.OrderBy(t => t.Id).Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() });
+        int freeBefore = nabl.FreeAgents.Count;
 
-        int before = rky.Clubs.Count;
-        UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
-        // The lone club didn't play, so it isn't sent up as a champion; the refill came from the bigger local leagues.
-        Assert.True(rky.Clubs.Count >= before, $"Rockies League {before} -> {rky.Clubs.Count}");
-        Assert.InRange(regional.Clubs.Count, UsaPyramid.RegionalSize - 2, UsaPyramid.RegionalSize);
+        var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
+
+        Assert.DoesNotContain(world.Competitions, c => c.Key.StartsWith("usa-r-") || c.Key.StartsWith("usa-l-"));
+        Assert.All(UsaPyramid.LowerTiers, k =>
+        {
+            Assert.Equal(32, world[k].Clubs.Count);
+            Assert.All(UsaPyramid.Divisions(k, world[k].Clubs), d => Assert.Equal(4, d.Teams.Count));
+        });
+        Assert.Contains(mine, world[UsaPyramid.Tier5].Clubs);                  // your club always keeps a place
+        Assert.Equal(mine, world.TeamById(mine.Id));
+        Assert.True(nabl.FreeAgents.Count > freeBefore);                        // the better players of the clubs that left
+        Assert.Contains(news, n => n.Title == "The USA pyramid becomes five tiers of 32");
+        Assert.True(world.Levels.ContainsKey(UsaPyramid.Tier4) && world.Levels.ContainsKey(UsaPyramid.Tier5));
+
+        // The next seasons play in the new format, with the even swap at every boundary.
+        world.StartSeason(2027);
+        world.FinishSeasons(new GameSimulator());
+        Assert.NotNull(world[UsaPyramid.Tier5].Season.ChampionId);
+        Assert.NotNull(world[UsaPyramid.Tier5].Season.ThirdPlaceId);
+        nabl.History.Add(new SeasonSummary { Season = 2027, Records = nabl.Teams.OrderBy(t => t.Id).Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() });
+        UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(2)), new DateOnly(2028, 8, 15));
+        Assert.All(UsaPyramid.LowerTiers, k => Assert.Equal(32, world[k].Clubs.Count));
+        Assert.Equal(32, nabl.Teams.Count);
     }
 
     [Fact]
@@ -195,7 +216,7 @@ public class PyramidTests
     {
         // Rebuild the shape of a save from before Danny's D33 design (#344, #355): a top league of 30 in six divisions of five,
         // tiers 2 and 3 of 24.
-        var (nabl, world) = NewWorld(7);
+        var (nabl, world) = NewWorld(7, legacy: true);
         var t2 = world[UsaPyramid.Tier2]; var t3 = world[UsaPyramid.Tier3];
         foreach (var t in nabl.Teams.Skip(30).ToList()) { nabl.Teams.Remove(t); t2.Clubs.Add(t); }
         string[] old = { "Atlantic", "Central", "Southeast", "Northwest", "Pacific", "Southwest" };
@@ -208,13 +229,10 @@ public class PyramidTests
         world.StartSeason(2026);
         world.FinishSeasons(new GameSimulator());
         nabl.History.Add(new SeasonSummary { Season = 2026, Records = nabl.Teams.Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() });
-        int total = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count) + nabl.Teams.Count;
-
         var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
 
         Assert.Equal((32, 32, 32), (nabl.Teams.Count, t2.Clubs.Count, t3.Clubs.Count));
-        Assert.All(world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 4), c => Assert.Equal(UsaPyramid.RegionalSize, c.Clubs.Count));
-        Assert.Equal(total, world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count) + nabl.Teams.Count);
+        Assert.All(UsaPyramid.LowerTiers, k => Assert.Equal(32, world[k].Clubs.Count)); // and the old regional and local leagues became tiers 4 and 5
         Assert.All(nabl.Teams.GroupBy(t => (t.Conference, t.Division)), g => Assert.Equal(4, g.Count()));
         Assert.Equal(16, nabl.Teams.Count(t => t.Conference == Conference.East));
         Assert.All(nabl.Teams, t => Assert.NotEmpty(t.Staff));
@@ -250,7 +268,8 @@ public class PyramidTests
     [Fact]
     public void Without_playoffs_the_board_judges_the_final_table()
     {
-        var (nabl, world) = NewWorld();
+        // An older career's regional league (before D39 A converts it at the summer) has no playoffs.
+        var (nabl, world) = NewWorld(legacy: true);
         var comp = world[UsaPyramid.RegionalKey("mw")];
         var ctx = LeagueContext.Of(comp);
         Assert.Equal(34, ctx.SeasonGames);
@@ -273,12 +292,12 @@ public class PyramidTests
     public void You_can_start_in_the_lower_tiers()
     {
         var (_, world) = NewWorld(2026);
-        var club = world[UsaPyramid.LocalKey("cal")].Clubs[0];
+        var club = world[UsaPyramid.Tier5].Clubs.First(t => t.City == "Los Angeles" || UsaPyramid.AreaOf(t) == "cal");
         var s = GameSession.NewGame(2026, club.Id, null);
         Assert.True(s.Abroad);
         Assert.Equal(5, s.MyLevel);
-        Assert.Equal("Golden Coast League", s.HumanLeagueName);
-        Assert.InRange(s.HumanTeam.Money.WageBudget, 10_000, 3_000_000); // near-amateur wages
+        Assert.Equal("National League Three", s.HumanLeagueName);
+        Assert.InRange(s.HumanTeam.Money.WageBudget, 10_000, 6_000_000); // tier-5 wages
         while (!s.HumanPlaysToday) s.AdvanceDay();
         s.AdvanceDay();
         Assert.Equal(1, s.MyGames().Count(g => g.Played));

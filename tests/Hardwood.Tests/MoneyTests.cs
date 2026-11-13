@@ -15,7 +15,7 @@ public class MoneyTests
     {
         var league = new WorldGenerator(new Rng(2026)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
         var world = GameWorld.Generate(league, 2026, Array.Empty<string>(), new DateOnly(2026, 10, 1));
-        var club = world[UsaPyramid.LocalKey("cal")].Clubs[0];
+        var club = world[UsaPyramid.Tier5].Clubs[0]; // the bottom tier (D39 A)
         var s = GameSession.NewGame(2026, club.Id, null);
         var t = s.HumanTeam;
         long staff = t.Staff.Sum(x => x.Salary);

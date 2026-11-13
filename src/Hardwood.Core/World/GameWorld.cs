@@ -103,14 +103,20 @@ public sealed class GameWorld
     /// </summary>
     /// <param name="expandTop">Grow the top league to 32 now (a new career). False when a world is built around a league that is
     /// already playing (a save from before the world, a test's session): its schedule stands, and it grows at the next summer.</param>
-    public static GameWorld Generate(League nabl, ulong seed, IEnumerable<string> fullSim, DateOnly today, bool expandTop = true)
+    /// <param name="legacyPyramid">Build the pyramid as careers before D39 A had it (six regional and sixteen local leagues
+    /// below tier 3), to test how an older career converts to five tiers of 32 at its next summer.</param>
+    public static GameWorld Generate(League nabl, ulong seed, IEnumerable<string> fullSim, DateOnly today, bool expandTop = true, bool legacyPyramid = false)
     {
         var world = new GameWorld(nabl, seed ^ 0x574F524C44UL);
         var rng = world._rng;
         var gen = new PlayerGenerator(new Rng(seed ^ 0x504C415945525321UL), nabl.NextPlayerId);
         var full = new HashSet<string>(fullSim);
         int block = 0;
-        foreach (var profile in Hardwood.Core.World.Competitions.Current)
+        var profiles = legacyPyramid
+            ? Hardwood.Core.World.Competitions.Current.Where(p => p.Key is not (UsaPyramid.Tier4 or UsaPyramid.Tier5))
+                .Concat(Hardwood.Core.World.Competitions.All.Where(p => p.Legacy && UsaPyramid.IsPyramid(p.Key)))
+            : Hardwood.Core.World.Competitions.Current;
+        foreach (var profile in profiles)
         {
             var comp = new WorldCompetition { Profile = profile, FullSim = full.Contains(profile.Key) };
             world.Competitions.Add(comp);

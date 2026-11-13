@@ -145,14 +145,15 @@ public static class BalanceAudit
                 lowerOver.Add(lower.Count(t => ContractMarket.Payroll(t) > t.Money.WageBudget * 1.05));
                 lowerWorst.Add(lower.Max(t => ContractMarket.Payroll(t) / (double)t.Money.WageBudget));
             }
-            // Review #11 (run 32): a local league drained to one club by season 45 and the world crashed. Gated.
-            if (world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 5).Select(c => c.Clubs.Count).DefaultIfEmpty(-1).Min() is var minLocal and >= 0)
-                smallestLocal.Add(minLocal);
+            // Review #11 (run 32): a local league drained to one club by season 45 and the world crashed. Since D39 A (#385) every
+            // lower tier is a league of 32: gated on the smallest in any season.
+            if (world.Competitions.Where(c => UsaPyramid.Level(c.Key) >= 2).Select(c => c.Clubs.Count).DefaultIfEmpty(-1).Min() is var minLower and >= 0)
+                smallestLocal.Add(minLower);
             foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
             {
                 // The USA pyramid swaps clubs between its leagues every summer: measure it by level, not by league.
                 string label = UsaPyramid.Level(c.Key) is var lv and > 0
-                    ? lv switch { 2 => "USA tier 2", 3 => "USA tier 3", 4 => "USA regional leagues", _ => "USA local leagues" } : c.Profile.Name;
+                    ? $"USA tier {lv}" : c.Profile.Name;
                 if (UsaPyramid.Level(c.Key) > 0 && worldCa.TryGetValue(label, out var done) && done.Count > s) continue;
                 var levelPlayers = (UsaPyramid.Level(c.Key) is var lv2 and > 0
                     ? world.Competitions.Where(x => UsaPyramid.Level(x.Key) == lv2).SelectMany(x => x.Clubs) : c.Clubs).SelectMany(t => t.Roster).ToList();
@@ -277,7 +278,7 @@ public static class BalanceAudit
             m.Add(new("NABL money", "Average facility level (1-5)", "0.00", facLevel, 2, 4.6, "an arms race, not inflation: effects are relative"));
             m.Add(new("NABL money", "USA tiers 2-3: clubs over their wage budget at season start", "0.0", lowerOver, null, null, "#363: relegated clubs' old contracts"));
             m.Add(new("NABL money", "USA tiers 2-3: worst payroll as share of budget", "0.00", lowerWorst, null, null, "#363: nabl-weak was 2.9 after two drops"));
-            m.Add(new("Player movement", "USA local leagues: the smallest in any season (clubs)", "0", new() { smallestLocal.DefaultIfEmpty(14).Min() }, 6, 30, "review #11: one drained to a single club"));
+            m.Add(new("Player movement", "USA tiers 2-5: the smallest league in any season (clubs)", "0", new() { smallestLocal.DefaultIfEmpty(32).Min() }, 30, 34, "D39 A: five tiers of 32 (review #11: a local league once drained to one club)"));
             m.Add(new("NABL money", "Spent on facilities a club a season ($M)", "0.0", invested, null, null, "running costs plus projects"));
             m.Add(new("NABL money", "Owners' distributions a club a season ($M)", "0.0", paidOut, null, null, "the last resort when there's nothing to build"));
             m.Add(new("NABL money", "New arenas opened (career total)", "0", new() { arenas.DefaultIfEmpty(0).Max() }, null, null, "NBA: 13 opened 2000-2024"));
@@ -309,7 +310,7 @@ public static class BalanceAudit
             // Each league scores at its own level (critic review #2); the check is that level ± 6.
             double target = name switch
             {
-                "USA tier 2" => 110, "USA tier 3" => 105, "USA regional leagues" => 100, "USA local leagues" => 96,
+                "USA tier 2" => 110, "USA tier 3" => 105, "USA tier 4" => 100, "USA tier 5" => 96,
                 _ => Competitions.All.FirstOrDefault(c => c.Name == name)?.PointsPerTeam ?? 80,
             };
             (double lo, double hi) = (target - 6, target + 6);

@@ -221,18 +221,25 @@ public sealed class LeagueBook
     /// third-place tournament (4th, relegated, is marked by the caller where there's a league below).</summary>
     public static string DivisionZone(int placeInDivision) => placeInDivision <= 2 ? "Playoffs" : placeInDivision == 3 ? "Third place" : "";
 
-    /// <summary>A pyramid club's zone (#319): tiers 2-3 send each division winner up; a regional league sends its champion up;
-    /// a local league its champion; the last in each division of tiers 2-4 goes down.</summary>
+    /// <summary>A pyramid club's zone (#319): in tiers 2-5 each division winner goes up and the last in each division goes down
+    /// (not from tier 5, the bottom); 2nd makes the playoffs and 3rd plays the third-place tournament (D36, D39 A). An older
+    /// career's regional and local leagues (until its next summer) send their champion up and the last in each division of a
+    /// regional league down.</summary>
     private static string? PyramidZone(string key, int overallRank, int rankInDivision, int divisionSize)
     {
+        if (UsaPyramid.IsNational(key))
+        {
+            if (rankInDivision == 1) return "Promotion";
+            if (key != UsaPyramid.Tier5 && divisionSize > 1 && rankInDivision == divisionSize) return "Relegation";
+            return divisionSize == 4 && DivisionZone(rankInDivision) is { Length: > 0 } z ? z : null;
+        }
         int level = UsaPyramid.Level(key);
-        bool up = level is 2 or 3 ? rankInDivision == 1 : overallRank == 1;
-        if (up) return "Promotion";
-        if (level is 2 or 3 or 4 && divisionSize > 1 && rankInDivision == divisionSize) return "Relegation";
-        // Tiers 2 and 3 play the division format's playoffs too (D36): 2nd makes them, 3rd plays the third-place tournament.
-        if (level is 2 or 3 && divisionSize == 4) return DivisionZone(rankInDivision) is { Length: > 0 } z ? z : null;
+        if (overallRank == 1) return "Promotion";
+        if (level == 4 && divisionSize > 1 && rankInDivision == divisionSize) return "Relegation";
         return null;
     }
+
+    private static string TierName(string key) => Hardwood.Core.World.Competitions.All.First(c => c.Key == key).Name;
 
     private static List<(string, string)> WorldRules(WorldCompetition c, int clubs)
     {
@@ -246,10 +253,12 @@ public sealed class LeagueBook
         {
             string level = UsaPyramid.IsPyramid(p.Key) ? UsaPyramid.Level(p.Key) switch
             {
-                2 => $"Tier 2 of the USA pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; the 4th-placed team in each division drops to {Hardwood.Core.World.Competitions.All.First(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier3).Name}.",
-                3 => "Tier 3: an East and a West conference, each with four regional divisions. Each division winner goes up to The Championship; the 4th-placed team in each division drops to its regional league.",
-                4 => "Regional (tier 4, semi-pro), one division per local area. The champion goes up to National League One, with the two best other division winners in the six regional leagues; the last in each division drops to its local league.",
-                _ => "Local (tier 5, near-amateur). The champion goes up to its regional league.",
+                2 => $"Tier 2 of the USA pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to the {Hardwood.Core.Names.Brand.Top}; the 4th-placed team in each division drops to {TierName(UsaPyramid.Tier3)}.",
+                3 => $"Tier 3: an East and a West conference, each with four regional divisions. Each division winner goes up to {TierName(UsaPyramid.Tier2)}; the 4th-placed team in each division drops to {TierName(UsaPyramid.Tier4)}.",
+                4 when UsaPyramid.IsNational(p.Key) => $"Tier 4: an East and a West conference, each with four regional divisions. Each division winner goes up to {TierName(UsaPyramid.Tier3)}; the 4th-placed team in each division drops to {TierName(UsaPyramid.Tier5)}.",
+                5 when UsaPyramid.IsNational(p.Key) => $"Tier 5, the bottom of the pyramid: an East and a West conference, each with four regional divisions. Each division winner goes up to {TierName(UsaPyramid.Tier4)}; nobody goes down.",
+                4 => "Regional (tier 4, semi-pro), one division per local area. This league becomes part of the 32-club tier 4 at the end of the season.",
+                _ => "Local (tier 5, near-amateur). This league becomes part of the 32-club tier 5 at the end of the season.",
             } : "Top flight. One division, no promotion or relegation.";
             list.Add(("Level", level));
             if (p.ForeignLimit < 99)

@@ -53,7 +53,7 @@
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Div" Binding="{Binding Div}" Width="96"/>
+            <DataGridTextColumn Header="Div" Binding="{Binding Div}" Width="140"/>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="38"/>
             <DataGridTextColumn Header="L" Binding="{Binding L}" Width="38"/>
             <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="54"/>
@@ -87,7 +87,7 @@
                 <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Div" Binding="{Binding Div}" Width="96"/>
+            <DataGridTextColumn Header="Div" Binding="{Binding Div}" Width="140"/>
             <DataGridTextColumn Header="W" Binding="{Binding W}" Width="38"/>
             <DataGridTextColumn Header="L" Binding="{Binding L}" Width="38"/>
             <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="54"/>

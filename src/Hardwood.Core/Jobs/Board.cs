@@ -279,7 +279,7 @@ public static class Board
             target = (int)Math.Round(ctx.SeasonGames * (0.73 - ctx.Fraction(r) * 0.46));
             // Local and regional owners are modest (critic review #4: a 17-13 first season at tier 5 left the board at 20
             // with a "win the title" goal): favourites aim for the top three, the rest for the top half.
-            if (ctx.Grassroots)
+            if (ctx.Grassroots && !ctx.DivisionFormat) // tiers 4-5 in the division format (D39 A) use the goals above
             {
                 goal = r <= 3 ? SeasonGoal.SecondRound : r <= topHalf ? SeasonGoal.Playoffs : SeasonGoal.Develop;
                 target = (int)Math.Round(ctx.SeasonGames * (0.62 - ctx.Fraction(r) * 0.36));

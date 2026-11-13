@@ -3,14 +3,20 @@ using Hardwood.Core.Model;
 namespace Hardwood.Core.World;
 
 /// <summary>
-/// The USA pyramid below the NABL (decisions #73, #78-79, #91-94): two national tiers of 24, six regional leagues of 18
-/// and sixteen local leagues of about 14, roughly 380 clubs, all linked by promotion and relegation. Every club has a
-/// home area (from its city), so a club dropping out of a national tier lands in its own region, and a regional club
-/// in its own local league.
+/// The USA pyramid below the top league (decisions #73, #78-79, #91-94; Danny's D33 and D39 A, #344, #385): four tiers of 32
+/// (The Championship, National League One, Two and Three), each in an East and a West conference of four regional divisions,
+/// linked by promotion and relegation (division winners up, the last in each division down). Every club has a home area
+/// (from its city), which places it in a division. Careers from before D39 A had six regional and sixteen local leagues
+/// below tier 3; they convert at their next summer.
 /// </summary>
 public static class UsaPyramid
 {
-    public const string Tier2 = "usa2", Tier3 = "usa3";
+    public const string Tier2 = "usa2", Tier3 = "usa3", Tier4 = "usa4", Tier5 = "usa5";
+    /// <summary>The four tiers below the top league, every one 32 clubs in Danny's division format (D33, and D39 A for tiers 4-5, #385).</summary>
+    public static readonly string[] LowerTiers = { Tier2, Tier3, Tier4, Tier5 };
+    /// <summary>A tier played in two conferences of four divisions of four (tiers 2-5). An older career's regional and local
+    /// leagues are not, until its next summer turns them into tiers 4 and 5.</summary>
+    public static bool IsNational(string key) => key is Tier2 or Tier3 or Tier4 or Tier5;
     /// <summary>The pro tiers (the top league, The Championship, National League One) have 32 clubs each since Danny's D33
     /// design (#344, D36 A): two conferences of four divisions of four (24 in tiers 2-3 before).</summary>
     public const int NationalSize = 32, ProSize = 32, RegionalSize = 18;
@@ -65,7 +71,7 @@ public static class UsaPyramid
 
     public static string RegionalKey(string region) => $"usa-r-{region}";
     public static string LocalKey(string area) => $"usa-l-{area}";
-    public static bool IsPyramid(string key) => key == Tier2 || key == Tier3 || key.StartsWith("usa-");
+    public static bool IsPyramid(string key) => IsNational(key) || key.StartsWith("usa-");
 
     /// <summary>A club's home area: from its city, else (an NABL club from a city we don't list) its division.</summary>
     public static string AreaOf(Team t) =>
@@ -200,7 +206,7 @@ public static class UsaPyramid
     public static List<(string Name, List<Team> Teams)> Divisions(string key, IReadOnlyList<Team> clubs)
     {
         int level = Level(key);
-        if (level is 2 or 3)
+        if (IsNational(key))
         {
             // Two conferences of four regional divisions (Danny's D33 design, #344, #355), East first.
             var (east, west) = ProConferences(clubs);
@@ -218,10 +224,10 @@ public static class UsaPyramid
         return new() { (name1, clubs.ToList()) };
     }
 
-    /// <summary>Won its division in tier 2 or 3 this season (so it goes up, #319).</summary>
+    /// <summary>Won its division in tiers 2-5 this season (so it goes up, #319).</summary>
     public static bool WonDivision(WorldCompetition c, Team t)
     {
-        if (Level(c.Key) is not (2 or 3) || !c.Season.Fixtures.Any(f => f.Played)) return false;
+        if (!IsNational(c.Key) || !c.Season.Fixtures.Any(f => f.Played)) return false;
         var table = c.Season.Table().Select(r => r.TeamId).ToList();
         var div = Divisions(c.Key, c.Clubs).FirstOrDefault(d => d.Teams.Contains(t)).Teams;
         return div != null && table.FirstOrDefault(id => div.Any(x => x.Id == id)) == t.Id;
@@ -232,12 +238,17 @@ public static class UsaPyramid
         IsPyramid(key) ? Divisions(key, clubs).FirstOrDefault(d => d.Teams.Contains(t)).Name ?? "" : "";
 
     /// <summary>Pyramid level: 2 and 3 national, 4 regional, 5 local; 0 for anything else.</summary>
-    public static int Level(string key) => key == Tier2 ? 2 : key == Tier3 ? 3 : key.StartsWith("usa-r-") ? 4 : key.StartsWith("usa-l-") ? 5 : 0;
+    public static int Level(string key) => key switch
+    {
+        Tier2 => 2, Tier3 => 3, Tier4 => 4, Tier5 => 5,
+        _ => key.StartsWith("usa-r-") ? 4 : key.StartsWith("usa-l-") ? 5 : 0,
+    };
 
     // ------------------------------------------------------------------------------------------
     // The clubs and leagues (fixed data, built the same way every time).
 
-    /// <summary>The 24 leagues (built once, after the name lists below exist).</summary>
+    /// <summary>The four lower tiers (tiers 2-5), plus the old regional and local leagues kept for older careers (built once,
+    /// after the name lists below exist).</summary>
     public static CompetitionProfile[] Profiles => _profiles ??= Build();
     private static CompetitionProfile[]? _profiles;
 
@@ -290,6 +301,11 @@ public static class UsaPyramid
         var byMarket = clubs.OrderByDescending(c => c.market).ToList();
         var tier2 = byMarket.Take(NationalSize).ToList();
         var tier3 = byMarket.Skip(NationalSize).Take(NationalSize).ToList();
+        // Five tiers of 32 (Danny's D39 A, #385): the next 32 are tier 4 and the 34 after them tier 5 (two go up when a new
+        // career's top league grows to 32). The other clubs of the old regional and local leagues aren't in new careers.
+        var tier4 = byMarket.Skip(NationalSize * 2).Take(NationalSize).ToList();
+        var tier5 = byMarket.Skip(NationalSize * 3).Take(NationalSize + 2).ToList();
+        // The old regional and local leagues, kept only so an older career loads (it converts at its next summer).
         var rest = byMarket.Skip(NationalSize * 2).ToList();
         var regional = new Dictionary<string, List<(ClubSeed seed, string area, double market)>>();
         foreach (var (rk, _, _) in Regions)
@@ -301,11 +317,13 @@ public static class UsaPyramid
         {
             National(Tier2, "The Championship", "CHP", -2, 0.10, 4, -10, tier2.Select(x => x.seed)),
             National(Tier3, "National League One", "NL1", -10, 0.06, 3, -16, tier3.Select(x => x.seed)),
+            National(Tier4, "National League Two", "NL2", -18, 0.03, 2, -22, tier4.Select(x => x.seed)),
+            National(Tier5, "National League Three", "NL3", -26, 0.015, 2, -28, tier5.Select(x => x.seed)),
         };
         foreach (var (rk, name, shortName) in Regions)
-            profiles.Add(Lower(RegionalKey(rk), name, shortName, -22, 0.02, 2, -26, 2, regional[rk].Select(x => x.seed)));
+            profiles.Add(Lower(RegionalKey(rk), name, shortName, -22, 0.02, 2, -26, 2, regional[rk].Select(x => x.seed), legacy: true));
         foreach (var a in Areas)
-            profiles.Add(Lower(LocalKey(a.Key), a.Name, a.Short, -34, 0.006, 1, -34, 1, local.TryGetValue(a.Key, out var l) ? l.Select(x => x.seed) : Enumerable.Empty<ClubSeed>()));
+            profiles.Add(Lower(LocalKey(a.Key), a.Name, a.Short, -34, 0.006, 1, -34, 1, local.TryGetValue(a.Key, out var l) ? l.Select(x => x.seed) : Enumerable.Empty<ClubSeed>(), legacy: true));
         return profiles.ToArray();
     }
 
@@ -341,8 +359,9 @@ public static class UsaPyramid
         return (Sort(east), Sort(west), Sort(thirds));
     }
 
-    private static CompetitionProfile Lower(string key, string name, string shortName, int strength, double wages, int imports, double prestige, int roundsPerWeek, IEnumerable<ClubSeed> clubs) => new()
+    private static CompetitionProfile Lower(string key, string name, string shortName, int strength, double wages, int imports, double prestige, int roundsPerWeek, IEnumerable<ClubSeed> clubs, bool legacy = false) => new()
     {
+        Legacy = legacy,
         Key = key, Name = name, Short = shortName, Country = "USA", LocalNationalities = new[] { "USA" },
         StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 23,
         Start = (10, 24), RoundDays = roundsPerWeek == 2 ? new[] { DayOfWeek.Tuesday, DayOfWeek.Saturday } : new[] { DayOfWeek.Saturday },
@@ -353,11 +372,11 @@ public static class UsaPyramid
     // Promotion and relegation (each summer, before the next season's fixtures are made).
 
     /// <summary>
-    /// Move clubs between levels using the finished tables (Danny's D33 design, #344, #355): the 4th-placed (last) team in each
-    /// top-league division ↔ the eight tier-2 division winners; the same between tiers 2 and 3; the last in each tier-3 division
-    /// home to its region ↔ the six regional champions and the two best other regional division winners; each regional
-    /// league's last in each area down to its local league ↔ each local champion up. Then every pro tier is brought to 32
-    /// (an older save's 30 and 24 grow at its first summer on this version) and each regional league back to 18.
+    /// Move clubs between levels using the finished tables (Danny's D33 design, #344, #355, and D39 A, #385): the 4th-placed
+    /// (last) team in each top-league division ↔ the eight tier-2 division winners, and the same between tiers 2 and 3, 3 and 4,
+    /// 4 and 5 (tier 5 is the bottom). Then every tier is brought to 32 (an older save's 30-team top league grows at its first
+    /// summer on this version). An older career still on the regional and local leagues moves clubs the old way once more and
+    /// then converts them into tiers 4 and 5 (<see cref="ConvertToFiveTiers"/>).
     /// Returns headlines. Does nothing if the world has no pyramid (an older career).
     /// </summary>
     public static List<(string Title, string Body)> Promote(GameWorld world, League nabl, Generation.StaffGenerator staffGen, DateOnly on)
@@ -389,6 +408,10 @@ public static class UsaPyramid
             Divisions(c.Key, c.Clubs).Select(d => (d.Name, InTableOrder(c.Key, d.Teams))).Where(d => d.Item2.Count > 0).ToList();
         var t2Divs = DivisionsNow(t2);
         var t3Divs = DivisionsNow(t3);
+        var t4 = world.Competitions.FirstOrDefault(c => c.Key == Tier4);
+        var t5 = world.Competitions.FirstOrDefault(c => c.Key == Tier5);
+        var t4Divs = t4 != null && t5 != null ? DivisionsNow(t4) : null;
+        var t5Divs = t4 != null && t5 != null ? DivisionsNow(t5) : null;
 
         var up = new List<Team>(); var down = new List<Team>();
         void JoinTop(Team p, WorldCompetition from)
@@ -417,82 +440,137 @@ public static class UsaPyramid
         var t3Up = t3Divs.Select(d => d.Teams[0]).ToList();
         foreach (var t in t2Down) Move(t, t2, t3);
         foreach (var t in t3Up) Move(t, t3, t2);
-        // Tier 3 ↔ regional leagues: the last in each tier-3 division goes home to its region; each regional champion goes up, and
-        // the best other regional division winners fill the rest of the places (eight a year, #344).
-        var t3Down = t3Divs.Select(d => d.Teams.Last()).Where(t => t3.Clubs.Contains(t) && !t3Up.Contains(t) && !t2Down.Contains(t)).ToList();
-        var regionalChamps = regionals.Select(c => tables[c.Key].FirstOrDefault()).Where(t => t != null).Cast<Team>().ToList();
-        var otherWinners = regionals.SelectMany(c => Divisions(c.Key, tables[c.Key]).Select(d => InTableOrder(c.Key, d.Teams).FirstOrDefault()))
-            .Where(t => t != null && !regionalChamps.Contains(t)).Cast<Team>()
-            .OrderByDescending(Pct).ThenBy(t => t.Id).Take(Math.Max(0, t3Divs.Count - regionalChamps.Count)).ToList();
-        var regionalUp = regionalChamps.Concat(otherWinners).ToList();
-        foreach (var t in t3Down) Move(t, t3, regionals.First(c => c.Key == RegionalKey(RegionOf(t))));
-        foreach (var t in regionalUp) Move(t, regionals.First(c => c.Clubs.Contains(t)), t3);
+        if (t4 != null && t5 != null)
+        {
+            // Five tiers of 32 (Danny's D39 A, #385): the same even swap at every boundary below the top league. The last in each
+            // tier-3 division ↔ the tier-4 division winners; the last in each tier-4 division ↔ the tier-5 division winners. Tier 5
+            // is the bottom: nobody goes down from it.
+            var t3Down = t3Divs.Select(d => d.Teams.Last()).Where(t => t3.Clubs.Contains(t) && !t3Up.Contains(t) && !t2Down.Contains(t)).ToList();
+            var t4Up = t4Divs!.Select(d => d.Teams[0]).Where(t => t4.Clubs.Contains(t)).ToList();
+            foreach (var t in t3Down) Move(t, t3, t4);
+            foreach (var t in t4Up) Move(t, t4, t3);
+            var t4Down = t4Divs!.Select(d => d.Teams.Last()).Where(t => t4.Clubs.Contains(t) && !t4Up.Contains(t) && !t3Down.Contains(t)).ToList();
+            var t5Up = t5Divs!.Select(d => d.Teams[0]).Where(t => t5.Clubs.Contains(t)).ToList();
+            foreach (var t in t4Down) Move(t, t4, t5);
+            foreach (var t in t5Up) Move(t, t5, t4);
 
-        // Every pro tier at 32 (#344): an older save's top league of 30 and tiers of 24 grow here, at its first summer on this
-        // version, with the next best finishers from the level below (none of the clubs just relegated).
-        var fillTop = new List<Team>(); var fill2 = new List<Team>(); var fill3 = new List<Team>();
-        if (topPlayed)
-            foreach (var t in tables[Tier2].Where(t => t2.Clubs.Contains(t) && !down.Contains(t)).ToList())
+            // Every tier at 32: an older world built around a 30-team top league grows at its first summer, each tier filling
+            // from the best finishers of the one below (none of the clubs just relegated).
+            var fillTop = new List<Team>(); var fill2 = new List<Team>(); var fill3 = new List<Team>(); var fill4 = new List<Team>();
+            if (topPlayed)
+                foreach (var t in tables[Tier2].Where(t => t2.Clubs.Contains(t) && !down.Contains(t)).ToList())
+                {
+                    if (nabl.Teams.Count >= ProSize) break;
+                    JoinTop(t, t2); fillTop.Add(t);
+                }
+            void Fill(WorldCompetition to, WorldCompetition from, List<Team> justDown, List<Team> into)
             {
-                if (nabl.Teams.Count >= ProSize) break;
-                JoinTop(t, t2); fillTop.Add(t);
+                foreach (var t in tables[from.Key].Where(t => from.Clubs.Contains(t) && !justDown.Contains(t))
+                             .Concat(from.Clubs.Where(t => !tables[from.Key].Contains(t) && !justDown.Contains(t)).OrderByDescending(Pct).ThenBy(t => t.Id)).ToList())
+                {
+                    if (to.Clubs.Count >= NationalSize) break;
+                    Move(t, from, to); into.Add(t);
+                }
             }
-        // (When tier 3 itself is short, as in the first conversion, the clubs just up from the regions are next.)
-        foreach (var t in tables[Tier3].Where(t => t3.Clubs.Contains(t) && !t2Down.Contains(t))
-                     .Concat(t3.Clubs.Where(t => !tables[Tier3].Contains(t) && !t2Down.Contains(t)).OrderByDescending(Pct).ThenBy(t => t.Id)).ToList())
-        {
-            if (t2.Clubs.Count >= NationalSize) break;
-            Move(t, t3, t2); fill2.Add(t);
-        }
-        foreach (var t in regionals.SelectMany(c => tables[c.Key].Where(c.Clubs.Contains).Select((t, i) => (t, i, c)))
-                     .Where(x => !t3Down.Contains(x.t)).OrderByDescending(x => Pct(x.t)).ThenBy(x => x.i).ThenBy(x => x.t.Id).ToList())
-        {
-            if (t3.Clubs.Count >= NationalSize) break;
-            Move(t.t, t.c, t3); fill3.Add(t.t);
-        }
-        if (topPlayed)
-        {
-            RealignTop(nabl, up);
-            news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
-                + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
-            news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
-        }
-        news.Add(($"{t2.Profile.Name}: up and down", $"Division winners promoted from {t3.Profile.Name}: {Names(t3Up)}. Last in their divisions, relegated to {t3.Profile.Name}: {Names(t2Down)}."
-            + (fill2.Count > 0 ? $" {t2.Profile.Name} grows to {NationalSize} clubs: {Names(fill2)} also come up." : "")));
-        news.Add(($"{t3.Profile.Name}: up and down", $"Promoted: the regional champions {Names(regionalChamps)}" + (otherWinners.Count > 0 ? $", and the best other division winners, {Names(otherWinners)}" : "")
-            + $". Last in their divisions, relegated to their regions: {Names(t3Down)}."
-            + (fill3.Count > 0 ? $" {t3.Profile.Name} grows to {NationalSize} clubs: {Names(fill3)} also come up." : "")));
-        var t3Gone = regionalUp.Concat(fill3).ToHashSet();
-        // Regional ↔ local leagues: a regional league's divisions are its local areas. The last in each goes down to its local
-        // league; each local champion comes up.
-        foreach (var reg in regionals)
-        {
-            var area = reg.Key["usa-r-".Length..];
-            var myLocals = locals.Where(c => Areas.First(a => LocalKey(a.Key) == c.Key).Region == area).ToList();
-            // A local league that didn't play (fewer than two clubs) has no champion to send up (review #11).
-            var champs = myLocals.Where(c => c.Season.Fixtures.Any(f => f.Played)).Select(c => tables[c.Key].FirstOrDefault()).Where(t => t != null).Cast<Team>().ToList();
-            var regDivs = Divisions(reg.Key, reg.Clubs.Where(t => tables[reg.Key].Contains(t)).ToList())
-                .Select(d => InTableOrder(reg.Key, d.Teams)).Where(d => d.Count > 0).ToList();
-            var down4 = regDivs.Select(d => d.Last()).Where(t => reg.Clubs.Contains(t) && !t3Gone.Contains(t) && !t3Down.Contains(t)).ToList();
-            foreach (var t in down4) Move(t, reg, myLocals.FirstOrDefault(c => c.Key == LocalKey(AreaOf(t))) ?? myLocals[0]);
-            foreach (var t in champs) Move(t, myLocals.First(c => c.Clubs.Contains(t)), reg);
-        // Back to 18: too many → the lowest finishers drop; too few → the best local runners-up come up.
-            while (reg.Clubs.Count > RegionalSize)
+            Fill(t2, t3, t2Down, fill2);
+            Fill(t3, t4, t3Down, fill3);
+            Fill(t4, t5, t4Down, fill4);
+            if (topPlayed)
             {
-                var t = reg.Clubs.Where(x => !champs.Contains(x) && !t3Down.Contains(x)).OrderBy(x => tables[reg.Key].IndexOf(x) < 0 ? -1 : tables[reg.Key].IndexOf(x)).Last();
-                Move(t, reg, myLocals.FirstOrDefault(c => c.Key == LocalKey(AreaOf(t))) ?? myLocals[0]);
+                RealignTop(nabl, up);
+                news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
+                    + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
+                news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
             }
-            // The refill comes from the biggest local leagues first, so no area's league is drained (review #11: the Rockies League
-            // was down to one club by season 45 and the world crashed); a local league never goes below LocalFloor this way.
-            while (reg.Clubs.Count < RegionalSize)
-            {
-                var next = myLocals.Where(c => c.Clubs.Count > LocalFloor)
-                    .SelectMany(c => tables[c.Key].Where(t => c.Clubs.Contains(t)).Select((t, i) => (t, c, i)))
-                    .OrderByDescending(x => x.c.Clubs.Count).ThenBy(x => x.i).ThenBy(x => x.t.Id).FirstOrDefault();
-                if (next.t == null) break;
-                Move(next.t, next.c, reg);
-            }
+            void UpAndDown(WorldCompetition upper, WorldCompetition lower, List<Team> wentUp, List<Team> wentDown, List<Team> filled) =>
+                news.Add(($"{upper.Profile.Name}: up and down", $"Division winners promoted from {lower.Profile.Name}: {Names(wentUp)}. Last in their divisions, relegated to {lower.Profile.Name}: {Names(wentDown)}."
+                    + (filled.Count > 0 ? $" {upper.Profile.Name} grows to {NationalSize} clubs: {Names(filled)} also come up." : "")));
+            UpAndDown(t2, t3, t3Up, t2Down, fill2);
+            UpAndDown(t3, t4, t4Up, t3Down, fill3);
+            UpAndDown(t4, t5, t5Up, t4Down, fill4);
         }
+        else
+        {
+            // Tier 3 ↔ regional leagues: the last in each tier-3 division goes home to its region; each regional champion goes up, and
+            // the best other regional division winners fill the rest of the places (eight a year, #344).
+            var t3Down = t3Divs.Select(d => d.Teams.Last()).Where(t => t3.Clubs.Contains(t) && !t3Up.Contains(t) && !t2Down.Contains(t)).ToList();
+            var regionalChamps = regionals.Select(c => tables[c.Key].FirstOrDefault()).Where(t => t != null).Cast<Team>().ToList();
+            var otherWinners = regionals.SelectMany(c => Divisions(c.Key, tables[c.Key]).Select(d => InTableOrder(c.Key, d.Teams).FirstOrDefault()))
+                .Where(t => t != null && !regionalChamps.Contains(t)).Cast<Team>()
+                .OrderByDescending(Pct).ThenBy(t => t.Id).Take(Math.Max(0, t3Divs.Count - regionalChamps.Count)).ToList();
+            var regionalUp = regionalChamps.Concat(otherWinners).ToList();
+            foreach (var t in t3Down) Move(t, t3, regionals.First(c => c.Key == RegionalKey(RegionOf(t))));
+            foreach (var t in regionalUp) Move(t, regionals.First(c => c.Clubs.Contains(t)), t3);
+
+            // Every pro tier at 32 (#344): an older save's top league of 30 and tiers of 24 grow here, at its first summer on this
+            // version, with the next best finishers from the level below (none of the clubs just relegated).
+            var fillTop = new List<Team>(); var fill2 = new List<Team>(); var fill3 = new List<Team>();
+            if (topPlayed)
+                foreach (var t in tables[Tier2].Where(t => t2.Clubs.Contains(t) && !down.Contains(t)).ToList())
+                {
+                    if (nabl.Teams.Count >= ProSize) break;
+                    JoinTop(t, t2); fillTop.Add(t);
+                }
+            // (When tier 3 itself is short, as in the first conversion, the clubs just up from the regions are next.)
+            foreach (var t in tables[Tier3].Where(t => t3.Clubs.Contains(t) && !t2Down.Contains(t))
+                         .Concat(t3.Clubs.Where(t => !tables[Tier3].Contains(t) && !t2Down.Contains(t)).OrderByDescending(Pct).ThenBy(t => t.Id)).ToList())
+            {
+                if (t2.Clubs.Count >= NationalSize) break;
+                Move(t, t3, t2); fill2.Add(t);
+            }
+            foreach (var t in regionals.SelectMany(c => tables[c.Key].Where(c.Clubs.Contains).Select((t, i) => (t, i, c)))
+                         .Where(x => !t3Down.Contains(x.t)).OrderByDescending(x => Pct(x.t)).ThenBy(x => x.i).ThenBy(x => x.t.Id).ToList())
+            {
+                if (t3.Clubs.Count >= NationalSize) break;
+                Move(t.t, t.c, t3); fill3.Add(t.t);
+            }
+            if (topPlayed)
+            {
+                RealignTop(nabl, up);
+                news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
+                    + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
+                news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
+            }
+            news.Add(($"{t2.Profile.Name}: up and down", $"Division winners promoted from {t3.Profile.Name}: {Names(t3Up)}. Last in their divisions, relegated to {t3.Profile.Name}: {Names(t2Down)}."
+                + (fill2.Count > 0 ? $" {t2.Profile.Name} grows to {NationalSize} clubs: {Names(fill2)} also come up." : "")));
+            news.Add(($"{t3.Profile.Name}: up and down", $"Promoted: the regional champions {Names(regionalChamps)}" + (otherWinners.Count > 0 ? $", and the best other division winners, {Names(otherWinners)}" : "")
+                + $". Last in their divisions, relegated to their regions: {Names(t3Down)}."
+                + (fill3.Count > 0 ? $" {t3.Profile.Name} grows to {NationalSize} clubs: {Names(fill3)} also come up." : "")));
+            var t3Gone = regionalUp.Concat(fill3).ToHashSet();
+            // Regional ↔ local leagues: a regional league's divisions are its local areas. The last in each goes down to its local
+            // league; each local champion comes up.
+            foreach (var reg in regionals)
+            {
+                var area = reg.Key["usa-r-".Length..];
+                var myLocals = locals.Where(c => Areas.First(a => LocalKey(a.Key) == c.Key).Region == area).ToList();
+                // A local league that didn't play (fewer than two clubs) has no champion to send up (review #11).
+                var champs = myLocals.Where(c => c.Season.Fixtures.Any(f => f.Played)).Select(c => tables[c.Key].FirstOrDefault()).Where(t => t != null).Cast<Team>().ToList();
+                var regDivs = Divisions(reg.Key, reg.Clubs.Where(t => tables[reg.Key].Contains(t)).ToList())
+                    .Select(d => InTableOrder(reg.Key, d.Teams)).Where(d => d.Count > 0).ToList();
+                var down4 = regDivs.Select(d => d.Last()).Where(t => reg.Clubs.Contains(t) && !t3Gone.Contains(t) && !t3Down.Contains(t)).ToList();
+                foreach (var t in down4) Move(t, reg, myLocals.FirstOrDefault(c => c.Key == LocalKey(AreaOf(t))) ?? myLocals[0]);
+                foreach (var t in champs) Move(t, myLocals.First(c => c.Clubs.Contains(t)), reg);
+            // Back to 18: too many → the lowest finishers drop; too few → the best local runners-up come up.
+                while (reg.Clubs.Count > RegionalSize)
+                {
+                    var t = reg.Clubs.Where(x => !champs.Contains(x) && !t3Down.Contains(x)).OrderBy(x => tables[reg.Key].IndexOf(x) < 0 ? -1 : tables[reg.Key].IndexOf(x)).Last();
+                    Move(t, reg, myLocals.FirstOrDefault(c => c.Key == LocalKey(AreaOf(t))) ?? myLocals[0]);
+                }
+                // The refill comes from the biggest local leagues first, so no area's league is drained (review #11: the Rockies League
+                // was down to one club by season 45 and the world crashed); a local league never goes below LocalFloor this way.
+                while (reg.Clubs.Count < RegionalSize)
+                {
+                    var next = myLocals.Where(c => c.Clubs.Count > LocalFloor)
+                        .SelectMany(c => tables[c.Key].Where(t => c.Clubs.Contains(t)).Select((t, i) => (t, c, i)))
+                        .OrderByDescending(x => x.c.Clubs.Count).ThenBy(x => x.i).ThenBy(x => x.t.Id).FirstOrDefault();
+                    if (next.t == null) break;
+                    Move(next.t, next.c, reg);
+                }
+            }
+            // An older career's regional and local leagues become tiers 4 and 5 of 32 now (Danny's D39 A, #385).
+            news.AddRange(ConvertToFiveTiers(world, nabl, t3Down, on));
+        }
+
         // Clubs that moved get budgets for their new league (decision #88).
         var before = tables.SelectMany(kv => kv.Value.Select(t => (t, kv.Key))).GroupBy(x => x.t).ToDictionary(g => g.Key, g => g.First().Key);
         double nablArena = nabl.Teams.Average(t => (double)t.ArenaCapacity);
@@ -521,6 +599,57 @@ public static class UsaPyramid
         }
         news.AddRange(RebuildPromoted(world, nabl, up, on));
         world.Index();
+        return news;
+    }
+
+    /// <summary>
+    /// An older career's regional and local leagues become tiers 4 and 5 of 32 (Danny's D39 A, #385), at its first summer on
+    /// this version, after that summer's moves: the clubs just relegated from tier 3 and then the strongest regional clubs make
+    /// tier 4, the next strongest tier 5 (the coach's own club always keeps a place). The other clubs leave the game world: their
+    /// players good enough to play on (CA 80+, under 35) become free agents, the rest leave with them. Returns headlines.
+    /// </summary>
+    internal static List<(string, string)> ConvertToFiveTiers(GameWorld world, League nabl, IReadOnlyCollection<Team> justDown, DateOnly on)
+    {
+        var news = new List<(string, string)>();
+        var old = world.Competitions.Where(c => IsPyramid(c.Key) && !IsNational(c.Key)).ToList();
+        if (old.Count == 0 || world.Competitions.Any(c => c.Key is Tier4 or Tier5)) return news;
+        double S(Team t) => GameWorld.Strength(t);
+        var regional = old.Where(c => c.Key.StartsWith("usa-r-")).SelectMany(c => c.Clubs).ToList();
+        var local = old.Where(c => c.Key.StartsWith("usa-l-")).SelectMany(c => c.Clubs).ToList();
+        var ranked = regional.Where(justDown.Contains).OrderByDescending(S).ThenBy(t => t.Id)
+            .Concat(regional.Where(t => !justDown.Contains(t)).OrderByDescending(S).ThenBy(t => t.Id))
+            .Concat(local.OrderByDescending(S).ThenBy(t => t.Id)).ToList();
+        var keep = ranked.Take(NationalSize * 2).ToList();
+        if (world.ManagedClubId is { } mine && ranked.FirstOrDefault(t => t.Id == mine) is { } myClub && !keep.Contains(myClub))
+            keep[^1] = myClub;
+        var t4 = new WorldCompetition { Profile = Competitions.All.First(p => p.Key == Tier4) };
+        var t5 = new WorldCompetition { Profile = Competitions.All.First(p => p.Key == Tier5) };
+        t4.Clubs.AddRange(keep.Take(NationalSize));
+        t5.Clubs.AddRange(keep.Skip(NationalSize));
+        int at = world.Competitions.IndexOf(old[0]);
+        foreach (var c in old) world.Competitions.Remove(c);
+        world.Competitions.Insert(Math.Max(0, at), t5);
+        world.Competitions.Insert(Math.Max(0, at), t4);
+        int freed = 0, gone = 0;
+        foreach (var t in ranked.Except(keep))
+        {
+            foreach (var p in t.Roster.ToList())
+            {
+                t.Roster.Remove(p); p.TeamId = null; p.Contract = null;
+                if (p.CurrentAbility >= 80 && p.Age(on) < 35) { nabl.FreeAgents.Add(p); freed++; } else gone++;
+            }
+            foreach (var st in t.Staff) st.TeamId = null;
+        }
+        foreach (var c in new[] { t4, t5 })
+        {
+            foreach (var t in c.Clubs) t.Division = c.Profile.Short;
+            world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(70).Average(), 1);
+        }
+        int left = ranked.Count - keep.Count;
+        news.Add(("The USA pyramid becomes five tiers of 32",
+            $"The regional and local leagues are replaced by {t4.Profile.Name} and {t5.Profile.Name}, 32 clubs each in an East and a West conference of four divisions, "
+            + $"like the tiers above: division winners go up, the last in each division goes down, the top two in each division play the playoffs. "
+            + $"{left} smaller clubs leave the game; {freed} of their players are free agents."));
         return news;
     }
 
@@ -602,6 +731,15 @@ public static class UsaPyramid
             }
         }
         Fill(t2, t3.Clubs.Select(t => (t, t3)));
+        if (world.Competitions.FirstOrDefault(c => c.Key == Tier4) is { } t4 && world.Competitions.FirstOrDefault(c => c.Key == Tier5) is { } t5)
+        {
+            // Five tiers (D39 A): each tier fills from the one below; tier 5 starts with two extra clubs for this.
+            Fill(t3, t4.Clubs.Select(t => (t, t4)));
+            Fill(t4, t5.Clubs.Select(t => (t, t5)));
+            foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) foreach (var t in c.Clubs) t.Division = c.Profile.Short;
+            RealignTop(top, newcomers);
+            return;
+        }
         var regionals = world.Competitions.Where(c => Level(c.Key) == 4).ToList();
         Fill(t3, regionals.SelectMany(c => c.Clubs.Select(t => (t, c))));
         foreach (var reg in regionals)

@@ -125,9 +125,10 @@ public sealed partial class StandingsViewModel : PageViewModel
                     }
                     if (divisional)
                     {
-                        // Tiers 2-3 in the division format (D36): winners go up and play the playoffs, 2nd plays them, 3rd the
+                        // Tiers 2-5 in the division format (D36, D39 A): winners go up and play the playoffs, 2nd plays them, 3rd the
                         // third-place tournament, 4th goes down.
-                        ShowPromotion = true; PlayoffLabel = "Playoffs"; ShowPlayIn = true; PlayInLabel = "Third-place tournament"; ShowRelegation = true;
+                        // Tier 5 is the bottom (D39 A): nobody goes down from it.
+                        ShowPromotion = true; PlayoffLabel = "Playoffs"; ShowPlayIn = true; PlayInLabel = "Third-place tournament"; ShowRelegation = hl.Key != Hardwood.Core.World.UsaPyramid.Tier5;
                     }
                     else { PlayoffLabel = "Promotion"; ShowPlayIn = false; ShowRelegation = true; }
                 }
