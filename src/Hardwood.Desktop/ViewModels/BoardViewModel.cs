@@ -231,7 +231,7 @@ public sealed partial class BoardViewModel : PageViewModel
         {
             var fac = f.Get(k); var info = Hardwood.Core.Season.Franchise.Info(k);
             var build = f.Building.FirstOrDefault(b => b.Kind == k || (k == Hardwood.Core.Model.FacilityKind.Arena && b.Kind == Hardwood.Core.Model.FacilityKind.NewArena));
-            int left = info.Lifespan - fac.Age;
+            int left = Hardwood.Core.Season.Franchise.Lifespan(k, fac.Level) - fac.Age;
             string status = build != null ? (build.Kind == Hardwood.Core.Model.FacilityKind.NewArena ? $"New arena: opens in {build.SeasonsLeft} summer{(build.SeasonsLeft == 1 ? "" : "s")}" : build.Renewal ? "Being renewed: done next summer" : $"Building level {build.ToLevel}: opens next summer")
                 : left <= 1 ? "Dated: drops a level next summer unless it's renewed" : left <= 3 ? $"Ageing: dates in {left} seasons" : $"Modern: good for {left} more seasons";
             string tone = build != null ? "#58A6FF" : left <= 1 ? "#F85149" : left <= 3 ? "#D29922" : "#3FB950";
@@ -263,6 +263,7 @@ public sealed partial class BoardViewModel : PageViewModel
         ProposalNote = !s.Delegated.Facilities
             ? (HasProposals ? "The front office's proposals. The owner will fund any of these from the bank; each summer brings new ones." : "No proposals right now. They come each summer, when the owner has money above his reserve.")
             : "Your general manager decides each summer, within what the owner will fund.";
+        ProposalNote += $" Your owner {Hardwood.Core.Season.Franchise.Stance(t.Owner)}.";
         _refreshing = true; GmDecides = s.Delegated.Facilities; _refreshing = false;
     }
 

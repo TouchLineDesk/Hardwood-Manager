@@ -128,6 +128,39 @@ public class FranchiseTests
     }
 
     [Fact]
+    public void The_top_levels_cost_more_date_faster_and_only_ambitious_owners_build_above_the_league()
+    {
+        // Review #11, Top fix 2: facilities saturated at 4.86 of 5 over 100 seasons.
+        long c3 = Franchise.CostTo(FacilityKind.Practice, 3, Lr), c4 = Franchise.CostTo(FacilityKind.Practice, 4, Lr), c5 = Franchise.CostTo(FacilityKind.Practice, 5, Lr);
+        Assert.True(c4 - c3 > c3 / 3 * 1.5, "level 4 costs more than its share");
+        Assert.True(c5 > c4 * 1.6, "level 5 costs much more than level 4");
+        Assert.True(Franchise.Lifespan(FacilityKind.Practice, 5) < Franchise.Lifespan(FacilityKind.Practice, 4));
+        Assert.True(Franchise.Lifespan(FacilityKind.Practice, 4) < Franchise.Lifespan(FacilityKind.Practice, 3));
+
+        var t = League()[0];
+        var f = t.Money.Facilities;
+        t.Money.Balance = Lr * 5;   // money is no object
+        foreach (var k in ClubFacilities.Kinds) { f.Get(k).Level = 3; f.Get(k).Age = 0; f.Get(k).Edge = 0; }
+
+        t.Owner.Ambition = 8;   // a careful owner keeps up with the league, no more
+        Assert.DoesNotContain(Franchise.Candidates(t, Lr, 18000, 2027, Franchise.Spendable(t)), p => !p.Renewal && p.Kind != FacilityKind.NewArena);
+        foreach (var k in ClubFacilities.Kinds) f.Get(k).Edge = -1;   // behind the league: he catches up
+        Assert.Contains(Franchise.Candidates(t, Lr, 18000, 2027, Franchise.Spendable(t)), p => p.Kind == FacilityKind.Practice && p.ToLevel == 4);
+        t.Owner.Ambition = Franchise.CarefulOwner;   // a careful one stays a little under the league
+        Assert.DoesNotContain(Franchise.Candidates(t, Lr, 18000, 2027, Franchise.Spendable(t)), p => !p.Renewal && p.Kind != FacilityKind.NewArena);
+
+        foreach (var k in ClubFacilities.Kinds) f.Get(k).Edge = 0;
+        t.Owner.Ambition = Franchise.AmbitiousOwner;   // an ambitious one builds past it
+        Assert.Contains(Franchise.Candidates(t, Lr, 18000, 2027, Franchise.Spendable(t)), p => p.Kind == FacilityKind.Practice && p.ToLevel == 4);
+
+        // A level-5 facility dates after 60% of the usual lifespan.
+        f.Analytics.Level = 5; f.Analytics.Age = Franchise.Lifespan(FacilityKind.Analytics, 5);
+        t.Money.Balance = 0;
+        Franchise.Summer(t, Lr, 18000, 2027);
+        Assert.Equal(4, f.Analytics.Level);
+    }
+
+    [Fact]
     public void Facilities_ahead_of_the_league_help_and_behind_it_hurt()
     {
         var t = League()[0];

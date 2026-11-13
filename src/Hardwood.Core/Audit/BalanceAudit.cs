@@ -89,6 +89,10 @@ public static class BalanceAudit
         var world = GameWorld.Generate(league, seed, fullSimLeagues ?? Array.Empty<string>(), new DateOnly(2026, 10, 1));
         // The real world (R2): the NBA's real teams and players on the same generated world (`hardwood audit --real`).
         if (realWorld) { Hardwood.Core.RealWorld.RealWorldData.Apply(league, world, seed); report.Notes.Add("Real world: the NBA's real teams and players (R2)."); }
+        // Owners as a career has them (run 34): each club's owner has his own ambition, which decides how far he builds
+        // facilities and his transfer budget. Before, every audit club had the default owner (ambition 10).
+        Jobs.Board.EnsureOwnersAndCoaches(league, seed);
+        Jobs.Board.EnsureOwnersAndCoaches(world.Clubs, seed);
         var career = new Career(new Rng(seed ^ 0xA0D17));
         var sim = new GameSimulator();
         var fin = league.Finance;
@@ -102,7 +106,7 @@ public static class BalanceAudit
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
-        var medBalance = new List<double>(); var richClubs = new List<double>(); var facLevel = new List<double>(); var arenas = new List<double>(); var invested = new List<double>(); var paidOut = new List<double>();
+        var medBalance = new List<double>(); var richClubs = new List<double>(); var facLevel = new List<double>(); var facSpread = new List<double>(); var facTop = new List<double>(); var arenas = new List<double>(); var invested = new List<double>(); var paidOut = new List<double>();
         var lowerOver = new List<double>(); var lowerWorst = new List<double>(); var smallestLocal = new List<double>();
         var overBudget = new List<double>(); var budgetUse = new List<double>(); var gradsSigned = new List<double>(); var bestGrad = new List<double>();
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
@@ -133,7 +137,12 @@ public static class BalanceAudit
                 medBalance.Add(ratios[ratios.Count / 2]);
                 var everyone = league.Teams.Concat(world.Clubs).Where(t => t.Money.Ready).ToList();
                 richClubs.Add(everyone.Count(t => t.Money.Balance > t.Money.Revenue) / (double)Math.Max(1, everyone.Count));
-                facLevel.Add(league.Teams.Average(t => Model.ClubFacilities.Kinds.Average(k => t.Money.Facilities.Get(k).Level)));
+                var clubFac = league.Teams.Select(t => Model.ClubFacilities.Kinds.Average(k => (double)t.Money.Facilities.Get(k).Level)).ToList();
+                facLevel.Add(clubFac.Average());
+                // Review #11, Top fix 2: a real spread, not everyone at the top.
+                double facMean = clubFac.Average();
+                facSpread.Add(Math.Sqrt(clubFac.Average(x => (x - facMean) * (x - facMean))));
+                facTop.Add(clubFac.Count(x => x >= 4.5) / (double)clubFac.Count);
                 arenas.Add(league.Teams.Sum(t => t.Money.Facilities.ArenasBuilt));
                 invested.Add(league.Teams.Average(t => t.Money.Facilities.LastInvested + t.Money.Facilities.LastUpkeep) / 1e6);
                 paidOut.Add(league.Teams.Average(t => t.Money.Facilities.LastDistribution) / 1e6);
@@ -275,7 +284,9 @@ public static class BalanceAudit
             // Item M (#281): balances stay realistic once money buys facilities.
             m.Add(new("NABL money", "Median bank balance (seasons of revenue)", "0.00", medBalance, -0.5, 1.2, "item M target: under about one season's revenue"));
             m.Add(new("NABL money", "Clubs anywhere holding more than a season's revenue", "0.00", richClubs, 0, 0.5, "review #9: all 748 by season 15"));
-            m.Add(new("NABL money", "Average facility level (1-5)", "0.00", facLevel, 2, 4.6, "an arms race, not inflation: effects are relative"));
+            m.Add(new("NABL money", "Average facility level (1-5)", "0.00", facLevel, 3.0, 4.3, "review #11 target 3.5-4.3 (it was 4.86 over 100 seasons)"));
+            m.Add(new("NABL money", "Spread of clubs' facility levels (st. dev.)", "0.00", facSpread, null, null, "a real spread between the best-run and worst-run clubs"));
+            m.Add(new("NABL money", "Share of clubs averaging 4.5+ across their facilities", "0.00", facTop, null, null, "review #11: nearly all of them"));
             m.Add(new("NABL money", "USA tiers 2-3: clubs over their wage budget at season start", "0.0", lowerOver, null, null, "#363: relegated clubs' old contracts"));
             m.Add(new("NABL money", "USA tiers 2-3: worst payroll as share of budget", "0.00", lowerWorst, null, null, "#363: nabl-weak was 2.9 after two drops"));
             m.Add(new("Player movement", "USA tiers 2-5: the smallest league in any season (clubs)", "0", new() { smallestLocal.DefaultIfEmpty(32).Min() }, 30, 34, "D39 A: five tiers of 32 (review #11: a local league once drained to one club)"));

@@ -35,7 +35,7 @@ public static class Franchise
             "Revenue +2% and the fan base +0.6 a season, a level above average", 0.16, 15, 1),
         new(FacilityKind.NewArena, "A new arena", "New arena",
             "A new building: more seats, every premium option, and an arena that won't date for decades. Three summers to build.",
-            "More seats, and the arena at level 5 for 15 seasons", 2.6, 15, 3),
+            "More seats, and the arena at level 5 for 9 seasons, then level 4", 2.6, 15, 3),
     };
 
     public static FacilityInfo Info(FacilityKind k) => Array.Find(All, i => i.Kind == k) ?? All[0];
@@ -48,9 +48,42 @@ public static class Franchise
     /// <summary>Renewing a dated facility (keeping its level) costs this share of the price of building that level.</summary>
     public const double RenewShare = 0.6;
 
-    /// <summary>The price of building a facility up to a level (or a new arena, whatever the level).</summary>
+    /// <summary>
+    /// The price of building a facility up to a level (or a new arena, whatever the level). The top levels cost more than
+    /// their share (review #11, Top fix 2: 100 seasons left the average at 4.86 of 5): level 4 is 1.3 times the steady
+    /// price per level, level 5 1.8 times.
+    /// </summary>
     public static long CostTo(FacilityKind k, int level, long leagueRevenue) =>
-        Round(Info(k).CostPerLevel * (k == FacilityKind.NewArena ? 1 : level) * leagueRevenue);
+        Round(Info(k).CostPerLevel * (k == FacilityKind.NewArena ? 1 : level * TopPremium(level)) * leagueRevenue);
+
+    /// <summary>The extra cost of the top levels: 1 up to level 3, 1.3 at level 4, 1.8 at level 5.</summary>
+    public static double TopPremium(int level) => level >= 5 ? 1.8 : level == 4 ? 1.3 : 1.0;
+
+    /// <summary>
+    /// How many seasons a facility at this level stays modern before it dates (and drops a level): the best date fastest,
+    /// as the league's idea of "the best" moves on (level 5: 60% of the usual lifespan; level 4: 80%).
+    /// </summary>
+    public static int Lifespan(FacilityKind k, int level) =>
+        Math.Max(3, (int)Math.Round(Info(k).Lifespan * (level >= 5 ? 0.6 : level == 4 ? 0.8 : 1.0)));
+
+    /// <summary>
+    /// Owners this ambitious (or more) build facilities above the league's average, up to the top (review #11, Top fix 2:
+    /// 100 seasons left the average at 4.86 of 5). About a quarter of owners.
+    /// </summary>
+    public const int AmbitiousOwner = 14;
+    /// <summary>Owners this careful (or less) let their facilities sit a little below the league's average.</summary>
+    public const int CarefulOwner = 7;
+    public static bool BuildsAboveAverage(Jobs.Owner o) => o.Ambition >= AmbitiousOwner;
+
+    /// <summary>
+    /// How far above the league's average this owner will take a facility: ambitious owners as far as it goes; most keep up
+    /// with the league (a quarter of a level over at most, so they rarely build to the top); careful owners stay half a level under it.
+    /// </summary>
+    /// <summary>The owner's stance on facilities, for the Board page: "keeps up with the league's average".</summary>
+    public static string Stance(Jobs.Owner o) => o.Ambition >= AmbitiousOwner ? "builds past the league's average, up to the best in the league"
+        : o.Ambition <= CarefulOwner ? "keeps facilities a little under the league's average" : "keeps up with the league's average, no further";
+
+    public static double MaxEdge(Jobs.Owner o) => o.Ambition >= AmbitiousOwner ? 9 : o.Ambition <= CarefulOwner ? -0.5 : 0.25;
 
     /// <summary>Running costs a season.</summary>
     public static long Upkeep(ClubFacilities f, long leagueRevenue) =>
@@ -135,7 +168,7 @@ public static class Franchise
                     var fac = f.Get(p.Kind);
                     bool renewal = p.Renewal;
                     fac.Level = Math.Max(fac.Level, p.ToLevel); fac.Age = 0;
-                    f.LastNews.Add(renewal ? $"{Info(p.Kind).Name}: the renovation is finished (level {fac.Level}, good for {Info(p.Kind).Lifespan} seasons)."
+                    f.LastNews.Add(renewal ? $"{Info(p.Kind).Name}: the renovation is finished (level {fac.Level}, good for {Lifespan(p.Kind, fac.Level)} seasons)."
                                            : $"{Info(p.Kind).Name}: the upgrade opened (level {fac.Level}).");
                 }
             }
@@ -147,7 +180,7 @@ public static class Franchise
         {
             var fac = f.Get(k);
             fac.Age++;
-            if (fac.Age > Info(k).Lifespan && !f.IsBuilding(k))
+            if (fac.Age > Lifespan(k, fac.Level) && !f.IsBuilding(k))
             {
                 fac.Age = 0;
                 if (fac.Level > 1) { fac.Level--; f.LastNews.Add($"{Info(k).Name} has dated: down to level {fac.Level}."); }
@@ -216,14 +249,17 @@ public static class Franchise
         {
             if (f.IsBuilding(k)) continue;
             var fac = f.Get(k); var info = Info(k);
-            if (fac.Level < 5)
+            // Only an ambitious owner builds well above the league's average; most keep up with it, careful ones stay a little under.
+            double maxEdge = MaxEdge(o);
+            if (fac.Level < 5 && fac.Edge + 1 <= maxEdge)
             {
                 long cost = CostTo(k, fac.Level + 1, leagueRevenue);
                 // Behind the league hurts most: catching up comes first.
                 double score = Appetite(o, k) * (1.2 - 0.25 * fac.Edge) * (6 - fac.Level) / 3.0;
                 list.Add((new FacilityProject { Kind = k, ToLevel = fac.Level + 1, Cost = cost, SeasonsLeft = info.BuildSeasons, Instalments = 1, Season = season }, score));
             }
-            if (fac.Age >= info.Lifespan * 3 / 4)
+            // Renewing keeps a level: by the same rule, an owner doesn't renew a facility further above the league than he'd build.
+            if (fac.Age >= Lifespan(k, fac.Level) * 3 / 4 && fac.Edge <= maxEdge)
             {
                 long cost = Round(CostTo(k, fac.Level, leagueRevenue) * RenewShare);
                 double score = Appetite(o, k) * 0.9 * fac.Level / 3.0;
