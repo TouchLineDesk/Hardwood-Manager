@@ -1182,6 +1182,8 @@ public sealed partial class GameSession
     {
         var save = new SaveFile(path);
         var league = save.Load();
+        // The world's league names (D44) and the lower tiers' division labels follow the career's world as it loads.
+        Names.Brand.Real = Hardwood.Core.RealWorld.RealWorldData.IsReal(league);
         var world = save.LoadWorld(league, save.LoadedOverseas, save.LoadedCollege);
         var session = save.LoadSession(league, world);
         save.LoadPeople(session);
