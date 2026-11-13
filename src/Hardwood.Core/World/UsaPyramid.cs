@@ -171,6 +171,7 @@ public static class UsaPyramid
     public static void RealignTop(League top, IEnumerable<Team> newcomers)
     {
         if (top.Teams.Count != ProSize) return;
+        if (RealWorld.RealWorldData.IsReal(top)) { RealignReal(top, newcomers); return; }
         var fresh = newcomers.ToHashSet();
         var east = top.Teams.Where(t => !fresh.Contains(t) && t.Conference == Conference.East).ToList();
         var west = top.Teams.Where(t => !fresh.Contains(t) && t.Conference == Conference.West).ToList();
@@ -194,6 +195,90 @@ public static class UsaPyramid
         foreach (var (conf, list) in new[] { (Conference.East, east), (Conference.West, west) })
         foreach (var (name, teams) in ConferenceDivisions(conf, list))
         foreach (var t in teams) { t.Conference = conf; t.Division = name; }
+    }
+
+    /// <summary>The extra division in each conference of a real career's 32-team league (D37 C), and roughly where it sits.</summary>
+    private static readonly (Conference Conf, string Name, double Lat, double Lon)[] ExtraDivisions =
+        { (Conference.East, "South", 34.5, -85.0), (Conference.West, "Midwest", 39.10, -94.58) };
+
+    /// <summary>A real NBA franchise's real conference and division (null for a club from the pyramid).</summary>
+    public static (Conference Conf, string Division)? RealHome(Team t) =>
+        RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.City == t.City && r.Name == t.Name) is { } r
+            ? (r.Conference == "East" ? Conference.East : Conference.West, r.Division) : null;
+
+    private static double Distance((double Lat, double Lon) a, (double Lat, double Lon) b)
+    {
+        double dLat = a.Lat - b.Lat, dLon = (a.Lon - b.Lon) * Math.Cos((a.Lat + b.Lat) / 2 * Math.PI / 180);
+        return Math.Sqrt(dLat * dLat + dLon * dLon);
+    }
+
+    /// <summary>
+    /// Danny's D37 C (#412) for real careers: the real teams keep their real divisions (Atlantic, Central, Southeast;
+    /// Northwest, Pacific, Southwest), and only clubs that come up are placed. Each conference's fourth division (South in the
+    /// East, Midwest in the West) holds the overflow: in a new career the real team in each real division nearest it moves
+    /// there. After that nobody moves: each division loses its relegated club, and each promoted club takes the nearest
+    /// opening (a real franchise coming back takes its own division's opening when it can).
+    /// </summary>
+    private static void RealignReal(League top, IEnumerable<Team> newcomers)
+    {
+        var fresh = newcomers.Where(top.Teams.Contains).ToHashSet();
+        var all = EastDivisions.Select(d => (Conference.East, d)).Concat(WestDivisions.Select(d => (Conference.West, d))).ToList();
+        const int size = 4;
+        var stay = top.Teams.Where(t => !fresh.Contains(t)).ToList();
+        // A layout to keep: every staying club in one of the eight divisions, none over four, and every real team in its real
+        // division or its conference's extra one. Otherwise (a new career, or an older save drawn by geography) lay it out again.
+        bool Valid(Team t) => all.Contains((t.Conference, t.Division))
+            && (RealHome(t) is not { } h || (h.Conf == t.Conference && (h.Division == t.Division || ExtraDivisions.Any(x => x.Conf == h.Conf && x.Name == t.Division))));
+        bool keep = stay.All(Valid) && stay.GroupBy(t => (t.Conference, t.Division)).All(g => g.Count() <= size);
+        var slots = all.ToDictionary(x => x, _ => new List<Team>());
+        var place = new List<Team>(fresh);
+        if (keep)
+            foreach (var t in stay) slots[(t.Conference, t.Division)].Add(t);
+        else
+        {
+            foreach (var t in stay)
+            {
+                if (RealHome(t) is { } h) slots[(h.Conf, h.Division)].Add(t);
+                else place.Add(t);
+            }
+            // Overflow: the real team nearest the extra division moves there, one at a time.
+            foreach (var (conf, name, lat, lon) in ExtraDivisions)
+                while (slots.Where(kv => kv.Key.Item1 == conf && kv.Key.Item2 != name).Any(kv => kv.Value.Count > size))
+                {
+                    var over = slots.Where(kv => kv.Key.Item1 == conf && kv.Key.Item2 != name && kv.Value.Count > size).ToList();
+                    var (key, t) = over.SelectMany(kv => kv.Value.Select(t => (kv.Key, t)))
+                        .OrderBy(x => Distance(Location(x.t), (lat, lon))).ThenBy(x => x.t.Id).First();
+                    slots[key].Remove(t);
+                    var extra = (conf, name);
+                    if (slots[extra].Count < size) slots[extra].Add(t);
+                    else slots.Where(kv => kv.Key.Item1 == conf && kv.Value.Count < size).OrderBy(kv => kv.Value.Count).First().Value.Add(t);
+                }
+        }
+        // Openings go to the clubs still to place: a returning real team takes its own division's opening if there is one;
+        // then, nearest first, each club takes the opening closest to it (by the division's other clubs, or where it sits).
+        (double, double) Centre((Conference, string) key) => slots[key].Count > 0
+            ? (slots[key].Average(t => Location(t).Lat), slots[key].Average(t => Location(t).Lon))
+            : ExtraDivisions.FirstOrDefault(x => x.Conf == key.Item1 && x.Name == key.Item2) is { Name: not null } e ? (e.Lat, e.Lon) : (39.0, key.Item1 == Conference.East ? -80.0 : -105.0);
+        foreach (var t in place.Where(t => RealHome(t) != null).OrderBy(t => t.Id).ToList())
+        {
+            var h = RealHome(t)!.Value;
+            // Two coming back to one opening: the other takes his conference's extra division if it has room, else the nearest.
+            var extraKey = (h.Conf, ExtraDivisions.First(x => x.Conf == h.Conf).Name);
+            var key = slots[(h.Conf, h.Division)].Count < size ? (h.Conf, h.Division) : slots[extraKey].Count < size ? extraKey : default;
+            if (key == default) continue;
+            slots[key].Add(t);
+            place.Remove(t);
+        }
+        while (place.Count > 0)
+        {
+            var open = slots.Where(kv => kv.Value.Count < size).Select(kv => kv.Key).ToList();
+            if (open.Count == 0) break;
+            var (t, key) = place.SelectMany(t => open.Select(k => (t, k))).OrderBy(x => Distance(Location(x.t), Centre(x.k))).ThenBy(x => x.t.Id).First();
+            slots[key].Add(t);
+            place.Remove(t);
+        }
+        foreach (var ((conf, name), teams) in slots)
+            foreach (var t in teams) { t.Conference = conf; t.Division = name; }
     }
 
     /// <summary>
@@ -315,10 +400,10 @@ public static class UsaPyramid
 
         var profiles = new List<CompetitionProfile>
         {
-            National(Tier2, "The Championship", "CHP", -2, 0.10, 4, -10, tier2.Select(x => x.seed)),
-            National(Tier3, "National League One", "NL1", -10, 0.06, 3, -16, tier3.Select(x => x.seed)),
-            National(Tier4, "National League Two", "NL2", -18, 0.03, 2, -22, tier4.Select(x => x.seed)),
-            National(Tier5, "National League Three", "NL3", -26, 0.015, 2, -28, tier5.Select(x => x.seed)),
+            National(Tier2, "The Championship", "CHP", -2, 0.10, 4, -10, tier2.Select(x => x.seed), "NBA G League", "G League"),
+            National(Tier3, "National League One", "NL1", -10, 0.06, 3, -16, tier3.Select(x => x.seed), "American Basketball Association", "ABA"),
+            National(Tier4, "National League Two", "NL2", -18, 0.03, 2, -22, tier4.Select(x => x.seed), "Premier Basketball League", "PBL"),
+            National(Tier5, "National League Three", "NL3", -26, 0.015, 2, -28, tier5.Select(x => x.seed), "National Basketball Conference", "NBC"),
         };
         foreach (var (rk, name, shortName) in Regions)
             profiles.Add(Lower(RegionalKey(rk), name, shortName, -22, 0.02, 2, -26, 2, regional[rk].Select(x => x.seed), legacy: true));
@@ -327,9 +412,10 @@ public static class UsaPyramid
         return profiles.ToArray();
     }
 
-    private static CompetitionProfile National(string key, string name, string shortName, int strength, double wages, int imports, double prestige, IEnumerable<ClubSeed> clubs) => new()
+    // realName/realShort: the names in real-world careers (Danny's D44 pick, #411).
+    private static CompetitionProfile National(string key, string name, string shortName, int strength, double wages, int imports, double prestige, IEnumerable<ClubSeed> clubs, string? realName = null, string? realShort = null) => new()
     {
-        Key = key, Name = name, Short = shortName, Country = "USA", LocalNationalities = new[] { "USA" },
+        Key = key, Name = name, Short = shortName, RealName = realName, RealShort = realShort, Country = "USA", LocalNationalities = new[] { "USA" },
         StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 23,
         Start = (10, 21), RoundDays = new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Saturday }, Clubs = clubs.ToArray(), // 62 games in 32-club tiers (#355)
         // The division format's playoffs (D36, #364): 16 teams by conference, then the final; third place plays its own tournament.

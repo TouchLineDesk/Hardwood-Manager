@@ -25,9 +25,17 @@ public sealed record PlayoffRound(string Name, int BestOf, int Teams);
 public sealed class CompetitionProfile
 {
     public required string Key { get; init; }
-    /// <summary>Display names: settable so a name pack can rename the competition (Names.NamePack).</summary>
-    public required string Name { get; set; }
-    public required string Short { get; set; }
+    /// <summary>Display names: settable so a name pack can rename the competition (Names.NamePack). In a real-world career a
+    /// league with real-world names (<see cref="RealName"/>, Danny's D44, #411) shows those unless a pack has renamed it.</summary>
+    public required string Name { get => Names.Brand.Real && RealName != null && !_renamed ? RealName : _name; set { _name = value; _renamed = _init; _init = true; } }
+    public required string Short { get => Names.Brand.Real && RealShort != null && !_renamedShort ? RealShort : _short; set { _short = value; _renamedShort = _initShort; _initShort = true; } }
+    private string _name = "", _short = "";
+    private bool _init, _initShort, _renamed, _renamedShort;
+    /// <summary>The name in real-world careers (D44): tier 2 is the NBA G League, and so on.</summary>
+    public string? RealName { get; init; }
+    public string? RealShort { get; init; }
+    /// <summary>The name as built, whatever the career (for the made-up world and tests).</summary>
+    public string BaseName => _name;
     public CompetitionKind Kind { get; init; } = CompetitionKind.Domestic;
     /// <summary>Country of a domestic league; players of these nationalities are local.</summary>
     public string Country { get; init; } = "";

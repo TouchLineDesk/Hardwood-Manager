@@ -140,8 +140,8 @@ public sealed class LeagueBook
             Rules = new List<(string, string)>
             {
                 ("Level", lg.Teams.Count == UsaPyramid.ProSize
-                    ? "The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops to The Championship; its eight division winners come up."
-                    : "The top league in the USA, in six divisions. The last team in each division drops to The Championship; its division winners come up."),
+                    ? $"The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops to {Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name}; its eight division winners come up."
+                    : $"The top league in the USA, in six divisions. The last team in each division drops to {Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name}; its division winners come up."),
                 ("Game", RulesText(lg.Rules)),
                 ("Season", $"{lg.Teams.Count} teams in two conferences of {lg.Teams.Select(t => t.Division).Distinct().Count() / 2} divisions; 82 games from late October to mid-April."),
                 ("Playoffs", Postseason.UsesDivisions(lg)
