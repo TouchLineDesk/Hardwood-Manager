@@ -14,6 +14,8 @@ public static class UsaPyramid
     /// <summary>The pro tiers (the top league, The Championship, National League One) have 32 clubs each since Danny's D33
     /// design (#344, D36 A): two conferences of four divisions of four (24 in tiers 2-3 before).</summary>
     public const int NationalSize = 32, ProSize = 32, RegionalSize = 18;
+    /// <summary>A regional league doesn't refill from a local league this small (review #11).</summary>
+    public const int LocalFloor = 8;
     /// <summary>Clubs moving between the pro tiers each summer: the 4th-placed team in each of the eight divisions down, the
     /// eight division winners below up (#344; six before, #319; three before that, #79, #91).</summary>
     public const int NationalSwaps = 8;
@@ -467,7 +469,8 @@ public static class UsaPyramid
         {
             var area = reg.Key["usa-r-".Length..];
             var myLocals = locals.Where(c => Areas.First(a => LocalKey(a.Key) == c.Key).Region == area).ToList();
-            var champs = myLocals.Select(c => tables[c.Key].FirstOrDefault()).Where(t => t != null).Cast<Team>().ToList();
+            // A local league that didn't play (fewer than two clubs) has no champion to send up (review #11).
+            var champs = myLocals.Where(c => c.Season.Fixtures.Any(f => f.Played)).Select(c => tables[c.Key].FirstOrDefault()).Where(t => t != null).Cast<Team>().ToList();
             var regDivs = Divisions(reg.Key, reg.Clubs.Where(t => tables[reg.Key].Contains(t)).ToList())
                 .Select(d => InTableOrder(reg.Key, d.Teams)).Where(d => d.Count > 0).ToList();
             var down4 = regDivs.Select(d => d.Last()).Where(t => reg.Clubs.Contains(t) && !t3Gone.Contains(t) && !t3Down.Contains(t)).ToList();
@@ -479,9 +482,13 @@ public static class UsaPyramid
                 var t = reg.Clubs.Where(x => !champs.Contains(x) && !t3Down.Contains(x)).OrderBy(x => tables[reg.Key].IndexOf(x) < 0 ? -1 : tables[reg.Key].IndexOf(x)).Last();
                 Move(t, reg, myLocals.FirstOrDefault(c => c.Key == LocalKey(AreaOf(t))) ?? myLocals[0]);
             }
+            // The refill comes from the biggest local leagues first, so no area's league is drained (review #11: the Rockies League
+            // was down to one club by season 45 and the world crashed); a local league never goes below LocalFloor this way.
             while (reg.Clubs.Count < RegionalSize)
             {
-                var next = myLocals.SelectMany(c => tables[c.Key].Where(t => c.Clubs.Contains(t)).Select((t, i) => (t, c, i))).OrderBy(x => x.i).FirstOrDefault();
+                var next = myLocals.Where(c => c.Clubs.Count > LocalFloor)
+                    .SelectMany(c => tables[c.Key].Where(t => c.Clubs.Contains(t)).Select((t, i) => (t, c, i)))
+                    .OrderByDescending(x => x.c.Clubs.Count).ThenBy(x => x.i).ThenBy(x => x.t.Id).FirstOrDefault();
                 if (next.t == null) break;
                 Move(next.t, next.c, reg);
             }

@@ -103,7 +103,7 @@ public static class BalanceAudit
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
         var devByAge = new Dictionary<int, List<int>>();
         var medBalance = new List<double>(); var richClubs = new List<double>(); var facLevel = new List<double>(); var arenas = new List<double>(); var invested = new List<double>(); var paidOut = new List<double>();
-        var lowerOver = new List<double>(); var lowerWorst = new List<double>();
+        var lowerOver = new List<double>(); var lowerWorst = new List<double>(); var smallestLocal = new List<double>();
         var overBudget = new List<double>(); var budgetUse = new List<double>(); var gradsSigned = new List<double>(); var bestGrad = new List<double>();
         var buyouts = new List<double>(); var stashes = new List<double>(); var signedAbroad = new List<double>(); var intlPicks = new List<double>(); var cameOver = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
@@ -145,6 +145,9 @@ public static class BalanceAudit
                 lowerOver.Add(lower.Count(t => ContractMarket.Payroll(t) > t.Money.WageBudget * 1.05));
                 lowerWorst.Add(lower.Max(t => ContractMarket.Payroll(t) / (double)t.Money.WageBudget));
             }
+            // Review #11 (run 32): a local league drained to one club by season 45 and the world crashed. Gated.
+            if (world.Competitions.Where(c => UsaPyramid.Level(c.Key) == 5).Select(c => c.Clubs.Count).DefaultIfEmpty(-1).Min() is var minLocal and >= 0)
+                smallestLocal.Add(minLocal);
             foreach (var c in world.Competitions.Where(c => c.Clubs.Count > 0))
             {
                 // The USA pyramid swaps clubs between its leagues every summer: measure it by level, not by league.
@@ -274,6 +277,7 @@ public static class BalanceAudit
             m.Add(new("NABL money", "Average facility level (1-5)", "0.00", facLevel, 2, 4.6, "an arms race, not inflation: effects are relative"));
             m.Add(new("NABL money", "USA tiers 2-3: clubs over their wage budget at season start", "0.0", lowerOver, null, null, "#363: relegated clubs' old contracts"));
             m.Add(new("NABL money", "USA tiers 2-3: worst payroll as share of budget", "0.00", lowerWorst, null, null, "#363: nabl-weak was 2.9 after two drops"));
+            m.Add(new("Player movement", "USA local leagues: the smallest in any season (clubs)", "0", new() { smallestLocal.DefaultIfEmpty(14).Min() }, 6, 30, "review #11: one drained to a single club"));
             m.Add(new("NABL money", "Spent on facilities a club a season ($M)", "0.0", invested, null, null, "running costs plus projects"));
             m.Add(new("NABL money", "Owners' distributions a club a season ($M)", "0.0", paidOut, null, null, "the last resort when there's nothing to build"));
             m.Add(new("NABL money", "New arenas opened (career total)", "0", new() { arenas.DefaultIfEmpty(0).Max() }, null, null, "NBA: 13 opened 2000-2024"));

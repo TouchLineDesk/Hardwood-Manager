@@ -117,6 +117,32 @@ public class PyramidTests
     }
 
     [Fact]
+    public void A_drained_local_league_neither_crashes_the_world_nor_is_drained_further()
+    {
+        // Review #11 (run 32): in a 100-season audit the Rockies League was down to one club by 2070 and the world crashed crowning
+        // a runner-up it didn't have. The regional refill now takes from the biggest local leagues and never below the floor.
+        var (nabl, world) = NewWorld(5);
+        var rky = world[UsaPyramid.LocalKey("rky")];
+        var region = UsaPyramid.Areas.First(a => a.Key == "rky").Region;
+        var regional = world[UsaPyramid.RegionalKey(region)];
+        // Drain the Rockies League to one club (its others parked in a neighbouring local league of the same region).
+        var neighbour = world.Competitions.First(c => UsaPyramid.Level(c.Key) == 5 && c != rky && UsaPyramid.Areas.First(a => UsaPyramid.LocalKey(a.Key) == c.Key).Region == region);
+        foreach (var t in rky.Clubs.Skip(1).ToList()) { rky.Clubs.Remove(t); neighbour.Clubs.Add(t); }
+        Assert.Single(rky.Clubs);
+        world.StartSeason(2026);
+        world.FinishSeasons(new GameSimulator());   // crashed here before
+        Assert.True(rky.Season.IsComplete);
+        Assert.Null(rky.Season.ChampionId);
+        Assert.Empty(rky.History.Where(h => h.Season == 2026));
+
+        int before = rky.Clubs.Count;
+        UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
+        // The lone club didn't play, so it isn't sent up as a champion; the refill came from the bigger local leagues.
+        Assert.True(rky.Clubs.Count >= before, $"Rockies League {before} -> {rky.Clubs.Count}");
+        Assert.InRange(regional.Clubs.Count, UsaPyramid.RegionalSize - 2, UsaPyramid.RegionalSize);
+    }
+
+    [Fact]
     public void A_second_drop_keeps_what_is_left_of_the_first_parachute()
     {
         // #363 (run 29's nabl-weak): NBA -> tier 2 -> tier 3 in two summers. The second drop used to overwrite the
