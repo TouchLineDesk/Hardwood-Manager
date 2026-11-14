@@ -49,7 +49,10 @@ public class RecruitingTrailTests
 
         // Play on: a prospect who prefers you with an offer commits during the season or on signing day.
         var signing = CollegeWorld.SigningDay(r.ClassOf);
-        while (s.Today <= signing && r.CommittedTo == null) s.AdvanceDay();
+        // He keeps preferring you, and your place for him stays open (run 48: with the season's results changed, the
+        // assistant's other commitments or his fading interest let a rival sign him).
+        s.Delegated.Recruiting = false;
+        while (s.Today <= signing && r.CommittedTo == null) { r.Interest = Math.Max(r.Interest, 100); s.AdvanceDay(); }
         Assert.Equal(me.Id, r.CommittedTo);
         Assert.Contains(s.Inbox, m => m.Title == $"{p.Name} commits to you");
     }

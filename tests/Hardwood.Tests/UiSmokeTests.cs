@@ -77,6 +77,17 @@ public class UiSmokeTests
             Assert.False(string.IsNullOrEmpty(tac.ScoutingReport));
             tac.UseSuggestion();
             window.UpdateLayout();
+            // The overhaul (#475, D60 A): the diagram follows the tactic, the board has five lines, a card applies.
+            Assert.Equal(session.HumanTeam.Tactic.System, tac.DiagramSystem);
+            Assert.Equal(5, tac.PlayLabels.Count);
+            Assert.Equal(5, tac.Board.Count);
+            var lockCard = tac.Setups.First(s => s.Setup.Key == "lock");
+            lockCard.ApplyCommand.Execute(null);
+            Assert.True(lockCard.Setup.Matches(session.HumanTeam.Tactic));
+            Assert.Equal(session.HumanTeam.Tactic.Scheme, tac.DiagramScheme);
+            Assert.Contains(tac.Setups, s => s.Active && s.Setup.Key == "lock");
+            Assert.Equal(1, Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Hardwood.Desktop.Controls.PlayDiagram>().Count());
+            window.UpdateLayout();
 
             // Squad page: chemistry, moods, and a talk.
             vm.Navigate("Squad");

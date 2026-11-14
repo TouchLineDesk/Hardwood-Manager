@@ -51,7 +51,9 @@ public class ThreesLeaderTests
         var before = Shooter(Before());
         var now = Shooter(EngineConfig.Default);
         Assert.True(now.tpa < before.tpa - 1.0, $"3PA a game {before.tpa:0.0} -> {now.tpa:0.0}");
-        Assert.True(now.pct < before.pct, $"3P% {before.pct:0.000} -> {now.pct:0.000}");
+        // Makes a game, as the name says (run 48): his 3P% under the cap is level with before over 480 games (0.399 / 0.401),
+        // so comparing percentages over 60 games was a coin flip; the threes he makes is the cap's effect.
+        Assert.True(now.tpa * now.pct < before.tpa * before.pct, $"3PM a game {before.tpa * before.pct:0.00} -> {now.tpa * now.pct:0.00}");
         Assert.InRange(now.tpa, 7, 13.5);
         Assert.True(now.bigNights <= before.bigNights);
     }

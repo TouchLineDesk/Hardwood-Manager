@@ -255,6 +255,8 @@ public class LayoutCheckTests
                 vm.Guide.On = guide;
                 foreach (var (name, open) in Pages(vm, live, studio))
                 {
+                    // HW_LAYOUT_ONLY=Tactics,Squad checks just those pages (a quick local run; CI checks them all).
+                    if (Environment.GetEnvironmentVariable("HW_LAYOUT_ONLY") is { Length: > 0 } only && !only.Split(',').Contains(name)) continue;
                     open(vm);
                     try { Settle(window); }
                     catch (InvalidOperationException e) { throw new InvalidOperationException($"{name} at {width}px {(guide ? "with" : "without")} the assistant, {scale:P0}: {e.Message}", e); }

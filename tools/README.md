@@ -10,6 +10,7 @@ Neither project is part of the solution, the game or CI.
 | Balance audit | `dotnet run --project src/Hardwood.Cli -c Release -- audit --seasons 10 --seed 2026 --out a.md` | Every balance metric with its reference range; "Out of range" lines at the top |
 | Critic bot | `dotnet run --project tools/CriticBot -c Release -- <local\|lithuania\|japan\|college\|college-strong\|nba-real-strong\|nba-real-mid\|nba-real-weak> 3 31` | A scripted 3-season career through the real game: records, board, money, morale, assistant tasks, inbox counts. Every career is a real-world one; the `nba-real-*` careers coach in the NBA (the strongest, 15th and weakest team) and log the top players, their contracts, and where the real players are each season. `nba-real-XXX` (e.g. `nba-real-OKC`) picks a franchise. Since v0.54.0 the bot prints the record chase in full and, when a club opens a season over its wage budget, the roster's contracts |
 | Tactics lab | `dotnet run --project tools/TacticsLab -c Release -- 400` | Win % of every fixed offence and defence against an auto-coached opponent (6 matchups) |
+| Fit centres | `dotnet run --project tools/TacticsLab -c Release -- centers` | Each system's and scheme's fit centre and spread on the real NBA rosters (top-9 rotations, 4 worlds), to compare with `Systems.OffCenter` / `DefCenter` |
 | Screenshots | `HW_SCREENSHOT_DIR=shots dotnet test tests/Hardwood.Tests --filter ScreenshotTests` | 32 page screenshots at 1480 px |
 
 The careers write saves to the temp folder as `critic-<label>.hwsave`.

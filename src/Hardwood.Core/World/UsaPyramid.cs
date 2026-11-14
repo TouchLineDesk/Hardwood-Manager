@@ -853,7 +853,8 @@ public static class UsaPyramid
         var rng = new Rng((ulong)(on.Year * 7919 + up.Count));
         foreach (var t in up.Where(t => t.Id != world.ManagedClubId))
         {
-            var gone = t.Roster.Where(p => p.CurrentAbility < bar).OrderBy(p => p.CurrentAbility).Take(Math.Min(3, Math.Max(0, t.Roster.Count - 10))).ToList();
+            // Run 48: never this summer's own draft pick (the draft runs before promotion; a promoted club cut its pick).
+            var gone = t.Roster.Where(p => p.CurrentAbility < bar && !(p.Draft != null && p.RookieSeason >= on.Year)).OrderBy(p => p.CurrentAbility).Take(Math.Min(3, Math.Max(0, t.Roster.Count - 10))).ToList();
             foreach (var p in gone) { t.Roster.Remove(p); p.TeamId = null; p.Contract = null; top.FreeAgents.Add(p); }
             var signed = new List<Player>();
             void Sign(Player p, long salary)

@@ -202,7 +202,10 @@ public sealed partial class GameSession
         if (WorldDigest.Count == 0) return;
         // Review #12, Top fix 1 (run 42): during the regular season the headlines ride in the weekly results message
         // instead of a message of their own ("Around the world" was 53 of ~280 messages per three seasons).
-        if (!now && WeekResults.Count > 0 && WorldDigest.Count < 80) return;
+        // Run 48: also between a Monday's results and the next game (WeekResults is empty then), so a burst of news early
+        // in the week waits for next Monday's message instead of arriving on its own.
+        bool resultsComing = WeekResults.Count > 0 || (Employed && Phase == SessionPhase.RegularSeason);
+        if (!now && resultsComing && WorldDigest.Count < 80) return;
         if (!now && Today.DayNumber - LastDigest.DayNumber < 14 && WorldDigest.Count < 40) return; // fortnightly (review #4)
         var lines = WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : ""));
         Post($"Around the world: {WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}",

@@ -1,9 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.TacticsView"
              x:DataType="vm:TacticsViewModel">
-  <Grid RowDefinitions="Auto,Auto,*">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
       <StackPanel>
         <TextBlock Text="Tactics" Classes="h1" Margin="0"/>
@@ -15,8 +17,7 @@
       </StackPanel>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,0,0,10">
-      <!-- Offense and defense -->
+    <Grid Grid.Row="1" ColumnDefinitions="1.2*,*,*" Margin="0,0,0,10">
       <StackPanel Spacing="10" Margin="0,0,10,0">
         <Border Classes="panel">
           <StackPanel Spacing="6">
@@ -28,6 +29,9 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
+            <!-- The play diagram (Danny, #475, D60 A): the five starters run the system, the scheme defends it -->
+            <c:PlayDiagram System="{Binding DiagramSystem}" Scheme="{Binding DiagramScheme}" Labels="{Binding PlayLabels}" Accent="{Binding Accent}"
+                           MaxHeight="380" HorizontalAlignment="Center" Margin="0,4,0,0"/>
             <TextBlock Text="{Binding SelectedSystem.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <!-- Why it fits (roadmap 4): the ingredients, best and worst first -->
             <StackPanel Spacing="1" IsVisible="{Binding SelectedSystem.HasReasons}">
@@ -38,6 +42,8 @@
             </StackPanel>
           </StackPanel>
         </Border>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Spacing="10" Margin="0,0,10,0">
         <Border Classes="panel">
           <StackPanel Spacing="6">
             <TextBlock Text="Defensive scheme" Classes="h2" Margin="0"/>
@@ -49,6 +55,7 @@
               </ComboBox.ItemTemplate>
             </ComboBox>
             <TextBlock Text="{Binding SelectedScheme.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding DefenceNote}" FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource HwAccentBrush}"/>
             <!-- Why it fits (roadmap 4): the ingredients, best and worst first -->
             <StackPanel Spacing="1" IsVisible="{Binding SelectedScheme.HasReasons}">
               <TextBlock Text="Why this fit" FontSize="11.5" FontWeight="SemiBold" Margin="0,2,0,0"/>
@@ -64,46 +71,121 @@
           </StackPanel>
         </Border>
       </StackPanel>
-
-      <!-- Sliders -->
-      <Border Grid.Column="1" Classes="panel" Margin="0,0,10,0">
-        <StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Fine-tuning" Classes="h2" Margin="0"/><Button Grid.Column="1" Content="Reset" Command="{Binding ResetSlidersCommand}"/></Grid>
-          <StackPanel>
-            <TextBlock Text="Pace" FontWeight="SemiBold"/>
-            <TextBlock Text="{Binding PaceText}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
-            <Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Three-point emphasis" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding ThreeText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Offensive glass" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding CrashText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Defensive aggression" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding AggressionText}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding Aggression}"/>
-          </StackPanel>
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Star usage" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding StarText2}" Classes="muted"/></Grid>
-            <Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}"/>
-          </StackPanel>
-        </StackPanel>
-      </Border>
-
-      <!-- Opponent and presets -->
       <StackPanel Grid.Column="2" Spacing="10">
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding BoardTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+            <StackPanel Spacing="6" IsVisible="{Binding HasOpponent}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding OurAttack}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <Border Grid.Column="1" Background="{Binding OurAttackBrush}" CornerRadius="10" Padding="8,2" Margin="6,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding OurAttackEdge}" FontSize="11" FontWeight="Bold" Foreground="#0E1116"/>
+                </Border>
+              </Grid>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding TheirAttack}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <Border Grid.Column="1" Background="{Binding TheirAttackBrush}" CornerRadius="10" Padding="8,2" Margin="6,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding TheirAttackEdge}" FontSize="11" FontWeight="Bold" Foreground="#0E1116"/>
+                </Border>
+              </Grid>
+              <TextBlock Text="Starting fives" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,0"/>
+              <ItemsControl ItemsSource="{Binding Board}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:MatchupRow">
+                    <Grid ColumnDefinitions="30,*,52,*" Margin="0,2">
+                      <TextBlock Text="{Binding Pos}" FontWeight="Bold" VerticalAlignment="Center" FontSize="11.5" Foreground="{StaticResource HwMutedBrush}"/>
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="{Binding Ours}" FontSize="11.5" TextWrapping="Wrap"/>
+                        <Border Height="5" Width="{Binding OursWidth}" HorizontalAlignment="Left" CornerRadius="2" Background="{StaticResource HwAccentBrush}"/>
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding EdgeText}" Foreground="{Binding EdgeBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      <StackPanel Grid.Column="3" Spacing="2">
+                        <TextBlock Text="{Binding Theirs}" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Right" HorizontalAlignment="Right"/>
+                        <Border Height="5" Width="{Binding TheirsWidth}" HorizontalAlignment="Right" CornerRadius="2" Background="#58A6FF"/>
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
         <Border Classes="panel">
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding OpponentHeadline}" Classes="h2" Margin="0"/>
             <TextBlock Text="{Binding ScoutingReport}" TextWrapping="Wrap" FontSize="12"/>
-            <Button Content="Use the assistant's game plan" Command="{Binding UseSuggestionCommand}"/>
+            <Button Command="{Binding UseSuggestionCommand}"><TextBlock Text="Use the assistant's game plan" TextWrapping="Wrap"/></Button>
             <CheckBox IsChecked="{Binding AssistantPlans}" ToolTip.Tip="Before every game the assistant sets the system, scheme and star matchup from his scouting report. Your roles, sliders and presets stay yours."><TextBlock Text="Assistant plans every game" TextWrapping="Wrap" FontSize="12"/></CheckBox>
             <CheckBox IsChecked="{Binding HalftimeAdjust}" ToolTip.Tip="In games you don't watch live, the assistant reads what the other bench is really running at halftime and switches to the counter for the second half. Your saved tactics don't change."><TextBlock Text="Halftime read (games you don't watch)" TextWrapping="Wrap" FontSize="12"/></CheckBox>
           </StackPanel>
         </Border>
+      </StackPanel>
+    </Grid>
+
+    <!-- Suggested setups as cards (Danny, #475, D60 A) -->
+    <StackPanel Grid.Row="2" Spacing="4" Margin="0,0,0,10">
+      <TextBlock Text="Suggested setups" Classes="h2" Margin="0"/>
+      <ItemsControl ItemsSource="{Binding Setups}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:SetupCard">
+            <Button Classes="card" Command="{Binding ApplyCommand}" Width="236" Margin="0,0,8,8" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+              <Border Padding="10,8" BorderThickness="3,0,0,0" BorderBrush="{Binding ScoreBrush}" Background="{StaticResource HwPanelBrush}" CornerRadius="6" MinHeight="150">
+                <StackPanel Spacing="3">
+                  <Border IsVisible="{Binding HasBadge}" Background="{StaticResource HwAccentBrush}" CornerRadius="8" Padding="6,1" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding Badge}" FontSize="9.5" FontWeight="Bold" Foreground="#0E1116" LetterSpacing="0.6"/>
+                  </Border>
+                  <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13.5" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding Plan}" FontSize="11.5" Foreground="{StaticResource HwAccentBrush}" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                    <TextBlock Text="{Binding FitStars}" FontSize="12" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Height="5" Width="{Binding ScoreWidth}" Margin="8,0,0,0" HorizontalAlignment="Left" CornerRadius="2" Background="{Binding ScoreBrush}" VerticalAlignment="Center"/>
+                  </Grid>
+                  <TextBlock Text="{Binding EdgeText}" IsVisible="{Binding HasEdge}" Foreground="{Binding EdgeBrush}" FontSize="11" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Pitch}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                </StackPanel>
+              </Border>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+    <!-- Fine-tuning as gauges (Danny, #475, D60 A), with presets beside -->
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+      <Border Classes="panel" Margin="0,0,10,0">
+        <StackPanel Spacing="4">
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Fine-tuning" Classes="h2" Margin="0"/><Button Grid.Column="1" Content="Reset" Command="{Binding ResetSlidersCommand}"/></Grid>
+          <WrapPanel Orientation="Horizontal">
+          <StackPanel Width="150" Margin="0,0,10,6">
+            <TextBlock Text="Pace" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center"/>
+            <c:Gauge Value="{Binding Pace}" Minimum="88" Maximum="110" Word="{Binding PaceWord}" Number="{Binding PaceNumber}" HorizontalAlignment="Center" Width="120"/>
+            <Slider Minimum="88" Maximum="110" Value="{Binding Pace}" Margin="0,-8,0,0"/>
+          </StackPanel>
+          <StackPanel Width="150" Margin="0,0,10,6">
+            <TextBlock Text="Three-point emphasis" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center"/>
+            <c:Gauge Value="{Binding ThreeEmphasis}" Minimum="0" Maximum="100" Word="{Binding ThreeText}" Number="{Binding ThreeNumber}" HorizontalAlignment="Center" Width="120"/>
+            <Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}" Margin="0,-8,0,0"/>
+          </StackPanel>
+          <StackPanel Width="150" Margin="0,0,10,6">
+            <TextBlock Text="Offensive glass" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center"/>
+            <c:Gauge Value="{Binding CrashGlass}" Minimum="0" Maximum="100" Word="{Binding CrashText}" Number="{Binding CrashNumber}" HorizontalAlignment="Center" Width="120"/>
+            <Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}" Margin="0,-8,0,0"/>
+          </StackPanel>
+          <StackPanel Width="150" Margin="0,0,10,6">
+            <TextBlock Text="Defensive aggression" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center"/>
+            <c:Gauge Value="{Binding Aggression}" Minimum="0" Maximum="100" Word="{Binding AggressionText}" Number="{Binding AggressionNumber}" HorizontalAlignment="Center" Width="120"/>
+            <Slider Minimum="0" Maximum="100" Value="{Binding Aggression}" Margin="0,-8,0,0"/>
+          </StackPanel>
+          <StackPanel Width="150" Margin="0,0,10,6">
+            <TextBlock Text="Star usage" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center"/>
+            <c:Gauge Value="{Binding StarUsage}" Minimum="0" Maximum="100" Word="{Binding StarText2}" Number="{Binding StarNumber}" HorizontalAlignment="Center" Width="120"/>
+            <Slider Minimum="0" Maximum="100" Value="{Binding StarUsage}" Margin="0,-8,0,0"/>
+          </StackPanel>
+          </WrapPanel>
+          <TextBlock Text="{Binding PaceText}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <StackPanel Grid.Column="1" Width="330">
         <Border Classes="panel">
           <StackPanel Spacing="6">
             <TextBlock Text="Presets" Classes="h2" Margin="0"/>
@@ -124,7 +206,7 @@
     </Grid>
 
     <!-- Roles -->
-    <DockPanel Grid.Row="2">
+    <DockPanel Grid.Row="4">
       <TextBlock DockPanel.Dock="Top" Text="Roles" Classes="h2" Margin="0,0,0,4"/>
       <DataGrid ItemsSource="{Binding RoleRows}" CanUserSortColumns="False" RowHeight="NaN">
         <DataGrid.Columns>
@@ -151,4 +233,5 @@
       </DataGrid>
     </DockPanel>
   </Grid>
+  </ScrollViewer>
 </UserControl>

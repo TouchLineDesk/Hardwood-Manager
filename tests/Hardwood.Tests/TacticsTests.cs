@@ -67,6 +67,8 @@ public class TacticsTests
         var league = NewLeague();
         var (a, b) = (league.Teams[0], league.Teams[1]);
         a.Tactic.Auto = false; b.Tactic.Auto = false;
+        // The halftime read (on by default) swaps in the counter for the second half; this test measures the systems themselves.
+        a.Tactic.HalftimeAdjust = false; b.Tactic.HalftimeAdjust = false;
 
         a.Tactic.System = OffensiveSystem.PaceAndSpace;
         var space = Play(a, b, 40, league.Rules);
