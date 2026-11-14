@@ -33,6 +33,7 @@
                   <TextBlock Text="{Binding NextGame}" FontWeight="SemiBold" FontSize="15"/>
                   <TextBlock Text="{Binding NextDetail}" Classes="muted" FontSize="12"/>
                   <TextBlock Text="{Binding Scouting}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="300" Margin="0,4,0,0"/>
+                  <Button Classes="link" Content="Pre-game show" Command="{Binding StudioCommand}" IsVisible="{Binding HasOpponent}" Margin="0,4,0,0" ToolTip.Tip="The HSN desk previews the game"/>
                 </StackPanel>
                 <c:TeamLogo Grid.Column="1" Team="{Binding Opponent}" Width="56" Height="56" Margin="12,0,0,0" VerticalAlignment="Center"/>
               </Grid>

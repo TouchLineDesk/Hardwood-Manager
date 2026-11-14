@@ -54,6 +54,7 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private string _subline = "";
     [ObservableProperty] private Color _glow;
     [ObservableProperty] private Team? _opponent;
+    partial void OnOpponentChanged(Team? value) => OnPropertyChanged(nameof(HasOpponent));
     [ObservableProperty] private string _nextGame = "";
     [ObservableProperty] private string _nextDetail = "";
     [ObservableProperty] private string _scouting = "";
@@ -225,6 +226,8 @@ public sealed partial class HomeViewModel : PageViewModel
     private static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
     [RelayCommand] private void Go(string page) => Shell.Navigate(page);
+    [RelayCommand] private void Studio() => Shell.ShowStudio();
+    public bool HasOpponent => Opponent != null;
 }
 
 public static class HomeConverters

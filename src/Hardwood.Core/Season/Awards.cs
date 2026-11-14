@@ -70,11 +70,11 @@ public sealed class AwardsEngine
     private double TeamWinPct(int teamId) => _standings[_league.TeamById(teamId)].WinPct;
     private int TeamWins(int teamId) => _standings[_league.TeamById(teamId)].Wins;
 
-    private static double TrueShooting(PlayerSeasonStats s) =>
+    internal static double TrueShooting(PlayerSeasonStats s) =>
         s.FGA + 0.44 * s.FTA <= 0 ? 0 : s.Points / (2.0 * (s.FGA + 0.44 * s.FTA));
 
     /// <summary>Production per game adjusted for efficiency.</summary>
-    private static double Production(PlayerSeasonStats s)
+    internal static double Production(PlayerSeasonStats s)
     {
         if (s.Games == 0) return 0;
         double per = (s.Points + 1.2 * (s.OReb + s.DReb) + 1.5 * s.Assists + 1.8 * s.Steals + 1.8 * s.Blocks - 1.2 * s.Turnovers) / (double)s.Games;

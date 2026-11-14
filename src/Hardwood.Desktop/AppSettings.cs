@@ -26,6 +26,9 @@ public sealed class AppSettings
     /// <summary>Player cards show the player in his club's jersey (#351).</summary>
     public bool CardJerseys { get; set; } = true;
 
+    /// <summary>The pre-game studio show before a game you watch (#446); "Skip the show" turns it off.</summary>
+    public bool StudioShow { get; set; } = true;
+
     /// <summary>Let the game draw player card portraits automatically.</summary>
     public bool AutoPortraits { get; set; } = true;
 

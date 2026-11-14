@@ -33,8 +33,9 @@ public class LayoutCheckTests
         };
     }
 
-    private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null)
+    private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null, StudioShowViewModel? studio = null)
     {
+        if (studio != null) yield return ("Studio show", v => { v.CurrentPage = studio; });
         if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); live.ShowBreakCard(final: false); });
         if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
@@ -221,6 +222,8 @@ public class LayoutCheckTests
                 session.League.Rules, 77, session.Today);
             for (int i = 0; i < 115; i++) game.Step();
             var live = new LiveGameViewModel(vm, game, new());
+            // Danny's pre-game studio show (#446) for the same side game.
+            var studio = new StudioShowViewModel(vm, game, new());
 
             var sizes = new List<(int width, bool guide, double scale, bool gated)>
             {
@@ -236,7 +239,7 @@ public class LayoutCheckTests
                 window.Width = width;
                 window.ApplyScale(scale);
                 vm.Guide.On = guide;
-                foreach (var (name, open) in Pages(vm, live))
+                foreach (var (name, open) in Pages(vm, live, studio))
                 {
                     open(vm);
                     try { Settle(window); }
