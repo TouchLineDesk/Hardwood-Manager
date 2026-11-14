@@ -36,7 +36,8 @@ public class ControlGalleryTests
         galaxy.p.CurrentAbility = 185;
         picked.Add(galaxy);
         foreach (var (p, t) in picked)
-            cards.Children.Add(new PlayerCard { Player = p, Team = t, Margin = new Thickness(4), Footer = $"{Core.Model.Tier.ForCa(p.CurrentAbility).Name} · {p.Age(new DateOnly(2026, 10, 1))} yrs" });
+            cards.Children.Add(new PlayerCard { Player = p, Team = t, Margin = new Thickness(4), Footer = $"{p.Age(new DateOnly(2026, 10, 1))} yrs · ability {p.CurrentAbility}" });
+        foreach (var (p, t) in picked.Take(3)) { var c = new PlayerCard { Player = p, Team = t, Margin = new Thickness(4) }; PlayerCard.Animate = false; c.Flip(); PlayerCard.Animate = true; cards.Children.Add(c); }
         panel.Children.Add(cards);
 
         var compact = new WrapPanel();

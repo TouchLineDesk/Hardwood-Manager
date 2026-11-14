@@ -12,4 +12,10 @@ public partial class RosterView : UserControl
     {
         if (DataContext is RosterViewModel vm && vm.Selected != null) vm.Open(vm.Selected);
     }
+
+    // The collector card flips on a click (D58 B); a double-click opens his page.
+    private void OnCardDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: PlayerRow row }) row.Open?.Execute(null);
+    }
 }

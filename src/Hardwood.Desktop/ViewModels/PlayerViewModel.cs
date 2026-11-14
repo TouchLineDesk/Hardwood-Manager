@@ -92,8 +92,8 @@ public sealed partial class PlayerViewModel : PageViewModel
         var p = Player; var s = Session;
         var team = p.TeamId is { } id ? s.FindTeam(id)!.FullName : "Free agent";
         Headline = $"{p.PrimaryPosition}{(p.SecondaryPosition is { } sp ? "/" + sp : "")} · {team}";
-        var tier = Tier.ForCa(p.CurrentAbility);
-        TierLine = tier.Next is { } nx ? $"{tier.Name} card · {nx.MinCa - p.CurrentAbility} ability from {nx.Name}" : $"{tier.Name} card · the top tier";
+        // The collector card (D58 B) has no tier label, so the header names his skills instead of a card tier.
+        TierLine = string.Join(" · ", CollectorCard.Badges(p, Scouting.Knowledge(s.HumanTeam, p))) + "  ·  click his card to flip it";
         double k = Scouting.Knowledge(s.HumanTeam, p);
         Bio = $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {Scouting.Potential(p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
         Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M per year, {(c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} remaining")}{(c.TeamOption ? ", team option" : "")}" : "No contract";
