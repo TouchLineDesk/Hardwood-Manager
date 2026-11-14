@@ -116,6 +116,31 @@
   <Style Selector="Button.link:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent"/>
   </Style>
+  <!-- Schedule & Results filter chips (#529): a pill with the filter's name and record; the chosen one in the accent colour. -->
+  <Style Selector="Button.filter">
+    <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="14"/>
+    <Setter Property="Padding" Value="12,5"/>
+    <Setter Property="Foreground" Value="{StaticResource HwTextBrush}"/>
+  </Style>
+  <Style Selector="Button.filter:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/>
+  </Style>
+  <Style Selector="Button.filter.on">
+    <Setter Property="Background" Value="{DynamicResource HwAccentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/>
+    <Setter Property="Foreground" Value="#111"/>
+  </Style>
+  <Style Selector="Button.filter.on:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource HwAccentBrush}"/>
+    <Setter Property="Foreground" Value="#111"/>
+  </Style>
+  <Style Selector="Button.filter TextBlock.filterRecord">
+    <Setter Property="Opacity" Value="0.75"/>
+  </Style>
   <Style Selector="DataGrid">
     <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
     <Setter Property="RowBackground" Value="{StaticResource HwPanelBrush}"/>

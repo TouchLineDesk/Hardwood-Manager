@@ -188,6 +188,12 @@ public class ScreenshotTests
             }
             vm.Navigate("Schedule & Results");
             var sched = (ScheduleViewModel)vm.CurrentPage!;
+            // Danny's #529: the filter chips, the H2H column and the head-to-head card; then the last filter on its own.
+            sched.Selected = sched.Games.LastOrDefault(g => g.Played) ?? sched.Selected;
+            Snap(window, Path.Combine(dir, $"{n++:00}-schedule-h2h.png"));
+            sched.SetFilter(sched.Filters.Last().Name);
+            Snap(window, Path.Combine(dir, $"{n++:00}-schedule-filtered.png"));
+            sched.SetFilter(Hardwood.Core.Season.ScheduleFilter.All);
             sched.OpenBox(sched.Games.First(g => g.Played));
             Snap(window, Path.Combine(dir, $"{n++:00}-boxscore.png"));
 

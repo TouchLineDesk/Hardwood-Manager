@@ -15,7 +15,7 @@ public partial class ScheduleView : UserControl
         // With it, the top performer column gives up a little room so the table still fits at 1480 px with the assistant.
         var eventColumn = games.Columns.First(c => c.Header as string == "Event");
         var topColumn = games.Columns.First(c => c.Header as string == "Top performer");
-        void Apply(ScheduleViewModel vm) { eventColumn.IsVisible = vm.ShowEvent; topColumn.MinWidth = vm.ShowEvent ? 214 : 250; }
+        void Apply(ScheduleViewModel vm) { eventColumn.IsVisible = vm.ShowEvent; topColumn.MinWidth = vm.ShowEvent ? 232 : 250; }
         DataContextChanged += (_, _) =>
         {
             if (DataContext is not ScheduleViewModel vm) return;
@@ -29,6 +29,11 @@ public partial class ScheduleView : UserControl
             Side.Width = stacked ? double.NaN : 300;
             Scores.MaxHeight = stacked ? 130 : 300;
         };
+    }
+
+    private void OnFilterClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is ScheduleViewModel vm && sender is Button { Tag: string name }) vm.SetFilter(name);
     }
 
     private void OnRowDoubleTapped(object? sender, TappedEventArgs e)
