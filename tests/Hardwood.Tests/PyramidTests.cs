@@ -261,8 +261,10 @@ public class PyramidTests
         Assert.Equal(bos.Division, nyk.Division);
         Assert.Equal("Atlantic", bos.Division);
         Assert.Contains(nabl.Teams, t => t.City == "Los Angeles" && t.Division == "Pacific");
-        Assert.All(nabl.Teams.Where(t => t.Conference == Conference.East), t => Assert.Contains(t.Division, UsaPyramid.EastDivisions));
-        Assert.All(nabl.Teams.Where(t => t.Conference == Conference.West), t => Assert.Contains(t.Division, UsaPyramid.WestDivisions));
+        // The made-up world's names, asked for explicitly: `EastDivisions` follows the global name brand, which a real-world
+        // test running in parallel can flip (run 43's CI caught it here, as run 41's did elsewhere).
+        Assert.All(nabl.Teams.Where(t => t.Conference == Conference.East), t => Assert.Contains(t.Division, UsaPyramid.DivisionNames(Conference.East, real: false)));
+        Assert.All(nabl.Teams.Where(t => t.Conference == Conference.West), t => Assert.Contains(t.Division, UsaPyramid.DivisionNames(Conference.West, real: false)));
     }
 
     [Fact]
