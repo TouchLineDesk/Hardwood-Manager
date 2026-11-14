@@ -39,12 +39,12 @@ public static class Tactics
     private static readonly double[] One = { 1, 1, 1, 1, 1 };
     public static double[] SystemZoneMix(OffensiveSystem s) => s switch
     {
-        OffensiveSystem.PickAndRoll => new[] { 1.35, 1.0, 0.8, 1.05, 1.0 },   // review #4: rolls and kick-outs, fewer long twos
+        OffensiveSystem.PickAndRoll => new[] { 1.4, 1.0, 0.72, 1.05, 1.0 },   // run 48: was 1.35 / 0.8 at the rim and long twos; review #4: rolls and kick-outs, fewer long twos
         OffensiveSystem.Motion => new[] { 1.0, 0.95, 0.85, 1.3, 1.05 },
-        OffensiveSystem.PostCentric => new[] { 1.3, 1.3, 0.85, 0.85, 0.8 }, // run 19 (#255): fewer long twos, a few more kick-outs once threes were tuned
-        OffensiveSystem.PaceAndSpace => new[] { 1.05, 0.85, 0.75, 1.18, 1.15 }, // review #4: was a near-free 6-7 win-% edge
-        OffensiveSystem.Balanced => new[] { 1.03, 1.0, 0.92, 1.04, 1.0 }, // review #4: a touch more modern than the raw average
-        OffensiveSystem.Isolation => new[] { 1.18, 1.1, 0.95, 0.9, 1.0 },  // review #4: drives over long twos (it was the weakest again)
+        OffensiveSystem.PostCentric => new[] { 1.3, 1.3, 0.75, 0.85, 0.8 }, // run 48: long twos 0.85 -> 0.75 (the weakest on real rosters); run 19 (#255): fewer long twos, a few more kick-outs once threes were tuned
+        OffensiveSystem.PaceAndSpace => new[] { 1.03, 0.85, 0.78, 1.12, 1.08 }, // run 48 (real rosters): was 1.05, 0.85, 0.75, 1.18, 1.15, the best by 4+; review #4: a near-free 6-7 win-% edge before that
+        OffensiveSystem.Balanced => new[] { 1.06, 0.98, 0.78, 1.08, 1.03 }, // run 48 (real rosters): fewer long twos, was 1.03, 1.0, 0.92, 1.04, 1.0 (8+ behind)
+        OffensiveSystem.Isolation => new[] { 1.18, 1.1, 0.82, 0.9, 1.0 },  // run 48: long twos 0.95 -> 0.82; review #4: drives over long twos (it was the weakest again)
         _ => One,
     };
 
@@ -84,18 +84,18 @@ public static class Tactics
     /// </summary>
     public static double Matchup(OffensiveSystem o, DefensiveScheme d) => (o, d) switch
     {
-        (OffensiveSystem.PickAndRoll, DefensiveScheme.SwitchEverything) => -0.05,
+        (OffensiveSystem.PickAndRoll, DefensiveScheme.SwitchEverything) => -0.025, // run 48: -0.05 left it 10 points behind on real rosters
         (OffensiveSystem.PickAndRoll, DefensiveScheme.Zone23) => 0.03,
-        (OffensiveSystem.PickAndRoll, DefensiveScheme.Drop) => 0.03,
-        (OffensiveSystem.Motion, DefensiveScheme.SwitchEverything) => 0.03,
-        (OffensiveSystem.Motion, DefensiveScheme.Zone23) => 0.04,
-        (OffensiveSystem.PostCentric, DefensiveScheme.SwitchEverything) => 0.05,
-        (OffensiveSystem.PostCentric, DefensiveScheme.Zone23) => -0.05,
-        (OffensiveSystem.PostCentric, DefensiveScheme.Drop) => -0.03,
-        (OffensiveSystem.PaceAndSpace, DefensiveScheme.Zone23) => 0.04,
+        (OffensiveSystem.PickAndRoll, DefensiveScheme.Drop) => 0.04,
+        (OffensiveSystem.Motion, DefensiveScheme.SwitchEverything) => 0.04, // run 48: was 0.03
+        (OffensiveSystem.Motion, DefensiveScheme.Zone23) => 0.05, // run 48: counters pay a little more (the halftime read), was 0.04
+        (OffensiveSystem.PostCentric, DefensiveScheme.SwitchEverything) => 0.06, // run 48: was 0.05
+        (OffensiveSystem.PostCentric, DefensiveScheme.Zone23) => -0.035, // run 48: was -0.05
+        (OffensiveSystem.PostCentric, DefensiveScheme.Drop) => -0.02, // run 48: was -0.03
+        (OffensiveSystem.PaceAndSpace, DefensiveScheme.Zone23) => 0.05, // run 48: was 0.04
         (OffensiveSystem.PaceAndSpace, DefensiveScheme.Drop) => -0.02,
-        (OffensiveSystem.Isolation, DefensiveScheme.SwitchEverything) => 0.03,
-        (OffensiveSystem.Isolation, DefensiveScheme.Zone23) => -0.04,
+        (OffensiveSystem.Isolation, DefensiveScheme.SwitchEverything) => 0.04, // run 48: was 0.03
+        (OffensiveSystem.Isolation, DefensiveScheme.Zone23) => -0.03, // run 48: was -0.04
         (OffensiveSystem.Isolation, DefensiveScheme.Drop) => 0.02,
         _ => 0,
     };

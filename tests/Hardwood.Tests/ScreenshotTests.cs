@@ -122,6 +122,18 @@ public class ScreenshotTests
                 Snap(window, Path.Combine(dir, $"{n++:00}-facilities-proposals.png"));
             }
             // The inbox clean-up (#243): read messages deleted, "Delete these" armed on a filter, auto-clear on.
+            // The Tactics overhaul (#475, D60 A): the play diagram mid-play, then the setup cards and gauges further down.
+            vm.Navigate("Tactics");
+            foreach (var pd in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Hardwood.Desktop.Controls.PlayDiagram>()) { pd.Animate = false; pd.Phase = 1.6; }
+            Snap(window, Path.Combine(dir, $"{n++:00}-tactics-play.png"));
+            foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                         .Where(x => Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<TacticsView>(x) != null).Take(1))
+            {
+                sv.Offset = new Avalonia.Vector(0, 560);
+                Snap(window, Path.Combine(dir, $"{n++:00}-tactics-setups.png"));
+                sv.ScrollToEnd();
+                Snap(window, Path.Combine(dir, $"{n++:00}-tactics-roles.png"));
+            }
             vm.Navigate("Inbox");
             var inbox = (InboxViewModel)vm.CurrentPage!;
             if (inbox.Items.Count > 1) inbox.Selected = inbox.Items[1];

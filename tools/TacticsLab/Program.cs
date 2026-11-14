@@ -1,5 +1,21 @@
 using Hardwood.Core; using Hardwood.Core.Engine; using Hardwood.Core.Generation; using Hardwood.Core.Model; using Hardwood.Core.World;
 // Tactics lab across several matchups: each option for team A vs B on auto; win % averaged over matchups.
+if (args.Length > 0 && args[0] == "centers")
+{
+    // Fit centres on real rosters (run 48): mean raw score of each NBA club's top-9 rotation, and 4 standard deviations.
+    var offRaw = new Dictionary<OffensiveSystem, List<double>>(); var defRaw = new Dictionary<DefensiveScheme, List<double>>();
+    foreach (ulong seed in new ulong[] { 11, 12, 13, 14 })
+        foreach (var t in Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed).League.Teams)
+        {
+            var rot = CoachAi.Rotation(t, null);
+            foreach (var s in Enum.GetValues<OffensiveSystem>()) (offRaw.TryGetValue(s, out var l) ? l : offRaw[s] = new()).Add(Systems.Raw(s, rot));
+            foreach (var d in Enum.GetValues<DefensiveScheme>()) (defRaw.TryGetValue(d, out var l) ? l : defRaw[d] = new()).Add(Systems.Raw(d, rot));
+        }
+    static (double m, double sd4) Ms(List<double> l) { double m = l.Average(); return (m, 4 * Math.Sqrt(l.Average(x => (x - m) * (x - m)))); }
+    foreach (var (k, l) in offRaw) { var (m, s4) = Ms(l); Console.WriteLine($"O {k,-14} centre {m:F2} spread {s4:F2}"); }
+    foreach (var (k, l) in defRaw) { var (m, s4) = Ms(l); Console.WriteLine($"D {k,-14} centre {m:F2} spread {s4:F2}"); }
+    return;
+}
 var sim = new GameSimulator();
 var results = new Dictionary<string, List<double>>();
 int nGames = int.Parse(args.Length > 0 ? args[0] : "160");

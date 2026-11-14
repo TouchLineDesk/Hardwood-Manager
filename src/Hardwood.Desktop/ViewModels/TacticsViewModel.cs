@@ -55,6 +55,40 @@ public sealed class StopperOption
     public override string ToString() => Label;
 }
 
+/// <summary>A suggested setup as a card (Danny, #475, D60 A): what it is, how well the roster fits it, and Apply.</summary>
+public sealed class SetupCard
+{
+    public required TacticSetup Setup { get; init; }
+    public required TacticsViewModel Owner { get; init; }
+    public string Title => Setup.Title;
+    public string Pitch => Setup.Pitch;
+    public string Plan => $"{Systems.Name(Setup.System)} · {Systems.Name(Setup.Scheme)}";
+    public string FitStars => TacticsViewModel.StarText(Setup.Score * 5);
+    public bool Recommended => Setup.Recommended;
+    public bool Active { get; init; }
+    public string Badge => Active ? "IN USE" : Recommended ? "ASSISTANT'S PICK" : "";
+    public bool HasBadge => Badge.Length > 0;
+    public string EdgeText => Setup.Edge >= 0.02 ? "Beats their plan" : Setup.Edge <= -0.02 ? "Plays into their hands" : "";
+    public bool HasEdge => EdgeText.Length > 0;
+    public Avalonia.Media.IBrush EdgeBrush => new Avalonia.Media.SolidColorBrush(Setup.Edge >= 0 ? Controls.StatChip.Good : Controls.StatChip.Bad);
+    public Avalonia.Media.IBrush ScoreBrush => new Avalonia.Media.SolidColorBrush(Setup.Score >= 0.5 ? Controls.StatChip.Good : Setup.Score >= 0.35 ? Controls.StatChip.Warn : Controls.StatChip.Bad);
+    public double ScoreWidth => Math.Max(4, Setup.Score * 150);
+    public IRelayCommand ApplyCommand => new RelayCommand(() => Owner.ApplySetup(Setup));
+}
+
+/// <summary>One line of the matchup board: our starter against theirs at a position.</summary>
+public sealed class MatchupRow
+{
+    public required PositionMatchup M { get; init; }
+    public string Pos => M.Position.ToString();
+    public string Ours => M.Ours?.Name ?? "—";
+    public string Theirs => M.Theirs?.Name ?? "—";
+    public double OursWidth => Math.Max(4, (M.Ours?.CurrentAbility ?? 0) / 200.0 * 120);
+    public double TheirsWidth => Math.Max(4, (M.Theirs?.CurrentAbility ?? 0) / 200.0 * 120);
+    public string EdgeText => M.Edge >= 8 ? "◀ edge" : M.Edge <= -8 ? "edge ▶" : "even";
+    public Avalonia.Media.IBrush EdgeBrush => new Avalonia.Media.SolidColorBrush(M.Edge >= 8 ? Controls.StatChip.Good : M.Edge <= -8 ? Controls.StatChip.Bad : Controls.StatChip.Muted);
+}
+
 /// <summary>
 /// The Tactics page (decisions #58-61): offensive system and defensive scheme with roster fit, the fine-tuning sliders,
 /// player roles with suitability stars, who guards their star and whether to double him, saved presets with a late-game
@@ -93,11 +127,11 @@ public sealed partial class TacticsViewModel : PageViewModel
     public string CrashText => Describe(CrashGlass, "Get back", "Balanced", "Crash the glass");
     public string AggressionText => Describe(Aggression, "Contain", "Balanced", "Gamble");
     public string StarText2 => Describe(StarUsage, "Share the ball", "Balanced", "Feed the stars");
-    partial void OnPaceChanged(double value) { OnPropertyChanged(nameof(PaceText)); ApplySliders(); }
-    partial void OnThreeEmphasisChanged(double value) { OnPropertyChanged(nameof(ThreeText)); ApplySliders(); }
-    partial void OnCrashGlassChanged(double value) { OnPropertyChanged(nameof(CrashText)); ApplySliders(); }
-    partial void OnAggressionChanged(double value) { OnPropertyChanged(nameof(AggressionText)); ApplySliders(); }
-    partial void OnStarUsageChanged(double value) { OnPropertyChanged(nameof(StarText2)); ApplySliders(); }
+    partial void OnPaceChanged(double value) { OnPropertyChanged(nameof(PaceText)); OnPropertyChanged(nameof(PaceWord)); OnPropertyChanged(nameof(PaceNumber)); ApplySliders(); }
+    partial void OnThreeEmphasisChanged(double value) { OnPropertyChanged(nameof(ThreeText)); OnPropertyChanged(nameof(ThreeNumber)); ApplySliders(); }
+    partial void OnCrashGlassChanged(double value) { OnPropertyChanged(nameof(CrashText)); OnPropertyChanged(nameof(CrashNumber)); ApplySliders(); }
+    partial void OnAggressionChanged(double value) { OnPropertyChanged(nameof(AggressionText)); OnPropertyChanged(nameof(AggressionNumber)); ApplySliders(); }
+    partial void OnStarUsageChanged(double value) { OnPropertyChanged(nameof(StarText2)); OnPropertyChanged(nameof(StarNumber)); ApplySliders(); }
     private static string Describe(double v, string low, string mid, string high) => v < 35 ? low : v > 65 ? high : mid;
 
     public ObservableCollection<RoleRow> RoleRows { get; } = new();
@@ -126,6 +160,77 @@ public sealed partial class TacticsViewModel : PageViewModel
     [ObservableProperty] private string _fitSummary = "";
 
     private Tactic Tac => Session.HumanTeam.Tactic;
+
+    // The overhaul (Danny, #475, D60 A): the play diagram, suggested setups, gauges and the matchup board.
+    public ObservableCollection<SetupCard> Setups { get; } = new();
+    public ObservableCollection<MatchupRow> Board { get; } = new();
+    [ObservableProperty] private IReadOnlyList<string> _playLabels = Array.Empty<string>();
+    [ObservableProperty] private OffensiveSystem _diagramSystem;
+    [ObservableProperty] private DefensiveScheme _diagramScheme;
+    [ObservableProperty] private string _defenceNote = "";
+    public Avalonia.Media.Color Accent => Bright(Avalonia.Media.Color.Parse(Session.HumanTeam.PrimaryColor));
+    [ObservableProperty] private bool _hasOpponent;
+    [ObservableProperty] private string _boardTitle = "";
+    [ObservableProperty] private string _ourAttack = "";
+    [ObservableProperty] private string _theirAttack = "";
+    [ObservableProperty] private string _ourAttackEdge = "";
+    [ObservableProperty] private string _theirAttackEdge = "";
+    [ObservableProperty] private Avalonia.Media.IBrush _ourAttackBrush = Avalonia.Media.Brushes.Gray;
+    [ObservableProperty] private Avalonia.Media.IBrush _theirAttackBrush = Avalonia.Media.Brushes.Gray;
+    public string PaceWord => Pace < 95 ? "Slow" : Pace > 103 ? "Fast" : "Normal";
+    public string PaceNumber => $"{Pace:0} poss.";
+    public string ThreeNumber => $"{ThreeEmphasis:0}";
+    public string CrashNumber => $"{CrashGlass:0}";
+    public string AggressionNumber => $"{Aggression:0}";
+    public string StarNumber => $"{StarUsage:0}";
+
+    private static Avalonia.Media.Color Bright(Avalonia.Media.Color c)
+    {
+        double lum = (0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B) / 255;
+        if (lum >= 0.3) return c;
+        double t = Math.Min(0.6, 0.3 - lum + 0.3);
+        return Avalonia.Media.Color.FromRgb((byte)(c.R + (255 - c.R) * t), (byte)(c.G + (255 - c.G) * t), (byte)(c.B + (255 - c.B) * t));
+    }
+
+    private static string EdgeWords(double edge) => edge >= 0.03 ? "Big edge" : edge >= 0.015 ? "Edge" : edge <= -0.03 ? "Big disadvantage" : edge <= -0.015 ? "Disadvantage" : "Even";
+    private static Avalonia.Media.IBrush EdgeBrushOf(double edge) => new Avalonia.Media.SolidColorBrush(edge >= 0.015 ? Controls.StatChip.Good : edge <= -0.015 ? Controls.StatChip.Bad : Controls.StatChip.Muted);
+
+    /// <summary>The diagram, the cards and the board follow the current tactic.</summary>
+    private void RefreshOverhaul()
+    {
+        var team = Session.HumanTeam;
+        var next = Session.NextMyGame;
+        var on = next?.Date ?? Session.Today;
+        DiagramSystem = Tac.System; DiagramScheme = Tac.Scheme;
+        DefenceNote = PlayBook.DefenceNote(Tac.Scheme);
+        PlayLabels = TacticSetups.StartingFive(team, on).Select(p => p.LastName).ToList();
+        Setups.Clear();
+        foreach (var s in TacticSetups.Suggest(team, next?.Opponent, on))
+            Setups.Add(new SetupCard { Setup = s, Owner = this, Active = s.Matches(Tac) });
+        Board.Clear();
+        HasOpponent = next != null;
+        if (next != null)
+        {
+            var opp = next.Opponent;
+            var (ts, td) = CoachAi.TheirPlan(opp, team, on);
+            BoardTitle = $"Matchup board: {team.Name} vs {opp.Name}";
+            double ours = Hardwood.Core.Engine.Tactics.Matchup(Tac.System, td), theirs = -Hardwood.Core.Engine.Tactics.Matchup(ts, Tac.Scheme);
+            OurAttack = $"Your {Hardwood.Core.Model.Systems.Name(Tac.System).ToLower()} vs their {Hardwood.Core.Model.Systems.Name(td).ToLower()}";
+            TheirAttack = $"Their {Hardwood.Core.Model.Systems.Name(ts).ToLower()} vs your {Hardwood.Core.Model.Systems.Name(Tac.Scheme).ToLower()}";
+            OurAttackEdge = EdgeWords(ours); OurAttackBrush = EdgeBrushOf(ours);
+            TheirAttackEdge = EdgeWords(theirs); TheirAttackBrush = EdgeBrushOf(theirs);
+            foreach (var m in TacticSetups.Board(team, opp, on)) Board.Add(new MatchupRow { M = m });
+        }
+        else BoardTitle = "Matchup board: no game scheduled";
+    }
+
+    public void ApplySetup(TacticSetup s)
+    {
+        s.ApplyTo(Tac);
+        Session.SaveNow();
+        Refresh();
+        Status = $"\"{s.Title}\" is set: {Hardwood.Core.Model.Systems.Name(s.System).ToLower()} and {Hardwood.Core.Model.Systems.Name(s.Scheme).ToLower()}.";
+    }
 
     public override void Refresh()
     {
@@ -203,6 +308,7 @@ public sealed partial class TacticsViewModel : PageViewModel
 
     private void UpdateFitSummary()
     {
+        if (!_loading) RefreshOverhaul();
         var rot = CoachAi.Rotation(Session.HumanTeam, Session.Today);
         double sf = Hardwood.Core.Model.Systems.Fit(Tac.System, rot), df = Hardwood.Core.Model.Systems.Fit(Tac.Scheme, rot);
         var misfits = RoleRows.Where(r => r.Minutes > 0 && r.Selected != null && r.Selected.Stars < 2.5).Select(r => r.Player.LastName).ToList();
