@@ -134,6 +134,10 @@ public static class Assistant
             if (off.Phase == OffseasonPhase.ReSigning && s.MyExpiring.Count > 0)
                 yield return new($"resign-{today.Year}", 5, $"Decide on {s.MyExpiring.Count} expiring contract{(s.MyExpiring.Count == 1 ? "" : "s")}",
                     $"{Names(s.MyExpiring.OrderByDescending(p => p.CurrentAbility).Take(3))} {(s.MyExpiring.Count > 3 ? "and others are" : s.MyExpiring.Count == 1 ? "is" : "are")} out of contract. Offer what they ask to keep them, counter if it's too much, or let them go. Anyone you don't decide on leaves.", "Offseason");
+            // D40 (run 42): the draft's "on the clock" is a task here, not a message of its own.
+            if (off.Phase == OffseasonPhase.Draft && off.CollegeDraftOn && !off.DraftComplete && off.OnTheClock == team)
+                yield return new($"draft-{today.Year}-{off.NextPickIndex}", 4, $"You're on the clock: pick {off.NextPickIndex + 1}",
+                    $"{off.Prospects.Count} graduates remain. Choose one on the Offseason page (Draft), or press Continue and your scouts pick for you.", "Offseason");
             int min = RosterMin(s);
             if (off.Phase == OffseasonPhase.FreeAgency && team.Roster.Count < min)
                 yield return new($"fa-{today.Year}", 6, $"Sign {min - team.Roster.Count} more player{(min - team.Roster.Count == 1 ? "" : "s")}",

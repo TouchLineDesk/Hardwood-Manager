@@ -131,7 +131,7 @@ public sealed partial class GameSession
         }
         Coach.SeasonTalks = 0; Coach.SeasonAnswers = 0;
         if (grown.Count > 0)
-            Post("You've grown as a coach", "A season's work shows:\n" + string.Join("\n", grown) + "\n\nYour ratings are on the Staff & Training page.", "Staff");
+            SummerNote("You've grown as a coach", "A season's work shows:\n" + string.Join("\n", grown) + "\n\nYour ratings are on the Staff & Training page.", "Staff");
     }
 
     /// <summary>

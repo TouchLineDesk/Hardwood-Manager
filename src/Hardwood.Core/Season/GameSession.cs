@@ -203,6 +203,9 @@ public sealed partial class GameSession
     private void MaybePostDigest(bool now = false)
     {
         if (WorldDigest.Count == 0) return;
+        // Review #12, Top fix 1 (run 42): during the regular season the headlines ride in the weekly results message
+        // instead of a message of their own ("Around the world" was 53 of ~280 messages per three seasons).
+        if (!now && WeekResults.Count > 0 && WorldDigest.Count < 80) return;
         if (!now && Today.DayNumber - LastDigest.DayNumber < 14 && WorldDigest.Count < 40) return; // fortnightly (review #4)
         var lines = WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : ""));
         Post($"Around the world: {WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}",
@@ -224,6 +227,10 @@ public sealed partial class GameSession
     /// <summary>The regular-season results since the last results message, posted together every Monday (or every other, by setting).</summary>
     public List<string> WeekResults { get; } = new();
 
+    /// <summary>Short injuries (no lasting loss, back within <see cref="KnockDays"/> days) from regular-season games, carried by the next results message.</summary>
+    public List<string> WeekKnocks { get; } = new();
+    public const int KnockDays = 14;
+
     /// <summary>A results message's title starts with one of these ("This week: 3-1 …", "Last two weeks: 5-2 …").</summary>
     public static bool IsResultsTitle(string title) => title.StartsWith("This week") || title.StartsWith("Last two weeks");
 
@@ -239,8 +246,18 @@ public sealed partial class GameSession
         if (!now && !evenWeek && !decisionWaiting) return;
         bool twoWeeks = WeekResults.Count > 0 && _resultsSince is { } since && Today.DayNumber - since.DayNumber > 7;
         int w = WeekResults.Count(l => l.Contains("  W ")), l = WeekResults.Count - w;
-        Post($"{(twoWeeks ? "Last two weeks" : "This week")}: {w}-{l} ({MyRecord.Wins}-{MyRecord.Losses} overall)", string.Join("\n", WeekResults) + "\n\nBox scores are on the Schedule & Results page.", "Game");
+        string body = string.Join("\n", WeekResults) + "\n\nBox scores are on the Schedule & Results page.";
+        // Review #12, Top fix 1 (run 42): short knocks and the world's headlines ride along instead of arriving one by one.
+        if (WeekKnocks.Count > 0) body += "\n\nKnocks (back within two weeks):\n" + string.Join("\n", WeekKnocks.Select(k => $"• {k}"));
+        if (WorldDigest.Count > 0)
+        {
+            body += $"\n\nAround the world ({WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}):\n" + string.Join("\n", WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : "")));
+            WorldDigest.Clear();
+            LastDigest = Today;
+        }
+        Post($"{(twoWeeks ? "Last two weeks" : "This week")}: {w}-{l} ({MyRecord.Wins}-{MyRecord.Losses} overall)", body, "Game");
         WeekResults.Clear();
+        WeekKnocks.Clear();
         _resultsSince = null;
     }
 
@@ -594,7 +611,15 @@ public sealed partial class GameSession
                 string.Join("\n", lines) + "\n\nBox scores are on the Schedule & Results page.", "Game");
         }
         foreach (var (p, inj) in r.Injuries.Where(x => x.player.TeamId == HumanTeam.Id))
+        {
+            int days = inj.DaysOut(Today);
+            if (series == null && inj.AttributeLoss <= 0 && days <= KnockDays)
+            {
+                WeekKnocks.Add($"{p.Name}: {inj.Name}, out about {days} days (back {inj.ReturnDate:MMM d})");
+                continue;
+            }
             Post($"{p.Name} injured: {inj.Name}", $"Out approximately {inj.DaysOut(Today)} days (expected return {inj.ReturnDate:MMM d}).{(inj.AttributeLoss > 0 ? " The medical staff expect some lasting loss of athleticism." : "")}", "Medical");
+        }
     }
 
     private void AiTrades()
@@ -688,10 +713,9 @@ public sealed partial class GameSession
         else
         {
             t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
-            if (InCollege && League.Teams.Contains(t))
-                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}."); // pro news: the digest for a college coach
-            else if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
-                Post($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", "League");
+            // Other clubs' coaching changes go to the world digest (run 42, review #12 Top fix 1; a college coach's already did).
+            if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
+                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.");
         }
     }
 
@@ -884,8 +908,9 @@ public sealed partial class GameSession
         MarkFacilityDecider();
         Offseason = new Offseason(League, outcome, Stats, _rng) { HumanTeamId = ControlledTeamId, PendingCommitments = PendingCommitments };
         Offseason.Begin();
+        _summerNotes = new();
         if (Employed && Offseason.Report.StaffLeft.Count > 0)
-            Post($"{Count(Offseason.Report.StaffLeft.Count, "staff contract")} ran out",
+            SummerNote($"{Count(Offseason.Report.StaffLeft.Count, "staff contract")} ran out",
                 string.Join("\n", Offseason.Report.StaffLeft.Select(st => $"{st.Name} ({Staff.RoleName(st.Role).ToLower()}) has left: his contract ended without an extension."))
                 + "\n\nHire replacements on the Staff & Training page; interview candidates first.", "Staff");
         CoachGrowth();
@@ -895,7 +920,7 @@ public sealed partial class GameSession
         Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
         var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre).OrderByDescending(x => x.player.CurrentAbility).Take(8).ToList();
         if (abroad.Count > 0 && !InCollege)
-            Post("Overseas free agents", "These players' overseas contracts have ended and they're free to sign anywhere:\n"
+            SummerNote("Overseas free agents", "These players' overseas contracts have ended and they're free to sign anywhere:\n"
                 + string.Join("\n", abroad.Select(x => $"{x.player.Name} ({x.player.PrimaryPosition}, {x.player.Age(Offseason.Date)}, {x.player.CurrentAbility} CA), last with {x.from.FullName}")), "World");
         Offseason.AiReSignAll(exceptTeamId: ControlledTeamId);
         // Seniors who committed during the season sign before free agency opens (decision #157).
@@ -905,6 +930,9 @@ public sealed partial class GameSession
 
         AnnounceAwards(Offseason.Summary!);
         FacilitiesSummerNews();
+        // Run 42 (review #12, Top fix 1): in the NBA the summer's notes ride in "Contract decisions"; elsewhere they post as before.
+        bool fold = Employed && collegeBefore == null && !Abroad;
+        if (!fold) FlushSummerNotes();
         if (!Employed) return; // out of work: the rest of these messages are about your team
         if (collegeBefore != null)
         {
@@ -940,11 +968,31 @@ public sealed partial class GameSession
         var staffGone = Offseason.Report.StaffReleased.Where(x => x.team == HumanTeam).Select(x => $"{x.staff.Name} ({Staff.RoleName(x.staff.Role).ToLower()})").ToList();
         if (staffGone.Count > 0) Post("Staff contracts expired", $"{string.Join(", ", staffGone)} left at the end of their deals. Hire replacements from the staff market.", "Staff");
         var expiring = Offseason.Expiring[HumanTeam.Id];
+        var dev = Offseason.Report.Development.Where(d => d.Player.TeamId == HumanTeam.Id && Math.Abs(d.NewCa - d.OldCa) >= 6).OrderByDescending(d => d.NewCa - d.OldCa).ToList();
+        if (dev.Count > 0) SummerNote("Player development", string.Join("\n", dev.Select(d => $"{d.Player.Name}: {(d.NewCa > d.OldCa ? "+" : "")}{d.NewCa - d.OldCa} ability")), "Roster");
+        var notes = _summerNotes ?? new();
+        _summerNotes = null;
         Post("Contract decisions",
             (expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F1}M)"))}. Talk to each one or release him, then continue to free agency.")
-            + $"\n\nThe owner has set next season's budget: {Budgets.Describe(HumanTeam)}.", "Roster");
-        var dev = Offseason.Report.Development.Where(d => d.Player.TeamId == HumanTeam.Id && Math.Abs(d.NewCa - d.OldCa) >= 6).OrderByDescending(d => d.NewCa - d.OldCa).ToList();
-        if (dev.Count > 0) Post("Player development", string.Join("\n", dev.Select(d => $"{d.Player.Name}: {(d.NewCa > d.OldCa ? "+" : "")}{d.NewCa - d.OldCa} ability")), "Roster");
+            + $"\n\nThe owner has set next season's budget: {Budgets.Describe(HumanTeam)}."
+            + string.Concat(notes.Select(n => $"\n\n{n.title}:\n{n.body}")), "Roster");
+    }
+
+    /// <summary>The summer's smaller notes (staff whose deals ran out, your growth as a coach, overseas free agents, player
+    /// development), gathered while the offseason opens so an NBA summer brings one message, not five (run 42).</summary>
+    private List<(string title, string body, string category)>? _summerNotes;
+
+    private void SummerNote(string title, string body, string category)
+    {
+        if (_summerNotes != null) _summerNotes.Add((title, body, category));
+        else Post(title, body, category);
+    }
+
+    private void FlushSummerNotes()
+    {
+        var notes = _summerNotes;
+        _summerNotes = null;
+        if (notes != null) foreach (var (t, b, c) in notes) Post(t, b, c);
     }
 
     private void AnnounceAwards(SeasonSummary summary)
@@ -976,6 +1024,7 @@ public sealed partial class GameSession
     public void AdvanceOffseason()
     {
         if (Offseason == null) return;
+        Offseason.HumanTeamId ??= ControlledTeamId; // a restored summer (a save made mid-draft) didn't carry it
         switch (Offseason.Phase)
         {
             case OffseasonPhase.ReSigning:
@@ -984,8 +1033,9 @@ public sealed partial class GameSession
                 {
                     // D40: the computer clubs pick until you're on the clock (or the draft is over).
                     Offseason.AutoDraftUntil(ControlledTeamId);
+                    // Review #12, Top fix 1 (run 42): no separate "on the clock" message: the lottery message says how to pick,
+                    // and the Offseason page's Draft tab and the assistant show the pick waiting.
                     if (Offseason.DraftComplete) AdvanceOffseason();
-                    else Post("You're on the clock", $"Pick {Offseason.NextPickIndex + 1} of {Offseason.PickOwners.Count}. {Offseason.Prospects.Count} graduates remain. Choose on the Offseason page (Draft), or press Continue and your scouts pick for you.", "Draft");
                     break;
                 }
                 if (League.Finance.OpenMarket)
@@ -1006,7 +1056,7 @@ public sealed partial class GameSession
                 Offseason.AdvanceToFreeAgency();
                 Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
                 Offseason.AiFreeAgency(ControlledTeamId);
-                foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
+                foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(); // run 42: the summer's headlines wait (one digest a summer, at the new season)
                 World.News.Clear();
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
                 if (InNabl && !League.Finance.OpenMarket) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
@@ -1068,7 +1118,7 @@ public sealed partial class GameSession
         Offseason.AiFreeAgency(ControlledTeamId);
         AiTransferRound(15); // the summer transfer market (decision #87)
         if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
-        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
+        foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(); // run 42: the summer's headlines wait (one digest a summer, at the new season)
         World.News.Clear();
         if (Employed && !InCollege) // college programs don't sign pros (C2)
         {
@@ -1085,7 +1135,7 @@ public sealed partial class GameSession
         string Line(int i) => $"{i + 1}. {o.PickOwners[i].FullName}" + (i == o.PickOwners.Count - 1 && o.Outcome.ThirdPlaceWinner == o.PickOwners[i] ? " (the third-place tournament's extra pick)" : "");
         var ours = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == HumanTeam).Select(i => i + 1).ToList();
         string mine = !Employed || InCollege ? "" : ours.Count == 0 ? "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.\n\n"
-            : $"You pick {string.Join(" and ", ours.Select(Ordinal))}.\n\n";
+            : $"You pick {string.Join(" and ", ours.Select(Ordinal))}. When the draft reaches you, choose on the Offseason page (Draft), or press Continue and your scouts pick for you.\n\n";
         Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates go in a one-round draft before free agency; everyone else from the class is a free agent. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
     }
 
@@ -1105,7 +1155,8 @@ public sealed partial class GameSession
     /// <summary>Human draft pick; then AI picks run until the human is on the clock again or the draft ends.</summary>
     public DraftPick MakePick(Player prospect)
     {
-        var pick = Offseason!.MakePick(prospect);
+        Offseason!.HumanTeamId ??= ControlledTeamId; // a restored summer (a save made mid-draft) didn't carry it
+        var pick = Offseason.MakePick(prospect);
         Offseason.AutoDraftUntil(ControlledTeamId);
         if (Offseason.DraftComplete) AdvanceOffseason();
         SaveNow();

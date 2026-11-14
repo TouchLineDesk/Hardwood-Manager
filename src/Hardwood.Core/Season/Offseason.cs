@@ -79,7 +79,7 @@ public sealed class Offseason
     public Team OriginalTeamAt(int pickIndex) => DraftOrder[pickIndex % DraftOrder.Count];
 
     /// <summary>The club you manage: its staff contracts are your call (staff part 2), so they aren't renewed for you.</summary>
-    public int? HumanTeamId { get; init; }
+    public int? HumanTeamId { get; set; }
     /// <summary>Wages and count of college seniors committed to a club, who sign after the budgets are set (#256).</summary>
     public Func<Team, (long wages, int count)>? PendingCommitments { get; init; }
 
@@ -416,6 +416,7 @@ public sealed class Offseason
             prospect.Contract = new Contract { Years = 3, Salary = salary, StartSeason = Season + 1, TeamOption = true };
             prospect.TeamId = team.Id;
             team.Roster.Add(prospect);
+            FundPick(team, salary);
         }
         else if (round == 1)
         {
@@ -431,6 +432,18 @@ public sealed class Offseason
         }
         NextPickIndex++;
         return pick;
+    }
+
+    /// <summary>
+    /// Review #12, Top fix 2 (run 42): a pick is compulsory, so the owner funds it. The wage budget grows by the rookie's
+    /// wage when the summer budget is already set (the draft comes after it), so a drafted rookie never leaves the club
+    /// over budget (the real strong career carried one 2% over for 16 weeks of 2028).
+    /// Only your club: the computer clubs don't answer to a wage goal, and extra room there bought another free agent and
+    /// pushed the drafted rookie off the roster at the roster-max trim (caught by `CollegeDraftTests`).
+    /// </summary>
+    private void FundPick(Team team, long salary)
+    {
+        if (team.Id == HumanTeamId && team.Money.Ready) team.Money.WageBudget += salary;
     }
 
     public DraftPick AutoPick()

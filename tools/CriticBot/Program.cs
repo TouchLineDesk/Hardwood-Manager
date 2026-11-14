@@ -287,7 +287,7 @@ L($"inbox messages: {s.Inbox.Count}, unread {s.Inbox.Count(m => !m.Read)}; categ
 // R2 part 2b: the real record chase (records broken, record watch, legends passed), in full.
 foreach (var m in s.Inbox.Where(m => m.Title.StartsWith("NBA record") || m.Title.StartsWith("Record watch") || m.Title.Contains("all-time scoring list") || m.Title.Contains("ties an NBA record")).Reverse())
     L($"record chase {m.Date:MM/dd/yyyy}: {m.Title} | {m.Body}");
-L("inbox titles: " + string.Join(", ", s.Inbox.GroupBy(m => System.Text.RegularExpressions.Regex.Replace(m.Title.Split(':')[0], @"\d+(\.\d+)?", "#")).OrderByDescending(g => g.Count()).Take(25).Select(g => $"{g.Key} x{g.Count()}")));
+L("inbox titles: " + string.Join(", ", s.Inbox.GroupBy(m => System.Text.RegularExpressions.Regex.Replace(m.Title.Split(':')[0], @"\d+(\.\d+)?", "#")).OrderByDescending(g => g.Count()).Take(45).Select(g => $"{g.Key} x{g.Count()}")));
 foreach (var m in s.Inbox.Where(m => m.Category == "Board" && (m.Title.StartsWith("Season review") || m.Title.StartsWith("Expectations") || m.Title.Contains("sacked"))).OrderBy(m => m.Date))
     L($"board message {m.Date:MM/dd/yyyy} {m.Title}: {m.Body.Replace('\n', ' ')}");
 L($"save size {new FileInfo(path).Length / 1e6:F1} MB");

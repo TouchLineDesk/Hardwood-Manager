@@ -30,7 +30,7 @@
       <ComboBox ItemsSource="{Binding ResultsOptions}" SelectedItem="{Binding ResultsCadence}" MinWidth="170" Margin="0,0,8,4"/>
       <ComboBox ItemsSource="{Binding AutoClearOptions}" SelectedItem="{Binding AutoClear}" MinWidth="170" Margin="0,0,8,4"/>
       <TextBlock Text="{Binding CleanupNote}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,4"/>
-      <TextBlock Text="World news arrives every other week as one 'Around the world' message." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
+      <TextBlock Text="In the season, world news and short knocks ride in the weekly results; otherwise world news comes every other week." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
     </WrapPanel>
     <Grid ColumnDefinitions="2*,3*">
       <Border Classes="panel" Padding="0">
