@@ -15,48 +15,49 @@
         <ComboBox Grid.Column="2" ItemsSource="{Binding Seasons}" SelectedItem="{Binding Season}" Width="200" VerticalAlignment="Top"/>
       </Grid>
 
-      <Grid ColumnDefinitions="*,*">
-        <StackPanel Margin="0,0,6,0">
+      <!-- One column (review #13): side by side, real names and stat lines were cut off at 1480 px. -->
+      <Grid RowDefinitions="Auto,Auto">
+        <StackPanel>
           <TextBlock Text="Most Valuable Player" Classes="h2"/>
           <DataGrid ItemsSource="{Binding Mvp}" MaxHeight="300" CanUserSortColumns="False">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="240"/>
               <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="66"/>
               <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="72"/>
-              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*" MinWidth="300"/>
             </DataGrid.Columns>
           </DataGrid>
           <TextBlock Text="Defensive Player of the Year" Classes="h2"/>
           <DataGrid ItemsSource="{Binding Dpoy}" MaxHeight="220" CanUserSortColumns="False">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="240"/>
               <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="66"/>
               <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="72"/>
-              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*" MinWidth="300"/>
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
-        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+        <StackPanel Grid.Row="1">
           <TextBlock Text="Rookie of the Year" Classes="h2"/>
           <DataGrid ItemsSource="{Binding Roy}" MaxHeight="220" CanUserSortColumns="False">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="240"/>
               <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="66"/>
               <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="72"/>
-              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*" MinWidth="300"/>
             </DataGrid.Columns>
           </DataGrid>
           <TextBlock Text="Sixth Man of the Year" Classes="h2"/>
           <DataGrid ItemsSource="{Binding SixthMan}" MaxHeight="220" CanUserSortColumns="False">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
-              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="240"/>
               <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="66"/>
               <DataGridTextColumn Header="Share" Binding="{Binding Share}" Width="72"/>
-              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*"/>
+              <DataGridTextColumn Header="Season" Binding="{Binding StatLine}" Width="*" MinWidth="300"/>
             </DataGrid.Columns>
           </DataGrid>
         </StackPanel>
@@ -76,7 +77,7 @@
       <DataGrid ItemsSource="{Binding Hall}" MaxHeight="300">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Inducted" Binding="{Binding Year}" Width="92"/>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="240"/>
           <DataGridTextColumn Header="Career" Binding="{Binding Career}" Width="260"/>
           <DataGridTextColumn Header="Honours" Binding="{Binding Honours}" Width="*"/>
           <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="76"/>
