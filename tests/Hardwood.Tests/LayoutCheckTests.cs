@@ -37,7 +37,9 @@ public class LayoutCheckTests
     {
         if (studio != null) yield return ("Studio show", v => { v.CurrentPage = studio; });
         if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); live.ShowBreakCard(final: false); });
-        if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.Refresh(); });
+        if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.ShowCourt = true; live.Refresh(); });
+        // The live panel's other view: the game flow chart (the court is the default, Danny, run 45).
+        if (live != null) yield return ("Live flow", v => { v.CurrentPage = live; live.ShowCourt = false; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
             yield return (nav.Name, v => v.Navigate(nav.Name));
         yield return ("Player", v =>

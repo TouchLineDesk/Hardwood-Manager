@@ -46,6 +46,51 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.Imaging.Bitmap? HomeCourt => _court ??= Graphics.GraphicsPackService.CourtFor(HomeTeam);
     private Avalonia.Media.Imaging.Bitmap? _court;
     public bool HasCourt => HomeCourt != null;
+
+    // The whole court (Danny, run 45): every shot placed as it happens, from the zone counts' changes between refreshes.
+    private readonly List<Hardwood.Desktop.Controls.LiveShot> _shots = new();
+    private int[] _seenAwayAtt = new int[5], _seenAwayMk = new int[5], _seenHomeAtt = new int[5], _seenHomeMk = new int[5];
+    public IReadOnlyList<Hardwood.Desktop.Controls.LiveShot> CourtShots => _shots;
+    [ObservableProperty] private int _courtVersion;
+    /// <summary>The live panel shows the court (default) or the game flow chart.</summary>
+    [ObservableProperty] private bool _showCourt = true;
+    public bool ShowFlow => !ShowCourt;
+    [RelayCommand] private void ToCourt() => ShowCourt = true;
+    [RelayCommand] private void ToFlow() => ShowCourt = false;
+    partial void OnShowCourtChanged(bool value) => OnPropertyChanged(nameof(ShowFlow));
+    public Avalonia.Media.Color HomeDot => Bright(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
+    public Avalonia.Media.Color AwayDot => Bright(Distinct(AwayTeam, Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor)));
+
+    /// <summary>Dark club colours (navy, black) lifted so the dots read on a wooden floor.</summary>
+    private static Avalonia.Media.Color Bright(Avalonia.Media.Color c)
+    {
+        double lum = (0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B) / 255;
+        if (lum >= 0.35) return c;
+        double t = Math.Min(0.6, 0.35 - lum + 0.3);
+        return Avalonia.Media.Color.FromRgb((byte)(c.R + (255 - c.R) * t), (byte)(c.G + (255 - c.G) * t), (byte)(c.B + (255 - c.B) * t));
+    }
+    public Avalonia.Media.Color FloorColor => Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor);
+    public Avalonia.Media.Color FloorTrim => Avalonia.Media.Color.Parse(HomeTeam.SecondaryColor);
+    public string FloorName => HomeTeam.Name;
+    public string CourtLegend => $"{AwayName} shoot left, {HomeName} shoot right · dot: made · ring: missed · gold ring: the latest shot";
+
+    private static Avalonia.Media.Color Distinct(Team t, Avalonia.Media.Color other)
+    {
+        var c = Avalonia.Media.Color.Parse(t.PrimaryColor);
+        int d = Math.Abs(c.R - other.R) + Math.Abs(c.G - other.G) + Math.Abs(c.B - other.B);
+        return d >= 120 ? c : Avalonia.Media.Color.Parse(t.SecondaryColor);
+    }
+
+    private void AddShots(bool home, int[] att, int[] mk, ref int[] seenAtt, ref int[] seenMk)
+    {
+        for (int z = 0; z < 5; z++)
+        {
+            int newMk = Math.Max(0, mk[z] - seenMk[z]), newAtt = Math.Max(0, att[z] - seenAtt[z]);
+            for (int i = 0; i < newAtt; i++)
+                _shots.Add(new Hardwood.Desktop.Controls.LiveShot(home, (ShotZone)z, i < newMk, _shots.Count));
+        }
+        seenAtt = (int[])att.Clone(); seenMk = (int[])mk.Clone();
+    }
     /// <summary>The court as a brush, so the picture fills the scoreboard without setting its size.</summary>
     public Avalonia.Media.IBrush? CourtBrush => HomeCourt is { } b ? new Avalonia.Media.ImageBrush(b) { Stretch = Avalonia.Media.Stretch.UniformToFill, Opacity = 0.75 } : null;
 
@@ -247,6 +292,10 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Splits = GameFlowInfo.Splits(r);
         AwayZoneAttempts = ZoneSum(r.Away, l => l.ZoneAttempts); AwayZoneMakes = ZoneSum(r.Away, l => l.ZoneMakes);
         HomeZoneAttempts = ZoneSum(r.Home, l => l.ZoneAttempts); HomeZoneMakes = ZoneSum(r.Home, l => l.ZoneMakes);
+        int before = _shots.Count;
+        AddShots(false, AwayZoneAttempts, AwayZoneMakes, ref _seenAwayAtt, ref _seenAwayMk);
+        AddShots(true, HomeZoneAttempts, HomeZoneMakes, ref _seenHomeAtt, ref _seenHomeMk);
+        if (_shots.Count != before) CourtVersion++;
         Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);
         TeamStats = GameFlowInfo.TeamStats(r);
         var facts = GameHighlights.Ticker(r);
