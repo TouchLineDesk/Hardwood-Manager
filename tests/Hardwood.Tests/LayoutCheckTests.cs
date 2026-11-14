@@ -121,6 +121,18 @@ public class LayoutCheckTests
             v.Navigate("Transactions");
             ((TransactionsViewModel)v.CurrentPage!).Tab = 1;
         });
+        // Danny, #470: a drawn bracket, with the longest club names in the boxes (built here; the gate's season is young).
+        yield return ("Leagues bracket", v =>
+        {
+            v.Navigate("Leagues");
+            var lp = (WorldViewModel)v.CurrentPage!;
+            lp.Tab = 4;
+            var teams = v.Session!.League.Teams.OrderByDescending(t => t.Name.Length).Take(16).ToList();
+            var first = Enumerable.Range(0, 8).Select(i => new Hardwood.Core.Season.BookSeries("East First Round", teams[2 * i], teams[2 * i + 1], 4, i % 4, teams[2 * i], false)).ToList();
+            var second = Enumerable.Range(0, 2).Select(i => new Hardwood.Core.Season.BookSeries("East Semifinals", teams[4 * i], teams[4 * i + 2], 2, 3, null, false)).ToList();
+            lp.MainBracket = Hardwood.Core.Season.LeagueBook.Columns(first.Concat(second));
+            lp.ThirdBracket = Hardwood.Core.Season.LeagueBook.Columns(first.Take(4).Select(x => x with { Round = "Third-place quarter-finals", ThirdPlace = true }));
+        });
         // The conference tables with the playoff seeds (the division cards open first since D55).
         yield return ("Standings by conference", v =>
         {

@@ -165,6 +165,15 @@ public class ScreenshotTests
                 leagues.Selected = tier2;
                 Snap(window, Path.Combine(dir, $"{n++:00}-leagues-tier2-divisions.png"));
             }
+            // Danny, #463: a league abroad and college conferences as cards too.
+            if (leagues.Competitions.Count > 0)
+            {
+                leagues.Region = "Europe";
+                if (leagues.Competitions.FirstOrDefault() is { } eu) { leagues.Selected = eu; Snap(window, Path.Combine(dir, $"{n++:00}-leagues-europe-cards.png")); }
+                leagues.Region = "USA";
+                if (leagues.Competitions.FirstOrDefault(c => c.Key == Hardwood.Core.Season.LeagueBook.CollegeKey) is { } col) { leagues.Selected = col; Snap(window, Path.Combine(dir, $"{n++:00}-leagues-college-cards.png")); }
+                leagues.Selected = leagues.Competitions.FirstOrDefault(c => c.Key == Hardwood.Core.Season.LeagueBook.NablKey) ?? leagues.Selected;
+            }
             vm.Navigate("Standings");
             ((StandingsViewModel)vm.CurrentPage!).View = "By division";
             Snap(window, Path.Combine(dir, $"{n++:00}-standings-divisions.png"));
@@ -224,6 +233,9 @@ public class ScreenshotTests
                 Snap(window, Path.Combine(dir, $"{n++:00}-standings-playoff-places.png"));
                 vm.Navigate("Leagues");
                 var lp = (WorldViewModel)vm.CurrentPage!;
+                // Danny, #470: the NBA's playoffs as a drawn bracket, and the third-place tournament.
+                lp.Tab = 4;
+                Snap(window, Path.Combine(dir, $"{n++:00}-leagues-nba-bracket.png"));
                 if (lp.Competitions.FirstOrDefault(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2) is { } t2)
                 {
                     lp.Selected = t2;

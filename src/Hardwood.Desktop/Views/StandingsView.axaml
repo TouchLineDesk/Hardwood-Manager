@@ -9,8 +9,9 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
   <StackPanel Spacing="0">
     <TextBlock Text="Standings" Classes="h1"/>
+    <!-- The note on its own line, so it wraps when narrow (a WrapPanel gives it all the width it asks for). -->
+    <TextBlock Text="{Binding Note}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,4"/>
     <WrapPanel Margin="0,0,0,8">
-      <TextBlock Text="{Binding Note}" Classes="muted" VerticalAlignment="Center" Margin="0,0,14,0"/>
       <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowPromotion}" Margin="0,0,12,0">
         <Border Background="{x:Static vm:StandingRow.PromotionBrush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
         <TextBlock Text="Division winner: promoted" Classes="muted" VerticalAlignment="Center"/>
@@ -35,39 +36,7 @@
         <TextBlock Text="{Binding LeftTitle}" Classes="h2" Margin="0,0,0,6"/>
         <ItemsControl ItemsSource="{Binding LeftCards}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:DivisionCard">
-                <Border Classes="panel" Margin="0,0,0,10" Padding="10,8">
-                  <StackPanel Spacing="2">
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4"/>
-                    <Grid ColumnDefinitions="34,30,*,62,54,44,50" Margin="0,0,0,2">
-                      <TextBlock Grid.Column="2" Text="Team" Classes="muted" FontSize="11" Margin="4,0"/>
-                      <TextBlock Grid.Column="3" Text="W-L" Classes="muted" FontSize="11"/>
-                      <TextBlock Grid.Column="4" Text="Pct" Classes="muted" FontSize="11"/>
-                      <TextBlock Grid.Column="5" Text="GB" Classes="muted" FontSize="11"/>
-                      <TextBlock Grid.Column="6" Text="L10" Classes="muted" FontSize="11"/>
-                    </Grid>
-                    <ItemsControl ItemsSource="{Binding Rows}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:StandingRow">
-                          <Border Background="{Binding RowBrush}" CornerRadius="4" Padding="0,2">
-                            <Grid ColumnDefinitions="34,30,*,62,54,44,50" Height="26">
-                              <Border Background="{Binding ZoneBrush}" CornerRadius="4" Width="24" Height="20" HorizontalAlignment="Left" ToolTip.Tip="{Binding ZoneTip}">
-                                <TextBlock Text="{Binding Rank}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                              </Border>
-                              <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="22" Height="22" ShowText="False" HorizontalAlignment="Left"/>
-                              <c:TeamLink Grid.Column="2" Team="{Binding Team}" Text="{Binding Label}" FontWeight="{Binding Weight}" VerticalAlignment="Center" Margin="4,0"/>
-                              <TextBlock Grid.Column="3" Text="{Binding Record}" FontWeight="{Binding Weight}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="4" Text="{Binding Pct}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="5" Text="{Binding GB}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="6" Text="{Binding Last10}" VerticalAlignment="Center"/>
-                            </Grid>
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
+              <DataTemplate x:DataType="vm:DivisionCard"><c:DivisionCardView/></DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
@@ -75,39 +44,7 @@
         <TextBlock Text="{Binding RightTitle}" Classes="h2" Margin="0,0,0,6"/>
         <ItemsControl ItemsSource="{Binding RightCards}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:DivisionCard">
-                <Border Classes="panel" Margin="0,0,0,10" Padding="10,8">
-                  <StackPanel Spacing="2">
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4"/>
-                    <Grid ColumnDefinitions="34,30,*,62,54,44,50" Margin="0,0,0,2">
-                      <TextBlock Grid.Column="2" Text="Team" Classes="muted" FontSize="11" Margin="4,0"/>
-                      <TextBlock Grid.Column="3" Text="W-L" Classes="muted" FontSize="11"/>
-                      <TextBlock Grid.Column="4" Text="Pct" Classes="muted" FontSize="11"/>
-                      <TextBlock Grid.Column="5" Text="GB" Classes="muted" FontSize="11"/>
-                      <TextBlock Grid.Column="6" Text="L10" Classes="muted" FontSize="11"/>
-                    </Grid>
-                    <ItemsControl ItemsSource="{Binding Rows}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:StandingRow">
-                          <Border Background="{Binding RowBrush}" CornerRadius="4" Padding="0,2">
-                            <Grid ColumnDefinitions="34,30,*,62,54,44,50" Height="26">
-                              <Border Background="{Binding ZoneBrush}" CornerRadius="4" Width="24" Height="20" HorizontalAlignment="Left" ToolTip.Tip="{Binding ZoneTip}">
-                                <TextBlock Text="{Binding Rank}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                              </Border>
-                              <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="22" Height="22" ShowText="False" HorizontalAlignment="Left"/>
-                              <c:TeamLink Grid.Column="2" Team="{Binding Team}" Text="{Binding Label}" FontWeight="{Binding Weight}" VerticalAlignment="Center" Margin="4,0"/>
-                              <TextBlock Grid.Column="3" Text="{Binding Record}" FontWeight="{Binding Weight}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="4" Text="{Binding Pct}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="5" Text="{Binding GB}" VerticalAlignment="Center"/>
-                              <TextBlock Grid.Column="6" Text="{Binding Last10}" VerticalAlignment="Center"/>
-                            </Grid>
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
+              <DataTemplate x:DataType="vm:DivisionCard"><c:DivisionCardView/></DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>

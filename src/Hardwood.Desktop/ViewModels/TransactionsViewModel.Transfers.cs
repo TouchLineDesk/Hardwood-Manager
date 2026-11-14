@@ -219,10 +219,14 @@ public sealed partial class TransactionsViewModel
             });
         }
         OnPropertyChanged(nameof(HasMyBids));
-        MyBidsText = shown.Count == 0
+        int dropped = s.WindowBids().Count - shown.Count;
+        MyBidsText = shown.Count == 0 && dropped > 0
+            ? $"Your {dropped} settled bid{(dropped == 1 ? "" : "s")} this window dropped off a week after the answer."
+            : shown.Count == 0
             ? (s.WindowOpen ? "You haven't bid for anyone this window. Bid on the Transfer market tab; every bid shows up here." : s.WindowText + " Your bids from the next window will show up here.")
             : $"{shown[0].Window} window: {shown.Count} player{(shown.Count == 1 ? "" : "s")} bid for. Clubs answer the day you bid."
-              + (s.WindowOpen ? "" : " The window has shut.");
+              + (s.WindowOpen ? "" : " The window has shut.")
+              + (dropped > 0 ? $" {dropped} settled bid{(dropped == 1 ? "" : "s")} dropped off a week after the answer." : " Settled bids drop off a week after the answer.");
     }
 
     /// <summary>Back to the market with that player selected, to talk terms or bid again.</summary>
