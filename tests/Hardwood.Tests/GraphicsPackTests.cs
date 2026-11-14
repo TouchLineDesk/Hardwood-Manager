@@ -46,6 +46,7 @@ public class GraphicsPackTests
             Png(Path.Combine(root, "prographics", "players", "stephen_curry.png"));
             Png(Path.Combine(root, "collegegraphics", "logos", "1CM_duke.png"));
             Png(Path.Combine(root, "collegegraphics", "logos", "1CM_connecticut.png"));
+            Png(Path.Combine(root, "collegegraphics", "courts_prior", "1CM_duke.png"));
             var g = GraphicsPack.Find(Path.Combine(root, "missing"), root);
             Assert.False(g.IsEmpty);
 
@@ -69,6 +70,9 @@ public class GraphicsPackTests
             // A pro club in a college town keeps its own crest and kit (Danny, run 45): school name alone isn't enough.
             var proDuke = new Team { Id = 7, City = "Duke", Name = "Thunder", Abbreviation = "DKT", Division = "Gulf" };
             Assert.Null(g.LogoFor(proDuke));
+            Assert.EndsWith("1CM_duke.png", g.CourtFor(duke));     // the home court for the live game (run 45)
+            Assert.Null(g.CourtFor(proDuke));
+            Assert.Null(g.CourtFor(uconn));
             Assert.Empty(g.JerseysFor(proDuke));
 
             Player P(string first, string last) => new() { Id = 9, FirstName = first, LastName = last };

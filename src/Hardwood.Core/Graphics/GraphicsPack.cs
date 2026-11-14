@@ -228,6 +228,9 @@ public sealed class GraphicsPack
         return null;
     }
 
+    /// <summary>A real college program's home court (<c>collegegraphics\courts_prior</c>), or null (Danny, run 45).</summary>
+    public string? CourtFor(Team t) => SchoolKey(t) is { } k && _colCourts.TryGetValue(k, out var f) ? f : null;
+
     public string? BannerFor(Team t) => ProKey(t) is { } k && _proBanners.TryGetValue(k, out var f) ? f : null;
 
     /// <summary>Jersey icons for a team, home first (pro: home, road, alt1, alt2; college: 1, 2).</summary>

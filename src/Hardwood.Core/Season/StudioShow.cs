@@ -96,7 +96,7 @@ public sealed class StudioShow
     public static (StudioSet set, string name, string line, string accent, string second) SetFor(DateOnly date, bool college, bool abroad, Series? series, bool firstGame)
     {
         string night = $"{date.DayOfWeek} night in {date:MMMM}";
-        if (college) return (StudioSet.College, "HSN College Tip-Off", $"College basketball, {night.ToLower()}", "#7C5CFF", "#F0A33A");
+        if (college) return (StudioSet.College, "HSN College Tip-Off", $"College basketball: {night}", "#7C5CFF", "#F0A33A");
         if (series != null)
         {
             string game = $"Game {series.GameNumber}";
@@ -106,7 +106,7 @@ public sealed class StudioShow
                 return (StudioSet.Finals, "HSN Finals Tip-Off", $"The Finals, {game}", "#E3B341", "#101318");
             return (StudioSet.Playoffs, "HSN Playoff Tip-Off", $"{series.Round}, {game}", "#F85149", "#E6EDF3");
         }
-        if (abroad) return (StudioSet.International, "HSN World Feed", $"International basketball, {night.ToLower()}", "#2EA8A0", "#E6EDF3");
+        if (abroad) return (StudioSet.International, "HSN World Feed", $"International basketball: {night}", "#2EA8A0", "#E6EDF3");
         if (date.Month == 12 && date.Day == 25) return (StudioSet.Christmas, "HSN Christmas Tip-Off", "Christmas Day basketball", "#D73A49", "#3FB950");
         if (date.Month == 11 && date.DayOfWeek == DayOfWeek.Thursday && date.Day >= 22 && date.Day <= 28)
             return (StudioSet.Thanksgiving, "HSN Thanksgiving Tip-Off", "Thanksgiving night basketball", "#D9822B", "#8B5A2B");
@@ -133,7 +133,7 @@ public sealed partial class GameSession
         var (set, name, line, accent, second) = StudioShow.SetFor(date, InCollege, Abroad && MyLevel == 0 && !InCollege, series, firstGame && series == null);
         var rng = new Rng((ulong)(date.DayNumber * 7919L + home.Id * 131L + away.Id * 17L + 1));
         var table = MyStandings;
-        string Rec(Team t) => table.Has(t) ? $"{table[t].Wins}-{table[t].Losses}" : "";
+        string Rec(Team t) { var r = RecordOf(t); return r.Games > 0 || table.Has(t) ? $"{r.Wins}-{r.Losses}" : ""; }
 
         double hs = QuickSim.Strength(home, date), as_ = QuickSim.Strength(away, date);
         bool college = InCollege;
@@ -209,10 +209,12 @@ public sealed partial class GameSession
 
         // --- Tale of the tape ---
         static string Per(int total, int games) => games == 0 ? "–" : $"{(double)total / games:F1}";
+        var oh = RecordOf(home); var oa = RecordOf(away);
+        if (show.AwayRecord != "" && show.HomeRecord != "")
+            show.Tape.Add(new("Record", show.AwayRecord, show.HomeRecord, Math.Sign(oh.WinPct.CompareTo(oa.WinPct))));
         if (table.Has(home) && table.Has(away))
         {
             var rh = table[home]; var ra = table[away];
-            show.Tape.Add(new("Record", show.AwayRecord, show.HomeRecord, Math.Sign(rh.WinPct.CompareTo(ra.WinPct))));
             if (rh.Games > 0 && ra.Games > 0)
             {
                 show.Tape.Add(new("Points scored", Per(ra.PointsFor, ra.Games), Per(rh.PointsFor, rh.Games), Math.Sign(((double)rh.PointsFor / rh.Games).CompareTo((double)ra.PointsFor / ra.Games))));

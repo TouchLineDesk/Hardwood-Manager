@@ -63,6 +63,10 @@ public sealed partial class StudioShowViewModel : PageViewModel
     public List<StudioImpactTable> Impact { get; private set; } = new();
     public List<StudioSay> ImpactLines { get; private set; } = new();
     public bool HasImpact => Impact.Count > 0 || ImpactLines.Count > 0;
+    public bool HasTables => Impact.Count > 0;
+    /// <summary>A college night is set on the home program's own court from Danny's pack (run 45).</summary>
+    public IBrush? CourtBrush => Graphics.GraphicsPackService.CourtFor(Show.Home) is { } b ? new ImageBrush(b) { Stretch = Stretch.UniformToFill, Opacity = 0.55 } : null;
+    public bool HasCourt => CourtBrush != null;
     public string RaceTitle => Show.RaceTitle;
     public List<StudioRace> Race { get; private set; } = new();
     public List<StudioSay> RaceLines { get; private set; } = new();

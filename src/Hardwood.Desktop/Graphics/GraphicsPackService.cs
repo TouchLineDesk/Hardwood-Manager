@@ -35,6 +35,8 @@ public static class GraphicsPackService
     }
 
     public static string? LogoFor(Team t) => Pack.LogoFor(t);
+    /// <summary>The home program's court from the college pack, for the live game's scoreboard (Danny, run 45).</summary>
+    public static Bitmap? CourtFor(Team? t) => t == null ? null : Load(Pack.CourtFor(t));
     public static Bitmap? BannerFor(Team? t) => t == null ? null : Load(Pack.BannerFor(t));
     public static IReadOnlyList<Bitmap> JerseysFor(Team? t) =>
         t == null ? Array.Empty<Bitmap>() : Pack.JerseysFor(t).Select(Load).Where(b => b != null).Cast<Bitmap>().ToList();

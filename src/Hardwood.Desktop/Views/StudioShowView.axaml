@@ -11,6 +11,8 @@
       <Border CornerRadius="10" ClipToBounds="True" BorderBrush="{Binding AccentBrush}" BorderThickness="0,0,0,3">
         <Grid>
           <c:CourtBackdrop Glow="{Binding Glow}" Intensity="0.9"/>
+          <Border Background="{Binding CourtBrush}" IsVisible="{Binding HasCourt}"/>
+          <Border Background="#990B0E12" IsVisible="{Binding HasCourt}"/>
           <StackPanel Margin="18,12,18,12" Spacing="8">
             <Grid x:Name="TitleRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
               <Border Background="{Binding AccentBrush}" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
@@ -162,7 +164,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Green: playoffs · gold: third-place tournament · red: relegation · blue: promotion" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+              <TextBlock Text="Green: playoffs · gold: third-place tournament · red: relegation · blue: promotion" Classes="muted" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding HasTables}"/>
               <ItemsControl ItemsSource="{Binding ImpactLines}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:StudioSay">
