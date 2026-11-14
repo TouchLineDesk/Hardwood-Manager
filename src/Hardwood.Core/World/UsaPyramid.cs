@@ -28,8 +28,17 @@ public static class UsaPyramid
 
     /// <summary>The pro tiers' division names by conference, in quadrant order: north-east, south-east, north-west, south-west
     /// of the conference (#355). The NBA's six real names are kept where they fit; "South" and "Midwest" are the two new ones.</summary>
-    public static readonly string[] EastDivisions = { "Atlantic", "Southeast", "Central", "South" };
-    public static readonly string[] WestDivisions = { "Midwest", "Southwest", "Northwest", "Pacific" };
+    // Each conference's four divisions, by quadrant: north-east, south-east, north-west, south-west (ConferenceDivisions).
+    private static readonly string[] MadeUpEast = { "Atlantic", "Southeast", "Central", "South" };
+    private static readonly string[] MadeUpWest = { "Midwest", "Southwest", "Northwest", "Pacific" };
+    /// <summary>Danny's names in real careers (#432): East Revolution, Sunbelt, Great Lakes, National Road; West Frontier,
+    /// Gulf, Cascade, Mojave, in the same quadrant order.</summary>
+    private static readonly string[] RealEast = { "Revolution", "Sunbelt", "Great Lakes", "National Road" };
+    private static readonly string[] RealWest = { "Frontier", "Gulf", "Cascade", "Mojave" };
+    public static string[] EastDivisions => Names.Brand.Real ? RealEast : MadeUpEast;
+    public static string[] WestDivisions => Names.Brand.Real ? RealWest : MadeUpWest;
+    /// <summary>A conference's division names for a career's world, said explicitly (tests and careers can run side by side).</summary>
+    public static string[] DivisionNames(Conference conf, bool real) => real ? (conf == Conference.East ? RealEast : RealWest) : (conf == Conference.East ? MadeUpEast : MadeUpWest);
 
     public sealed record Area(string Key, string Name, string Short, string Region, string[] Cities);
 
@@ -139,7 +148,7 @@ public static class UsaPyramid
     /// </summary>
     public static List<(string Name, List<Team> Teams)> ConferenceDivisions(Conference conf, IEnumerable<Team> clubs)
     {
-        var names = conf == Conference.East ? EastDivisions : WestDivisions;
+        var names = DivisionNames(conf, real: false); // the made-up world's geographic layout
         var byLon = clubs.OrderByDescending(t => Location(t).Lon).ThenBy(t => t.Id).ToList();
         int eastCount = (byLon.Count + 1) / 2;
         var result = new List<(string, List<Team>)>();
@@ -199,11 +208,11 @@ public static class UsaPyramid
 
     /// <summary>The extra division in each conference of a real career's 32-team league (D37 C), and roughly where it sits.</summary>
     private static readonly (Conference Conf, string Name, double Lat, double Lon)[] ExtraDivisions =
-        { (Conference.East, "South", 34.5, -85.0), (Conference.West, "Midwest", 39.10, -94.58) };
+        { (Conference.East, "National Road", 39.5, -80.0), (Conference.West, "Frontier", 37.5, -100.0) };
 
     /// <summary>A real NBA franchise's real conference and division (null for a club from the pyramid).</summary>
     public static (Conference Conf, string Division)? RealHome(Team t) =>
-        RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.City == t.City && r.Name == t.Name) is { } r
+        RealWorld.RealWorldData.Teams.Concat(RealWorld.RealWorldData.Expansion).FirstOrDefault(r => r.City == t.City && r.Name == t.Name) is { } r
             ? (r.Conference == "East" ? Conference.East : Conference.West, r.Division) : null;
 
     private static double Distance((double Lat, double Lon) a, (double Lat, double Lon) b)
@@ -222,7 +231,7 @@ public static class UsaPyramid
     private static void RealignReal(League top, IEnumerable<Team> newcomers)
     {
         var fresh = newcomers.Where(top.Teams.Contains).ToHashSet();
-        var all = EastDivisions.Select(d => (Conference.East, d)).Concat(WestDivisions.Select(d => (Conference.West, d))).ToList();
+        var all = RealEast.Select(d => (Conference.East, d)).Concat(RealWest.Select(d => (Conference.West, d))).ToList();
         const int size = 4;
         var stay = top.Teams.Where(t => !fresh.Contains(t)).ToList();
         // A layout to keep: every staying club in one of the eight divisions, none over four, and every real team in its real
@@ -282,7 +291,9 @@ public static class UsaPyramid
     }
 
     /// <summary>A pyramid club's division in the paired layout (#424): one of its conference's four names.</summary>
-    public static bool Labeled(Team t) => (t.Conference == Conference.East ? EastDivisions : WestDivisions).Contains(t.Division);
+    public static bool Labeled(Team t) => DivisionNames(t.Conference, true).Contains(t.Division) || DivisionNames(t.Conference, false).Contains(t.Division);
+
+    private static bool RealLabels(IEnumerable<Team> clubs) => clubs.Any(t => DivisionNames(t.Conference, true).Contains(t.Division));
 
     /// <summary>Each of the eight divisions has an equal share of the clubs (four in a league of 32).</summary>
     public static bool Balanced(IReadOnlyCollection<Team> clubs) =>
@@ -290,11 +301,54 @@ public static class UsaPyramid
         && clubs.GroupBy(t => (t.Conference, t.Division)).Count() == 8 && clubs.GroupBy(t => (t.Conference, t.Division)).All(g => g.Count() == clubs.Count / 8);
 
     /// <summary>The geographic layout (#344, #355): the eastern half by longitude in the East, each half split in four.</summary>
-    private static List<(string Name, List<Team> Teams)> Geographic(IReadOnlyList<Team> clubs)
+    private static List<(string Name, List<Team> Teams)> Geographic(IReadOnlyList<Team> clubs, bool real)
     {
+        if (real) return Regional(clubs);
         var (east, west) = ProConferences(clubs);
         return ConferenceDivisions(Conference.East, east).Select(d => ($"East · {d.Name}", d.Teams))
             .Concat(ConferenceDivisions(Conference.West, west).Select(d => ($"West · {d.Name}", d.Teams))).ToList();
+    }
+
+    /// <summary>
+    /// Real careers (#432): a tier's clubs are laid out to match Danny's NBA divisions, each club in the division whose NBA
+    /// teams sit nearest it (four a division, nearest pairs first), so a G League "Cascade" is the Pacific Northwest's too.
+    /// </summary>
+    private static List<(string Name, List<Team> Teams)> Regional(IReadOnlyList<Team> clubs)
+    {
+        (double, double) At(string city) => CityAt.TryGetValue(city, out var c) ? c : (40, -90);
+        var anchors = RealWorld.RealWorldData.Teams.Concat(RealWorld.RealWorldData.Expansion)
+            .GroupBy(r => (Conf: r.Conference == "East" ? Conference.East : Conference.West, r.Division))
+            .Select(g => (g.Key.Conf, g.Key.Division, Lat: g.Average(r => At(r.City).Item1), Lon: g.Average(r => At(r.City).Item2))).ToList();
+        var into = anchors.ToDictionary(a => (a.Conf, a.Division), _ => new List<Team>());
+        // Every club takes its nearest division with room (nearest pairs first, four a division), then pairs of clubs swap
+        // while that brings them nearer their divisions in total: the layout matches Danny's map across both conferences.
+        int room = (clubs.Count + anchors.Count - 1) / Math.Max(1, anchors.Count);
+        var placed = new HashSet<Team>();
+        foreach (var (t, a) in clubs.SelectMany(t => anchors.Select(a => (t, a)))
+                     .OrderBy(x => Distance(Location(x.t), (x.a.Lat, x.a.Lon))).ThenBy(x => x.t.Id))
+        {
+            if (placed.Contains(t) || into[(a.Conf, a.Division)].Count >= room) continue;
+            into[(a.Conf, a.Division)].Add(t); placed.Add(t);
+        }
+        double D(Team t, (Conference, string) k) { var a = anchors.First(x => (x.Conf, x.Division) == k); return Distance(Location(t), (a.Lat, a.Lon)); }
+        var keys = anchors.Select(x => (x.Conf, x.Division)).ToList();
+        for (bool better = true; better; )
+        {
+            better = false;
+            for (int i = 0; i < keys.Count; i++)
+                for (int j = i + 1; j < keys.Count; j++)
+                    foreach (var t1 in into[keys[i]].ToList())
+                        foreach (var t2 in into[keys[j]].ToList())
+                        {
+                            if (!into[keys[i]].Contains(t1) || !into[keys[j]].Contains(t2)) continue;
+                            if (D(t1, keys[j]) + D(t2, keys[i]) + 1e-9 < D(t1, keys[i]) + D(t2, keys[j]))
+                            { into[keys[i]].Remove(t1); into[keys[j]].Remove(t2); into[keys[i]].Add(t2); into[keys[j]].Add(t1); better = true; }
+                        }
+        }
+        return new[] { Conference.East, Conference.West }
+            .SelectMany(conf => DivisionNames(conf, true)
+                .Select(d => ($"{conf} · {d}", into.TryGetValue((conf, d), out var l) ? l.OrderBy(t => t.Id).ToList() : new List<Team>())))
+            .Where(d => d.Item2.Count > 0).ToList();
     }
 
     /// <summary>
@@ -303,10 +357,11 @@ public static class UsaPyramid
     /// that, clubs carry their division up and down: the 4th-placed club in a division drops into the same-named division
     /// of the tier below, and that division's winner takes its place.
     /// </summary>
-    public static void LabelDivisions(WorldCompetition c, bool force = false)
+    public static void LabelDivisions(WorldCompetition c, bool real, bool force = false)
     {
-        if (!IsNational(c.Key) || (!force && Balanced(c.Clubs))) return;
-        foreach (var (name, teams) in Geographic(c.Clubs))
+        // A tier still carrying the other world's names (a real career saved before #432) is laid out again too.
+        if (!IsNational(c.Key) || (!force && Balanced(c.Clubs) && RealLabels(c.Clubs) == real)) return;
+        foreach (var (name, teams) in Geographic(c.Clubs, real))
         {
             var parts = name.Split(" · ");
             var conf = parts[0] == "East" ? Conference.East : Conference.West;
@@ -329,10 +384,10 @@ public static class UsaPyramid
             // Danny's paired divisions (#424): once laid out, a tier's clubs carry their division with them and keep it.
             if (clubs.Count > 0 && clubs.All(Labeled))
                 return new[] { Conference.East, Conference.West }
-                    .SelectMany(conf => (conf == Conference.East ? EastDivisions : WestDivisions)
+                    .SelectMany(conf => DivisionNames(conf, RealLabels(clubs))
                         .Select(d => ($"{conf} · {d}", clubs.Where(t => t.Conference == conf && t.Division == d).OrderBy(t => t.Id).ToList())))
                     .Where(d => d.Item2.Count > 0).ToList();
-            return Geographic(clubs);
+            return Geographic(clubs, Names.Brand.Real);
         }
         if (level == 4)
         {
@@ -508,7 +563,8 @@ public static class UsaPyramid
         var t3 = world.Competitions.FirstOrDefault(c => c.Key == Tier3);
         if (t2 == null || t3 == null) return news;
         // Paired divisions (#424): a tier not yet laid out (an older save) is laid out as it played this season, by geography.
-        foreach (var c in world.Competitions.Where(c => IsNational(c.Key))) LabelDivisions(c);
+        bool realWorld = RealWorld.RealWorldData.IsReal(nabl);
+        foreach (var c in world.Competitions.Where(c => IsNational(c.Key))) LabelDivisions(c, realWorld);
         // Final tables, all taken before anyone moves.
         List<Team> Table(WorldCompetition c) =>
             c.Season.Fixtures.Any(f => f.Played)
@@ -601,10 +657,10 @@ public static class UsaPyramid
             Fill(t3, t4, t3Down, fill3);
             Fill(t4, t5, t4Down, fill4);
             // A tier that grew (an older save) is laid out again; otherwise every division is still four.
-            foreach (var c in new[] { t2, t3, t4, t5 }) LabelDivisions(c);
+            foreach (var c in new[] { t2, t3, t4, t5 }) LabelDivisions(c, realWorld);
             if (topPlayed)
             {
-                if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled)) RealignTop(nabl, up);
+                if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled) || RealLabels(nabl.Teams) != RealWorld.RealWorldData.IsReal(nabl)) RealignTop(nabl, up);
                 news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
                     + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
                 news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
@@ -653,7 +709,7 @@ public static class UsaPyramid
             }
             if (topPlayed)
             {
-                if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled)) RealignTop(nabl, up);
+                if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled) || RealLabels(nabl.Teams) != RealWorld.RealWorldData.IsReal(nabl)) RealignTop(nabl, up);
                 news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
                     + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
                 news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
@@ -769,7 +825,7 @@ public static class UsaPyramid
         }
         foreach (var c in new[] { t4, t5 })
         {
-            LabelDivisions(c, force: true);
+            LabelDivisions(c, RealWorld.RealWorldData.IsReal(nabl), force: true);
             world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(70).Average(), 1);
         }
         int left = ranked.Count - keep.Count;
@@ -863,7 +919,7 @@ public static class UsaPyramid
             // Five tiers (D39 A): each tier fills from the one below; tier 5 starts with two extra clubs for this.
             Fill(t3, t4.Clubs.Select(t => (t, t4)));
             Fill(t4, t5.Clubs.Select(t => (t, t5)));
-            foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) { if (IsNational(c.Key)) LabelDivisions(c, force: true); else foreach (var t in c.Clubs) t.Division = c.Profile.Short; }
+            foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) { if (IsNational(c.Key)) LabelDivisions(c, RealWorld.RealWorldData.IsReal(top), force: true); else foreach (var t in c.Clubs) t.Division = c.Profile.Short; }
             RealignTop(top, newcomers);
             return;
         }
@@ -879,7 +935,7 @@ public static class UsaPyramid
                 from.Clubs.Remove(t); reg.Clubs.Add(t);
             }
         }
-        foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) { if (IsNational(c.Key)) LabelDivisions(c, force: true); else foreach (var t in c.Clubs) t.Division = c.Profile.Short; }
+        foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key))) { if (IsNational(c.Key)) LabelDivisions(c, RealWorld.RealWorldData.IsReal(top), force: true); else foreach (var t in c.Clubs) t.Division = c.Profile.Short; }
         RealignTop(top, newcomers);
     }
 

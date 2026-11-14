@@ -35,6 +35,17 @@ public static class RealWorldData
 
     /// <summary>The 30 franchises in the game's franchise-slot order (the same cities, conferences and divisions).</summary>
     public static IReadOnlyList<RealTeam> Teams => _teams.Value.Teams;
+
+    /// <summary>
+    /// Danny's two expansion franchises (#433), not real NBA clubs today: the Seattle SuperSonics (the old name, which Danny
+    /// kept) and the Las Vegas Aces (his name). They take the two places that make the top league 32. Arenas and capacities
+    /// are approximate (Climate Pledge Arena, T-Mobile Arena).
+    /// </summary>
+    public static readonly IReadOnlyList<RealTeam> Expansion = new[]
+    {
+        new RealTeam("Seattle", "SuperSonics", "SEA", "#00653A", "#FFC200", "Climate Pledge Arena", 17300, "West", "Cascade"),
+        new RealTeam("Las Vegas", "Aces", "LVA", "#BA0C2F", "#000000", "T-Mobile Arena", 17500, "West", "Mojave"),
+    };
     public static string TeamsChecked => _teams.Value.Checked;
     public static IReadOnlyList<RealSeason> Seasons => _history.Value.Seasons;
     public static IReadOnlyList<RealRecord> GameRecords => _history.Value.Game;
@@ -70,9 +81,12 @@ public static class RealWorldData
     public static void Apply(League league, Hardwood.Core.World.GameWorld world, ulong seed = 0, bool players = true)
     {
         if (!IsReal(league)) throw new ArgumentException($"Generate the league as \"{LeagueName}\" first.", nameof(league));
+        Brand.Real = true;
+        // The tiers below are laid out with Danny's division names (#432), whatever the world was generated under.
+        foreach (var c in world.Competitions.Where(c => Hardwood.Core.World.UsaPyramid.IsNational(c.Key))) Hardwood.Core.World.UsaPyramid.LabelDivisions(c, real: true, force: true);
         // Renamed here rather than through Pack().ApplyToClubs, which would also rename the static names (Brand.Top)
         // for every later career; Brand.Real does that job and follows whichever career is open.
-        foreach (var (team, real) in league.Teams.Take(Teams.Count).Zip(Teams))
+        void Name(Team team, RealTeam real)
         {
             team.City = real.City; team.Name = real.Name; team.Abbreviation = real.Abbr;
             team.PrimaryColor = real.Primary; team.SecondaryColor = real.Secondary;
@@ -80,8 +94,17 @@ public static class RealWorldData
             team.Division = real.Division;
             team.ArenaCapacity = real.Capacity;
         }
-        // The real conferences and divisions, then the eight regional divisions of the 32-team league (#344, #355).
-        Hardwood.Core.World.UsaPyramid.RealignTop(league, league.Teams.Skip(Teams.Count));
+        foreach (var (team, real) in league.Teams.Take(Teams.Count).Zip(Teams)) Name(team, real);
+        // Danny's expansion clubs (#433): the two clubs that come up to make 32 become the Seattle SuperSonics and the Las Vegas
+        // Aces, with the rosters they came up with. A club in the pyramid already using their abbreviation takes another.
+        foreach (var (team, real) in league.Teams.Skip(Teams.Count).Zip(Expansion))
+        {
+            Name(team, real);
+            foreach (var other in world.Clubs.Where(c => c != team && c.Abbreviation == real.Abbr))
+                other.Abbreviation = Enumerable.Range(2, 8).Select(i => real.Abbr[..2] + i).First(a => world.Clubs.All(c => c.Abbreviation != a) && league.Teams.All(c => c.Abbreviation != a));
+        }
+        // Danny's eight divisions (#432); anyone left over is placed by RealignTop.
+        Hardwood.Core.World.UsaPyramid.RealignTop(league, league.Teams.Skip(Teams.Count + Expansion.Count));
         if (players) RealPlayers.Apply(league, seed);
         Brand.Real = true;
     }

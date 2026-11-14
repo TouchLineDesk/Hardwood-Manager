@@ -19,10 +19,12 @@ public class RealWorldTests
         var teams = RealWorldData.Teams;
         Assert.Equal(30, teams.Count);
         Assert.Equal(30, teams.Select(t => t.Abbr).Distinct().Count());
-        Assert.All(teams.GroupBy(t => t.Division), g => Assert.Equal(5, g.Count()));
-        Assert.Equal(15, teams.Count(t => t.Conference == "East"));
+        // Danny's eight divisions (#432) with the SuperSonics and Aces (#433): four in each.
+        Assert.All(teams.Concat(RealWorldData.Expansion).GroupBy(t => t.Division), g => Assert.Equal(4, g.Count()));
+        Assert.Equal(8, teams.Concat(RealWorldData.Expansion).Select(t => t.Division).Distinct().Count());
+        Assert.Equal(16, teams.Count(t => t.Conference == "East"));
         Assert.Equal("Boston Celtics", teams[0].FullName);
-        Assert.Contains(teams, t => t.FullName == "Los Angeles Lakers" && t.Division == "Pacific");
+        Assert.Contains(teams, t => t.FullName == "Los Angeles Lakers" && t.Division == "Mojave");
         Assert.Contains(teams, t => t.FullName == "Oklahoma City Thunder" && t.Conference == "West");
         Assert.All(teams, t => Assert.Matches("^#[0-9A-F]{6}$", t.Primary));
         Assert.False(string.IsNullOrEmpty(RealWorldData.TeamsChecked));
@@ -64,7 +66,7 @@ public class RealWorldTests
             Assert.True(RealWorldData.IsReal(s.League));
             Assert.Equal("NBA", Brand.Top);
             Assert.Equal("Boston Celtics", s.HumanTeam.FullName);
-            Assert.Equal(("BOS", Conference.East, "Atlantic", 19156), (s.HumanTeam.Abbreviation, s.HumanTeam.Conference, s.HumanTeam.Division, s.HumanTeam.ArenaCapacity));
+            Assert.Equal(("BOS", Conference.East, "Revolution", 19156), (s.HumanTeam.Abbreviation, s.HumanTeam.Conference, s.HumanTeam.Division, s.HumanTeam.ArenaCapacity));
             Assert.Equal("Los Angeles Lakers", s.League.Teams.First(t => t.Id == 22).FullName);
             Assert.Contains(s.Inbox, m => m.Title == "Welcome to the job" && m.Body.Contains("New York Knicks"));
             Assert.DoesNotContain(s.League.Teams, t => t.FullName.Contains("Harbor"));
