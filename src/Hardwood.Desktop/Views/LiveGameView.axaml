@@ -83,8 +83,14 @@
             </Border>
           </WrapPanel>
           <TextBlock Text="{Binding CourtLegend}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
-          <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}" IsVisible="{Binding ShowCourt}"
-                       HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="190" HorizontalAlignment="Center"/>
+          <Grid IsVisible="{Binding ShowCourt}" HorizontalAlignment="Center">
+            <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="190"
+                         FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
+            <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
+            <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
+          </Grid>
           <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowFlow}">
           <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
           <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">

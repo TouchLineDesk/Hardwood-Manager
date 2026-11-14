@@ -49,14 +49,21 @@ public sealed class LiveCourt : Control
     public static readonly StyledProperty<int> VersionProperty = AvaloniaProperty.Register<LiveCourt, int>(nameof(Version));
     public static readonly StyledProperty<Color> HomeColorProperty = AvaloniaProperty.Register<LiveCourt, Color>(nameof(HomeColor), Colors.OrangeRed);
     public static readonly StyledProperty<Color> AwayColorProperty = AvaloniaProperty.Register<LiveCourt, Color>(nameof(AwayColor), Colors.DodgerBlue);
+    /// <summary>The home club's own colours and name, painted into a drawn floor (Danny, run 45).</summary>
+    public static readonly StyledProperty<Color> FloorColorProperty = AvaloniaProperty.Register<LiveCourt, Color>(nameof(FloorColor), Color.Parse("#1D3FA3"));
+    public static readonly StyledProperty<Color> FloorTrimProperty = AvaloniaProperty.Register<LiveCourt, Color>(nameof(FloorTrim), Color.Parse("#F0A33A"));
+    public static readonly StyledProperty<string?> FloorNameProperty = AvaloniaProperty.Register<LiveCourt, string?>(nameof(FloorName));
 
     public IImage? Floor { get => GetValue(FloorProperty); set => SetValue(FloorProperty, value); }
     public IReadOnlyList<LiveShot>? Shots { get => GetValue(ShotsProperty); set => SetValue(ShotsProperty, value); }
     public int Version { get => GetValue(VersionProperty); set => SetValue(VersionProperty, value); }
     public Color HomeColor { get => GetValue(HomeColorProperty); set => SetValue(HomeColorProperty, value); }
     public Color AwayColor { get => GetValue(AwayColorProperty); set => SetValue(AwayColorProperty, value); }
+    public Color FloorColor { get => GetValue(FloorColorProperty); set => SetValue(FloorColorProperty, value); }
+    public Color FloorTrim { get => GetValue(FloorTrimProperty); set => SetValue(FloorTrimProperty, value); }
+    public string? FloorName { get => GetValue(FloorNameProperty); set => SetValue(FloorNameProperty, value); }
 
-    static LiveCourt() => AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty);
+    static LiveCourt() => AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty, FloorColorProperty, FloorTrimProperty, FloorNameProperty);
 
     /// <summary>A court is 94 by 50 feet.</summary>
     public const double Aspect = 94.0 / 50.0;
@@ -95,6 +102,23 @@ public sealed class LiveCourt : Control
             var plank = new Pen(new SolidColorBrush(Color.FromArgb(40, 90, 50, 20)), 1);
             for (double y = 0; y <= 50; y += 2.5) ctx.DrawLine(plank, P(0, y), P(94, y));
             var line = new Pen(new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)), Math.Max(1, s * 0.25));
+            Color Tint(Color c, byte a) => Color.FromArgb(a, c.R, c.G, c.B);
+            // The home club's floor (Danny, run 45): a border in its colour, its colour in the keys and the centre
+            // circle (the logo sits on top), a thin trim line, and its name along both sidelines, all kept soft so the
+            // shots stay the brightest thing on the floor.
+            var apron = new Pen(new SolidColorBrush(Tint(FloorColor, 200)), Math.Max(2, s * 1.1));
+            ctx.DrawRectangle(null, apron, rect.Deflate(Math.Max(1, s * 0.55)), 6, 6);
+            ctx.DrawRectangle(null, new Pen(new SolidColorBrush(Tint(FloorTrim, 150)), Math.Max(1, s * 0.2)), rect.Deflate(Math.Max(2.5, s * 1.3)));
+            ctx.DrawEllipse(new SolidColorBrush(Tint(FloorColor, 70)), null, P(47, 25), 6 * s, 6 * s);
+            ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Tint(FloorTrim, 120)), Math.Max(1, s * 0.3)), P(47, 25), 2 * s, 2 * s);
+            if (FloorName is { Length: > 0 } fname && s >= 2.5)
+            {
+                var face = new Typeface("Inter", FontStyle.Normal, FontWeight.Bold);
+                var txt = new FormattedText(fname.ToUpperInvariant(), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    face, Math.Max(9, s * 2.4), new SolidColorBrush(Tint(FloorColor, 185)));
+                foreach (double y in new[] { 4.2, 50 - 4.2 })
+                    ctx.DrawText(txt, new Point(P(47, 0).X - txt.Width / 2, P(0, y).Y - txt.Height / 2));
+            }
             ctx.DrawRectangle(null, line, rect);
             ctx.DrawLine(line, P(47, 0), P(47, 50));
             ctx.DrawEllipse(null, line, P(47, 25), 6 * s, 6 * s);
@@ -102,7 +126,7 @@ public sealed class LiveCourt : Control
             {
                 double bx = right ? 94 - 5.25 : 5.25, edge = right ? 94 : 0, dir = right ? -1 : 1;
                 var paint = new Rect(right ? P(94 - 19, 17).X : P(0, 17).X, P(0, 17).Y, 19 * s, 16 * s);
-                ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(90, 120, 40, 20)), line, paint);
+                ctx.DrawRectangle(new SolidColorBrush(Tint(FloorColor, 110)), line, paint);
                 ctx.DrawEllipse(null, line, P(edge + dir * 19, 25), 6 * s, 6 * s);
                 ctx.DrawLine(line, P(edge, 3), P(edge + dir * 14, 3));
                 ctx.DrawLine(line, P(edge, 47), P(edge + dir * 14, 47));

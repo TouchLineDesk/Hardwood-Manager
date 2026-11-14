@@ -69,6 +69,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
         double t = Math.Min(0.6, 0.35 - lum + 0.3);
         return Avalonia.Media.Color.FromRgb((byte)(c.R + (255 - c.R) * t), (byte)(c.G + (255 - c.G) * t), (byte)(c.B + (255 - c.B) * t));
     }
+    public Avalonia.Media.Color FloorColor => Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor);
+    public Avalonia.Media.Color FloorTrim => Avalonia.Media.Color.Parse(HomeTeam.SecondaryColor);
+    public string FloorName => HomeTeam.Name;
     public string CourtLegend => $"{AwayName} shoot left, {HomeName} shoot right · dot: made · ring: missed · gold ring: the latest shot";
 
     private static Avalonia.Media.Color Distinct(Team t, Avalonia.Media.Color other)
