@@ -26,9 +26,8 @@
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:PlayerRow">
-            <Button Classes="card" Command="{Binding Open}" Padding="0" Background="Transparent" Margin="0,0,10,10">
-              <c:PlayerCard Player="{Binding Player}" Team="{Binding TeamObj}" Knowledge="{Binding Knowledge}" Footer="{Binding CardFooter}" Width="180" Height="268"/>
-            </Button>
+            <c:PlayerCard Player="{Binding Player}" Team="{Binding TeamObj}" Knowledge="{Binding Knowledge}" Footer="{Binding CardFooter}" Width="180" Height="268" Margin="0,0,10,10"
+                          DoubleTapped="OnCardDoubleTapped" ToolTip.Tip="Click to flip · double-click to open his page"/>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

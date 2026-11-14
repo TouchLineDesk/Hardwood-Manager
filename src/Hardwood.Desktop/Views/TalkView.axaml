@@ -10,7 +10,7 @@
         <c:Icon Kind="Handshake" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
         <TextBlock Text="{Binding Title}" Classes="h2" Margin="0"/>
       </StackPanel>
-      <c:PlayerCard Player="{Binding Player}" Width="170" Height="246" HorizontalAlignment="Left" IsVisible="{Binding Player, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+      <c:PlayerCard Player="{Binding Player}" Team="{Binding PlayerTeam}" Width="170" Height="246" HorizontalAlignment="Left" IsVisible="{Binding Player, Converter={x:Static ObjectConverters.IsNotNull}}"/>
       <TextBlock Text="{Binding AskText}" TextWrapping="Wrap"/>
       <Grid ColumnDefinitions="Auto,*,Auto,112" RowDefinitions="Auto" IsVisible="{Binding CanTalk}">
         <TextBlock Text="Wage $M/yr" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0"/>

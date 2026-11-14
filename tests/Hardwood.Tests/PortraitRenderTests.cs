@@ -45,16 +45,16 @@ public class PortraitRenderTests
             var a = new PlayerCard { Player = withPortrait, Team = team };
             var b = new PlayerCard { Player = without, Team = team };
             var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { a, b } };
-            var window = new Window { Content = row, Width = 380, Height = 270, Background = Brushes.Black };
+            var window = new Window { Content = row, Width = 380, Height = 290, Background = Brushes.Black };
             window.Show();
             window.UpdateLayout();
             using var frame = window.CaptureRenderedFrame()!;
             var shots = Environment.GetEnvironmentVariable("HW_SCREENSHOT_DIR");
             if (!string.IsNullOrEmpty(shots)) frame.Save(Path.Combine(shots, "portrait-card.png"));
 
-            // Avatar centre of each card (see PlayerCard: x = w/2, y = h*0.28).
-            Assert.True(IsMagenta(frame, 95, 76));
-            Assert.False(IsMagenta(frame, 190 + 95, 76));
+            // The photo's centre on each collector card (see PlayerCard.DrawFront: bottom-centred in the top 58%).
+            Assert.True(IsMagenta(frame, 95, 100));
+            Assert.False(IsMagenta(frame, 190 + 95, 100));
         }
         finally
         {

@@ -15,7 +15,9 @@ public sealed partial class TalkViewModel : ViewModelBase
     private readonly Action _after;
     private GameSession Session => _shell.Session!;
 
-    [ObservableProperty] private Player? _player;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(PlayerTeam))] private Player? _player;
+    /// <summary>His club, for the card's crest and colours (none for a free agent).</summary>
+    public Team? PlayerTeam => Player?.TeamId is { } id ? Session.FindTeam(id) : null;
     [ObservableProperty] private string _title = "Contract talks";
     [ObservableProperty] private string _askText = "Select a player to talk to.";
     [ObservableProperty] private decimal? _wage;

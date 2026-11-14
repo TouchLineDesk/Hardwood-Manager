@@ -76,6 +76,8 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         Session = session;
         HasSession = true;
+        Controls.PlayerCard.BackSource = pl => Hardwood.Core.Season.CollectorCard.BackOf(session, pl);
+        Controls.PlayerCard.Today = () => session.Today;
         Controls.Portraits.UseSave(session.Save?.Path);
         Graphics.LogoPackService.UseTeams(session.League.Teams.Concat(session.World.Clubs).Concat(session.World.College?.Programs ?? new List<Team>()));
         Portraits.PortraitService.Instance.Request(session);
