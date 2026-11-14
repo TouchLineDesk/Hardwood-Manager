@@ -104,7 +104,7 @@
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <!-- Review #11 (run 33): two lines per cell, so nothing is cut off at 1280 px or at 130%. -->
-            <DataGridTemplateColumn Header="Team" Width="5*" MinWidth="190" SortMemberPath="Name">
+            <DataGridTemplateColumn Header="Team" Width="5*" MinWidth="212" SortMemberPath="Name">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:TeamChoice">
                   <StackPanel VerticalAlignment="Center" Margin="8,0">
