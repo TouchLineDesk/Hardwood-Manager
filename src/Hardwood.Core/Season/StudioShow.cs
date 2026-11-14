@@ -337,9 +337,18 @@ public sealed partial class GameSession
         string best = $"best of {s.WinsNeeded * 2 - 1}";
         if (ours == 0 && theirs == 0) return $"Game 1 of a {best}";
         if (ours == theirs) return $"The series is tied {ours}-{theirs}";
-        bool elimination = Math.Max(ours, theirs) == s.WinsNeeded - 1;
+        if (theirs == s.WinsNeeded - 1 && ours == s.WinsNeeded - 1) return $"Tied {ours}-{theirs}: winner takes the series";
+        if (theirs == s.WinsNeeded - 1) return $"{them.Name} lead {theirs}-{ours}: {us.Name} face elimination";
         string lead = ours > theirs ? $"{us.Name} lead {ours}-{theirs}" : $"{them.Name} lead {theirs}-{ours}";
-        return elimination ? $"{lead}: one win from moving on" : lead;
+        return ours == s.WinsNeeded - 1 ? $"{lead}: one win from moving on" : lead;
+    }
+
+    private static string SeriesStakes(Series s, Team us)
+    {
+        int ours = s.Higher == us ? s.HigherWins : s.LowerWins, theirs = s.Higher == us ? s.LowerWins : s.HigherWins;
+        string win = ours + 1 >= s.WinsNeeded ? $"Win tonight and {us.Name} are through" : $"Win tonight and it's {ours + 1}-{theirs}";
+        string lose = theirs + 1 >= s.WinsNeeded ? "lose and the season's over" : $"lose and it's {ours}-{theirs + 1}";
+        return $"{win}; {lose}.";
     }
 
     private static string Streak(int s) => s == 0 ? "–" : s > 0 ? $"W{s}" : $"L{-s}";
@@ -401,8 +410,11 @@ public sealed partial class GameSession
             if (Job.Confidence < 40)
                 lines.Add(new(big, $"Let's talk about {Coach.Name}. The word is the {(InCollege ? "AD" : "front office")} is {label}. {(Job.Confidence < 25 ? "Lose a couple more and this could be his last week." : "He needs a run, and he needs it soon.")}"));
             else if (Job.Confidence < 70 || MyRecord.Games < 10)
-                lines.Add(new(host, $"{Coach.Name}'s {(InCollege ? "AD" : "front office")} is {label} for now. {(MyRecord.Games < 10 ? "Early days: they want to see a direction." : "Nothing's on fire, but nobody's handing out extensions either.")}"));
-            else
+            {
+                if (rng.Chance(0.3))
+                    lines.Add(new(host, $"{Coach.Name}'s {(InCollege ? "AD" : "front office")} is {label} for now. {(MyRecord.Games < 10 ? "Early days: they want to see a direction." : "Nothing's on fire, but nobody's handing out extensions either.")}"));
+            }
+            else if (rng.Chance(0.3))
                 lines.Add(new(num, $"{Coach.Name} has the {(InCollege ? "AD" : "owner")} {label} right now. That buys a coach the freedom to experiment."));
         }
         // Unhappy players on your side.
@@ -446,7 +458,7 @@ public sealed partial class GameSession
             }
         // The coaches.
         string theirCoach = them.Coach?.Name ?? them.CoachName;
-        if (theirCoach is { Length: > 0 } && theirCoach != "Interim coach")
+        if (theirCoach is { Length: > 0 } && theirCoach != "Interim coach" && rng.Chance(0.5))
             lines.Add(new(big, $"On the other bench, {theirCoach}. {Pick(rng, "Watch his first timeout: it tells you whether he likes what he sees.", "His teams always come out with a plan.", "Smart coach. He'll make adjustments at the half.")}"));
         else if (theirCoach == "Interim coach")
             lines.Add(new(guard, $"{them.Name} are playing for an interim coach. Players are auditioning for whoever gets the job."));
@@ -487,7 +499,7 @@ public sealed partial class GameSession
             show.ImpactLines.Add(new(num, series.Round == "Finals"
                 ? $"Win and {us.Name} are {((series.Higher == us ? series.HigherWins : series.LowerWins) + 1 >= series.WinsNeeded ? "champions" : "one step closer to the title")}."
                 : Postseason.IsThirdPlace(series.Round) ? $"The third-place winner takes {Postseason.ThirdPlacePrizeFor(true) / 1_000_000.0:F1} million dollars and a trophy; the runner-up half the money."
-                : $"Four wins to move on. {SeriesLine(series, us)}."));
+                : SeriesStakes(series, us)));
             return;
         }
         if (!table.Has(us)) return;
