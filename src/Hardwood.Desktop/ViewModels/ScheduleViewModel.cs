@@ -71,7 +71,8 @@ public sealed partial class ScheduleViewModel : PageViewModel
             }
             string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
             if (s.InCollege && g.Competition == Hardwood.Core.College.CollegeWorld.Madness) comp = $"Madness: {g.Stage}";
-            string opponent = s.InCollege ? $"{(g.Home ? "vs" : "at")} {g.Opponent.City}"
+            // The rank at tip-off for a result, the rank now for a game to come (#528).
+            string opponent = s.InCollege ? $"{(g.Home ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City)}"
                 : $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}" + (comp.Length > 0 ? $" · {comp}" : "");
             Games.Add(new GameRow
             {

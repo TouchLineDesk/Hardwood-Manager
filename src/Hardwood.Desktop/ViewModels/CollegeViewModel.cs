@@ -8,9 +8,34 @@ using Hardwood.Desktop.Controls;
 
 namespace Hardwood.Desktop.ViewModels;
 
+/// <summary>One tile of the Top 25 grid (Danny, #528, his AP-style graphic): the rank, the logo, the school, the record and the move.</summary>
+public sealed class PollTile
+{
+    public required PollEntry Entry { get; init; }
+    public required System.Windows.Input.ICommand Open { get; init; }
+    public int Rank => Entry.Rank;
+    public Team Team => Entry.Team;
+    public string School => Team.City;
+    public string Record { get; init; } = "";
+    public string Conference { get; init; } = "";
+    public string Move => Entry.MoveText;
+    public bool Mine { get; init; }
+    public Avalonia.Media.IBrush MoveBrush => Entry.Move switch
+    {
+        null => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FACC15")),
+        > 0 => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#22C55E")),
+        < 0 => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EF4444")),
+        _ => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#8B95A5")),
+    };
+    public Avalonia.Media.IBrush Edge => Mine ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FACC15"))
+        : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Team.PrimaryColor));
+    public string Tip => $"{Team.FullName} · {Record} · {Conference}" + (Entry.Before is { } b ? $" · #{b} before the latest games" : " · new to the Top 25");
+}
+
 public sealed class RankRow
 {
     public int Rank { get; init; }
+    public string Move { get; init; } = "";
     public required Team Team { get; init; }
     public string Name => Team.FullName;
     public string Conference { get; init; } = "";
@@ -114,6 +139,18 @@ public sealed partial class CollegeViewModel : PageViewModel
     [ObservableProperty] private string _headline = "";
     [ObservableProperty] private string _summary = "";
     public ObservableCollection<RankRow> Top25 { get; } = new();
+    /// <summary>The Top 25 as a 5 × 5 grid of logos (Danny, #528); the table is one click away.</summary>
+    [ObservableProperty] private List<PollTile> _pollTiles = new();
+    [ObservableProperty] private string _pollNote = "";
+    [ObservableProperty] private string _droppedOut = "";
+    public bool HasDroppedOut => DroppedOut.Length > 0;
+    partial void OnDroppedOutChanged(string value) => OnPropertyChanged(nameof(HasDroppedOut));
+    public string[] PollViews { get; } = { "Grid", "Table" };
+    [ObservableProperty] private string _pollView = "Grid";
+    public bool ShowPollGrid => PollView == "Grid";
+    public bool ShowPollTable => !ShowPollGrid;
+    partial void OnPollViewChanged(string value) { OnPropertyChanged(nameof(ShowPollGrid)); OnPropertyChanged(nameof(ShowPollTable)); }
+    [RelayCommand] private void OpenTeam(Team? team) { if (team != null) Shell.ShowTeam(team); }
     public List<string> ConferenceNames { get; private set; } = CollegeWorld.Conferences.Select(c => c.Name).ToList();
     [ObservableProperty] private string _conference = CollegeWorld.Conferences[0].Name;
     public ObservableCollection<RankRow> ConferenceRows { get; } = new();
@@ -182,6 +219,8 @@ public sealed partial class CollegeViewModel : PageViewModel
         if (Session.World.College is { } c) ConferenceNames = c.Active.Select(x => x.Name).ToList();
     }
 
+    private static DateOnly LastGameDay(CollegeWorld c) => c.Season.Games.Where(g => g.Played).Max(g => g.Date);
+
     public override void Refresh()
     {
         var c = Session.World.College;
@@ -197,12 +236,20 @@ public sealed partial class CollegeViewModel : PageViewModel
         Summary = $"{c.StageText} · {c.Programs.Count} programs in {c.Active.Count()} conferences"
                   + (s.ChampionId is { } ch ? $" · champions: {c.Program(ch)!.FullName}" : last != null ? $" · last champions: {last.Champion}" : "");
         Top25.Clear();
-        int rank = 1;
-        foreach (var t in c.Top25())
+        var poll = c.Poll();
+        var me = Session.InCollege ? Session.HumanTeam : null;
+        foreach (var e in poll)
+            Top25.Add(new RankRow { Rank = e.Rank, Move = e.MoveText, Team = e.Team, Conference = ConfName(c, e.Team), Record = $"{e.Wins}-{e.Losses}", Rating = $"{s.Elo[e.Team.Id]:0}" });
+        PollTiles = poll.Select(e => new PollTile
         {
-            var (w, l) = c.Record(t.Id);
-            Top25.Add(new RankRow { Rank = rank++, Team = t, Conference = ConfName(c, t), Record = $"{w}-{l}", Rating = $"{s.Elo[t.Id]:0}" });
-        }
+            Entry = e, Open = OpenTeamCommand, Record = $"{e.Wins}-{e.Losses}", Conference = ConfName(c, e.Team), Mine = e.Team == me,
+        }).ToList();
+        var dropped = c.DroppedOut();
+        DroppedOut = dropped.Count == 0 ? "" : "Dropped out: " + string.Join(", ", dropped.Select(t => $"{t.City} (was #{s.PollBefore[t.Id]})"));
+        bool started = s.Games.Any(g => g.Played);
+        PollNote = started
+            ? $"Re-ranked after every game, on the rating · arrows: since the last day of games ({LastGameDay(c):MMM d})"
+            : "Preseason: ranked on the rating. Re-ranked after every game once the season tips off.";
         FillConference();
         FillBracket();
         FillProspects();

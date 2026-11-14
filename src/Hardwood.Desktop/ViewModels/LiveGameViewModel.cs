@@ -34,7 +34,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public override string Title => "Live game";
     public Team Us => Session.HumanTeam;
     public Team Them => _live.Result.Home.Team == Us ? _live.Result.Away.Team : _live.Result.Home.Team;
-    public string Headline => $"{_live.Result.Away.Team.FullName} at {_live.Result.Home.Team.FullName}";
+    // The college Top 25 rank travels with the team (#528).
+    public string Headline => $"{Hardwood.Desktop.Controls.CollegeRank.Prefix(_live.Result.Away.Team, _live.Result.Away.Team.FullName)} at {Hardwood.Desktop.Controls.CollegeRank.Prefix(_live.Result.Home.Team, _live.Result.Home.Team.FullName)}";
     public string AwayName => _live.Result.Away.Team.Abbreviation;
     public string HomeName => _live.Result.Home.Team.Abbreviation;
     public Team AwayTeam => _live.Result.Away.Team;

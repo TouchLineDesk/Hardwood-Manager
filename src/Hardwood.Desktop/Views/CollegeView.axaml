@@ -14,24 +14,62 @@
     </StackPanel>
     <TabControl IsVisible="{Binding HasCollege}" SelectedIndex="{Binding Tab}">
       <TabItem Header="Top 25">
-        <DataGrid ItemsSource="{Binding Top25}" CanUserSortColumns="False">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
-            <DataGridTemplateColumn Header="" Width="44">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:RankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Program" Width="300">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:RankRow"><c:TeamLink Team="{Binding Team}" Margin="4,0"/></DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="80"/>
-            <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="90"/>
-            <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>
-          </DataGrid.Columns>
-        </DataGrid>
+        <!-- Danny, #528: the Top 25 as a grid of logos with the rank in each tile, re-ranked after every game. -->
+        <DockPanel>
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <ComboBox x:Name="PollViewBox" ItemsSource="{Binding PollViews}" SelectedItem="{Binding PollView}" MinWidth="110" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <TextBlock Text="{Binding PollNote}" Classes="muted" TextWrapping="Wrap" VerticalAlignment="Center"/>
+          </WrapPanel>
+          <TextBlock DockPanel.Dock="Bottom" Text="{Binding DroppedOut}" IsVisible="{Binding HasDroppedOut}" Classes="muted" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          <Panel>
+            <ScrollViewer IsVisible="{Binding ShowPollGrid}" HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl x:Name="PollGrid" ItemsSource="{Binding PollTiles}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PollTile">
+                    <Button Classes="card" Command="{Binding Open}" CommandParameter="{Binding Team}" Margin="0,0,8,8" Padding="0"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ToolTip.Tip="{Binding Tip}">
+                      <Border Background="{StaticResource HwPanelBrush}" BorderBrush="{Binding Edge}" BorderThickness="0,4,0,0" CornerRadius="8" Padding="8,6,8,8" MinHeight="148">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+                          <Grid ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Text="{Binding Rank}" FontSize="22" FontWeight="ExtraBold" VerticalAlignment="Top"/>
+                            <Border Grid.Column="2" Background="#1F2633" CornerRadius="8" Padding="6,1" VerticalAlignment="Top">
+                              <TextBlock Text="{Binding Move}" FontSize="11" FontWeight="Bold" Foreground="{Binding MoveBrush}"/>
+                            </Border>
+                          </Grid>
+                          <c:TeamLogo Grid.Row="1" Team="{Binding Team}" ShowRank="False" Width="60" Height="60" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                          <TextBlock Grid.Row="2" Text="{Binding School}" FontWeight="Bold" FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
+                          <TextBlock Grid.Row="3" Classes="muted" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center">
+                            <Run Text="{Binding Record}"/><Run Text=" · "/><Run Text="{Binding Conference}"/>
+                          </TextBlock>
+                        </Grid>
+                      </Border>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <DataGrid IsVisible="{Binding ShowPollTable}" ItemsSource="{Binding Top25}" CanUserSortColumns="False">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+                <DataGridTextColumn Header="Move" Binding="{Binding Move}" Width="70"/>
+                <DataGridTemplateColumn Header="" Width="44">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:RankRow"><c:TeamLogo Team="{Binding Team}" Width="24" Height="24" ShowText="False" Margin="4,0"/></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Program" Width="300">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:RankRow"><c:TeamLink Team="{Binding Team}" ShowRank="False" Margin="4,0"/></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="80"/>
+                <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="90"/>
+                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Panel>
+        </DockPanel>
       </TabItem>
       <TabItem Header="Conferences">
         <DockPanel>

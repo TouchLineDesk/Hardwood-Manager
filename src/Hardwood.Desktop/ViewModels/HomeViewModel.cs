@@ -109,7 +109,7 @@ public sealed partial class HomeViewModel : PageViewModel
             var opp = next.Opponent;
             Opponent = opp;
             var orec = s.RecordOf(opp);
-            NextGame = $"{(next.Home ? "vs" : "at")} {opp.FullName}";
+            NextGame = $"{(next.Home ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(next.OpponentRank, opp.FullName)}"; // #528
             NextDetail = $"{next.Date:ddd MMM d}{(next.Date == s.Today ? " (today)" : "")}" + (next.Competition != s.HumanLeagueName ? $" · {next.Competition}" : "")
                 + (orec.Games > 0 ? $" · they're {orec.Wins}-{orec.Losses}" : "");
             var report = CoachAi.ScoutingReport(team, opp, next.Date);

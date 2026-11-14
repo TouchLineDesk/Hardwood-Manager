@@ -12,6 +12,8 @@ public sealed class StandingRow
     /// <summary>A shorter name (a college program goes by its school, C2).</summary>
     public string? Label { get; init; }
     public string Name => Label ?? Team.FullName;
+    /// <summary>The team link puts a college program's Top 25 rank before the name (#528); off in the Top 25 table itself.</summary>
+    public bool ShowRank { get; init; } = true;
     public string Division => Team.Division;
     /// <summary>The division column (#318): the NABL's divisions, a pyramid league's, or blank.</summary>
     public string Div { get; init; } = "";
@@ -116,7 +118,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             for (int i = 0; i < West.Count; i++) West[i] = new StandingRow
             {
                 Rank = i + 1, Team = West[i].Team, Label = West[i].Team.City, W = West[i].W, L = West[i].L, Pct = West[i].Pct, GB = "", Diff = West[i].Diff,
-                Home = West[i].Home, Last10 = West[i].Last10, IsHuman = West[i].IsHuman,
+                Home = West[i].Home, Last10 = West[i].Last10, IsHuman = West[i].IsHuman, ShowRank = false,
             };
             PlayoffLabel = "Conference tournament"; ShowPlayIn = false; ShowCards = false;
             LeftTitle = $"{s.MyConference!.Name} (conference games)"; RightTitle = "Top 25 (by rating, overall records)";

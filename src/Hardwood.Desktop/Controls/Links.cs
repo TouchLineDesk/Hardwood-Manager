@@ -14,9 +14,12 @@ public sealed class TeamLink : Button
     public static readonly StyledProperty<Team?> TeamProperty = AvaloniaProperty.Register<TeamLink, Team?>(nameof(Team));
     /// <summary>Text to show instead of the full name (e.g. the abbreviation).</summary>
     public static readonly StyledProperty<string?> TextProperty = AvaloniaProperty.Register<TeamLink, string?>(nameof(Text));
+    /// <summary>Put a college program's Top 25 rank before its name ("#5 Duke", #528). Off where the rank has its own column.</summary>
+    public static readonly StyledProperty<bool> ShowRankProperty = AvaloniaProperty.Register<TeamLink, bool>(nameof(ShowRank), true);
 
     public Team? Team { get => GetValue(TeamProperty); set => SetValue(TeamProperty, value); }
     public string? Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
+    public bool ShowRank { get => GetValue(ShowRankProperty); set => SetValue(ShowRankProperty, value); }
 
     public TeamLink()
     {
@@ -27,9 +30,10 @@ public sealed class TeamLink : Button
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == TeamProperty || change.Property == TextProperty)
+        if (change.Property == TeamProperty || change.Property == TextProperty || change.Property == ShowRankProperty)
         {
-            Content = Text ?? Team?.FullName ?? "";
+            var name = Text ?? Team?.FullName ?? "";
+            Content = ShowRank && Team != null ? CollegeRank.Prefix(Team, name) : name;
             ToolTip.SetTip(this, Team == null ? null : $"Open {Team.FullName}");
         }
     }
