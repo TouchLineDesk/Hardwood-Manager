@@ -19,6 +19,7 @@ public sealed class Reflow
     private readonly double _gap;
     private readonly Func<double>? _leftNeed;
     public bool Stacked { get; private set; }
+    private double _sideBySideWidth;
     /// <summary>Raised when the row stacks (true) or goes back side by side (false).</summary>
     public event Action<bool>? Stacking;
 
@@ -49,6 +50,12 @@ public sealed class Reflow
         // The right part's width side by side: its desired width with the side-by-side margin, whichever margin it has now
         // (otherwise the stacked margin changes the sum and the row flips back and forth for ever).
         double rightW = _right.DesiredSize.Width - _right.Margin.Left - _right.Margin.Right + _rightMargin.Left + _rightMargin.Right;
+        // While stacked, judge by the width it had side by side (review #14 bug #2): a Stacking handler may resize it (Schedule
+        // & Results' side panel is 300 wide beside the table and as wide as its content underneath), and on a day with
+        // little in it the narrower stacked width said "fits", so it went back, didn't fit, and Avalonia gave up on an
+        // infinite layout loop.
+        if (!Stacked) _sideBySideWidth = rightW;
+        else if (_sideBySideWidth > 0) rightW = Math.Max(rightW, _sideBySideWidth);
         double need = (_leftNeed?.Invoke() ?? _left.DesiredSize.Width) + rightW + _gap;
         // A little hysteresis so it doesn't flip back and forth at the boundary.
         bool stack = Stacked ? need > _grid.Bounds.Width - 8 : need > _grid.Bounds.Width;

@@ -130,14 +130,13 @@ public sealed partial class GameSession
                 var (mine, theirs) = r == null ? (null as int?, null as int?) : r.Home.Team == us ? (r.Home.Points, r.Away.Points) : (r.Away.Points, r.Home.Points);
                 list.Add(new MyGame(g.Date, g.Home == us ? g.Away : g.Home, g.Home == us, League.Name, "Regular season", mine, theirs, r) { Group = ScheduleFilter.Regular });
             }
-            if (Postseason != null)
-                foreach (var se in Postseason.Series.Where(s => s.Higher == us || s.Lower == us))
-                foreach (var r in se.Games)
-                {
-                    bool home = r.Home.Team == us;
-                    list.Add(new MyGame(r.Date ?? Today, home ? r.Away.Team : r.Home.Team, home, League.Name, se.Round,
-                        home ? r.Home.Points : r.Away.Points, home ? r.Away.Points : r.Home.Points, r) { Group = ScheduleFilter.ProGroup(League.Name, se.Round, League.Name) });
-                }
+            foreach (var se in PlayoffSeries.Where(s => s.Higher == us || s.Lower == us))
+            foreach (var r in se.Games)
+            {
+                bool home = r.Home.Team == us;
+                list.Add(new MyGame(r.Date ?? Today, home ? r.Away.Team : r.Home.Team, home, League.Name, se.Round,
+                    home ? r.Home.Points : r.Away.Points, home ? r.Away.Points : r.Home.Points, r) { Group = ScheduleFilter.ProGroup(League.Name, se.Round, League.Name) });
+            }
             return list.OrderBy(g => g.Date).ToList();
         }
         if (InCollege)

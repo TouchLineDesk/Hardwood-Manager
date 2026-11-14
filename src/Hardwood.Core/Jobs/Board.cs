@@ -143,6 +143,43 @@ public static class Board
         _ => "Stay clear of the bottom and show progress",
     };
 
+    /// <summary>
+    /// What a season came to, in the past tense (review #14 bug #16: the review printed the goal's wording for the result,
+    /// so a club that missed the playoffs "resulted" in "develop the squad and show progress").
+    /// </summary>
+    public static string DescribeResult(SeasonGoal achieved, LeagueContext ctx, bool relegated = false, bool wonDivision = false)
+    {
+        if (relegated) return "relegated, last in your division";
+        if (ctx.IsCollege) return achieved switch
+        {
+            SeasonGoal.Title => "won the national championship",
+            SeasonGoal.Finals => "reached the Final Four",
+            SeasonGoal.ConferenceFinals => "reached the Elite Eight",
+            SeasonGoal.SecondRound => "reached the Sweet 16",
+            SeasonGoal.Playoffs or SeasonGoal.PlayIn => "made March Madness",
+            _ => "missed March Madness",
+        };
+        string won = wonDivision ? "won your division and go up; " : "";
+        if (ctx.IsNabl || ctx.PlayoffTeams > 1) return won + achieved switch
+        {
+            SeasonGoal.Title => "won the championship",
+            SeasonGoal.Finals => "reached the Finals",
+            SeasonGoal.ConferenceFinals => "reached the conference finals",
+            SeasonGoal.SecondRound => "won a playoff round",
+            SeasonGoal.Playoffs => "made the playoffs",
+            SeasonGoal.PlayIn => ctx.DivisionFormat ? "third in your division (the third-place tournament)" : "reached the play-in",
+            _ => "missed the playoffs",
+        };
+        return won + achieved switch
+        {
+            SeasonGoal.Title => "won the league",
+            SeasonGoal.Finals => "finished second",
+            SeasonGoal.ConferenceFinals or SeasonGoal.SecondRound => "finished in the top three",
+            SeasonGoal.Playoffs or SeasonGoal.PlayIn => "finished in the top half",
+            _ => "finished in the bottom half",
+        };
+    }
+
     /// <summary>College goals are about March Madness (#160).</summary>
     public static string DescribeCollege(SeasonGoal g) => g switch
     {
@@ -466,7 +503,7 @@ public static class Board
         SeasonReview(job, coach, LeagueContext.Nabl(league), team, achieved, wins, losses, stats, today, league.Season);
 
     public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, LeagueContext ctx, Team team, SeasonGoal achieved,
-        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season)
+        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season, bool relegated = false, bool wonDivision = false)
     {
         var e = job.Current ?? SetExpectations(ctx, team, season);
         e.Achieved = achieved;
@@ -474,6 +511,10 @@ public static class Board
         // College goals sit on a shorter ladder (in the field, Sweet 16, Final Four, title): a 1-seed set "win it all" who
         // goes out in the round of 32 is three steps short, not four (the college-strong critic career, C2).
         double diff = ctx.IsCollege ? CollegeStep(achieved) - CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
+        // Review #14 bug #16: "stay up" is judged on staying up (met; more than met with a playoff place), and a relegation is
+        // never a goal met (a 25-57 relegated season read "the owner is satisfied").
+        if (e.Survive) diff = relegated ? -1 : achieved >= SeasonGoal.Playoffs ? 1 : 0;
+        else if (relegated) diff = Math.Min(diff, -1);
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
         double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
@@ -483,7 +524,9 @@ public static class Board
         if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
         else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
         string goalText = e.Survive ? "stay up" : Describe(e.Goal, ctx).ToLower();
-        var lines = new List<string> { $"Goal: {goalText}. Result: {Describe(achieved, ctx).ToLower()} ({wins}-{losses}, target {e.TargetWins} wins)." };
+        string result = DescribeResult(achieved, ctx, relegated, wonDivision);
+        if (e.Survive && !relegated) result = "stayed up, " + result;
+        var lines = new List<string> { $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins)." };
         foreach (var d in e.Demands)
         {
             bool met = Meeting(d, ctx, team, stats, today, wins, wins + losses);
