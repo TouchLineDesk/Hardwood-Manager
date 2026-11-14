@@ -87,17 +87,18 @@ public class ScoutingTests
         int adjusted = 0;
         for (int i = 0; i < 12; i++)
         {
-            // Start each game in a system that isn't the counter, so the read has something to do.
-            a.Tactic = new Tactic { Auto = false, HalftimeAdjust = true, System = OffensiveSystem.PostCentric, Scheme = DefensiveScheme.Drop };
+            // Start each game in Balanced / man-to-man, which the counter never picks (both carry a penalty in BestSystem / BestScheme),
+            // so the read always has something to do (run 48: post / drop became the counter after the retune).
+            a.Tactic = new Tactic { Auto = false, HalftimeAdjust = true, System = OffensiveSystem.Balanced, Scheme = DefensiveScheme.Man };
             var r = sim.Simulate(a, b, lg.Rules, (ulong)(900 + i), keepLog: true);
             if (r.PlayLog.Any(l => l.Contains("Halftime adjustment: " + a.Abbreviation))) adjusted++;
-            Assert.Equal(OffensiveSystem.PostCentric, a.Tactic.System);
-            Assert.Equal(DefensiveScheme.Drop, a.Tactic.Scheme);
+            Assert.Equal(OffensiveSystem.Balanced, a.Tactic.System);
+            Assert.Equal(DefensiveScheme.Man, a.Tactic.Scheme);
             Assert.DoesNotContain(r.PlayLog, l => l.Contains("Halftime adjustment: " + b.Abbreviation)); // auto doesn't adjust
         }
         Assert.True(adjusted > 0);
         // Switched off: no adjustment.
-        a.Tactic = new Tactic { Auto = false, HalftimeAdjust = false, System = OffensiveSystem.PostCentric, Scheme = DefensiveScheme.Drop };
+        a.Tactic = new Tactic { Auto = false, HalftimeAdjust = false, System = OffensiveSystem.Balanced, Scheme = DefensiveScheme.Man };
         Assert.DoesNotContain(sim.Simulate(a, b, lg.Rules, 77, keepLog: true).PlayLog, l => l.Contains("Halftime adjustment"));
     }
 

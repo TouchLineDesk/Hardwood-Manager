@@ -61,6 +61,8 @@ public class InboxCleanupTests
         try
         {
             var s = Started(42, Path.Combine(dir, "career.hwsave"));
+            // The newest message must be one you can delete (run 48: a press-conference decision was newest after the retune).
+            s.Post("A note to delete", "Body");
             int next = s.NextMessageId;
             var newest = s.Inbox[0];
             Assert.Equal(next - 1, newest.Id);
