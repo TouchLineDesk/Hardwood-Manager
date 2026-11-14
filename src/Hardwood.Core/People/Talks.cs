@@ -35,8 +35,10 @@ public static class Talks
     /// <summary>Why the coach can't talk to him right now, or null.</summary>
     public static string? Unavailable(Player p, DateOnly today) =>
         p.LastTalk is { } last && today.DayNumber - last.DayNumber < CooldownDays
-            ? $"You spoke to him {today.DayNumber - last.DayNumber} day(s) ago; give it a week."
+            ? $"You spoke to him {Ago(today.DayNumber - last.DayNumber)}; give it a week."
             : null;
+
+    private static string Ago(int days) => days <= 0 ? "today" : days == 1 ? "yesterday" : $"{days} days ago";
 
     public static TalkResult Hold(Player p, Team team, TalkTopic topic, DateOnly today, double winPct, PlayerSeasonStats? stats,
                                   Finance finance, List<Promise> promises, Rng rng, Jobs.Coach? coach = null)

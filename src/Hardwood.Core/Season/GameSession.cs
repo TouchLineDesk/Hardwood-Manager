@@ -85,7 +85,9 @@ public sealed partial class GameSession
         Phase = SessionPhase.Preseason;
         // The human team is run by hand. A new career (or a save from before tactics were saved) starts from the
         // assistant's setup: the system and scheme that suit the roster, everyone in his best role.
-        if (HumanTeam.Tactic.Auto) CoachAi.AssistantSetup(HumanTeam);
+        // A loaded career (it brings its random state) keeps its tactics as saved: Auto there means you delegated
+        // tactics on the Staff page, and the load mustn't switch that off (review #14, the bug finder).
+        if (HumanTeam.Tactic.Auto && rngState == null) CoachAi.AssistantSetup(HumanTeam);
         Jobs.Board.EnsureOwnersAndCoaches(League, seed);
         Jobs.Board.EnsureOwnersAndCoaches(World.Clubs, seed);
         // Club money (decision #88): new careers, and saves from before the money model, get budgets now.

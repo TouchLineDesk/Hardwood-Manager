@@ -367,7 +367,7 @@ public sealed class PlayerCard : Control
 
     private CollectorCard.Back Fallback(Player p) => new("No games yet", null, null, null,
         CollectorCard.Strengths(p, Knowledge), p.RookieSeason is { } rs ? $"Rookie season {rs}-{(rs + 1) % 100:00}" : "Career totals count from this season", "No honours yet",
-        new[] { new CollectorCard.Chip(p.Injury == null ? "Healthy" : p.Injury.Name, p.Injury == null ? "good" : "bad"),
+        new[] { new CollectorCard.Chip(p.Injury is { } inj && (Today == null || inj.IsOut(Today())) ? inj.Name : "Healthy", p.Injury is { } inj2 && (Today == null || inj2.IsOut(Today())) ? "bad" : "good"),
                 new CollectorCard.Chip(p.Contract is { } c ? $"{CollectorCard.Money(c.Salary)} · {c.Years} yrs" : "Free agent", p.Contract == null ? "warn" : "") });
 
     private static Color Lighten(Color c, double f) => Color.FromRgb((byte)(c.R + (255 - c.R) * f), (byte)(c.G + (255 - c.G) * f), (byte)(c.B + (255 - c.B) * f));

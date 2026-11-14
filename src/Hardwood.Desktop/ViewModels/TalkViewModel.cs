@@ -56,7 +56,8 @@ public sealed partial class TalkViewModel : ViewModelBase
     {
         var s = Session;
         long room = s.MyWageRoom;
-        return $" You have ${room / 1e6:F1}M of wage budget to spend" + Kept(s.MyReservedWages, s.MyRosterFillReserve) + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "");
+        // Over budget reads as such, not as "$-1.1M to spend" (review #14, the bug finder).
+        return (room >= 0 ? $" You have ${room / 1e6:F1}M of wage budget to spend" : $" You are ${-room / 1e6:F1}M over your wage budget") + Kept(s.MyReservedWages, s.MyRosterFillReserve) + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "");
     }
 
     private static string Kept(long seniors, long fill)

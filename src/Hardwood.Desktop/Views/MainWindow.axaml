@@ -22,7 +22,7 @@
         <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
           <StackPanel x:Name="TopLeft" Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
             <c:BallMark Width="34" Height="34" Fill="{DynamicResource HwAccentBrush}"/>
-            <c:TeamLogo Team="{Binding Session.HumanTeam}" Width="40" Height="40"/>
+            <c:TeamLogo Team="{Binding HeaderTeam}" Width="40" Height="40"/>
             <StackPanel>
               <TextBlock Text="{Binding TeamText}" FontWeight="SemiBold" FontSize="14"/>
               <TextBlock Text="{Binding PhaseText}" Classes="muted" FontSize="11.5"/>
