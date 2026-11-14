@@ -257,6 +257,8 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     [ObservableProperty] private string _jobText = "";
+    /// <summary>Your club for the top bar's logo: follows a new job (review #14: it kept the old club's logo).</summary>
+    [ObservableProperty] private Team? _headerTeam;
     [ObservableProperty] private Avalonia.Media.IBrush _jobBrush = Avalonia.Media.Brushes.Gray;
 
     [RelayCommand] private void GoBoard() => Navigate("Board");
@@ -268,6 +270,7 @@ public sealed partial class MainViewModel : ViewModelBase
         InSeason = s.Phase != SessionPhase.Offseason;
         if (s.Phase == SessionPhase.Offseason) InLiveGame = false;
         DateText = s.Today.ToString("ddd, MMM d yyyy");
+        HeaderTeam = s.HumanTeam;
         TeamText = s.Employed ? s.HumanTeam.FullName : $"{s.Coach.Name} · out of work";
         var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
         JobText = s.Employed ? $"{(s.InCollege ? "AD" : "Board")}: {jobLabel}" : jobLabel;

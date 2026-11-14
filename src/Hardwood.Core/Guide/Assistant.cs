@@ -293,10 +293,13 @@ public static class Assistant
         // Young players who need minutes.
         var stats = s.MyStats;
         var young = team.Roster.Where(p => p.Age(today) <= 22)
-            .Select(p => (p, pot: Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid, mpg: stats.TryGetValue(p.Id, out var st) ? st.Mpg : 0))
-            .Where(x => x.pot >= x.p.CurrentAbility + 15 && x.mpg < 15 && x.p.IsAvailable(today))
+            .Select(p => (p, pot: Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid, mpg: stats.TryGetValue(p.Id, out var st) ? st.Mpg : 0,
+                          games: stats.TryGetValue(p.Id, out var sg) ? sg.Games : 0))
+            // Only once the games have started (review #14: in preseason every player "plays 0 minutes"); a player
+            // who hasn't appeared at all while the team has played 3+ games still counts.
+            .Where(x => x.pot >= x.p.CurrentAbility + 15 && x.mpg < 15 && x.p.IsAvailable(today) && (x.games > 0 || s.MyRecord.Games >= 3))
             .OrderByDescending(x => x.pot).Take(2).ToList();
-        foreach (var (p, pot, mpg) in young)
+        foreach (var (p, pot, mpg, _) in young)
             tips.Add(new($"young-{p.Id}-{s.Phase == SessionPhase.Offseason}", s.Phase == SessionPhase.Offseason
                 ? $"{p.Name} ({p.Age(today)}) could become a {Level((int)pot)} but played {mpg:F0} minutes a game last season. Plan real minutes for him next year."
                 : $"{p.Name} ({p.Age(today)}) could become a {Level((int)pot)} but plays {mpg:F0} minutes. Young players develop faster with real minutes."));
