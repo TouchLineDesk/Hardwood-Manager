@@ -46,6 +46,7 @@ public class GraphicsPackTests
             Png(Path.Combine(root, "prographics", "players", "stephen_curry.png"));
             Png(Path.Combine(root, "collegegraphics", "logos", "1CM_duke.png"));
             Png(Path.Combine(root, "collegegraphics", "logos", "1CM_connecticut.png"));
+            Png(Path.Combine(root, "collegegraphics", "courts_prior", "1CM_duke.png"));
             var g = GraphicsPack.Find(Path.Combine(root, "missing"), root);
             Assert.False(g.IsEmpty);
 
@@ -66,12 +67,31 @@ public class GraphicsPackTests
             var uconn = new Team { Id = 6, City = "UConn", Name = "Huskies", Abbreviation = "UCON", Division = "be" };
             Assert.EndsWith("1CM_duke.png", g.LogoFor(duke));
             Assert.EndsWith("1CM_connecticut.png", g.LogoFor(uconn)); // the pack's spelling of a short name
+            // A pro club in a college town keeps its own crest and kit (Danny, run 45): school name alone isn't enough.
+            var proDuke = new Team { Id = 7, City = "Duke", Name = "Thunder", Abbreviation = "DKT", Division = "Gulf" };
+            Assert.Null(g.LogoFor(proDuke));
+            Assert.EndsWith("1CM_duke.png", g.CourtFor(duke));     // the home court for the live game (run 45)
+            Assert.Null(g.CourtFor(proDuke));
+            Assert.Null(g.CourtFor(uconn));
+            Assert.Empty(g.JerseysFor(proDuke));
 
             Player P(string first, string last) => new() { Id = 9, FirstName = first, LastName = last };
             Assert.NotNull(g.PhotoFor(P("Stephen", "Curry")));
             Assert.Null(g.PhotoFor(P("Stephen", "Currie")));
         }
         finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void In_a_real_career_only_college_programs_take_college_graphics()
+    {
+        // Danny (run 45): lower-tier pro clubs were pulling college logos. Every real program still matches; no pro club does.
+        var s = Hardwood.Core.Season.GameSession.NewGame(31, 5, null, realWorld: true);
+        var programs = s.World.College!.Programs.ToList();
+        Assert.All(programs, t => Assert.NotNull(GraphicsPack.SchoolKey(t)));
+        var pros = s.World.Competitions.Where(c => Hardwood.Core.World.UsaPyramid.IsNational(c.Key)).SelectMany(c => c.Clubs).Concat(s.League.Teams).ToList();
+        Assert.NotEmpty(pros);
+        Assert.All(pros, t => Assert.Null(GraphicsPack.SchoolKey(t)));
     }
 
     [Fact]

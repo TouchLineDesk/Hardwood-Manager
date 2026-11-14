@@ -1,0 +1,251 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.StudioShowView"
+             x:DataType="vm:StudioShowViewModel">
+  <!-- Danny's pre-game studio show (#446, D53 B; part 1): the HSN desk before tip-off. -->
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="10" Margin="0,0,6,10">
+      <!-- The set: the night's colours, the show's title, the matchup, the buttons. -->
+      <Border CornerRadius="10" ClipToBounds="True" BorderBrush="{Binding AccentBrush}" BorderThickness="0,0,0,3">
+        <Grid>
+          <c:CourtBackdrop Glow="{Binding Glow}" Intensity="0.9"/>
+          <Border Background="{Binding CourtBrush}" IsVisible="{Binding HasCourt}"/>
+          <Border Background="#990B0E12" IsVisible="{Binding HasCourt}"/>
+          <StackPanel Margin="18,12,18,12" Spacing="8">
+            <Grid x:Name="TitleRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+              <Border Background="{Binding AccentBrush}" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Network}" FontWeight="Black" FontSize="15" Foreground="#101318" LetterSpacing="1"/>
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ShowName}" FontSize="22" FontWeight="Bold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding SetLine}" Foreground="{Binding SecondBrush}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              </StackPanel>
+              <WrapPanel x:Name="Buttons" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" MaxWidth="330">
+                <CheckBox Content="Skip the show" IsChecked="{Binding SkipShow}" IsVisible="{Binding CanTipOff}" VerticalAlignment="Center" Margin="0,0,8,4"
+                          ToolTip.Tip="Go straight to the game from now on (turn it back on in Settings or on Home)"/>
+                <Button Content="Sim the game" Command="{Binding SimGameCommand}" IsVisible="{Binding CanTipOff}" Margin="0,0,8,4"/>
+                <Button Classes="primary" Command="{Binding TipOffCommand}" MinWidth="104" Margin="0,0,0,4">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:Icon Kind="Play" Width="15" Height="15" Foreground="#111" IsVisible="{Binding CanTipOff}"/>
+                    <TextBlock Text="Tip off" IsVisible="{Binding CanTipOff}"/>
+                    <TextBlock Text="Back" IsVisible="{Binding !CanTipOff}"/>
+                  </StackPanel>
+                </Button>
+              </WrapPanel>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto,*">
+              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                <c:TeamLogo Team="{Binding AwayTeam}" Width="56" Height="56" Margin="0,0,10,0"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding AwayName}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding AwayRecord}" Classes="muted" FontSize="12"/>
+                </StackPanel>
+              </Grid>
+              <Border Grid.Column="1" Background="#C0101318" CornerRadius="8" Padding="14,6" Margin="10,0" VerticalAlignment="Center">
+                <StackPanel>
+                  <TextBlock Text="AT" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{Binding AccentBrush}" LetterSpacing="2"/>
+                  <TextBlock Text="{Binding Chance}" FontSize="11" Classes="muted" HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+              <Grid Grid.Column="2" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right">
+                  <TextBlock Text="{Binding HomeName}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Right" HorizontalAlignment="Right"/>
+                  <TextBlock Text="{Binding HomeRecord}" Classes="muted" FontSize="12" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <c:TeamLogo Grid.Column="1" Team="{Binding HomeTeam}" Width="56" Height="56" Margin="10,0,0,0"/>
+              </Grid>
+            </Grid>
+            <TextBlock Text="{Binding Where}" Classes="muted" FontSize="12" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+            <TextBlock Text="{Binding Stakes}" IsVisible="{Binding HasStakes}" FontWeight="SemiBold" Foreground="{Binding AccentBrush}" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- The desk -->
+      <ItemsControl ItemsSource="{Binding Desk}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:StudioVoice">
+            <Border Classes="panel" Padding="10,8" Margin="0,0,8,8" Width="228" ToolTip.Tip="{Binding Bio}">
+              <Grid ColumnDefinitions="Auto,*">
+                <Border Width="38" Height="38" CornerRadius="19" Background="{Binding Colour}" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Initials}" Foreground="#101318" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding Role}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Grid x:Name="Body" ColumnDefinitions="3*,2*" RowDefinitions="Auto,Auto">
+        <!-- The segments: the open, what to watch, off the court -->
+        <ItemsControl x:Name="BodyLeft" ItemsSource="{Binding Cards}" Margin="0,0,10,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:StudioCard">
+              <Border Classes="panel" Padding="12,10" Margin="0,0,0,10">
+                <StackPanel Spacing="6">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding Kicker}" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="{DynamicResource HwAccentBrush}"/>
+                    <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding Lines}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:StudioSay">
+                        <Grid ColumnDefinitions="3,*" Margin="0,3">
+                          <Border Background="{Binding Colour}" CornerRadius="2"/>
+                          <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBlock Text="{Binding Speaker}" FontSize="11.5" FontWeight="Bold" Foreground="{Binding Colour}"/>
+                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13"/>
+                          </StackPanel>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel x:Name="BodyRight" Grid.Column="1" Spacing="10">
+          <!-- Tale of the tape -->
+          <Border Classes="panel" Padding="12,10">
+            <StackPanel Spacing="4">
+              <TextBlock Text="TALE OF THE TAPE" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="{DynamicResource HwAccentBrush}"/>
+              <Grid ColumnDefinitions="*,2*,*" Margin="0,2,0,2">
+                <TextBlock Text="{Binding AwayTeam.Abbreviation}" FontWeight="Bold" HorizontalAlignment="Left"/>
+                <TextBlock Grid.Column="2" Text="{Binding HomeTeam.Abbreviation}" FontWeight="Bold" HorizontalAlignment="Right"/>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Tape}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StudioTape">
+                    <Grid ColumnDefinitions="*,2*,*" Margin="0,2">
+                      <TextBlock Text="{Binding Away}" FontWeight="{Binding AwayWeight}" Foreground="{Binding AwayBrush}" HorizontalAlignment="Left"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="muted" FontSize="12" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Home}" FontWeight="{Binding HomeWeight}" Foreground="{Binding HomeBrush}" HorizontalAlignment="Right"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- What the night means in the standings -->
+          <Border Classes="panel" Padding="12,10" IsVisible="{Binding HasImpact}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="STANDINGS WATCH" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="{DynamicResource HwAccentBrush}"/>
+              <ItemsControl ItemsSource="{Binding Impact}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StudioImpactTable">
+                    <StackPanel Margin="0,0,0,8">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,2" TextWrapping="Wrap"/>
+                      <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:StudioImpactRow">
+                            <Border Background="{Binding Row}" CornerRadius="3" Padding="4,2">
+                              <Grid ColumnDefinitions="18,Auto,*,Auto,Auto">
+                                <TextBlock Text="{Binding Place}" FontWeight="Bold" Foreground="{Binding ZoneBrush}" VerticalAlignment="Center"/>
+                                <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="20" Height="20" Margin="2,0,6,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="{Binding Record}" FontSize="12.5" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="4" Text="{Binding Back}" Classes="muted" FontSize="12" Margin="8,0,0,0" MinWidth="24" TextAlignment="Right" VerticalAlignment="Center"/>
+                              </Grid>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Green: playoffs · gold: third-place tournament · red: relegation · blue: promotion" Classes="muted" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding HasTables}"/>
+              <ItemsControl ItemsSource="{Binding ImpactLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StudioSay">
+                    <Grid ColumnDefinitions="3,*" Margin="0,3">
+                      <Border Background="{Binding Colour}" CornerRadius="2"/>
+                      <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Text="{Binding Speaker}" FontSize="11.5" FontWeight="Bold" Foreground="{Binding Colour}"/>
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12.5"/>
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- The award race -->
+          <Border Classes="panel" Padding="12,10" IsVisible="{Binding HasRace}">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding RaceTitle}" FontSize="13" FontWeight="SemiBold"/>
+              <ItemsControl ItemsSource="{Binding Race}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StudioRace">
+                    <Border Background="{Binding Row}" CornerRadius="3" Padding="4,2">
+                      <Grid ColumnDefinitions="18,*,Auto">
+                        <TextBlock Text="{Binding Rank}" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}"/>
+                        <StackPanel Grid.Column="1">
+                          <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                          <TextBlock Text="{Binding Line}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" FontWeight="Bold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding RaceLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StudioSay">
+                    <Grid ColumnDefinitions="3,*" Margin="0,3">
+                      <Border Background="{Binding Colour}" CornerRadius="2"/>
+                      <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Text="{Binding Speaker}" FontSize="11.5" FontWeight="Bold" Foreground="{Binding Colour}"/>
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12.5"/>
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- The picks, tracked all season -->
+      <Border Classes="panel" Padding="12,10">
+        <StackPanel Spacing="6">
+          <TextBlock Text="THE PICKS" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="{DynamicResource HwAccentBrush}"/>
+          <ItemsControl ItemsSource="{Binding Picks}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:StudioPickRow">
+                <Border Background="#141920" BorderBrush="{Binding Colour}" BorderThickness="0,3,0,0" CornerRadius="6" Padding="10,8" Margin="0,0,8,8" Width="270">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="28" Height="28" CornerRadius="14" Background="{Binding Colour}">
+                        <TextBlock Text="{Binding Initials}" Foreground="#101318" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" Margin="8,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                      <c:TeamLogo Grid.Column="2" Team="{Binding Pick}" Width="28" Height="28"/>
+                    </Grid>
+                    <TextBlock Text="{Binding PickText}" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding Why}" TextWrapping="Wrap" FontSize="12.5"/>
+                    <TextBlock Text="{Binding Record}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

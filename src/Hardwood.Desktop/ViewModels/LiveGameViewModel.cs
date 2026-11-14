@@ -42,6 +42,12 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.IBrush AwayBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(AwayTeam.PrimaryColor));
     public Avalonia.Media.IBrush HomeBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color HomeColor => ThemeService.AccentFor(HomeTeam);
+    /// <summary>A college game is played on the home program's court from Danny's pack, under the scoreboard (run 45).</summary>
+    public Avalonia.Media.Imaging.Bitmap? HomeCourt => _court ??= Graphics.GraphicsPackService.CourtFor(HomeTeam);
+    private Avalonia.Media.Imaging.Bitmap? _court;
+    public bool HasCourt => HomeCourt != null;
+    /// <summary>The court as a brush, so the picture fills the scoreboard without setting its size.</summary>
+    public Avalonia.Media.IBrush? CourtBrush => HomeCourt is { } b ? new Avalonia.Media.ImageBrush(b) { Stretch = Avalonia.Media.Stretch.UniformToFill, Opacity = 0.75 } : null;
 
     // Match day (roadmap 2): the game's shape as it happens.
     public GameResult Result => _live.Result;

@@ -9,6 +9,9 @@
     <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" MinHeight="118">
       <Grid>
         <c:CourtBackdrop Glow="{Binding HomeColor}" Intensity="0.7"/>
+        <!-- College games: the home program's own court from Danny's pack (run 45), dimmed so the score reads. -->
+        <Border Background="{Binding CourtBrush}" IsVisible="{Binding HasCourt}"/>
+        <Border Background="#8C0B0E12" IsVisible="{Binding HasCourt}"/>
         <StackPanel VerticalAlignment="Center">
         <Grid x:Name="ScoreRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="16,8,16,4">
         <Grid x:Name="ScoreLine" ColumnDefinitions="*,Auto,*" MinHeight="100">

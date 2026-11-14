@@ -61,10 +61,40 @@ public sealed class MediaDesk
     /// <summary>Counts by kind and answer, for the critic bot and the tests.</summary>
     public int Answered { get; set; }
     public int AutoAnswered { get; set; }
+    /// <summary>The pre-game studio show's tracked picks (#446). Older saves load with none.</summary>
+    public StudioDesk Studio { get; set; } = new();
 
     public IEnumerable<PendingDecision> OpenFor(int teamId) => Decisions.Where(d => d.Open && d.TeamId == teamId);
     public PendingDecision? Find(int id) => Decisions.FirstOrDefault(d => d.Id == id);
     public PendingDecision? ForMessage(int messageId) => Decisions.FirstOrDefault(d => d.MessageId == messageId);
+}
+
+/// <summary>The studio panel's picks on your games (#446, run 45), graded at the final.</summary>
+public sealed class StudioDesk
+{
+    public List<StudioPickRecord> Picks { get; set; } = new();
+
+    /// <summary>An analyst's record on your games in a season.</summary>
+    public (int wins, int losses) Record(string analyst, int season)
+    {
+        var mine = Picks.Where(p => p.Analyst == analyst && p.Season == season && p.Correct != null).ToList();
+        return (mine.Count(p => p.Correct == true), mine.Count(p => p.Correct == false));
+    }
+}
+
+/// <summary>One analyst's pick for one game.</summary>
+public sealed class StudioPickRecord
+{
+    public string Key { get; set; } = "";
+    public DateOnly Date { get; set; }
+    public int Season { get; set; }
+    public string Analyst { get; set; } = "";
+    public int HomeId { get; set; }
+    public int AwayId { get; set; }
+    public int PickId { get; set; }
+    public int Margin { get; set; }
+    public bool? Correct { get; set; }
+    public string Final { get; set; } = "";
 }
 
 /// <summary>An answer given, and when.</summary>

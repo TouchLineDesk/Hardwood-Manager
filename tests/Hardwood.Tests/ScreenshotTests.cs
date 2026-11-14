@@ -47,6 +47,15 @@ public class ScreenshotTests
             while (!session.HumanPlaysToday) session.AdvanceDay();
             vm.AfterTick();
             var (live, others) = session.BeginLiveDay();
+            // Danny's pre-game studio show (#446) before tip-off.
+            vm.CurrentPage = new StudioShowViewModel(vm, live!, others);
+            Snap(window, Path.Combine(dir, $"{n++:00}-studio-show.png"));
+            foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                         .Where(x => Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<StudioShowView>(x) != null).Take(1))
+            {
+                sv.ScrollToEnd();
+                Snap(window, Path.Combine(dir, $"{n++:00}-studio-show-picks.png"));
+            }
             var liveVm = new LiveGameViewModel(vm, live!, others);
             vm.CurrentPage = liveVm;
             for (int i = 0; i < 120; i++) live!.Step();

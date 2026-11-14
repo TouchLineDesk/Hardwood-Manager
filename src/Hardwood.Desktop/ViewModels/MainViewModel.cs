@@ -162,6 +162,14 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void ShowPlayer(Player player) => Open(new PlayerViewModel(this, player));
 
+    /// <summary>The pre-game show for your next game, opened from Home ahead of the day (#446).</summary>
+    public void ShowStudio()
+    {
+        if (Session?.NextMyGame is not { } next) return;
+        var (home, away) = next.Home ? (Session.HumanTeam, next.Opponent) : (next.Opponent, Session.HumanTeam);
+        Open(new StudioShowViewModel(this, null, new(), Session.BuildStudioShow(home, away, next.Date)));
+    }
+
     /// <summary>Any team's page: NABL, a club abroad, or a college program.</summary>
     public void ShowTeam(Team team) => Open(new TeamViewModel(this, team));
 
@@ -189,7 +197,8 @@ public sealed partial class MainViewModel : ViewModelBase
                 if (live != null)
                 {
                     InLiveGame = true;
-                    CurrentPage = new LiveGameViewModel(this, live, played);
+                    // Danny's pre-game studio show (#446) airs first, unless he's chosen to skip it.
+                    CurrentPage = AppSettings.Current.StudioShow ? new StudioShowViewModel(this, live, played) : new LiveGameViewModel(this, live, played);
                     foreach (var n in Nav) n.IsActive = false;
                     return;
                 }

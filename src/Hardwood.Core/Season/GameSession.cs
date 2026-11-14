@@ -455,6 +455,7 @@ public sealed partial class GameSession
 
     private List<GameResult> EndDay(List<GameResult> played)
     {
+        GradeStudioPicks(played);
         PlayWorld(Today);
         bool inSeason = Abroad ? Phase != SessionPhase.Offseason : Phase is SessionPhase.RegularSeason or SessionPhase.Postseason;
         if (inSeason && Today.DayOfWeek == DayOfWeek.Monday)
