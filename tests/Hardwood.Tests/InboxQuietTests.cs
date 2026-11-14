@@ -13,7 +13,7 @@ public class InboxQuietTests
     [Fact]
     public void The_regular_season_carries_headlines_and_knocks_in_the_weekly_results()
     {
-        var s = GameSession.NewGame(31, 5, null, realWorld: true);
+        var s = GameSession.NewGame(31, 5, null);
         int guard = 0;
         while (s.Phase != SessionPhase.Postseason && s.Phase != SessionPhase.Offseason && guard++ < 400) s.AdvanceDay();
 

@@ -22,7 +22,7 @@ public class RealCareersTests
     {
         try
         {
-            var s = GameSession.NewGame(2026, 9, null, realWorld: true);
+            var s = GameSession.NewGame(2026, 9, null);
             Player On(string abbr, string name) => s.League.Teams.First(t => t.Abbreviation == abbr).Roster.Single(p => p.Name == name);
             var all = s.League.Teams.SelectMany(t => t.Roster).OrderByDescending(p => p.CurrentAbility).ToList();
             int median = all[all.Count / 2].CurrentAbility;
@@ -51,7 +51,7 @@ public class RealCareersTests
         Assert.Equal(43_440, RealCareers.Players["LeBron James"].Points); // the real record book says the same
         try
         {
-            var s = GameSession.NewGame(2026, 9, null, realWorld: true);
+            var s = GameSession.NewGame(2026, 9, null);
             Player Find(string name) => s.League.Teams.SelectMany(t => t.Roster).Single(p => p.Name == name);
             var lebron = s.League.Careers[Find("LeBron James").Id];
             Assert.Equal((43_440, 1_622, 4, 4), (lebron.Points, lebron.Games, lebron.Mvps, lebron.FinalsMvps));

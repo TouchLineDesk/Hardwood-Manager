@@ -14,8 +14,7 @@ public class CollegeCareerTests
 {
     private static (int id, string conference) ProgramFor(ulong seed, bool strong)
     {
-        var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", 2026, new DateOnly(2026, 10, 1));
-        var world = GameWorld.Generate(league, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
+        var (_, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026, GameSession.DefaultFullSim); // the real Division I (D61 B)
         var cw = world.College!;
         var t = (strong ? cw.Programs.OrderByDescending(p => cw.Prestige[p.Id]) : cw.Programs.OrderBy(p => cw.Prestige[p.Id])).First();
         return (t.Id, CollegeWorld.Conferences.First(c => c.Key == cw.ConferenceOf[t.Id]).Name);

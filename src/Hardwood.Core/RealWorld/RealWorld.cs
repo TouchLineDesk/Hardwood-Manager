@@ -24,7 +24,8 @@ public sealed record RealRecord(string Label, string Value, string Holder, strin
 /// The real world (Danny, Nov 12, decisions #191-#197; `claude/real-world-design.md`, slice R1): the NBA's 30 real teams
 /// at the top of the USA pyramid, and the NBA's real history and records. Since R2 the players are real too (<see cref="RealPlayers"/>). The data
 /// lives in embedded JSON files that record when and where it was checked. A career is a real-world one when its top
-/// league is named <see cref="LeagueName"/>; the fictional world (the NABL) stays as a New career option.
+/// league is named <see cref="LeagueName"/>. The made-up world (the NABL) was removed in v0.74.0 (Danny's D61 B, #478):
+/// every new career, audit and tool starts from <see cref="NewWorld"/>, and a made-up save no longer loads.
 /// </summary>
 public static class RealWorldData
 {
@@ -53,6 +54,24 @@ public static class RealWorldData
     public static IReadOnlyList<RealRecord> CareerRecords => _history.Value.Career;
     public static string HistoryChecked => _history.Value.Checked;
     public static string HistorySource => _history.Value.Source;
+
+    /// <summary>
+    /// The only way to build a new world (D61 B, #478): the generator fills the lower USA tiers, the clubs abroad and the
+    /// college players, then the NBA's real teams, players and history, and the real Division I, go on top.
+    /// </summary>
+    public static (League League, Hardwood.Core.World.GameWorld World) NewWorld(ulong seed, int season = 2026, IEnumerable<string>? fullSim = null, bool players = true)
+    {
+        var start = new DateOnly(season, 10, 1);
+        var league = new Hardwood.Core.Generation.WorldGenerator(new Rng(seed)).Generate(LeagueName, season, start);
+        var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? Array.Empty<string>(), start);
+        Hardwood.Core.Names.Brand.Real = true;
+        Apply(league, world, seed, players);
+        return (league, world);
+    }
+
+    /// <summary>What a made-up (NABL) save says when it's opened (D61 B, #478).</summary>
+    public const string MadeUpSaveMessage = "This career was made in the made-up world (the NABL), which was removed in v0.74.0: Hardwood Manager is real world only now. "
+        + "Start a new career, or open this save with v0.73.0 or older (GitHub releases).";
 
     /// <summary>Whether a career plays in the real world (its top league is the NBA).</summary>
     public static bool IsReal(League league) => league.Name == LeagueName;

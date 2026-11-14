@@ -298,7 +298,7 @@ public class PyramidTests
         var s = GameSession.NewGame(2026, club.Id, null);
         Assert.True(s.Abroad);
         Assert.Equal(5, s.MyLevel);
-        Assert.Equal("National League Three", s.HumanLeagueName);
+        Assert.Equal("National Basketball Conference", s.HumanLeagueName); // D44's real-career name for tier 5
         Assert.InRange(s.HumanTeam.Money.WageBudget, 10_000, 6_000_000); // tier-5 wages
         while (!s.HumanPlaysToday) s.AdvanceDay();
         s.AdvanceDay();

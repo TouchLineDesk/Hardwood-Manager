@@ -21,10 +21,10 @@ public class NamePackTests
       "topLeague": { "name": "PBL", "short": "PBL" },
       "competitions": { "esp": { "name": "Liga Prueba", "short": "LPR" }, },
       "conferences": { "aca": { "name": "Test Coast Conference", "short": "TCC" } },
-      "divisions": { "Atlantic": "Seaboard" },
+      "divisions": { "Revolution": "Seaboard" },
       "clubs": {
-        "Boston Harbor": { "city": "Port City", "name": "Gulls", "abbr": "pcg", "primary": "#112233", "secondary": "#445566" },
-        "new york empire": { "city": "Metro", "name": "Towers", "abbr": "MET" },
+        "Boston Celtics": { "city": "Port City", "name": "Gulls", "abbr": "pcg", "primary": "#112233", "secondary": "#445566" },
+        "new york knicks": { "city": "Metro", "name": "Towers", "abbr": "MET" },
         "Madrid Capitales": { "city": "Real", "name": "Capital", "abbr": "RCA" },
       },
       "tiers": { "usa2": [ { "city": "Alpha", "name": "Ones", "abbr": "AON" }, { "city": "Beta", "name": "Twos", "abbr": "BTW" }, { "city": "Gamma", "name": "Threes", "abbr": "GTH" } ] },
@@ -57,7 +57,7 @@ public class NamePackTests
             Assert.Equal("PBL", LeagueBook.Get(s, LeagueBook.NablKey)!.Name);
             Assert.StartsWith("Test pack", s.NamePackApplied);
             // The welcome is written after the renaming.
-            Assert.DoesNotContain(s.Inbox, m => m.Body.Contains("Boston Harbor"));
+            Assert.DoesNotContain(s.Inbox, m => m.Body.Contains("Boston Celtics"));
 
             var loaded = GameSession.Load(path);
             Assert.Equal("Port City Gulls", loaded.League.Teams.First(t => t.Id == 1).FullName);
@@ -66,7 +66,7 @@ public class NamePackTests
             Assert.StartsWith("Test pack", loaded.NamePackApplied);
 
             NamePack.ResetStatic();
-            Assert.Equal("NABL", Brand.Top);
+            Assert.Equal("NBA", Brand.Top); // a real career (the only kind since D61 B) goes back to the NBA
             Assert.Equal("Spanish League", Competitions.All.First(c => c.Key == Competitions.Spain).Name);
             Assert.Equal("Atlantic Coast Alliance", CollegeWorld.Conferences.First(c => c.Key == "aca").Name);
         }
@@ -85,7 +85,7 @@ public class NamePackTests
         {
             var s = GameSession.NewGame(77, 1, null);
             Assert.Null(s.NamePackApplied);
-            Assert.Equal("Boston Harbor", s.League.Teams.First(t => t.Id == 1).FullName);
+            Assert.Equal("Boston Celtics", s.League.Teams.First(t => t.Id == 1).FullName);
             int n = NamePack.Parse(Sample).ApplyToCareer(s);
             Assert.True(n >= 6, $"{n} renamed");
             Assert.Equal("Port City Gulls", s.HumanTeam.FullName);

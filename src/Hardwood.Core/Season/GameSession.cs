@@ -101,15 +101,12 @@ public sealed partial class GameSession
         BuildSeason();
     }
 
-    /// <summary>Start a new career from a generated world.</summary>
+    /// <summary>Start a new career. Every career is a real-world one since v0.74.0 (D61 B, #478): the NBA's real teams,
+    /// players and history and the real Division I on top of the generated lower tiers, clubs abroad and college players.</summary>
     public static GameSession NewGame(ulong seed, int humanTeamId, string? savePath, int season = 2026, IEnumerable<string>? fullSim = null, Jobs.Coach? coach = null,
-        Names.NamePack? names = null, bool realWorld = false)
+        Names.NamePack? names = null)
     {
-        var league = new WorldGenerator(new Rng(seed)).Generate(realWorld ? Hardwood.Core.RealWorld.RealWorldData.LeagueName : "North American Basketball League", season, new DateOnly(season, 10, 1));
-        var world = Hardwood.Core.World.GameWorld.Generate(league, seed, fullSim ?? DefaultFullSim, new DateOnly(season, 10, 1));
-        // The real world (R1, #191): the NBA's real teams take the top league's places; the user's name pack goes on top.
-        Names.Brand.Real = realWorld;
-        if (realWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(league, world, seed);
+        var (league, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, season, fullSim ?? DefaultFullSim);
         // A name pack renames the clubs before anything is written about them (the welcome, the first news).
         names?.ApplyToClubs(league, world);
         var team = league.Teams.FirstOrDefault(t => t.Id == humanTeamId) ?? world.TeamById(humanTeamId)
@@ -127,7 +124,7 @@ public sealed partial class GameSession
         var first = session.NextMyGame;
         session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName} ({session.HumanLeagueName}). "
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
-            + (realWorld && Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
+            + (Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
                 ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page."
                 + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players on real rosters who hadn't played yet this season are rated from last season (everyone starts healthy). Careers before this season are real for the league's leading veterans (checked {Hardwood.Core.RealWorld.RealCareers.Checked}), so the records book and the NBA's records to beat start from the real past."
                 + (session.World.College?.IsReal == true ? $" College basketball has every Division I program in its 2026-27 conference, with its real name, colours and tournament history (checked {Hardwood.Core.RealWorld.RealColleges.Checked}); the college players and coaches are made up." : "") : "")
@@ -1233,6 +1230,9 @@ public sealed partial class GameSession
     public static GameSession Load(string path)
     {
         var save = new SaveFile(path);
+        // The made-up world was removed in v0.74.0 (D61 B, #478): an NABL career says so instead of loading (and isn't upgraded).
+        if (save.PeekLeagueName() is { } top && top != Hardwood.Core.RealWorld.RealWorldData.LeagueName)
+            throw new InvalidOperationException(Hardwood.Core.RealWorld.RealWorldData.MadeUpSaveMessage);
         var league = save.Load();
         // The world's league names (D44) and the lower tiers' division labels follow the career's world as it loads.
         Names.Brand.Real = Hardwood.Core.RealWorld.RealWorldData.IsReal(league);

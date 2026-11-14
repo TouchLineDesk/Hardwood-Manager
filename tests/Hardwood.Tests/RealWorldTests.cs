@@ -62,7 +62,7 @@ public class RealWorldTests
         var path = Path.Combine(Path.GetTempPath(), $"hw-real-{Guid.NewGuid():N}.hwsave");
         try
         {
-            var s = GameSession.NewGame(2026, 1, path, realWorld: true);
+            var s = GameSession.NewGame(2026, 1, path);
             Assert.True(RealWorldData.IsReal(s.League));
             Assert.Equal("NBA", Brand.Top);
             Assert.Equal("Boston Celtics", s.HumanTeam.FullName);
@@ -73,10 +73,8 @@ public class RealWorldTests
             for (int i = 0; i < 5; i++) s.AdvanceDay();
             s.SaveNow();
 
-            // A fictional career resets the brand; loading the real one brings the NBA back.
-            var f = GameSession.NewGame(2026, 1, null);
-            Assert.Equal("NABL", Brand.Top);
-            Assert.Equal("Boston Harbor", f.HumanTeam.FullName);
+            // Loading the career brings the NBA's names back even after the brand was reset (the made-up world is gone, D61 B).
+            Brand.Real = false;
             var loaded = GameSession.Load(path);
             Assert.Equal("NBA", Brand.Top);
             Assert.Equal("Boston Celtics", loaded.HumanTeam.FullName);
@@ -95,7 +93,7 @@ public class RealWorldTests
         try
         {
             var pack = NamePack.Parse("""{ "clubs": { "Boston Celtics": { "city": "Boston", "name": "Green", "abbr": "BGR" } } }""");
-            var s = GameSession.NewGame(5, 1, null, names: pack, realWorld: true);
+            var s = GameSession.NewGame(5, 1, null, names: pack);
             Assert.Equal("Boston Green", s.HumanTeam.FullName);
             Assert.Equal("New York Knicks", s.League.Teams.First(t => t.Id == 2).FullName);
         }

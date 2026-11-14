@@ -86,7 +86,7 @@ public class GraphicsPackTests
     public void In_a_real_career_only_college_programs_take_college_graphics()
     {
         // Danny (run 45): lower-tier pro clubs were pulling college logos. Every real program still matches; no pro club does.
-        var s = Hardwood.Core.Season.GameSession.NewGame(31, 5, null, realWorld: true);
+        var s = Hardwood.Core.Season.GameSession.NewGame(31, 5, null);
         var programs = s.World.College!.Programs.ToList();
         Assert.All(programs, t => Assert.NotNull(GraphicsPack.SchoolKey(t)));
         var pros = s.World.Competitions.Where(c => Hardwood.Core.World.UsaPyramid.IsNational(c.Key)).SelectMany(c => c.Clubs).Concat(s.League.Teams).ToList();

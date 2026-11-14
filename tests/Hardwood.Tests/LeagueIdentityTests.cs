@@ -138,7 +138,7 @@ public class PairedDivisionTests
         try
         {
             var path = Path.Combine(dir, "career.hwsave");
-            var s = GameSession.NewGame(5, 1, path, realWorld: true);
+            var s = GameSession.NewGame(5, 1, path);
             var t2 = s.World.Competitions.First(c => c.Key == UsaPyramid.Tier2);
             Assert.True(UsaPyramid.Balanced(t2.Clubs));
             // Shuffle two clubs' divisions so a geographic redraw on load would be caught.

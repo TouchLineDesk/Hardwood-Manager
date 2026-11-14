@@ -118,24 +118,4 @@ public class CollegeTests
         }
         finally { if (File.Exists(path)) File.Delete(path); }
     }
-
-    [Fact]
-    public void A_career_from_before_the_new_conferences_keeps_its_eight_and_still_crowns_a_champion()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), $"hw-college8-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(dir);
-        var path = Path.Combine(dir, "career.hwsave");
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "SaveFixtures", "career-v11.hwsave"), path);
-        try
-        {
-            var s = GameSession.Load(path);
-            var c = s.World.College!;
-            Assert.Equal(8, c.Active.Count());
-            Assert.Equal(118, c.Programs.Count);
-            s.World.FinishSeasons(new GameSimulator());
-            Assert.NotNull(c.Season.ChampionId);
-            Assert.Equal(8, c.Season.ConferenceChampions.Count);
-        }
-        finally { try { Directory.Delete(dir, true); } catch { } }
-    }
 }

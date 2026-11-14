@@ -102,9 +102,9 @@ public class CollegeDraftSessionTests
         {
             var path = Path.Combine(dir, "career.hwsave");
             // The strongest real club: almost always top three in its division, so it has a pick.
-            var probe = GameSession.NewGame(31, 1, null, realWorld: true);
+            var probe = GameSession.NewGame(31, 1, null);
             int id = probe.League.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).First().Id;
-            var s = GameSession.NewGame(31, id, path, realWorld: true);
+            var s = GameSession.NewGame(31, id, path);
             int guard = 0;
             while (s.Phase != SessionPhase.Offseason && guard++ < 400) s.AdvanceDay();
             Assert.Equal(SessionPhase.Offseason, s.Phase);
