@@ -10,16 +10,28 @@ public sealed class GameRow
 {
     public required MyGame Game { get; init; }
     public GameResult? Result => Game.Result;
-    public string Date => Game.Date.ToString("ddd MMM d");
+    public string Date => Game.Date.ToString("MMM d");
     public string Opponent { get; init; } = "";
     public Hardwood.Core.Model.Team? OpponentTeam { get; init; }
     public string Competition { get; init; } = "";
     public string Score { get; init; } = "";
     public string Outcome { get; init; } = "";
+    public string ResultText => Outcome.Length > 0 ? $"{Outcome} {Score}" : Score;
     public string Record { get; init; } = "";
     public string TopPerformer { get; init; } = "";
+    /// <summary>#529: your record against this opponent since the career began, as of today.</summary>
+    public string HeadToHead { get; init; } = "";
     public bool Played => Game.Played;
     public bool HasBox => Result != null && Result.Home.Lines.Count > 0;
+}
+
+/// <summary>A Schedule &amp; Results filter chip (#529): its name, how many games and the record in them.</summary>
+public sealed class FilterChip
+{
+    public required string Name { get; init; }
+    public string Record { get; init; } = "";
+    public bool Selected { get; init; }
+    public string Tip { get; init; } = "";
 }
 
 public sealed class SeriesRow
@@ -42,7 +54,54 @@ public sealed partial class ScheduleViewModel : PageViewModel
     /// <summary>College (C2): the event gets its own column and opponents go by their school's name, so long names fit.</summary>
     [ObservableProperty] private bool _showEvent;
 
+    // Danny's #529: filter by the season's parts, each tournament and the playoffs; the head-to-head since the career began.
+    public ObservableCollection<FilterChip> Filters { get; } = new();
+    [ObservableProperty] private string _filter = ScheduleFilter.All;
+    [ObservableProperty] private string _filterSummary = "";
+    [ObservableProperty] private bool _hasRival;
+    [ObservableProperty] private Hardwood.Core.Model.Team? _rivalTeam;
+    [ObservableProperty] private string _rivalName = "";
+    [ObservableProperty] private string _rivalRecord = "";
+    [ObservableProperty] private string _rivalPoints = "";
+    [ObservableProperty] private string _rivalLast = "";
+    [ObservableProperty] private string _rivalSince = "";
+    [ObservableProperty] private bool _hasMeetings;
+    public ObservableCollection<string> RivalMeetings { get; } = new();
+    private List<MyGame> _all = new();
+    private Dictionary<int, H2HRecord> _h2h = new();
+
     public ScheduleViewModel(MainViewModel shell) : base(shell) { }
+
+    [RelayCommand]
+    public void SetFilter(string? name)
+    {
+        if (name == null || name == Filter) return;
+        Filter = name;
+        Refresh();
+    }
+
+    partial void OnSelectedChanged(GameRow? value) => ShowRival(value?.OpponentTeam);
+
+    /// <summary>The head-to-head card for the selected game's opponent.</summary>
+    private void ShowRival(Hardwood.Core.Model.Team? opp)
+    {
+        HasRival = opp != null;
+        RivalMeetings.Clear();
+        HasMeetings = false;
+        if (opp == null) return;
+        var s = Session;
+        var r = _h2h.TryGetValue(opp.Id, out var rec) ? rec : s.HeadToHead(opp);
+        RivalTeam = opp;
+        RivalName = s.InCollege ? Hardwood.Core.College.CollegeWorld.WithRank(s.World.College?.Rank(opp.Id), opp.FullName) : opp.FullName;
+        RivalRecord = r.Games == 0 ? "None yet" : $"{r.Wins}-{r.Losses}";
+        RivalPoints = r.Games == 0 ? "" : $"{r.PointsFor / (double)r.Games:F1} for, {r.PointsAgainst / (double)r.Games:F1} against a game · {r.Games} game{(r.Games == 1 ? "" : "s")}";
+        RivalLast = r.LastDate is { } d ? $"Last meeting: {(r.LastUs > r.LastThem ? "W" : "L")} {r.LastUs}-{r.LastThem} {(r.LastHome ? "at home" : "away")}, {d:MMM d, yyyy}" : "";
+        RivalSince = $"Your record {s.HeadToHeadSince}.";
+        foreach (var g in _all.Where(g => g.Opponent == opp))
+            RivalMeetings.Add(g.Played ? $"{g.Date:MMM d} · {(g.Home ? "home" : "away")} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}"
+                : $"{g.Date:MMM d} · {(g.Home ? "home" : "away")} · to come{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}");
+        HasMeetings = RivalMeetings.Count > 0;
+    }
 
     [RelayCommand]
     public void OpenBox(GameRow? row)
@@ -55,15 +114,38 @@ public sealed partial class ScheduleViewModel : PageViewModel
         var s = Session; var us = s.HumanTeam;
         ShowEvent = s.InCollege;
         Games.Clear();
+        _all = s.MyGames();
+        _h2h = s.HeadToHeads(_all);
+        var names = ScheduleFilter.For(_all);
+        if (!names.Contains(Filter)) Filter = ScheduleFilter.All;
+        Filters.Clear();
+        foreach (var name in names)
+        {
+            var part = _all.Where(g => ScheduleFilter.Matches(g, name)).ToList();
+            int pw = part.Count(g => g.Played && g.Won), pl = part.Count(g => g.Played && !g.Won);
+            Filters.Add(new FilterChip { Name = name, Record = pw + pl == 0 ? $"{part.Count} to play" : $"{pw}-{pl}", Selected = name == Filter,
+                Tip = $"{part.Count} game{(part.Count == 1 ? "" : "s")}: {pw + pl} played, {part.Count - pw - pl} to come" });
+        }
+        // The H2H column reads as of each game (#529, "as of the current game"): before this season, plus this season's
+        // meetings up to and including that game; a game to come shows the record going into it.
+        var running = new Dictionary<int, H2HRecord>();
+        var asOf = new Dictionary<MyGame, string>();
+        foreach (var g in _all.OrderBy(g => g.Date))
+        {
+            if (!running.TryGetValue(g.Opponent.Id, out var h))
+                running[g.Opponent.Id] = h = s.HeadToHeadBook.Past.TryGetValue(HeadToHeadBook.Key(us.Id, g.Opponent.Id), out var past) ? past.Copy() : new H2HRecord();
+            if (g.Played) h.Add(g.Date, g.Us!.Value, g.Them!.Value, g.Home);
+            asOf[g] = h.Line;
+        }
         int w = 0, l = 0;
-        foreach (var g in s.MyGames())
+        foreach (var g in _all.Where(g => ScheduleFilter.Matches(g, Filter)))
         {
             var r = g.Result;
             string score = "", outcome = "", top = "";
             if (g.Played)
             {
                 if (g.Won) w++; else l++;
-                score = $"{g.Us}-{g.Them}" + (r is { Overtimes: > 0 } ? $" ({r.Overtimes}OT)" : "");
+                score = $"{g.Us}-{g.Them}" + (r is { Overtimes: > 0 } ? (r.Overtimes == 1 ? " OT" : $" {r.Overtimes}OT") : "");
                 outcome = g.Won ? "W" : "L";
                 var ours = r == null ? null : r.Home.Team == us ? r.Home : r.Away;
                 var best = ours?.Lines.OrderByDescending(x => x.Points).FirstOrDefault();
@@ -78,10 +160,13 @@ public sealed partial class ScheduleViewModel : PageViewModel
             {
                 Game = g, Opponent = opponent, OpponentTeam = g.Opponent,
                 Competition = comp, Score = score, Outcome = outcome, Record = g.Played ? $"{w}-{l}" : "", TopPerformer = top,
+                HeadToHead = asOf.TryGetValue(g, out var line) ? line : "–",
             });
         }
+        FilterSummary = Filter == ScheduleFilter.All ? "" : $"{Filter}: {w}-{l}" + (Games.Count(g => !g.Played) is > 0 and var left ? $", {left} to play" : "");
         var next = Games.FirstOrDefault(g => !g.Played);
         Selected = next ?? Games.LastOrDefault();
+        ShowRival(Selected?.OpponentTeam);
 
         Series.Clear();
         ShowPlayoffs = s.Postseason != null || s.HumanLeague?.Season.Series.Count > 0;

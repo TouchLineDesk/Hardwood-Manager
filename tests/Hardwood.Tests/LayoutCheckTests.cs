@@ -363,6 +363,14 @@ public class LayoutCheckTests
                     var sched = (ScheduleViewModel)v.CurrentPage!;
                     sched.OpenBox(sched.Games.Last(g => g.Played));
                 }),
+                // Danny's #529: the schedule filtered to one event (the longest chip row a college season has), with the head-to-head card.
+                ("Schedule filtered", v =>
+                {
+                    v.Navigate("Schedule & Results");
+                    var sched = (ScheduleViewModel)v.CurrentPage!;
+                    sched.SetFilter(sched.Filters.Last().Name);
+                    sched.Selected = sched.Games.FirstOrDefault(g => g.Played) ?? sched.Games.FirstOrDefault();
+                }),
                 // The Top 25 as a logo grid (Danny, #528), and its table view.
                 ("Top 25", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 0; col.PollView = "Grid"; }),
                 ("Top 25 table", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 0; col.PollView = "Table"; }),

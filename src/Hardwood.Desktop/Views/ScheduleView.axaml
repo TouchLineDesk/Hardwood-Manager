@@ -14,24 +14,69 @@
         </StackPanel>
         <Button Grid.Column="1" Content="Open box score" Command="{Binding OpenBoxCommand}" CommandParameter="{Binding Selected}" VerticalAlignment="Top"/>
       </Grid>
+      <!-- Danny's #529: filter by the season's parts, each tournament and the playoffs; each chip carries its record. -->
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="4">
+        <ItemsControl x:Name="FilterChips" ItemsSource="{Binding Filters}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FilterChip">
+              <Button Classes="filter" Classes.on="{Binding Selected}" Margin="0,0,6,6" ToolTip.Tip="{Binding Tip}"
+                      Tag="{Binding Name}" Click="OnFilterClick">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Record}" Classes="filterRecord"/>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding FilterSummary}" Classes="muted" IsVisible="{Binding FilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+      </StackPanel>
       <DataGrid ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" RowHeight="28">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="104"/>
+          <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="72"/>
           <DataGridTemplateColumn Header="" Width="34">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:GameRow"><c:TeamLogo Team="{Binding OpponentTeam}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="*" MinWidth="220"/>
-          <DataGridTextColumn Header="Event" Binding="{Binding Competition}" Width="178" IsVisible="False"/>
-          <DataGridTextColumn Header="" Binding="{Binding Outcome}" Width="34"/>
-          <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="112"/>
-          <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="64"/>
-          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="250"/>
+          <DataGridTextColumn Header="Event" Binding="{Binding Competition}" Width="186" IsVisible="False"/>
+          <!-- The result and score in one column ("W 78-66"), so the H2H column (#529) fits beside them. -->
+          <DataGridTextColumn Header="Score" Binding="{Binding ResultText}" Width="114"/>
+          <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="56"/>
+          <DataGridTextColumn Header="H2H" Binding="{Binding HeadToHead}" Width="50"/>
+          <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="*" MinWidth="200"/>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>
     <StackPanel x:Name="Side" Grid.Column="1" Spacing="10" Width="300" Margin="16,0,0,0">
+      <!-- #529: the head-to-head with the selected game's opponent, counted from the career's start only. -->
+      <Border x:Name="Rival" Classes="panel" Padding="12,10" IsVisible="{Binding HasRival}"
+              BorderBrush="{Binding RivalTeam, Converter={x:Static c:Converters.TeamAccentBrush}}">
+        <!-- Two halves that sit side by side when the panel spans the page (stacked) and one above the other beside the table. -->
+        <WrapPanel>
+          <StackPanel Spacing="4" Width="274" Margin="0,0,16,0">
+            <TextBlock Text="Head-to-head" Classes="muted" FontSize="11.5"/>
+            <Grid ColumnDefinitions="Auto,*">
+              <c:TeamLogo Team="{Binding RivalTeam}" Width="44" Height="44" ShowText="False" Margin="0,0,10,0"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding RivalName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding RivalRecord}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}"/>
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding RivalPoints}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding RivalPoints, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="{Binding RivalLast}" TextWrapping="Wrap" IsVisible="{Binding RivalLast, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+          <StackPanel Spacing="2" Width="274">
+            <TextBlock Text="This season" Classes="muted" FontSize="11.5" Margin="0,4,0,0" IsVisible="{Binding HasMeetings}"/>
+            <ItemsControl ItemsSource="{Binding RivalMeetings}">
+              <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12.5"/></DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding RivalSince}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"/>
+          </StackPanel>
+        </WrapPanel>
+      </Border>
       <TextBlock Text="Around the league (yesterday)" Classes="h2" Margin="0"/>
       <Border Classes="panel" MaxHeight="300" x:Name="Scores">
         <ScrollViewer>

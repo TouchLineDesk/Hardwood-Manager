@@ -27,6 +27,7 @@ public static class CareerStore
         Put("transfers", SaveFile.ToJson(new TransferState(s.TransferLog, s.IncomingBids, s.AgreedFees, s.MyBids)));
         Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest, s.WeekResults, s.WeekKnocks)));
         Put("inbox", SaveFile.ToJson(s.InboxSettings));
+        Put("head_to_head", SaveFile.ToJson(s.HeadToHeadBook));
         if (s.NamePackApplied is { } pack) Put("name_pack", pack);
         tx.Commit();
     }
@@ -64,6 +65,8 @@ public static class CareerStore
                 if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
         if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
         s.NamePackApplied = Get("name_pack");
+        // #529: a save from before v0.79.0 has no book; it starts counting from this season.
+        s.HeadToHeadBook = Get("head_to_head") is { } hj && SaveFile.FromJson<HeadToHeadBook>(hj) is { } book ? book : new HeadToHeadBook();
         s.InboxSettings = Get("inbox") is { } ij && SaveFile.FromJson<InboxSettings>(ij) is { } inbox ? inbox : new InboxSettings();
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }

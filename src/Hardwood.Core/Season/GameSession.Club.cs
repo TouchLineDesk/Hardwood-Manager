@@ -14,6 +14,8 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
     public int? OpponentRank { get; init; }
     /// <summary>Your own rank the same way.</summary>
     public int? OurRank { get; init; }
+    /// <summary>Its Schedule &amp; Results filter (#529): the season's part, the tournament's name, or the playoffs (<see cref="ScheduleFilter"/>).</summary>
+    public string Group { get; init; } = ScheduleFilter.Regular;
 }
 
 /// <summary>
@@ -126,7 +128,7 @@ public sealed partial class GameSession
             {
                 Results.TryGetValue(g.Index, out var r);
                 var (mine, theirs) = r == null ? (null as int?, null as int?) : r.Home.Team == us ? (r.Home.Points, r.Away.Points) : (r.Away.Points, r.Home.Points);
-                list.Add(new MyGame(g.Date, g.Home == us ? g.Away : g.Home, g.Home == us, League.Name, "Regular season", mine, theirs, r));
+                list.Add(new MyGame(g.Date, g.Home == us ? g.Away : g.Home, g.Home == us, League.Name, "Regular season", mine, theirs, r) { Group = ScheduleFilter.Regular });
             }
             if (Postseason != null)
                 foreach (var se in Postseason.Series.Where(s => s.Higher == us || s.Lower == us))
@@ -134,7 +136,7 @@ public sealed partial class GameSession
                 {
                     bool home = r.Home.Team == us;
                     list.Add(new MyGame(r.Date ?? Today, home ? r.Away.Team : r.Home.Team, home, League.Name, se.Round,
-                        home ? r.Home.Points : r.Away.Points, home ? r.Away.Points : r.Home.Points, r));
+                        home ? r.Home.Points : r.Away.Points, home ? r.Away.Points : r.Home.Points, r) { Group = ScheduleFilter.ProGroup(League.Name, se.Round, League.Name) });
                 }
             return list.OrderBy(g => g.Date).ToList();
         }
@@ -157,6 +159,7 @@ public sealed partial class GameSession
                 {
                     OpponentRank = g.Played ? (home ? g.AwayRank : g.HomeRank) : cw.Rank(opp.Id),
                     OurRank = g.Played ? (home ? g.HomeRank : g.AwayRank) : cw.Rank(us.Id),
+                    Group = ScheduleFilter.CollegeGroup(g.Event, g.Stage),
                 });
             }
             return list;
@@ -168,7 +171,8 @@ public sealed partial class GameSession
             if (opp == null) continue;
             AbroadResults.TryGetValue(Key(comp, f), out var r);
             list.Add(new MyGame(f.Date, opp, home, comp.Profile.Name, f.Stage,
-                f.Played ? (home ? f.HomePts : f.AwayPts) : null, f.Played ? (home ? f.AwayPts : f.HomePts) : null, r));
+                f.Played ? (home ? f.HomePts : f.AwayPts) : null, f.Played ? (home ? f.AwayPts : f.HomePts) : null, r)
+                { Group = ScheduleFilter.ProGroup(comp.Profile.Name, f.Stage, HumanLeagueName) });
         }
         return list;
     }

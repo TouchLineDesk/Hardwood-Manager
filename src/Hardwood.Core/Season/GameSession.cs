@@ -1180,6 +1180,7 @@ public sealed partial class GameSession
 
     private void StartNewSeason()
     {
+        SyncHeadToHead(); // last season's meetings are counted before its schedule goes (#529)
         NewWindow();
         AgreedFees.Clear(); IncomingBids.Clear(); BidsWindowShut(); // the summer window shuts
         Phase = SessionPhase.Preseason;
@@ -1220,6 +1221,7 @@ public sealed partial class GameSession
     /// <summary>Saves after every day and after every offseason decision.</summary>
     public void SaveNow()
     {
+        SyncHeadToHead(); // the day's results into the head-to-head book (#529)
         if (Save == null) return;
         // A college program you coach keeps its staff in the save like a club abroad (C2).
         var clubs = World.Clubs.Concat(World.College?.Programs.Where(t => t.Staff.Count > 0) ?? Enumerable.Empty<Team>());
