@@ -14,9 +14,10 @@ namespace Hardwood.Cli;
 ///   hardwood game [--seed N] [--log]     generate a league, play one game, print the box score (and play log)
 ///   hardwood roster [--seed N] [--team ABBR]
 ///   hardwood audit [--seed N] [--seasons N] [--out report.md] [--full-sim]
-///                                        play N seasons (NABL + world) and check the results against real basketball
-///   hardwood madness [--seed N] [--tournaments N] [--out report.md] [--real]   (--real: the real Division I, R3)
-///                                        the college world alone: March Madness seed results over many tournaments
+///                                        play N seasons (the NBA + world) and check the results against real basketball
+///   hardwood madness [--seed N] [--tournaments N] [--out report.md]
+///                                        the real Division I alone: March Madness seed results over many tournaments
+/// Every command uses the real world (the made-up NABL was removed in v0.74.0, D61 B); `--real` is still accepted and ignored.
 /// </summary>
 public static class Program
 {
@@ -26,14 +27,13 @@ public static class Program
         ulong seed = (ulong)(ArgValue(args, "--seed") is { } s ? long.Parse(s) : 2026);
         var today = new DateOnly(2026, 10, 1);
 
-        var world = new WorldGenerator(new Rng(seed));
-        var league = world.Generate("North American Basketball League", 2026, today);
+        var (league, gameWorld) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);
 
         if (cmd == "audit")
         {
             int seasons = int.Parse(ArgValue(args, "--seasons") ?? "10");
             var full = args.Contains("--full-sim") ? Hardwood.Core.World.Competitions.All.Select(c => c.Key) : null;
-            var report = Hardwood.Core.Audit.BalanceAudit.Run(seed, seasons, full, msg => Console.Error.WriteLine(msg), args.Contains("--real"));
+            var report = Hardwood.Core.Audit.BalanceAudit.Run(seed, seasons, full, msg => Console.Error.WriteLine(msg));
             var md = report.ToMarkdown();
             if (ArgValue(args, "--out") is { } outFile) { File.WriteAllText(outFile, md); Console.WriteLine($"Wrote {outFile}"); }
             else Console.WriteLine(md);
@@ -43,10 +43,8 @@ public static class Program
 
         if (cmd == "names")
         {
-            // D18 (run 35): shared full names among living made-up players in a new world (`--real` for the real NBA on top).
-            if (args.Contains("--real")) league = new WorldGenerator(new Rng(seed)).Generate(Hardwood.Core.RealWorld.RealWorldData.LeagueName, 2026, today);
-            var gw = Hardwood.Core.World.GameWorld.Generate(league, seed, Array.Empty<string>(), today);
-            if (args.Contains("--real")) Hardwood.Core.RealWorld.RealWorldData.Apply(league, gw, seed);
+            // D18 (run 35): shared full names among living made-up players in a new (real) world.
+            var gw = gameWorld;
             var everyone = league.AllActivePlayers.Concat(league.FreeAgents).Concat(gw.Players).Concat(gw.College?.Players ?? Enumerable.Empty<Player>()).ToList();
             var (madeUp, sharing) = NameBook.Census(everyone);
             var dup = everyone.GroupBy(p => NameBook.Key(p.FirstName, p.LastName)).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
@@ -90,7 +88,7 @@ public static class Program
         if (cmd == "madness")
         {
             int n = int.Parse(ArgValue(args, "--tournaments") ?? "100");
-            var (tally, elapsed) = Hardwood.Core.Audit.MadnessAudit.Run(seed, n, msg => Console.Error.WriteLine(msg), args.Contains("--real"));
+            var (tally, elapsed) = Hardwood.Core.Audit.MadnessAudit.Run(seed, n, msg => Console.Error.WriteLine(msg));
             var md = Hardwood.Core.Audit.MadnessAudit.Report(tally, seed, elapsed);
             if (ArgValue(args, "--out") is { } outFile) File.WriteAllText(outFile, md);
             Console.WriteLine(md);

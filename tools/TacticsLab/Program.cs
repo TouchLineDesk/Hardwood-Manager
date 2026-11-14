@@ -5,7 +5,7 @@ var results = new Dictionary<string, List<double>>();
 int nGames = int.Parse(args.Length > 0 ? args[0] : "160");
 foreach (ulong seed in new ulong[] { 11, 12, 13, 14, 15, 16 })
 {
-    var lg = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+    var lg = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed).League; // real teams only (D61 B, #478)
     var teams = lg.Teams.OrderBy(t => QuickSim.Strength(t)).ToList();
     var a = teams[15]; var b = teams[14];
     double Win(Action<Team> set, bool everyGame = false)

@@ -114,19 +114,9 @@ public sealed partial class StartViewModel : ViewModelBase
     partial void OnPlayLeagueChanged(string value) => FillTeams();
     public string ChooseTitle => PlayLeague == Hardwood.Core.Names.Brand.Top ? "Choose your franchise" : PlayLeague == CollegeChoice ? "Choose your program · College basketball" : $"Choose your club · {PlayLeague}";
 
-    /// <summary>The real world (R1, #191): the NBA's real teams and history. Off gives the fictional world (the NABL).</summary>
-    [ObservableProperty] private bool _realWorld = true;
-    partial void OnRealWorldChanged(bool value)
-    {
-        bool top = PlayLeague == _topShown;
-        Preview();
-        OnPropertyChanged(nameof(PlayLeagues));
-        if (top) PlayLeague = Hardwood.Core.Names.Brand.Top;
-    }
-    private string _topShown = "";
-    public string WorldText => RealWorld
-        ? $"Real NBA teams, cities, players, contracts and history (champions since 1947, MVPs and records; checked {Hardwood.Core.RealWorld.RealWorldData.HistoryChecked}), and all 365 Division I college programs. Made up: the lower USA leagues, the clubs abroad and every college player."
-        : "The fictional world: the NABL and its 30 made-up franchises.";
+    /// <summary>Every career is the real world (R1, #191; the made-up NABL was removed in v0.74.0, D61 B, #478).</summary>
+    public string WorldText =>
+        $"The real world: NBA teams, cities, players, contracts and history (champions since 1947, MVPs and records; checked {Hardwood.Core.RealWorld.RealWorldData.HistoryChecked}), and all 365 Division I college programs. Made up: the lower USA leagues, the clubs abroad and every college player.";
 
     public StartViewModel(MainViewModel shell)
     {
@@ -154,13 +144,8 @@ public sealed partial class StartViewModel : ViewModelBase
     {
         if (!ulong.TryParse(SeedText, out var seed)) { Status = "Seed must be a number."; return; }
         Status = "";
-        _preview = new WorldGenerator(new Rng(seed)).Generate(RealWorld ? Hardwood.Core.RealWorld.RealWorldData.LeagueName : "North American Basketball League", 2026, new DateOnly(2026, 10, 1));
         // The world is built from the same seed as the career's, so club ids match.
-        _previewWorld = Hardwood.Core.World.GameWorld.Generate(_preview, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
-        Hardwood.Core.Names.Brand.Real = RealWorld;
-        if (RealWorld) Hardwood.Core.RealWorld.RealWorldData.Apply(_preview, _previewWorld, seed);
-        _topShown = Hardwood.Core.Names.Brand.Top;
-        OnPropertyChanged(nameof(WorldText));
+        (_preview, _previewWorld) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026, GameSession.DefaultFullSim);
         // The picker shows the clubs as the career will: with the name pack's names if there is one.
         Hardwood.Desktop.Graphics.NamePackService.Current(out _)?.ApplyToClubs(_preview, _previewWorld);
         FillTeams();
@@ -234,7 +219,7 @@ public sealed partial class StartViewModel : ViewModelBase
             if (File.Exists(SavePath)) File.Delete(SavePath);
             Status = "";
             var session = GameSession.NewGame(seed, SelectedTeam.Team.Id, SavePath, fullSim: Leagues.Where(l => l.FullSim).Select(l => l.Key).ToList(), coach: BuildCoach(),
-                names: Hardwood.Desktop.Graphics.NamePackService.Current(out _), realWorld: RealWorld);
+                names: Hardwood.Desktop.Graphics.NamePackService.Current(out _));
             Hardwood.Desktop.Graphics.LogoPackService.Reload();
             _shell.AttachSession(session);
         }

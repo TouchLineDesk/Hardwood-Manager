@@ -81,14 +81,13 @@ public sealed class AuditReport
 /// </summary>
 public static class BalanceAudit
 {
-    public static AuditReport Run(ulong seed, int seasons, IEnumerable<string>? fullSimLeagues = null, Action<string>? progress = null, bool realWorld = false)
+    public static AuditReport Run(ulong seed, int seasons, IEnumerable<string>? fullSimLeagues = null, Action<string>? progress = null)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var report = new AuditReport { Seed = seed, Seasons = seasons };
-        var league = new WorldGenerator(new Rng(seed)).Generate(realWorld ? Hardwood.Core.RealWorld.RealWorldData.LeagueName : "NABL", 2026, new DateOnly(2026, 10, 1));
-        var world = GameWorld.Generate(league, seed, fullSimLeagues ?? Array.Empty<string>(), new DateOnly(2026, 10, 1));
-        // The real world (R2): the NBA's real teams and players on the same generated world (`hardwood audit --real`).
-        if (realWorld) { Hardwood.Core.RealWorld.RealWorldData.Apply(league, world, seed); report.Notes.Add("Real world: the NBA's real teams and players (R2)."); }
+        // Real world only since v0.74.0 (D61 B, #478): the NBA's real teams and players on the generated world.
+        var (league, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026, fullSimLeagues);
+        report.Notes.Add("Real world: the NBA's real teams and players (R2).");
         // Owners as a career has them (run 34): each club's owner has his own ambition, which decides how far he builds
         // facilities and his transfer budget. Before, every audit club had the default owner (ambition 10).
         Jobs.Board.EnsureOwnersAndCoaches(league, seed);

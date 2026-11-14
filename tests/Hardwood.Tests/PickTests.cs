@@ -106,7 +106,8 @@ public class PickTests
             Assert.Equal(s.HumanTeam.Money.WageBudget, r1.HumanTeam.Money.WageBudget);
 
             foreach (var p in r1.MyExpiring.ToList()) r1.ReleaseExpiring(p);
-            r1.AdvanceOffseason(); // straight to free agency
+            r1.AdvanceOffseason(); // the college draft (real careers, D40), then free agency
+            if (r1.Offseason.Phase == OffseasonPhase.Draft) r1.AdvanceOffseason();
             Assert.Equal(OffseasonPhase.FreeAgency, r1.Offseason.Phase);
 
             // Reload in free agency, finish, and the new season starts.

@@ -82,7 +82,8 @@ public class SessionTests
             }
             Assert.Empty(loaded.MyExpiring);
 
-            loaded.AdvanceOffseason(); // no draft on the open market: straight to free agency
+            loaded.AdvanceOffseason(); // the college draft (real careers, D40): your scouts make any pick you haven't
+            if (loaded.Offseason.Phase == OffseasonPhase.Draft) loaded.AdvanceOffseason();
             Assert.Equal(OffseasonPhase.FreeAgency, loaded.Offseason.Phase);
             Assert.Empty(loaded.League.Picks);
             var grads = loaded.League.FreeAgents.Where(p => p.RookieSeason == 2027).ToList();

@@ -232,7 +232,7 @@ public class FranchiseTests
             Assert.True(f.Ready);
             // Nobody else waits for you, and the computer's owners spent.
             Assert.All(s.League.Teams.Where(t => t != s.HumanTeam), t => Assert.Empty(t.Money.Facilities.Proposals));
-            Assert.Contains(s.League.Teams, t => t.Money.Facilities.LastInvested > 0);
+            Assert.Contains(s.League.Teams.Concat(s.World.Clubs), t => t.Money.Facilities.LastInvested > 0);
 
             s.HumanTeam.Money.Balance = 600_000_000;
             f.Proposals = Franchise.Candidates(s.HumanTeam, s.MyLeagueRevenue, 18000, 2027, s.FacilityBudget).Take(3).ToList();

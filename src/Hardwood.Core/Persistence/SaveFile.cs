@@ -80,6 +80,23 @@ public sealed class SaveFile
         BackupPath = backup;
     }
 
+    /// <summary>The top league's name, read without opening the save for writing (null if it can't be read).
+    /// A made-up world's save (the NABL) is refused before anything upgrades it (D61 B, #478).</summary>
+    public string? PeekLeagueName()
+    {
+        if (!File.Exists(_path)) return null;
+        var cs = new SqliteConnectionStringBuilder { DataSource = _path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString();
+        try
+        {
+            using var conn = new SqliteConnection(cs);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT name FROM league WHERE id = 1";
+            return cmd.ExecuteScalar() as string;
+        }
+        catch (SqliteException) { return null; } // not a save we understand; Load will report it
+    }
+
     /// <summary>Location of the save on disk.</summary>
     public string Path => _path;
 

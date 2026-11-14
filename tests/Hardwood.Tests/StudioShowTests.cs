@@ -14,7 +14,7 @@ public class StudioShowTests
 {
     private static GameSession RealCareerOnGameDay(int days)
     {
-        var s = GameSession.NewGame(31, 5, null, realWorld: true);
+        var s = GameSession.NewGame(31, 5, null);
         for (int i = 0; i < days; i++) s.AdvanceDay();
         int guard = 0;
         while (!s.HumanPlaysToday && guard++ < 30) s.AdvanceDay();

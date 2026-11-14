@@ -125,14 +125,14 @@ public sealed class MadnessTally
 /// <summary>The college world on its own, season after season: March Madness numbers over many tournaments.</summary>
 public static class MadnessAudit
 {
-    public static (MadnessTally Tally, TimeSpan Elapsed) Run(ulong seed, int tournaments, Action<string>? progress = null, bool real = false)
+    public static (MadnessTally Tally, TimeSpan Elapsed) Run(ulong seed, int tournaments, Action<string>? progress = null)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var rng = new Rng(seed);
         var start = new DateOnly(2026, 10, 1);
         int nextId = 2_000_000;
         var gen = new PlayerGenerator(new Rng(seed ^ 0x51), nextId);
-        var cw = CollegeWorld.Generate(gen, rng, start, real: real);
+        var cw = CollegeWorld.Generate(gen, rng, start, real: true); // the real Division I only (D61 B, #478)
         var sim = new GameSimulator();
         var tally = new MadnessTally();
         int year = 2026;

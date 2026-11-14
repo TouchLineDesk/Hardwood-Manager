@@ -11,7 +11,7 @@ public class StaffDepthTests
 {
     private static GameSession Session(ulong seed, string? path = null, int strengthRank = 10)
     {
-        var probe = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+        var probe = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed).League; // real careers only (D61 B)
         var id = probe.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ElementAt(strengthRank).Id;
         return GameSession.NewGame(seed, id, path);
     }
@@ -110,8 +110,9 @@ public class StaffDepthTests
             }
             Assert.Contains(t.Training.Intensity, new[] { 35, 45, 60 });
             Assert.StartsWith("Dec", s.Delegated.LastTraining);
-            Assert.Contains("courted", s.Delegated.LastRecruiting);
-            Assert.True(s.Recruiting!.Prospects.Values.Count(x => x.TeamId == t.Id && x.Visits > 0) >= 1);
+            // Real careers draft college seniors instead of recruiting them (D48 B): a pro assistant courts nobody.
+            Assert.False(s.SeniorRecruiting);
+            Assert.DoesNotContain("courted", s.Delegated.LastRecruiting ?? "");
 
             s.SaveNow();
             var loaded = GameSession.Load(path);

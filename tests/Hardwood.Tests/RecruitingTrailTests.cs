@@ -12,8 +12,7 @@ public class RecruitingTrailTests
 {
     private static int MidProgram(ulong seed)
     {
-        var league = new WorldGenerator(new Rng(seed)).Generate("North American Basketball League", 2026, new DateOnly(2026, 10, 1));
-        var world = GameWorld.Generate(league, seed, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
+        var (_, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026, GameSession.DefaultFullSim); // real careers only (D61 B)
         var cw = world.College!;
         return cw.Programs.OrderByDescending(p => cw.Prestige[p.Id]).ElementAt(50).Id;
     }

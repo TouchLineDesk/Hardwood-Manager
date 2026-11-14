@@ -5,7 +5,7 @@ using Hardwood.Core.Guide; using Hardwood.Core.Generation; using Hardwood.Core.P
 // ---------------------------------------------------------------- 1. Tactics and coaching experiment
 if (args[0] == "tactics")
 {
-    var lg = new WorldGenerator(new Rng(11)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
+    var lg = Hardwood.Core.RealWorld.RealWorldData.NewWorld(11).League;
     var teams = lg.Teams.OrderBy(t => QuickSim.Strength(t)).ToList();
     var a = teams[14]; var b = teams[15];
     var sim = new GameSimulator();
@@ -41,20 +41,10 @@ if (args[0] == "tactics")
 
 // ---------------------------------------------------------------- 2. Careers played by a scripted manager
 string label = args[0]; int seasons = int.Parse(args[1]); ulong seed = ulong.Parse(args[2]);
-var probe = new WorldGenerator(new Rng(seed)).Generate("NABL", 2026, new DateOnly(2026, 10, 1));
-var probeWorld = GameWorld.Generate(probe, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1));
-// Review #8: real-world careers (R1-R2). The real NBA's strongest and weakest teams after the real players are placed.
-bool real = label.StartsWith("nba-real");
-if (real)
-{
-    probe = new WorldGenerator(new Rng(seed)).Generate(Hardwood.Core.RealWorld.RealWorldData.LeagueName, 2026, new DateOnly(2026, 10, 1));
-    probeWorld = GameWorld.Generate(probe, seed, Array.Empty<string>(), new DateOnly(2026, 10, 1));
-    Hardwood.Core.RealWorld.RealWorldData.Apply(probe, probeWorld, seed);
-}
+// Every career is a real-world one (D61 B, #478: the made-up NABL careers were removed in v0.74.0).
+var (probe, probeWorld) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed);
 int teamId = label switch
 {
-    "nabl-weak" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id,
-    "nabl-strong" => probe.Teams.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     "nba-real-strong" => probe.Teams.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
     "nba-real-weak" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id,
     "nba-real-mid" => probe.Teams.OrderBy(t => QuickSim.Strength(t)).ElementAt(14).Id,
@@ -70,7 +60,7 @@ int teamId = label switch
 };
 var path = Path.Combine(Path.GetTempPath(), $"critic-{label}.hwsave"); if (File.Exists(path)) File.Delete(path);
 var sw = Stopwatch.StartNew();
-var s = GameSession.NewGame(seed, teamId, path, realWorld: real);
+var s = GameSession.NewGame(seed, teamId, path);
 var progress = new GuideProgress();
 var log = new List<string>();
 void L(string x) { log.Add(x); Console.WriteLine($"[{label}] {x}"); }
@@ -89,7 +79,7 @@ int lastDay = 0;
 var realNames = Hardwood.Core.RealWorld.RealPlayers.Lines.Select(l => l.Name).ToHashSet();
 void Stars(string when)
 {
-    if (!real) return;
+    // every career is real (D61 B)
     var top = s.League.Teams.SelectMany(t => t.Roster.Select(p => (p, t))).OrderByDescending(x => x.p.CurrentAbility).Take(8);
     L($"{when} top players: " + string.Join("; ", top.Select(x => $"{x.p.Name} {x.t.Abbreviation} CA {x.p.CurrentAbility} age {x.p.Age(s.Today)} ${(x.p.Contract?.Salary ?? 0) / 1e6:F1}M x{x.p.Contract?.Years}")));
     L($"{when} real players still in the league: {s.League.Teams.Sum(t => t.Roster.Count(p => realNames.Contains(p.Name)))}; ages 35+: {s.League.Teams.Sum(t => t.Roster.Count(p => p.Age(s.Today) >= 35))}");

@@ -42,8 +42,10 @@ public class RealPlayersTests
     {
         try
         {
-            var fictional = GameSession.NewGame(2026, 1, null);
-            var real = GameSession.NewGame(2026, 16, null, realWorld: true);
+            // The generator's league from the same seed, before the real NBA goes on top (the made-up careers are gone, D61 B).
+            var ladder = new WorldGenerator(new Rng(2026)).Generate(RealWorldData.LeagueName, 2026, new DateOnly(2026, 10, 1));
+            Hardwood.Core.World.GameWorld.Generate(ladder, 2026, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
+            var real = GameSession.NewGame(2026, 16, null);
             var names = RealPlayers.Lines.Select(l => l.Name).ToHashSet();
             // The 30 real franchises; the two tier-2 clubs that joined to make 32 (#355) keep their own made-up rosters.
             Assert.All(real.League.Teams.Skip(30), t => Assert.DoesNotContain(t.Roster, p => names.Contains(p.Name)));
@@ -77,11 +79,11 @@ public class RealPlayersTests
             Assert.Equal("Dominican Republic", towns.Nationality);
             Assert.Equal("Joe Mazzulla", real.League.Teams.First(t => t.Abbreviation == "BOS").CoachName);
             Assert.Equal("Mike Brown", real.League.Teams.First(t => t.Abbreviation == "NYK").CoachName);
-            // The talent ladder is the generator's: the same spread of CA as a fictional league from the same seed.
-            double Mean(GameSession s) => s.League.Teams.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
-            int Stars(GameSession s) => s.League.Teams.SelectMany(t => t.Roster).Count(p => p.CurrentAbility >= 160);
-            Assert.InRange(Mean(real) - Mean(fictional), -2.0, 2.0);
-            Assert.InRange(Stars(real), Stars(fictional) - 4, Stars(fictional) + 4);
+            // The talent ladder is the generator's: the same spread of CA as the generated league from the same seed.
+            double Mean(League l) => l.Teams.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
+            int Stars(League l) => l.Teams.SelectMany(t => t.Roster).Count(p => p.CurrentAbility >= 160);
+            Assert.InRange(Mean(real.League) - Mean(ladder), -2.0, 2.0);
+            Assert.InRange(Stars(real.League), Stars(ladder) - 4, Stars(ladder) + 4);
         }
         finally { Brand.Real = false; }
     }
