@@ -13,11 +13,42 @@ public static class SessionStore
         using var conn = file.OpenConnection();
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
-        SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM box_line; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM depth_chart; DELETE FROM offseason; DELETE FROM offseason_expiring; DELETE FROM offseason_pick; DELETE FROM offseason_mle;");
+        SaveFile.Exec(conn, "DELETE FROM session; DELETE FROM schedule; DELETE FROM inbox; DELETE FROM postseason_series; DELETE FROM postseason_game; DELETE FROM depth_chart; DELETE FROM offseason; DELETE FROM offseason_expiring; DELETE FROM offseason_pick; DELETE FROM offseason_mle;");
+        // Box scores are kept for every game of the season, not only yours (review #14 bug #3: a club you took over
+        // mid-season had no box scores for its earlier games). A played game's box never changes, so other clubs' boxes are
+        // written once and kept; yours are rewritten every save, as before. A new season (or a save written by an older
+        // version) starts the table again.
+        string sig = $"{s.League.Season}:{s.Schedule.Count}:{(s.Schedule.Count > 0 ? s.Schedule[0].Date.ToString("yyyy-MM-dd") : "")}";
+        string? oldSig = null;
+        using (var c = conn.CreateCommand()) { c.CommandText = "SELECT sig FROM box_meta WHERE id = 1"; oldSig = c.ExecuteScalar() as string; }
+        var stored = new HashSet<int>();
+        if (oldSig != sig)
+        {
+            SaveFile.Exec(conn, "DELETE FROM box_line; DELETE FROM box_meta;");
+            SaveFile.Exec(conn, "INSERT INTO box_meta(id, sig) VALUES(1, $s)", ("$s", sig));
+        }
+        else
+        {
+            using var c = conn.CreateCommand();
+            c.CommandText = "SELECT DISTINCT game_idx FROM box_line";
+            using var r = c.ExecuteReader();
+            while (r.Read()) stored.Add(r.GetInt32(0));
+        }
+        using var boxCmd = BoxCommand(conn);
+        void Box(int idx, GameResult r, bool ours)
+        {
+            if (r.Home.FixedPoints != null || r.Home.Lines.Count == 0) return;
+            if (stored.Contains(idx))
+            {
+                if (!ours) return;
+                SaveFile.Exec(conn, "DELETE FROM box_line WHERE game_idx = $g", ("$g", idx));
+            }
+            SaveBox(boxCmd, idx, r);
+        }
 
         SaveFile.Exec(conn, "INSERT INTO session(id, human_team_id, today, phase, seed, rng_seed, next_message_id, postseason_stage, midseason_json) VALUES(1, $t, $d, $p, $s, $r, $m, $ps, $mid)",
             ("$t", s.HumanTeam.Id), ("$d", s.Today.ToString("yyyy-MM-dd")), ("$p", (int)s.Phase), ("$s", (long)s.Seed), ("$r", (long)s.NextRngSeed),
-            ("$m", Math.Max(s.NextMessageId, s.Inbox.Count == 0 ? 1 : s.Inbox.Max(m => m.Id) + 1)), ("$ps", (object?)s.Postseason?.Stage ?? DBNull.Value),
+            ("$m", Math.Max(s.NextMessageId, s.Inbox.Count == 0 ? 1 : s.Inbox.Max(m => m.Id) + 1)), ("$ps", (object?)s.Postseason?.Stage ?? (s.PlayoffSeries.Count > 0 ? "Complete" : DBNull.Value)),
             ("$mid", s.Midseason != null ? SaveFile.ToJson(s.Midseason) : DBNull.Value));
 
         foreach (var g in s.Schedule)
@@ -26,20 +57,32 @@ public static class SessionStore
             SaveFile.Exec(conn, "INSERT INTO schedule(idx, date, home_id, away_id, home_pts, away_pts, overtimes) VALUES($i, $d, $h, $a, $hp, $ap, $ot)",
                 ("$i", g.Index), ("$d", g.Date.ToString("yyyy-MM-dd")), ("$h", g.Home.Id), ("$a", g.Away.Id),
                 ("$hp", r is null ? DBNull.Value : r.Home.Points), ("$ap", r is null ? DBNull.Value : r.Away.Points), ("$ot", r?.Overtimes ?? 0));
-            if (r != null && (g.Home == s.HumanTeam || g.Away == s.HumanTeam) && r.Home.FixedPoints == null)
-                SaveBox(conn, g.Index, r);
+            if (r != null) Box(g.Index, r, g.Home == s.HumanTeam || g.Away == s.HumanTeam);
         }
 
         foreach (var m in s.Inbox)
             SaveFile.Exec(conn, "INSERT INTO inbox(id, date, title, body, category, read) VALUES($i, $d, $t, $b, $c, $r)",
                 ("$i", m.Id), ("$d", m.Date.ToString("yyyy-MM-dd")), ("$t", m.Title), ("$b", m.Body), ("$c", m.Category), ("$r", m.Read ? 1 : 0));
 
-        if (s.Postseason != null)
+        // The series and every game in them (review #14 bug #4: the games weren't saved, so a reload lost them from your
+        // schedule, and in the summer the whole playoffs went).
         {
             int order = 0;
-            foreach (var se in s.Postseason.Series)
+            foreach (var se in s.PlayoffSeries)
+            {
                 SaveFile.Exec(conn, "INSERT INTO postseason_series(ord, round, higher_id, lower_id, higher_wins, lower_wins, wins_needed) VALUES($o, $r, $h, $l, $hw, $lw, $n)",
-                    ("$o", order++), ("$r", se.Round), ("$h", se.Higher.Id), ("$l", se.Lower.Id), ("$hw", se.HigherWins), ("$lw", se.LowerWins), ("$n", se.WinsNeeded));
+                    ("$o", order), ("$r", se.Round), ("$h", se.Higher.Id), ("$l", se.Lower.Id), ("$hw", se.HigherWins), ("$lw", se.LowerWins), ("$n", se.WinsNeeded));
+                bool ours = se.Higher == s.HumanTeam || se.Lower == s.HumanTeam;
+                for (int n = 0; n < se.Games.Count; n++)
+                {
+                    var g = se.Games[n];
+                    SaveFile.Exec(conn, "INSERT INTO postseason_game(series_ord, game_no, date, home_id, away_id, home_pts, away_pts, overtimes) VALUES($o, $n, $d, $h, $a, $hp, $ap, $ot)",
+                        ("$o", order), ("$n", n), ("$d", (object?)g.Date?.ToString("yyyy-MM-dd") ?? DBNull.Value), ("$h", g.Home.Team.Id), ("$a", g.Away.Team.Id),
+                        ("$hp", g.Home.Points), ("$ap", g.Away.Points), ("$ot", g.Overtimes));
+                    Box(PlayoffBoxIndex(order, n), g, ours);
+                }
+                order++;
+            }
         }
 
         if (s.Offseason is { } o && s.Phase == SessionPhase.Offseason)
@@ -64,18 +107,33 @@ public static class SessionStore
         tx.Commit();
     }
 
-    private static void SaveBox(SqliteConnection conn, int gameIndex, GameResult r)
+    /// <summary>A playoff game's key in <c>box_line</c>: negative, so it never meets a regular-season schedule index.</summary>
+    internal static int PlayoffBoxIndex(int seriesOrder, int gameNo) => -(seriesOrder * 16 + gameNo + 1);
+
+    private static readonly string[] BoxParams = { "$g", "$t", "$p", "$st", "$sec", "$pts", "$fgm", "$fga", "$tpm", "$tpa", "$ftm", "$fta", "$oreb", "$dreb", "$ast", "$stl", "$blk", "$tov", "$pf", "$pm" };
+
+    /// <summary>One prepared insert for every box line of a save (about 27,000 a season the first time).</summary>
+    private static SqliteCommand BoxCommand(SqliteConnection conn)
+    {
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            INSERT INTO box_line(game_idx, team_id, player_id, started, seconds, pts, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, pm)
+            VALUES($g, $t, $p, $st, $sec, $pts, $fgm, $fga, $tpm, $tpa, $ftm, $fta, $oreb, $dreb, $ast, $stl, $blk, $tov, $pf, $pm)
+            """;
+        foreach (var name in BoxParams) cmd.Parameters.Add(new SqliteParameter(name, 0));
+        cmd.Prepare();
+        return cmd;
+    }
+
+    private static void SaveBox(SqliteCommand cmd, int gameIndex, GameResult r)
     {
         foreach (var box in new[] { r.Home, r.Away })
         foreach (var l in box.Lines.Where(l => l.Seconds > 0))
         {
-            SaveFile.Exec(conn, """
-                INSERT INTO box_line(game_idx, team_id, player_id, started, seconds, pts, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, pm)
-                VALUES($g, $t, $p, $st, $sec, $pts, $fgm, $fga, $tpm, $tpa, $ftm, $fta, $oreb, $dreb, $ast, $stl, $blk, $tov, $pf, $pm)
-                """,
-                ("$g", gameIndex), ("$t", box.Team.Id), ("$p", l.Player.Id), ("$st", l.Started ? 1 : 0), ("$sec", l.Seconds), ("$pts", l.Points),
-                ("$fgm", l.FGM), ("$fga", l.FGA), ("$tpm", l.ThreePM), ("$tpa", l.ThreePA), ("$ftm", l.FTM), ("$fta", l.FTA), ("$oreb", l.OReb), ("$dreb", l.DReb),
-                ("$ast", l.Assists), ("$stl", l.Steals), ("$blk", l.Blocks), ("$tov", l.Turnovers), ("$pf", l.Fouls), ("$pm", l.PlusMinus));
+            object[] v = { gameIndex, box.Team.Id, l.Player.Id, l.Started ? 1 : 0, l.Seconds, l.Points, l.FGM, l.FGA, l.ThreePM, l.ThreePA, l.FTM, l.FTA,
+                l.OReb, l.DReb, l.Assists, l.Steals, l.Blocks, l.Turnovers, l.Fouls, l.PlusMinus };
+            for (int i = 0; i < v.Length; i++) cmd.Parameters[i].Value = v[i];
+            cmd.ExecuteNonQuery();
         }
     }
 
@@ -220,14 +278,58 @@ public static class SessionStore
             }
         }
 
-        if (phase == SessionPhase.Postseason && stage != null)
+        if ((phase == SessionPhase.Postseason && stage != null) || phase == SessionPhase.Offseason)
         {
             var rows = new List<(string, int, int, int, int, int)>();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT round, higher_id, lower_id, higher_wins, lower_wins, wins_needed FROM postseason_series ORDER BY ord";
-            using var r = cmd.ExecuteReader();
-            while (r.Read()) rows.Add((r.GetString(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4), r.GetInt32(5)));
-            session.RestorePostseason(stage, rows);
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT round, higher_id, lower_id, higher_wins, lower_wins, wins_needed FROM postseason_series ORDER BY ord";
+                using var r = cmd.ExecuteReader();
+                while (r.Read()) rows.Add((r.GetString(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4), r.GetInt32(5)));
+            }
+            // The games of each series (none in a save from before v0.79.2).
+            var games = new Dictionary<int, List<GameResult>>();
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT series_ord, game_no, date, home_id, away_id, home_pts, away_pts, overtimes FROM postseason_game ORDER BY series_ord, game_no";
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    int ord = r.GetInt32(0), n = r.GetInt32(1);
+                    if (session.FindTeam(r.GetInt32(3)) is not { } h || session.FindTeam(r.GetInt32(4)) is not { } a) continue;
+                    var home = new TeamBox { Team = h };
+                    var away = new TeamBox { Team = a };
+                    if (boxes.TryGetValue(PlayoffBoxIndex(ord, n), out var byTeam))
+                    {
+                        if (byTeam.TryGetValue(h.Id, out var hl)) home.Lines.AddRange(hl);
+                        if (byTeam.TryGetValue(a.Id, out var al)) away.Lines.AddRange(al);
+                    }
+                    if (home.Lines.Count == 0) home.FixedPoints = r.GetInt32(5);
+                    if (away.Lines.Count == 0) away.FixedPoints = r.GetInt32(6);
+                    games.TryAdd(ord, new());
+                    games[ord].Add(new GameResult { Home = home, Away = away, Overtimes = r.GetInt32(7), Date = r.IsDBNull(2) ? null : DateOnly.Parse(r.GetString(2)) });
+                }
+            }
+            if (phase == SessionPhase.Postseason)
+            {
+                session.RestorePostseason(stage!, rows);
+                for (int i = 0; i < session.Postseason!.Series.Count; i++)
+                    if (games.TryGetValue(i, out var list)) session.Postseason.Series[i].Games.AddRange(list);
+            }
+            else
+            {
+                // The summer keeps the finished series as they were (the bracket isn't rebuilt: clubs may have moved since).
+                var past = new List<Series>();
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var (round, hi, lo, hw, lw, need) = rows[i];
+                    if (session.FindTeam(hi) is not { } higher || session.FindTeam(lo) is not { } lower) continue;
+                    var se = new Series { Round = round, Higher = higher, Lower = lower, HigherWins = hw, LowerWins = lw, WinsNeeded = need };
+                    if (games.TryGetValue(i, out var list)) se.Games.AddRange(list);
+                    past.Add(se);
+                }
+                session.RestorePastPlayoffs(past);
+            }
         }
         return session;
     }
@@ -242,6 +344,8 @@ public static class SessionStore
             CREATE INDEX IF NOT EXISTS ix_box_game ON box_line(game_idx);
             CREATE TABLE IF NOT EXISTS inbox(id INTEGER PRIMARY KEY, date TEXT, title TEXT, body TEXT, category TEXT, read INTEGER);
             CREATE TABLE IF NOT EXISTS postseason_series(ord INTEGER PRIMARY KEY, round TEXT, higher_id INTEGER, lower_id INTEGER, higher_wins INTEGER, lower_wins INTEGER, wins_needed INTEGER);
+            CREATE TABLE IF NOT EXISTS postseason_game(series_ord INTEGER, game_no INTEGER, date TEXT, home_id INTEGER, away_id INTEGER, home_pts INTEGER, away_pts INTEGER, overtimes INTEGER);
+            CREATE TABLE IF NOT EXISTS box_meta(id INTEGER PRIMARY KEY, sig TEXT);
             CREATE TABLE IF NOT EXISTS depth_chart(team_id INTEGER PRIMARY KEY, starters TEXT, minutes TEXT);
             CREATE TABLE IF NOT EXISTS offseason(id INTEGER PRIMARY KEY, phase INTEGER, season INTEGER, draft_order TEXT, pick_owners TEXT, next_pick INTEGER);
             CREATE TABLE IF NOT EXISTS offseason_expiring(team_id INTEGER, player_id INTEGER);

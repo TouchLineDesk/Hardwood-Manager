@@ -36,7 +36,14 @@ internal sealed class BugFinder
     public BugFinder(MainViewModel vm, MainWindow window, string? shots)
     {
         _vm = vm; _window = window; _shots = shots;
-        Dispatcher.UIThread.UnhandledException += (_, e) => { Add("crash", "(dispatcher)", e.Exception.GetType().Name + ": " + e.Exception.Message); e.Handled = true; };
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            // Name the page on screen and the layout warnings just before (an "Infinite layout loop" says nothing of where, run 54).
+            var cycle = BindingSink.Current?.LayoutWarnings.TakeLast(3) ?? Enumerable.Empty<string>();
+            Add("crash", "(dispatcher) on " + ((_vm.CurrentPage as PageViewModel)?.Title ?? _vm.CurrentPage?.GetType().Name ?? "?"), e.Exception.GetType().Name + ": " + e.Exception.Message
+                + (cycle.Any() ? " [" + string.Join("; ", cycle) + "]" : ""));
+            e.Handled = true;
+        };
     }
 
     private GameSession S => _vm.Session!;
@@ -414,8 +421,21 @@ internal sealed class BugFinder
     /// <summary>Avalonia's binding errors (a page binding to something that isn't there) as findings.</summary>
     public sealed class BindingSink : ILogSink
     {
+        private static string Describe(object? source)
+        {
+            if (source is not Visual v) return source?.GetType().Name ?? "null";
+            // The control and its first few named or typed ancestors, so the page can be found.
+            var chain = new List<string>();
+            for (Visual? x = v; x != null && chain.Count < 6; x = x.GetVisualParent())
+                chain.Add(x is Control { Name: { Length: > 0 } n } ? $"{x.GetType().Name}#{n}" : x.GetType().Name);
+            return string.Join(" < ", chain);
+        }
         public readonly List<string> Errors = new();
-        public bool IsEnabled(LogEventLevel level, string area) => level >= LogEventLevel.Warning && area is LogArea.Binding or LogArea.Property;
+        /// <summary>Layout-cycle warnings (Avalonia logs the control it re-queued before it gives up), kept apart from binding errors.</summary>
+        public readonly List<string> LayoutWarnings = new();
+        public static BindingSink? Current;
+        public BindingSink() => Current = this;
+        public bool IsEnabled(LogEventLevel level, string area) => level >= LogEventLevel.Warning && area is LogArea.Binding or LogArea.Property or LogArea.Layout;
         public void Log(LogEventLevel level, string area, object? source, string messageTemplate) => Log(level, area, source, messageTemplate, Array.Empty<object?>());
         public void Log(LogEventLevel level, string area, object? source, string messageTemplate, params object?[] propertyValues)
         {
@@ -426,6 +446,7 @@ internal sealed class BugFinder
                 msg = System.Text.RegularExpressions.Regex.Replace(messageTemplate, @"\{[^}]+\}", m => i < propertyValues.Length ? propertyValues[i++]?.ToString() ?? "null" : m.Value);
             }
             catch { }
+            if (area == LogArea.Layout) { lock (LayoutWarnings) { LayoutWarnings.Add($"{msg} (on {Describe(source)})"); if (LayoutWarnings.Count > 50) LayoutWarnings.RemoveAt(0); } return; }
             lock (Errors) if (Errors.Count < 2000) Errors.Add($"{area}: {msg} (on {source?.GetType().Name})");
         }
     }

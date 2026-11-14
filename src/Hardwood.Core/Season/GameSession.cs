@@ -57,6 +57,10 @@ public sealed partial class GameSession
     public Dictionary<int, PlayerSeasonStats> Stats { get; private set; } = new();
     public List<InboxMessage> Inbox { get; } = new();
     public Postseason? Postseason { get; private set; }
+    /// <summary>The season's playoff series with their games: the live bracket, or, after a reload in the summer, the series
+    /// as saved (review #14 bug #4: the summer forgot the playoff games, 98 → 82 on the schedule).</summary>
+    public IReadOnlyList<Series> PlayoffSeries => Postseason?.Series ?? (IReadOnlyList<Series>)_pastPlayoffs;
+    private List<Series> _pastPlayoffs = new();
     public Offseason? Offseason { get; private set; }
     public List<TradeProposal> TradesThisSeason { get; } = new();
     /// <summary>All-Star selections and game result for the current season, once February arrives.</summary>
@@ -143,6 +147,7 @@ public sealed partial class GameSession
         Standings = new Standings(League);
         Stats = new Dictionary<int, PlayerSeasonStats>();
         Postseason = null;
+        _pastPlayoffs = new();
         Offseason = null;
         TradesThisSeason.Clear();
     }
@@ -694,13 +699,36 @@ public sealed partial class GameSession
             var achieved = InCollege ? Jobs.Board.Achieved(World.College!, HumanTeam.Id)
                 : HumanLeague is { } c ? Jobs.Board.Achieved(HumanTeam.Id, c.Season, c.Profile) : Jobs.Board.Achieved(HumanTeam, Postseason);
             // A division winner in tiers 2-3 goes up (#319): the board counts that as a top-three finish at least.
-            if (HumanLeague is { } hc && UsaPyramid.WonDivision(hc, HumanTeam) && achieved < Jobs.SeasonGoal.SecondRound) achieved = Jobs.SeasonGoal.SecondRound;
-            var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season);
+            bool wonDivision = HumanLeague is { } hc && UsaPyramid.WonDivision(hc, HumanTeam);
+            if (wonDivision && achieved < Jobs.SeasonGoal.SecondRound) achieved = Jobs.SeasonGoal.SecondRound;
+            var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
+                relegated: GoingDown(), wonDivision: wonDivision);
             Post(Boss(title), Boss(body), "Board");
             if (sacked) Fire();
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
         WorldCoachingChanges();
+    }
+
+    /// <summary>
+    /// Your club finished last in its division and goes down at the summer (review #14 bug #16): the top league's last in each
+    /// division and the last in each division of tiers 2-4 (UsaPyramid.Promote's rule; nobody goes down from the bottom tier).
+    /// </summary>
+    public bool GoingDown()
+    {
+        if (InCollege) return false;
+        if (InNabl)
+        {
+            if (!Postseason.UsesDivisions(League) || World.Competitions.All(c => c.Key != UsaPyramid.Tier2)) return false;
+            var div = League.Teams.Where(t => t.Conference == HumanTeam.Conference && t.Division == HumanTeam.Division).ToList();
+            if (div.Count < 2) return false;
+            return div.OrderBy(t => Standings[t].Wins).ThenByDescending(t => Standings[t].Losses).ThenBy(t => t.Id).First() == HumanTeam;
+        }
+        if (HumanLeague is not { } c || !UsaPyramid.IsNational(c.Key) || c.Key == UsaPyramid.Tier5 || !c.Season.Fixtures.Any(f => f.Played)) return false;
+        var table = c.Season.Table().Select(r => r.TeamId).ToList();
+        var mine = UsaPyramid.Divisions(c.Key, c.Clubs).FirstOrDefault(d => d.Teams.Contains(HumanTeam)).Teams;
+        if (mine == null || mine.Count < 2) return false;
+        return table.LastOrDefault(id => mine.Any(x => x.Id == id)) == HumanTeam.Id;
     }
 
     /// <summary>A computer-run club changes coach; while you're out of work the job is open to you.</summary>
@@ -1277,6 +1305,9 @@ public sealed partial class GameSession
         Postseason = new Postseason(League, Standings);
         Postseason.Restore(stage, rows);
     }
+
+    /// <summary>The finished playoffs as saved, for a load in the summer (the bracket itself isn't rebuilt then).</summary>
+    internal void RestorePastPlayoffs(List<Series> series) => _pastPlayoffs = series;
 
     internal void RestoreOffseason(OffseasonPhase phase, List<int> draftOrder, List<int> pickOwners, List<Player> prospects, int nextPick,
         Dictionary<int, List<Player>> expiring, List<DraftPick> picksMade)

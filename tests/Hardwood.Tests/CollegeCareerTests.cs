@@ -103,7 +103,7 @@ public class CollegeCareerTests
             Assert.DoesNotContain(s.Inbox, m => m.Title is "All-Star Game" or "Trade deadline has passed" or "The January window has shut");
             // The AD judged the season in college terms (or let a first-year coach go on).
             var review = s.Inbox.Last(m => m.Category == "Board" && (m.Title == "Season review" || m.Title == "You have been sacked"));
-            Assert.Matches("Result: (win the national championship|reach the final four|reach the sweet 16|make march madness|build the program)", review.Body);
+            Assert.Matches("Result: (won the national championship|reached the Final Four|reached the Elite Eight|reached the Sweet 16|made March Madness|missed March Madness)", review.Body);
             if (s.Employed)
             {
                 // Seniors graduated, the signed class enrolled.
@@ -172,6 +172,6 @@ public class CollegeCareerTests
         Board.SeasonReview(pro, new Coach(), ctx with { IsCollege = false }, program, SeasonGoal.Playoffs, 24, 8, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2027, 4, 7), 2026);
         Assert.False(sacked);
         Assert.True(college.Confidence > pro.Confidence, $"{college.Confidence} vs {pro.Confidence}");
-        Assert.Contains("Goal: win the national championship. Result: make march madness", body);
+        Assert.Contains("Goal: win the national championship. Result: made March Madness", body);
     }
 }
