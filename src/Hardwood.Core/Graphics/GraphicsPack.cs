@@ -134,9 +134,16 @@ public sealed class GraphicsPack
         catch (Exception) { return new(); }
     });
 
-    private static readonly Lazy<HashSet<string>> RealSchools = new(() =>
+    /// <summary>Real programs: school key → nickname key. A club matches only with both (Danny, run 45: pro clubs in a
+    /// college town, like a Memphis or Dayton club in the lower tiers, were wearing the school's logo).</summary>
+    private static readonly Lazy<Dictionary<string, string>> RealSchools = new(() =>
     {
-        try { return RealColleges.Programs.Select(p => LogoPack.Key(p.School)).ToHashSet(); }
+        try
+        {
+            var d = new Dictionary<string, string>();
+            foreach (var p in RealColleges.Programs) d.TryAdd(LogoPack.Key(p.School), LogoPack.Key(p.Nickname));
+            return d;
+        }
         catch (Exception) { return new(); }
     });
 
@@ -207,9 +214,10 @@ public sealed class GraphicsPack
     /// <summary>The key the college pack uses for a real program: its school name, or the pack's spelling of it.</summary>
     public static string? SchoolKey(Team t)
     {
-        if (SchoolAliases.TryGetValue(t.City, out var a) && RealSchools.Value.Contains(LogoPack.Key(t.City))) return a;
         var k = LogoPack.Key(t.City);
-        return RealSchools.Value.Contains(k) ? k : null;
+        // Only the real program itself: the school AND its nickname, so a pro club in a college town keeps its own crest.
+        if (!RealSchools.Value.TryGetValue(k, out var nick) || nick != LogoPack.Key(t.Name)) return null;
+        return SchoolAliases.TryGetValue(t.City, out var a) ? a : k;
     }
 
     /// <summary>A logo for a real NBA franchise or a real college program, or null.</summary>
