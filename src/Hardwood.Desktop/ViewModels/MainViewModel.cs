@@ -78,6 +78,8 @@ public sealed partial class MainViewModel : ViewModelBase
         HasSession = true;
         Controls.PlayerCard.BackSource = pl => Hardwood.Core.Season.CollectorCard.BackOf(session, pl);
         Controls.PlayerCard.Today = () => session.Today;
+        // The college Top 25 rank travels with the team (#528): logos and team links read it from the live poll.
+        Controls.CollegeRank.Of = t => session.World.College is { } cw && t.Id >= Hardwood.Core.College.CollegeWorld.FirstId ? cw.Rank(t.Id) : null;
         Controls.Portraits.UseSave(session.Save?.Path);
         Graphics.LogoPackService.UseTeams(session.League.Teams.Concat(session.World.Clubs).Concat(session.World.College?.Programs ?? new List<Team>()));
         Portraits.PortraitService.Instance.Request(session);
@@ -246,6 +248,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public void AfterTick()
     {
+        Controls.CollegeRank.RaiseChanged();
         foreach (var p in _pages.Values) p.Refresh();
         if (CurrentPage is PageViewModel cp && !_pages.ContainsValue(cp)) cp.Refresh();
         RefreshHeader();

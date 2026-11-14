@@ -10,13 +10,17 @@ public sealed class TeamLogo : Control
 {
     public static readonly StyledProperty<Team?> TeamProperty = AvaloniaProperty.Register<TeamLogo, Team?>(nameof(Team));
     public static readonly StyledProperty<bool> ShowTextProperty = AvaloniaProperty.Register<TeamLogo, bool>(nameof(ShowText), true);
+    /// <summary>A ranked college program's Top 25 rank in the corner (#528), on logos of <see cref="RankMinSize"/> px and up.</summary>
+    public static readonly StyledProperty<bool> ShowRankProperty = AvaloniaProperty.Register<TeamLogo, bool>(nameof(ShowRank), true);
+    public const double RankMinSize = 36;
+    public bool ShowRank { get => GetValue(ShowRankProperty); set => SetValue(ShowRankProperty, value); }
 
     public Team? Team { get => GetValue(TeamProperty); set => SetValue(TeamProperty, value); }
     public bool ShowText { get => GetValue(ShowTextProperty); set => SetValue(ShowTextProperty, value); }
 
     static TeamLogo()
     {
-        AffectsRender<TeamLogo>(TeamProperty, ShowTextProperty);
+        AffectsRender<TeamLogo>(TeamProperty, ShowTextProperty, ShowRankProperty);
         WidthProperty.OverrideDefaultValue<TeamLogo>(48);
         HeightProperty.OverrideDefaultValue<TeamLogo>(48);
     }
@@ -27,11 +31,13 @@ public sealed class TeamLogo : Control
     {
         base.OnAttachedToVisualTree(e);
         Graphics.LogoPackService.Changed += InvalidateVisual;
+        CollegeRank.Changed += InvalidateVisual;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         Graphics.LogoPackService.Changed -= InvalidateVisual;
+        CollegeRank.Changed -= InvalidateVisual;
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -53,7 +59,26 @@ public sealed class TeamLogo : Control
         if (team == null) return;
         var size = Math.Min(Bounds.Width, Bounds.Height);
         if (size < 8) return;
-        if (DrawPackLogo(ctx, team)) return;
+        if (DrawPackLogo(ctx, team)) { DrawRank(ctx, team, size); return; }
+        DrawCrest(ctx, team, size);
+        DrawRank(ctx, team, size);
+    }
+
+    /// <summary>The Top 25 rank badge (#528): a dark rounded tag with the number, in the top-left corner.</summary>
+    private void DrawRank(DrawingContext ctx, Team team, double size)
+    {
+        if (!ShowRank || size < RankMinSize || CollegeRank.For(team) is not { } rank) return;
+        double h = Math.Round(size * 0.34), fs = h * 0.62;
+        var text = new FormattedText(rank.ToString(), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Bold), fs, Brushes.White);
+        double w = Math.Max(h, text.Width + h * 0.5);
+        var r = new Rect(0, 0, w, h);
+        ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(235, 17, 24, 39)), new Pen(new SolidColorBrush(Color.FromRgb(250, 204, 21)), Math.Max(1, h * 0.07)), r, h * 0.3, h * 0.3);
+        ctx.DrawText(text, new Point((w - text.Width) / 2, (h - text.Height) / 2));
+    }
+
+    private void DrawCrest(DrawingContext ctx, Team team, double size)
+    {
         var cx = Bounds.Width / 2; var cy = Bounds.Height / 2;
         var primary = Parse(team.PrimaryColor);
         var secondary = Parse(team.SecondaryColor);

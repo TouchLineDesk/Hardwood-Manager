@@ -23,6 +23,9 @@ public sealed class CollegeGame
     public string? Event { get; set; }
     public int Round { get; set; }
     public int Slot { get; set; }
+    /// <summary>Each side's Top 25 rank at tip-off (#528), so a result reads "#5 Duke 78, Kansas 71" as it stood. Null: unranked, or played before v0.78.0.</summary>
+    public int? HomeRank { get; set; }
+    public int? AwayRank { get; set; }
     public bool Played => HomePts != null;
     public int? WinnerId => !Played ? null : HomePts > AwayPts ? HomeId : AwayId;
 }
@@ -52,6 +55,10 @@ public sealed class CollegeSeason
     public List<int> NextFourOut { get; set; } = new();
     /// <summary>Pro clubs courting this season's seniors (roadmap 11, college depth). Older saves start with an empty board.</summary>
     public RecruitingBoard Recruiting { get; set; } = new();
+    /// <summary>The Top 25 before the latest day of games (#528): program id → rank, for the poll's up and down arrows. Empty in older saves.</summary>
+    public Dictionary<int, int> PollBefore { get; set; } = new();
+    /// <summary>The day <see cref="PollBefore"/> was taken (the latest day of games).</summary>
+    public DateOnly? PollDay { get; set; }
 }
 
 public sealed record CollegeChampion(int Year, int ChampionId, string Champion, int RunnerUpId, string RunnerUp);
@@ -440,7 +447,11 @@ public sealed partial class CollegeWorld
                 if (!added) return;
                 continue;
             }
-            foreach (var g in s.Games.Where(g => !g.Played && g.Date == next.Date).ToList()) Play(g, sim, rng);
+            var day = s.Games.Where(g => !g.Played && g.Date == next.Date).ToList();
+            // The poll before the day's games, for the arrows (#528); each game records both sides' ranks at tip-off.
+            BeforeGameDay(next.Date);
+            foreach (var g in day) TipOff(g); // games added to the day after its first tip-off (none today, but cheap)
+            foreach (var g in day) Play(g, sim, rng);
         }
     }
 
@@ -475,6 +486,8 @@ public sealed partial class CollegeWorld
     /// <summary>Record a game played on the full engine: the score, every stat line and the ratings.</summary>
     public void Record(CollegeGame g, GameResult r)
     {
+        BeforeGameDay(g.Date);
+        TipOff(g);
         g.HomePts = r.Home.Points; g.AwayPts = r.Away.Points;
         foreach (var box in new[] { r.Home, r.Away })
         foreach (var l in box.Lines.Where(l => l.Seconds > 0))
@@ -507,6 +520,7 @@ public sealed partial class CollegeWorld
         double k = 24 * margin * 0.6;
         elo[g.HomeId] = rh + k * (result - expected);
         elo[g.AwayId] = ra - k * (result - expected);
+        _pollVersion++;
     }
 
     /// <summary>Add whatever is now due: next knockout rounds, showcases, conference tournaments, selection, the champion. True if anything was added.</summary>
@@ -810,8 +824,8 @@ public sealed partial class CollegeWorld
         return rows.Select(kv => (kv.Key, kv.Value.w, kv.Value.l)).OrderByDescending(r => r.Item2 - r.Item3).ThenByDescending(r => Season.Elo[r.Key]).ToList();
     }
 
-    /// <summary>The Top 25 by rating.</summary>
-    public List<Team> Top25() => Programs.OrderByDescending(t => Season.Elo.GetValueOrDefault(t.Id, 1500)).Take(25).ToList();
+    /// <summary>The Top 25 by rating: re-ranked after every game (#528).</summary>
+    public List<Team> Top25() => PollOrder().Select(id => Program(id)!).ToList();
 
     public string StageText
     {

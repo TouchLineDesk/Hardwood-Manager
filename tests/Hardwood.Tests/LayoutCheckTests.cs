@@ -363,6 +363,9 @@ public class LayoutCheckTests
                     var sched = (ScheduleViewModel)v.CurrentPage!;
                     sched.OpenBox(sched.Games.Last(g => g.Played));
                 }),
+                // The Top 25 as a logo grid (Danny, #528), and its table view.
+                ("Top 25", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 0; col.PollView = "Grid"; }),
+                ("Top 25 table", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 0; col.PollView = "Table"; }),
                 // Bracketology (C4 part 1, #191): the projected field, the bubble and our projection, in January.
                 ("Bracketology", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 2; }),
                 // The recruiting trail (C3, #173): the coach's board with a scouted, offered prospect selected.

@@ -70,7 +70,7 @@
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
               <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" Margin="4,0"/></DataTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" ShowRank="{Binding ShowRank}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Div" Binding="{Binding Div}" Width="140"/>
@@ -104,7 +104,7 @@
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
               <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" Margin="4,0"/></DataTemplate>
+                <DataTemplate x:DataType="vm:StandingRow"><c:TeamLink Team="{Binding Team}" Text="{Binding Label}" ShowRank="{Binding ShowRank}" Margin="4,0"/></DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Div" Binding="{Binding Div}" Width="140"/>

@@ -10,6 +10,10 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
 {
     public bool Played => Us != null;
     public bool Won => Us > Them;
+    /// <summary>College (#528): the opponent's Top 25 rank at tip-off for a played game, its rank now for one to come.</summary>
+    public int? OpponentRank { get; init; }
+    /// <summary>Your own rank the same way.</summary>
+    public int? OurRank { get; init; }
 }
 
 /// <summary>
@@ -149,7 +153,11 @@ public sealed partial class GameSession
                 string stage = g.Event == College.CollegeWorld.Madness ? College.CollegeWorld.RoundName(g.Round)
                     : g.Stage == "Conference" ? MyConference!.Short : "Regular season";
                 list.Add(new MyGame(g.Date, opp, home, comp, stage,
-                    g.Played ? (home ? g.HomePts : g.AwayPts) : null, g.Played ? (home ? g.AwayPts : g.HomePts) : null, r));
+                    g.Played ? (home ? g.HomePts : g.AwayPts) : null, g.Played ? (home ? g.AwayPts : g.HomePts) : null, r)
+                {
+                    OpponentRank = g.Played ? (home ? g.AwayRank : g.HomeRank) : cw.Rank(opp.Id),
+                    OurRank = g.Played ? (home ? g.HomeRank : g.AwayRank) : cw.Rank(us.Id),
+                });
             }
             return list;
         }
