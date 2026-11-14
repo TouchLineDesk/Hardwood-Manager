@@ -213,11 +213,12 @@ public sealed class PlayerCard : Control
         var subT = Text(sub, Regular, small ? 8.5 : 10, B(Muted));
         subT.MaxTextWidth = w - 12; subT.Trimming = TextTrimming.CharacterEllipsis; subT.MaxLineCount = 1;
         ctx.DrawText(subT, new Point(x0 + (w - Math.Min(subT.Width, w - 12)) / 2, y));
-        y += subT.Height + (small ? 3 : 6);
+        y += subT.Height + (small ? 3 : 6 * Math.Clamp(w / 176.0, 1, 1.6));
 
         // Skill badges as outlined pills, wrapped and centred.
         var badges = CollectorCard.Badges(p, Knowledge, small ? 2 : 3);
-        double pillH = small ? 15 : 19, gap = 4, fs = small ? 8 : 9.5;
+        double grow = small ? 1 : Math.Clamp(w / 176.0, 1, 1.3);
+        double pillH = small ? 15 : 19 * grow, gap = 4 * grow, fs = small ? 8 : 9.5 * grow;
         var rows = new List<List<(FormattedText t, double pw)>> { new() };
         double rowW = 0, maxRow = w - 12;
         foreach (var bName in badges)
