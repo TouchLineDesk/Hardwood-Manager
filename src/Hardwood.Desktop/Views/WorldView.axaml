@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:core="using:Hardwood.Core.Season"
              x:Class="Hardwood.Desktop.Views.WorldView"
              x:DataType="vm:WorldViewModel">
   <DockPanel>
@@ -20,27 +21,66 @@
     </StackPanel>
     <TabControl SelectedIndex="{Binding Tab}">
       <TabItem Header="Standings">
-        <DataGrid ItemsSource="{Binding Table}" CanUserSortColumns="False" RowHeight="28">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
-            <DataGridTemplateColumn Header="" Width="34">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLink Team="{Binding Team}" FontWeight="{Binding Mine, Converter={x:Static c:Converters.BoldIf}}" Margin="4,0"/></DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="180"/>
-            <DataGridTextColumn Header="W" Binding="{Binding W}" Width="50"/>
-            <DataGridTextColumn Header="L" Binding="{Binding L}" Width="50"/>
-            <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="70"/>
-            <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="70"/>
-            <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="130"/>
-          </DataGrid.Columns>
-        </DataGrid>
+        <DockPanel>
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" MinWidth="130" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <ItemsControl ItemsSource="{Binding Keys}" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ZoneKey">
+                  <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                    <Border Background="{Binding Brush}" CornerRadius="3" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding Label}" Classes="muted" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </WrapPanel>
+          <Panel>
+            <!-- Danny, #463: every league by division, as cards (stacked when narrow). -->
+            <ScrollViewer IsVisible="{Binding ShowCards}" HorizontalScrollBarVisibility="Disabled">
+              <Grid x:Name="LeagueCards" ColumnDefinitions="*,*">
+                <StackPanel x:Name="LeftLeagueCards" Margin="0,0,8,0">
+                  <TextBlock Text="{Binding LeftTitle}" Classes="h2" Margin="0,0,0,6" IsVisible="{Binding LeftTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <ItemsControl ItemsSource="{Binding LeftCards}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:DivisionCard"><c:DivisionCardView/></DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+                <StackPanel x:Name="RightLeagueCards" Grid.Column="1" IsVisible="{Binding HasRight}">
+                  <TextBlock Text="{Binding RightTitle}" Classes="h2" Margin="0,0,0,6" IsVisible="{Binding RightTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <ItemsControl ItemsSource="{Binding RightCards}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:DivisionCard"><c:DivisionCardView/></DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Grid>
+            </ScrollViewer>
+            <DataGrid ItemsSource="{Binding Table}" CanUserSortColumns="False" RowHeight="28" IsVisible="{Binding ShowTable}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
+                <DataGridTemplateColumn Header="" Width="34">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLogo Team="{Binding Team}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Team" Width="*" MinWidth="196">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:WorldTableRow"><c:TeamLink Team="{Binding Team}" FontWeight="{Binding Mine, Converter={x:Static c:Converters.BoldIf}}" Margin="4,0"/></DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="180"/>
+                <DataGridTextColumn Header="W" Binding="{Binding W}" Width="50"/>
+                <DataGridTextColumn Header="L" Binding="{Binding L}" Width="50"/>
+                <DataGridTextColumn Header="Pct" Binding="{Binding Pct}" Width="70"/>
+                <DataGridTextColumn Header="Diff" Binding="{Binding Diff}" Width="70"/>
+                <DataGridTextColumn Header="" Binding="{Binding Zone}" Width="130"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Panel>
+        </DockPanel>
       </TabItem>
       <TabItem Header="Schedule &amp; results">
         <DockPanel>
@@ -124,18 +164,43 @@
         </ScrollViewer>
       </TabItem>
       <TabItem Header="Playoffs &amp; history">
-        <ScrollViewer>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto">
           <StackPanel Spacing="12">
-            <Border Classes="panel" IsVisible="{Binding Series, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-              <StackPanel Spacing="4">
+            <!-- Danny, #470: the playoffs as a drawn bracket, the third-place tournament under it. -->
+            <Border Classes="panel">
+              <StackPanel Spacing="6">
                 <TextBlock Text="Playoffs" Classes="h2" Margin="0"/>
-                <TextBlock Text="{Binding Series}" TextWrapping="Wrap" FontSize="12.5"/>
+                <TextBlock Text="{Binding BracketNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasMainBracket}"/>
+                <c:BracketView Columns="{Binding MainBracket}" Mine="{Binding Mine}" HorizontalAlignment="Left" IsVisible="{Binding HasMainBracket}"/>
+              </StackPanel>
+            </Border>
+            <Border Classes="panel" IsVisible="{Binding HasThirdBracket}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Third-place tournament" Classes="h2" Margin="0"/>
+                <c:BracketView Columns="{Binding ThirdBracket}" Mine="{Binding Mine}" HorizontalAlignment="Left"/>
               </StackPanel>
             </Border>
             <Border Classes="panel">
-              <StackPanel Spacing="4">
+              <StackPanel Spacing="6">
                 <TextBlock Text="Champions" Classes="h2" Margin="0"/>
-                <TextBlock Text="{Binding Champions}" TextWrapping="Wrap" FontSize="12.5"/>
+                <TextBlock Text="No champions yet in this save." Classes="muted" IsVisible="{Binding !HasChampions}"/>
+                <ItemsControl ItemsSource="{Binding ChampionRows}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="core:BookChampion">
+                      <Border Background="{StaticResource HwPanelAltBrush}" CornerRadius="8" Padding="10,8" Margin="0,0,10,10" Width="300">
+                        <Grid ColumnDefinitions="52,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                          <c:TeamLogo Grid.RowSpan="4" Team="{Binding ChampionTeam}" Width="44" Height="44" ShowText="False" VerticalAlignment="Top"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Season}" Classes="muted" FontSize="11.5"/>
+                          <c:TeamLink Grid.Column="1" Grid.Row="1" Team="{Binding ChampionTeam}" Text="{Binding Champion}" FontWeight="Bold" FontSize="14"/>
+                          <TextBlock Grid.Column="1" Grid.Row="2" Text="{Binding RunnerUp, StringFormat='beat {0}'}" Classes="muted" TextWrapping="Wrap" FontSize="12"/>
+                          <TextBlock Grid.Column="1" Grid.Row="3" Text="{Binding ThirdPlace, StringFormat='Third-place tournament: {0}'}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"
+                                     IsVisible="{Binding ThirdPlace, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
             </Border>
           </StackPanel>

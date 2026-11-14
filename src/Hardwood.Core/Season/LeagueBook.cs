@@ -17,6 +17,18 @@ public sealed record BookGame(DateOnly Date, Team Home, Team Away, int? HomePts,
     public bool Involves(Team t) => Home == t || Away == t;
 }
 
+/// <summary>One playoff series in any league's bracket (Danny, #470: the playoffs drawn, not as text lines).</summary>
+public sealed record BookSeries(string Round, Team High, Team Low, int HighWins, int LowWins, Team? Winner, bool ThirdPlace)
+{
+    public bool Complete => Winner != null;
+}
+
+/// <summary>One round of a drawn bracket: its name and its slots top to bottom (null = a series not made yet).</summary>
+public sealed record BracketColumn(string Round, List<BookSeries?> Slots);
+
+/// <summary>One season's champions in any league, with the teams when they're still in the world (for logos and links).</summary>
+public sealed record BookChampion(string Season, string Champion, Team? ChampionTeam, string RunnerUp, Team? RunnerUpTeam, string? ThirdPlace, Team? ThirdPlaceTeam);
+
 /// <summary>A player's season in one competition, in one shape for the NABL, the world and college.</summary>
 public sealed record BookStat(int PlayerId, int TeamId, int G, double Min, int Pts, int Reb, int Ast, int Stl, int Blk, int Fgm, int Fga, int Tpm, int Tpa)
 {
@@ -49,8 +61,66 @@ public sealed class LeagueBook
     public required IReadOnlyList<string> Champions { get; init; }
     /// <summary>Playoff series so far, one line each (empty before the playoffs).</summary>
     public required Func<List<string>> Series { get; init; }
+    /// <summary>The same series as data, in the order they were made (title bracket and third-place tournament), for the drawn bracket.</summary>
+    public Func<List<BookSeries>> Bracket { get; init; } = () => new();
+    /// <summary>The roll of champions, newest first, as data (the <see cref="Champions"/> lines are the same seasons as text).</summary>
+    public Func<List<BookChampion>> ChampionRows { get; init; } = () => new();
 
     public const string NablKey = "nabl", CollegeKey = "college";
+
+    /// <summary>
+    /// Lays series out as a bracket (Danny, #470): one column per round, left to right, each round's slots in bracket order so
+    /// the two series feeding a slot sit beside it. The NBA's conference rounds ("East First Round", "West First Round") share a
+    /// column; play-in games are left out. Rounds still to come are empty slots, halving each round until the final.
+    /// </summary>
+    public static List<BracketColumn> Columns(IEnumerable<BookSeries> series)
+    {
+        static string Key(string round) =>
+            round.StartsWith("East ") || round.StartsWith("West ") ? round[5..] switch
+            {
+                "Semifinals" => "Conference semifinals",
+                "Finals" => "Conference finals",
+                var r => r,
+            } : round;
+        var list = series.Where(x => !x.Round.Contains("Play-In")).ToList();
+        var rounds = new List<(string Name, List<BookSeries> Series)>();
+        foreach (var x in list)
+        {
+            var k = Key(x.Round);
+            int i = rounds.FindIndex(r => r.Name == k);
+            if (i < 0) rounds.Add((k, new List<BookSeries> { x })); else rounds[i].Series.Add(x);
+        }
+        var cols = new List<BracketColumn>();
+        if (rounds.Count == 0) return cols;
+        cols.Add(new BracketColumn(rounds[0].Name, rounds[0].Series.Cast<BookSeries?>().ToList()));
+        int size = rounds[0].Series.Count;
+        int ri = 1;
+        while (size > 1 && size % 2 == 0)
+        {
+            size /= 2;
+            var prev = cols[^1].Slots;
+            var slots = Enumerable.Repeat<BookSeries?>(null, size).ToList();
+            bool nba = rounds.Any(r => r.Name.StartsWith("Conference"));
+            string name = ri < rounds.Count ? rounds[ri].Name : size switch
+            {
+                1 => nba ? "Finals" : "Final",
+                2 => nba ? "Conference finals" : "Semi-finals",
+                4 => nba ? "Conference semifinals" : "Quarter-finals",
+                _ => "Next round",
+            };
+            if (ri < rounds.Count)
+                foreach (var x in rounds[ri].Series)
+                {
+                    int feeder = prev.FindIndex(f => f != null && (f.High == x.High || f.Low == x.High || f.High == x.Low || f.Low == x.Low));
+                    int slot = feeder >= 0 ? feeder / 2 : -1;
+                    if (slot < 0 || slot >= size || slots[slot] != null) slot = slots.FindIndex(z => z == null);
+                    if (slot >= 0) slots[slot] = x;
+                }
+            cols.Add(new BracketColumn(name, slots));
+            ri++;
+        }
+        return cols;
+    }
 
     // ------------------------------------------------------------------------------------------
 
@@ -137,6 +207,15 @@ public sealed class LeagueBook
                 p.FGM, p.FGA, p.ThreePM, p.ThreePA)).ToList(),
             Series = () => post == null ? new() : post.Series.Select(x => $"{x.Round}: {x.Higher.Abbreviation} {x.HigherWins}-{x.LowerWins} {x.Lower.Abbreviation}"
                 + (x.Complete ? $" ({x.Winner!.Abbreviation} win)" : "")).ToList(),
+            Bracket = () => post == null ? new() : post.Series.Select(x => new BookSeries(x.Round, x.Higher, x.Lower, x.HigherWins, x.LowerWins, x.Winner,
+                Postseason.IsThirdPlace(x.Round))).ToList(),
+            ChampionRows = () => lg.History.AsEnumerable().Reverse().Select(h =>
+            {
+                Team? Find(int id) => s.World.TeamById(id) ?? lg.Teams.FirstOrDefault(t => t.Id == id);
+                var ch = Find(h.ChampionTeamId); var ru = Find(h.RunnerUpTeamId);
+                var tp = h.Awards?.ThirdPlaceWinnerId is { } tpid ? Find(tpid) : null;
+                return new BookChampion($"{h.Season}-{(h.Season + 1) % 100:00}", ch?.FullName ?? "?", ch, ru?.FullName ?? "", ru, tp?.FullName, tp);
+            }).ToList(),
             Rules = new List<(string, string)>
             {
                 ("Level", lg.Teams.Count == UsaPyramid.ProSize
@@ -211,6 +290,14 @@ public sealed class LeagueBook
                 kv.Value.Stl, kv.Value.Blk, kv.Value.Fgm, kv.Value.Fga, kv.Value.Tpm, kv.Value.Tpa)).ToList(),
             Series = () => se.Series.Select(x => $"{x.Round}: {T(x.HighId).Abbreviation} {x.HighWins}-{x.LowWins} {T(x.LowId).Abbreviation}"
                 + (x.Complete ? $" ({T(x.WinnerId!.Value).Abbreviation} win)" : "")).ToList(),
+            Bracket = () => se.Series.OrderBy(x => x.Id).Select(x => new BookSeries(x.Round, T(x.HighId), T(x.LowId), x.HighWins, x.LowWins,
+                x.WinnerId is { } wid ? T(wid) : null, Postseason.IsThirdPlace(x.Round))).ToList(),
+            ChampionRows = () => c.History.AsEnumerable().Reverse().Select(h =>
+            {
+                var tp = h.ThirdPlaceName is { } tpn ? teams.FirstOrDefault(t => t.FullName == tpn) ?? w.Clubs.FirstOrDefault(t => t.FullName == tpn) : null;
+                return new BookChampion($"{h.Season}-{(h.Season + 1) % 100:00}", h.ChampionName, w.TeamById(h.ChampionId), h.RunnerUpName, w.TeamById(h.RunnerUpId),
+                    h.ThirdPlaceName, tp);
+            }).ToList(),
             Rules = WorldRules(c, teams.Count),
             Champions = c.History.AsEnumerable().Reverse().Select(h => $"{h.Season}-{(h.Season + 1) % 100:00}  {h.ChampionName} (beat {h.RunnerUpName})"
                 + (h.ThirdPlaceName is { } tp ? $" · third-place tournament: {tp}" : "")).ToList(),
@@ -317,6 +404,8 @@ public sealed class LeagueBook
                 ("Recruiting", "Programs recruit 14-year-olds by prestige; winning raises prestige."),
             },
             Champions = col.History.AsEnumerable().Reverse().Select(h => $"{h.Year}-{(h.Year + 1) % 100:00}  {h.Champion} (beat {h.RunnerUp})").ToList(),
+            ChampionRows = () => col.History.AsEnumerable().Reverse().Select(h => new BookChampion($"{h.Year}-{(h.Year + 1) % 100:00}", h.Champion, col.Program(h.ChampionId),
+                h.RunnerUp, col.Program(h.RunnerUpId), null, null)).ToList(),
         };
     }
 }

@@ -65,8 +65,15 @@ public sealed partial class GameSession
     /// <summary>The window's name for the My bids list.</summary>
     public string WindowName => Phase == SessionPhase.Offseason ? $"Summer {Today.Year}" : $"January {Today.Year}";
 
-    /// <summary>The bids to show: this window's while it's open, otherwise the last window's.</summary>
-    public List<MyBid> BidsToShow()
+    /// <summary>How long a settled bid stays on My bids after the club's answer (Danny, D54 C: "a week").</summary>
+    public const int SettledBidDays = 7;
+
+    /// <summary>The bids to show: this window's while it's open, otherwise the last window's. A settled bid (signed, turned
+    /// down, fallen through) drops off a week after the answer (D54 C); a live one (fee agreed, countered) stays.</summary>
+    public List<MyBid> BidsToShow() => WindowBids().Where(b => b.Open || Today <= b.Answered.AddDays(SettledBidDays)).ToList();
+
+    /// <summary>Every bid in the window the list is about, including those that have dropped off.</summary>
+    public List<MyBid> WindowBids()
     {
         if (MyBids.Count == 0) return new();
         string w = WindowOpen ? WindowName : MyBids[0].Window;

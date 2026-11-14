@@ -52,6 +52,8 @@ public sealed class WorldLeaderRow
 }
 
 public sealed record RuleRow(string Label, string Value);
+/// <summary>One colour in the standings key (playoffs, third place, promotion, relegation).</summary>
+public sealed record ZoneKey(Avalonia.Media.IBrush Brush, string Label);
 public sealed record CompetitionChoice(string Key, string Name);
 
 /// <summary>
@@ -73,6 +75,32 @@ public sealed partial class WorldViewModel : PageViewModel
     public ObservableCollection<LeagueGameRow> Games { get; } = new();
     public ObservableCollection<WorldLeaderRow> Leaders { get; } = new();
     public ObservableCollection<RuleRow> Rules { get; } = new();
+
+    // ---- Danny, #463: every league's standings as division cards, like your own Standings page.
+    public ObservableCollection<DivisionCard> LeftCards { get; } = new();
+    public ObservableCollection<DivisionCard> RightCards { get; } = new();
+    public ObservableCollection<ZoneKey> Keys { get; } = new();
+    [ObservableProperty] private string _leftTitle = "";
+    [ObservableProperty] private string _rightTitle = "";
+    [ObservableProperty] private bool _hasRight;
+    public string[] Views { get; } = { "Cards", "Full table" };
+    /// <summary>Cards open first, as on Standings (D55 A); the full table is one click away.</summary>
+    [ObservableProperty] private string _view = "Cards";
+    public bool ShowCards => View == "Cards";
+    public bool ShowTable => !ShowCards;
+    partial void OnViewChanged(string value) { OnPropertyChanged(nameof(ShowCards)); OnPropertyChanged(nameof(ShowTable)); }
+
+    // ---- Danny, #470: the playoffs drawn as a bracket, the third-place tournament beside it, champions as a roll of honour.
+    [ObservableProperty] private IReadOnlyList<Hardwood.Core.Season.BracketColumn> _mainBracket = Array.Empty<Hardwood.Core.Season.BracketColumn>();
+    [ObservableProperty] private IReadOnlyList<Hardwood.Core.Season.BracketColumn> _thirdBracket = Array.Empty<Hardwood.Core.Season.BracketColumn>();
+    public bool HasMainBracket => MainBracket.Count > 0;
+    public bool HasThirdBracket => ThirdBracket.Count > 0;
+    partial void OnMainBracketChanged(IReadOnlyList<Hardwood.Core.Season.BracketColumn> value) => OnPropertyChanged(nameof(HasMainBracket));
+    partial void OnThirdBracketChanged(IReadOnlyList<Hardwood.Core.Season.BracketColumn> value) => OnPropertyChanged(nameof(HasThirdBracket));
+    [ObservableProperty] private string _bracketNote = "";
+    public ObservableCollection<BookChampion> ChampionRows { get; } = new();
+    public bool HasChampions => ChampionRows.Count > 0;
+    public Team Mine => Session.HumanTeam;
 
     public List<string> GameFilters { get; } = new() { "Results", "Coming up", "All" };
     [ObservableProperty] private string _gameFilter = "Results";
@@ -151,6 +179,82 @@ public sealed partial class WorldViewModel : PageViewModel
         var series = b.Series();
         Series = series.Count == 0 ? "" : string.Join("\n", series);
         Champions = b.Champions.Count == 0 ? "No champions yet in this save." : string.Join("\n", b.Champions);
+        FillCards(b);
+        var bracket = b.Bracket();
+        MainBracket = LeagueBook.Columns(bracket.Where(x => !x.ThirdPlace));
+        ThirdBracket = LeagueBook.Columns(bracket.Where(x => x.ThirdPlace));
+        BracketNote = MainBracket.Count > 0 ? ""
+            : b.Rules.FirstOrDefault(r => r.Label == "Playoffs").Value is { } po && (po.StartsWith("None") || po.Length == 0) ? po
+            : b.Key == LeagueBook.CollegeKey ? "March Madness has its own bracket: College → March Madness."
+            : "The bracket fills in here when the playoffs start.";
+        ChampionRows.Clear();
+        foreach (var c in b.ChampionRows().Take(100)) ChampionRows.Add(c);
+        OnPropertyChanged(nameof(HasChampions));
+    }
+
+    /// <summary>
+    /// The league's table as cards (Danny, #463): one per division (NBA and USA tiers: East on the left, West on the right),
+    /// one per conference in college, or one card for a league with a single table. Ranks and games back are within the card;
+    /// the chip colours are the league's own zones.
+    /// </summary>
+    private void FillCards(LeagueBook b)
+    {
+        LeftCards.Clear(); RightCards.Clear(); Keys.Clear();
+        var me = Session.HumanTeam;
+        bool college = b.Key == LeagueBook.CollegeKey;
+        var groups = b.Table().GroupBy(r => r.Group).ToList();
+        bool split = groups.Count > 1 && groups.All(g => g.Key.Contains(" · "));
+        if (b.Key == LeagueBook.NablKey) groups = groups.OrderBy(g => g.Key.Split(" · ")[0]).ThenBy(g => StandingsViewModel.DivOrder(g.First().Team)).ThenBy(g => g.Key).ToList();
+        string firstConf = split ? groups[0].Key.Split(" · ")[0] : "";
+        int n = 0;
+        foreach (var g in groups)
+        {
+            var rows = new List<StandingRow>();
+            // College: ranked and games back on the conference record, overall record as the tiebreak (the card shows both).
+            static (int w, int l) ConfRecord(BookTableRow r)
+            {
+                var parts = r.Zone.Replace(" in conf", "").Split('-');
+                return parts.Length == 2 && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var l) ? (w, l) : (0, 0);
+            }
+            var ordered = college
+                ? g.OrderByDescending(r => { var (w, l) = ConfRecord(r); return w + l == 0 ? 0.5 : (double)w / (w + l); }).ThenByDescending(r => r.Pct).ThenBy(r => r.Team.City).ToList()
+                : g.ToList();
+            var lead = ordered[0];
+            int k = 0;
+            foreach (var r in ordered)
+            {
+                var (lw, ll) = college ? ConfRecord(lead) : (lead.W, lead.L);
+                var (rw, rl) = college ? ConfRecord(r) : (r.W, r.L);
+                double gb = ((lw - rw) + (rl - ll)) / 2.0;
+                rows.Add(new StandingRow
+                {
+                    Rank = ++k, Team = r.Team, Label = college ? r.Team.City : null, W = r.W, L = r.L, Div = g.Key,
+                    Pct = r.G == 0 ? ".000" : r.Pct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
+                    Last10 = college ? r.Zone.Replace(" in conf", "") : r.G == 0 || (r.PointsFor == 0 && r.PointsAgainst == 0) ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"),
+                    Zone = college ? "" : r.Zone, IsHuman = r.Team == me,
+                });
+            }
+            string title = split ? g.Key.Split(" · ", 2)[1] : g.Key.Length > 0 ? g.Key : b.Name;
+            var card = new DivisionCard(title, rows) { LastHeader = college ? "Conf" : "Diff" };
+            bool left = split ? g.Key.Split(" · ")[0] == firstConf : n % 2 == 0 || groups.Count == 1;
+            (left ? LeftCards : RightCards).Add(card);
+            n++;
+        }
+        string Conf(string c) => c is "East" ? "Eastern Conference" : c is "West" ? "Western Conference" : c;
+        if (split)
+        {
+            LeftTitle = Conf(firstConf);
+            RightTitle = Conf(groups.Select(g => g.Key.Split(" · ")[0]).FirstOrDefault(c => c != firstConf) ?? "");
+        }
+        else { LeftTitle = ""; RightTitle = ""; }
+        HasRight = RightCards.Count > 0;
+        var zones = LeftCards.Concat(RightCards).SelectMany(c => c.Rows).Select(r => r.Zone).Where(z => z.Length > 0).Distinct().ToHashSet();
+        if (zones.Contains("Promotion")) Keys.Add(new ZoneKey(StandingRow.PromotionBrush, b.Key == LeagueBook.NablKey ? "Division winner" : "Division winner: promoted"));
+        if (zones.Contains("Playoffs")) Keys.Add(new ZoneKey(StandingRow.PlayoffBrush, "Playoffs"));
+        if (zones.Contains("Play-in")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Play-in"));
+        if (zones.Contains("Third place")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Third-place tournament"));
+        if (zones.Contains("Relegation")) Keys.Add(new ZoneKey(StandingRow.RelegationBrush, "Relegated"));
+        if (college) Keys.Add(new ZoneKey(Avalonia.Media.Brushes.Transparent, "One card per conference, ranked on the conference record (Conf); W-L is the overall record"));
     }
 
     private void FillGames()

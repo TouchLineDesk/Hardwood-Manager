@@ -85,17 +85,43 @@ public class MyBidsTests
             Assert.Equal(MyBidStatus.Signed, signed.Status);
             Assert.Equal(d.Wage, signed.Wage);
 
-            // When the window shuts, a fee agreed without terms falls through, and the rows stay to read.
+            // When the window shuts, a fee agreed without terms falls through; the window's rows are kept.
             int guard = 0;
             while (l.WindowOpen && guard++ < 400) { if (l.Phase == SessionPhase.Offseason) l.AdvanceOffseason(); else l.AdvanceDay(); }
             Assert.False(l.WindowOpen);
-            var after = l.BidsToShow();
+            var after = l.WindowBids();
             Assert.Equal(3, after.Count);
             Assert.Equal(MyBidStatus.FellThrough, after.Single(x => x.PlayerId == a.Id).Status);
             Assert.Equal(MyBidStatus.Signed, after.Single(x => x.PlayerId == c.Id).Status);
             Assert.DoesNotContain(after, x => x.Open);
+            // D54 C: settled bids drop off the list a week after the answer (the window shut long after these answers).
+            Assert.All(l.BidsToShow(), x => Assert.True(l.Today <= x.Answered.AddDays(GameSession.SettledBidDays)));
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Settled_bids_drop_off_a_week_after_the_answer_and_live_ones_stay()
+    {
+        // Danny, D54 C.
+        var s = SummerSession();
+        var targets = s.Market().Where(x => !s.League.Teams.Contains(x.club) && x.player.Contract is { Years: >= 1 } && s.WontCome(x.player) == null && s.AskingPrice(x.player) <= 20_000_000)
+            .OrderByDescending(x => x.player.CurrentAbility).Take(2).ToList();
+        Assert.Equal(2, targets.Count);
+        var (lowball, _) = targets[0]; var (agreed, _) = targets[1];
+        Assert.Equal(BidAnswer.Rejected, s.Bid(lowball, s.AskingPrice(lowball) / 4).Answer);
+        Assert.Equal(BidAnswer.Accepted, s.Bid(agreed, s.AskingPrice(agreed)).Answer);
+        Assert.Equal(2, s.BidsToShow().Count);
+        // A week and a day later (the summer moves in phases, so the answers are dated back instead).
+        foreach (var b in s.MyBids) b.Answered = s.Today.AddDays(-(GameSession.SettledBidDays + 1));
+        var shown = s.BidsToShow();
+        Assert.DoesNotContain(shown, x => x.PlayerId == lowball.Id);
+        Assert.True(s.MyBids.Single(x => x.PlayerId == agreed.Id).Open);
+        Assert.Contains(shown, x => x.PlayerId == agreed.Id);
+        // Exactly a week after is still shown.
+        foreach (var b in s.MyBids) b.Answered = s.Today.AddDays(-GameSession.SettledBidDays);
+        Assert.Equal(2, s.BidsToShow().Count);
+        Assert.Equal(2, s.WindowBids().Count);
     }
 
     [Fact]

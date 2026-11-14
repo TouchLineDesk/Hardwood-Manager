@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Controls.DivisionCardView"
+             x:DataType="vm:DivisionCard">
+  <!-- One division as its own small table (Danny, #448 / D55 on Standings; #463 on every league's page). -->
+  <Border Classes="panel" Margin="0,0,0,10" Padding="10,8">
+    <StackPanel Spacing="2">
+      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" TextWrapping="Wrap"/>
+      <Grid ColumnDefinitions="34,30,*,62,54,44,62" Margin="0,0,0,2">
+        <TextBlock Grid.Column="2" Text="Team" Classes="muted" FontSize="11" Margin="4,0"/>
+        <TextBlock Grid.Column="3" Text="W-L" Classes="muted" FontSize="11"/>
+        <TextBlock Grid.Column="4" Text="Pct" Classes="muted" FontSize="11"/>
+        <TextBlock Grid.Column="5" Text="GB" Classes="muted" FontSize="11"/>
+        <TextBlock Grid.Column="6" Text="{Binding LastHeader}" Classes="muted" FontSize="11"/>
+      </Grid>
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:StandingRow">
+            <Border Background="{Binding RowBrush}" CornerRadius="4" Padding="0,2">
+              <Grid ColumnDefinitions="34,30,*,62,54,44,62" Height="26">
+                <Border Background="{Binding ZoneBrush}" CornerRadius="4" Width="24" Height="20" HorizontalAlignment="Left" ToolTip.Tip="{Binding ZoneTip}">
+                  <TextBlock Text="{Binding Rank}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                </Border>
+                <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="22" Height="22" ShowText="False" HorizontalAlignment="Left"/>
+                <c:TeamLink Grid.Column="2" Team="{Binding Team}" Text="{Binding Label}" FontWeight="{Binding Weight}" VerticalAlignment="Center" Margin="4,0"/>
+                <TextBlock Grid.Column="3" Text="{Binding Record}" FontWeight="{Binding Weight}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="4" Text="{Binding Pct}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="5" Text="{Binding GB}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="6" Text="{Binding Last10}" VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</UserControl>

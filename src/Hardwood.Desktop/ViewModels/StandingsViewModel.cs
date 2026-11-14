@@ -53,7 +53,11 @@ public sealed class StandingRow
 }
 
 /// <summary>One four-team division as its own small table (Danny, #448 / D55: "a view that breaks out each 4some division").</summary>
-public sealed record DivisionCard(string Title, IReadOnlyList<StandingRow> Rows);
+public sealed record DivisionCard(string Title, IReadOnlyList<StandingRow> Rows)
+{
+    /// <summary>The last column's heading: the last ten games on Standings; the points difference (or conference record) on Leagues.</summary>
+    public string LastHeader { get; init; } = "L10";
+}
 
 public sealed partial class StandingsViewModel : PageViewModel
 {
@@ -85,7 +89,7 @@ public sealed partial class StandingsViewModel : PageViewModel
     private bool ByDivision => View == "By division";
 
     /// <summary>A division's place in its conference's order (Danny's map: Cascade, Mojave, Frontier, Gulf...), else last.</summary>
-    private static int DivOrder(Team t)
+    internal static int DivOrder(Team t)
     {
         int i = Array.IndexOf(Hardwood.Core.World.UsaPyramid.DivisionNames(t.Conference, true), t.Division);
         if (i < 0) i = Array.IndexOf(Hardwood.Core.World.UsaPyramid.DivisionNames(t.Conference, false), t.Division);
