@@ -10,7 +10,7 @@
       <TextBlock Text="{Binding CapText}" Classes="muted"/>
       <TextBlock Text="{Binding DeadlineText}" Classes="muted"/>
     </StackPanel>
-    <TabControl>
+    <TabControl SelectedIndex="{Binding Tab}">
       <TabItem Header="Transfer market">
         <Grid ColumnDefinitions="*,300" RowDefinitions="Auto,*">
           <!-- Wraps rather than running under the side panel at big text sizes (roadmap 1). -->
@@ -59,6 +59,57 @@
             </StackPanel>
           </ScrollViewer>
         </Grid>
+      </TabItem>
+      <TabItem Header="My bids">
+        <!-- Danny, #447 / D54: every player you've bid for this window, what you offered and how the club took it. -->
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="{Binding MyBidsText}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
+          <DataGrid ItemsSource="{Binding MyBids}" CanUserSortColumns="False" RowHeight="72">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="Player · club" Width="*" MinWidth="226">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MyBidRow">
+                    <StackPanel VerticalAlignment="Center" Margin="4,0">
+                      <TextBlock Text="{Binding Player}" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding Club}" Classes="muted" FontSize="11"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Your offer" Width="128">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MyBidRow">
+                    <StackPanel VerticalAlignment="Center" Margin="4,0">
+                      <TextBlock Text="{Binding Offer}" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding OfferNote}" Classes="muted" FontSize="11"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Their answer" Width="2*" MinWidth="270">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MyBidRow">
+                    <StackPanel VerticalAlignment="Center" Margin="4,0" Spacing="1">
+                      <Border Background="{Binding StatusBrush}" CornerRadius="4" Padding="8,1" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Status}" Foreground="White" FontWeight="SemiBold"/>
+                      </Border>
+                      <TextBlock Text="{Binding Reaction}"/>
+                      <TextBlock Text="{Binding When}" Classes="muted" FontSize="11"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Wages" Binding="{Binding Wages}" Width="104"/>
+              <DataGridTemplateColumn Header="" Width="112">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MyBidRow">
+                    <Button Content="{Binding ActText}" Command="{Binding Act}" IsVisible="{Binding CanAct}" Padding="8,2" Margin="4,0"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
       </TabItem>
       <TabItem Header="Bids for your players">
         <Grid RowDefinitions="Auto,*,Auto,*">

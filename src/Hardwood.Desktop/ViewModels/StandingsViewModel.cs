@@ -40,14 +40,30 @@ public sealed class StandingRow
         "Promotion" => "Division winner: promoted, and in the playoffs",
         _ => Zone,
     };
+    /// <summary>Your club's row on a division card stands out.</summary>
+    public Avalonia.Media.FontWeight Weight => IsHuman ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal;
+    public Avalonia.Media.IBrush RowBrush => IsHuman ? HumanBrush : Avalonia.Media.Brushes.Transparent;
+    public static readonly Avalonia.Media.IBrush HumanBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#332F6FB3"));
+    /// <summary>W-L in one column on the division cards.</summary>
+    public string Record => $"{W}-{L}";
     public static readonly Avalonia.Media.IBrush PromotionBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2F6FB3"));
     public static readonly Avalonia.Media.IBrush PlayoffBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E8B57"));
     public static readonly Avalonia.Media.IBrush PlayInBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B7832A"));
     public static readonly Avalonia.Media.IBrush RelegationBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B23A3A"));
 }
 
+/// <summary>One four-team division as its own small table (Danny, #448 / D55: "a view that breaks out each 4some division").</summary>
+public sealed record DivisionCard(string Title, IReadOnlyList<StandingRow> Rows);
+
 public sealed partial class StandingsViewModel : PageViewModel
 {
+    /// <summary>The division cards, East (or a lower tier's first conference) on the left.</summary>
+    public ObservableCollection<DivisionCard> LeftCards { get; } = new();
+    public ObservableCollection<DivisionCard> RightCards { get; } = new();
+    /// <summary>Cards instead of the two conference tables.</summary>
+    [ObservableProperty] private bool _showCards;
+    public bool ShowTables => !ShowCards;
+    partial void OnShowCardsChanged(bool value) => OnPropertyChanged(nameof(ShowTables));
     public override string Title => "Standings";
     public ObservableCollection<StandingRow> East { get; } = new();
     public ObservableCollection<StandingRow> West { get; } = new();
@@ -60,13 +76,24 @@ public sealed partial class StandingsViewModel : PageViewModel
     [ObservableProperty] private bool _showPromotion;
     [ObservableProperty] private string _leftTitle = "Eastern Conference";
     [ObservableProperty] private string _rightTitle = "Western Conference";
-    /// <summary>Conference order (playoff places) or division order (Danny, #318).</summary>
-    public string[] Views { get; } = { "By conference", "By division" };
-    [ObservableProperty] private string _view = "By conference";
+    /// <summary>Division cards (Danny, #448: they open first, D55 A) or the conference tables with the playoff seeds.</summary>
+    public string[] Views { get; } = { "By division", "By conference" };
+    [ObservableProperty] private string _view = "By division";
     [ObservableProperty] private bool _canDivide;
     [ObservableProperty] private bool _showRelegation;
     partial void OnViewChanged(string value) => Refresh();
     private bool ByDivision => View == "By division";
+
+    /// <summary>A division's place in its conference's order (Danny's map: Cascade, Mojave, Frontier, Gulf...), else last.</summary>
+    private static int DivOrder(Team t)
+    {
+        int i = Array.IndexOf(Hardwood.Core.World.UsaPyramid.DivisionNames(t.Conference, true), t.Division);
+        if (i < 0) i = Array.IndexOf(Hardwood.Core.World.UsaPyramid.DivisionNames(t.Conference, false), t.Division);
+        return i < 0 ? 99 : i;
+    }
+
+    private static IEnumerable<IGrouping<string, StandingRow>> InOrder(IEnumerable<StandingRow> rows) =>
+        rows.GroupBy(r => r.Div).OrderBy(g => DivOrder(g.First().Team)).ThenBy(g => g.Key);
     public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Race { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
     public string[] RaceLabels { get; private set; } = Array.Empty<string>();
     public bool HasRace => RaceLabels.Length >= 3;
@@ -87,7 +114,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 Rank = i + 1, Team = West[i].Team, Label = West[i].Team.City, W = West[i].W, L = West[i].L, Pct = West[i].Pct, GB = "", Diff = West[i].Diff,
                 Home = West[i].Home, Last10 = West[i].Last10, IsHuman = West[i].IsHuman,
             };
-            PlayoffLabel = "Conference tournament"; ShowPlayIn = false;
+            PlayoffLabel = "Conference tournament"; ShowPlayIn = false; ShowCards = false;
             LeftTitle = $"{s.MyConference!.Name} (conference games)"; RightTitle = "Top 25 (by rating, overall records)";
             Note = "Tournament winners get automatic March Madness bids.";
             Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
@@ -95,6 +122,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             return;
         }
         PlayoffLabel = "Playoffs"; ShowPlayIn = true; CanDivide = false; ShowRelegation = false; ShowPromotion = false; PlayInLabel = "Play-in";
+        ShowCards = false; LeftCards.Clear(); RightCards.Clear();
         if (s.HumanLeague is { } hl)
         {
             // Abroad: your league on the left, the NABL on the right.
@@ -129,6 +157,16 @@ public sealed partial class StandingsViewModel : PageViewModel
                         // third-place tournament, 4th goes down.
                         // Tier 5 is the bottom (D39 A): nobody goes down from it.
                         ShowPromotion = true; PlayoffLabel = "Playoffs"; ShowPlayIn = true; PlayInLabel = "Third-place tournament"; ShowRelegation = hl.Key != Hardwood.Core.World.UsaPyramid.Tier5;
+                        // The division cards (D55): one per division, the first conference's on the left.
+                        CanDivide = true;
+                        if (ByDivision)
+                        {
+                            var groups = InOrder(East).ToList();
+                            string firstConf = groups.Count > 0 ? groups[0].Key.Split(" · ")[0] : "";
+                            foreach (var g in groups)
+                                (g.Key.Split(" · ")[0] == firstConf ? LeftCards : RightCards).Add(new DivisionCard(g.Key, g.ToList()));
+                            ShowCards = true;
+                        }
                     }
                     else { PlayoffLabel = "Promotion"; ShowPlayIn = false; ShowRelegation = true; }
                 }
@@ -143,13 +181,20 @@ public sealed partial class StandingsViewModel : PageViewModel
         }
         LeftTitle = "Eastern Conference"; RightTitle = "Western Conference";
         CanDivide = true;
-        ShowRelegation = ByDivision && s.World.Competitions.Any(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2);
         bool divisions = Postseason.UsesDivisions(s.League);
+        // Relegation shows in the division view, and in the division format (4th goes down) in either view.
+        ShowRelegation = (ByDivision || divisions) && s.World.Competitions.Any(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2);
         if (divisions) PlayInLabel = "Third-place tournament";
         Fill(East, Conference.East, divisions);
         Fill(West, Conference.West, divisions);
+        if (ByDivision)
+        {
+            foreach (var g in InOrder(East)) LeftCards.Add(new DivisionCard($"{g.Key}", g.ToList()));
+            foreach (var g in InOrder(West)) RightCards.Add(new DivisionCard($"{g.Key}", g.ToList()));
+            ShowCards = true;
+        }
         Note = divisions
-            ? (ByDivision ? "Colours by place in each division." : "Colours by place in each division; seeds by record.")
+            ? (ByDivision ? "Each division's top two make the playoffs, third plays the third-place tournament, fourth goes down." : "Colours by place in each division; seeds by record.")
             : ByDivision ? "By division: ranks and games back within each division; the playoff colours still follow the conference table."
             : "Top 6 qualify directly; 7-10 play in.";
         BuildRace();
@@ -220,7 +265,7 @@ public sealed partial class StandingsViewModel : PageViewModel
         {
             if (ByDivision && r.Team.Division != division) { division = r.Team.Division; leader = r; rank = 1; }
             int cr = confRank[r.Team];
-            bool lastInDivision = ByDivision && ShowRelegation && table.LastOrDefault(x => x.Team.Division == r.Team.Division) == r && r.Wins + r.Losses > 0;
+            bool lastInDivision = ShowRelegation && table.LastOrDefault(x => x.Team.Division == r.Team.Division) == r && r.Wins + r.Losses > 0;
             double gb = leader == null ? 0 : ((leader.Wins - r.Wins) + (r.Losses - leader.Losses)) / 2.0;
             var last10 = Session.Schedule.Where(g => (g.Home == r.Team || g.Away == r.Team) && Session.Results.ContainsKey(g.Index))
                 .OrderByDescending(g => g.Index).Take(10).Select(g => Session.Results[g.Index].Winner.Team == r.Team).ToList();

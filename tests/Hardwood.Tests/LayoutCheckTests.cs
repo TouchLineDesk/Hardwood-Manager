@@ -108,8 +108,40 @@ public class LayoutCheckTests
         {
             v.Navigate("Transactions");
             var tx = (TransactionsViewModel)v.CurrentPage!;
+            tx.Tab = 0;
             tx.SelectedMarket = tx.Market.FirstOrDefault(r => r.Player.Contract is { Buyout: > 0 }) ?? tx.Market.First();
         });
+        // Danny, #447 / D54: the My bids list, one row in every status, with the longest names and reactions.
+        yield return ("My bids", v =>
+        {
+            SeedBids(v.Session!);
+            v.Navigate("Transactions");
+            ((TransactionsViewModel)v.CurrentPage!).Tab = 1;
+        });
+        // The conference tables with the playoff seeds (the division cards open first since D55).
+        yield return ("Standings by conference", v =>
+        {
+            v.Navigate("Standings");
+            ((StandingsViewModel)v.CurrentPage!).View = "By conference";
+        });
+    }
+
+    /// <summary>One bid in each status for the layout check and screenshots, on the market's longest-named players.</summary>
+    public static void SeedBids(Hardwood.Core.Season.GameSession s)
+    {
+        if (s.MyBids.Count > 0) return;
+        var picks = s.Market().OrderByDescending(x => x.player.Name.Length + x.club.FullName.Length).Take(6).ToList();
+        var statuses = new[] { Hardwood.Core.Season.MyBidStatus.FeeAgreed, Hardwood.Core.Season.MyBidStatus.Countered, Hardwood.Core.Season.MyBidStatus.Rejected,
+            Hardwood.Core.Season.MyBidStatus.Rejected, Hardwood.Core.Season.MyBidStatus.Signed, Hardwood.Core.Season.MyBidStatus.FellThrough };
+        var reactions = new[] { "They'd take it", "Close: they want a little more", "No sale without a premium", "Nowhere near: they're insulted", "Release clause: can't refuse", "They'd take it" };
+        for (int i = 0; i < picks.Count; i++)
+            s.MyBids.Add(new Hardwood.Core.Season.MyBid
+            {
+                PlayerId = picks[i].player.Id, Player = picks[i].player.Name, ClubId = picks[i].club.Id, Club = picks[i].club.FullName,
+                Window = s.MyBids.Count > 0 ? s.MyBids[0].Window : "Summer 2026", Fee = 12_340_000 + i * 1_110_000, Bids = i == 1 ? 2 : 1, Status = statuses[i],
+                Counter = 14_750_000, Reaction = reactions[i], Answered = s.Today, Wage = 9_870_000, Years = 4,
+                Note = i == 5 ? "The window shut before he agreed terms." : "",
+            });
     }
 
     /// <summary>Market columns whose right edge lies past the visible part of the table (they'd need a sideways scroll).</summary>

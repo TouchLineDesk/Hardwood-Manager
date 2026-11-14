@@ -1180,7 +1180,7 @@ public sealed partial class GameSession
     private void StartNewSeason()
     {
         NewWindow();
-        AgreedFees.Clear(); IncomingBids.Clear(); // the summer window shuts
+        AgreedFees.Clear(); IncomingBids.Clear(); BidsWindowShut(); // the summer window shuts
         Phase = SessionPhase.Preseason;
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);

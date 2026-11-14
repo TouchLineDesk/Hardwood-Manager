@@ -144,6 +144,15 @@ public class ScreenshotTests
             vm.Navigate("Standings");
             ((StandingsViewModel)vm.CurrentPage!).View = "By division";
             Snap(window, Path.Combine(dir, $"{n++:00}-standings-divisions.png"));
+            if (!session.InCollege)
+            {
+                // Danny, #447 / D54: the My bids list.
+                LayoutCheckTests.SeedBids(session);
+                vm.Navigate("Transactions");
+                ((TransactionsViewModel)vm.CurrentPage!).Tab = 1;
+                Snap(window, Path.Combine(dir, $"{n++:00}-my-bids.png"));
+                session.MyBids.Clear();
+            }
             vm.Navigate("Schedule & Results");
             var sched = (ScheduleViewModel)vm.CurrentPage!;
             sched.OpenBox(sched.Games.First(g => g.Played));

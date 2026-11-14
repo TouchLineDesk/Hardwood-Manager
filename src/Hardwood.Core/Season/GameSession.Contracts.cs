@@ -141,6 +141,9 @@ public sealed partial class GameSession
         {
             _talksOver.Add(p.Id);
             _talks.Remove(p.Id);
+            if (AgreedFees.ContainsKey(p.Id))
+                foreach (var b in MyBids.Where(b => b.PlayerId == p.Id && b.Status == MyBidStatus.FeeAgreed))
+                { b.Status = MyBidStatus.TermsFailed; b.Note = "He walked away from your terms."; }
             Post($"Talks off: {p.Name}", reply.Text, "Roster");
         }
         else if (reply.Accepted)
