@@ -24,7 +24,7 @@ public static class CareerStore
         Put("owners", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Owner)));
         Put("coaches", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.CoachName)));
         Put("money", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Money)));
-        Put("transfers", SaveFile.ToJson(new TransferState(s.TransferLog, s.IncomingBids, s.AgreedFees)));
+        Put("transfers", SaveFile.ToJson(new TransferState(s.TransferLog, s.IncomingBids, s.AgreedFees, s.MyBids)));
         Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest, s.WeekResults, s.WeekKnocks)));
         Put("inbox", SaveFile.ToJson(s.InboxSettings));
         if (s.NamePackApplied is { } pack) Put("name_pack", pack);
@@ -54,6 +54,7 @@ public static class CareerStore
             s.TransferLog.Clear(); s.TransferLog.AddRange(ts.Log ?? new());
             s.IncomingBids.Clear(); s.IncomingBids.AddRange(ts.Incoming ?? new());
             s.AgreedFees.Clear(); foreach (var (k, v) in ts.Agreed ?? new()) s.AgreedFees[k] = v;
+            s.MyBids.Clear(); s.MyBids.AddRange(ts.Mine ?? new());
         }
         if (Get("digest") is { } dj && SaveFile.FromJson<DigestState>(dj) is { } ds)
         {
@@ -69,7 +70,7 @@ public static class CareerStore
         s.World.ManagedClubId = s.Employed && s.Abroad ? s.HumanTeam.Id : null;
     }
 
-    private sealed record TransferState(List<TransferRecord>? Log, List<IncomingBid>? Incoming, Dictionary<int, long>? Agreed);
+    private sealed record TransferState(List<TransferRecord>? Log, List<IncomingBid>? Incoming, Dictionary<int, long>? Agreed, List<MyBid>? Mine = null);
 
     private static void CreateSchema(SqliteConnection conn) =>
         SaveFile.Exec(conn, "CREATE TABLE IF NOT EXISTS career_meta(key TEXT PRIMARY KEY, value TEXT);");

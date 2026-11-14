@@ -48,6 +48,43 @@ public sealed class IncomingRow
     public required IRelayCommand Reject { get; init; }
 }
 
+/// <summary>One of your bids on the My bids list (D54): who, how much, where it stands and how the club took it.</summary>
+public sealed class MyBidRow
+{
+    public required MyBid Bid { get; init; }
+    public string Player { get; init; } = "";
+    public string Club => Bid.Club;
+    public string Offer => $"${Bid.Fee / 1e6:F2}M";
+    /// <summary>Which bid this was and the day you made it.</summary>
+    public string OfferNote => (Bid.Bids > 1 ? $"bid {Bid.Bids} · " : "") + Bid.Answered.ToString("MMM d");
+    public string Wages => Bid.Status == MyBidStatus.Signed ? $"${Bid.Wage / 1e6:F2}M × {Math.Max(1, Bid.Years)}" : "-";
+    public string Status => Bid.Status switch
+    {
+        MyBidStatus.FeeAgreed => "Accepted: talk terms",
+        MyBidStatus.Signed => "Signed",
+        MyBidStatus.Countered => $"Countered: ${Bid.Counter / 1e6:F2}M",
+        MyBidStatus.Rejected => "Rejected",
+        MyBidStatus.TermsFailed => "Fell through: his terms",
+        _ => "Fell through",
+    };
+    /// <summary>The status chip's colour: green when it's done or agreed, amber for a counter, red for a no.</summary>
+    public Avalonia.Media.IBrush StatusBrush => Bid.Status switch
+    {
+        MyBidStatus.FeeAgreed or MyBidStatus.Signed => StandingRow.PlayoffBrush,
+        MyBidStatus.Countered => StandingRow.PlayInBrush,
+        MyBidStatus.Rejected => StandingRow.RelegationBrush,
+        _ => Gray,
+    };
+    private static readonly Avalonia.Media.IBrush Gray = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#6B7280"));
+    public string Reaction => Bid.Reaction;
+    /// <summary>When they answered and what's next, or why it fell through.</summary>
+    public string When { get; init; } = "";
+    /// <summary>The button shows while the window is open and the deal is still alive.</summary>
+    public bool CanAct { get; init; }
+    public string ActText => Bid.Status == MyBidStatus.FeeAgreed ? "Terms" : "Bid again";
+    public required IRelayCommand Act { get; init; }
+}
+
 /// <summary>The transfer market on the Transactions page (decision #87): search, bid, agree terms; answer bids for your players.</summary>
 public sealed partial class TransactionsViewModel
 {
@@ -68,6 +105,12 @@ public sealed partial class TransactionsViewModel
     [ObservableProperty] private string _windowText = "";
     [ObservableProperty] private string _transferBudgetText = "";
     public ObservableCollection<IncomingRow> Incoming { get; } = new();
+    /// <summary>Your bids this window (D54).</summary>
+    public ObservableCollection<MyBidRow> MyBids { get; } = new();
+    [ObservableProperty] private string _myBidsText = "";
+    public bool HasMyBids => MyBids.Count > 0;
+    /// <summary>The selected tab (0 market, 1 my bids, 2 bids for your players, 3 free agents...).</summary>
+    [ObservableProperty] private int _tab;
     public ObservableCollection<string> RecentTransfers { get; } = new();
     public bool HasIncoming => Incoming.Count > 0;
 
@@ -147,9 +190,60 @@ public sealed partial class TransactionsViewModel
             });
         }
         OnPropertyChanged(nameof(HasIncoming));
+        FillMyBids();
         RecentTransfers.Clear();
         foreach (var t in s.TransferLog.AsEnumerable().Reverse().Take(40))
             RecentTransfers.Add($"{t.Date:MMM d yyyy} · {t.Player}: {t.From} → {t.To} (${t.Fee / 1e6:F2}M)");
+    }
+
+    private void FillMyBids()
+    {
+        var s = Session;
+        MyBids.Clear();
+        var shown = s.BidsToShow();
+        foreach (var b in shown)
+        {
+            var p = s.BidPlayer(b);
+            var bid = b;
+            string next = !s.WindowOpen ? "" : b.Status switch
+            {
+                MyBidStatus.FeeAgreed => s.Phase == SessionPhase.Offseason ? " · terms by the end of the summer" : " · terms by Jan 31",
+                MyBidStatus.Countered => " · bid again to meet it",
+                _ => "",
+            };
+            MyBids.Add(new MyBidRow
+            {
+                Bid = b, Player = p != null ? $"{b.Player} ({p.PrimaryPosition}, {Scouting.Ability(p, Scouting.Knowledge(s.HumanTeam, p))})" : b.Player,
+                When = b.Note is { Length: > 0 } note ? note : $"Answered the same day{next}",
+                Act = new RelayCommand(() => OpenDeal(bid)), CanAct = b.Open && s.WindowOpen,
+            });
+        }
+        OnPropertyChanged(nameof(HasMyBids));
+        MyBidsText = shown.Count == 0
+            ? (s.WindowOpen ? "You haven't bid for anyone this window. Bid on the Transfer market tab; every bid shows up here." : s.WindowText + " Your bids from the next window will show up here.")
+            : $"{shown[0].Window} window: {shown.Count} player{(shown.Count == 1 ? "" : "s")} bid for. Clubs answer the day you bid."
+              + (s.WindowOpen ? "" : " The window has shut.");
+    }
+
+    /// <summary>Back to the market with that player selected, to talk terms or bid again.</summary>
+    private void OpenDeal(MyBid bid)
+    {
+        var s = Session;
+        if (s.BidPlayer(bid) is not { } p || s.FindTeam(p.TeamId ?? 0) is not { } club || club == s.HumanTeam) return;
+        var row = Market.FirstOrDefault(r => r.Player == p);
+        if (row == null)
+        {
+            row = new MarketRow
+            {
+                Player = p, Club = club, League = s.ContextOf(club).Name, Age = p.Age(s.Today), Knowledge = Scouting.Knowledge(s.HumanTeam, p),
+                AskValue = TransferMarket.Ask(p, club, s.Today, s.ScaleOf(club), s.League.Finance), Agreed = s.AgreedFees.ContainsKey(p.Id),
+                Likely = s.LikelyFee(p), StanceInfo = s.StanceOn(p), WontCome = s.WontCome(p),
+            };
+            Market.Insert(0, row);
+        }
+        Tab = 0;
+        SelectedMarket = row;
+        if (bid.Status == MyBidStatus.Countered) BidFee = Math.Round((decimal)(bid.Counter / 1e6), 2);
     }
 
     [RelayCommand]
@@ -161,5 +255,6 @@ public sealed partial class TransactionsViewModel
         if (r.Answer == BidAnswer.Countered) BidFee = Math.Round((decimal)(r.Fee / 1e6), 2);
         if (r.Answer == BidAnswer.Accepted) Talk.Show(row.Player);
         Shell.AfterTick();
+        FillMyBids();
     }
 }

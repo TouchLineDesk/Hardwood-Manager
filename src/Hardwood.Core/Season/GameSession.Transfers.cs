@@ -12,6 +12,39 @@ public sealed class IncomingBid
     public DateOnly Expires { get; set; }
 }
 
+/// <summary>Where one of your bids stands (Danny, #447: "i cant tell who ive given bids to and for how much").</summary>
+public enum MyBidStatus { FeeAgreed, Signed, Countered, Rejected, FellThrough, TermsFailed }
+
+/// <summary>
+/// One player you've bid for this window: your latest offer, the club's answer and reaction, and what happened next
+/// (the "My bids" list on the Transactions page, D54). One row per player per window; a new bid updates it.
+/// </summary>
+public sealed class MyBid
+{
+    public int PlayerId { get; set; }
+    public string Player { get; set; } = "";
+    public int ClubId { get; set; }
+    public string Club { get; set; } = "";
+    /// <summary>The window it was made in, e.g. "Summer 2026" or "January 2027".</summary>
+    public string Window { get; set; } = "";
+    public long Fee { get; set; }
+    /// <summary>How many bids you've made for him this window.</summary>
+    public int Bids { get; set; } = 1;
+    public MyBidStatus Status { get; set; }
+    /// <summary>The club's price when they countered (or what they'd want after a rejection, never shown).</summary>
+    public long Counter { get; set; }
+    /// <summary>The club's reaction in plain words ("Close", "Well short").</summary>
+    public string Reaction { get; set; } = "";
+    /// <summary>The day the club answered (clubs answer the day you bid).</summary>
+    public DateOnly Answered { get; set; }
+    /// <summary>His wage and years once he signs.</summary>
+    public long Wage { get; set; }
+    public int Years { get; set; }
+    /// <summary>Why it fell through, when it did.</summary>
+    public string Note { get; set; } = "";
+    public bool Open => Status is MyBidStatus.FeeAgreed or MyBidStatus.Countered;
+}
+
 /// <summary>
 /// The transfer market for your club and the computer's (decision #87). Windows: the whole summer and January.
 /// You bid for a player under contract; once the fee is agreed you talk personal terms with him (the same contract
@@ -26,6 +59,66 @@ public sealed partial class GameSession
     public List<IncomingBid> IncomingBids { get; } = new();
     /// <summary>Players whose fee you've agreed (player id → fee), waiting on personal terms until the window shuts.</summary>
     public Dictionary<int, long> AgreedFees { get; } = new();
+    /// <summary>Your bids this window and the last (D54), newest first.</summary>
+    public List<MyBid> MyBids { get; } = new();
+
+    /// <summary>The window's name for the My bids list.</summary>
+    public string WindowName => Phase == SessionPhase.Offseason ? $"Summer {Today.Year}" : $"January {Today.Year}";
+
+    /// <summary>The bids to show: this window's while it's open, otherwise the last window's.</summary>
+    public List<MyBid> BidsToShow()
+    {
+        if (MyBids.Count == 0) return new();
+        string w = WindowOpen ? WindowName : MyBids[0].Window;
+        return MyBids.Where(b => b.Window == w).ToList();
+    }
+
+    /// <summary>The player a bid was for, wherever he is now (his old club, your roster, or elsewhere).</summary>
+    public Player? BidPlayer(MyBid b) =>
+        FindTeam(b.ClubId)?.Roster.FirstOrDefault(x => x.Id == b.PlayerId) ?? HumanTeam.Roster.FirstOrDefault(x => x.Id == b.PlayerId)
+        ?? Market().Select(x => x.player).FirstOrDefault(x => x.Id == b.PlayerId);
+
+    /// <summary>The club's reaction to a bid, in plain words, from the same price their answer used.</summary>
+    public static string Reaction(BidReply reply, long fee, StanceInfo stance)
+    {
+        double r = reply.Fee <= 0 ? 1 : (double)fee / reply.Fee;
+        return reply.Answer switch
+        {
+            BidAnswer.Accepted when reply.Text.Contains("release clause") => "Release clause: can't refuse",
+            BidAnswer.Accepted => "They'd take it",
+            BidAnswer.Countered => r >= 0.92 ? "Close: they want a little more" : "Short, but they'll talk",
+            _ when stance.Stance == TransferStance.WontSell && r >= 0.75 => "No sale without a premium",
+            _ => r < 0.5 ? "Nowhere near: they're insulted" : "Well short",
+        };
+    }
+
+    private void RecordBid(Player p, Team seller, long fee, BidReply reply)
+    {
+        var stance = TransferMarket.Stance(p, seller);
+        string window = WindowName;
+        var row = MyBids.FirstOrDefault(b => b.PlayerId == p.Id && b.Window == window);
+        if (row == null) { row = new MyBid { PlayerId = p.Id, Window = window, Bids = 0 }; MyBids.Insert(0, row); }
+        else { MyBids.Remove(row); MyBids.Insert(0, row); }
+        row.Player = p.Name; row.ClubId = seller.Id; row.Club = seller.FullName; row.Fee = fee; row.Bids++;
+        row.Status = reply.Answer switch { BidAnswer.Accepted => MyBidStatus.FeeAgreed, BidAnswer.Countered => MyBidStatus.Countered, _ => MyBidStatus.Rejected };
+        row.Counter = reply.Answer == BidAnswer.Countered ? reply.Fee : 0;
+        row.Reaction = Reaction(reply, fee, stance);
+        row.Answered = Today;
+        row.Note = "";
+        // Keep this window and the one before.
+        var keep = MyBids.Select(b => b.Window).Distinct().Take(2).ToHashSet();
+        MyBids.RemoveAll(b => !keep.Contains(b.Window));
+    }
+
+    /// <summary>The window shut: fees agreed without terms fall through (the rows stay to read until the next window).</summary>
+    private void BidsWindowShut()
+    {
+        foreach (var b in MyBids.Where(b => b.Open))
+        {
+            if (b.Status == MyBidStatus.FeeAgreed) { b.Status = MyBidStatus.FellThrough; b.Note = "The window shut before he agreed terms."; }
+            else { b.Status = MyBidStatus.FellThrough; b.Note = "The window shut before you bid again."; }
+        }
+    }
 
     /// <summary>A club's wage level: 1 in the NABL, its league's scale abroad.</summary>
     public double ScaleOf(Team t) =>
@@ -73,12 +166,13 @@ public sealed partial class GameSession
             return new(BidAnswer.Rejected, 0, $"The owner won't fund it: your transfer budget is ${HumanTeam.Money.TransferBudget / 1e6:F2}M.");
         if (WontCome(p) is { } why) return new(BidAnswer.Rejected, 0, why);
         var reply = TransferMarket.Answer(p, seller, fee, Today, ScaleOf(seller), League.Finance);
+        RecordBid(p, seller, fee, reply);
         if (reply.Answer == BidAnswer.Accepted)
         {
             AgreedFees[p.Id] = fee;
             _talks.Remove(p.Id);
             reply = reply with { Text = reply.Text + $" Now agree personal terms with {p.Name}." };
-            Post($"Fee agreed: {p.Name}", reply.Text, "Transactions");
+            Post($"Fee agreed: {p.Name}", reply.Text + " His row is on the Transactions page, under My bids.", "Transactions");
         }
         SaveNow();
         return reply;
@@ -128,6 +222,11 @@ public sealed partial class GameSession
         from.Money.TransferBudget += fee / 2;
         AgreedFees.Remove(p.Id);
         IncomingBids.RemoveAll(b => b.PlayerId == p.Id);
+        foreach (var b in MyBids.Where(b => b.PlayerId == p.Id && b.Status is not (MyBidStatus.Signed or MyBidStatus.FellThrough or MyBidStatus.TermsFailed)))
+        {
+            if (to == HumanTeam) { b.Status = MyBidStatus.Signed; b.Wage = wage; b.Years = years; b.Fee = fee; b.Note = ""; }
+            else { b.Status = MyBidStatus.FellThrough; b.Note = $"He joined {to.FullName}."; }
+        }
         _talks.Remove(p.Id);
         TransferLog.Add(new TransferRecord(Today, p.Id, p.Name, from.Id, from.FullName, to.Id, to.FullName, fee));
         if (TransferLog.Count > 150) TransferLog.RemoveAt(0);
@@ -187,6 +286,7 @@ public sealed partial class GameSession
                 if (AgreedFees.Count > 0) Post("Transfer window shut", "Deals without agreed personal terms have fallen through.", "Transactions");
                 AgreedFees.Clear(); IncomingBids.Clear();
             }
+            if (MyBids.Any(b => b.Open)) BidsWindowShut();
             return;
         }
         if (Today.Month == 1 && Today.Day == 15) AiTransferRound(6);
