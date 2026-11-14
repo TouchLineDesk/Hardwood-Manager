@@ -25,7 +25,7 @@ public static class CareerStore
         Put("coaches", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.CoachName)));
         Put("money", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Money)));
         Put("transfers", SaveFile.ToJson(new TransferState(s.TransferLog, s.IncomingBids, s.AgreedFees)));
-        Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest, s.WeekResults)));
+        Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest, s.WeekResults, s.WeekKnocks)));
         Put("inbox", SaveFile.ToJson(s.InboxSettings));
         if (s.NamePackApplied is { } pack) Put("name_pack", pack);
         tx.Commit();
@@ -58,7 +58,7 @@ public static class CareerStore
         if (Get("digest") is { } dj && SaveFile.FromJson<DigestState>(dj) is { } ds)
         {
             s.WorldDigest.Clear(); s.WorldDigest.AddRange(ds.Items ?? new()); s.LastDigest = ds.Last;
-            s.WeekResults.Clear(); s.WeekResults.AddRange(ds.Results ?? new());
+            s.WeekResults.Clear(); s.WeekResults.AddRange(ds.Results ?? new()); s.WeekKnocks.Clear(); s.WeekKnocks.AddRange(ds.Knocks ?? new());
         }
                 if (Get("coach") is { } coj && SaveFile.FromJson<Coach>(coj) is { } coach) s.Coach = coach;
         if (Get("job") is { } jj && SaveFile.FromJson<JobState>(jj) is { } job) s.Job = job;
@@ -76,4 +76,4 @@ public static class CareerStore
 }
 
 /// <summary>World headlines waiting for the weekly digest.</summary>
-public sealed record DigestState(List<DigestItem>? Items, DateOnly Last, List<string>? Results = null);
+public sealed record DigestState(List<DigestItem>? Items, DateOnly Last, List<string>? Results = null, List<string>? Knocks = null);

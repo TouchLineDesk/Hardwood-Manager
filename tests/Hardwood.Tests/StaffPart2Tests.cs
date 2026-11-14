@@ -56,7 +56,8 @@ public class StaffPart2Tests
         ToOffseason(s);
         Assert.Contains(keep, s.HumanTeam.Staff);
         Assert.DoesNotContain(go, s.HumanTeam.Staff);
-        Assert.Contains(s.Inbox, m => m.Title.EndsWith("ran out") && m.Body.Contains(go.Name));
+        // Since run 42 the note rides in the summer's "Contract decisions" message.
+        Assert.Contains(s.Inbox, m => (m.Title.EndsWith("ran out") || m.Title == "Contract decisions" && m.Body.Contains("ran out:")) && m.Body.Contains(go.Name));
     }
 
     [Fact]
@@ -98,7 +99,7 @@ public class StaffPart2Tests
             Assert.Equal(mot + 1, s.Coach[CoachAttr.Motivation]);
             Assert.Equal(man + 1, s.Coach[CoachAttr.ManManagement]);
             Assert.Equal(0, s.Coach.SeasonTalks);
-            Assert.Contains(s.Inbox, m => m.Title == "You've grown as a coach" && m.Body.Contains("Motivation"));
+            Assert.Contains(s.Inbox, m => (m.Title == "You've grown as a coach" || m.Title == "Contract decisions" && m.Body.Contains("You've grown as a coach:")) && m.Body.Contains("Motivation"));
             s.SaveNow();
             var loaded = GameSession.Load(path);
             Assert.Equal(mot + 1, loaded.Coach[CoachAttr.Motivation]);

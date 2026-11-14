@@ -119,6 +119,9 @@ public class CollegeDraftSessionTests
             Assert.True(ours, "the strongest club should have a pick");
             Assert.Equal(OffseasonPhase.Draft, s.Offseason!.Phase);
             Assert.Equal(s.HumanTeam, s.Offseason.OnTheClock);
+            // Run 42 (review #12, Top fix 1): no "on the clock" message; the assistant shows the pick instead.
+            Assert.DoesNotContain(s.Inbox, m => m.Title == "You're on the clock");
+            Assert.Contains(Hardwood.Core.Guide.Assistant.Tasks(s, default, new Hardwood.Core.Guide.GuideProgress()), t => t.Title.StartsWith("You're on the clock"));
             int next = s.Offseason.NextPickIndex;
             int left = s.Offseason.Prospects.Count;
 
@@ -132,7 +135,13 @@ public class CollegeDraftSessionTests
             Assert.Equal(next, back.Offseason.Report.Draft.Count(d => d.Player != null));
 
             var choice = back.Offseason.Prospects.OrderByDescending(p => p.PotentialAbility).First();
+            long budget = back.HumanTeam.Money.WageBudget, room = back.MyWageRoom;
             back.MakePick(choice);
+            // Review #12, Top fix 2 (run 42): the pick is compulsory, so the owner funds it: the budget grows by the rookie's
+            // wage and the room the club had before the pick is still there.
+            Assert.Equal(budget + choice.Contract!.Salary, back.HumanTeam.Money.WageBudget);
+            // (A little more room, even: the rookie fills a roster place the minimum-deal reserve was holding.)
+            Assert.True(back.MyWageRoom >= room, $"room {room} -> {back.MyWageRoom}");
             Assert.Contains(choice, back.HumanTeam.Roster);
             Assert.Equal(3, choice.Contract!.Years);
             Assert.Equal(OffseasonPhase.FreeAgency, back.Offseason.Phase);

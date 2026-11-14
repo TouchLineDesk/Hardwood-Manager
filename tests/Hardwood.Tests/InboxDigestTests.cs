@@ -21,9 +21,11 @@ public class InboxDigestTests
             Assert.Contains(s.Inbox, m => m.Title.Contains("linked with a star"));
             // The digest is fortnightly (or sooner when 40 stories pile up), so it comes within 15 days.
             var mark = s.Today;
-            bool Arrived() => s.Inbox.Any(m => m.Title.StartsWith("Around the world") && m.Body.Contains("First headline"));
+            // In the regular season (run 42) it rides in the weekly results message instead.
+            bool Carries(Hardwood.Core.Season.InboxMessage m) => (m.Title.StartsWith("Around the world") || GameSession.IsResultsTitle(m.Title)) && m.Body.Contains("First headline");
+            bool Arrived() => s.Inbox.Any(Carries);
             while (!Arrived() && s.Today < mark.AddDays(15)) s.AdvanceDay();
-            var digest = s.Inbox.First(m => m.Title.StartsWith("Around the world") && m.Body.Contains("First headline"));
+            var digest = s.Inbox.First(Carries);
             Assert.Contains("• First headline: A club far away won something.", digest.Body);
             Assert.Empty(s.WorldDigest);
             s.PostWorld("Test headline", "Something happened somewhere. More detail.");
