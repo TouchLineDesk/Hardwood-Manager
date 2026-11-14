@@ -101,7 +101,7 @@ public static class BalanceAudit
         var tpRate = new List<double>(); var ftRate = new List<double>(); var home = new List<double>(); var ot = new List<double>();
         var rimShare = new List<double>(); var astPer = new List<double>(); var andOnes = new List<double>();
         var best = new List<double>(); var worst = new List<double>(); var spread = new List<double>(); var leader = new List<double>(); var threesLeader = new List<double>();
-        var meanCa = new List<double>(); var stars = new List<double>(); var meanAge = new List<double>();
+        var meanCa = new List<double>(); var topCa = new List<double>(); var stars = new List<double>(); var meanAge = new List<double>();
         var devYoung = new List<double>(); var devPrime = new List<double>(); var devOld = new List<double>();
         var retiredN = new List<double>(); var retiredAge = new List<double>(); var firstPick = new List<double>(); var rookieTop5 = new List<double>();
         var overCap = new List<double>(); var payroll = new List<double>(); var faPool = new List<double>(); var taxTeams = new List<double>();
@@ -120,6 +120,11 @@ public static class BalanceAudit
             var start = new DateOnly(year, 10, 1);
             var players = league.AllActivePlayers.ToList();
             meanCa.Add(players.Average(p => p.CurrentAbility));
+            // Review #12, Top fix 3 (run 43): the same number of players from every club every season. A new real career opens
+            // with the real 15-man rosters (two-way and end-of-bench players around CA 90), and the summers keep about 13.5 a
+            // club, so the whole-roster mean jumps about 3 points in the first summers without anyone getting better (each
+            // club's top 13: 112.6 in 2026, 111.0-114.9 through 2033).
+            topCa.Add(league.Teams.SelectMany(t => t.Roster.OrderByDescending(p => p.CurrentAbility).Take(fin.RosterMin)).Average(p => p.CurrentAbility));
             stars.Add(players.Count(p => p.CurrentAbility >= 160));
             meanAge.Add(players.Average(p => p.Age(start)));
             overCap.Add(league.Teams.Count(t => ContractMarket.Payroll(t) > fin.Apron + fin.MinSalary * 2));
@@ -267,7 +272,10 @@ public static class BalanceAudit
         m.Add(new("Overseas", "Longest title streak in any league abroad", "0", new() { streaks.DefaultIfEmpty(0).Max() }, null, null, "Maccabi Tel Aviv: 23 (Israel, 1970-92)"));
         m.Add(new("Overseas", "Leagues abroad with a title streak of 8+", "0", new() { streaks.Count(x => x >= 8) }, null, null, "target: at most 2 per 100 seasons"));
         // Players: league talent should neither inflate nor collapse; stars ~1-2 per 3 teams.
-        m.Add(new("NABL players", "Mean ability (CA) of rostered players", "0.0", meanCa, meanCa[0] - 5, meanCa[0] + 5, "stable within ±5 of season 1"));
+        // Gated on each club's top 13 since run 43 (review #12, Top fix 3): the whole-roster mean moves with roster sizes
+        // (real careers open with 15-man rosters; summers keep about 13.5), so it prints as information.
+        m.Add(new("NABL players", "Mean ability (CA), each club's top 13", "0.0", topCa, topCa[0] - 5, topCa[0] + 5, "stable within ±5 of season 1"));
+        m.Add(new("NABL players", "Mean ability (CA) of rostered players", "0.0", meanCa, null, null, "moves with roster sizes; gated on the top 13"));
         m.Add(new("NABL players", "Stars (CA 160+)", "0.0", stars, Math.Max(3, stars[0] * 0.6), stars[0] * 1.5 + 1, "stable around season 1"));
         m.Add(new("NABL players", "Mean age", "0.0", meanAge, 25.5, 27.5, "NBA ~26-27"));
         // Peak age: the youngest age at which players, on average, stop improving (a plain "best average ability by age"

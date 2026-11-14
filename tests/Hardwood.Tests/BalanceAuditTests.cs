@@ -31,6 +31,13 @@ public class BalanceAuditTests
         Assert.True(r["College graduates signed by NABL clubs"].Mean >= 5, $"{r["College graduates signed by NABL clubs"].Mean}");
         Assert.InRange(r["Points per team per game"].Mean, 100, 130);
         Assert.All(r.Metrics.Where(m => m.Name.EndsWith("points per team per game")), m => Assert.InRange(m.Mean, 65, 118)); // each league its own level: Greece ~76 to tier 2 ~110
+        // Review #12, Top fix 3 (run 43): talent is gated on each club's top 13, the same count every season; the
+        // whole-roster mean moves with roster sizes and is information only.
+        var top = r["Mean ability (CA), each club's top 13"];
+        Assert.NotNull(top.Low);
+        Assert.Equal(top.PerSeason[0] + 5, top.High!.Value, 6);
+        Assert.Null(r["Mean ability (CA) of rostered players"].High);
+        Assert.True(top.Mean >= r["Mean ability (CA) of rostered players"].Mean - 0.01, "the top 13 can't be weaker than the whole roster");
         var md = r.ToMarkdown();
         Assert.Contains("# Balance audit", md);
         Assert.Contains("| Points per team per game |", md);
