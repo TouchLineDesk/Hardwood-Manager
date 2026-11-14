@@ -127,6 +127,18 @@ public class LayoutCheckTests
             v.Navigate("Standings");
             ((StandingsViewModel)v.CurrentPage!).View = "By conference";
         });
+        // Review #13: the vote tables cut "Giannis Antetokounmpo" and the stat lines at 1480 px. The longest real names.
+        yield return ("Awards", v =>
+        {
+            v.Navigate("Awards");
+            var a = (AwardsViewModel)v.CurrentPage!;
+            foreach (var list in new[] { a.Mvp, a.Dpoy, a.Roy, a.SixthMan })
+            {
+                list.Clear();
+                foreach (var (name, i) in new[] { "Shai Gilgeous-Alexander", "Giannis Antetokounmpo", "Nickeil Alexander-Walker" }.Select((n, i) => (n, i)))
+                    list.Add(new VoteRow { Rank = i + 1, Name = name, Team = "OKC", Share = "21%", StatLine = "29.8 pts, 14.4 reb, 10.6 ast, 68 wins" });
+            }
+        });
     }
 
     /// <summary>One bid in each status for the layout check and screenshots, on the market's longest-named players.</summary>
