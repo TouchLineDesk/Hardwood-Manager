@@ -62,6 +62,9 @@ public class ScreenshotTests
             liveVm.Refresh();
             liveVm.PlayPause();
             Snap(window, Path.Combine(dir, $"{n++:00}-live-game.png"));
+            liveVm.ShowCourt = false;
+            Snap(window, Path.Combine(dir, $"{n++:00}-live-flow.png"));
+            liveVm.ShowCourt = true;
             // The break card with the in-game read (#268): what they're really running and the counter.
             liveVm.ShowBreakCard(false);
             Snap(window, Path.Combine(dir, $"{n++:00}-live-break.png"));
