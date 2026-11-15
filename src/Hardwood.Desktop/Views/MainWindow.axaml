@@ -47,7 +47,10 @@
               </StackPanel>
             </ToggleButton>
             <TextBlock Text="{Binding PortraitStatus}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,14,0"/>
-            <TextBlock Text="{Binding DateText}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+              <TextBlock Text="{Binding DateText}" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding SavedText}" Classes="muted" FontSize="11" ToolTip.Tip="{Binding SavedTip}"/>
+            </StackPanel>
             <Button Content="Sim week" Command="{Binding SimWeekCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>
             <Button Content="Next game" ToolTip.Tip="Sim to your next game" Command="{Binding SimToNextGameCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>
             <Button Classes="primary" Content="{Binding ContinueText}" Command="{Binding ContinueCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding !InLiveGame}" MinWidth="150"/>

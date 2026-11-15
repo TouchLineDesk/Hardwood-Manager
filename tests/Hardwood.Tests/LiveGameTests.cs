@@ -67,7 +67,8 @@ public class LiveGameTests
             Assert.Single(s.WeekResults);
             Assert.True(s.Stats.Values.Any(x => x.TeamId == 9 && x.Games == 1));
 
-            // A reload sees the same game count and date.
+            // A reload sees the same game count and date (saved first: the day loop saves weekly since D74 B).
+            s.SaveNow();
             var loaded = GameSession.Load(path);
             Assert.Equal(s.Results.Count, loaded.Results.Count);
             Assert.Equal(s.Today, loaded.Today);

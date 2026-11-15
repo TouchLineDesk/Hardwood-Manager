@@ -1,7 +1,9 @@
+using Hardwood.Core.Season;
+
 namespace Hardwood.Desktop.ViewModels;
 
 /// <summary>In-game Settings page: the assistant, face and logo packs.</summary>
-public sealed class SettingsViewModel : PageViewModel
+public sealed partial class SettingsViewModel : PageViewModel
 {
     public override string Title => "Settings";
     public GraphicsSettingsViewModel Graphics { get; }
@@ -10,6 +12,28 @@ public sealed class SettingsViewModel : PageViewModel
 
     public SettingsViewModel(MainViewModel shell) : base(shell) =>
         Graphics = new GraphicsSettingsViewModel(() => Leagues(shell), () => shell.RequestPortraits(), () => shell.Session, () => shell.AfterTick());
+
+    /// <summary>Save now (D74 B, #635): the game also saves every 7 days, at phase changes and on quit.</summary>
+    public bool CanSave => Shell.Session?.Save != null && !Shell.IsBusy;
+    public string SaveNote
+    {
+        get
+        {
+            var s = Shell.Session;
+            if (s?.Save == null) return "This career has no save file.";
+            if (s.LastSaved == default) return "Not saved yet.";
+            return $"Last saved on {s.LastSaved:MMM d, yyyy} in the game ({s.LastSavedAt:h:mm tt} on your clock). The game saves every {GameSession.SaveEveryDays} days, whenever the season moves on, after your decisions, and when you go to the main menu or close the window; a crash loses at most the days since the last save.";
+        }
+    }
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void SaveCareer()
+    {
+        if (!CanSave) return;
+        Shell.Session!.SaveNow();
+        OnPropertyChanged(nameof(SaveNote));
+        Shell.RefreshHeader();
+    }
 
     /// <summary>Text and interface size (roadmap 1): 90-130% of the standard size.</summary>
     public IReadOnlyList<string> SizeChoices { get; } = UiScale.Percents.Select(UiScale.Label).ToList();
@@ -42,6 +66,8 @@ public sealed class SettingsViewModel : PageViewModel
 
     public override void Refresh()
     {
+        OnPropertyChanged(nameof(SaveNote));
+        OnPropertyChanged(nameof(CanSave));
         Graphics.UpdateFaceStatus();
         Graphics.UpdateLogoStatus();
         Graphics.UpdateNameStatus();

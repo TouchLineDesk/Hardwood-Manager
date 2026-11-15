@@ -173,6 +173,7 @@ public class WorldTests
             Assert.True(played.Values.Sum() > 100);
             Assert.True(session.World[Competitions.Spain].FullSim);
 
+            session.SaveNow(); // the day loop saves weekly since D74 B (#635)
             var loaded = GameSession.Load(path);
             Assert.Equal(played, loaded.World.Playing.ToDictionary(c => c.Key, c => c.Season.Fixtures.Count(f => f.Played)));
             Assert.Equal(session.World.Players.Select(p => p.Id).OrderBy(x => x), loaded.World.Players.Select(p => p.Id).OrderBy(x => x));

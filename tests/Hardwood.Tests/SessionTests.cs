@@ -46,6 +46,7 @@ public class SessionTests
                 Assert.InRange(s.Stats[kv.Key].Mpg, kv.Value - 5, kv.Value + (covering ? 7 : 5));
             }
 
+            s.SaveNow(); // the day loop saves weekly since D74 B (#635)
             var loaded = GameSession.Load(path);
             Assert.Equal(s.Today, loaded.Today);
             Assert.Equal(playedBefore, loaded.Results.Count);

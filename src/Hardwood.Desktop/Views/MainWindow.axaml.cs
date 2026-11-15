@@ -42,6 +42,13 @@ public partial class MainWindow : Window
         return Math.Max(0, l.Value.X - r.Value.X);
     }
 
+    /// <summary>Closing the window saves the career first (D74 B, #635).</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        (DataContext as ViewModels.MainViewModel)?.SaveOnLeave();
+        base.OnClosing(e);
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         UiScale.Changed -= ApplyScale;

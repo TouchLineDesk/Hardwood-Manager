@@ -204,7 +204,7 @@ public class CharacterizationTests
         try
         {
             var s = GameSession.NewGame(2026, BenchClub(2026), path);
-            Days(s, 6); // each day saves, as in play
+            Days(s, 6); // the day loop saves as in play (every 7 days and at phase changes since D74 B)
             s.SaveNow();
             var before = Session(s);
             a = CopyOf(path); b = CopyOf(path);
@@ -241,7 +241,9 @@ public class CharacterizationTests
             Days(plain, 10); Days(saving, 10);
             Assert.NotEqual(Hash(Session(plain)), Hash(Session(saving)));
 
-            // Loading a save and carrying on in memory: different futures from the same day.
+            // Loading a save and carrying on in memory: different futures from the same day. (The day loop saves every
+            // 7 days since D74 B, #635, so save today first.)
+            saving.SaveNow();
             var copy = CopyOf(path);
             try
             {

@@ -556,7 +556,7 @@ public sealed partial class GameSession
                 if (!HumanSeasonOver && Today < new DateOnly(League.Season + 1, 7, 20))
                 {
                     Today = Today.AddDays(1);
-                    SaveNow();
+                    SaveIfDue();
                     return played;
                 }
                 Today = Today.AddDays(1);
@@ -568,7 +568,7 @@ public sealed partial class GameSession
         }
 
         Today = Today.AddDays(1);
-        SaveNow();
+        SaveIfDue();
         return played;
     }
 
@@ -1248,11 +1248,34 @@ public sealed partial class GameSession
     }
 
     // ------------------------------------------------------------------------------------------
-    /// <summary>Saves after every day and after every offseason decision.</summary>
+    /// <summary>How often the day loop saves on its own (D74 B, #635): every 7 game days, plus every phase change.</summary>
+    public const int SaveEveryDays = 7;
+
+    /// <summary>The game date of the last save (default when this session has never saved).</summary>
+    public DateOnly LastSaved { get; private set; }
+    /// <summary>The wall-clock time of the last save, for Settings' note.</summary>
+    public DateTime LastSavedAt { get; private set; }
+    private SessionPhase _lastSavedPhase;
+    /// <summary>Raised after every save (the top bar's "Saved Nov 3" line listens).</summary>
+    public event Action? Saved;
+
+    /// <summary>The end of a day (D74 B, #635): save when a week has passed since the last save or the phase has
+    /// changed (preseason, regular season, playoffs, the summer); otherwise only keep the head-to-head book current.
+    /// Your own decisions (trades, signings, staff, talks, tactics) still save at once through <see cref="SaveNow"/>.</summary>
+    private void SaveIfDue()
+    {
+        bool due = Save != null && (LastSaved == default || Phase != _lastSavedPhase || Today.DayNumber - LastSaved.DayNumber >= SaveEveryDays);
+        if (due) SaveNow();
+        else SyncHeadToHead();
+    }
+
+    /// <summary>Saves the whole career now: after every offseason step and decision of yours, at phase changes, every
+    /// 7 days, on Settings' Save now, and when you go to the main menu or close the window (D74 B).</summary>
     public void SaveNow()
     {
         SyncHeadToHead(); // the day's results into the head-to-head book (#529)
         if (Save == null) return;
+        LastSaved = Today; LastSavedAt = DateTime.Now; _lastSavedPhase = Phase;
         // A college program you coach keeps its staff in the save like a club abroad (C2).
         var clubs = World.Clubs.Concat(World.College?.Programs.Where(t => t.Staff.Count > 0) ?? Enumerable.Empty<Team>());
         Save.Save(League, Stats.Values, Phase == SessionPhase.Offseason ? Offseason?.Prospects : null, World.Players, clubs, World.College?.Players);
@@ -1260,6 +1283,7 @@ public sealed partial class GameSession
         Save.SaveWorld(World);
         Save.SavePeople(this);
         Save.SaveCareer(this);
+        Saved?.Invoke();
     }
 
     public static GameSession Load(string path)
@@ -1277,6 +1301,7 @@ public sealed partial class GameSession
         save.LoadCareer(session);
         session.CatchUpWorld();
         session.FixStaffPay();
+        session.LastSavedAt = File.Exists(path) ? File.GetLastWriteTime(path) : DateTime.Now;
         if (save.UpgradedFrom is { } old)
         {
             session.Post("Save upgraded", $"This career was saved by an older version of the game (save format {old}) and has been upgraded to format {SaveFile.SchemaVersion}. "
@@ -1291,6 +1316,7 @@ public sealed partial class GameSession
         Dictionary<int, PlayerSeasonStats> stats, List<InboxMessage> inbox, int nextMessageId)
     {
         Today = today; Phase = phase;
+        LastSaved = today; _lastSavedPhase = phase; // a loaded career was last saved on the day it loads to (D74 B)
         Schedule = schedule;
         Results.Clear(); foreach (var kv in results) Results[kv.Key] = kv.Value;
         Standings = new Standings(League);
