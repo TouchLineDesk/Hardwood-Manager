@@ -16,7 +16,7 @@
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBlock Text="Your staff" Classes="h2"/>
             <Button Grid.Column="1" Classes="primary" Content="Extend" Command="{Binding ExtendCommand}" IsEnabled="{Binding CanExtend}" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
-            <Button Grid.Column="2" Content="Release selected" Command="{Binding FireCommand}" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="2" Content="Release selected" Command="{Binding FireCommand}" IsEnabled="{Binding SelectedOurs, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick someone on your staff first" ToolTip.ShowOnDisabled="True" VerticalAlignment="Bottom"/>
           </Grid>
           <TextBlock Text="{Binding Renewal}" TextWrapping="Wrap" Margin="0,4" IsVisible="{Binding Renewal, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="200">
@@ -35,7 +35,7 @@
           <Grid ColumnDefinitions="*,Auto,Auto,Auto">
             <TextBlock Text="Staff market" Classes="h2"/>
             <ComboBox Grid.Column="1" ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding RoleFilter}" Width="190" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
-            <Button Grid.Column="2" Content="Interview" Command="{Binding InterviewCandidateCommand}" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="2" Content="Interview" Command="{Binding InterviewCandidateCommand}" IsEnabled="{Binding SelectedMarket, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a candidate in the staff market first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
             <Button Grid.Column="3" Classes="primary" Content="Hire on his terms" Command="{Binding HireCommand}" IsEnabled="{Binding CanHire}" VerticalAlignment="Bottom"/>
           </Grid>
           <TextBlock Text="{Binding Interview}" TextWrapping="Wrap" Margin="0,4" IsVisible="{Binding Interview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>

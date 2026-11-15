@@ -44,6 +44,8 @@ public sealed partial class InboxViewModel : PageViewModel
     public ObservableCollection<InboxItem> Items { get; } = new();
     [ObservableProperty] private InboxItem? _selected;
     [ObservableProperty] private string _summary = "";
+    /// <summary>The club in the header: set on every refresh, so it follows a new job (review #14 bug #6).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(TeamBrush))] private Hardwood.Core.Model.Team? _team;
     public Avalonia.Media.IBrush TeamBrush => new Avalonia.Media.LinearGradientBrush
     {
         StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative), EndPoint = new Avalonia.RelativePoint(1, 0, Avalonia.RelativeUnit.Relative),
@@ -177,6 +179,7 @@ public sealed partial class InboxViewModel : PageViewModel
     public override void Refresh()
     {
         var selectedId = Selected?.Message.Id;
+        Team = Session.HumanTeam;
         Items.Clear();
         foreach (var m in Session.Inbox.Where(Shows)) Items.Add(MakeItem(m));
         Selected = Items.FirstOrDefault(i => i.Message.Id == selectedId) ?? Items.FirstOrDefault();

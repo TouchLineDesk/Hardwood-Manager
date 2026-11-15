@@ -110,8 +110,14 @@ internal sealed class BugFinder
         {
             _vm.Navigate("Schedule & Results");
             if (_vm.CurrentPage is not ScheduleViewModel sched) { Add("dead end", "Schedule & Results", "the sidebar's link didn't open the schedule", true); return; }
-            var played = sched.Games.FirstOrDefault(g => g.Played);
-            if (played == null) return;
+            // A played game whose row has no box score is a lost-data finding, not a missing Back (run 55: bug #18 was #19).
+            var played = sched.Games.FirstOrDefault(g => g.Played && g.HasBox);
+            if (played == null)
+            {
+                if (sched.Games.FirstOrDefault(g => g.Played) is { } bare)
+                    Add("lost data", "Schedule & Results", $"the played game on {bare.Game.Date:MMM d} has a score but no box score");
+                return;
+            }
             sched.OpenBox(played);
             CheckWayBack("Box score", "Schedule & Results", when);
         });

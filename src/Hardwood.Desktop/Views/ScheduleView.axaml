@@ -12,7 +12,7 @@
           <TextBlock Text="Schedule &amp; Results" Classes="h1" Margin="0"/>
           <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap"/>
         </StackPanel>
-        <Button Grid.Column="1" Content="Open box score" Command="{Binding OpenBoxCommand}" CommandParameter="{Binding Selected}" VerticalAlignment="Top"/>
+        <Button Grid.Column="1" Content="Open box score" Command="{Binding OpenBoxCommand}" CommandParameter="{Binding Selected}" IsEnabled="{Binding CanOpenBox}" ToolTip.Tip="Pick a game that has been played (or double-click one)" ToolTip.ShowOnDisabled="True" VerticalAlignment="Top"/>
       </Grid>
       <!-- Danny's #529: filter by the season's parts, each tournament and the playoffs; each chip carries its record. -->
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="4">

@@ -47,7 +47,7 @@
         <TabItem Header="Overseas (buyouts)" IsVisible="{Binding ShowBuyouts}">
           <Grid RowDefinitions="Auto,Auto,*">
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button Classes="primary" Content="Buy out selected" Command="{Binding BuyOutCommand}"/>
+              <Button Classes="primary" Content="Buy out selected" Command="{Binding BuyOutCommand}" IsEnabled="{Binding SelectedOverseas, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True"/>
               <TextBlock Text="Players under contract abroad" Classes="h2" Margin="0" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75" Margin="0,4,0,6"
@@ -69,7 +69,7 @@
         </TabItem>
         <TabItem Header="Your roster">
           <Grid RowDefinitions="Auto,*">
-            <Button Content="Release selected" Command="{Binding WaivePlayerCommand}" Margin="0,0,0,6"/>
+            <Button Content="Release selected" Command="{Binding WaivePlayerCommand}" IsEnabled="{Binding SelectedRosterPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,0,6"/>
             <DataGrid Grid.Row="1" ItemsSource="{Binding Roster}" SelectedItem="{Binding SelectedRosterPlayer}">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>

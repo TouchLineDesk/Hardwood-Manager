@@ -1,3 +1,4 @@
+using Hardwood.Core.Engine;
 using Hardwood.Core.Model;
 using Hardwood.Core.Jobs;
 using Hardwood.Core.Season;
@@ -20,7 +21,7 @@ public static class CareerStore
         void Put(string k, string v) => SaveFile.Exec(conn, "INSERT INTO career_meta(key, value) VALUES($k, $v)", ("$k", k), ("$v", v));
         Put("coach", SaveFile.ToJson(s.Coach));
         Put("job", SaveFile.ToJson(s.Job));
-        var clubs = s.League.Teams.Concat(s.World.Clubs).DistinctBy(t => t.Id).ToList();
+        var clubs = AllClubs(s);
         Put("owners", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Owner)));
         Put("coaches", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.CoachName)));
         Put("money", SaveFile.ToJson(clubs.ToDictionary(t => t.Id, t => t.Money)));
@@ -29,6 +30,11 @@ public static class CareerStore
         Put("inbox", SaveFile.ToJson(s.InboxSettings));
         Put("head_to_head", SaveFile.ToJson(s.HeadToHeadBook));
         if (s.NamePackApplied is { } pack) Put("name_pack", pack);
+        // Bugs #18 and #19 (run 55): the box scores of your college games and your games below the NBA lived only in the
+        // session, so after a reload their schedule rows had a score and no box. They are kept here now (at most 200 each).
+        Put("side_boxes", SaveFile.ToJson(
+            s.CollegeResults.Select(kv => SideBox.From("college", kv.Key, kv.Value))
+             .Concat(s.AbroadResults.Select(kv => SideBox.From("abroad", kv.Key, kv.Value))).ToList()));
         tx.Commit();
     }
 
@@ -43,7 +49,7 @@ public static class CareerStore
             cmd.Parameters.AddWithValue("$k", key);
             return cmd.ExecuteScalar() as string;
         }
-        var clubs = s.League.Teams.Concat(s.World.Clubs).DistinctBy(t => t.Id).ToList();
+        var clubs = AllClubs(s);
         if (Get("owners") is { } oj && SaveFile.FromJson<Dictionary<int, Owner>>(oj) is { } owners)
             foreach (var t in clubs) if (owners.TryGetValue(t.Id, out var o)) t.Owner = o;
         if (Get("coaches") is { } cj && SaveFile.FromJson<Dictionary<int, string>>(cj) is { } names)
@@ -68,9 +74,60 @@ public static class CareerStore
         // #529: a save from before v0.79.0 has no book; it starts counting from this season.
         s.HeadToHeadBook = Get("head_to_head") is { } hj && SaveFile.FromJson<HeadToHeadBook>(hj) is { } book ? book : new HeadToHeadBook();
         s.InboxSettings = Get("inbox") is { } ij && SaveFile.FromJson<InboxSettings>(ij) is { } inbox ? inbox : new InboxSettings();
+        if (Get("side_boxes") is { } sb && SaveFile.FromJson<List<SideBox>>(sb) is { } sides)
+        {
+            var byId = clubs.ToDictionary(t => t.Id);
+            var players = new Dictionary<int, Player>();
+            foreach (var p in clubs.SelectMany(t => t.Roster).Concat(s.League.FreeAgents).Concat(s.League.Retired)
+                         .Concat(s.World.College?.Prospects ?? Enumerable.Empty<Player>()))
+                players.TryAdd(p.Id, p);
+            s.CollegeResults.Clear(); s.AbroadResults.Clear();
+            foreach (var box in sides)
+                if (box.ToResult(byId, players) is { } r) (box.Kind == "college" ? s.CollegeResults : s.AbroadResults)[box.Key] = r;
+        }
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
         s.World.ManagedClubId = s.Employed && s.Abroad ? s.HumanTeam.Id : null;
+    }
+
+    /// <summary>Every club whose owner, coach and money the career keeps: the top league, the world's leagues and,
+    /// since v0.79.3 (bug #17), the college programs (a college career's balance used to reset on every reload).</summary>
+    internal static List<Team> AllClubs(GameSession s) =>
+        s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? Enumerable.Empty<Team>()).DistinctBy(t => t.Id).ToList();
+
+    /// <summary>A saved box score of one of your games outside the NBA's schedule table (college, or tiers 2-5 and abroad).</summary>
+    internal sealed record SideBox(string Kind, string Key, string? Date, int HomeId, int AwayId, int HomePts, int AwayPts, int Overtimes,
+                                   int[]? HomePeriods, int[]? AwayPeriods, List<int[]>? Lines)
+    {
+        // One line: team, player, started, seconds x10, pts, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, pm.
+        public static SideBox From(string kind, string key, GameResult r) => new(kind, key, r.Date?.ToString("yyyy-MM-dd"),
+            r.Home.Team.Id, r.Away.Team.Id, r.Home.Points, r.Away.Points, r.Overtimes, r.Home.PointsByPeriod, r.Away.PointsByPeriod,
+            new[] { r.Home, r.Away }.SelectMany(b => b.Lines.Where(l => l.Seconds > 0).Select(l => new[]
+            {
+                b.Team.Id, l.Player.Id, l.Started ? 1 : 0, (int)Math.Round(l.Seconds * 10), l.Points, l.FGM, l.FGA, l.ThreePM, l.ThreePA, l.FTM, l.FTA,
+                l.OReb, l.DReb, l.Assists, l.Steals, l.Blocks, l.Turnovers, l.Fouls, l.PlusMinus,
+            })).ToList());
+
+        public GameResult? ToResult(Dictionary<int, Team> teams, Dictionary<int, Player> players)
+        {
+            if (!teams.TryGetValue(HomeId, out var h) || !teams.TryGetValue(AwayId, out var a)) return null;
+            var home = new TeamBox { Team = h, PointsByPeriod = HomePeriods ?? Array.Empty<int>() };
+            var away = new TeamBox { Team = a, PointsByPeriod = AwayPeriods ?? Array.Empty<int>() };
+            foreach (var v in Lines ?? new())
+            {
+                if (v.Length < 19 || !players.TryGetValue(v[1], out var p)) continue;
+                var line = new PlayerLine
+                {
+                    Player = p, Started = v[2] == 1, Seconds = v[3] / 10.0, Points = v[4], FGM = v[5], FGA = v[6], ThreePM = v[7], ThreePA = v[8],
+                    FTM = v[9], FTA = v[10], OReb = v[11], DReb = v[12], Assists = v[13], Steals = v[14], Blocks = v[15], Turnovers = v[16], Fouls = v[17], PlusMinus = v[18],
+                };
+                (v[0] == HomeId ? home : away).Lines.Add(line);
+            }
+            // The score stands as played even if a player has since left the game world (a graduate, say).
+            if (home.Points != HomePts) home.FixedPoints = HomePts;
+            if (away.Points != AwayPts) away.FixedPoints = AwayPts;
+            return new GameResult { Home = home, Away = away, Overtimes = Overtimes, Date = Date is { } d ? DateOnly.Parse(d) : null };
+        }
     }
 
     private sealed record TransferState(List<TransferRecord>? Log, List<IncomingBid>? Incoming, Dictionary<int, long>? Agreed, List<MyBid>? Mine = null);
