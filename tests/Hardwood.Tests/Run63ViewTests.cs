@@ -75,6 +75,11 @@ public class Run63ViewTests
             Assert.Equal(new[] { "Player", "Pos", "MPG", "PPG", "RPG", "APG", "FG%" }, Shown(Picker()));
             Picker().Choose(ColumnPicker.MineName); Settle();
             Assert.Contains("PPG", Shown(Picker()));
+            // Unticking every box leaves only Player (not every column back).
+            foreach (var c in Picker().Choosable.ToList()) Picker().SetShown(ColumnPicker.HeaderOf(c), false);
+            Settle();
+            Assert.Equal(ColumnPicker.MineName, Picker().Current);
+            Assert.Equal(new[] { "Player" }, Shown(Picker()));
             Picker().Choose(ColumnPicker.AllName); Settle();
             Assert.Equal(all, Shown(Picker()).Count);
 

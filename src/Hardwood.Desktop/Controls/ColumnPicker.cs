@@ -99,7 +99,8 @@ public sealed class ColumnPicker : StackPanel
                 list.Add((part[..eq].Trim(), new HashSet<string>(cols.Where(all.Contains))));
             }
             var mine = Saved;
-            if (mine?.Shown is { Count: > 0 } shown) list.Add((MineName, new HashSet<string>(shown.Where(all.Contains))));
+            // An empty "My view" (every box unticked) is still a view: only the always-shown columns (code review, PR #115).
+            if (mine != null && (mine.Shown.Count > 0 || mine.View == MineName)) list.Add((MineName, new HashSet<string>(mine.Shown.Where(all.Contains))));
             return list;
         }
     }
