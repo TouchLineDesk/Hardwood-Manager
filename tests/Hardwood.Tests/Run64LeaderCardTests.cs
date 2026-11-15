@@ -10,6 +10,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 64: League Leaders and Leagues → Stats open on leader cards (review #13 rank 3, Danny's #464):
 /// a card per stat with the leader big (face, club colour, the number) and 2nd to 5th below; the full table is
 /// one click away, and a card's "Full list" opens that stat as the table.</summary>
+[Collection(SharedUiState.Name)]   // it swaps AppSettings, app-wide state
 public class Run64LeaderCardTests
 {
     [Theory]
