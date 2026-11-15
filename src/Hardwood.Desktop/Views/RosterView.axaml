@@ -17,7 +17,7 @@
         <ComboBox ItemsSource="{Binding Teams}" SelectedItem="{Binding Team}" Width="220">
           <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
         </ComboBox>
-        <Button Content="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Selected}"/>
+        <Button Content="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Selected}" IsEnabled="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first (or double-click one)" ToolTip.ShowOnDisabled="True"/>
       </StackPanel>
     </Grid>
     <c:StatStrip DockPanel.Dock="Top" ItemsSource="{Binding Chips}" Accent="{Binding Accent}" Margin="0,0,0,4"/>

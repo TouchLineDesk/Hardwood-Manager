@@ -200,7 +200,7 @@
           <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
             <ComboBox ItemsSource="{Binding Ages}" SelectedItem="{Binding Age}" MinWidth="220" Margin="0,0,8,4"/>
             <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding Position}" MinWidth="80" Margin="0,0,8,4"/>
-            <Button Content="Open player" Command="{Binding OpenProspectCommand}" Margin="0,0,8,4"/>
+            <Button Content="Open player" Command="{Binding OpenProspectCommand}" IsEnabled="{Binding SelectedProspect, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,4"/>
             <TextBlock Text="Players turn pro at 23 and join free agency in the summer. Ranges show what your scouts believe." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
           </WrapPanel>
           <DataGrid ItemsSource="{Binding Prospects}" SelectedItem="{Binding SelectedProspect}">
@@ -353,7 +353,7 @@
             <WrapPanel>
               <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding HighSchoolClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding StarFilters}" SelectedItem="{Binding StarFilter}" MinWidth="140" Margin="0,0,8,4"/>
-              <Button Content="Open player" Command="{Binding OpenHighSchoolCommand}" Margin="0,0,8,4"/>
+              <Button Content="Open player" Command="{Binding OpenHighSchoolCommand}" IsEnabled="{Binding SelectedHighSchool, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a prospect in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,4"/>
               <TextBlock Text="Stars are the recruiting services' opinion, not a promise: busts and sleepers happen." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
             </WrapPanel>
           </StackPanel>

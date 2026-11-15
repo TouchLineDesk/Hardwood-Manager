@@ -48,7 +48,9 @@ public sealed partial class ScheduleViewModel : PageViewModel
     public ObservableCollection<GameRow> Games { get; } = new();
     public ObservableCollection<SeriesRow> Series { get; } = new();
     public ObservableCollection<string> LeagueScores { get; } = new();
-    [ObservableProperty] private GameRow? _selected;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanOpenBox))] private GameRow? _selected;
+    /// <summary>Open box score is greyed out until a played game is picked (D71 A, bug #5).</summary>
+    public bool CanOpenBox => Selected is { Result: not null, HasBox: true };
     [ObservableProperty] private string _summary = "";
     [ObservableProperty] private bool _showPlayoffs;
     /// <summary>College (C2): the event gets its own column and opponents go by their school's name, so long names fit.</summary>

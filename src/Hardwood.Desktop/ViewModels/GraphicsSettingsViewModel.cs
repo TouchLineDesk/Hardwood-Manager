@@ -96,12 +96,12 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
     {
         var s = _session?.Invoke();
         if (s == null) return;
-        if (NamePackService.Current(out var status) is not { } pack) { NamePackNote = status; return; }
+        if (NamePackService.Current(out var status) is not { } pack) { NamePackNote = $"Nothing to apply ({DateTime.Now:h:mm:ss tt}): {status}"; return; }
         int n = pack.ApplyToCareer(s);
         s.SaveNow();
         LogoPackService.UseTeams(s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? new List<Team>()));
         LogoPackService.Reload();
-        NamePackNote = $"Renamed {n} clubs from {pack.Name}.";
+        NamePackNote = $"Renamed {n} clubs from {pack.Name} at {DateTime.Now:h:mm:ss tt}.";
         UpdateNameStatus();
         UpdateLogoStatus();
         _renamed?.Invoke();
@@ -133,6 +133,8 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
         LogoPackService.Reload();
         UpdateLogoStatus();
         _changed?.Invoke();
+        // Review #14 bug #8: say what the press did (a status line that changes even when the folder didn't).
+        LogoNote = $"Rescanned the logo folder at {DateTime.Now:h:mm:ss tt}. {LogoFolderStatus}".Trim();
     }
 
     /// <summary>Creates the folder if needed and writes the list of club names the game looks for.</summary>
@@ -142,7 +144,7 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
         try
         {
             var path = LogoPack.WriteTeamList(LogoFolder, _leagues());
-            LogoNote = $"Wrote {Path.GetFileName(path)} to the logo folder: name each image after a club in it.";
+            LogoNote = $"Wrote {Path.GetFileName(path)} to the logo folder at {DateTime.Now:h:mm:ss tt}: name each image after a club in it.";
         }
         catch (Exception ex) { LogoNote = "Couldn't write the team list: " + ex.Message; }
     }

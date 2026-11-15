@@ -32,7 +32,7 @@
       <TabItem Header="Roster">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
-            <Button Content="Open player" Command="{Binding OpenPlayerCommand}"/>
+            <Button Content="Open player" Command="{Binding OpenPlayerCommand}" IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True"/>
             <TextBlock Text="Ability ranges are what your scouts believe. Click a name to open the player." Classes="muted" VerticalAlignment="Center"/>
           </StackPanel>
           <DataGrid ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" RowHeight="28">

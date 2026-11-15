@@ -23,6 +23,8 @@ public sealed class TalkButton
 {
     public required string Label { get; init; }
     public required IRelayCommand Command { get; init; }
+    /// <summary>Why the topic can't be raised now (greyed out with this as its tooltip, review #14 bug #7), or what it does.</summary>
+    public string Tip { get; init; } = "";
 }
 
 public sealed class FactorRow
@@ -131,12 +133,13 @@ public sealed partial class SquadViewModel : PageViewModel
         PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()} ({p.Morale:0}/100)" + (p.TradeRequested ? ", wants a trade" : "");
         foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });
+        var blocked = Talks.Unavailable(p, Session.Today);
         foreach (var topic in Talks.Available(p))
         {
             var t = topic;
-            Topics.Add(new TalkButton { Label = Talks.Label(t), Command = new RelayCommand(() => Talk(p, t)) });
+            Topics.Add(new TalkButton { Label = Talks.Label(t), Command = new RelayCommand(() => Talk(p, t), () => blocked == null), Tip = blocked ?? $"Talk to {p.Name.Split(' ').Last()}" });
         }
-        TalkNote = Talks.Unavailable(p, Session.Today) ?? "Personality matters: professionals take criticism well, hot-heads don't, and a broken promise costs his trust for three months.";
+        TalkNote = blocked ?? "Personality matters: professionals take criticism well, hot-heads don't, and a broken promise costs his trust for three months.";
     }
 
     private void Talk(Player p, TalkTopic topic)

@@ -50,7 +50,7 @@
                   <Grid ColumnDefinitions="Auto,*,Auto">
                     <TextBlock Text="Fee $M" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <NumericUpDown Grid.Column="1" Value="{Binding BidFee}" Increment="0.05" Minimum="0" FormatString="0.00"/>
-                    <Button Grid.Column="2" Classes="primary" Content="Bid" Command="{Binding PlaceBidCommand}" Margin="8,0,0,0"/>
+                    <Button Grid.Column="2" Classes="primary" Content="Bid" Command="{Binding PlaceBidCommand}" IsEnabled="{Binding SelectedMarket, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the market first" ToolTip.ShowOnDisabled="True" Margin="8,0,0,0"/>
                   </Grid>
                   <TextBlock Text="{Binding DealReply}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"/>
                 </StackPanel>
@@ -161,9 +161,10 @@
         </Grid>
       </TabItem>
       <TabItem Header="Waive">
-        <Grid RowDefinitions="Auto,*">
-          <TextBlock Text="Select a player in 'You send' on the trade builder and use the button below to release him outright." Classes="muted"/>
-          <DataGrid Grid.Row="1" ItemsSource="{Binding Ours}" x:Name="WaiveGrid">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <TextBlock Text="Press Waive beside a player to release him outright: he becomes a free agent and his deal comes off your books." Classes="muted" TextWrapping="Wrap"/>
+          <TextBlock Grid.Row="1" Text="{Binding FaStatus}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4,0,6" IsVisible="{Binding FaStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <DataGrid Grid.Row="2" ItemsSource="{Binding Ours}" x:Name="WaiveGrid">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="196"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>

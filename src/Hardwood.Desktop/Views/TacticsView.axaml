@@ -191,8 +191,8 @@
             <TextBlock Text="Presets" Classes="h2" Margin="0"/>
             <Grid ColumnDefinitions="*,Auto,Auto">
               <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" HorizontalAlignment="Stretch" MinWidth="140" PlaceholderText="Saved presets"/>
-              <Button Grid.Column="1" Content="Load" Command="{Binding LoadPresetCommand}" Margin="6,0,0,0"/>
-              <Button Grid.Column="2" Content="Delete" Command="{Binding DeletePresetCommand}" Margin="6,0,0,0"/>
+              <Button Grid.Column="1" Content="Load" Command="{Binding LoadPresetCommand}" IsEnabled="{Binding SelectedPreset, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a saved preset first" ToolTip.ShowOnDisabled="True" Margin="6,0,0,0"/>
+              <Button Grid.Column="2" Content="Delete" Command="{Binding DeletePresetCommand}" IsEnabled="{Binding SelectedPreset, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a saved preset first" ToolTip.ShowOnDisabled="True" Margin="6,0,0,0"/>
             </Grid>
             <Grid ColumnDefinitions="*,Auto">
               <TextBox Text="{Binding NewPresetName}" Watermark="Name, e.g. Small ball"/>

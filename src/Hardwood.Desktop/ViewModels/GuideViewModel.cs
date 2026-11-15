@@ -90,7 +90,15 @@ public sealed partial class GuideViewModel : ObservableObject
     }
 
     private void Notify() { OnPropertyChanged(nameof(Expanded)); OnPropertyChanged(nameof(ShowStrip)); }
-    [RelayCommand] private void ResetDismissed() { Settings.GuideProgress.Dismissed.Clear(); Settings.Save(); Refresh(); }
+    [RelayCommand]
+    private void ResetDismissed()
+    {
+        int n = Settings.GuideProgress.Dismissed.Count;
+        Settings.GuideProgress.Dismissed.Clear(); Settings.Save(); Refresh();
+        // Review #14 bug #8: a line saying what happened.
+        ResetNote = (n == 0 ? "No tips were hidden: every tip already shows" : n == 1 ? "1 hidden tip will show again" : $"{n} hidden tips will show again") + $" ({DateTime.Now:h:mm:ss tt}).";
+    }
+    [ObservableProperty] private string _resetNote = "";
 
     /// <summary>A career was opened: start counting days from its date.</summary>
     public void NewSession() { _lastDate = null; _lastPhase = null; }

@@ -27,6 +27,7 @@
             <ComboBox ItemsSource="{Binding Guide.LevelChoices}" SelectedItem="{Binding Guide.Level}" MinWidth="180"/>
           </StackPanel>
           <Button Content="Show hidden tips again" Command="{Binding Guide.ResetDismissedCommand}" HorizontalAlignment="Left"/>
+          <TextBlock Text="{Binding Guide.ResetNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Guide.ResetNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
       </Border>
       <ContentControl Content="{Binding Graphics}"/>
