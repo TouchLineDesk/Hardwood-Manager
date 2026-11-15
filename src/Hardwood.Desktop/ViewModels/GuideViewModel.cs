@@ -96,7 +96,7 @@ public sealed partial class GuideViewModel : ObservableObject
         int n = Settings.GuideProgress.Dismissed.Count;
         Settings.GuideProgress.Dismissed.Clear(); Settings.Save(); Refresh();
         // Review #14 bug #8: a line saying what happened.
-        ResetNote = n == 0 ? "No tips were hidden: every tip already shows." : n == 1 ? "1 hidden tip will show again." : $"{n} hidden tips will show again.";
+        ResetNote = (n == 0 ? "No tips were hidden: every tip already shows" : n == 1 ? "1 hidden tip will show again" : $"{n} hidden tips will show again") + $" ({DateTime.Now:h:mm:ss tt}).";
     }
     [ObservableProperty] private string _resetNote = "";
 

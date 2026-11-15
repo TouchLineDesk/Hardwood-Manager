@@ -96,7 +96,7 @@ public sealed partial class GraphicsSettingsViewModel : ViewModelBase
     {
         var s = _session?.Invoke();
         if (s == null) return;
-        if (NamePackService.Current(out var status) is not { } pack) { NamePackNote = status; return; }
+        if (NamePackService.Current(out var status) is not { } pack) { NamePackNote = $"Nothing to apply ({DateTime.Now:h:mm:ss tt}): {status}"; return; }
         int n = pack.ApplyToCareer(s);
         s.SaveNow();
         LogoPackService.UseTeams(s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? new List<Team>()));

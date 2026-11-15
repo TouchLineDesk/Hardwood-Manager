@@ -172,7 +172,11 @@ public sealed partial class TransactionsViewModel
     {
         var s = Session;
         WindowText = s.WindowText;
-        TransferBudgetText = $"Transfer budget ${s.HumanTeam.Money.TransferBudget / 1e6:F2}M · bank ${s.HumanTeam.Money.Balance / 1e6:F1}M";
+        // Run 55's finder: "$-0.0M" for a $40,000 overdraft, and a transfer budget a college program never has.
+        static string M(long v) => v < 0 ? "-" + PlayerViewModel.Money(-v) : PlayerViewModel.Money(v);
+        var bank = M(s.HumanTeam.Money.Balance);
+        TransferBudgetText = s.InCollege ? $"College programs don't pay transfer fees · bank {bank}"
+            : $"Transfer budget {M(s.HumanTeam.Money.TransferBudget)} · bank {bank}";
         FillMarket();
         Incoming.Clear();
         foreach (var b in s.IncomingBids.ToList())
