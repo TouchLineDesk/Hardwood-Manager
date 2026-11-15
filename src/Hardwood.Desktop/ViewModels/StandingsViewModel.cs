@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.Model;
 using Hardwood.Core.Season;
 
@@ -318,26 +319,74 @@ public sealed partial class LeadersViewModel : PageViewModel
     [ObservableProperty] private string _playoffLabel = "Playoffs";
     [ObservableProperty] private bool _showPlayIn = true;
 
+    // Run 64 (review #13 rank 3, #464): leader cards first, the full table one click away (as Standings, D55 A).
+    public string[] Views { get; } = { "Cards", "Full table" };
+    [ObservableProperty] private string _view = "Cards";
+    public bool ShowCards => View == "Cards";
+    public bool ShowTable => !ShowCards;
+    public ObservableCollection<LeaderCard> Cards { get; } = new();
+    partial void OnViewChanged(string value) { OnPropertyChanged(nameof(ShowCards)); OnPropertyChanged(nameof(ShowTable)); }
+
     public LeadersViewModel(MainViewModel shell) : base(shell) { }
-    partial void OnCategoryChanged(string value) => Refresh();
+    partial void OnCategoryChanged(string value) => FillTable();
+
+    /// <summary>A card's "Full list": that stat as the table.</summary>
+    public void ShowFull(string category) { Category = category; View = "Full table"; }
+
+    private int _minGames = 1;
+    private List<(PlayerSeasonStats Stat, Player Player)> _qualified = new();
+
+    /// <summary>The number a stat ranks by; 0 for a shooter without enough attempts.</summary>
+    public static Func<PlayerSeasonStats, double> Key(string category) => category switch
+    {
+        "Rebounds" => x => x.Rpg, "Assists" => x => x.Apg, "Steals" => x => (double)x.Steals / x.Games, "Blocks" => x => (double)x.Blocks / x.Games,
+        "Minutes" => x => x.Mpg, "FG%" => x => x.FGA >= x.Games * 5 ? x.FgPct : 0, "3P%" => x => x.ThreePA >= x.Games * 2 ? x.ThreePct : 0,
+        _ => x => x.Ppg,
+    };
 
     public override void Refresh()
     {
+        var s = Session;
+        var all = s.Standings.All().ToList();
+        _minGames = Math.Max(1, (int)((all.Count == 0 ? 0 : all.Average(r => r.Games)) * 0.6));
+        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
+        _qualified = s.Stats.Values.Where(x => x.Games >= _minGames && players.ContainsKey(x.PlayerId))
+            .Select(x => (x, players[x.PlayerId])).ToList();
+        FillCards();
+        FillTable();
+        Note = Cards.Any(c => c.HasAny)
+            ? $"Minimum {_minGames} games played. The top {LeaderCards.PerCard} in each; Full list opens the top 40."
+            : "The leaders fill in after the first games.";
+    }
+
+    private void FillCards()
+    {
+        Cards.Clear();
+        var s = Session;
+        foreach (var (cat, title, unit) in LeaderCards.Stats)
+        {
+            var key = Key(cat);
+            int rank = 0;
+            var entries = _qualified.Where(q => key(q.Stat) > 0).OrderByDescending(q => key(q.Stat)).Take(LeaderCards.PerCard)
+                .Select(q => new LeaderEntry
+                {
+                    Rank = ++rank, Player = q.Player, Name = q.Player.Name, Team = s.FindTeam(q.Stat.TeamId),
+                    Value = LeaderCards.IsPct(cat) ? LeaderCards.Pct(key(q.Stat)) : LeaderCards.PerGame(key(q.Stat)),
+                    Ours = q.Stat.TeamId == s.HumanTeam.Id,
+                }).ToList();
+            string c = cat;
+            Cards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, ShowAll = new RelayCommand(() => ShowFull(c)) });
+        }
+    }
+
+    private void FillTable()
+    {
         Rows.Clear();
         var s = Session;
-        int minGames = Math.Max(1, (int)(s.Standings.All().Average(r => r.Games) * 0.6));
-        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).ToDictionary(p => p.Id);
-        var stats = s.Stats.Values.Where(x => x.Games >= minGames && players.ContainsKey(x.PlayerId));
-        Func<PlayerSeasonStats, double> key = Category switch
-        {
-            "Rebounds" => x => x.Rpg, "Assists" => x => x.Apg, "Steals" => x => (double)x.Steals / x.Games, "Blocks" => x => (double)x.Blocks / x.Games,
-            "Minutes" => x => x.Mpg, "FG%" => x => x.FGA >= x.Games * 5 ? x.FgPct : 0, "3P%" => x => x.ThreePA >= x.Games * 2 ? x.ThreePct : 0,
-            _ => x => x.Ppg,
-        };
+        var key = Key(Category);
         int rank = 1;
-        foreach (var x in stats.OrderByDescending(key).Take(40))
+        foreach (var (x, p) in _qualified.OrderByDescending(q => key(q.Stat)).Take(40))
         {
-            var p = players[x.PlayerId];
             Rows.Add(new LeaderRow
             {
                 Rank = rank++, Player = p, Team = s.FindTeam(x.TeamId)!.Abbreviation, GP = x.Games,
@@ -346,7 +395,6 @@ public sealed partial class LeadersViewModel : PageViewModel
                 FG = $"{x.FgPct * 100:F1}", TP = x.ThreePA > 0 ? $"{x.ThreePct * 100:F1}" : "-", Value = Math.Round(key(x), 3),
             });
         }
-        Note = $"Minimum {minGames} games played.";
     }
 }
 

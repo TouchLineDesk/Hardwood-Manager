@@ -109,6 +109,15 @@ public sealed partial class WorldViewModel : PageViewModel
     public List<string> Categories { get; } = new() { "Points", "Rebounds", "Assists", "Steals", "Blocks", "FG%", "3P%", "Minutes" };
     [ObservableProperty] private string _category = "Points";
     [ObservableProperty] private int _tab;
+    // Run 64 (review #13 rank 3): the Stats tab opens on leader cards; the table is one click away.
+    public string[] StatsViews { get; } = { "Cards", "Full table" };
+    [ObservableProperty] private string _statsView = "Cards";
+    public bool ShowStatCards => StatsView == "Cards";
+    public bool ShowStatTable => !ShowStatCards;
+    public ObservableCollection<LeaderCard> StatCards { get; } = new();
+    partial void OnStatsViewChanged(string value) { OnPropertyChanged(nameof(ShowStatCards)); OnPropertyChanged(nameof(ShowStatTable)); }
+    /// <summary>A card's "Full list": that stat as the table.</summary>
+    public void ShowFullStat(string category) { Category = category; StatsView = "Full table"; }
 
     private LeagueBook? _book;
     private bool _filling;
@@ -281,23 +290,33 @@ public sealed partial class WorldViewModel : PageViewModel
         }
     }
 
+    /// <summary>The number a stat ranks by.</summary>
+    private static Func<BookStat, double> StatKey(string category) => category switch
+    {
+        "Rebounds" => x => x.Rpg, "Assists" => x => x.Apg, "Steals" => x => x.Spg, "Blocks" => x => x.Bpg, "Minutes" => x => x.Mpg,
+        "FG%" => x => x.FgPct, "3P%" => x => x.TpPct, _ => x => x.Ppg,
+    };
+
+    /// <summary>Players with 40% of the games; shooting needs enough attempts.</summary>
+    private static IEnumerable<BookStat> Qualified(IReadOnlyList<BookStat> stats, string category)
+    {
+        int maxG = stats.Select(x => x.G).DefaultIfEmpty(0).Max();
+        var q = stats.Where(x => x.G >= Math.Max(1, maxG * 0.4));
+        if (category == "FG%") q = q.Where(x => x.Fga >= x.G * 4);
+        if (category == "3P%") q = q.Where(x => x.Tpa >= x.G * 2);
+        return q;
+    }
+
     private void FillLeaders()
     {
         Leaders.Clear();
+        StatCards.Clear();
         if (_book is not { } b) return;
-        var stats = b.Stats();
-        int maxG = stats.Select(x => x.G).DefaultIfEmpty(0).Max();
-        var qualified = stats.Where(x => x.G >= Math.Max(1, maxG * 0.4));
-        Func<BookStat, double> key = Category switch
-        {
-            "Rebounds" => x => x.Rpg, "Assists" => x => x.Apg, "Steals" => x => x.Spg, "Blocks" => x => x.Bpg, "Minutes" => x => x.Mpg,
-            "FG%" => x => x.FgPct, "3P%" => x => x.TpPct, _ => x => x.Ppg,
-        };
-        if (Category == "FG%") qualified = qualified.Where(x => x.Fga >= x.G * 4);
-        if (Category == "3P%") qualified = qualified.Where(x => x.Tpa >= x.G * 2);
+        var stats = b.Stats().ToList();
         var s = Session;
+        var key = StatKey(Category);
         int k = 0;
-        foreach (var x in qualified.OrderByDescending(key).Take(50))
+        foreach (var x in Qualified(stats, Category).OrderByDescending(key).Take(50))
         {
             var p = FindPlayer(x.PlayerId);
             Leaders.Add(new WorldLeaderRow
@@ -306,6 +325,22 @@ public sealed partial class WorldViewModel : PageViewModel
                 Mpg = x.Mpg.ToString("0.0"), Ppg = x.Ppg.ToString("0.0"), Rpg = x.Rpg.ToString("0.0"), Apg = x.Apg.ToString("0.0"),
                 Spg = x.Spg.ToString("0.0"), Bpg = x.Bpg.ToString("0.0"), Fg = x.Fga > 0 ? x.FgPct.ToString(".000") : "-", Tp = x.Tpa > 0 ? x.TpPct.ToString(".000") : "-",
             });
+        }
+        foreach (var (cat, title, unit) in LeaderCards.Stats)
+        {
+            var ck = StatKey(cat);
+            int rank = 0;
+            var entries = Qualified(stats, cat).Where(x => ck(x) > 0).OrderByDescending(ck).Take(LeaderCards.PerCard).Select(x =>
+            {
+                var p = FindPlayer(x.PlayerId);
+                return new LeaderEntry
+                {
+                    Rank = ++rank, Player = p, Name = p?.Name ?? "(left the game)", Team = s.FindTeam(x.TeamId),
+                    Value = LeaderCards.IsPct(cat) ? LeaderCards.Pct(ck(x)) : LeaderCards.PerGame(ck(x)), Ours = x.TeamId == s.HumanTeam.Id,
+                };
+            }).ToList();
+            string c = cat;
+            StatCards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, ShowAll = new RelayCommand(() => ShowFullStat(c)) });
         }
     }
 
