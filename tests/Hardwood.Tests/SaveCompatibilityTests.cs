@@ -77,6 +77,7 @@ public class SaveCompatibilityTests
             Assert.Equal(ids.Count, ids.Distinct().Count());
 
             for (int i = 0; i < 3; i++) s.AdvanceDay();
+            s.SaveNow(); // the day loop saves weekly since D74 B (#635)
             var again = GameSession.Load(path);
             Assert.Equal(s.Today, again.Today);
             Assert.Equal(s.Results.Count, again.Results.Count);

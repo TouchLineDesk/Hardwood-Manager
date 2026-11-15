@@ -19,14 +19,15 @@ build run reads them.
 7. Check Standings, Leagues and a player page: can you find things in two clicks?
 8. Play out the season and the playoffs, and read the board's review.
 9. Go through the summer: re-signings, the draft and free agency.
-10. Save, quit and load your career once.
+10. Quit (main menu or close the window) and load your career once: it comes back on the day you left.
 
 ## How to report
 One note per thing, tagged **Bored**, **Confused**, **Kept waiting**, **Felt wrong**, **Bug** or **Liked it**, with the
 page and the game date from the top bar. Say what you expected and what happened.
 
 ## Known before you start
-- **Continue is slow:** about 100 seconds a season, mostly the daily save. Your pick D74 B (save every 7 days, at
-  each phase change and on quit) is the next build run's job.
+- **Saving (v0.80.0, D74 B):** the career saves every 7 days, at each phase change, after your decisions, on
+  Settings' **Save now**, and when you go to the main menu or close the window. The top bar shows the last save under
+  the date. A crash loses at most the days since then. Continue takes about 20 seconds a season (was about 90).
 - Overseas clubs are generated, and national teams, FIBA and the Olympics aren't built yet.
 - The open bug list is `claude/bug-hunt.md` in the project (all Low).

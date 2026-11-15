@@ -105,7 +105,7 @@ public static class Bench
     }
 
     /// <summary>A managed real career at a mid-table NBA club, advanced day by day with no decisions (as if the player
-    /// only pressed Continue). Times the first season without saving, then the same career with its daily saves, and
+    /// only pressed Continue). Times the first season without saving, then the same career saving as in play (every 7 days and at phase changes, D74 B), and
     /// after 1, 5 and 25 seasons: the save's size, one explicit save and a full load.</summary>
     private static void Career(ulong seed, int seasons, Action<string> W)
     {
@@ -126,7 +126,7 @@ public static class Bench
             var (newMs, _, s) = Time(() => GameSession.NewGame(seed, teamId, path));
             W($"- new career with a save file: {newMs / 1000:F1} s; first save {new FileInfo(path).Length / 1e6:F1} MB");
             W("");
-            W("| after season | days | advance s (daily saves) | ms a day | slowest day ms | save MB | one save ms | load ms | record |");
+            W("| after season | days | advance s (saves as in play) | ms a day | slowest day ms | save MB | one save ms | load ms | record |");
             W("|---|---|---|---|---|---|---|---|---|");
             var checkpoints = new HashSet<int> { 1, 5, 10, 25, seasons };
             for (int n = 1; n <= seasons; n++)

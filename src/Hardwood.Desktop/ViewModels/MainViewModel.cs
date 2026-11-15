@@ -36,6 +36,9 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty] private GameSession? _session;
     [ObservableProperty] private ViewModelBase? _currentPage;
     [ObservableProperty] private string _dateText = "";
+    /// <summary>When the career was last saved (D74 B, #635): the game saves every 7 days, at phase changes and on quit.</summary>
+    [ObservableProperty] private string _savedText = "";
+    [ObservableProperty] private string _savedTip = "";
     [ObservableProperty] private string _teamText = "";
     [ObservableProperty] private string _recordText = "";
     [ObservableProperty] private string _phaseText = "";
@@ -76,6 +79,8 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         Session = session;
         HasSession = true;
+        // The top bar's last-save line follows every save, whichever page or thread made it (D74 B).
+        session.Saved += () => Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (Session == session) (SavedText, SavedTip) = SaveLine(session); });
         Controls.PlayerCard.BackSource = pl => Hardwood.Core.Season.CollectorCard.BackOf(session, pl);
         Controls.PlayerCard.Today = () => session.Today;
         // The college Top 25 rank travels with the team (#528): logos and team links read it from the live poll.
@@ -270,6 +275,7 @@ public sealed partial class MainViewModel : ViewModelBase
         InSeason = s.Phase != SessionPhase.Offseason;
         if (s.Phase == SessionPhase.Offseason) InLiveGame = false;
         DateText = s.Today.ToString("ddd, MMM d yyyy");
+        (SavedText, SavedTip) = SaveLine(s);
         HeaderTeam = s.HumanTeam;
         TeamText = s.Employed ? s.HumanTeam.FullName : $"{s.Coach.Name} · out of work";
         var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
@@ -311,9 +317,27 @@ public sealed partial class MainViewModel : ViewModelBase
         if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
     }
 
+    /// <summary>The top bar's last-save line and its hover text (D74 B).</summary>
+    public static (string text, string tip) SaveLine(GameSession s)
+    {
+        if (s.Save == null || s.LastSaved == default) return ("Not saved", "This career has no save file.");
+        string text = s.LastSaved == s.Today ? "Saved today" : $"Saved {s.LastSaved:MMM d}";
+        return (text, $"The game saves every {GameSession.SaveEveryDays} days, when the season moves on (preseason, season, playoffs, each summer step), after your decisions, and when you go to the main menu or close the window. Settings has Save now.");
+    }
+
+    /// <summary>Save before leaving the career (main menu or closing the window, D74 B). Not while a day is being played:
+    /// the career is then at most a week behind, as after a crash.</summary>
+    public bool SaveOnLeave()
+    {
+        if (Session == null || IsBusy) return false;
+        try { Session.SaveNow(); return true; }
+        catch (Exception e) { Console.Error.WriteLine($"Save on leave failed: {e.Message}"); return false; }
+    }
+
     [RelayCommand]
     public void BackToStart()
     {
+        SaveOnLeave();
         Session = null;
         HasSession = false;
         ThemeService.Apply(null);

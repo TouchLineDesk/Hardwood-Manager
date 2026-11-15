@@ -7,6 +7,13 @@
     <StackPanel MaxWidth="760" HorizontalAlignment="Left" Spacing="16">
       <Border Classes="panel" Padding="16">
         <StackPanel Spacing="8">
+          <TextBlock Text="Saving" Classes="h2"/>
+          <TextBlock Text="{Binding SaveNote}" TextWrapping="Wrap" Classes="muted"/>
+          <Button Content="Save now" Command="{Binding SaveCareerCommand}" IsEnabled="{Binding CanSave}" HorizontalAlignment="Left"/>
+        </StackPanel>
+      </Border>
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="8">
           <TextBlock Text="Text and interface size" Classes="h2"/>
           <TextBlock Text="Makes all text, tables and charts bigger or smaller. Pages reflow to fit, so nothing is cut off; at larger sizes some tables scroll sideways."
                      TextWrapping="Wrap" Classes="muted"/>
