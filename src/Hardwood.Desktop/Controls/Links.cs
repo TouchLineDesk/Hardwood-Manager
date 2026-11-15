@@ -65,7 +65,14 @@ public sealed class PlayerLink : Button
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == PlayerProperty || change.Property == TextProperty) Content = Text ?? Player?.Name ?? "";
+        if (change.Property == PlayerProperty || change.Property == TextProperty)
+        {
+            Content = Text ?? Player?.Name ?? "";
+            // Bug list H3: a name with no player behind it (a leader who has left the game) is greyed out with the
+            // reason instead of a link that does nothing.
+            IsEnabled = Player != null;
+            ToolTip.SetTip(this, Player == null && !string.IsNullOrEmpty(Text) ? "He has left the game world, so there's no page to open." : null);
+        }
     }
 
     protected override void OnClick()

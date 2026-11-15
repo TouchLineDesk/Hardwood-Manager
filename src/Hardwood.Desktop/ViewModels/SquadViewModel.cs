@@ -55,6 +55,7 @@ public sealed partial class SquadViewModel : PageViewModel
     public ObservableCollection<FactorRow> PlayerFactors { get; } = new();
     public ObservableCollection<TalkButton> Topics { get; } = new();
     [ObservableProperty] private string _playerHeadline = "";
+    [ObservableProperty] private string _playerScore = "";
     [ObservableProperty] private string _reply = "";
     [ObservableProperty] private string _talkNote = "";
     [ObservableProperty] private string _promisesText = "";
@@ -128,9 +129,11 @@ public sealed partial class SquadViewModel : PageViewModel
         PlayerFactors.Clear(); Topics.Clear();
         // The grid can clear its selection when it first binds: show the unhappiest player rather than nothing.
         var p = Selected?.Player ?? Players.FirstOrDefault()?.Player;
-        if (p == null) { PlayerHeadline = ""; return; }
+        if (p == null) { PlayerHeadline = ""; PlayerScore = ""; return; }
         Session.MyStats.TryGetValue(p.Id, out var st);
-        PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()} ({p.Morale:0}/100)" + (p.TradeRequested ? ", wants a trade" : "");
+        // Bug list #14: the score is its own unwrapped text, so "(61/100)" never breaks mid-number in the narrow panel.
+        PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested ? ", wants a trade" : "");
+        PlayerScore = $"{p.Morale:0}/100";
         foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });
         var blocked = Talks.Unavailable(p, Session.Today);

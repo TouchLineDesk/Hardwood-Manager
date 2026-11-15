@@ -32,11 +32,11 @@
             <!-- The play diagram (Danny, #475, D60 A): the five starters run the system, the scheme defends it -->
             <c:PlayDiagram System="{Binding DiagramSystem}" Scheme="{Binding DiagramScheme}" Labels="{Binding PlayLabels}" Accent="{Binding Accent}"
                            MaxHeight="380" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-            <TextBlock Text="{Binding SelectedSystem.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SystemDescription}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <!-- Why it fits (roadmap 4): the ingredients, best and worst first -->
-            <StackPanel Spacing="1" IsVisible="{Binding SelectedSystem.HasReasons}">
+            <StackPanel Spacing="1" IsVisible="{Binding HasSystemReasons}">
               <TextBlock Text="Why this fit" FontSize="11.5" FontWeight="SemiBold" Margin="0,2,0,0"/>
-              <ItemsControl ItemsSource="{Binding SelectedSystem.Reasons}">
+              <ItemsControl ItemsSource="{Binding SystemReasons}">
                 <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
@@ -54,12 +54,12 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBlock Text="{Binding SelectedScheme.Description}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SchemeDescription}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding DefenceNote}" FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource HwAccentBrush}"/>
             <!-- Why it fits (roadmap 4): the ingredients, best and worst first -->
-            <StackPanel Spacing="1" IsVisible="{Binding SelectedScheme.HasReasons}">
+            <StackPanel Spacing="1" IsVisible="{Binding HasSchemeReasons}">
               <TextBlock Text="Why this fit" FontSize="11.5" FontWeight="SemiBold" Margin="0,2,0,0"/>
-              <ItemsControl ItemsSource="{Binding SelectedScheme.Reasons}">
+              <ItemsControl ItemsSource="{Binding SchemeReasons}">
                 <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>

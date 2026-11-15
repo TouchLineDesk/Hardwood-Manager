@@ -302,7 +302,7 @@ public sealed partial class WorldViewModel : PageViewModel
             var p = FindPlayer(x.PlayerId);
             Leaders.Add(new WorldLeaderRow
             {
-                Rank = ++k, Player = p, Name = p?.Name ?? "(left)", Team = s.FindTeam(x.TeamId), G = x.G,
+                Rank = ++k, Player = p, Name = p?.Name ?? "(left the game)", Team = s.FindTeam(x.TeamId), G = x.G,
                 Mpg = x.Mpg.ToString("0.0"), Ppg = x.Ppg.ToString("0.0"), Rpg = x.Rpg.ToString("0.0"), Apg = x.Apg.ToString("0.0"),
                 Spg = x.Spg.ToString("0.0"), Bpg = x.Bpg.ToString("0.0"), Fg = x.Fga > 0 ? x.FgPct.ToString(".000") : "-", Tp = x.Tpa > 0 ? x.TpPct.ToString(".000") : "-",
             });

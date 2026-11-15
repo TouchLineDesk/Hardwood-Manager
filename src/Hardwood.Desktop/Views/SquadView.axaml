@@ -58,7 +58,10 @@
     <StackPanel Grid.Column="1" Spacing="10">
       <Border Classes="panel">
         <StackPanel Spacing="6">
-          <TextBlock Text="{Binding PlayerHeadline}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{Binding PlayerHeadline}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+            <TextBlock Grid.Column="1" Text="{Binding PlayerScore}" Classes="h2" Margin="8,0,0,0" TextWrapping="NoWrap" VerticalAlignment="Top" ToolTip.Tip="Morale, out of 100"/>
+          </Grid>
           <ItemsControl ItemsSource="{Binding PlayerFactors}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:FactorRow">

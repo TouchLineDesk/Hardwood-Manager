@@ -68,15 +68,17 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <TextBlock Text="Nothing needs you right now. Press Continue when you're ready." IsVisible="{Binding NoTasks}"
+                       TextWrapping="Wrap" Classes="muted" FontSize="11.5"/>
+
+            <!-- D63 A: the page's tip and the strategy list behind one Tips button -->
+            <Button Content="{Binding TipsButtonText}" Command="{Binding ToggleTipsCommand}" IsVisible="{Binding HasTips}"
+                    HorizontalAlignment="Left" Padding="8,2" FontSize="11.5" ToolTip.Tip="Tips for this page and strategy from your assistant"/>
             <StackPanel Spacing="4" IsVisible="{Binding ShowPageTip}">
               <TextBlock Text="{Binding PageTitle, StringFormat='ON THIS PAGE: {0}'}" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
               <TextBlock Text="{Binding PageTip}" TextWrapping="Wrap" FontSize="12"/>
             </StackPanel>
-            <!-- Seen this page before: the tip stays out of the way until asked for (roadmap 4). -->
-            <Button Content="{Binding PageTitle, StringFormat='Tip for {0}'}" Command="{Binding RevealPageTipCommand}" IsVisible="{Binding !ShowPageTip}"
-                    HorizontalAlignment="Left" Padding="8,2" FontSize="11.5"/>
-
-            <StackPanel Spacing="6" IsVisible="{Binding HasStrategy}">
+            <StackPanel Spacing="6" IsVisible="{Binding ShowStrategy}">
               <TextBlock Text="STRATEGY" Classes="muted" FontSize="10.5" FontWeight="SemiBold" LetterSpacing="1"/>
               <ItemsControl ItemsSource="{Binding Strategy}">
                 <ItemsControl.ItemTemplate>

@@ -141,8 +141,18 @@ public sealed partial class RotationViewModel : PageViewModel
     [RelayCommand]
     public void AutoRotation()
     {
-        Session.HumanTeam.DepthChart = Suggest(Session.HumanTeam, Session.Today);
+        var team = Session.HumanTeam;
+        string before = ChartKey(team.DepthChart);
+        team.DepthChart = Suggest(team, Session.Today);
+        bool same = ChartKey(team.DepthChart) == before;
         Refresh();
+        // Bug list H2: say what happened, and say so when the suggestion was already in place.
+        if (Status.Length == 0)
+            Status = same ? "Already the assistant's rotation: the same starters and minutes. Nothing changed."
+                : "The assistant's rotation is in: his starters and minutes.";
     }
+
+    private static string ChartKey(DepthChart? c) => c == null ? "" :
+        string.Join(",", c.Starters) + "|" + string.Join(",", c.MinutesTargets.Where(kv => kv.Value > 0).OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{Math.Round(kv.Value)}"));
 
 }

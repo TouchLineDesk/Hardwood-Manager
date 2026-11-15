@@ -92,7 +92,7 @@ public class AssistantWhyTests
     }
 
     [AvaloniaFact]
-    public void A_page_tip_shows_on_the_first_visit_only()
+    public void Pages_seen_are_remembered_and_tips_wait_behind_the_button()
     {
         var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
         AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
@@ -101,13 +101,14 @@ public class AssistantWhyTests
         {
             var vm = new MainViewModel();
             vm.Guide.OnPage("Tactics");
-            Assert.True(vm.Guide.ShowPageTip);
             vm.Guide.OnPage("Board");
-            Assert.True(vm.Guide.ShowPageTip);
-            vm.Guide.OnPage("Tactics");
+            // D63 A: nothing behind the Tips button shows until it's pressed, first visit or not.
+            Assert.False(vm.Guide.TipsOpen);
             Assert.False(vm.Guide.ShowPageTip);
-            vm.Guide.RevealPageTipCommand.Execute(null);
-            Assert.True(vm.Guide.ShowPageTip);
+            Assert.False(vm.Guide.ShowStrategy);
+            vm.Guide.ToggleTipsCommand.Execute(null);
+            Assert.True(vm.Guide.TipsOpen);
+            Assert.Equal("Hide tips", vm.Guide.TipsButtonText);
             // Remembered with the app settings, so it holds across careers and restarts.
             Assert.Contains("Tactics", AppSettings.Load().GuideProgress.PagesSeen);
         }
