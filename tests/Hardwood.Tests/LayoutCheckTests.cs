@@ -151,6 +151,12 @@ public class LayoutCheckTests
             lp.MainBracket = Hardwood.Core.Season.LeagueBook.Columns(first.Concat(second));
             lp.ThirdBracket = Hardwood.Core.Season.LeagueBook.Columns(first.Take(4).Select(x => x with { Round = "Third-place quarter-finals", ThirdPlace = true }));
         });
+        // Run 64: Leagues → Stats as leader cards (League Leaders' cards are checked with the nav pages).
+        yield return ("Leagues stat cards", v =>
+        {
+            v.Navigate("Leagues");
+            ((WorldViewModel)v.CurrentPage!).Tab = 2;
+        });
         // The conference tables with the playoff seeds (the division cards open first since D55).
         yield return ("Standings by conference", v =>
         {

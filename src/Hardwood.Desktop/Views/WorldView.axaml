@@ -118,12 +118,23 @@
       </TabItem>
       <TabItem Header="Stats">
         <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
-            <TextBlock Text="Leaders in" VerticalAlignment="Center"/>
-            <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" MinWidth="130"/>
-            <TextBlock Text="Players with at least 40% of the games played; shooting needs enough attempts." Classes="muted" VerticalAlignment="Center"/>
-          </StackPanel>
-          <DataGrid ItemsSource="{Binding Leaders}" CanUserSortColumns="False" RowHeight="28">
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding StatsViews}" SelectedItem="{Binding StatsView}" MinWidth="130" Margin="0,0,8,0"/>
+            <TextBlock Text="Leaders in" VerticalAlignment="Center" Margin="0,0,8,0" IsVisible="{Binding ShowStatTable}"/>
+            <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" MinWidth="130" Margin="0,0,8,0" IsVisible="{Binding ShowStatTable}"/>
+            <TextBlock Text="Players with at least 40% of the games played; shooting needs enough attempts." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </WrapPanel>
+          <Panel>
+          <!-- Run 64 (review #13 rank 3): a card per stat, the leader big. -->
+          <ScrollViewer IsVisible="{Binding ShowStatCards}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="StatCards" ItemsSource="{Binding StatCards}" VerticalAlignment="Top">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="300" MaxColumns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LeaderCard"><c:LeaderCardView/></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <DataGrid ItemsSource="{Binding Leaders}" CanUserSortColumns="False" RowHeight="28" IsVisible="{Binding ShowStatTable}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="44"/>
               <DataGridTemplateColumn Header="Player" Width="*">
@@ -147,6 +158,7 @@
               <DataGridTextColumn Header="3P%" Binding="{Binding Tp}" Width="70"/>
             </DataGrid.Columns>
           </DataGrid>
+          </Panel>
         </DockPanel>
       </TabItem>
       <TabItem Header="Rules &amp; format">

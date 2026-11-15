@@ -84,7 +84,7 @@ public class Run63ViewTests
             Assert.Equal(all, Shown(Picker()).Count);
 
             // League Leaders: the rank and Player always show.
-            vm.Navigate("League Leaders"); Settle();
+            vm.Navigate("League Leaders"); ((LeadersViewModel)vm.CurrentPage!).View = "Full table"; Settle();   // cards first since run 64
             var leaders = Picker();
             leaders.Choose("Scoring"); Settle();
             var shown = Shown(leaders);

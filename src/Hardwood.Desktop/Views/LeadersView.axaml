@@ -10,8 +10,22 @@
         <TextBlock Text="League Leaders" Classes="h1" Margin="0"/>
         <TextBlock Text="{Binding Note}" Classes="muted"/>
       </StackPanel>
-      <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" Width="150" VerticalAlignment="Top"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+        <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="130"/>
+        <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" Width="150" IsVisible="{Binding ShowTable}"/>
+      </StackPanel>
     </Grid>
+    <!-- Run 64 (review #13 rank 3): a card per stat, the leader big; the table below is one click away. -->
+    <Panel>
+    <ScrollViewer IsVisible="{Binding ShowCards}" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl x:Name="LeaderCards" ItemsSource="{Binding Cards}" VerticalAlignment="Top">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="300" MaxColumns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:LeaderCard"><c:LeaderCardView/></DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+    <DockPanel IsVisible="{Binding ShowTable}">
     <c:ColumnPicker DockPanel.Dock="Top" Key="leaders" Target="{Binding #LeadersGrid}"
                     Presets="Scoring=Team,Pos,GP,MPG,PPG,FG%,3P%|All-round=Team,Pos,GP,PPG,RPG,APG,SPG,BPG"/>
     <DataGrid x:Name="LeadersGrid" ItemsSource="{Binding Rows}">
@@ -31,5 +45,7 @@
         <DataGridTextColumn Header="3P%" Binding="{Binding TP}" Width="66"/>
       </DataGrid.Columns>
     </DataGrid>
+    </DockPanel>
+    </Panel>
   </DockPanel>
 </UserControl>
