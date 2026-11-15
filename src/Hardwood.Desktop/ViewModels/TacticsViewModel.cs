@@ -379,7 +379,8 @@ public sealed partial class TacticsViewModel : PageViewModel
     public void UseSuggestion()
     {
         var next = Session.NextMyGame;
-        if (next == null) return;
+        // H2 (the run 62 finder, start of the playoffs): with no game scheduled yet, say so instead of nothing.
+        if (next == null) { Status = "No game on your schedule yet, so there's no opponent to plan for. Try again once your next game is set."; return; }
         var team = Session.HumanTeam;
         var opp = next.Opponent;
         var rot = CoachAi.Rotation(team, next.Date);

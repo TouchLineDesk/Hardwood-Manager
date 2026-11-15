@@ -22,7 +22,7 @@ public sealed partial class SettingsViewModel : PageViewModel
             var s = Shell.Session;
             if (s?.Save == null) return "This career has no save file.";
             if (s.LastSaved == default) return "Not saved yet.";
-            return $"Last saved on {s.LastSaved:MMM d, yyyy} in the game ({s.LastSavedAt:h:mm tt} on your clock). The game saves every {GameSession.SaveEveryDays} days, whenever the season moves on, after your decisions, and when you go to the main menu or close the window; a crash loses at most the days since the last save.";
+            return $"Last saved on {s.LastSaved:MMM d, yyyy} in the game ({s.LastSavedAt:h:mm:ss tt} on your clock). The game saves every {GameSession.SaveEveryDays} days, whenever the season moves on, after your decisions, and when you go to the main menu or close the window; a crash loses at most the days since the last save.";
         }
     }
 
