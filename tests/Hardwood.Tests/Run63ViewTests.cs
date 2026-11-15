@@ -95,7 +95,7 @@ public class Run63ViewTests
             Assert.Contains("Player", Shown(leaders));
 
             // The transfer market and free agents have their own views, kept apart from Roster's.
-            vm.Navigate("Transactions"); Settle();
+            vm.Navigate("Transactions"); ((TransactionsViewModel)vm.CurrentPage!).MarketView = "Full table"; Settle();   // cards first since run 65
             var market = Picker();
             Assert.Equal("market", market.Key);
             Assert.Equal(ColumnPicker.AllName, market.Current);

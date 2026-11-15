@@ -3,12 +3,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.Model;
 using Hardwood.Core.Season;
+using Avalonia.Media;
 using Hardwood.Desktop.Controls;
 
 namespace Hardwood.Desktop.ViewModels;
 
 /// <summary>A player on the transfer market: his club, what your scouts think he's worth, and his release clause.</summary>
-public sealed class MarketRow
+public sealed partial class MarketRow : ObservableObject
 {
     public required Player Player { get; init; }
     public required Team Club { get; init; }
@@ -33,6 +34,31 @@ public sealed class MarketRow
     public string Clause => Player.Contract is { Buyout: > 0 } c ? $"${c.Buyout / 1e6:F2}M" : "-";
     public bool Agreed { get; init; }
     public string Status => Agreed ? "Fee agreed" : "";
+
+    // Run 65 (review #13 rank 4): the market as player cards, with the club's stance and his answer as coloured chips.
+    /// <summary>The card picked (its border lights up), as the selected row is in the table.</summary>
+    [ObservableProperty] private bool _picked;
+    /// <summary>Selling stance: red when they won't sell, green when they want him gone, blue when they'd listen.</summary>
+    public IBrush StanceBrush => StanceInfo?.Stance switch
+    {
+        TransferStance.WontSell => StandingRow.RelegationBrush,
+        TransferStance.WantsHimGone => StandingRow.PlayoffBrush,
+        _ => ListenBrush,
+    };
+    public string StanceTip => StanceInfo?.Why ?? "";
+    public bool HasStance => StanceInfo != null;
+    /// <summary>Would he come: green yes, red with the reason's short form.</summary>
+    public string InterestChip => WontCome == null ? "Would come" : Interest;
+    public IBrush InterestBrush => WontCome == null ? StandingRow.PlayoffBrush : StandingRow.RelegationBrush;
+    public string InterestTip => WontCome ?? "He'd talk terms if the clubs agree a fee.";
+    public bool HasClause => Player.Contract is { Buyout: > 0 };
+    public string ClauseChip => HasClause ? $"Clause {Clause}" : "";
+    /// <summary>"PG · age 24 · PA 160": the line under his name on a card.</summary>
+    public string CardLine => $"{Pos} · age {Age} · PA {PA}";
+    public string ContractLine => Player.Contract != null ? Contract : "";
+    public string FeeLine => $"Likely fee {Ask}";
+    public Team? Team => Club;
+    private static readonly IBrush ListenBrush = new SolidColorBrush(Color.Parse("#2F6FB5"));
 }
 
 /// <summary>A bid for one of your players.</summary>
@@ -117,7 +143,32 @@ public sealed partial class TransactionsViewModel
     partial void OnMarketLeagueChanged(string value) => FillMarket();
     partial void OnMarketPositionChanged(string value) => FillMarket();
     partial void OnMinAbilityChanged(decimal? value) => FillMarket();
-    partial void OnSelectedMarketChanged(MarketRow? value) => ShowDeal(value);
+    partial void OnSelectedMarketChanged(MarketRow? oldValue, MarketRow? newValue)
+    {
+        if (oldValue != null) oldValue.Picked = false;
+        if (newValue != null) newValue.Picked = true;
+        ShowDeal(newValue);
+    }
+
+    // Run 65 (review #13 rank 4): the market opens on player cards, the best first; the table is one click away.
+    public string[] MarketViews { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowMarketCards), nameof(ShowMarketTable))] private string _marketView = "Cards";
+    public bool ShowMarketCards => MarketView == "Cards";
+    public bool ShowMarketTable => !ShowMarketCards;
+    /// <summary>How many cards the card view shows; the full table lists everyone the filters let through.</summary>
+    public const int CardCount = 24;
+    /// <summary>The most the table lists (the best by ability).</summary>
+    public const int MarketMax = 300;
+    public ObservableCollection<MarketRow> MarketCards { get; } = new();
+    [ObservableProperty] private string _marketCardsNote = "";
+    /// <summary>The position filter as chips, each with how many players it holds.</summary>
+    public ObservableCollection<FilterChip> PositionChips { get; } = new();
+
+    [RelayCommand]
+    public void SetMarketPosition(string? pos) { if (pos != null && Positions.Contains(pos)) MarketPosition = pos; }
+
+    [RelayCommand]
+    public void PickMarket(MarketRow? row) { if (row != null) SelectedMarket = row; }
 
     private void ShowDeal(MarketRow? row)
     {
@@ -153,12 +204,23 @@ public sealed partial class TransactionsViewModel
         var s = Session;
         Market.Clear();
         int min = (int)(MinAbility ?? 0);
-        var rows = s.Market()
+        var pool = s.Market()
             .Where(x => x.player.CurrentAbility >= min)
-            .Where(x => MarketPosition == "All" || x.player.PrimaryPosition.ToString() == MarketPosition)
             .Select(x => (x.player, x.club, league: s.ContextOf(x.club).Name is var n && s.League.Teams.Contains(x.club) ? Hardwood.Core.Names.Brand.Top : s.World.Competitions.FirstOrDefault(c => c.Clubs.Contains(x.club))?.Profile.Name ?? n))
             .Where(x => MarketLeague == "All leagues" || x.league == MarketLeague)
-            .OrderByDescending(x => x.player.CurrentAbility).Take(300);
+            .ToList();
+        PositionChips.Clear();
+        foreach (var pos in Positions)
+        {
+            int n = pos == "All" ? pool.Count : pool.Count(x => x.player.PrimaryPosition.ToString() == pos);
+            PositionChips.Add(new FilterChip
+            {
+                Name = pos, Record = n.ToString(), Selected = pos == MarketPosition,
+                Tip = pos == "All" ? $"Every position: {n} players over your filters" : $"{n} {pos}{(n == 1 ? "" : "s")} over your filters",
+            });
+        }
+        var fits = pool.Where(x => MarketPosition == "All" || x.player.PrimaryPosition.ToString() == MarketPosition).ToList();
+        var rows = fits.OrderByDescending(x => x.player.CurrentAbility).Take(MarketMax);
         foreach (var (p, club, league) in rows)
             Market.Add(new MarketRow
             {
@@ -166,6 +228,12 @@ public sealed partial class TransactionsViewModel
                 AskValue = TransferMarket.Ask(p, club, s.Today, s.ScaleOf(club), s.League.Finance), Agreed = s.AgreedFees.ContainsKey(p.Id),
                 Likely = s.LikelyFee(p), StanceInfo = s.StanceOn(p), WontCome = s.WontCome(p),
             });
+        MarketCards.Clear();
+        foreach (var r in Market.Take(CardCount)) MarketCards.Add(r);
+        MarketCardsNote = Market.Count == 0 ? "Nobody on the market fits these filters. Lower Min CA, or pick another league or position."
+            : Market.Count <= CardCount ? $"All {Market.Count} player{(Market.Count == 1 ? "" : "s")} who fit, best first. Pick a card to see the deal."
+            : $"The best {CardCount} of {fits.Count:N0} by ability. Pick a card to see the deal; the full table lists "
+              + (fits.Count > MarketMax ? $"the best {MarketMax}." : "them all.");
     }
 
     private void FillTransfers()

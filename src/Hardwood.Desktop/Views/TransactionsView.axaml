@@ -14,14 +14,85 @@
       <TabItem Header="Transfer market">
         <Grid ColumnDefinitions="*,300" RowDefinitions="Auto,*">
           <!-- Wraps rather than running under the side panel at big text sizes (roadmap 1). -->
-          <WrapPanel Margin="0,0,0,6">
-            <ComboBox ItemsSource="{Binding MarketLeagues}" SelectedItem="{Binding MarketLeague}" MinWidth="170" Margin="0,0,8,4"/>
-            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding MarketPosition}" MinWidth="80" Margin="0,0,8,4"/>
-            <TextBlock Text="Min CA" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,4"/>
-            <NumericUpDown Value="{Binding MinAbility}" Minimum="40" Maximum="200" Increment="5" Width="120" FormatString="0" Margin="0,0,8,4"/>
-            <TextBlock Text="{Binding TransferBudgetText}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,0,4"/>
-          </WrapPanel>
-          <DockPanel Grid.Row="1">
+          <!-- Run 65 (review #13 rank 4): positions as chips with counts; cards first, the table one click away. -->
+          <StackPanel Spacing="2" Margin="0,0,0,6">
+            <WrapPanel>
+              <ComboBox ItemsSource="{Binding MarketLeagues}" SelectedItem="{Binding MarketLeague}" MinWidth="170" Margin="0,0,8,4"/>
+              <TextBlock Text="Min CA" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,4"/>
+              <NumericUpDown Value="{Binding MinAbility}" Minimum="40" Maximum="200" Increment="5" Width="120" FormatString="0" Margin="0,0,8,4"/>
+              <ComboBox ItemsSource="{Binding MarketViews}" SelectedItem="{Binding MarketView}" Width="120" Margin="0,0,8,4"/>
+              <TextBlock Text="{Binding TransferBudgetText}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            </WrapPanel>
+            <ItemsControl x:Name="PositionChips" ItemsSource="{Binding PositionChips}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FilterChip">
+                  <Button Classes="filter" Classes.on="{Binding Selected}" Margin="0,0,6,4" ToolTip.Tip="{Binding Tip}"
+                          Tag="{Binding Name}" Click="OnPositionClick">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding Record}" Classes="filterRecord"/>
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <Panel Grid.Row="1">
+          <DockPanel IsVisible="{Binding ShowMarketCards}">
+            <TextBlock DockPanel.Dock="Top" Text="{Binding MarketCardsNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl x:Name="MarketCards" ItemsSource="{Binding MarketCards}" VerticalAlignment="Top">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="290" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:MarketRow">
+                    <Button Classes="marketCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            Click="OnCardClick"
+                            ToolTip.Tip="Pick him to see the deal and bid">
+                      <Border BorderBrush="{Binding Team, Converter={x:Static c:Converters.TeamAccentBrush}}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                        <StackPanel Spacing="5">
+                          <Grid ColumnDefinitions="56,*,Auto" RowDefinitions="Auto,Auto">
+                            <c:Avatar Grid.RowSpan="2" Player="{Binding Player}" Team="{Binding Team}" Width="52" Height="52" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" Margin="8,0,0,0" ToolTip.Tip="{Binding Name}"/>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,1,6,0" VerticalAlignment="Center" Spacing="1">
+                              <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                              <Grid ColumnDefinitions="Auto,*">
+                                <c:TeamLogo Team="{Binding Team}" Width="16" Height="16" ShowText="False" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <TextBlock Grid.Column="1" Text="{Binding ClubName}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ClubName}"/>
+                              </Grid>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" ToolTip.Tip="Current ability as your scouts see him">
+                              <TextBlock Text="{Binding CA}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/>
+                              <TextBlock Text="CA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                          </Grid>
+                          <WrapPanel>
+                            <Border Background="{Binding StanceBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding HasStance}" ToolTip.Tip="{Binding StanceTip}">
+                              <TextBlock Text="{Binding Stance}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                            <Border Background="{Binding InterestBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding InterestTip}">
+                              <TextBlock Text="{Binding InterestChip}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                            <Border Background="#2A3440" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding HasClause}" ToolTip.Tip="A release clause can't be refused">
+                              <TextBlock Text="{Binding ClauseChip}" FontSize="11"/>
+                            </Border>
+                            <Border Background="#2E8B57" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding Agreed}">
+                              <TextBlock Text="Fee agreed" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                          </WrapPanel>
+                          <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Text="{Binding FeeLine}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ContractLine}" ToolTip.Tip="His contract: wage a season × years left" Classes="muted" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="8,0,0,0"/>
+                          </Grid>
+                        </StackPanel>
+                      </Border>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+          <DockPanel IsVisible="{Binding ShowMarketTable}">
           <c:ColumnPicker DockPanel.Dock="Top" Key="market" Target="{Binding #MarketGrid}"
                           Presets="Scouting=Pos,Age,CA,PA,Club,Contract|The deal=Pos,Age,CA,Joins?,Club stance,Likely fee,Contract,Clause"/>
           <DataGrid x:Name="MarketGrid" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
@@ -33,8 +104,25 @@
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="40"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="40"/>
               <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="40"/>
-              <DataGridTextColumn Header="Joins?" Binding="{Binding Interest}" Width="102"/>
-              <DataGridTextColumn Header="Club stance" Binding="{Binding Stance}" Width="118"/>
+              <DataGridTemplateColumn Header="Joins?" Width="102">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MarketRow">
+                    <Border Background="{Binding InterestBrush}" CornerRadius="4" Padding="6,0" Margin="4,0" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="{Binding InterestTip}">
+                      <TextBlock Text="{Binding Interest}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <!-- Run 65: the club's stance as a coloured chip, not a word repeated down the column. -->
+              <DataGridTemplateColumn Header="Club stance" Width="118">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MarketRow">
+                    <Border Background="{Binding StanceBrush}" CornerRadius="4" Padding="6,0" Margin="4,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding HasStance}" ToolTip.Tip="{Binding StanceTip}">
+                      <TextBlock Text="{Binding Stance}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTextColumn Header="Likely fee" Binding="{Binding Ask}" Width="120"/>
               <DataGridTextColumn Header="Club" Binding="{Binding ClubName}" Width="190"/>
               <DataGridTextColumn Header="Contract" Binding="{Binding Contract}" Width="108"/>
@@ -43,6 +131,7 @@
             </DataGrid.Columns>
           </DataGrid>
           </DockPanel>
+          </Panel>
           <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
             <StackPanel Spacing="10">
               <Border Classes="panel">
