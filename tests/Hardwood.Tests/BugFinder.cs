@@ -111,11 +111,14 @@ internal sealed class BugFinder
             _vm.Navigate("Schedule & Results");
             if (_vm.CurrentPage is not ScheduleViewModel sched) { Add("dead end", "Schedule & Results", "the sidebar's link didn't open the schedule", true); return; }
             // A played game whose row has no box score is a lost-data finding, not a missing Back (run 55: bug #18 was #19).
+            // H8 (run 65): a game from before you took the job keeps only its score, as the row says; any other is lost data.
+            if (sched.Games.FirstOrDefault(g => g.Played && !g.HasBox && !g.BeforeYouArrived) is { } lost && sched.Games.Any(g => g.HasBox))
+                Add("lost data", "Schedule & Results", $"the played game on {lost.Game.Date:MMM d} has a score but no box score, though other games have one ({S.HumanTeam.FullName})");
             var played = sched.Games.FirstOrDefault(g => g.Played && g.HasBox);
             if (played == null)
             {
-                if (sched.Games.FirstOrDefault(g => g.Played) is { } bare)
-                    Add("lost data", "Schedule & Results", $"the played game on {bare.Game.Date:MMM d} has a score but no box score");
+                if (sched.Games.FirstOrDefault(g => g.Played && !g.BeforeYouArrived) is { } bare)
+                    Add("lost data", "Schedule & Results", $"the played game on {bare.Game.Date:MMM d} has a score but no box score ({S.HumanTeam.FullName}, {S.HumanLeagueName}; {(S.Employed ? "employed" : "out of work")}; stored boxes: {S.AbroadResults.Count} below the NBA, {S.CollegeResults.Count} college)");
                 return;
             }
             sched.OpenBox(played);
