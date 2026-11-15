@@ -203,7 +203,14 @@ public sealed partial class CollegeViewModel : PageViewModel
     [ObservableProperty] private decimal _offerYears = 3;
     [ObservableProperty] private bool _listedOnly;
     public bool HasRecruit => SelectedRecruit != null;
-    partial void OnSelectedRecruitChanged(RecruitRow? value) { OnPropertyChanged(nameof(HasRecruit)); RecruitReply = ""; FillRecruitPanel(); }
+    // Bug list #13: the panel binds to these, not SelectedRecruit.X, so no selection logs no binding errors.
+    public string RecruitName => SelectedRecruit?.Name ?? "";
+    public string RecruitProgram => SelectedRecruit?.Program ?? "";
+    partial void OnSelectedRecruitChanged(RecruitRow? value)
+    {
+        OnPropertyChanged(nameof(HasRecruit)); OnPropertyChanged(nameof(RecruitName)); OnPropertyChanged(nameof(RecruitProgram));
+        RecruitReply = ""; FillRecruitPanel();
+    }
     partial void OnListedOnlyChanged(bool value) => FillRecruits();
     [ObservableProperty] private int _tab;
 

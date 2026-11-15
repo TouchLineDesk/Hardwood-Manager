@@ -110,8 +110,20 @@ public sealed partial class TacticsViewModel : PageViewModel
 
     public ObservableCollection<SystemOption> Systems { get; } = new();
     public ObservableCollection<SystemOption> Schemes { get; } = new();
-    [ObservableProperty] private SystemOption? _selectedSystem;
-    [ObservableProperty] private SystemOption? _selectedScheme;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SystemDescription), nameof(SystemReasons), nameof(HasSystemReasons))]
+    private SystemOption? _selectedSystem;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SchemeDescription), nameof(SchemeReasons), nameof(HasSchemeReasons))]
+    private SystemOption? _selectedScheme;
+    // Bug list #13: the panels bind to these, never to SelectedSystem.X, so a cleared selection (the lists are rebuilt
+    // on every refresh) shows a hint instead of logging a binding error.
+    public string SystemDescription => SelectedSystem?.Description ?? "Pick an offensive system above.";
+    public IReadOnlyList<string> SystemReasons => SelectedSystem?.Reasons ?? Array.Empty<string>();
+    public bool HasSystemReasons => SystemReasons.Count > 0;
+    public string SchemeDescription => SelectedScheme?.Description ?? "Pick a defensive scheme above.";
+    public IReadOnlyList<string> SchemeReasons => SelectedScheme?.Reasons ?? Array.Empty<string>();
+    public bool HasSchemeReasons => SchemeReasons.Count > 0;
     partial void OnSelectedSystemChanged(SystemOption? value) { if (!_loading && value?.System is { } s) { Tac.System = s; Changed(); } }
     partial void OnSelectedSchemeChanged(SystemOption? value) { if (!_loading && value?.Scheme is { } d) { Tac.Scheme = d; Changed(); } }
 
@@ -339,34 +351,50 @@ public sealed partial class TacticsViewModel : PageViewModel
         Session.SaveNow();
     }
 
+    /// <summary>What the assistant's buttons set, as one string to compare before and after (bug list H2).</summary>
+    private string PlanKey(bool roles)
+    {
+        var t = Tac;
+        string key = $"{t.System}|{t.Scheme}|{t.StarStopperId}|{t.DoubleStar}|{t.Auto}";
+        if (roles) key += "|" + string.Join(",", Session.HumanTeam.Roster.OrderBy(p => p.Id).Select(p => $"{p.Id}:{t.RoleOf(p)}"));
+        return key;
+    }
+
     [RelayCommand]
     public void AssistantSetup()
     {
         var presets = Tac.Presets; var late = Tac.LateGamePreset;
+        string before = PlanKey(true);
         CoachAi.AssistantSetup(Session.HumanTeam);
         Tac.Presets = presets; Tac.LateGamePreset = late;
+        bool same = PlanKey(true) == before;
         Session.SaveNow();
         Refresh();
-        Status = "Your assistant picked the system and scheme that suit the roster and put everyone in his best role.";
+        // Bug list H2: say so when nothing changed.
+        Status = same ? "Already the assistant's set-up: the system, scheme and roles were his picks. Nothing changed."
+            : "Your assistant picked the system and scheme that suit the roster and put everyone in his best role.";
     }
 
     [RelayCommand]
     public void UseSuggestion()
     {
         var next = Session.NextMyGame;
-        if (next == null) return;
+        // H2 (the run 62 finder, start of the playoffs): with no game scheduled yet, say so instead of nothing.
+        if (next == null) { Status = "No game on your schedule yet, so there's no opponent to plan for. Try again once your next game is set."; return; }
         var team = Session.HumanTeam;
         var opp = next.Opponent;
         var rot = CoachAi.Rotation(team, next.Date);
         var (theirSystem, theirScheme) = CoachAi.TheirPlan(opp, team, next.Date);
+        string before = PlanKey(false);
         Tac.System = CoachAi.BestSystem(rot, theirScheme);
         Tac.Scheme = CoachAi.BestScheme(rot, theirSystem);
         var (star, dbl) = CoachAi.TheirStar(opp, next.Date);
         Tac.StarStopperId = star != null ? CoachAi.Stopper(rot)?.Id : null;
         Tac.DoubleStar = dbl;
+        bool same = PlanKey(false) == before;
         Session.SaveNow();
         Refresh();
-        Status = $"Game plan set for {opp.Name}.";
+        Status = same ? $"Already the assistant's game plan for {opp.Name}. Nothing changed." : $"Game plan set for {opp.Name}.";
     }
 
     [RelayCommand]

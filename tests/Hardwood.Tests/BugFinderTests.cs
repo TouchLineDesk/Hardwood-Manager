@@ -148,6 +148,21 @@ public class BugFinderTests
     private static Avalonia.Controls.Button? Find(MainWindow w, string startsWith) =>
         w.GetVisualDescendants().OfType<Avalonia.Controls.Button>().FirstOrDefault(b => b.IsEffectivelyVisible && b.IsEffectivelyEnabled && BugFinder.Label(b).StartsWith(startsWith, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Selects the live page's tab with this header; returns its TabControl (null if there's no such tab).</summary>
+    private static Avalonia.Controls.TabControl? OpenTab(MainWindow w, string header)
+    {
+        foreach (var tc in w.GetVisualDescendants().OfType<Avalonia.Controls.TabControl>().Where(t => t.IsEffectivelyVisible))
+        {
+            var items = tc.Items.OfType<Avalonia.Controls.TabItem>().ToList();
+            int i = items.FindIndex(t => t.Header as string == header);
+            if (i < 0) continue;
+            tc.SelectedIndex = i;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            return tc;
+        }
+        return null;
+    }
+
     private static void Click(Avalonia.Controls.Button b) =>
         typeof(Avalonia.Controls.Button).GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(b, null);
 
@@ -175,7 +190,13 @@ public class BugFinderTests
         live.Refresh();
         foreach (var label in new[] { "Game flow", "On the floor", "Double their best scorer", "Stop at breaks", "Apply lineup" })
         {
+            // Bug list H4: the double-team box lives on the live game's Tactics tab, so open that tab first and go
+            // back to the first tab after.
+            var tabs = label == "Double their best scorer" ? OpenTab(window, "Tactics") : null;
             var b = Find(window, label);
+            if (tabs != null) { if (b != null) { try { Click(b); bf.Settle(); } catch (Exception ex) { bf.Add("crash", "Live game", $"\"{label}\": {(ex.InnerException ?? ex).Message}", true); } }
+                else bf.Add("dead end", "Live game", $"no \"{label}\" box on the live game's Tactics tab");
+                tabs.SelectedIndex = 0; bf.Settle(); continue; }
             if (b == null) { bf.Add("dead end", "Live game", $"no \"{label}\" button mid-game"); continue; }
             try { Click(b); bf.Settle(); } catch (Exception ex) { bf.Add("crash", "Live game", $"\"{label}\": {(ex.InnerException ?? ex).Message}", true); }
         }

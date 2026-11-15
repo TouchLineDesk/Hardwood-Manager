@@ -255,8 +255,8 @@
                 <TextBlock Text="Pick a senior to court him." Classes="muted" IsVisible="{Binding !HasRecruit}" TextWrapping="Wrap"/>
                 <Border Classes="panel" IsVisible="{Binding HasRecruit}">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding SelectedRecruit.Name}" Classes="h2" Margin="0"/>
-                    <TextBlock Text="{Binding SelectedRecruit.Program}" Classes="muted" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding RecruitName}" Classes="h2" Margin="0"/>
+                    <TextBlock Text="{Binding RecruitProgram}" Classes="muted" TextWrapping="Wrap"/>
                     <c:StatStrip ItemsSource="{Binding InterestChips}" Accent="{DynamicResource HwAccent}"/>
                     <TextBlock Text="{Binding RecruitLean}" TextWrapping="Wrap" FontWeight="SemiBold"/>
                     <WrapPanel>
@@ -324,7 +324,7 @@
                 <TextBlock Text="Pick a prospect to recruit him." Classes="muted" IsVisible="{Binding !HasTrail}" TextWrapping="Wrap"/>
                 <Border Classes="panel" IsVisible="{Binding HasTrail}">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding SelectedTrail.Name}" Classes="h2" Margin="0"/>
+                    <TextBlock Text="{Binding TrailName}" Classes="h2" Margin="0"/>
                     <TextBlock Text="{Binding TrailHeader}" Classes="muted" TextWrapping="Wrap"/>
                     <c:StatStrip ItemsSource="{Binding ProspectChips}" Accent="{DynamicResource HwAccent}"/>
                     <TextBlock Text="{Binding TrailConsidering}" TextWrapping="Wrap" FontWeight="SemiBold"/>

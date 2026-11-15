@@ -18,8 +18,8 @@ public sealed partial class GuideTaskRow : ObservableObject
 }
 
 /// <summary>
-/// The assistant panel (decisions #115-118): a slim panel on the right of every page with what to do next, a tip for
-/// the page you're on, and strategy. Toggled from the top bar or Settings; collapses to a thin strip.
+/// The assistant panel (decisions #115-118): a slim panel on the right of every page with what to do next as task
+/// cards; the page's tip and strategy sit behind a Tips button (D63 A). Toggled from the top bar or Settings; collapses to a thin strip.
 /// </summary>
 public sealed partial class GuideViewModel : ObservableObject
 {
@@ -44,9 +44,21 @@ public sealed partial class GuideViewModel : ObservableObject
     [ObservableProperty] private string _stageText = "";
     [ObservableProperty] private string _pageTitle = "";
     [ObservableProperty] private string _pageTip = "";
-    /// <summary>Roadmap 4: a page's tip shows the first time you open the page; after that it's one click away.</summary>
-    [ObservableProperty] private bool _showPageTip = true;
-    [RelayCommand] private void RevealPageTip() => ShowPageTip = true;
+    /// <summary>
+    /// D63 A (#634): the panel shows only its task cards (and the last game's card). The page's tip and the strategy
+    /// list sit behind one Tips button, closed by default; it stays as you left it while you move between pages.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TipsButtonText), nameof(ShowPageTip), nameof(ShowStrategy))]
+    private bool _tipsOpen;
+    [RelayCommand] private void ToggleTips() => TipsOpen = !TipsOpen;
+    public bool ShowPageTip => TipsOpen && PageTip.Length > 0;
+    public bool ShowStrategy => TipsOpen && HasStrategy;
+    public bool HasTips => PageTip.Length > 0 || HasStrategy;
+    public string TipsButtonText => TipsOpen ? "Hide tips" : TipCount == 1 ? "Tips (1)" : $"Tips ({TipCount})";
+    private int TipCount => (PageTip.Length > 0 ? 1 : 0) + Strategy.Count;
+    /// <summary>No task cards: say so, so the panel never looks empty or broken.</summary>
+    [ObservableProperty] private bool _noTasks;
     [ObservableProperty] private bool _hasStrategy;
     [ObservableProperty] private string _level;
     public ObservableCollection<GuideTaskRow> Tasks { get; } = new();
@@ -109,9 +121,7 @@ public sealed partial class GuideViewModel : ObservableObject
         _page = page;
         _wide = WidePages.Contains(page); _openedHere = false;
         Notify();
-        bool first = Settings.GuideProgress.PagesSeen.Add(page);
-        ShowPageTip = first;
-        if (first) Settings.Save();
+        if (Settings.GuideProgress.PagesSeen.Add(page)) Settings.Save();
         Refresh();
     }
 
@@ -153,6 +163,9 @@ public sealed partial class GuideViewModel : ObservableObject
         foreach (var tip in advice.Strategy.Take(4)) Strategy.Add(tip);
 
         HasStrategy = Strategy.Count > 0;
+        NoTasks = Tasks.Count == 0;
+        OnPropertyChanged(nameof(ShowPageTip)); OnPropertyChanged(nameof(ShowStrategy));
+        OnPropertyChanged(nameof(HasTips)); OnPropertyChanged(nameof(TipsButtonText));
     }
 
     private void Go(GuideTask t)

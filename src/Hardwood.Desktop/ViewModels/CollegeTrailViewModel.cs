@@ -41,11 +41,13 @@ public sealed partial class CollegeViewModel
     [ObservableProperty] private string _trailReply = "";
     [ObservableProperty] private bool _assistantRecruits;
     public bool HasTrail => SelectedTrail != null;
+    /// <summary>Bug list #13: bound instead of SelectedTrail.Name.</summary>
+    public string TrailName => SelectedTrail?.Name ?? "";
     private bool _trailLoading;
 
     partial void OnTrailViewChanged(string value) => FillTrail();
     partial void OnTrailClassChanged(string value) => FillTrail();
-    partial void OnSelectedTrailChanged(TrailRow? value) { OnPropertyChanged(nameof(HasTrail)); TrailReply = ""; FillTrailPanel(); }
+    partial void OnSelectedTrailChanged(TrailRow? value) { OnPropertyChanged(nameof(HasTrail)); OnPropertyChanged(nameof(TrailName)); TrailReply = ""; FillTrailPanel(); }
     partial void OnAssistantRecruitsChanged(bool value) { if (_trailLoading) return; Session.Delegated.Recruiting = value; Session.SaveNow(); FillTrail(); }
 
     private int TrailYear => int.TryParse(TrailClass.Replace("Class of ", "").Split(' ')[0], out var y) ? y : 0;
