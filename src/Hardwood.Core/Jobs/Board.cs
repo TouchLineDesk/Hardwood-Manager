@@ -49,6 +49,15 @@ public sealed class Vacancy
     /// <summary>open · applied · offered · rejected · filled</summary>
     public string Status { get; set; } = "open";
     public DateOnly? DecideOn { get; set; }
+    /// <summary>
+    /// The career path (run 61, #651): true when the job opened while you were in work, as a step up from your club. Such
+    /// openings close when the new season starts; older saves load without it (false).
+    /// </summary>
+    public bool WhileEmployed { get; set; }
+    /// <summary>The coach the club hires if you don't take the job (drawn when it opened; empty in older saves).</summary>
+    public string NextCoach { get; set; } = "";
+    /// <summary>True when the club came to you (an approach after a strong season), not after an application.</summary>
+    public bool Approach { get; set; }
 }
 
 /// <summary>Your job (decisions #71-74): employed or not, the board's confidence, this season's expectations, open jobs.</summary>

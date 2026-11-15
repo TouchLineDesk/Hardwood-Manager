@@ -111,11 +111,11 @@
           </StackPanel>
         </Border>
 
-        <!-- Out of work: jobs -->
-        <Border Classes="panel" IsVisible="{Binding !Employed}">
+        <!-- Jobs: out of work, or bigger jobs and offers while in work (run 61, #651) -->
+        <Border Classes="panel" IsVisible="{Binding ShowJobs}">
           <StackPanel Spacing="8">
-            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Newspaper" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Out of work: open jobs" Classes="h2" Margin="0"/></StackPanel>
-            <TextBlock Text="Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team." Classes="muted" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Newspaper" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding JobsTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Text="{Binding JobsNote}" Classes="muted" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding Status}" Classes="accent"/>
             <ItemsControl ItemsSource="{Binding Vacancies}">
               <ItemsControl.ItemTemplate>
@@ -167,6 +167,15 @@
             </ItemsControl>
             <TextBlock Text="Job history" FontWeight="SemiBold" Margin="0,8,0,0"/>
             <TextBlock Text="{Binding JobHistory}" Classes="muted" TextWrapping="Wrap"/>
+            <!-- The career path (run 61, #651): resign, with one confirm -->
+            <StackPanel Spacing="6" Margin="0,8,0,0" IsVisible="{Binding Employed}">
+              <TextBlock Text="{Binding ResignNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="Resign" Command="{Binding ResignCommand}" IsVisible="{Binding !ConfirmingResign}" ToolTip.Tip="Leave your job and look for work (asks first)"/>
+                <Button Classes="primary" Content="Yes, resign" Command="{Binding ResignCommand}" IsVisible="{Binding ConfirmingResign}"/>
+                <Button Content="Stay" Command="{Binding CancelResignCommand}" IsVisible="{Binding ConfirmingResign}"/>
+              </StackPanel>
+            </StackPanel>
           </StackPanel>
         </Border>
       </StackPanel>

@@ -120,6 +120,31 @@ public sealed partial class BoardViewModel : PageViewModel
     }
     [ObservableProperty] private string _status = "";
 
+    // The career path (run 61, #651): jobs and offers while in work, and resigning.
+    [ObservableProperty] private bool _hasVacancies;
+    [ObservableProperty] private string _jobsTitle = "Out of work: open jobs";
+    [ObservableProperty] private string _jobsNote = "";
+    /// <summary>The jobs panel shows when you're out of work, or when there's an opening or offer for you.</summary>
+    [ObservableProperty] private bool _showJobs;
+    /// <summary>Resign asks once before it acts.</summary>
+    [ObservableProperty] private bool _confirmingResign;
+    [ObservableProperty] private string _resignNote = "";
+
+    [RelayCommand]
+    private void Resign()
+    {
+        if (!Session.Employed) return;
+        if (!ConfirmingResign) { ConfirmingResign = true; return; }
+        ConfirmingResign = false;
+        Status = Session.Resign() ?? "You have resigned. Open jobs are listed below.";
+        ThemeService.Apply(Session.HumanTeam);
+        Shell.AfterTick();
+        Refresh();
+    }
+
+    [RelayCommand]
+    private void CancelResign() => ConfirmingResign = false;
+
     public static (string label, string colour) Mood(double c) => c switch
     {
         >= 70 => ("Secure", "#3FB950"),
@@ -191,25 +216,46 @@ public sealed partial class BoardViewModel : PageViewModel
             string.Join("\n", coach.History.Select(h => $"{h.TeamName}, {h.FromSeason}-{h.ToSeason}: {h.Ended.ToLower()} ({h.Wins}-{h.Losses} in the last season)"));
 
         Vacancies.Clear();
-        foreach (var v in job.Vacancies.Where(v => v.Status is "open" or "applied" or "offered"))
+        bool summer = s.Phase == Hardwood.Core.Season.SessionPhase.Offseason;
+        foreach (var v in s.LiveVacancies.Where(v => !s.Employed || v.WhileEmployed))
         {
             var t = s.FindTeam(v.TeamId)!;
             var vctx = s.ContextOf(t);
             double chance = Board.HireChance(coach, vctx, t);
-            var vrec = s.League.Teams.Contains(t) ? s.Standings[t] : s.World.LeagueOf(t) is { } lc ? s.TableOf(lc)[t] : new Hardwood.Core.Season.TeamRecord { Team = t };
+            var vrec = s.League.Teams.Contains(t) ? s.Standings[t] : s.World.LeagueOf(t) is { } lc ? s.TableOf(lc)[t]
+                : s.IsCollegeProgram(t) ? s.CollegeRecord(t) : new Hardwood.Core.Season.TeamRecord { Team = t };
             int id = v.TeamId;
             Vacancies.Add(new VacancyRow
             {
                 Team = t,
                 Detail = $"{vctx.Name} · owner: {t.Owner.Name} ({t.Owner.Style.ToLower()}) · {vrec.Wins}-{vrec.Losses} · " + (chance >= 0.6 ? "good chance" : chance >= 0.3 ? "worth a try" : "long shot"),
-                Status = v.Status switch { "applied" => $"Applied · decision by {v.DecideOn:MMM d}", "offered" => $"Offer! Answer by {v.DecideOn:MMM d}", _ => $"Open since {v.Opened:MMM d}" },
+                Status = v.Status switch
+                {
+                    "applied" => summer && s.Employed ? "Applied · they answer at the next step of the summer" : $"Applied · decision by {v.DecideOn:MMM d}",
+                    "offered" => (v.Approach ? "They came to you! " : "Offer! ") + (summer && s.Employed ? "Answer before the season starts" : $"Answer by {v.DecideOn:MMM d}"),
+                    _ => $"Open since {v.Opened:MMM d}",
+                },
                 CanApply = v.Status == "open", HasOffer = v.Status == "offered",
                 Apply = new RelayCommand(() => { Status = Session.Apply(id) ?? "Application sent."; Refresh(); Shell.AfterTick(); }),
                 Accept = new RelayCommand(() => { Status = Session.AcceptOffer(id) ?? "You have a new job."; ThemeService.Apply(Session.HumanTeam); Shell.AfterTick(); Refresh(); }),
                 Decline = new RelayCommand(() => { Session.DeclineOffer(id); Status = "Offer declined."; Refresh(); }),
             });
         }
+        HasVacancies = Vacancies.Count > 0;
+        ShowJobs = !s.Employed || HasVacancies;
+        JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
+        JobsNote = s.Employed
+            ? $"These clubs changed coach and would be a step up from the {s.HumanTeam.FullName}. Apply without leaving your job; if an offer comes and you accept it, you move at once and your history goes with you. Openings close when the new season starts."
+            : "Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team."
+              + (s.World.College != null ? " College programs post theirs at the end of the season." : "");
+        ResignNote = !s.Employed ? "" : ConfirmingResign
+            ? $"Resign as head coach of the {s.HumanTeam.FullName}? You'll be out of work (reputation −2) and can apply for open jobs."
+            : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work.";
     }
+
+    partial void OnConfirmingResignChanged(bool value) { if (Session.Employed) ResignNote = value
+        ? $"Resign as head coach of the {Session.HumanTeam.FullName}? You'll be out of work (reputation −2) and can apply for open jobs."
+        : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work."; }
 
     private void RefreshFacilities()
     {
