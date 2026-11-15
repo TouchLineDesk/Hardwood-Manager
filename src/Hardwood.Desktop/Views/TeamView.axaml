@@ -35,7 +35,9 @@
             <Button Content="Open player" Command="{Binding OpenPlayerCommand}" IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True"/>
             <TextBlock Text="Ability ranges are what your scouts believe. Click a name to open the player." Classes="muted" VerticalAlignment="Center"/>
           </StackPanel>
-          <DataGrid ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" RowHeight="28">
+          <c:ColumnPicker DockPanel.Dock="Top" Key="team-roster" Target="{Binding #TeamRosterGrid}"
+                          Presets="Scouting=Pos,Age,Nat,CA,PA|Stats=Pos,G,PPG,RPG,APG|Contracts=Pos,Age,CA,Contract"/>
+          <DataGrid x:Name="TeamRosterGrid" ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" RowHeight="28">
             <DataGrid.Columns>
               <DataGridTemplateColumn Header="Player" Width="170">
                 <DataGridTemplateColumn.CellTemplate>
