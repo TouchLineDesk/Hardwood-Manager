@@ -232,6 +232,8 @@ public sealed class GameSimulator
         private readonly EngineConfig _cfg;
         private readonly GameResult _result;
         private readonly bool _log;
+        /// <summary>The commentary (#614): null when the game keeps no log, so a quick game builds no strings at all.</summary>
+        private readonly PlayByPlay? _pbp;
         private readonly List<int> _homeByPeriod = new(), _awayByPeriod = new();
 
         private int _period;
@@ -243,6 +245,7 @@ public sealed class GameSimulator
         public GameState(Side home, Side away, Rules rules, Rng rng, EngineConfig cfg, GameResult result, bool log)
         {
             _home = home; _away = away; _rules = rules; _rng = rng; _cfg = cfg; _result = result; _log = log;
+            if (log) _pbp = new PlayByPlay(result, rules);
             _offense = home; _defense = away;
             result.Periods = rules.Periods; result.PeriodSeconds = rules.MinutesPerPeriod * 60; result.OvertimeSeconds = cfg.OvertimeMinutes * 60;
             if (log)
@@ -289,52 +292,6 @@ public sealed class GameSimulator
         }
 
         private Player? _lastScorer;
-        private Player? _lastAssister;
-        /// <summary>Points scored by each player in the period being played (for the commentary's period recap).</summary>
-        private readonly Dictionary<Player, int> _periodPoints = new();
-
-        private static readonly string[] Threes = { "buries a three", "knocks down the three", "drills it from deep", "hits from downtown", "splashes the triple" };
-        private static readonly string[] Rims = { "finishes at the rim", "lays it in", "attacks the basket and scores", "gets to the rim for two", "finishes inside" };
-        private static readonly string[] Jumpers = { "hits the jumper", "pulls up and connects", "knocks down the mid-range J", "rises and hits", "sinks the jumper" };
-
-        /// <summary>
-        /// Broadcast-style call for a made basket (match day part 3): varied phrasing, the assist, and one piece of context:
-        /// a lead change or tie late on, a scoring milestone for the night, or a hot hand from three. Phrasing is chosen from the
-        /// log position, not the random stream, so commentary never changes a result.
-        /// </summary>
-        private string Call(Side off, Side def, Player shooter, ShotZone zone, bool andOne)
-        {
-            var line = off.Line(shooter);
-            int pts = zone.IsThree() ? 3 : 2;
-            _periodPoints[shooter] = _periodPoints.GetValueOrDefault(shooter) + pts;
-            int pick = _result.PlayLog.Count;
-            string verb = zone.IsThree() ? Threes[pick % Threes.Length] : zone == ShotZone.Rim ? Rims[pick % Rims.Length] : Jumpers[pick % Jumpers.Length];
-            string call = $"{shooter.LastName} {verb}" + (andOne ? ", and the foul! And one" : "") + (_lastAssister is { } a ? $" (assist {a.LastName})" : "");
-            int us = Score(off), them = Score(def), before = us - pts;
-            bool late = _period >= _rules.Periods && _clock <= 120;
-            string? context =
-                late && before < them && us > them ? $"{off.Team.Abbreviation} take the lead, {us}-{them}!" :
-                late && us == them ? $"All square at {us}!" :
-                before < them && us > them ? $"{off.Team.Abbreviation} back in front, {us}-{them}." :
-                line.Points - pts < 30 && line.Points >= 30 ? $"That's 30 for {shooter.LastName} tonight." :
-                line.Points - pts < 20 && line.Points >= 20 ? $"{shooter.LastName} has 20." :
-                zone.IsThree() && line.ThreePM >= 4 ? $"His {Ordinal(line.ThreePM)} three of the night." :
-                null;
-            return context == null ? call : $"{call}. {context}";
-        }
-
-        private static string Ordinal(int n) => n switch { 1 => "1st", 2 => "2nd", 3 => "3rd", _ => $"{n}th" };
-
-        /// <summary>The recap line at the end of a period: who won it, by how much, and the period's top scorer.</summary>
-        private string PeriodRecap()
-        {
-            int h = Score(_home) - _periodHomeStart, a = Score(_away) - _periodAwayStart;
-            string name = _period <= _rules.Periods ? (_rules.Periods == 2 ? $"The {(_period == 1 ? "first" : "second")} half" : $"The {Ordinal(_period)} quarter") : "Overtime";
-            string who = h == a ? $"{name} is even, {h}-{a}" : h > a ? $"{name} goes to {_home.Team.Abbreviation}, {h}-{a}" : $"{name} goes to {_away.Team.Abbreviation}, {a}-{h}";
-            var top = _periodPoints.OrderByDescending(kv => kv.Value).FirstOrDefault();
-            return top.Key == null ? $"{who}." : $"{who}. {top.Key.LastName} led the way with {top.Value} in the period.";
-        }
-
         private void RecordFlow()
         {
             _result.Elapsed = _elapsed; _result.CurrentPeriod = _period;
@@ -370,9 +327,8 @@ public sealed class GameSimulator
             _awayByPeriod.Add(Score(_away) - _periodAwayStart);
             _home.Box.PointsByPeriod = _homeByPeriod.ToArray();
             _away.Box.PointsByPeriod = _awayByPeriod.ToArray();
-            Log($"End of period {_period}: {_away.Team.Abbreviation} {Score(_away)} - {_home.Team.Abbreviation} {Score(_home)}");
-            if (_log) Log(PeriodRecap());
-            _periodPoints.Clear();
+            _pbp?.PeriodEnd(_period, _clock, _home.Team.Abbreviation, _away.Team.Abbreviation, Score(_home), Score(_away),
+                            Score(_home) - _periodHomeStart, Score(_away) - _periodAwayStart);
             _periodOpen = false;
 
             bool regulationDone = _period >= _rules.Periods;
@@ -777,9 +733,9 @@ public sealed class GameSimulator
                 CommitFoul(def, defender);
                 if (made)
                 {
-                    RecordFieldGoal(off, shooter, zone, made: true, transition);
+                    var assister = RecordFieldGoal(off, shooter, zone, made: true, transition);
                     line.AndOnes++;
-                    if (_log) Log(Call(off, def, shooter, zone, andOne: true));
+                    _pbp?.MadeBasket(_period, _clock, off.Team.Abbreviation, Score(off), Score(def), line, shooter, assister, zone, andOne: true);
                     ShootFreeThrows(off, def, shooter, 1);
                 }
                 else
@@ -789,10 +745,10 @@ public sealed class GameSimulator
                 return false;
             }
 
-            RecordFieldGoal(off, shooter, zone, made, transition);
+            var assist = RecordFieldGoal(off, shooter, zone, made, transition);
             if (made)
             {
-                if (_log) Log(Call(off, def, shooter, zone, andOne: false));
+                _pbp?.MadeBasket(_period, _clock, off.Team.Abbreviation, Score(off), Score(def), line, shooter, assist, zone, andOne: false);
                 return false;
             }
 
@@ -800,18 +756,18 @@ public sealed class GameSimulator
             return Rebound(off, def, zone, ref chanceIndex);
         }
 
-        private void RecordFieldGoal(Side off, Player shooter, ShotZone zone, bool made, bool transition)
+        /// <summary>Record a field-goal attempt in the box score. Returns the assister of a made, assisted basket (else null).</summary>
+        private Player? RecordFieldGoal(Side off, Player shooter, ShotZone zone, bool made, bool transition)
         {
             var line = off.Line(shooter);
             line.FGA++;
             line.ZoneAttempts[(int)zone]++;
             if (zone.IsThree()) line.ThreePA++;
-            if (!made) return;
+            if (!made) return null;
 
             line.FGM++;
             line.ZoneMakes[(int)zone]++;
             _lastScorer = shooter;
-            _lastAssister = null;
             int pts = zone.IsThree() ? 3 : 2;
             line.Points += pts;
             if (zone.IsThree()) line.ThreePM++;
@@ -824,9 +780,10 @@ public sealed class GameSimulator
                 var w = others.Select(p => Math.Pow(p.Attributes[Attr.Passing] * 0.6 + p.Attributes[Attr.CourtVision] * 0.4, 2.2) * (0.6 + p.Tendencies.PassFirst / 100.0)
                                              * Roles.Info(off.Tac.RoleOf(p)).Playmaking).ToArray();
                 var passer = others[_rng.WeightedIndex(w)];
-                _lastAssister = passer;
                 off.Line(passer).Assists++;
+                return passer;
             }
+            return null;
         }
 
         private bool Rebound(Side off, Side def, ShotZone zone, ref int chanceIndex)
@@ -869,7 +826,7 @@ public sealed class GameSimulator
             for (int i = 0; i < count; i++)
             {
                 line.FTA++;
-                if (_rng.Chance(p)) { line.FTM++; line.Points++; _lastScorer = line.Player; if (_log) _periodPoints[line.Player] = _periodPoints.GetValueOrDefault(line.Player) + 1; }
+                if (_rng.Chance(p)) { line.FTM++; line.Points++; _lastScorer = line.Player; _pbp?.FreeThrow(line.Player); }
                 else if (i == count - 1)
                 {
                     // Missed last free throw: live rebound.
@@ -1017,12 +974,6 @@ public sealed class GameSimulator
             return Math.Abs((int)sub.PrimaryPosition - (int)outgoing.PrimaryPosition) <= 1 ? 1 : 0;
         }
 
-        private void Log(string s)
-        {
-            if (!_log) return;
-            int m = (int)(_clock / 60), sec = (int)(_clock % 60);
-            string p = _period > _rules.Periods ? $"OT{_period - _rules.Periods}" : $"{(_rules.Periods == 2 ? "H" : "Q")}{_period}";
-            _result.PlayLog.Add($"{p} {m:00}:{sec:00}  {s}");
-        }
+        private void Log(string s) => _pbp?.Line(_period, _clock, s);
     }
 }
