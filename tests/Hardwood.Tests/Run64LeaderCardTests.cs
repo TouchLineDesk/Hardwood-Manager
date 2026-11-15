@@ -61,7 +61,7 @@ public class Run64LeaderCardTests
                 Assert.Equal(Enumerable.Range(1, LeaderCards.PerCard), card.Entries.Select(e => e.Rank));
                 Assert.Equal(LeaderCards.PerCard - 1, card.Rest.Count);
                 Assert.NotNull(card.TopPlayer); Assert.NotNull(card.TopTeam);
-                var values = card.Entries.Select(e => double.Parse(e.Value.TrimEnd('%'), System.Globalization.CultureInfo.InvariantCulture)).ToList();
+                var values = card.Entries.Select(e => double.Parse(e.Value.TrimEnd('%'), System.Globalization.CultureInfo.CurrentCulture)).ToList();
                 Assert.Equal(values.OrderByDescending(v => v), values);
             }
             // The points card's leader is the table's number one.

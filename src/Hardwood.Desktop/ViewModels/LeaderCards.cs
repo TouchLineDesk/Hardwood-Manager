@@ -59,6 +59,7 @@ public static class LeaderCards
 
     /// <summary>A shooting value for a card: 0.523 → "52.3%".</summary>
     public static string Pct(double v) => $"{v * 100:0.0}%";
-    public static string PerGame(double v) => v.ToString("0.0");
+    /// <summary>Rounded as the table rounds (Math.Round, halves to even), so a card and the table never differ by 0.1.</summary>
+    public static string PerGame(double v) => Math.Round(v, 1).ToString("0.0");
     public static bool IsPct(string category) => category is "FG%" or "3P%";
 }
