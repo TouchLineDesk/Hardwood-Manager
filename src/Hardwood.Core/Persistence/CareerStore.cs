@@ -83,7 +83,22 @@ public static class CareerStore
                 players.TryAdd(p.Id, p);
             s.CollegeResults.Clear(); s.AbroadResults.Clear();
             foreach (var box in sides)
-                if (box.ToResult(byId, players) is { } r) (box.Kind == "college" ? s.CollegeResults : s.AbroadResults)[box.Key] = r;
+            {
+                // v0.79.3 keyed a game below the NBA by competition and fixture number only ("usa5:12"), which repeats
+                // every season (run 56). Such a box is re-keyed only if it is this season's game with the same clubs
+                // and score; otherwise it may belong to an earlier season, and is dropped rather than shown for the wrong game.
+                string key = box.Key;
+                if (box.Kind == "abroad" && key.Split(':').Length == 2)
+                {
+                    var hit = s.World.FixturesOf(box.HomeId).FirstOrDefault(x => $"{x.comp.Key}:{x.fixture.Index}" == key
+                        && x.fixture.HomeId == box.HomeId && x.fixture.AwayId == box.AwayId
+                        && x.fixture.HomePts == box.HomePts && x.fixture.AwayPts == box.AwayPts);
+                    if (hit.fixture == null) continue;
+                    key = GameSession.AbroadKey(hit.comp.Key, hit.fixture);
+                }
+                if (box.ToResult(byId, players) is { } r) (box.Kind == "college" ? s.CollegeResults : s.AbroadResults)[key] = r;
+            }
+            GameSession.KeepNewest(s.CollegeResults); GameSession.KeepNewest(s.AbroadResults);
         }
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }

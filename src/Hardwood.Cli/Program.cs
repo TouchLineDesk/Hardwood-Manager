@@ -17,6 +17,8 @@ namespace Hardwood.Cli;
 ///                                        play N seasons (the NBA + world) and check the results against real basketball
 ///   hardwood madness [--seed N] [--tournaments N] [--out report.md]
 ///                                        the real Division I alone: March Madness seed results over many tournaments
+///   hardwood bench [--seeds 2026,77] [--games 200] [--seasons 5] [--repeat 3] [--out baseline.md] [--skip-career]
+///                                        Phase 0's baseline (#596): game, season, world and career timings, save sizes
 /// Every command uses the real world (the made-up NABL was removed in v0.74.0, D61 B); `--real` is still accepted and ignored.
 /// </summary>
 public static class Program
@@ -24,6 +26,8 @@ public static class Program
     public static int Main(string[] args)
     {
         var cmd = args.Length > 0 ? args[0] : "season";
+        // Phase 0 (#596): the baseline benchmark builds its own worlds.
+        if (cmd == "bench") return Bench.Run(args, ArgValue);
         ulong seed = (ulong)(ArgValue(args, "--seed") is { } s ? long.Parse(s) : 2026);
         var today = new DateOnly(2026, 10, 1);
 

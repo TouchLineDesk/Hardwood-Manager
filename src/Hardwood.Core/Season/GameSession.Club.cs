@@ -91,7 +91,27 @@ public sealed partial class GameSession
 
     /// <summary>Box scores of your games abroad this session (the world keeps scores and stat lines; these add the detail).</summary>
     public Dictionary<string, GameResult> AbroadResults { get; } = new();
-    private static string Key(WorldCompetition c, Fixture f) => $"{c.Key}:{f.Index}";
+    private static string Key(WorldCompetition c, Fixture f) => AbroadKey(c.Key, f);
+    /// <summary>The key of a game below the NBA or abroad. Run 56 added the date: fixture indices start again every
+    /// season, so "usa5:12" in a third season used to find the first season's game 12.</summary>
+    public static string AbroadKey(string competition, Fixture f) => $"{competition}:{f.Date:yyyyMMdd}:{f.Index}";
+
+    /// <summary>Keep the newest <paramref name="max"/> box scores, judged by the date in their key (both kinds carry it
+    /// as their second part). Run 56: removing <c>Keys.First()</c> dropped the game just added once the dictionary had
+    /// been full, because a dictionary reuses the freed slot (and lists it first), so every later box was lost.</summary>
+    public static void KeepNewest(Dictionary<string, GameResult> boxes, int max = 200)
+    {
+        if (boxes.Count <= max) return;
+        var keep = boxes.OrderByDescending(kv => KeyDate(kv.Key)).ThenByDescending(kv => kv.Key, StringComparer.Ordinal).Take(max).ToList();
+        boxes.Clear();
+        foreach (var (k, v) in keep) boxes[k] = v;
+    }
+
+    internal static int KeyDate(string key)
+    {
+        var parts = key.Split(':');
+        return parts.Length >= 3 && parts[1].Length == 8 && int.TryParse(parts[1], out var d) ? d : 0;
+    }
 
     /// <summary>An overseas league's regular-season table built from its results.</summary>
     public Standings TableOf(WorldCompetition comp)
@@ -260,7 +280,7 @@ public sealed partial class GameSession
     {
         World.College!.Record(g, r);
         CollegeResults[Key(g)] = r;
-        if (CollegeResults.Count > 200) CollegeResults.Remove(CollegeResults.Keys.First());
+        KeepNewest(CollegeResults);
         ReportGame(r);
     }
 
@@ -268,7 +288,7 @@ public sealed partial class GameSession
     {
         World.Record(comp, f, r);
         AbroadResults[Key(comp, f)] = r;
-        if (AbroadResults.Count > 200) AbroadResults.Remove(AbroadResults.Keys.First());
+        KeepNewest(AbroadResults);
         ReportGame(r);
     }
 
