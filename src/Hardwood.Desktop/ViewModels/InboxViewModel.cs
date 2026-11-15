@@ -63,9 +63,16 @@ public sealed partial class InboxViewModel : PageViewModel
     [ObservableProperty] private string _filter = "All messages";
     partial void OnFilterChanged(string value) => Refresh();
 
+    /// <summary>Mark all read is greyed out with nothing unread, and says so (bug hunt H6).</summary>
+    [ObservableProperty] private bool _canMarkAllRead;
+    [ObservableProperty] private string _markAllReadTip = "Mark every message as read";
+    /// <summary>What the empty list says instead of showing a blank panel (bug hunt #11).</summary>
+    [ObservableProperty] private string _emptyText = "";
+
     [RelayCommand]
     private void MarkAllRead()
     {
+        if (!Session.Inbox.Any(m => !m.Read)) { CleanupNote = "Nothing unread."; return; }
         Session.MarkAllRead();
         Shell.RefreshHeader();
         Refresh();
@@ -173,6 +180,9 @@ public sealed partial class InboxViewModel : PageViewModel
         if (value == null || value.IsRead) return;
         value.Message.Read = true;
         value.IsRead = true;
+        int unread = Session.Inbox.Count(m => !m.Read);
+        CanMarkAllRead = unread > 0;
+        MarkAllReadTip = unread > 0 ? $"Mark {Plural(unread, "unread message")} as read" : "Nothing unread";
         Shell.RefreshHeader();
     }
 
@@ -191,6 +201,12 @@ public sealed partial class InboxViewModel : PageViewModel
         int shown = Items.Count(i => Session.CanDelete(i.Message));
         DeleteShownLabel = Filter == "All messages" ? $"Delete all ({shown})" : $"Delete these ({shown})";
         CanDeleteShown = shown > 0;
+        int unread = Session.Inbox.Count(m => !m.Read);
+        CanMarkAllRead = unread > 0;
+        MarkAllReadTip = unread > 0 ? $"Mark {Plural(unread, "unread message")} as read" : "Nothing unread";
+        EmptyText = Items.Count > 0 ? ""
+            : Session.Inbox.Count == 0 ? "No messages. News, results and questions from your staff and board arrive here as the days go by."
+            : $"No messages in \"{Filter}\". Pick \"All messages\" to see the other {Plural(Session.Inbox.Count, "message")}.";
         var s = Session;
         var rec = s.MyRecord;
         int rank = s.MyRank;

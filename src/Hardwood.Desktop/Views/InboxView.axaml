@@ -16,7 +16,7 @@
     </Border>
     <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
       <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding Filter}" MinWidth="170" Margin="0,0,8,4"/>
-      <Button Content="Mark all read" Command="{Binding MarkAllReadCommand}" Margin="0,0,8,4"/>
+      <Button Content="Mark all read" Command="{Binding MarkAllReadCommand}" IsEnabled="{Binding CanMarkAllRead}" ToolTip.Tip="{Binding MarkAllReadTip}" ToolTip.ShowOnDisabled="True" Margin="0,0,8,4"/>
       <Button Command="{Binding DeleteSelectedCommand}" IsEnabled="{Binding CanDeleteSelected}" Margin="0,0,8,4" ToolTip.Tip="Delete the open message (Delete key)">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <c:Icon Kind="Trash" Width="14" Height="14"/>
@@ -34,6 +34,8 @@
     </WrapPanel>
     <Grid ColumnDefinitions="2*,3*">
       <Border Classes="panel" Padding="0">
+        <Panel>
+        <TextBlock Text="{Binding EmptyText}" IsVisible="{Binding EmptyText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Classes="muted" TextWrapping="Wrap" Margin="14" VerticalAlignment="Top"/>
         <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" Background="Transparent">
           <ListBox.KeyBindings>
             <KeyBinding Gesture="Delete" Command="{Binding DeleteSelectedCommand}"/>
@@ -54,6 +56,7 @@
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
+        </Panel>
       </Border>
       <Border Grid.Column="1" Classes="panel">
         <ScrollViewer>
