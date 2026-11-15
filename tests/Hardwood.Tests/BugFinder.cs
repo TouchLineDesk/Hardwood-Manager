@@ -32,6 +32,8 @@ internal sealed class BugFinder
     // Buttons are pressed once per career, page and phase; later visits only look.
     private readonly HashSet<string> _pressed = new();
     public int Pages, Tabs, Buttons, Days, Reloads;
+    /// <summary>Where extra detail goes (the progress log), when the test sets it.</summary>
+    public Action<string>? Log { get; set; }
 
     public BugFinder(MainViewModel vm, MainWindow window, string? shots)
     {
@@ -110,14 +112,20 @@ internal sealed class BugFinder
         {
             _vm.Navigate("Schedule & Results");
             if (_vm.CurrentPage is not ScheduleViewModel sched) { Add("dead end", "Schedule & Results", "the sidebar's link didn't open the schedule", true); return; }
-            // A played game whose row has no box score is a lost-data finding, not a missing Back (run 55: bug #18 was #19).
+            // A played game of yours whose row has no box score is a lost-data finding, not a missing Back (run 55: bug #18 was #19).
+            // Bug-hunt H8 (Nov 15): only games since you took the job count. After a move (the sweep presses Accept on the Board),
+            // the new club's earlier games were played by the AI and never had a box; those are logged, not reported.
+            var hired = S.Job.HiredOn;
+            var bare = sched.Games.Where(g => g.Played && !g.HasBox).ToList();
+            var mine = bare.Where(g => g.Game.Date >= hired).ToList();
+            if (mine.Count > 0)
+                Add("lost data", "Schedule & Results", $"the played game on {mine[0].Game.Date:MMM d} has a score but no box score "
+                    + $"({mine.Count} of {sched.Games.Count(g => g.Played)} played rows, {mine[0].Game.Competition} / {mine[0].Game.Stage}, "
+                    + $"{(mine[0].Result == null ? "no result held" : "a result with no lines")}; {S.HumanTeam.FullName}, filter \"{sched.Filter}\")");
+            else if (bare.Count > 0)
+                Log?.Invoke($"Schedule & Results ({when}): {bare.Count} played games from before you took over {S.HumanTeam.FullName} on {hired:MMM d yyyy} have scores and no box (not yours)");
             var played = sched.Games.FirstOrDefault(g => g.Played && g.HasBox);
-            if (played == null)
-            {
-                if (sched.Games.FirstOrDefault(g => g.Played) is { } bare)
-                    Add("lost data", "Schedule & Results", $"the played game on {bare.Game.Date:MMM d} has a score but no box score");
-                return;
-            }
+            if (played == null) return;
             sched.OpenBox(played);
             CheckWayBack("Box score", "Schedule & Results", when);
         });
@@ -196,6 +204,9 @@ internal sealed class BugFinder
         {
             var l = Label(b);
             if (Skip.Any(s => l.StartsWith(s, StringComparison.OrdinalIgnoreCase))) continue;
+            // Bug-hunt Nov 15: the Board's Accept takes another club's job offer, which turned the "gleague" career into a
+            // college one after its first season (and made H8 look like lost data). The fired career takes its job itself.
+            if (page == "Board" && l.StartsWith("Accept", StringComparison.OrdinalIgnoreCase)) continue;
             if (!labels.Contains(l)) labels.Add(l);
         }
         foreach (var label in labels.Take(30))
@@ -208,9 +219,13 @@ internal sealed class BugFinder
             string where = tab is int ti && Tabs_() is { } tcc ? $"{page} → {TabHeader(tcc, ti)}" : page;
             var before = Snapshot();
             var pageBefore = _vm.CurrentPage;
+            var clubBefore = _vm.Session.HumanTeam;
             var ex = Press(b);
             Settle();
             Buttons++;
+            // A press that changes your club is logged: the sweep moved the career and later findings are about the new club.
+            if (_vm.Session is { } after && after.HumanTeam != clubBefore)
+                Log?.Invoke($"{where}: \"{label}\" ({when}) moved the career from {clubBefore.FullName} to {after.HumanTeam.FullName} ({after.HumanLeagueName})");
             if (ex != null) { Add("crash", where, $"pressing \"{label}\" ({when}): {ex.GetType().Name}: {ex.Message} {Frame(ex)}", true); continue; }
             if (_vm.CurrentPage != pageBefore || _vm.Session == null) continue;
             if (Snapshot() == before) Add("no feedback", where, $"\"{label}\" changes nothing on screen ({when})", true);
