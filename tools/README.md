@@ -12,6 +12,9 @@ Neither project is part of the solution, the game or CI.
 | Tactics lab | `dotnet run --project tools/TacticsLab -c Release -- 400` | Win % of every fixed offence and defence against an auto-coached opponent (6 matchups) |
 | Fit centres | `dotnet run --project tools/TacticsLab -c Release -- centers` | Each system's and scheme's fit centre and spread on the real NBA rosters (top-9 rotations, 4 worlds), to compare with `Systems.OffCenter` / `DefCenter` |
 | Screenshots | `HW_SCREENSHOT_DIR=shots dotnet test tests/Hardwood.Tests --filter ScreenshotTests` | 32 page screenshots at 1480 px |
+| Baseline bench (core) | `dotnet run --project src/Hardwood.Cli -c Release -- bench --seeds 2026,77 --games 200 --repeat 3 --seasons 5 --out bench.md` | Phase 0 (#596): building a real world, one game with and without the play log, an NBA season, and a managed career (a season without saves, then daily saves; save size, save and load times after 1, 5, 10 and 25 seasons). Each table has a results fingerprint: same fingerprint, same behaviour. `--seasons 25` for the long save; `--skip-career` for a quick run |
+| Baseline bench (desktop) | `HW_BENCH=ui.md dotnet test tests/Hardwood.Tests -c Release --filter BenchTests` | Headless: the window and start page, a new career, every page cold and warm (a refresh), five days advanced with the window open |
+| Bug finder | `HW_BUGFINDER=out HW_BUGFINDER_CAREERS=nba-rebuild,bottom HW_BUGFINDER_SEASONS=3 dotnet test tests/Hardwood.Tests -c Release --filter BugFinderTests` | Bot careers press every button and check the invariants and reloads (review #14) |
 
 The careers write saves to the temp folder as `critic-<label>.hwsave`.
 | March Madness audit | `dotnet run --project src/Hardwood.Cli -c Release -- madness --seed 31 --tournaments 150 --out mm.md` | The real Division I alone: seed-v-seed win rates, titles by seed, top programs' strength against the bubble, college scoring (about 30 s for 100) |

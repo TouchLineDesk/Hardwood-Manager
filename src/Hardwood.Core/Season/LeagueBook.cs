@@ -283,7 +283,7 @@ public sealed class LeagueBook
             },
             Games = () => se.Fixtures.OrderBy(f => f.Date).ThenBy(f => f.Index).Select(f =>
             {
-                s.AbroadResults.TryGetValue($"{c.Key}:{f.Index}", out var box);
+                s.AbroadResults.TryGetValue(GameSession.AbroadKey(c.Key, f), out var box);
                 return new BookGame(f.Date, T(f.HomeId), T(f.AwayId), f.HomePts, f.AwayPts, f.Stage, box);
             }).ToList(),
             Stats = () => se.Stats.Select(kv => new BookStat(kv.Key, kv.Value.TeamId, kv.Value.G, kv.Value.Min, kv.Value.Pts, kv.Value.Reb, kv.Value.Ast,
