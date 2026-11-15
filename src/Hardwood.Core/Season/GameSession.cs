@@ -472,7 +472,7 @@ public sealed partial class GameSession
                 : Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason;
             if (regular) WeeklyBoard();
         }
-        if (!Employed) DailyJobMarket();
+        if (!Employed) DailyJobMarket(); else CareerMarketStep();
         if (Today.DayOfWeek == DayOfWeek.Monday) { DelegatedTraining(); DelegatedRecruiting(); WeeklyRecruiting(); WeeklyTrail(); }
         DailyTransfers();
         MaybePostDigest();
@@ -693,6 +693,7 @@ public sealed partial class GameSession
     private void SeasonEndCoaching()
     {
         if (Abroad) PlayWorld(DateOnly.MaxValue); // every overseas season ends with the NABL's
+        bool overachieved = false;
         if (Employed)
         {
             var rec = MyRecord;
@@ -705,9 +706,13 @@ public sealed partial class GameSession
                 relegated: GoingDown(), wonDivision: wonDivision);
             Post(Boss(title), Boss(body), "Board");
             if (sacked) Fire();
+            else overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
         WorldCoachingChanges();
+        // The career path (#651): college programs change coaches too, then bigger clubs may come for you.
+        CollegeCoachingChanges();
+        CareerApproaches(overachieved);
     }
 
     /// <summary>
@@ -735,6 +740,17 @@ public sealed partial class GameSession
     public void CoachLeaves(Team t, string how = "parted ways with")
     {
         string old = t.CoachName;
+        if (Employed && IsStepUp(t))
+        {
+            // The career path (#651): a step up opens to you while you're in work. The successor is drawn now, as the
+            // computer's hire always was, so the session's random numbers run exactly as before.
+            string successor = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+            if (OpenWhileEmployed(t, successor)) return;
+            t.CoachName = successor;
+            if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
+                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.");
+            return;
+        }
         if (!Employed && t != HumanTeam && !Job.Vacancies.Any(v => v.TeamId == t.Id && v.Status is "open" or "applied" or "offered"))
         {
             Job.Vacancies.Add(new Jobs.Vacancy { TeamId = t.Id, Opened = Today });
@@ -757,13 +773,8 @@ public sealed partial class GameSession
         var rec = MyRecord;
         Coach.History.Add(new Jobs.JobRecord(HumanTeam.Id, HumanTeam.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, "Sacked"));
         Coach.Reputation = Math.Max(0, Coach.Reputation - 5);
-        HumanTeam.Coach = null;
-        HumanTeam.Tactic.Auto = true;
-        HumanTeam.DepthChart = null;
-        HumanTeam.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
-        Job.Employed = false;
-        Job.Current = null;
-        Promises.Clear();
+        foreach (var v in LiveVacancies) v.WhileEmployed = false; // jobs you'd opened in work stay open to you
+        ReleaseClub(Jobs.Board.NewCoachName(new Rng(_rng.NextULong())));
         Post("Out of work", $"You are no longer coach of the {HumanTeam.FullName}; {HumanTeam.CoachName} takes over. Clubs that change coach will post their openings on the Board page, where you can apply. Your reputation: {Coach.Reputation:0}/100.", "Board");
     }
 
@@ -771,11 +782,15 @@ public sealed partial class GameSession
     public string? Apply(int teamId)
     {
         var v = Job.Vacancies.FirstOrDefault(x => x.TeamId == teamId && x.Status == "open");
-        if (Employed) return "You already have a job.";
         if (v == null) return "That job isn't open.";
+        if (Employed && !v.WhileEmployed) return "You already have a job.";
+        if (FindTeam(teamId) is { } jt && Employed && !EligibleFor(jt)) return "College coaches can be hired by NBA and G League clubs, not this league.";
         v.Status = "applied";
-        v.DecideOn = Today.AddDays(3 + _rng.Next(0, 5));
-        Post($"Application sent: {FindTeam(teamId)!.FullName}", $"They'll decide by {v.DecideOn:MMM d}.", "Board");
+        // In work, the career path's own random numbers (#651); out of work, as before.
+        v.DecideOn = Today.AddDays(3 + (Employed ? CareerRng(7).Next(0, 5) : _rng.Next(0, 5)));
+        Post($"Application sent: {FindTeam(teamId)!.FullName}", Phase == SessionPhase.Offseason && Employed
+            ? $"They'll answer at the next step of the summer. You stay with the {HumanTeam.FullName} unless you accept an offer."
+            : $"They'll decide by {v.DecideOn:MMM d}." + (Employed ? $" You stay with the {HumanTeam.FullName} unless you accept an offer." : ""), "Board");
         SaveNow();
         return null;
     }
@@ -786,8 +801,14 @@ public sealed partial class GameSession
         var v = Job.Vacancies.FirstOrDefault(x => x.TeamId == teamId && x.Status == "offered");
         if (v == null) return "There's no offer from that club.";
         var team = FindTeam(teamId)!;
-        foreach (var other in Job.Vacancies.Where(x => x.Status is "open" or "applied" or "offered" && x != v)) other.Status = "filled";
+        bool moving = Employed;
+        foreach (var other in Job.Vacancies.Where(x => x.Status is "open" or "applied" or "offered" && x != v))
+        {
+            other.Status = "filled";
+            if (other.NextCoach is { Length: > 0 } n && FindTeam(other.TeamId) is { } ot && ot != team) ot.CoachName = n;
+        }
         v.Status = "filled";
+        if (moving) MoveTo(team);
         TakeJob(team);
         SaveNow();
         return null;
@@ -796,7 +817,12 @@ public sealed partial class GameSession
     public void DeclineOffer(int teamId)
     {
         var v = Job.Vacancies.FirstOrDefault(x => x.TeamId == teamId && x.Status == "offered");
-        if (v != null && FindTeam(teamId) is { } t) { v.Status = "filled"; t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong())); }
+        if (v != null && FindTeam(teamId) is { } t)
+        {
+            v.Status = "filled";
+            // An offer made while you're in work names its successor from the start (#651); out of work, as before.
+            t.CoachName = v.NextCoach is { Length: > 0 } n ? n : Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+        }
         SaveNow();
     }
 
@@ -813,6 +839,8 @@ public sealed partial class GameSession
         Job.History.Clear();
         Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, League.Season, null, MyLeagueKey, 0, 0);
         if (Abroad) EnsureStaff(team);
+        if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
+        SyncManagedIds();
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
         Promises.Clear();
@@ -1056,6 +1084,7 @@ public sealed partial class GameSession
     {
         if (Offseason == null) return;
         Offseason.HumanTeamId ??= ControlledTeamId; // a restored summer (a save made mid-draft) didn't carry it
+        CareerMarketStep(); // clubs answer your summer applications at each step (#651)
         switch (Offseason.Phase)
         {
             case OffseasonPhase.ReSigning:
@@ -1095,6 +1124,7 @@ public sealed partial class GameSession
             case OffseasonPhase.FreeAgency:
                 int levelBefore = MyLevel; string leagueBefore = HumanLeagueName;
                 Offseason.Complete();
+                CloseSummerOpenings();
                 StartNewSeason();
                 // Promotion and relegation happen at the end of the summer (decision #79).
                 if (Employed && HumanLeagueName != leagueBefore)

@@ -17,6 +17,17 @@ public class LayoutCheckTests
 {
     /// <summary>The pages the check covers: every sidebar page, plus a player, another team, and a box score.</summary>
     /// <summary>Item M (#281): your club mid-project, with a new arena, a renewal and an upgrade proposed.</summary>
+    /// <summary>Run 61 (#651): three step-up openings for a coach in work, one applied for and one offered (the longest names).</summary>
+    internal static void CareerDemo(Hardwood.Core.Season.GameSession s)
+    {
+        if (!s.Employed) return;
+        var ups = s.League.Teams.Where(s.IsStepUp).OrderByDescending(t => t.FullName.Length).Take(3).ToList();
+        foreach (var t in ups) s.CoachLeaves(t, "fired");
+        var mine = s.Job.Vacancies.Where(x => x.WhileEmployed && x.Status == "open").ToList();
+        if (mine.Count > 0) s.Apply(mine[0].TeamId);
+        if (mine.Count > 1) { mine[1].Status = "offered"; mine[1].Approach = true; mine[1].DecideOn = s.Today.AddDays(7); }
+    }
+
     internal static void FacilityDemo(Hardwood.Core.Season.GameSession s)
     {
         var f = s.MyFacilities; var t = s.HumanTeam; long lr = s.MyLeagueRevenue;
@@ -95,6 +106,13 @@ public class LayoutCheckTests
         {
             FacilityDemo(v.Session!);
             v.Navigate("Board");
+        });
+        // The career path (run 61, #651): bigger jobs open while in work, one applied for, one offer, and Resign's confirm.
+        yield return ("Career jobs", v =>
+        {
+            CareerDemo(v.Session!);
+            v.Navigate("Board");
+            ((BoardViewModel)v.CurrentPage!).ResignCommand.Execute(null);
         });
         // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
         yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });

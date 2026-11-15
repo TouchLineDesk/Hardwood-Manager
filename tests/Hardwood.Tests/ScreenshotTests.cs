@@ -121,6 +121,24 @@ public class ScreenshotTests
                     sv.Offset = new Vector(0, 520);
                 Snap(window, Path.Combine(dir, $"{n++:00}-facilities-proposals.png"));
             }
+            if (session.Employed)
+            {
+                // The career path (run 61, #651): bigger jobs while in work, an application, an approach, and Resign's confirm.
+                LayoutCheckTests.CareerDemo(session);
+                vm.Navigate("Board");
+                ((BoardViewModel)vm.CurrentPage!).ResignCommand.Execute(null);
+                window.UpdateLayout();
+                foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                    .Where(x => x.IsEffectivelyVisible && x.Extent.Height > x.Viewport.Height + 1))
+                    sv.Offset = new Vector(0, 0);
+                Snap(window, Path.Combine(dir, $"{n++:00}-career-jobs.png"));
+                window.UpdateLayout();
+                foreach (var sv in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
+                    .Where(x => x.IsEffectivelyVisible && x.Extent.Height > x.Viewport.Height + 1))
+                    sv.Offset = new Vector(0, sv.Extent.Height);
+                Snap(window, Path.Combine(dir, $"{n++:00}-career-jobs-list.png"));
+                ((BoardViewModel)vm.CurrentPage!).CancelResignCommand.Execute(null);
+            }
             // The inbox clean-up (#243): read messages deleted, "Delete these" armed on a filter, auto-clear on.
             // The Tactics overhaul (#475, D60 A): the play diagram mid-play, then the setup cards and gauges further down.
             vm.Navigate("Tactics");
