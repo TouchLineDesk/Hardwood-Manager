@@ -21,6 +21,9 @@
       </StackPanel>
     </Grid>
     <c:StatStrip DockPanel.Dock="Top" ItemsSource="{Binding Chips}" Accent="{Binding Accent}" Margin="0,0,0,4"/>
+    <!-- Custom views (#465): pick which columns the table shows; remembered per table. -->
+    <c:ColumnPicker DockPanel.Dock="Top" Key="roster" Target="{Binding #RosterGrid}" IsVisible="{Binding TableView}"
+                    Presets="Overview=Pos,Age,Mood,Tier,OVR,PPG,Salary,Contract,Status|Ratings=Pos,Age,Tier,OVR,CA,PA,Sho,Ply,Def,Men,Phy|Stats=Pos,MPG,PPG,RPG,APG,FG%|Contracts=Pos,Age,Mood,OVR,Salary,Contract,Status"/>
     <ScrollViewer IsVisible="{Binding CardView}">
       <ItemsControl ItemsSource="{Binding Rows}">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -32,7 +35,7 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
-    <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" IsVisible="{Binding TableView}">
+    <DataGrid x:Name="RosterGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" IsVisible="{Binding TableView}">
       <DataGrid.Columns>
         <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
         <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>

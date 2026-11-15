@@ -42,7 +42,7 @@ public sealed partial class TalkViewModel : ViewModelBase
     public void Show(Player? p)
     {
         Player = p;
-        Reply = ""; Signed = false;
+        Reply = ""; Signed = false; _offers = 0; _lastReply = "";
         if (p == null)
         {
             // H1: the renewal flag used to survive a cleared panel, leaving a Release button that did nothing.
@@ -78,12 +78,22 @@ public sealed partial class TalkViewModel : ViewModelBase
         return parts.Count == 0 ? "." : $" (after {string.Join(" and ", parts)}).";
     }
 
+    private int _offers;
+    private string _lastReply = "";
+
+    /// <summary>Bug list H7: a second offer that drew the same answer looked like nothing happened. Each reply now
+    /// carries the offer's number once you've made more than one, so every press shows something new.</summary>
+    public static string NumberedReply(int offer, string text, string last) =>
+        offer > 1 ? $"Offer {offer}{(text == last ? ", same answer" : "")}: {text}" : text;
+
     [RelayCommand]
     private void Offer()
     {
         if (Player is not { } p || Wage is not { } w || Years is not { } y) return;
         var r = Session.Offer(p, (long)Math.Round(w * 1_000_000m / 10_000m) * 10_000, (int)y);
-        Reply = r.Text;
+        _offers++;
+        Reply = NumberedReply(_offers, r.Text, _lastReply);
+        _lastReply = r.Text;
         Signed = r.Accepted;
         if (r.Accepted || r.WalkedAway) CanTalk = false;
         if (r.Accepted) { CanRelease = false; ReleaseTip = $"{p.Name} has signed his new deal"; }

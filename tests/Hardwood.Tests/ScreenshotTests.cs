@@ -162,6 +162,24 @@ public class ScreenshotTests
             Snap(window, Path.Combine(dir, $"{n++:00}-inbox-cleanup.png"));
             vm.Navigate("Roster");
             var roster = (RosterViewModel)vm.CurrentPage!;
+            // Custom views (#465): the View panel open on the Ratings view, then back to all columns.
+            {
+                var picker = window.GetVisualDescendantsOf<Hardwood.Desktop.Controls.ColumnPicker>().FirstOrDefault(p => p.Key == "roster");
+                roster.CardView = false;
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                picker = window.GetVisualDescendantsOf<Hardwood.Desktop.Controls.ColumnPicker>().FirstOrDefault(p => p.Key == "roster");
+                if (picker != null)
+                {
+                    picker.Choose("Ratings");
+                    var toggle = picker.Children.OfType<Avalonia.Controls.Primitives.ToggleButton>().First();
+                    toggle.IsChecked = true;
+                    Snap(window, Path.Combine(dir, $"{n++:00}-roster-view-panel.png"));
+                    toggle.IsChecked = false;
+                    Snap(window, Path.Combine(dir, $"{n++:00}-roster-view-ratings.png"));
+                    picker.Choose(Hardwood.Desktop.Controls.ColumnPicker.AllName);
+                }
+                roster.CardView = true;
+            }
             roster.Open(roster.Rows[0]);
             Snap(window, Path.Combine(dir, $"{n++:00}-player.png"));
             // Another team's page, and the Leagues page's other tabs.

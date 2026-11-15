@@ -21,7 +21,10 @@
             <NumericUpDown Value="{Binding MinAbility}" Minimum="40" Maximum="200" Increment="5" Width="120" FormatString="0" Margin="0,0,8,4"/>
             <TextBlock Text="{Binding TransferBudgetText}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,0,4"/>
           </WrapPanel>
-          <DataGrid Grid.Row="1" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
+          <DockPanel Grid.Row="1">
+          <c:ColumnPicker DockPanel.Dock="Top" Key="market" Target="{Binding #MarketGrid}"
+                          Presets="Scouting=Pos,Age,CA,PA,Club,Contract|The deal=Pos,Age,CA,Joins?,Club stance,Likely fee,Contract,Clause"/>
+          <DataGrid x:Name="MarketGrid" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}">
             <DataGrid.Columns>
               <!-- The deal columns sit before Club (critic review #6): at 1480 px Club stance ran off the table's edge. -->
               <!-- Real names (R2) need 188 px: "Shai Gilgeous-Alexander"; the number columns gave up 4 px each. -->
@@ -39,6 +42,7 @@
               <DataGridTextColumn Header="" Binding="{Binding Status}" Width="SizeToCells" MinWidth="40"/>
             </DataGrid.Columns>
           </DataGrid>
+          </DockPanel>
           <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
             <StackPanel Spacing="10">
               <Border Classes="panel">
@@ -143,7 +147,10 @@
           <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
             <ContentControl Content="{Binding Talk}"/>
           </ScrollViewer>
-          <DataGrid Grid.Row="1" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
+          <DockPanel Grid.Row="1">
+          <c:ColumnPicker DockPanel.Dock="Top" Key="freeagents" Target="{Binding #FreeAgentGrid}"
+                          Presets="Quick look=Pos,Age,OVR,Status|Ratings=Pos,Age,OVR,CA,PA,Sho,Ply,Def,Phy"/>
+          <DataGrid x:Name="FreeAgentGrid" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="192"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="50"/>
@@ -158,6 +165,7 @@
               <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="SizeToCells" MinWidth="60"/>
             </DataGrid.Columns>
           </DataGrid>
+          </DockPanel>
         </Grid>
       </TabItem>
       <TabItem Header="Waive">

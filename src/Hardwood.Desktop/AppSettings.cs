@@ -41,6 +41,9 @@ public sealed class AppSettings
     /// <summary>Text and interface size (roadmap 1): 0.9-1.3, applied to the whole window. 1.0 = 100%.</summary>
     public double UiScale { get; set; } = 1.0;
 
+    /// <summary>Custom views on the big tables (#465): each table's chosen view and "My view" columns, by table key.</summary>
+    public Dictionary<string, Controls.TableViewChoice> TableViews { get; set; } = new();
+
     public static string DefaultFaceFolder() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "FMNEWGANv2");
 
