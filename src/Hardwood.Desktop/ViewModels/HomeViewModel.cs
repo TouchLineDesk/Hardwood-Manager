@@ -70,6 +70,9 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<LineSeries>? _form;
     [ObservableProperty] private string[]? _formLabels;
     [ObservableProperty] private IReadOnlyList<Bar>? _comparison;
+    /// <summary>What the empty charts say before there's anything to draw (bug hunt #12).</summary>
+    [ObservableProperty] private string _formNote = "";
+    [ObservableProperty] private string _comparisonNote = "";
     [ObservableProperty] private IReadOnlyList<Bar>? _payroll;
     [ObservableProperty] private IReadOnlyList<RefLine>? _payrollLines;
     /// <summary>"Payroll committed", or "Roster by class" at a college program (C2).</summary>
@@ -158,6 +161,7 @@ public sealed partial class HomeViewModel : PageViewModel
             run += g.Us!.Value - g.Them!.Value; vals.Add(run);
         }
         Form = vals.Count > 1 ? new[] { new LineSeries { Name = "Point differential", Values = vals.ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
+        FormNote = vals.Count switch { 0 => "Fills in after your first game.", 1 => "Fills in after your second game.", _ => "" };
         FormLabels = vals.Count > 1 ? Enumerable.Range(1, vals.Count).Select(x => x % 10 == 0 ? x.ToString() : "").ToArray() : null;
 
         // Team vs league: points scored and allowed per game.
@@ -175,6 +179,7 @@ public sealed partial class HomeViewModel : PageViewModel
             };
         }
         else Comparison = null;
+        ComparisonNote = Comparison == null ? "Fills in after your first game." : "";
 
         if (s.InCollege)
         {

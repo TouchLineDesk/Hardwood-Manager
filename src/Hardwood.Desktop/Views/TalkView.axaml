@@ -20,7 +20,7 @@
       </Grid>
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Classes="primary" Content="Make offer" Command="{Binding OfferCommand}" IsEnabled="{Binding CanTalk}"/>
-        <Button Content="Release" Command="{Binding ReleaseCommand}" IsVisible="{Binding IsRenewal}"/>
+        <Button Content="Release" Command="{Binding ReleaseCommand}" IsVisible="{Binding IsRenewal}" IsEnabled="{Binding CanRelease}" ToolTip.Tip="{Binding ReleaseTip}" ToolTip.ShowOnDisabled="True"/>
       </StackPanel>
       <TextBlock Text="{Binding Reply}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"/>
     </StackPanel>

@@ -26,6 +26,9 @@ public sealed partial class TalkViewModel : ViewModelBase
     [ObservableProperty] private bool _canTalk;
     [ObservableProperty] private bool _isRenewal;
     [ObservableProperty] private bool _signed;
+    /// <summary>Release is pressable only for a player of yours in renewal talks who is still yours (bug hunt H1).</summary>
+    [ObservableProperty] private bool _canRelease;
+    [ObservableProperty] private string _releaseTip = "Pick one of your players whose contract is ending first";
     /// <summary>Wage step for the spinner: $50K in the NABL, $10K for smaller leagues.</summary>
     public decimal WageStep => Session.MySalaryScale >= 0.5 ? 0.05m : 0.01m;
 
@@ -40,9 +43,16 @@ public sealed partial class TalkViewModel : ViewModelBase
     {
         Player = p;
         Reply = ""; Signed = false;
-        if (p == null) { CanTalk = false; AskText = "Select a player to talk to."; Title = "Contract talks"; return; }
+        if (p == null)
+        {
+            // H1: the renewal flag used to survive a cleared panel, leaving a Release button that did nothing.
+            CanTalk = false; IsRenewal = false; CanRelease = false;
+            AskText = "Select a player to talk to."; Title = "Contract talks"; return;
+        }
         var s = Session;
         IsRenewal = s.MyExpiring.Contains(p);
+        CanRelease = IsRenewal;
+        ReleaseTip = IsRenewal ? $"Let {p.Name} go now instead of offering a new deal" : "Pick one of your players whose contract is ending first";
         Title = IsRenewal ? $"New deal for {p.Name}" : $"Sign {p.Name}";
         var why = s.CannotTalk(p);
         CanTalk = why == null;
@@ -76,6 +86,7 @@ public sealed partial class TalkViewModel : ViewModelBase
         Reply = r.Text;
         Signed = r.Accepted;
         if (r.Accepted || r.WalkedAway) CanTalk = false;
+        if (r.Accepted) { CanRelease = false; ReleaseTip = $"{p.Name} has signed his new deal"; }
         else if (!r.Accepted) { Wage = Math.Round((decimal)(r.Ask.Wage / 1e6), 2); }
         _shell.AfterTick();
         _after();
@@ -84,10 +95,12 @@ public sealed partial class TalkViewModel : ViewModelBase
     [RelayCommand]
     private void Release()
     {
-        if (Player is not { } p || !IsRenewal) return;
+        if (Player is not { } p || !CanRelease) return;
         Session.ReleaseExpiring(p);
         Reply = $"{p.Name} has been released.";
         CanTalk = false;
+        CanRelease = false;
+        ReleaseTip = $"{p.Name} has already been released";
         _shell.AfterTick();
         _after();
     }

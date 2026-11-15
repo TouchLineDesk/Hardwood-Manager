@@ -156,7 +156,8 @@
         <Border Classes="panel" Margin="0,0,10,0">
           <StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="TrendingUp" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Season form (running point differential)" Classes="h2" Margin="0"/></StackPanel>
-            <c:LineChart Series="{Binding Form}" XLabels="{Binding FormLabels}" ZeroLine="True" Height="180"/>
+            <TextBlock Text="{Binding FormNote}" IsVisible="{Binding FormNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Classes="muted" Margin="0,8,0,0"/>
+            <c:LineChart Series="{Binding Form}" XLabels="{Binding FormLabels}" ZeroLine="True" Height="180" IsVisible="{Binding FormNote, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
             <TextBlock Text="Chemistry and morale by week" Classes="h2" Margin="0,8,0,0" IsVisible="{Binding HasMood}"/>
             <c:LineChart Series="{Binding Mood}" XLabels="{Binding MoodLabels}" Height="150" IsVisible="{Binding HasMood}"/>
           </StackPanel>
@@ -164,7 +165,8 @@
         <Border Grid.Column="1" Classes="panel" Margin="0,0,10,0">
           <StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ChartColumnIncreasing" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Points per game" Classes="h2" Margin="0"/></StackPanel>
-            <c:BarChart Bars="{Binding Comparison}" Height="180"/>
+            <TextBlock Text="{Binding ComparisonNote}" IsVisible="{Binding ComparisonNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Classes="muted" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <c:BarChart Bars="{Binding Comparison}" Height="180" IsVisible="{Binding ComparisonNote, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
           </StackPanel>
         </Border>
         <Border Grid.Column="2" Classes="panel">
