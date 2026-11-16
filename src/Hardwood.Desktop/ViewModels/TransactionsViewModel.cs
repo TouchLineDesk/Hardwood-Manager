@@ -101,6 +101,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
 
     public override void Refresh()
     {
+        PendingWaive = null;   // H24: a question left open doesn't outlive the page as it was (code review)
         var s = Session; var fin = s.League.Finance;
         var keep = _talkingTo;
         _rebuilding = true;

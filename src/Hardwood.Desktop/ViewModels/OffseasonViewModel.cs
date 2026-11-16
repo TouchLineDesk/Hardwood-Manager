@@ -202,6 +202,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
 
     public override void Refresh()
     {
+        PendingRelease = null;   // H24: a question left open doesn't carry into the next phase or summer (code review)
         var s = Session; var o = s.Offseason;
         InOffseason = s.Phase == SessionPhase.Offseason && o != null;
         Expiring.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear(); DraftPool.Clear(); DraftSlots.Clear();
@@ -362,6 +363,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
     // H24 (bug hunt, Nov 16): Release selected asks first, as Waive does.
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ConfirmingRelease), nameof(ReleaseQuestion))] private Player? _pendingRelease;
     public bool ConfirmingRelease => PendingRelease != null;
+    partial void OnSelectedRosterPlayerChanged(PlayerRow? value) { if (value?.Player != PendingRelease) PendingRelease = null; }
     public string ReleaseQuestion => PendingRelease is { } r
         ? $"Release {r.Name}? He becomes a free agent at once and any club can sign him. You can't undo it."
         : "";

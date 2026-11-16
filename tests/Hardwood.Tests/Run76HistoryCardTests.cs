@@ -193,6 +193,13 @@ public class Run76HistoryCardTests
             Assert.Contains(star.Player, team.Roster);
             Assert.Equal($"{star.Name} stays.", tx.FaStatus);
 
+            // A question left open doesn't outlive a refresh (code review).
+            tx.Waive(star);
+            tx.Refresh();
+            Assert.False(tx.ConfirmingWaive);
+            tx.ConfirmWaive();
+            Assert.Contains(star.Player, team.Roster);
+
             var cut = tx.Ours[^1];
             tx.Waive(cut);
             tx.ConfirmWaive(); settle();
@@ -211,6 +218,16 @@ public class Run76HistoryCardTests
             Assert.Contains(pick.Name, off.ReleaseQuestion);
             Assert.Contains(pick, team.Roster);
             off.CancelRelease();
+            Assert.False(off.ConfirmingRelease);
+            Assert.Contains(pick, team.Roster);
+            // Picking someone else, or a refresh, drops the question (code review).
+            off.SelectedRosterPlayer = PlayerRow.From(pick, s, team.Abbreviation);
+            off.WaivePlayer();
+            off.SelectedRosterPlayer = PlayerRow.From(team.Roster.First(p => p != pick), s, team.Abbreviation);
+            Assert.False(off.ConfirmingRelease);
+            off.SelectedRosterPlayer = PlayerRow.From(pick, s, team.Abbreviation);
+            off.WaivePlayer();
+            off.Refresh();
             Assert.False(off.ConfirmingRelease);
             Assert.Contains(pick, team.Roster);
             off.SelectedRosterPlayer = PlayerRow.From(pick, s, team.Abbreviation);

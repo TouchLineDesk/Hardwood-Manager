@@ -201,11 +201,13 @@ public sealed partial class HistoryViewModel : PageViewModel
         {
             string holder = r.Team is { Length: > 0 } t && t != "active" ? $"{r.Holder} ({t})" : r.Team == "active" ? $"{r.Holder} (active)" : r.Holder;
             RealRecordCard card;
-            string who = r.Holder;
+            Player? newHolder = null; bool broken = false;
             if (RealRecordChase.KeyFor(section, r.Label) is { } key && marks.TryGetValue(key, out var m) && m.Holder != r.Holder)
             {
                 card = new(r.Label, $"{m.Value:N0}", $"{m.Holder} · new record", $"{m.When} · was {r.Value} by {r.Holder}");
-                who = m.Holder;
+                // The new holder by id, not name (two players can share a name; code review).
+                newHolder = m.HolderId is { } hid && players.TryGetValue(hid, out var hp) ? hp : null;
+                broken = true;
             }
             else if (RealRecordChase.KeyFor(section, r.Label) is { } key2 && marks.TryGetValue(key2, out var m2)
                      && decimal.TryParse(r.Value.Replace(",", ""), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && (double)v < m2.Value)
@@ -213,9 +215,10 @@ public sealed partial class HistoryViewModel : PageViewModel
             else card = new(r.Label, r.Value, holder, r.When);
             // His photo if he's in this game (LeBron, Curry, a new holder), else the club's crest (a team record, or the
             // holder's club under today's name), else the trophy.
-            var player = Named(who);
+            var player = broken ? newHolder : Named(r.Holder);
             var club = player?.TeamId is { } tid ? s.FindTeam(tid) : null;
-            club ??= ClubNamed(r.Team is { Length: > 0 } rt && rt != "active" ? rt : null) ?? ClubNamed(r.Holder);
+            // A broken record never takes the old holder's club (code review): the new holder's club, or none.
+            if (!broken) club ??= ClubNamed(r.Team is { Length: > 0 } rt && rt != "active" ? rt : null) ?? ClubNamed(r.Holder);
             return card with { Player = player, Club = club, Stripe = StripeFor(club) };
         }
         RealGameRecords = RealWorldData.GameRecords.Select(r => Card(r, "game")).ToList();
