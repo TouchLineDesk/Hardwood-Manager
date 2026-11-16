@@ -1,56 +1,149 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.RotationView"
              x:DataType="vm:RotationViewModel">
   <Grid>
     <DockPanel>
-      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
         <StackPanel>
           <TextBlock Text="Rotation" Classes="h1" Margin="0"/>
           <TextBlock Text="Starters by position, then minutes for everyone who plays. The engine follows these targets and adjusts for fatigue and foul trouble." Classes="muted" TextWrapping="Wrap"/>
         </StackPanel>
-        <Button Grid.Column="1" Content="Suggest rotation" Command="{Binding AutoRotationCommand}" VerticalAlignment="Top"/>
+        <ComboBox x:Name="Views" Grid.Column="1" ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" Margin="12,0,10,0" VerticalAlignment="Top"
+                  ToolTip.Tip="The depth chart, or the full table"/>
+        <Button Grid.Column="2" Content="Suggest rotation" Command="{Binding AutoRotationCommand}" VerticalAlignment="Top"/>
       </Grid>
-      <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10">
-        <ItemsControl ItemsSource="{Binding Starters}">
-          <!-- Five across when there is room; otherwise they wrap, so long names never clip. -->
-          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:StarterSlot">
-              <StackPanel Margin="4,0,4,6" Spacing="4" Width="196">
-                <TextBlock Text="{Binding Label}" Classes="muted" FontWeight="SemiBold"/>
-                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch">
-                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
-                </ComboBox>
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </Border>
-      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
-        <TextBlock Text="{Binding TotalText}" FontWeight="SemiBold" Classes.good="{Binding TotalOk}" Classes.bad="{Binding !TotalOk}"/>
-        <TextBlock Text="{Binding Status}" Classes="bad"/>
+      <StackPanel DockPanel.Dock="Bottom" Spacing="2" Margin="0,8,0,0">
+        <WrapPanel>
+          <TextBlock Text="{Binding TotalText}" FontWeight="SemiBold" Classes.good="{Binding TotalOk}" Classes.bad="{Binding !TotalOk}" Margin="0,0,16,0"/>
+          <TextBlock Text="{Binding ShareText}" Classes="muted" TextWrapping="Wrap"/>
+        </WrapPanel>
+        <TextBlock Text="{Binding Status}" Classes="bad" TextWrapping="Wrap" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="False" CanUserSortColumns="False">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
-          <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="66" IsReadOnly="True"/>
-          <DataGridCheckBoxColumn Header="Starter" Binding="{Binding IsStarter}" Width="80" IsReadOnly="True"/>
-          <DataGridTemplateColumn Header="Minutes" Width="*">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:RotationRow">
-                <Grid ColumnDefinitions="*,40" Margin="4,0">
-                  <Slider Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Minutes}" IsEnabled="{Binding Healthy}"/>
-                  <TextBlock Grid.Column="1" Text="{Binding MinutesText}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                </Grid>
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Health" Binding="{Binding Health}" Width="100" IsReadOnly="True"/>
-        </DataGrid.Columns>
-      </DataGrid>
+
+      <Panel>
+        <!-- Run 73 (review #13 rank 10): the depth chart. The five on a half court at their spots, the bench as chips, minutes as bars. -->
+        <ScrollViewer x:Name="DepthChart" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowCards}">
+          <!-- Side by side when there is room; otherwise the minutes drop under the court (Reflow). -->
+          <Grid x:Name="DepthGrid" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+            <StackPanel x:Name="CourtColumn" Spacing="8" Margin="0,0,0,12" MaxWidth="{x:Static vm:RotationViewModel.CourtWidth}" HorizontalAlignment="Left">
+              <!-- On the narrowest windows the court scrolls sideways rather than squeezing its cards. -->
+              <ScrollViewer x:Name="CourtScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalAlignment="Left">
+              <Panel Width="{x:Static vm:RotationViewModel.CourtWidth}" Height="{x:Static vm:RotationViewModel.CourtHeight}">
+                <c:HalfCourt Accent="{Binding Accent}"/>
+                <ItemsControl x:Name="CourtSlots" ItemsSource="{Binding Starters}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.Styles>
+                    <Style Selector="ContentPresenter" x:DataType="vm:StarterSlot">
+                      <Setter Property="Canvas.Left" Value="{Binding Left}"/>
+                      <Setter Property="Canvas.Top" Value="{Binding Top}"/>
+                    </Style>
+                  </ItemsControl.Styles>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:StarterSlot">
+                      <Button Classes="marketCard" Classes.picked="{Binding Picked}" Width="{x:Static vm:RotationViewModel.CardWidth}" MinHeight="{x:Static vm:RotationViewModel.CardHeight}"
+                              Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Click="OnSlotClick" ToolTip.Tip="{Binding Tip}">
+                        <Border BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,4,0,0" CornerRadius="3" Padding="7,5">
+                          <StackPanel Spacing="3">
+                            <TextBlock Text="{Binding Label}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource HwAccentBrush}"/>
+                            <Grid ColumnDefinitions="44,*" IsVisible="{Binding Filled}">
+                              <c:Avatar Player="{Binding Row.Player}" Team="{Binding Row.Team}" Width="42" Height="42" VerticalAlignment="Top"/>
+                              <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Row.ShortName}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Row.CardLine}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                              </StackPanel>
+                            </Grid>
+                            <c:RatingBar Value="{Binding Row.Minutes}" Maximum="40" Fill="{Binding Row.BarBrush}" IsVisible="{Binding Filled}" ToolTip.Tip="Minutes a game, out of 40"/>
+                            <TextBlock Text="Empty: pick a bench player" Classes="bad" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding Empty}"/>
+                          </StackPanel>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Panel>
+              </ScrollViewer>
+              <TextBlock Text="{Binding Hint}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+              <TextBlock Text="Bench" FontWeight="SemiBold" Margin="0,4,0,0"/>
+              <ItemsControl x:Name="BenchChips" ItemsSource="{Binding Bench}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RotationRow">
+                    <Button Classes="filter" Margin="0,0,6,6" Click="OnBenchClick" ToolTip.Tip="{Binding ChipTip}">
+                      <TextBlock Text="{Binding ChipLine}" FontSize="12" Classes.bad="{Binding !Healthy}"/>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <Border x:Name="MinutesPanel" Grid.Column="1" Classes="panel" Width="400" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="16,0,0,12">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Minutes a game" FontWeight="SemiBold"/>
+                <TextBlock Text="Starters first, in court order, then the bench. − and + move two minutes." Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <ItemsControl x:Name="MinuteBars" ItemsSource="{Binding MinuteRows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RotationRow">
+                      <Grid ColumnDefinitions="*,120,26,30,26" Margin="0,1" ToolTip.Tip="{Binding Role}">
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,6,0">
+                          <TextBlock Text="{Binding ShortName}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                          <TextBlock Text="{Binding Health}" FontSize="10" Classes="bad" IsVisible="{Binding !Healthy}"/>
+                        </StackPanel>
+                        <c:RatingBar Grid.Column="1" Value="{Binding Minutes}" Maximum="40" Fill="{Binding BarBrush}" VerticalAlignment="Center"/>
+                        <Button Grid.Column="2" Content="−" Command="{Binding LessCommand}" IsEnabled="{Binding Healthy}" Padding="0" Width="22" Height="22" Margin="4,0,0,0"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Two minutes fewer"/>
+                        <TextBlock Grid.Column="3" Text="{Binding MinutesText}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Button Grid.Column="4" Content="+" Command="{Binding MoreCommand}" IsEnabled="{Binding Healthy}" Padding="0" Width="22" Height="22"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Two minutes more"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </ScrollViewer>
+
+        <DockPanel IsVisible="{Binding ShowTable}">
+          <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10">
+            <ItemsControl ItemsSource="{Binding Starters}">
+              <!-- Five across when there is room; otherwise they wrap, so long names never clip. -->
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StarterSlot">
+                  <StackPanel Margin="4,0,4,6" Spacing="4" Width="196">
+                    <TextBlock Text="{Binding Label}" Classes="muted" FontWeight="SemiBold"/>
+                    <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+          <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="False" CanUserSortColumns="False">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76" IsReadOnly="True"/>
+              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="66" IsReadOnly="True"/>
+              <DataGridCheckBoxColumn Header="Starter" Binding="{Binding IsStarter}" Width="80" IsReadOnly="True"/>
+              <DataGridTemplateColumn Header="Minutes" Width="*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:RotationRow">
+                    <Grid ColumnDefinitions="*,40" Margin="4,0">
+                      <Slider Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Minutes}" IsEnabled="{Binding Healthy}"/>
+                      <TextBlock Grid.Column="1" Text="{Binding MinutesText}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </Grid>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Health" Binding="{Binding Health}" Width="100" IsReadOnly="True"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Panel>
     </DockPanel>
 
   </Grid>

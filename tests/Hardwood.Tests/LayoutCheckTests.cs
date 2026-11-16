@@ -53,7 +53,12 @@ public class LayoutCheckTests
         if (live != null) yield return ("Live flow", v => { v.CurrentPage = live; live.ShowCourt = false; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
             // The page keeps its view between visits (run 72): each size checks the tiles here and the table below.
-            yield return (nav.Name, v => { v.Navigate(nav.Name); if (v.CurrentPage is ScheduleViewModel sc) sc.GameView = "Cards"; });
+            yield return (nav.Name, v =>
+            {
+                v.Navigate(nav.Name);
+                if (v.CurrentPage is ScheduleViewModel sc) sc.GameView = "Cards";
+                if (v.CurrentPage is RotationViewModel rv) rv.View = "Cards";
+            });
         yield return ("Player", v =>
         {
             v.Navigate("Roster");
@@ -72,6 +77,12 @@ public class LayoutCheckTests
         {
             v.Navigate("Schedule & Results");
             ((ScheduleViewModel)v.CurrentPage!).GameView = "Full table";
+        });
+        // Run 73 (review #13 rank 10): Rotation opens on the depth chart; its table is checked here.
+        yield return ("Rotation table", v =>
+        {
+            v.Navigate("Rotation");
+            ((RotationViewModel)v.CurrentPage!).View = "Full table";
         });
         yield return ("Records book", v => v.Navigate("History"));
         yield return ("Recruiting", v =>
@@ -426,7 +437,8 @@ public class LayoutCheckTests
             {
                 ("Home", v => v.Navigate("Home")), ("Roster", v => v.Navigate("Roster")), ("Board", v => v.Navigate("Board")),
                 ("Standings", v => v.Navigate("Standings")), ("Schedule & Results", v => { v.Navigate("Schedule & Results"); ((ScheduleViewModel)v.CurrentPage!).GameView = "Cards"; }),
-                ("Squad", v => v.Navigate("Squad")), ("Rotation", v => v.Navigate("Rotation")), ("Tactics", v => v.Navigate("Tactics")),
+                ("Squad", v => v.Navigate("Squad")), ("Rotation", v => { v.Navigate("Rotation"); ((RotationViewModel)v.CurrentPage!).View = "Cards"; }),
+                ("Rotation table", v => { v.Navigate("Rotation"); ((RotationViewModel)v.CurrentPage!).View = "Full table"; }), ("Tactics", v => v.Navigate("Tactics")),
                 ("Box score", v =>
                 {
                     v.Navigate("Schedule & Results");
