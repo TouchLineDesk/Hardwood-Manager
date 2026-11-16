@@ -1011,7 +1011,7 @@ public sealed partial class GameSession
             var waiting = MyExpiring;
             Post("Summer: contract decisions", (waiting.Count == 0 ? "No contracts expire this summer." :
                     $"{waiting.Count} contract{(waiting.Count == 1 ? " is" : "s are")} up: {string.Join(", ", waiting.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F2}M)"))}. Talk to them on the Offseason page, or let them go.")
-                + $"\n\nFree agents can be signed all summer within your budget ({Budgets.Describe(HumanTeam)}). Anyone you haven't renewed leaves when the summer ends, and if the squad is short of {Hardwood.Core.World.GameWorld.ManagedMinimum}, your sporting director makes up the numbers.", "Roster");
+                + $"\n\nFree agents can be signed all summer within your budget ({Budgets.Describe(HumanTeam)}). Anyone you haven't renewed leaves when the summer ends, and if the squad is short of {MyRosterMin}, your sporting director makes up the numbers.", "Roster");
             return;
         }
 

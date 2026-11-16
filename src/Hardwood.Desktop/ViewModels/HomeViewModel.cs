@@ -76,12 +76,7 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<Bar>? _payroll;
     [ObservableProperty] private IReadOnlyList<RefLine>? _payrollLines;
     /// <summary>H25: true once this summer has counted the club's contracts down (the NBA's offseason from re-signing on; the world's summer for everyone else).</summary>
-    public static bool SummerCounted(GameSession s, Hardwood.Core.Model.Team team) =>
-        s.Phase == SessionPhase.Offseason
-        && (s.League.Teams.Contains(team)
-            ? s.Offseason is { } o && o.Phase != Hardwood.Core.Season.OffseasonPhase.NotStarted
-            // Clubs abroad and in tiers 2-5 count down in the world's summer (GameWorld.BeginSummer).
-            : s.World.SummerStarted == s.League.Season + 1);
+    public static bool SummerCounted(GameSession s, Hardwood.Core.Model.Team team) => s.ContractsCounted(team);
 
     /// <summary>"Payroll committed", or "Roster by class" at a college program (C2).</summary>
     [ObservableProperty] private string _payrollTitle = "Payroll committed";

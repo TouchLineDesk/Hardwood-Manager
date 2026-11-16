@@ -122,7 +122,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         if (again == null && keep == null) SelectedFreeAgent = FreeAgents.FirstOrDefault();
         else if (Talk.Player != keep) Talk.Show(keep);
         long payroll = ContractMarket.Payroll(s.HumanTeam);
-        CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · " + fin.Describe(payroll);
+        CapText = $"Roster {s.HumanTeam.Roster.Count}/{s.MyRosterMax} · " + fin.Describe(payroll);
         DeadlineText = s.Phase == SessionPhase.Offseason ? "Offseason: trades are open."
             : s.TradeDeadlinePassed ? "The trade deadline has passed; trades reopen after the Finals."
             : $"Trade deadline: {s.TradeDeadline:MMM d}.";
@@ -131,7 +131,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         if (!TradesOpen)
         {
             DeadlineText = s.WindowText + " Free agents can be signed at any time through contract talks.";
-            CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · {Budgets.Describe(s.HumanTeam)}";
+            CapText = $"Roster {s.HumanTeam.Roster.Count}/{s.MyRosterMax} · {Budgets.Describe(s.HumanTeam)}";
             CanPropose = false;
             FaStatus = "Select a free agent to see his ask and make an offer.";
         }
@@ -180,7 +180,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
     {
         if (piece == null) return;
         var s = Session;
-        if (s.HumanTeam.Roster.Count <= s.League.Finance.RosterMin) { PendingWaive = null; FaStatus = $"You need at least {s.League.Finance.RosterMin} players."; return; }
+        if (s.HumanTeam.Roster.Count <= s.MyRosterMin) { PendingWaive = null; FaStatus = $"You need at least {s.MyRosterMin} players."; return; }
         FaStatus = "";
         PendingWaive = piece;
     }
@@ -199,7 +199,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         PendingWaive = null;
         var s = Session; var team = s.HumanTeam;
         if (!team.Roster.Contains(piece.Player)) return;
-        if (team.Roster.Count <= s.League.Finance.RosterMin) { FaStatus = $"You need at least {s.League.Finance.RosterMin} players."; return; }
+        if (team.Roster.Count <= s.MyRosterMin) { FaStatus = $"You need at least {s.MyRosterMin} players."; return; }
         var p = piece.Player;
         team.Roster.Remove(p);
         p.TeamId = null; p.Contract = null;
