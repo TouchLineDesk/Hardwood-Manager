@@ -16,6 +16,12 @@ public sealed partial class OnCourtRow : ObservableObject
     [ObservableProperty] private bool _onCourt;
 }
 
+/// <summary>One row of the live game's compact box score (the tracker's second slice, run 83).</summary>
+public sealed record LiveBoxRow(string Name, string Min, string Pts, string Reb, string Ast, string Fg, string Three, string Pf, bool OnCourt, bool Total = false)
+{
+    public Avalonia.Media.FontWeight Weight => Total ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal;
+}
+
 public sealed partial class LineupSlot : ObservableObject
 {
     public LiveGameViewModel Owner { get; init; } = null!;
@@ -58,6 +64,45 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public bool ShowFlow => !ShowCourt;
     [RelayCommand] private void ToCourt() => ShowCourt = true;
     [RelayCommand] private void ToFlow() => ShowCourt = false;
+
+    // Beside the court (run 83): the play by play or a compact live box score, one tab at a time.
+    [ObservableProperty] private bool _showBox;
+    public bool ShowLog => !ShowBox;
+    partial void OnShowBoxChanged(bool value) { OnPropertyChanged(nameof(ShowLog)); if (value) UpdateBox(); }
+    [RelayCommand] private void ToLog() => ShowBox = false;
+    [RelayCommand] private void ToBox() => ShowBox = true;
+    [ObservableProperty] private IReadOnlyList<LiveBoxRow> _awayBox = Array.Empty<LiveBoxRow>();
+    [ObservableProperty] private IReadOnlyList<LiveBoxRow> _homeBox = Array.Empty<LiveBoxRow>();
+    public string AwayBoxTitle => $"{AwayTeam.Name} (away)";
+    public string HomeBoxTitle => $"{HomeTeam.Name} (home)";
+
+    /// <summary>The compact box score: everyone who has played (or is on the floor), starters first, then by minutes,
+    /// and the team's totals. Only rebuilt while its tab is showing.</summary>
+    private void UpdateBox()
+    {
+        if (!ShowBox) return;
+        var r = _live.Result;
+        AwayBox = BoxRows(r.Away, _live.AwayOnCourt);
+        HomeBox = BoxRows(r.Home, _live.HomeOnCourt);
+    }
+
+    public static IReadOnlyList<LiveBoxRow> BoxRows(TeamBox box, IReadOnlyList<Player> floor)
+    {
+        var on = floor.ToHashSet();
+        static string Pct(int m, int a) => $"{m}-{a}";
+        var rows = box.Lines.Where(l => l.Seconds > 0 || l.Started || on.Contains(l.Player))
+            .OrderByDescending(l => l.Started).ThenByDescending(l => l.Seconds)
+            .Select(l => new LiveBoxRow(l.Player.Name + (l.FouledOut ? " (out)" : ""), $"{l.Minutes:0}", l.Points.ToString(), l.Rebounds.ToString(),
+                l.Assists.ToString(), Pct(l.FGM, l.FGA), Pct(l.ThreePM, l.ThreePA), l.Fouls.ToString(), on.Contains(l.Player)))
+            .ToList();
+        rows.Add(new LiveBoxRow("Team", "", box.Points.ToString(), box.Lines.Sum(l => l.Rebounds).ToString(), box.Lines.Sum(l => l.Assists).ToString(),
+            Pct(box.FGM, box.FGA), Pct(box.ThreePM, box.ThreePA), box.Lines.Sum(l => l.Fouls).ToString(), false, Total: true));
+        return rows;
+    }
+
+    /// <summary>How long the tracker's motion lasts (run 83): most of a tick at Slow and Normal, none at Fast (too quick
+    /// to follow), and the full glide when you Step while paused.</summary>
+    public double MotionMs => Running ? Hardwood.Desktop.Controls.TrackerMotion.DurationFor(_speedsMs[_speed]) : 650;
     partial void OnShowCourtChanged(bool value) => OnPropertyChanged(nameof(ShowFlow));
     public Avalonia.Media.Color HomeDot => Bright(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color AwayDot => Bright(Distinct(AwayTeam, Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor)));
@@ -73,7 +118,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.Color FloorColor => Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor);
     public Avalonia.Media.Color FloorTrim => Avalonia.Media.Color.Parse(HomeTeam.SecondaryColor);
     public string FloorName => HomeTeam.Name;
-    public string CourtLegend => $"{AwayName} attack left, {HomeName} attack right · gold ring: the player in the play · faint dots: the game's shots · player spots are drawn for show; every result comes from the game engine";
+    public string CourtLegend => $"{AwayName} attack left, {HomeName} attack right · gold ring: the player in the play · dotted line: the pass · faint dots: the game's shots · player spots and movement are drawn for show; every result comes from the game engine";
 
     // The 2D tracker (D67 B, run 80): the latest play drawn on the court, with the ten players and the ball.
     [ObservableProperty] private Hardwood.Desktop.Controls.TrackerFrame? _frame;
@@ -247,7 +292,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
 
-    partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
+    partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(MotionMs)); OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
     partial void OnCompleteChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(CanStep)); }
 
     private void Tick() => Advance(_speed == 2 ? 3 : 1);
@@ -471,6 +516,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
                 _shots.Add(new Hardwood.Desktop.Controls.LiveShot(sp.Home, sp.Zone, sp.Made, _shotPlaysSeen));
         if (_shots.Count != before) CourtVersion++;
         UpdateFrame();
+        UpdateBox();
         Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);
         TeamStats = GameFlowInfo.TeamStats(r);
         var facts = GameHighlights.Ticker(r);
@@ -517,6 +563,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         _speed = (_speed + 1) % _speedsMs.Length;
         _timer.Interval = TimeSpan.FromMilliseconds(_speedsMs[_speed]);
         SpeedLabel = _speed switch { 0 => "Slow", 1 => "Normal", _ => "Fast" };
+        OnPropertyChanged(nameof(MotionMs));
     }
 
     [RelayCommand]

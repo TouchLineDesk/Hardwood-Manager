@@ -87,7 +87,7 @@
           <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
           <Grid IsVisible="{Binding ShowCourt}" HorizontalAlignment="Center">
             <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
                          FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
             <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
             <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
@@ -117,6 +117,10 @@
       <!-- Play by play -->
       <Border Grid.Row="1" Classes="panel" Padding="8">
         <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="4,0,4,6">
+            <Button Content="Play by play" Command="{Binding ToLogCommand}" Classes.primary="{Binding ShowLog}" Padding="10,3"/>
+            <Button x:Name="BoxTab" Content="Box score" Command="{Binding ToBoxCommand}" Classes.primary="{Binding ShowBox}" Padding="10,3"/>
+          </StackPanel>
           <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
           <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
           <!-- Match day part 3: the break card, like a broadcast's quarter-break graphic. -->
@@ -149,9 +153,69 @@
             </StackPanel>
           </Border>
           </ScrollViewer>
-          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5">
+          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5" IsVisible="{Binding ShowLog}">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
+          <!-- The tracker's second slice (run 83): a compact live box score beside the court; green dot: on the floor. -->
+          <ScrollViewer x:Name="LiveBox" IsVisible="{Binding ShowBox}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="4,0,18,0">
+                <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,6,0,2">
+                  <TextBlock Grid.Column="1" Text="{Binding AwayBoxTitle}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="MIN" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="3" Text="PTS" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="4" Text="REB" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="5" Text="AST" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="6" Text="FG" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="7" Text="3P" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="8" Text="PF" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                </Grid>
+              <ItemsControl ItemsSource="{Binding AwayBox}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LiveBoxRow">
+                    <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,1">
+                      <Ellipse Width="6" Height="6" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" FontSize="12"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Min}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="3" Text="{Binding Pts}" TextAlignment="Right" FontWeight="SemiBold" FontSize="12"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Reb}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="5" Text="{Binding Ast}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="6" Text="{Binding Fg}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="7" Text="{Binding Three}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="8" Text="{Binding Pf}" TextAlignment="Right" FontSize="12"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+                <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,6,0,2">
+                  <TextBlock Grid.Column="1" Text="{Binding HomeBoxTitle}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="MIN" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="3" Text="PTS" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="4" Text="REB" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="5" Text="AST" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="6" Text="FG" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="7" Text="3P" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="8" Text="PF" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
+                </Grid>
+              <ItemsControl ItemsSource="{Binding HomeBox}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LiveBoxRow">
+                    <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,1">
+                      <Ellipse Width="6" Height="6" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" FontSize="12"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Min}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="3" Text="{Binding Pts}" TextAlignment="Right" FontWeight="SemiBold" FontSize="12"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Reb}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="5" Text="{Binding Ast}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="6" Text="{Binding Fg}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="7" Text="{Binding Three}" TextAlignment="Right" FontSize="12"/>
+                      <TextBlock Grid.Column="8" Text="{Binding Pf}" TextAlignment="Right" FontSize="12"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Green dot: on the floor now. The full box score opens after the game." Classes="muted" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+          </ScrollViewer>
         </DockPanel>
       </Border>
     </Grid>

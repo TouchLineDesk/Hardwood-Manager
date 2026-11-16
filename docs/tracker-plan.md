@@ -28,9 +28,14 @@ no change to results, pause/step/speed, small enough to discard, and anything no
 Movement AI, a spatial simulation, a second simulator, 3D, heavy animation tooling.
 
 ## Later slices (in order; each is small and can be dropped)
-1. **Motion between frames:** markers glide from the last frame's spots to the next (presentation tween, ~200 ms),
-   so a possession reads as one action; the ball travels pass → shot.
-2. **Beside it:** a compact live box score tab next to the play by play; the shot map stays on its tab.
+1. **Motion between frames (done, run 83, v0.98.0):** `TrackerMotion` (a pure function of the two frames and the
+   time) glides the markers from where they were drawn to the next play's spots over the first 55% of the motion; the
+   ball travels its own path (to the passer on an assisted make, `TrackerFrame.Pass`, then the shooter, then the rim),
+   with the pass drawn dotted and the shot's line growing with the ball. 650 ms when you Step, about 90% of a tick at
+   Slow and Normal, none at Fast. The court's pose follows the clock at every render, so it always ends on the frame
+   `TrackerLayout.Build` made.
+2. **Beside it (done, run 83):** a **Play by play | Box score** switch on the panel under the court; the compact box
+   score (MIN PTS REB AST FG 3P PF, a green dot for the five on the floor, team totals) is rebuilt only while shown.
 3. **Big view:** a larger court (the play by play folding under it) for wide windows; check 1480 px and 130% text.
 4. **Veto check D78** lists what shipped (see `claude/for-danny.md`).
 
