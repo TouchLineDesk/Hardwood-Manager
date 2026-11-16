@@ -113,6 +113,30 @@ public class Run73RotationDepthTests
             rot.PickSlot(rot.Starters[1]); rot.PickSlot(rot.Starters[1]);
             Assert.Null(rot.PickedSlot);
 
+            // Code review: a duplicate pick in the table blocks a swap and leaves everything as it was.
+            var keep = rot.Starters[1].Selected;
+            rot.Starters[1].Selected = rot.Starters[0].Selected;
+            Assert.Equal("Pick five different starters.", rot.Status);
+            Assert.Equal(rot.Starters[0].Selected, rot.Starters[1].Row!.Player);   // the cards show what the table shows
+            var chartBefore = chart.Starters.ToList();
+            var chip = rot.Bench.First(b => b.Healthy);
+            double chipMin = chip.Minutes;
+            rot.PickSlot(rot.Starters[2]);   // another spot: the duplicate stays, so the five still aren't valid
+            rot.SwapIn(chip);
+            Assert.Equal(chartBefore, chart.Starters);
+            Assert.Equal(chipMin, chip.Minutes);
+            Assert.False(chip.IsStarter);
+            Assert.Contains(chip, rot.Bench);
+            Assert.Equal(rot.Starters[0].Selected, rot.Starters[1].Selected);
+            Assert.StartsWith("Pick five different starters first", rot.Status);
+            // Two starters' cards can't swap either while the five are invalid.
+            rot.PickSlot(rot.Starters[2]); rot.PickSlot(rot.Starters[3]);
+            Assert.Equal(chartBefore, chart.Starters);
+            Assert.StartsWith("Pick five different starters first", rot.Status);
+            rot.Starters[1].Selected = keep;
+            Assert.Equal(chartBefore, chart.Starters);
+            Assert.DoesNotContain("Pick five", rot.Status);
+
             // − and + move two minutes and the chart follows.
             var row = rot.MinuteRows[0];
             double before = row.Minutes;

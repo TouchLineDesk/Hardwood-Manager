@@ -168,8 +168,14 @@ public sealed partial class RotationViewModel : PageViewModel
             picked.Selected = b; slot.Selected = a;
             picked.Picked = false;
             _loading = false;
-            StartersChanged();
-            RebuildDepth();
+            if (!StartersChanged())
+            {
+                // Code review (run 73): the five weren't valid (a duplicate pick in the table): undo, say why.
+                _loading = true; picked.Selected = a; slot.Selected = b; _loading = false;
+                RebuildDepth();
+                Status = "Pick five different starters first (Full table), then swap.";
+                return;
+            }
             string warn = Status;
             Status = $"{a.LastName} and {b.LastName} swap spots: {a.LastName} at {slot.Label}, {b.LastName} at {picked.Label}." + (warn.Length > 0 ? " " + warn : "");
             return;
@@ -195,8 +201,17 @@ public sealed partial class RotationViewModel : PageViewModel
         slot.Picked = false;
         if (outRow != null) { outRow.Minutes = minIn; bench.Minutes = minOut; }
         _loading = false;
-        StartersChanged();
-        RebuildDepth();
+        if (!StartersChanged())
+        {
+            // Code review (run 73): the five weren't valid (a duplicate pick in the table): undo the swap and its minutes.
+            _loading = true;
+            slot.Selected = outRow?.Player;
+            if (outRow != null) { outRow.Minutes = minOut; bench.Minutes = minIn; }
+            _loading = false;
+            RebuildDepth();
+            Status = "Pick five different starters first (Full table), then swap.";
+            return;
+        }
         string warn = Status;
         Status = (outRow == null
             ? $"{bench.Name} starts at {slot.Label}."
@@ -235,17 +250,25 @@ public sealed partial class RotationViewModel : PageViewModel
         return chart;
     }
 
-    public void StartersChanged()
+    /// <summary>True when the five picks are valid and now the chart's starters.</summary>
+    public bool StartersChanged()
     {
-        if (_loading) return;
+        if (_loading) return false;
         var chart = Session.HumanTeam.DepthChart!;
         var ids = Starters.Select(s => s.Selected?.Id).ToList();
-        if (ids.Any(id => id == null) || ids.Distinct().Count() < 5) { Status = "Pick five different starters."; return; }
+        if (ids.Any(id => id == null) || ids.Distinct().Count() < 5)
+        {
+            Status = "Pick five different starters.";
+            // Code review (run 73): the cards follow the picks even when they're not valid yet, so they show what the table shows.
+            RebuildDepth();
+            return false;
+        }
         chart.Starters = ids.Select(id => id!.Value).ToList();
         foreach (var row in Rows) row.IsStarter = chart.Starters.Contains(row.Player.Id);
         Status = "";
         Recalc();
         RebuildDepth();
+        return true;
     }
 
     public void Recalc()
