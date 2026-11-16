@@ -244,6 +244,7 @@ internal sealed class BugFinder
             if (b == null) continue;
             string where = tab is int ti && Tabs_() is { } tcc ? $"{page} → {TabHeader(tcc, ti)}" : page;
             var before = Snapshot();
+            var twiceBefore = InTwoPlaces();
             var pageBefore = _vm.CurrentPage;
             var clubBefore = _vm.Session.HumanTeam;
             var ex = Press(b);
@@ -252,6 +253,10 @@ internal sealed class BugFinder
             // A press that changes your club is logged: the sweep moved the career and later findings are about the new club.
             if (_vm.Session is { } after && after.HumanTeam != clubBefore)
                 Log?.Invoke($"{where}: \"{label}\" ({when}) moved the career from {clubBefore.FullName} to {after.HumanTeam.FullName} ({after.HumanLeagueName})");
+            // Bug hunt Nov 16 (H28): a press that leaves a player in two places (a free agent and on a roster, or on two rosters)
+            // breaks every later save (UNIQUE constraint failed: player.id); name the press that did it, not just the next save.
+            foreach (var w in InTwoPlaces().Except(twiceBefore))
+                Add("state", where, $"pressing \"{label}\" ({when}) left {w}", true);
             if (ex != null) { Add("crash", where, $"pressing \"{label}\" ({when}): {ex.GetType().Name}: {ex.Message} {Frame(ex)}", true); continue; }
             if (_vm.CurrentPage != pageBefore || _vm.Session == null) continue;
             if (Snapshot() == before) Add("no feedback", where, $"\"{label}\" changes nothing on screen ({when})", true);
@@ -362,6 +367,30 @@ internal sealed class BugFinder
 
     // ------------------------------------------------------------------------------------------ invariants
 
+    /// <summary>Players in two places right now: on two rosters, or a free agent and on a roster (one line each).</summary>
+    public HashSet<string> InTwoPlaces()
+    {
+        var found = new HashSet<string>();
+        if (_vm.Session is not { } s) return found;
+        try
+        {
+            var where = new Dictionary<int, (Team Team, Player Player)>();
+            foreach (var t in s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? new List<Team>()).Distinct())
+            foreach (var p in t.Roster)
+                if (where.TryGetValue(p.Id, out var other) && other.Team != t) found.Add($"{p.Name} (id {p.Id}) on two rosters: {other.Team.FullName} and {t.FullName}{Copies(p, other.Player)}");
+                else where[p.Id] = (t, p);
+            foreach (var p in s.League.FreeAgents)
+                if (where.TryGetValue(p.Id, out var t)) found.Add($"{p.Name} (id {p.Id}) a free agent and on the {t.Team.FullName} roster{Copies(p, t.Player)}");
+            foreach (var g in s.League.FreeAgents.GroupBy(p => p.Id).Where(g => g.Count() > 1))
+                found.Add($"{g.First().Name} (id {g.Key}) listed {g.Count()} times in the free-agent pool");
+        }
+        catch { /* the full invariants report a broken world */ }
+        return found;
+    }
+
+    // Whether the two places hold one Player object or two copies of him (a copy points at a stale object kept from earlier).
+    private static string Copies(Player a, Player b) => ReferenceEquals(a, b) ? " (the same object in both)" : " (two different copies of him)";
+
     /// <summary>Checks that should hold every day of every career.</summary>
     public void Invariants()
     {
@@ -379,6 +408,8 @@ internal sealed class BugFinder
                 else where[p.Id] = t;
             foreach (var p in s.League.FreeAgents)
                 if (where.TryGetValue(p.Id, out var t)) Add("state", page, $"{p.Name} is a free agent and on the {t.FullName} roster");
+            foreach (var g in s.League.FreeAgents.GroupBy(p => p.Id).Where(g => g.Count() > 1))
+                Add("state", page, $"{g.First().Name} is listed {g.Count()} times in the free-agent pool");
             foreach (var t in teams)
                 if (t.Roster.Distinct().Count() != t.Roster.Count) Add("state", page, $"{t.FullName}'s roster lists a player twice");
 
