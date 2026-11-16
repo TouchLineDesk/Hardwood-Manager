@@ -79,9 +79,10 @@ public sealed class PlayDiagram : Control
         return beats[(int)Math.Floor(phase) % beats.Count].Caption;
     }
 
-    public override void Render(DrawingContext ctx)
+    /// <summary>Run 73: the half court alone (the floor, the paint in <paramref name="accent"/>, the lines and the rim),
+    /// shared with the Rotation page's depth chart. Returns where the 50 × 47 ft court sits and its scale.</summary>
+    public static (double ox, double oy, double w, double h, double k) DrawCourt(DrawingContext ctx, Size size, Color accent)
     {
-        var size = Bounds.Size;
         double w = Math.Min(size.Width, size.Height * Aspect), h = w / Aspect;
         double ox = (size.Width - w) / 2, oy = (size.Height - h) / 2;
         double k = w / 50.0;
@@ -95,9 +96,8 @@ public sealed class PlayDiagram : Control
         };
         ctx.FillRectangle(floor, new Rect(ox, oy, w, h), 8);
         var line = new Pen(new SolidColorBrush(Color.FromArgb(150, 255, 255, 255)), 1.4);
-        var accent = new SolidColorBrush(Accent);
         // The paint, in the team's colour.
-        ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(70, Accent.R, Accent.G, Accent.B)), new Rect(P(17, 19), P(33, 0)));
+        ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(70, accent.R, accent.G, accent.B)), new Rect(P(17, 19), P(33, 0)));
         ctx.DrawRectangle(line, new Rect(P(17, 19), P(33, 0)));
         ctx.DrawEllipse(null, line, P(25, 19), 6 * k, 6 * k);
         // The three-point line: corners, then the arc.
@@ -121,6 +121,15 @@ public sealed class PlayDiagram : Control
         ctx.DrawLine(line, P(0, 47), P(50, 47));
         ctx.DrawLine(new Pen(Brushes.White, 2), P(22, 4), P(28, 4));
         ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Color.Parse("#FF7A1A")), 2), P(PlayBook.BasketX, PlayBook.BasketY), 0.9 * k, 0.9 * k);
+
+        return (ox, oy, w, h, k);
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var (ox, oy, w, h, k) = DrawCourt(ctx, Bounds.Size, Accent);
+        Point P(double x, double y) => new(ox + x * k, oy + h - y * k);
+        var accent = new SolidColorBrush(Accent);
 
         var beats = PlayBook.For(System);
         int n = beats.Count;
