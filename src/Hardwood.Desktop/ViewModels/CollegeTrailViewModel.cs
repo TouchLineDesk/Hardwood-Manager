@@ -130,14 +130,14 @@ public sealed partial class CollegeViewModel
         {
             new("Coach hours", $"{hours} of {CollegeWorld.WeeklyHours}", "this week · refill Mondays", hours > 0 ? "team" : "warn"),
             new("Scholarships open", open.ToString(), $"Class of {year}", open == 0 ? "warn" : "info"),
-            new("Offers out", $"{c.OffersOut(me, year)} of {c.OfferLimit(me, year)}", "uncommitted prospects", ""),
+            OffersChip(c.OffersOut(me, year), c.OfferLimit(me, year)),
             new("Committed to you", c.Commits(me, year).ToString(), year == senior ? $"signing day {CollegeWorld.SigningDay(year):MMM d}" : "early pledges", c.Commits(me, year) > 0 ? "good" : ""),
             new("Class rank", ourRank >= 0 ? $"No. {ourRank + 1}" : "-", ourRank >= 0 ? $"{ranking[ourRank].Points} pts" : "no commitments yet", ourRank is >= 0 and < 25 ? "good" : ""),
         };
         bool closed = !c.Recruitable(new Recruit { ClassOf = year }, Session.Today);
         string full = closed ? $"Signing day has passed for the Class of {year}: the rising seniors are the class to recruit now. "
             : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). " : "";
-        TrailNote = full + (Session.Delegated.Recruiting
+        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + (Session.Delegated.Recruiting
             ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits. A prospect can only commit to you once you've offered."
             : "You recruit high-school seniors only, and you have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");
         foreach (var r in TrailRows.Take(CollegeCards.CardCount)) TrailCards.Add(r);
@@ -197,4 +197,23 @@ public sealed partial class CollegeViewModel
     [RelayCommand] private void OfferTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.OfferProspect(p)); }
     [RelayCommand] private void BoardTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.BoardProspect(p)); }
     [RelayCommand] private void OpenTrail() { if (SelectedTrail?.Player is { } p) Shell.ShowPlayer(p); }
+
+    /// <summary>
+    /// H22 (bug hunt, Nov 16; run 79): the offer limit is open scholarships + 3 (0 once none is open), so when places
+    /// fill after offers went out (above all the last one: the limit drops from 4 to 0) the offers out can outnumber the
+    /// limit ("8 of 5", "3 of 0"). They stay out (nobody's offer is pulled); the chip and the trail note say so.
+    /// </summary>
+    public static Chip OffersChip(int offersOut, int limit)
+    {
+        if (offersOut <= limit) return new("Offers out", $"{offersOut} of {limit}", "uncommitted prospects", "");
+        return new("Offers out", $"{offersOut} of {limit}", limit == 0 ? "no places left" : "over: no new offers yet", "warn");
+    }
+
+    /// <summary>H22: why the offers out can pass the limit, in the trail's note.</summary>
+    public static string OverOffersNote(int offersOut, int limit, int open, int year) => offersOut <= limit ? ""
+        : limit == 0
+            ? $"Your {offersOut} offers out to the Class of {year} stay out, but none of them can commit to you unless a scholarship opens up. "
+            : $"You have {offersOut} offers out to the Class of {year} but can now have only {limit} ({open} scholarship{(open == 1 ? "" : "s")} open + 3): "
+              + "places filled after those offers went out. They stay out, and any of them can still commit while a place is open; "
+              + $"you can make a new offer once fewer than {limit} are out. ";
 }

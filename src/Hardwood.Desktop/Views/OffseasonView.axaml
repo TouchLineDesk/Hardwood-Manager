@@ -16,7 +16,7 @@
 
     <Grid ColumnDefinitions="3*,2*" IsVisible="{Binding InOffseason}">
       <TabControl SelectedIndex="{Binding Tab}">
-        <TabItem Header="Contracts up" IsEnabled="{Binding ShowContracts}">
+        <TabItem Header="Contracts up" IsEnabled="{Binding ShowContracts}" IsVisible="{Binding ShowTalk}">
           <Panel>
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowCards}">
             <ItemsControl x:Name="ExpiringCards" ItemsSource="{Binding Expiring}" VerticalAlignment="Top">
@@ -80,7 +80,7 @@
           </DataGrid>
           </Panel>
         </TabItem>
-        <TabItem Header="Free agents" IsEnabled="{Binding ShowFreeAgency}">
+        <TabItem Header="Free agents" IsEnabled="{Binding ShowFreeAgency}" IsVisible="{Binding ShowTalk}">
           <Panel>
           <DockPanel IsVisible="{Binding ShowCards}">
             <TextBlock DockPanel.Dock="Top" Text="{Binding FreeAgentNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
@@ -176,7 +176,7 @@
         </TabItem>
         <TabItem Header="Your roster">
           <Grid RowDefinitions="Auto,Auto,*">
-            <Button Content="Release selected" Command="{Binding WaivePlayerCommand}" IsEnabled="{Binding SelectedRosterPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,0,6"/>
+            <Button Content="Release selected" IsVisible="{Binding CanReleaseFromRoster}" Command="{Binding WaivePlayerCommand}" IsEnabled="{Binding SelectedRosterPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,0,6"/>
             <!-- H24: Release asks before it cuts anyone. -->
             <Border x:Name="ReleaseConfirm" Grid.Row="1" Classes="panel" Margin="0,0,0,6" IsVisible="{Binding ConfirmingRelease}" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="1">
               <Grid ColumnDefinitions="Auto,*,Auto">
@@ -203,7 +203,7 @@
         <TabItem Header="Draft" IsVisible="{Binding ShowDraft}">
           <Grid RowDefinitions="Auto,Auto,2*,Auto,*">
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button Classes="primary" Content="{Binding DraftButton}" Command="{Binding DraftCommand}" IsEnabled="{Binding OnTheClock}" ToolTip.Tip="Your turn comes in the lottery's order" ToolTip.ShowOnDisabled="True"/>
+              <Button Classes="primary" Content="{Binding DraftButton}" Command="{Binding DraftCommand}" IsEnabled="{Binding OnTheClock}" IsVisible="{Binding ShowTalk}" ToolTip.Tip="Your turn comes in the lottery's order" ToolTip.ShowOnDisabled="True"/>
               <TextBlock Text="College draft" Classes="h2" Margin="0" VerticalAlignment="Center"/>
             </StackPanel>
             <StackPanel Grid.Row="1" Margin="0,4,0,6" Spacing="2">
@@ -279,9 +279,19 @@
           </Grid>
         </TabItem>
       </TabControl>
-      <ScrollViewer Grid.Column="1" Margin="12,0,0,0">
+      <ScrollViewer Grid.Column="1" Margin="12,0,0,0" IsVisible="{Binding ShowTalk}">
         <ContentControl Content="{Binding Talk}"/>
       </ScrollViewer>
+      <!-- H37 (run 79): a college coach's summer in place of contract talks. -->
+      <Border x:Name="CollegeSummerPanel" Grid.Column="1" Margin="12,0,0,0" Classes="panel" VerticalAlignment="Top" IsVisible="{Binding CollegeSummer}">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:Icon Kind="GraduationCap" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
+            <TextBlock Text="Your program's summer" Classes="h2" Margin="0" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock Text="{Binding CollegeSummerText}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
     </Grid>
   </DockPanel>
 </UserControl>

@@ -23,7 +23,7 @@ public sealed partial class ExpiringRow : ObservableObject
     [ObservableProperty] private bool _picked;
     public string CardLine => $"{Pos} · {Age} · PA {PA}";
     public string AskChip { get; init; } = "";
-    public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits budget" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
+    public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits on its own" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
     public string FitTip { get; init; } = "";
     public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, 1);
 }
@@ -118,6 +118,13 @@ public sealed partial class OffseasonViewModel : PageViewModel
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _capText = "";
     [ObservableProperty] private int _tab;
+    /// <summary>H37 (run 79): a college coach's summer has no contracts, free agents or talks.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowTalk))] private bool _collegeSummer;
+    public bool ShowTalk => !CollegeSummer;
+    /// <summary>The side panel a college coach sees in place of contract talks.</summary>
+    [ObservableProperty] private string _collegeSummerText = "";
+    /// <summary>Pros release players to free agency; a college program has no one to release to.</summary>
+    public bool CanReleaseFromRoster => !CollegeSummer;
 
     public ObservableCollection<ExpiringRow> Expiring { get; } = new();
     [ObservableProperty] private ExpiringRow? _selectedExpiring;
@@ -192,6 +199,13 @@ public sealed partial class OffseasonViewModel : PageViewModel
         DraftButton = p != null && OnTheClock ? $"Draft {p.Name}" : "Draft selected";
         var o = Session.Offseason;
         if (p == null || o == null || !ShowDraft) { DraftHint = ""; return; }
+        if (CollegeSummer)
+        {
+            // A program doesn't pick; a press still says who he is on the pros' board (the bug finder's "no feedback").
+            var row = DraftPool.FirstOrDefault(r => r.Player == p);
+            DraftHint = row == null ? "" : $"{p.Name}: No. {row.Rank} of {DraftPool.Count} on the pros' board ({row.Pos}, potential {row.PA}).";
+            return;
+        }
         var mine = Enumerable.Range(o.NextPickIndex, Math.Max(0, o.PickOwners.Count - o.NextPickIndex)).Where(i => o.PickOwners[i] == Session.HumanTeam).Select(i => i + 1).ToList();
         DraftHint = OnTheClock ? $"Press Draft to take {p.Name} with pick {o.NextPickIndex + 1}."
             : mine.Count > 0 ? $"{p.Name} is top of your board. You pick #{mine[0]}; if he's still there, take him then."
@@ -209,6 +223,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
         FreeAgentCards.Clear(); DraftCards.Clear(); FreeAgentNote = DraftNote = DraftHint = "";
         ShowDraft = InOffseason && o!.CollegeDraftOn && o.Phase is OffseasonPhase.ReSigning or OffseasonPhase.Draft;
         OnTheClock = false; DraftText = "";
+        CollegeSummer = false; CollegeSummerText = "";
+        OnPropertyChanged(nameof(CanReleaseFromRoster));
         if (!InOffseason || !s.Employed)
         {
             Headline = InOffseason ? "Summer" : "The offseason has not started.";
@@ -221,6 +237,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             return;
         }
         var team = s.HumanTeam; var fin = s.League.Finance;
+        if (s.InCollege) { RefreshCollegeSummer(s, o!, team); return; }
         bool renewing = s.InNabl ? o!.Phase == OffseasonPhase.ReSigning : true;
         bool freeAgency = s.Abroad || o!.Phase == OffseasonPhase.FreeAgency;
         ShowContracts = s.MyExpiring.Count > 0 || (s.InNabl && renewing);
@@ -242,10 +259,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
         {
             s.MyStats.TryGetValue(p.Id, out var st);
             var d = s.PeekDemand(p);
-            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits budget" : "Over budget";
+            // H40 (run 79): each ask is checked on its own against the room left, so say so: five asks can each fit and not all together.
+            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits on its own" : "Over budget";
             Expiring.Add(new ExpiringRow
             {
-                Player = p, Age = p.Age(o.Date), Team = team,
+                Player = p, Age = p.Age(s.Today), Team = team,   // H38: today's age, as on every other page
                 LastSeason = st != null ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min" : "-",
                 Ask = $"${d.Wage / 1e6:F2}M × {d.Years}",
                 AskChip = SummerCards.AskChip(d),
@@ -253,7 +271,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 FitTip = fits switch
                 {
                     "Won't stay" => $"{p.Name} is too unhappy here to sign a new deal",
-                    "Fits budget" => "His ask fits your wage budget with the deals you have",
+                    "Fits on its own" => $"His ask fits your wage budget with the deals you have now ({M(Math.Max(0, team.Money.WageBudget - s.MyCommittedWages))} to spend). Each card is checked on its own: keeping several takes the room of all of them.",
                     _ => "His ask would take you over the wage budget; the owner won't allow it",
                 },
                 Picked = Talk.Player == p,
@@ -264,7 +282,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             long room = s.MyWageRoom;
             foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility).Take(250))
             {
-                var row = SummerCards.FreeAgent(s, p, o.Date, p.RookieSeason == o.Season + 1, room);
+                var row = SummerCards.FreeAgent(s, p, s.Today, p.RookieSeason == o.Season + 1, room);
                 row.Picked = Talk.Player == p;
                 FreeAgents.Add(row);
             }
@@ -284,7 +302,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 var terms = WorldMarket.Terms(s.World, o, team, p);
                 Overseas.Add(new OverseasRow
                 {
-                    Player = p, Age = p.Age(o.Date), Knowledge = Scouting.Knowledge(team, p),
+                    Player = p, Age = p.Age(s.Today), Knowledge = Scouting.Knowledge(team, p),
                     Club = club == null ? "" : $"{club.FullName} ({s.World.HomeOf(club).Profile.Short})",
                     Terms = terms.Possible ? $"Yes: ${terms.NablSalary / 1e6:F1}M a year. {terms.Note}" : terms.Note,
                 });
@@ -303,6 +321,50 @@ public sealed partial class OffseasonViewModel : PageViewModel
         MarkTalk();
     }
 
+    /// <summary>
+    /// H37 (bug hunt, Nov 16; run 79): a college coach's summer. Programs don't sign professionals or pay wages, so the
+    /// pro header, Contracts up, Free agents and the talks panel are replaced by what did happen (seniors graduated, the
+    /// signed class enrolled) and what's next (the recruiting trail on the College page).
+    /// </summary>
+    private void RefreshCollegeSummer(GameSession s, Offseason o, Hardwood.Core.Model.Team team)
+    {
+        CollegeSummer = true;
+        OnPropertyChanged(nameof(CanReleaseFromRoster));
+        ShowContracts = ShowFreeAgency = ShowBuyouts = false;
+        Headline = $"Summer {o.Season + 1} · {team.FullName}";
+        Instructions = "A college summer has no contracts, wages or free agents. Seniors graduate into the pros and the signed class enrolls when the summer begins. "
+                     + "The pros' draft and free agency run until the new season: press Continue to move the summer along.";
+        var c = s.World.College;
+        int walkOns = c == null ? 0 : team.Roster.Count(p => c.WalkOnIds.Contains(p.Id));
+        CapText = c is { Recruiting: true }
+            ? $"Roster {team.Roster.Count} of {Hardwood.Core.College.CollegeWorld.Squad} · {team.Roster.Count - walkOns} on scholarship (of {Hardwood.Core.College.CollegeWorld.Scholarships})"
+              + (walkOns > 0 ? $" · {walkOns} walk-on{(walkOns == 1 ? "" : "s")}" : "")
+            : $"Roster {team.Roster.Count} players";
+        foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
+        var lines = new List<string>();
+        if (c is { Recruiting: true })
+        {
+            int cls = c.RecruitingClass(s.Today);
+            int open = c.OpenScholarships(team, cls), commits = c.Commits(team, cls);
+            lines.Add($"Class of {cls}: {commits} committed to you, {open} scholarship{(open == 1 ? "" : "s")} still open.");
+            lines.Add("Recruit the class on the College page (Recruiting). Rising seniors can be courted now; they commit from September 1.");
+        }
+        if (s.Inbox.Any(m => m.Title == "Graduation and enrollment" && m.Date.Year == o.Season + 1))
+            lines.Add("Who left and who joined is in your inbox (\"Graduation and enrollment\").");
+        if (ShowDraft) lines.Add("The pros' draft is on the Draft tab: watch where your graduates go. College programs don't draft.");
+        CollegeSummerText = string.Join("\n\n", lines);
+        if (ShowDraft)
+        {
+            FillDraft(s, o, team);
+            DraftText = o.Phase == OffseasonPhase.Draft ? "The pros' draft is under way. College programs don't pick; your graduates can be taken."
+                                                        : "The pros' draft follows their contract decisions. College programs don't pick; your graduates can be taken.";
+            DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted." : $"The best {DraftPool.Count} graduates, in the pros' scouts' order (potential first). Pick a card to see where he stands.";
+        }
+        if (Tab is 0 or 1 or 2) Tab = 3;
+        if (Tab == 4 && !ShowDraft) Tab = 3;
+        Talk.Show(null);
+    }
+
     private void FillDraft(GameSession s, Offseason o, Hardwood.Core.Model.Team team)
     {
         OnTheClock = o.Phase == OffseasonPhase.Draft && o.OnTheClock == team;
@@ -313,7 +375,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         int rank = 1;
         var keep = _boardPick;
         foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
-            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(o.Date), Knowledge = Scouting.Knowledge(team, p) });
+            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(Session.Today), Knowledge = Scouting.Knowledge(team, p) });
         foreach (var r in DraftPool.Take(SummerCards.DraftCount)) DraftCards.Add(r);
         if (keep != null && !DraftCards.Any(r => r.Player == keep) && DraftPool.FirstOrDefault(r => r.Player == keep) is { } further) DraftCards.Add(further);
         DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted."
