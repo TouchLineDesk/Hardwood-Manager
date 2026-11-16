@@ -381,4 +381,15 @@ public class BugFinderFixTests
         }
         finally { if (File.Exists(path)) File.Delete(path); }
     }
+
+    [Fact]
+    public void Sweep_leaves_roster_cuts_alone()
+    {
+        // Bug-hunt Nov 16: the sweep pressed Waive on Wembanyama on the nba-contender career's first day.
+        Assert.True(BugFinder.IsCut("Waive"));
+        Assert.True(BugFinder.IsCut("Release"));
+        Assert.True(BugFinder.IsCut("Release selected"));
+        Assert.False(BugFinder.IsCut("Make offer"));
+        Assert.False(BugFinder.IsCut("Draft selected"));
+    }
 }
