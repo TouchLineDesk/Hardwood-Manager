@@ -132,8 +132,13 @@ public class Run79CollegeSummerTests
                 if (page.ShowDraft)
                 {
                     Assert.Contains("College programs don't pick", page.DraftText);
-                    Assert.Equal("", page.DraftHint);
                     Assert.DoesNotContain("your board", page.DraftNote);
+                    Assert.DoesNotContain("Press Draft", page.DraftHint);
+                    if (page.DraftCards.Count > 1)
+                    {
+                        page.PickProspect(page.DraftCards[1]);
+                        Assert.Contains("on the pros' board", page.DraftHint);   // a press says something (bug finder)
+                    }
                 }
             }
         }

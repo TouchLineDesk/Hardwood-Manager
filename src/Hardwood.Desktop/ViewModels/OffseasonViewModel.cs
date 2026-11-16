@@ -198,7 +198,14 @@ public sealed partial class OffseasonViewModel : PageViewModel
         var p = SelectedProspect?.Player;
         DraftButton = p != null && OnTheClock ? $"Draft {p.Name}" : "Draft selected";
         var o = Session.Offseason;
-        if (p == null || o == null || !ShowDraft || CollegeSummer) { DraftHint = ""; return; }
+        if (p == null || o == null || !ShowDraft) { DraftHint = ""; return; }
+        if (CollegeSummer)
+        {
+            // A program doesn't pick; a press still says who he is on the pros' board (the bug finder's "no feedback").
+            var row = DraftPool.FirstOrDefault(r => r.Player == p);
+            DraftHint = row == null ? "" : $"{p.Name}: No. {row.Rank} of {DraftPool.Count} on the pros' board ({row.Pos}, potential {row.PA}).";
+            return;
+        }
         var mine = Enumerable.Range(o.NextPickIndex, Math.Max(0, o.PickOwners.Count - o.NextPickIndex)).Where(i => o.PickOwners[i] == Session.HumanTeam).Select(i => i + 1).ToList();
         DraftHint = OnTheClock ? $"Press Draft to take {p.Name} with pick {o.NextPickIndex + 1}."
             : mine.Count > 0 ? $"{p.Name} is top of your board. You pick #{mine[0]}; if he's still there, take him then."
@@ -351,8 +358,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             FillDraft(s, o, team);
             DraftText = o.Phase == OffseasonPhase.Draft ? "The pros' draft is under way. College programs don't pick; your graduates can be taken."
                                                         : "The pros' draft follows their contract decisions. College programs don't pick; your graduates can be taken.";
-            DraftHint = "";
-            DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted." : $"The best {DraftPool.Count} graduates, in the pros' scouts' order (potential first).";
+            DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted." : $"The best {DraftPool.Count} graduates, in the pros' scouts' order (potential first). Pick a card to see where he stands.";
         }
         if (Tab is 0 or 1 or 2) Tab = 3;
         if (Tab == 4 && !ShowDraft) Tab = 3;
