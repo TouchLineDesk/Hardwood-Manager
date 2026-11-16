@@ -339,7 +339,7 @@ public sealed partial class TacticsViewModel : PageViewModel
 
     private void ApplySliders()
     {
-        if (_loading) return;
+        if (_loading || !Session.Employed) return;   // H52 (run 84)
         var t = Tac;
         t.Pace = Pace; t.ThreePointEmphasis = (int)ThreeEmphasis; t.CrashGlass = (int)CrashGlass; t.DefensiveAggression = (int)Aggression; t.StarUsage = (int)StarUsage;
         Changed();

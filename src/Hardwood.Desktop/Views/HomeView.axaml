@@ -44,8 +44,8 @@
 
       <!-- Quick actions -->
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Command="{Binding GoCommand}" CommandParameter="Tactics"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ClipboardList" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Game plan"/></StackPanel></Button>
-        <Button Command="{Binding GoCommand}" CommandParameter="Rotation"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Repeat" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Rotation"/></StackPanel></Button>
+        <Button Command="{Binding GoCommand}" CommandParameter="Tactics" IsVisible="{Binding Coaching}"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="ClipboardList" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Game plan"/></StackPanel></Button>
+        <Button Command="{Binding GoCommand}" CommandParameter="Rotation" IsVisible="{Binding Coaching}"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Repeat" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Rotation"/></StackPanel></Button>
         <Button Command="{Binding GoCommand}" CommandParameter="Squad"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="HeartHandshake" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Squad"/></StackPanel></Button>
         <Button Command="{Binding GoCommand}" CommandParameter="Inbox"><StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="Inbox" Width="15" Height="15" Foreground="#E6EAF0"/><TextBlock Text="Inbox"/></StackPanel></Button>
       </StackPanel>

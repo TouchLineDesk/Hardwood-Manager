@@ -140,10 +140,21 @@ public sealed partial class MainViewModel : ViewModelBase
         return page;
     }
 
+    /// <summary>
+    /// Bug hunt H52 (run 84): the pages that change your own club. Out of work they're hidden from the menu, and a link,
+    /// a Home button or Back that leads to one opens the Board page (the open jobs) instead, so nothing you touch there
+    /// can change the club you left (its rotation, game plan or training).
+    /// </summary>
+    public static readonly IReadOnlySet<string> ClosedOutOfWork = new HashSet<string> { "Transactions", "Rotation", "Tactics", "Staff & Training" };
+
+    /// <summary>True when this page is one of <see cref="ClosedOutOfWork"/> and you have no club.</summary>
+    public bool IsClosed(string name) => Session is { Employed: false } && ClosedOutOfWork.Contains(name);
+
     [RelayCommand]
     public void Navigate(string name)
     {
         if (InLiveGame) return; // finish the game first
+        if (IsClosed(name)) name = "Board";
         Controls.Portraits.Reload(); // pick up portraits rebuilt on disk
         RequestPortraits();
         var page = Page(name);
@@ -171,6 +182,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         if (_back.Count == 0) { Navigate("Home"); return; }
         var prev = _back.Pop();
+        if (prev is PageViewModel closed && IsClosed(closed.Title)) { Navigate("Board"); return; }   // H52 (run 84)
         if (prev is PageViewModel p) p.Refresh();
         CurrentPage = prev;
         foreach (var n in Nav) n.IsActive = prev is PageViewModel pv && _pages.TryGetValue(n.Name, out var page) && page == pv;
@@ -261,8 +273,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public void AfterTick()
     {
         Controls.CollegeRank.RaiseChanged();
-        foreach (var p in _pages.Values) p.Refresh();
+        // H52 (run 84): a page closed out of work isn't refreshed (Rotation's refresh wrote a chart to the old club), and
+        // if you were on one when the sack came, you go to the Board page and its open jobs.
+        foreach (var (name, p) in _pages) if (!IsClosed(name)) p.Refresh();
         if (CurrentPage is PageViewModel cp && !_pages.ContainsValue(cp)) cp.Refresh();
+        if (CurrentPage is PageViewModel open && IsClosed(open.Title) && !InLiveGame) Navigate("Board");
         RefreshHeader();
         RequestPortraits();
         Guide.OnTick();
@@ -325,7 +340,9 @@ public sealed partial class MainViewModel : ViewModelBase
         bool college = s.Employed && s.InCollege;
         foreach (var item in Nav.Where(n => n.Name is "Transactions" or "Offseason")) item.IsVisible = !college;
         // H43 (run 81): out of work there is no roster of yours to sign for, waive from or trade.
-        if (!s.Employed && Nav.FirstOrDefault(n => n.Name == "Transactions") is { } tx) tx.IsVisible = false;
+        // H52 (run 84): nor a rotation, a game plan or a training programme: those pages wrote to the old club.
+        if (!s.Employed) foreach (var item in Nav.Where(n => ClosedOutOfWork.Contains(n.Name))) item.IsVisible = false;
+        else foreach (var item in Nav.Where(n => n.Name is "Rotation" or "Tactics" or "Staff & Training")) item.IsVisible = true;
         var off = Nav.FirstOrDefault(n => n.Name == "Offseason");
         if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
     }

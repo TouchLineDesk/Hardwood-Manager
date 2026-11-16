@@ -203,13 +203,20 @@ public sealed partial class BoardViewModel : PageViewModel
             ConfidenceBrush = new SolidColorBrush(Color.Parse(colour));
             var m = t.Money;
             static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
-            long wages = Hardwood.Core.Season.ContractMarket.Payroll(t);
+            // Bug hunt H45 (run 84): in the summer the deals that are up (and leave unless renewed) aren't spent, the way
+            // Transactions, Offseason and the inbox count them (GameSession.MyBudgetLine); they're named under the chip.
+            var expiring = s.MyExpiring;
+            long upWages = expiring.Sum(p => p.Contract?.Salary ?? 0);
+            long wages = expiring.Count > 0 ? s.MyCommittedWages : Hardwood.Core.Season.ContractMarket.Payroll(t);
+            string wagesNote = expiring.Count > 0
+                ? $"committed of a {M(m.WageBudget)} budget (not counting {M(upWages)} of {expiring.Count} expiring)"
+                : $"of a {M(m.WageBudget)} budget";
             Finances = $"Revenue {M(m.Revenue)} a season · wage budget {M(m.WageBudget)} · wages {M(wages)} · "
                        + $"transfer budget {M(m.TransferBudget)} · bank balance {M(m.Balance)} · fan base {m.FanBase:0}/100";
             FinanceChips = new List<Hardwood.Desktop.Controls.Chip>
             {
                 new("Revenue", M(m.Revenue), "a season", "team"),
-                new("Wages", M(wages), $"of a {M(m.WageBudget)} budget", wages > m.WageBudget ? "bad" : wages > m.WageBudget * 0.95 ? "warn" : "good"),
+                new("Wages", M(wages), wagesNote, wages > m.WageBudget ? "bad" : wages > m.WageBudget * 0.95 ? "warn" : "good"),
                 new("Wage room", M(Math.Max(0, m.WageBudget - wages)), wages > m.WageBudget ? $"{M(wages - m.WageBudget)} over" : "to spend on wages", wages > m.WageBudget ? "bad" : ""),
                 new("Transfer budget", M(m.TransferBudget), "for transfer fees"),
                 new("Bank", M(m.Balance), m.Balance < 0 ? "in debt" : "balance", m.Balance < 0 ? "bad" : ""),

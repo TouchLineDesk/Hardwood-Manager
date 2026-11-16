@@ -192,7 +192,7 @@ public sealed partial class StaffViewModel : PageViewModel
         Session.SaveNow();
     }
     partial void OnDelegateRecruitingChanged(bool value) { if (_loading) return; Session.Delegated.Recruiting = value; Session.SaveNow(); FillDelegationNote(); }
-    partial void OnDelegateTacticsChanged(bool value) { if (_loading) return; Session.HumanTeam.Tactic.Auto = value; Session.SaveNow(); FillDelegationNote(); }
+    partial void OnDelegateTacticsChanged(bool value) { if (_loading || !Session.Employed) return; Session.HumanTeam.Tactic.Auto = value; Session.SaveNow(); FillDelegationNote(); }
     [ObservableProperty] private string _intensityText = "";
     private bool _loading;
 
@@ -201,7 +201,7 @@ public sealed partial class StaffViewModel : PageViewModel
     partial void OnRoleFilterChanged(string value) => FillMarket();
     partial void OnIntensityChanged(double value)
     {
-        if (_loading) return;
+        if (_loading || !Session.Employed) return;   // H52 (run 84)
         Session.HumanTeam.Training.Intensity = (int)value;
         IntensityText = Describe((int)value);
         UpdateEffects();
@@ -350,7 +350,7 @@ public sealed partial class StaffViewModel : PageViewModel
 
     public void FocusChanged(FocusRow row)
     {
-        if (_loading) return;
+        if (_loading || !Session.Employed) return;   // H52 (run 84)
         var focus = Session.HumanTeam.Training.Focus;
         if (row.Focus == "Balanced") focus.Remove(row.Player.Id);
         else focus[row.Player.Id] = Enum.Parse<AttrGroup>(row.Focus);
