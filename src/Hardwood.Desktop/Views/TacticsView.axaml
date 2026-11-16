@@ -63,7 +63,9 @@
                 <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
-            <TextBlock Text="Their best scorer" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <!-- Run 71 (bug hunt H14): the box lists your players; it picks who guards their best scorer. -->
+            <TextBlock Text="Your stopper on their best scorer" FontWeight="SemiBold" Margin="0,6,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="Which of your players guards their top scorer. Your players, best perimeter defenders first." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <ComboBox ItemsSource="{Binding Stoppers}" SelectedItem="{Binding SelectedStopper}" HorizontalAlignment="Stretch">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:StopperOption"><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>

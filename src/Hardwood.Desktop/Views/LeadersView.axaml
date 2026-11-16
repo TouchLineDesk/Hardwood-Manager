@@ -11,6 +11,8 @@
         <TextBlock Text="{Binding Note}" Classes="muted"/>
       </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+        <ComboBox x:Name="LeagueBox" ItemsSource="{Binding LeagueNames}" SelectedItem="{Binding LeagueName}" MinWidth="200" MaxWidth="320"
+                  IsVisible="{Binding HasLeagueChoice}" ToolTip.Tip="Your league first; the NBA's leaders are one pick away"/>
         <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="130"/>
         <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" Width="150" IsVisible="{Binding ShowTable}"/>
       </StackPanel>

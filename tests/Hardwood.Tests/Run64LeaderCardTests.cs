@@ -45,7 +45,7 @@ public class Run64LeaderCardTests
             var empty = (LeadersViewModel)vm.CurrentPage!;
             Assert.True(empty.ShowCards);
             Assert.Equal(LeaderCards.Stats.Length, empty.Cards.Count);
-            if (empty.Cards.All(c => c.IsEmpty)) Assert.Equal("The leaders fill in after the first games.", empty.Note);
+            if (empty.Cards.All(c => c.IsEmpty)) Assert.EndsWith("the leaders fill in after the first games.", empty.Note);   // run 71: the league's name first
 
             // A month in.
             while (s.Phase != SessionPhase.RegularSeason || s.Stats.Values.Count(x => x.Games >= 10) < 100) s.AdvanceDay();

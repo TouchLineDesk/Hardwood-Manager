@@ -53,8 +53,12 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Progress of the automatic portrait drawing (empty when up to date).</summary>
     [ObservableProperty] private string _portraitStatus = "";
     public bool ShowSimButtons => InSeason && !InLiveGame;
-    partial void OnInSeasonChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
-    partial void OnInLiveGameChanged(bool value) => OnPropertyChanged(nameof(ShowSimButtons));
+    /// <summary>Next game needs a club (bug hunt H15): out of work, Sim week and Continue still move time on.</summary>
+    [ObservableProperty] private bool _employed = true;
+    public bool ShowNextGameButton => ShowSimButtons && Employed;
+    partial void OnEmployedChanged(bool value) => OnPropertyChanged(nameof(ShowNextGameButton));
+    partial void OnInSeasonChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
+    partial void OnInLiveGameChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
 
     public ObservableCollection<NavItem> Nav { get; } = new();
     /// <summary>The assistant panel (decisions #115-118).</summary>
@@ -276,22 +280,25 @@ public sealed partial class MainViewModel : ViewModelBase
         if (s.Phase == SessionPhase.Offseason) InLiveGame = false;
         DateText = s.Today.ToString("ddd, MMM d yyyy");
         (SavedText, SavedTip) = SaveLine(s);
-        HeaderTeam = s.HumanTeam;
+        Employed = s.Employed;
+        // Bug hunt H15 (run 71): out of work, the top bar shows no club, record or next game.
+        HeaderTeam = s.Employed ? s.HumanTeam : null;
         TeamText = s.Employed ? s.HumanTeam.FullName : $"{s.Coach.Name} · out of work";
         var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
         JobText = s.Employed ? $"{(s.InCollege ? "AD" : "Board")}: {jobLabel}" : jobLabel;
         JobBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(jobColour));
         var rec = s.MyRecord;
-        RecordText = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
+        RecordText = !s.Employed ? "" : rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
+        var outText = SeasonOverText(s);
         PhaseText = s.InCollege && s.Employed && s.World.College is { } cw && cw.Season.Year == s.League.Season
             ? $"{s.MyConference!.Short} · {(cw.Season.ChampionId != null ? "season over" : cw.StageText.ToLower())}"
             : s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
-            ? $"{hl.Profile.Name} · {(hl.Season.IsComplete ? "season over" : hl.Season.Stage.ToLower())}"
+            ? $"{hl.Profile.Name} · {(hl.Season.IsComplete ? "season over" : outText ?? hl.Season.Stage.ToLower())}"
             : s.Phase switch
         {
             SessionPhase.Preseason => $"Preseason · opens {s.OpeningNight:MMM d}",
             SessionPhase.RegularSeason => $"Regular season {s.League.Season}-{(s.League.Season + 1) % 100:00}",
-            SessionPhase.Postseason => $"Playoffs · {s.Postseason?.Stage}",
+            SessionPhase.Postseason => outText != null ? $"Playoffs · {outText}" : $"Playoffs · {s.Postseason?.Stage}",
             SessionPhase.Offseason => $"Offseason · {s.Offseason?.Phase}",
             _ => "",
         };
@@ -305,7 +312,7 @@ public sealed partial class MainViewModel : ViewModelBase
             } ?? "Continue"
             : "Continue (1 day)";
         var next = s.NextMyGame;
-        NextGameText = s.InNabl && s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs
+        NextGameText = !s.Employed ? "" : s.InNabl && s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs
             ? $"Series vs {(hs.Higher == s.HumanTeam ? hs.Lower : hs.Higher).Abbreviation}: {hs.Score}"
             : next != null ? $"Next: {(next.Home ? "vs" : "at")} {next.Opponent.Abbreviation}, {next.Date:MMM d}"
             : "";
@@ -315,6 +322,46 @@ public sealed partial class MainViewModel : ViewModelBase
         foreach (var item in Nav.Where(n => n.Name is "Transactions" or "Offseason")) item.IsVisible = !college;
         var off = Nav.FirstOrDefault(n => n.Name == "Offseason");
         if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
+    }
+
+    /// <summary>
+    /// Bug hunt H10 (run 71): in the postseason the top bar showed the league's stage ("conference finals") for a club that
+    /// was no longer playing. This is your own line once you're out: "your season is over" (you didn't make it) or
+    /// "out in the first round" (you lost a series and have nothing left to play); null while you're still in it.
+    /// A pro club only (college has its own line); a series you won with the next round not yet drawn counts as still in.
+    /// </summary>
+    public static string? SeasonOverText(GameSession s)
+    {
+        if (!s.Employed || s.InCollege) return null;
+        var me = s.HumanTeam;
+        if (s.InNabl)
+        {
+            if (s.Phase != SessionPhase.Postseason || s.Postseason == null) return null;
+            if (s.NextMyGame != null) return null;
+            var last = s.Postseason.Series.LastOrDefault(x => x.Higher == me || x.Lower == me);
+            if (last == null) return "your season is over";
+            if (!last.Complete || last.Loser != me) return null;
+            // Losing the 7/8 play-in game still leaves the 8th-seed game.
+            if (last.Round.Contains("Play-In 7/8")) return null;
+            return $"out in the {RoundName(last.Round)}";
+        }
+        if (s.Phase == SessionPhase.Offseason || s.HumanLeague is not { } hl) return null;
+        var cs = hl.Season;
+        if (cs.Stage == Hardwood.Core.World.CompetitionSeason.RegularSeason || cs.IsComplete) return null;
+        // Still in a continental cup (code review): not over yet.
+        if (!s.HumanSeasonOver) return null;
+        if (cs.Fixtures.Any(f => !f.Played && (f.HomeId == me.Id || f.AwayId == me.Id))) return null;
+        if (cs.Series.Any(x => !x.Complete && (x.HighId == me.Id || x.LowId == me.Id))) return null;
+        var mine = cs.Series.Where(x => x.HighId == me.Id || x.LowId == me.Id).ToList();
+        if (mine.Count == 0) return "your season is over";
+        var lastSeries = mine[^1];
+        return lastSeries.LoserId == me.Id ? $"out in the {RoundName(lastSeries.Round)}" : null;
+    }
+
+    private static string RoundName(string round)
+    {
+        var r = round.StartsWith("East ") || round.StartsWith("West ") ? round[5..] : round;
+        return r.ToLower();
     }
 
     /// <summary>The top bar's last-save line and its hover text (D74 B).</summary>
