@@ -95,6 +95,11 @@ public sealed class GameSimulator
 
         public void RequestLineup(Team team, IEnumerable<Player> five) => _game.RequestLineup(team == Result.Home.Team, five);
         public void RefreshTargets(Team team) => _game.RefreshTargets(team == Result.Home.Team);
+        /// <summary>
+        /// The assistant's halftime read for <paramref name="team"/> (D75 A): the system and scheme that counter what the other
+        /// bench is running, worked out exactly as on Continue. A pure read: watching live, applying it is the coach's call.
+        /// </summary>
+        public (OffensiveSystem system, DefensiveScheme scheme)? HalftimeRead(Team team) => _game.HalftimeRead(team == Result.Home.Team);
 
         private void Finalise()
         {
@@ -356,9 +361,7 @@ public sealed class GameSimulator
         {
             var t = us.Team.Tactic;
             if (t.Auto || !t.HalftimeAdjust || Interactive) return;
-            var rot = us.Dressed.Where(p => !us.Line(p).FouledOut).OrderByDescending(p => p.CurrentAbility).Take(9).ToList();
-            if (rot.Count == 0) return;
-            var (sys, sch) = CoachAi.Counter(rot, them.Team.Tactic.System, them.Team.Tactic.Scheme);
+            if (Read(us, them) is not var (sys, sch)) return;
             if (sys == t.System && sch == t.Scheme) return;
             var adj = new Tactic { Auto = false, Roles = t.Roles, StarStopperId = t.StarStopperId, Presets = t.Presets, LateGamePreset = t.LateGamePreset };
             TacticPreset.From(t, "halftime").ApplyTo(adj);
@@ -366,6 +369,21 @@ public sealed class GameSimulator
             us.Adjusted = adj;
             Log($"Halftime adjustment: {us.Team.Abbreviation} switch to {Systems.Name(sys).ToLower()} and {Systems.Name(sch).ToLower()} defense.");
         }
+
+        /// <summary>
+        /// The assistant's read of the other bench (#268): the counter to what they are really running, for the players
+        /// still able to play (the best nine dressed, fouled-out players left out). Null with nobody to play. A pure read.
+        /// </summary>
+        private static (OffensiveSystem system, DefensiveScheme scheme)? Read(Side us, Side them)
+        {
+            var rot = us.Dressed.Where(p => !us.Line(p).FouledOut).OrderByDescending(p => p.CurrentAbility).Take(9).ToList();
+            if (rot.Count == 0) return null;
+            return CoachAi.Counter(rot, them.Team.Tactic.System, them.Team.Tactic.Scheme);
+        }
+
+        /// <summary>The halftime read for one side, the same one Continue applies (D75 A, run 69). Draws no random numbers.</summary>
+        public (OffensiveSystem system, DefensiveScheme scheme)? HalftimeRead(bool home) =>
+            home ? Read(_home, _away) : Read(_away, _home);
 
         /// <summary>Ask for a specific five at the next dead ball. Players who are hurt, fouled out or not on the roster are ignored.</summary>
         public void RequestLineup(bool home, IEnumerable<Player> five)
