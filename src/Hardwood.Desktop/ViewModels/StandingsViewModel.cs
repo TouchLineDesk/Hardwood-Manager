@@ -327,14 +327,44 @@ public sealed partial class LeadersViewModel : PageViewModel
     public ObservableCollection<LeaderCard> Cards { get; } = new();
     partial void OnViewChanged(string value) { OnPropertyChanged(nameof(ShowCards)); OnPropertyChanged(nameof(ShowTable)); }
 
-    public LeadersViewModel(MainViewModel shell) : base(shell) { }
+    // Run 71 (bug hunt H13): the page shows your own league's leaders (a G League or college coach saw the NBA's and
+    // the page never said so). The League box lists your league first and the NBA second; the note names the league.
+    public ObservableCollection<string> LeagueNames { get; } = new();
+    [ObservableProperty] private string? _leagueName;
+    public bool HasLeagueChoice => LeagueNames.Count > 1;
+    private readonly Dictionary<string, string> _keys = new();
+    partial void OnLeagueNameChanged(string? value) { if (!_filling) Refresh(); }
+    private bool _filling;
+
+    public LeadersViewModel(MainViewModel shell) : base(shell) => FillLeagues();
     partial void OnCategoryChanged(string value) => FillTable();
+
+    /// <summary>Your league first (where your club plays), then the NBA when that isn't yours.</summary>
+    private void FillLeagues()
+    {
+        var s = Session;
+        _filling = true;
+        LeagueNames.Clear(); _keys.Clear();
+        void Add(LeagueBook? b) { if (b != null && !_keys.ContainsValue(b.Key)) { LeagueNames.Add(b.Name); _keys[b.Name] = b.Key; } }
+        Add(LeagueBook.HomeOf(s, s.HumanTeam));
+        Add(LeagueBook.Get(s, LeagueBook.NablKey));
+        LeagueName = LeagueNames.FirstOrDefault();
+        _filling = false;
+        OnPropertyChanged(nameof(HasLeagueChoice));
+    }
+
+    /// <summary>The key of the league on show (the NBA when nothing else is known).</summary>
+    public string LeagueKey => LeagueName != null && _keys.TryGetValue(LeagueName, out var k) ? k : LeagueBook.NablKey;
 
     /// <summary>A card's "Full list": that stat as the table.</summary>
     public void ShowFull(string category) { Category = category; View = "Full table"; }
 
     private int _minGames = 1;
-    private List<(PlayerSeasonStats Stat, Player Player)> _qualified = new();
+
+    /// <summary>One player's season in the league on show, in one shape whatever league runs it.</summary>
+    private sealed record Line(Player Player, int TeamId, int Games, double Mpg, double Ppg, double Rpg, double Apg, double Spg, double Bpg,
+        double FgPct, double TpPct, int Fga, int Tpa);
+    private List<Line> _qualified = new();
 
     /// <summary>The number a stat ranks by; 0 for a shooter without enough attempts.</summary>
     public static Func<PlayerSeasonStats, double> Key(string category) => category switch
@@ -344,19 +374,44 @@ public sealed partial class LeadersViewModel : PageViewModel
         _ => x => x.Ppg,
     };
 
+    private static Func<Line, double> LineKey(string category) => category switch
+    {
+        "Rebounds" => x => x.Rpg, "Assists" => x => x.Apg, "Steals" => x => x.Spg, "Blocks" => x => x.Bpg,
+        "Minutes" => x => x.Mpg, "FG%" => x => x.Fga >= x.Games * 5 ? x.FgPct : 0, "3P%" => x => x.Tpa >= x.Games * 2 ? x.TpPct : 0,
+        _ => x => x.Ppg,
+    };
+
     public override void Refresh()
     {
         var s = Session;
-        var all = s.Standings.All().ToList();
-        _minGames = Math.Max(1, (int)((all.Count == 0 ? 0 : all.Average(r => r.Games)) * 0.6));
-        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
-        _qualified = s.Stats.Values.Where(x => x.Games >= _minGames && players.ContainsKey(x.PlayerId))
-            .Select(x => (x, players[x.PlayerId])).ToList();
+        if (LeagueName == null || !LeagueNames.Contains(LeagueName)) FillLeagues();
+        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.World.Players)
+            .Concat(s.World.College?.Players ?? Enumerable.Empty<Player>())
+            .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
+        if (LeagueKey == LeagueBook.NablKey)
+        {
+            var all = s.Standings.All().ToList();
+            _minGames = Math.Max(1, (int)((all.Count == 0 ? 0 : all.Average(r => r.Games)) * 0.6));
+            _qualified = s.Stats.Values.Where(x => x.Games >= _minGames && players.ContainsKey(x.PlayerId))
+                .Select(x => new Line(players[x.PlayerId], x.TeamId, x.Games, x.Mpg, x.Ppg, x.Rpg, x.Apg, (double)x.Steals / x.Games,
+                    (double)x.Blocks / x.Games, x.FgPct, x.ThreePct, x.FGA, x.ThreePA)).ToList();
+        }
+        else
+        {
+            var stats = LeagueBook.Get(s, LeagueKey)?.Stats() ?? new List<BookStat>();
+            // As on Leagues → Stats: 40% of the most games anyone has played.
+            int maxG = stats.Select(x => x.G).DefaultIfEmpty(0).Max();
+            _minGames = Math.Max(1, (int)(maxG * 0.4));
+            _qualified = stats.Where(x => x.G >= _minGames && players.ContainsKey(x.PlayerId))
+                .Select(x => new Line(players[x.PlayerId], x.TeamId, x.G, x.Mpg, x.Ppg, x.Rpg, x.Apg, x.Spg, x.Bpg, x.FgPct, x.TpPct, x.Fga, x.Tpa))
+                .ToList();
+        }
         FillCards();
         FillTable();
+        var name = LeagueName ?? "";
         Note = Cards.Any(c => c.HasAny)
-            ? $"Minimum {_minGames} games played. The top {LeaderCards.PerCard} in each; Full list opens the top 40."
-            : "The leaders fill in after the first games.";
+            ? $"{name} · minimum {_minGames} games played. The top {LeaderCards.PerCard} in each; Full list opens the top 40."
+            : $"{name} · the leaders fill in after the first games.";
     }
 
     private void FillCards()
@@ -365,14 +420,14 @@ public sealed partial class LeadersViewModel : PageViewModel
         var s = Session;
         foreach (var (cat, title, unit) in LeaderCards.Stats)
         {
-            var key = Key(cat);
+            var key = LineKey(cat);
             int rank = 0;
-            var entries = _qualified.Where(q => key(q.Stat) > 0).OrderByDescending(q => key(q.Stat)).Take(LeaderCards.PerCard)
+            var entries = _qualified.Where(q => key(q) > 0).OrderByDescending(key).Take(LeaderCards.PerCard)
                 .Select(q => new LeaderEntry
                 {
-                    Rank = ++rank, Player = q.Player, Name = q.Player.Name, Team = s.FindTeam(q.Stat.TeamId),
-                    Value = LeaderCards.IsPct(cat) ? LeaderCards.Pct(key(q.Stat)) : LeaderCards.PerGame(key(q.Stat)),
-                    Ours = q.Stat.TeamId == s.HumanTeam.Id,
+                    Rank = ++rank, Player = q.Player, Name = q.Player.Name, Team = s.FindTeam(q.TeamId),
+                    Value = LeaderCards.IsPct(cat) ? LeaderCards.Pct(key(q)) : LeaderCards.PerGame(key(q)),
+                    Ours = q.TeamId == s.HumanTeam.Id,
                 }).ToList();
             string c = cat;
             Cards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, ShowAll = new RelayCommand(() => ShowFull(c)) });
@@ -383,16 +438,16 @@ public sealed partial class LeadersViewModel : PageViewModel
     {
         Rows.Clear();
         var s = Session;
-        var key = Key(Category);
+        var key = LineKey(Category);
         int rank = 1;
-        foreach (var (x, p) in _qualified.OrderByDescending(q => key(q.Stat)).Take(40))
+        foreach (var x in _qualified.OrderByDescending(key).Take(40))
         {
             Rows.Add(new LeaderRow
             {
-                Rank = rank++, Player = p, Team = s.FindTeam(x.TeamId)!.Abbreviation, GP = x.Games,
+                Rank = rank++, Player = x.Player, Team = s.FindTeam(x.TeamId)?.Abbreviation ?? "", GP = x.Games,
                 MPG = Math.Round(x.Mpg, 1), PPG = Math.Round(x.Ppg, 1), RPG = Math.Round(x.Rpg, 1), APG = Math.Round(x.Apg, 1),
-                SPG = Math.Round((double)x.Steals / x.Games, 1), BPG = Math.Round((double)x.Blocks / x.Games, 1),
-                FG = $"{x.FgPct * 100:F1}", TP = x.ThreePA > 0 ? $"{x.ThreePct * 100:F1}" : "-", Value = Math.Round(key(x), 3),
+                SPG = Math.Round(x.Spg, 1), BPG = Math.Round(x.Bpg, 1),
+                FG = $"{x.FgPct * 100:F1}", TP = x.Tpa > 0 ? $"{x.TpPct * 100:F1}" : "-", Value = Math.Round(key(x), 3),
             });
         }
     }
