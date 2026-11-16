@@ -295,7 +295,7 @@ public sealed class Offseason
 
     public void Release(Team team, Player p)
     {
-        if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return;
+        if (!Expiring.TryGetValue(team.Id, out var list) || !list.Any(x => x.Id == p.Id)) return;
         // H21 (run 75): by id, not by reference. The fired career (seed 55, Brooklyn, v0.88.0) released a player whose
         // roster entry stayed behind ("ReSigning, roster 13 → FreeAgency, roster 13"), so he was in the pool and on the roster.
         team.Roster.RemoveAll(x => x.Id == p.Id);

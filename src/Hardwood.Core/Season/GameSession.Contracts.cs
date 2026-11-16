@@ -180,6 +180,7 @@ public sealed partial class GameSession
                             : GameWorld.ContractAt(p, wage, years, ContractDate, ContractStart);
         p.TeamId = team.Id;
         p.DraftRightsTeamId = null;
+        team.Roster.RemoveAll(x => x.Id == p.Id && x != p);   // H21: never a stale copy beside him
         if (!team.Roster.Contains(p)) team.Roster.Add(p);
         team.DepthChart = null;
         People.PeopleEngine.Joined(p);
