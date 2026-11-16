@@ -21,7 +21,8 @@ namespace Hardwood.Tests;
 /// failing on the first problem.
 /// <para>Off by default (it takes a while): set HW_BUGFINDER to a folder for the report and screenshots;
 /// HW_BUGFINDER_CAREERS picks careers (comma-separated: nba-contender, nba-rebuild, gleague, bottom, college, fired);
-/// HW_BUGFINDER_SEASONS sets how many seasons each plays (default 1).</para>
+/// HW_BUGFINDER_SEASONS sets how many seasons each plays (default 1);
+/// HW_BUGFINDER_TOUR saves a screenshot of every page and tab at some sweeps ("1": the first day and day 70).</para>
 /// </summary>
 [Collection(SharedUiState.Name)]
 public class BugFinderTests
@@ -52,6 +53,10 @@ public class BugFinderTests
         var log = new List<string>();
         void L(string x) { log.Add($"{DateTime.Now:HH:mm:ss} {x}"); _out.WriteLine(x); File.AppendAllText(Path.Combine(dir, "progress.txt"), x + "\n"); }
         bf.Log = L;
+        // HW_BUGFINDER_TOUR: "1" for the first day and day 70, or a comma-separated list of sweep labels' starts ("first day,offseason").
+        var tour = Environment.GetEnvironmentVariable("HW_BUGFINDER_TOUR");
+        if (!string.IsNullOrWhiteSpace(tour))
+            bf.TourAt = tour.Trim() == "1" ? new[] { "first day", "day 70" } : tour.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         try
         {
             foreach (var career in careers)
@@ -61,7 +66,7 @@ public class BugFinderTests
                 int before = bf.Findings.Count;
                 try { Play(career, seasons, vm, window, bf, L); }
                 catch (Exception ex) { bf.Add("crash", "(career)", $"{ex.GetType().Name}: {ex.Message} [{ex.StackTrace?.Split('\n').FirstOrDefault(l => l.Contains("Hardwood."))?.Trim()}]", true); }
-                L($"{career}: done in {sw.Elapsed.TotalMinutes:F1} min, {bf.Findings.Count - before} new findings; pages {bf.Pages}, tabs {bf.Tabs}, buttons {bf.Buttons}, days {bf.Days}, reloads {bf.Reloads}");
+                L($"{career}: done in {sw.Elapsed.TotalMinutes:F1} min, {bf.Findings.Count - before} new findings; pages {bf.Pages}, tabs {bf.Tabs}, buttons {bf.Buttons}, days {bf.Days}, reloads {bf.Reloads}{(bf.TourShots > 0 ? $", tour shots {bf.TourShots}" : "")}");
                 WriteReport(dir, bf, sink, log);
             }
         }

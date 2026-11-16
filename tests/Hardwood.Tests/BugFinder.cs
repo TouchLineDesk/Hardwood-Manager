@@ -34,6 +34,10 @@ internal sealed class BugFinder
     public int Pages, Tabs, Buttons, Days, Reloads;
     /// <summary>Where extra detail goes (the progress log), when the test sets it.</summary>
     public Action<string>? Log { get; set; }
+    /// <summary>Sweeps whose label starts with one of these also save a screenshot of every page and tab (HW_BUGFINDER_TOUR),
+    /// so the hunter can judge the screens, not only the findings. Empty: no tour.</summary>
+    public string[] TourAt { get; set; } = Array.Empty<string>();
+    public int TourShots;
 
     public BugFinder(MainViewModel vm, MainWindow window, string? shots)
     {
@@ -153,7 +157,7 @@ internal sealed class BugFinder
             Pages++;
             Scan(name, when);
             var tabs = Tabs_();
-            if (tabs == null || tabs.ItemCount <= 1) { if (press) PressAll(name, null, when); return; }
+            if (tabs == null || tabs.ItemCount <= 1) { Tour(name, when); if (press) PressAll(name, null, when); return; }
             for (int i = 0; i < tabs.ItemCount; i++)
             {
                 _vm.Navigate(name); Settle();
@@ -165,9 +169,26 @@ internal sealed class BugFinder
                 Tabs++;
                 string tabName = $"{name} → {TabHeader(tabs, i)}";
                 Scan(tabName, when);
+                Tour(tabName, when);
                 if (press) PressAll(name, i, when);
             }
         });
+    }
+
+    /// <summary>A screenshot of the page as it stands, when this sweep is on the tour (before any button is pressed).</summary>
+    private void Tour(string page, string when)
+    {
+        if (_shots == null || !TourAt.Any(t => when.StartsWith(t, StringComparison.OrdinalIgnoreCase))) return;
+        try
+        {
+            var dir = Path.Combine(_shots, "tour");
+            Directory.CreateDirectory(dir);
+            Settle();
+            using var frame = _window.CaptureRenderedFrame();
+            frame?.Save(Path.Combine(dir, $"{Slug(Career)}-{_vm.Session?.Today.Year}-{Slug(when)}-{Slug(page)}.png"));
+            TourShots++;
+        }
+        catch { /* a tour shot is a convenience; never a finding */ }
     }
 
     private TabControl? Tabs_() => Content()?.GetVisualDescendants().OfType<TabControl>().FirstOrDefault(t => t.IsEffectivelyVisible);
@@ -360,6 +381,9 @@ internal sealed class BugFinder
                         Add("state", page, $"{t.FullName} carry {t.Roster.Count} players in the regular season (limits {s.League.Finance.RosterMin}-{s.League.Finance.RosterMax})");
             if (s.Employed && s.Phase is SessionPhase.RegularSeason && s.HumanTeam.Roster.Count < 8)
                 Add("state", page, $"your club has only {s.HumanTeam.Roster.Count} players in the regular season");
+            // Below the league's own minimum (13 in the NBA, 11 below it), outside college (the old H9: Brooklyn opened a season with 12).
+            else if (s.Employed && !s.InCollege && s.Phase is SessionPhase.RegularSeason && s.HumanTeam.Roster.Count < s.MyRosterMin)
+                Add("state", page, $"your club carries {s.HumanTeam.Roster.Count} players in the regular season, under the minimum of {s.MyRosterMin} ({s.HumanTeam.FullName}, {s.HumanLeagueName})");
 
             // Records: the header, the standings and the schedule agree.
             if (s.Employed)
