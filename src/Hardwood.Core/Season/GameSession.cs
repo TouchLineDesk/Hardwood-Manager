@@ -1318,7 +1318,7 @@ public sealed partial class GameSession
     }
 
     /// <summary>
-    /// Bug hunt H21 (run 75): a player in the free-agent pool and on a roster at once made every later save fail
+    /// Bug hunt H28 (run 75): a player in the free-agent pool and on a roster at once made every later save fail
     /// ("UNIQUE constraint failed: player.id"), losing everything played after it. Before each save, anyone on a roster
     /// (here, abroad or in college) leaves the pool, and the pool lists each player once. No random numbers.
     /// Returns how many entries were dropped.

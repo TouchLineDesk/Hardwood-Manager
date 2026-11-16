@@ -296,11 +296,11 @@ public sealed class Offseason
     public void Release(Team team, Player p)
     {
         if (!Expiring.TryGetValue(team.Id, out var list) || !list.Any(x => x.Id == p.Id)) return;
-        // H21 (run 75): by id, not by reference. The fired career (seed 55, Brooklyn, v0.88.0) released a player whose
+        // H28 (run 75): by id, not by reference. The fired career (seed 55, Brooklyn, v0.88.0) released a player whose
         // roster entry stayed behind ("ReSigning, roster 13 → FreeAgency, roster 13"), so he was in the pool and on the roster.
         team.Roster.RemoveAll(x => x.Id == p.Id);
         p.TeamId = null; p.Contract = null;
-        // H21: a player listed twice (or released twice) joins the pool once.
+        // H28: a player listed twice (or released twice) joins the pool once.
         if (!_league.FreeAgents.Any(x => x.Id == p.Id)) _league.FreeAgents.Add(p);
         list.RemoveAll(x => x.Id == p.Id);
         Report.ToFreeAgency.Add((p, team));

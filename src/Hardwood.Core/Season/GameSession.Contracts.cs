@@ -175,12 +175,12 @@ public sealed partial class GameSession
             Post($"{p.Name} re-signs", $"{p.Name} agrees a new deal: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
             return;
         }
-        League.FreeAgents.RemoveAll(x => x.Id == p.Id);   // H21: every entry, never one of two
+        League.FreeAgents.RemoveAll(x => x.Id == p.Id);   // H28: every entry, never one of two
         p.Contract = InNabl ? new Contract { Years = years, Salary = wage, StartSeason = ContractStart }
                             : GameWorld.ContractAt(p, wage, years, ContractDate, ContractStart);
         p.TeamId = team.Id;
         p.DraftRightsTeamId = null;
-        team.Roster.RemoveAll(x => x.Id == p.Id && x != p);   // H21: never a stale copy beside him
+        team.Roster.RemoveAll(x => x.Id == p.Id && x != p);   // H28: never a stale copy beside him
         if (!team.Roster.Contains(p)) team.Roster.Add(p);
         team.DepthChart = null;
         People.PeopleEngine.Joined(p);

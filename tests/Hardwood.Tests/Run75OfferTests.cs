@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Hardwood.Tests;
 
-/// <summary>Bug hunt H21 (High; run 75): a renewal panel left open into free agency, then Make offer, left the player in
+/// <summary>Bug hunt H28 (High; run 75): a renewal panel left open into free agency, then Make offer, left the player in
 /// the free-agent pool and on your roster, and every later save failed ("UNIQUE constraint failed: player.id").
 /// Now: the panel reopens on him as a free agent when the summer moves on; a player joins the pool once however often
 /// he is released; a signing takes every pool entry; and a save first heals any player in the pool and on a roster.</summary>
@@ -105,7 +105,7 @@ public class Run75OfferTests
             other.Roster.Remove(pooled); pooled.TeamId = null; pooled.Contract = null;
             s.League.FreeAgents.Add(pooled);
             int pool = s.League.FreeAgents.Count;
-            s.League.FreeAgents.Add(onRoster);   // the H21 state
+            s.League.FreeAgents.Add(onRoster);   // the H28 state
             s.League.FreeAgents.Add(pooled);     // and a pool entry twice
             s.SaveNow();                          // used to throw: UNIQUE constraint failed: player.id
             Assert.Equal(pool, s.League.FreeAgents.Count);
