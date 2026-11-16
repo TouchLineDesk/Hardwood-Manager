@@ -99,6 +99,10 @@ public class Run75AwardCardTests
             Assert.Equal("62% of the vote", mvpCard.Vote);
             Assert.Equal(s.HumanTeam.FullName, mvpCard.TeamLine);
             Assert.False(aw.Winners[1].Mine);
+            // The club is the one he played for that season (from the vote), not wherever he is today (code review).
+            Assert.Equal(summary.Awards!.DpoyVoting[0].Team, aw.Winners[1].Club!.Abbreviation);
+            Assert.False(aw.Winners[4].IsCoach);
+            Assert.True(aw.Winners[4].HasPortrait);
             Assert.Equal(summary.FinalsMvpPlayerId, aw.Winners[4].Player!.Id);
             Assert.Contains("Champions:", aw.Winners[4].TeamLine);
             var coy = aw.Winners[5];

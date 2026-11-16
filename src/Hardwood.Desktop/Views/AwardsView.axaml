@@ -31,10 +31,10 @@
       </Grid>
 
       <Border Classes="panel" IsVisible="{Binding HasEmptyNote}">
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <c:Icon Kind="History" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top"/>
-          <TextBlock x:Name="EmptyNote" Text="{Binding EmptyNote}" TextWrapping="Wrap" MaxWidth="900"/>
-        </StackPanel>
+        <Grid ColumnDefinitions="Auto,*">
+          <c:Icon Kind="History" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,0,10,0"/>
+          <TextBlock x:Name="EmptyNote" Grid.Column="1" Text="{Binding EmptyNote}" TextWrapping="Wrap"/>
+        </Grid>
       </Border>
 
       <!-- Run 75 (review #13 rank 12): the winners as trophy cards, each vote as a ladder of bars, the teams as chips. -->

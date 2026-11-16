@@ -31,8 +31,8 @@ public sealed class WinnerCard
     public string StatLine { get; init; } = "";
     public string Vote { get; init; } = "";
     public bool HasVote => Vote.Length > 0;
-    public bool IsCoach => Player == null && Club != null;
-    public bool HasPortrait => Player != null;
+    public bool IsCoach { get; init; }
+    public bool HasPortrait => !IsCoach && Player != null;
     public bool Mine { get; init; }
     public IBrush Stripe { get; init; } = Brushes.Gray;
     public string Tip => $"{Award}: {Name}{(TeamLine.Length > 0 ? $", {TeamLine}" : "")}{(StatLine.Length > 0 ? $". {StatLine}" : "")}";
@@ -155,6 +155,17 @@ public sealed partial class AwardsViewModel : PageViewModel
             : id is { } j && all.TryGetValue(j, out var p) && p.TeamId is { } t ? s.FindTeam(t) : null;
         string TeamOf(int? id) => ClubOf(id)?.Abbreviation ?? "FA";
         Player? P(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p : null;
+        // A past season's club comes from its vote lines (the team he played for then), never today's club:
+        // a winner who has since moved must not take your colours or your accent border (code review, run 75).
+        var thenClub = new Dictionary<int, Team>();
+        bool inProgress = Season?.EndsWith("(in progress)") == true;
+        Team? ClubAt(int id, string abbr)
+        {
+            var t = s.League.Teams.FirstOrDefault(x => x.Abbreviation == abbr) ?? (inProgress ? ClubOf(id) : null);
+            if (t != null) thenClub[id] = t;
+            return t;
+        }
+        Team? Known(int id) => thenClub.TryGetValue(id, out var t) ? t : inProgress ? ClubOf(id) : null;
 
         try
         {
@@ -187,7 +198,7 @@ public sealed partial class AwardsViewModel : PageViewModel
                 int rank = 1;
                 foreach (var v in votes)
                     list.Add(new VoteRow { Rank = rank++, Name = v.Name, Team = v.Team, Share = $"{v.Share * 100:F0}%", ShareValue = v.Share, Points = v.Points.ToString("0"), StatLine = v.StatLine,
-                                           Player = P(v.PlayerId), Club = ClubOf(v.PlayerId) });
+                                           Player = P(v.PlayerId), Club = ClubAt(v.PlayerId, v.Team) });
             }
             Fill(Mvp, a.MvpVoting); Fill(Roy, a.RoyVoting); Fill(Dpoy, a.DpoyVoting); Fill(SixthMan, a.SixthManVoting);
 
@@ -210,7 +221,7 @@ public sealed partial class AwardsViewModel : PageViewModel
                 if (summary.FinalsMvpPlayerId is { } f)
                     ExtraCards.Add(Card("Finals MVP", "Trophy", P(f), champ, Name(f), champ != null ? $"Champions: {champ.FullName}" : "", ""));
                 if (a.CoachOfYearTeamId is { } coy && s.FindTeam(coy) is { } ct)
-                    ExtraCards.Add(Card("Coach of the Year", "ClipboardList", null, ct, ct.FullName, "Head coach", a.CoachOfYearNote));
+                    ExtraCards.Add(Card("Coach of the Year", "ClipboardList", null, ct, ct.FullName, "Head coach", a.CoachOfYearNote, coach: true));
             }
         }
         finally
@@ -220,16 +231,17 @@ public sealed partial class AwardsViewModel : PageViewModel
 
         HonourChip Chip(int id, bool star) => new()
         {
-            Player = P(id), Club = ClubOf(id), Name = Name(id), Team = TeamOf(id), Star = star, Mine = ClubOf(id) == s.HumanTeam && s.Employed,
+            Player = P(id), Club = Known(id) ?? ClubOf(id), Name = Name(id), Team = Known(id)?.Abbreviation ?? TeamOf(id), Star = star,
+            Mine = Known(id) is { } k && k == s.HumanTeam && s.Employed,
         };
     }
 
     /// <summary>Cards that don't come from a vote (Finals MVP, Coach of the Year), kept for <see cref="BuildCards"/>.</summary>
     private readonly List<WinnerCard> ExtraCards = new();
 
-    private WinnerCard Card(string award, string icon, Player? p, Team? club, string name, string teamLine, string stat, string vote = "") => new()
+    private WinnerCard Card(string award, string icon, Player? p, Team? club, string name, string teamLine, string stat, string vote = "", bool coach = false) => new()
     {
-        Award = award, Icon = icon, Player = p, Club = club, Name = name, TeamLine = teamLine, StatLine = stat, Vote = vote,
+        Award = award, Icon = icon, Player = p, Club = club, IsCoach = coach, Name = name, TeamLine = teamLine, StatLine = stat, Vote = vote,
         Mine = club != null && club == Session.HumanTeam && Session.Employed,
         Stripe = new SolidColorBrush(club != null ? ThemeService.AccentFor(club) : ThemeService.DefaultAccent),
     };
