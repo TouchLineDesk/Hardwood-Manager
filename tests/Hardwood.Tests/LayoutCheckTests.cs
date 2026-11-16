@@ -129,8 +129,16 @@ public class LayoutCheckTests
         {
             v.Navigate("Transactions");
             var tx = (TransactionsViewModel)v.CurrentPage!;
-            tx.Tab = 0;
+            tx.Tab = 0; tx.MarketView = "Full table";   // cards first since run 65; this page checks the table's deal columns
             tx.SelectedMarket = tx.Market.FirstOrDefault(r => r.Player.Contract is { Buyout: > 0 }) ?? tx.Market.First();
+        });
+        // Run 65 (review #13 rank 4): the market as player cards, the longest names picked.
+        yield return ("Transfer cards", v =>
+        {
+            v.Navigate("Transactions");
+            var tx = (TransactionsViewModel)v.CurrentPage!;
+            tx.Tab = 0; tx.MarketView = "Cards";
+            tx.SelectedMarket = tx.MarketCards.OrderByDescending(r => r.Name.Length + r.ClubName.Length).First();
         });
         // Danny, #447 / D54: the My bids list, one row in every status, with the longest names and reactions.
         yield return ("My bids", v =>

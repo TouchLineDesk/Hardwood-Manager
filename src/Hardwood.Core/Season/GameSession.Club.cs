@@ -16,9 +16,10 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
     public int? OurRank { get; init; }
     /// <summary>Its Schedule &amp; Results filter (#529): the season's part, the tournament's name, or the playoffs (<see cref="ScheduleFilter"/>).</summary>
     public string Group { get; init; } = ScheduleFilter.Regular;
-    /// <summary>H8 (run 65): a played game from before you took this job (a move in the summer or mid-season). The world
-    /// keeps every game's score, but box scores are kept only for the games you coached, so this one has none.</summary>
-    public bool BeforeYouArrived { get; init; }
+    /// <summary>H8 (run 65): a played game you didn't coach: from before you took this job (a move in the summer or
+    /// mid-season, the hiring day included) or while you were out of work. The world keeps every game's score, but box
+    /// scores are kept only for the games you coached, so this one has none.</summary>
+    public bool NotCoached { get; init; }
 }
 
 /// <summary>
@@ -182,7 +183,7 @@ public sealed partial class GameSession
                     OpponentRank = g.Played ? (home ? g.AwayRank : g.HomeRank) : cw.Rank(opp.Id),
                     OurRank = g.Played ? (home ? g.HomeRank : g.AwayRank) : cw.Rank(us.Id),
                     Group = ScheduleFilter.CollegeGroup(g.Event, g.Stage),
-                    BeforeYouArrived = g.Played && r == null && g.Date < Job.HiredOn,
+                    NotCoached = g.Played && r == null && (g.Date <= Job.HiredOn || !Job.Employed),
                 });
             }
             return list;
@@ -195,7 +196,7 @@ public sealed partial class GameSession
             AbroadResults.TryGetValue(Key(comp, f), out var r);
             list.Add(new MyGame(f.Date, opp, home, comp.Profile.Name, f.Stage,
                 f.Played ? (home ? f.HomePts : f.AwayPts) : null, f.Played ? (home ? f.AwayPts : f.HomePts) : null, r)
-                { Group = ScheduleFilter.ProGroup(comp.Profile.Name, f.Stage, HumanLeagueName), BeforeYouArrived = f.Played && r == null && f.Date < Job.HiredOn });
+                { Group = ScheduleFilter.ProGroup(comp.Profile.Name, f.Stage, HumanLeagueName), NotCoached = f.Played && r == null && (f.Date <= Job.HiredOn || !Job.Employed) });
         }
         return list;
     }

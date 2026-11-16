@@ -138,6 +138,22 @@
     <Setter Property="Background" Value="{DynamicResource HwAccentBrush}"/>
     <Setter Property="Foreground" Value="#111"/>
   </Style>
+  <!-- Run 65: a transfer-market player card is a button; picked, its border takes the accent. -->
+  <Style Selector="Button.marketCard">
+    <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Foreground" Value="{StaticResource HwTextBrush}"/>
+  </Style>
+  <Style Selector="Button.marketCard:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/>
+  </Style>
+  <Style Selector="Button.marketCard.picked">
+    <Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/>
+    <Setter Property="BorderThickness" Value="2"/>
+  </Style>
   <Style Selector="Button.filter TextBlock.filterRecord">
     <Setter Property="Opacity" Value="0.75"/>
   </Style>

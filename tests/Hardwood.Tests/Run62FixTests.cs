@@ -11,6 +11,7 @@ namespace Hardwood.Tests;
 /// last Low findings on `claude/bug-hunt.md`: #13 (panels bound to a null selection), #14 (the Squad panel's morale
 /// wrapping mid-number), H2 (the assistant's buttons silent when nothing changes) and H3 (a leader who has left the
 /// game was a link that did nothing). H4 is the bug finder's own fix (it opens the live game's Tactics tab).</summary>
+[Collection(SharedUiState.Name)]   // run 65: it swaps AppSettings, app-wide state (raced PortraitServiceTests in CI)
 public class Run62FixTests
 {
     [Avalonia.Headless.XUnit.AvaloniaFact]

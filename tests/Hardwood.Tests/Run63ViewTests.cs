@@ -10,6 +10,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 63: custom views on the big tables (Danny, #465; Phase 3, #653). A View button above Roster, the
 /// transfer market, free agents, League Leaders and a team page's roster: ready-made views, a tick box per column,
 /// "My view" remembered per table in settings.json.</summary>
+[Collection(SharedUiState.Name)]   // run 65: it swaps AppSettings, app-wide state (raced PortraitServiceTests in CI)
 public class Run63ViewTests
 {
     [Avalonia.Headless.XUnit.AvaloniaFact]
@@ -95,7 +96,7 @@ public class Run63ViewTests
             Assert.Contains("Player", Shown(leaders));
 
             // The transfer market and free agents have their own views, kept apart from Roster's.
-            vm.Navigate("Transactions"); Settle();
+            vm.Navigate("Transactions"); ((TransactionsViewModel)vm.CurrentPage!).MarketView = "Full table"; Settle();   // cards first since run 65
             var market = Picker();
             Assert.Equal("market", market.Key);
             Assert.Equal(ColumnPicker.AllName, market.Current);

@@ -24,7 +24,7 @@ public sealed class GameRow
     public bool Played => Game.Played;
     public bool HasBox => Result != null && Result.Home.Lines.Count > 0;
     /// <summary>H8 (run 65): played before you took the job, so only the score is kept.</summary>
-    public bool BeforeYouArrived => Game.BeforeYouArrived;
+    public bool NotCoached => Game.NotCoached;
 }
 
 /// <summary>A Schedule &amp; Results filter chip (#529): its name, how many games and the record in them.</summary>
@@ -54,12 +54,14 @@ public sealed partial class ScheduleViewModel : PageViewModel
     /// <summary>The hover line on Open box score: why it's greyed out for the game picked (H8, run 65).</summary>
     public string OpenBoxTip => Selected switch
     {
-        { BeforeYouArrived: true } => BeforeYouArrivedTip,
+        { NotCoached: true } => Session.Employed ? NotCoachedTip : OutOfWorkTip,
         { HasBox: true } => "Open this game's box score (or double-click it)",
         _ => "Pick a game that has been played (or double-click one)",
     };
-    public const string BeforeYouArrivedTip = "Played before you took the job: the score is kept, but box scores only for the games you coached.";
-    public const string BeforeYouArrivedText = "Before you took over (score only)";
+    public const string NotCoachedTip = "Played before you took the job: the score is kept, but box scores only for the games you coached.";
+    public const string NotCoachedText = "Before you took over (score only)";
+    public const string OutOfWorkTip = "Played while you were out of work: the score is kept, but box scores only for the games you coached.";
+    public const string OutOfWorkText = "Not coached by you (score only)";
     /// <summary>Open box score is greyed out until a played game is picked (D71 A, bug #5).</summary>
     public bool CanOpenBox => Selected is { Result: not null, HasBox: true };
     [ObservableProperty] private string _summary = "";
@@ -163,7 +165,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
                 var ours = r == null ? null : r.Home.Team == us ? r.Home : r.Away;
                 var best = ours?.Lines.OrderByDescending(x => x.Points).FirstOrDefault();
                 top = best != null ? $"{best.Player.LastName} {best.Points} pts, {best.Rebounds} reb, {best.Assists} ast"
-                    : g.BeforeYouArrived ? BeforeYouArrivedText : "";
+                    : g.NotCoached ? (s.Employed ? NotCoachedText : OutOfWorkText) : "";
             }
             string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
             if (s.InCollege && g.Competition == Hardwood.Core.College.CollegeWorld.Madness) comp = $"Madness: {g.Stage}";
