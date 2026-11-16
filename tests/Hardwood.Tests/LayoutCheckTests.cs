@@ -144,7 +144,10 @@ public class LayoutCheckTests
         {
             CareerDemo(v.Session!);
             v.Navigate("Board");
-            ((BoardViewModel)v.CurrentPage!).ResignCommand.Execute(null);
+            // Run 81: only ever the first press (the question). The page is kept between window sizes, so a second press
+            // used to resign, and every page after this one was checked for a coach out of work from the second size on.
+            var board = (BoardViewModel)v.CurrentPage!;
+            if (!board.ConfirmingResign) board.ResignCommand.Execute(null);
         });
         // College recruiting (decision #162): prospects, the recruiting classes and the class rankings.
         yield return ("College prospects", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 3; });

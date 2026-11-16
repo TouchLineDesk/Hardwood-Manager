@@ -648,6 +648,8 @@ public sealed partial class GameSession
 
     public TradeEvaluation ProposeTrade(TradeProposal proposal)
     {
+        // H43 (run 81): out of work (or at a college program) there is no club of yours to trade from.
+        if (RosterMovesClosed is { } closed) return new TradeEvaluation(false, closed, 0, 0, 0, false, closed);
         if (Abroad || League.Finance.OpenMarket)
             return new TradeEvaluation(false, "There are no trades on the open market: players move by transfer.", 0, 0, 0, false, "There are no trades on the open market: players move by transfer.");
         if (TradeDeadlinePassed && Phase != SessionPhase.Offseason && Phase != SessionPhase.Preseason)
@@ -1011,7 +1013,7 @@ public sealed partial class GameSession
             var waiting = MyExpiring;
             Post("Summer: contract decisions", (waiting.Count == 0 ? "No contracts expire this summer." :
                     $"{waiting.Count} contract{(waiting.Count == 1 ? " is" : "s are")} up: {string.Join(", ", waiting.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F2}M)"))}. Talk to them on the Offseason page, or let them go.")
-                + $"\n\nFree agents can be signed all summer within your budget ({Budgets.Describe(HumanTeam)}). Anyone you haven't renewed leaves when the summer ends, and if the squad is short of {MyRosterMin}, your sporting director makes up the numbers.", "Roster");
+                + $"\n\nFree agents can be signed all summer within your budget ({MyBudgetLine}). Anyone you haven't renewed leaves when the summer ends, and if the squad is short of {MyRosterMin}, your sporting director makes up the numbers.", "Roster");
             return;
         }
 
@@ -1033,7 +1035,7 @@ public sealed partial class GameSession
         _summerNotes = null;
         Post("Contract decisions",
             (expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F1}M)"))}. Talk to each one or release him, then continue to free agency.")
-            + $"\n\nThe owner has set next season's budget: {Budgets.Describe(HumanTeam)}."
+            + $"\n\nThe owner has set next season's budget: {MyBudgetLine}."
             + string.Concat(notes.Select(n => $"\n\n{n.title}:\n{n.body}")), "Roster");
     }
 
@@ -1202,7 +1204,7 @@ public sealed partial class GameSession
         if (Employed && !InCollege) // college programs don't sign pros (C2)
         {
             var grads = League.FreeAgents.Where(p => p.RookieSeason == League.Season + 1).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
-            Post("Free agency is open", $"Make offers to free agents on the Offseason page. {Budgets.Describe(HumanTeam)}."
+            Post("Free agency is open", $"Make offers to free agents on the Offseason page. {MyBudgetLine}."
                 + (grads.Count > 0 ? $"\n\nThe best of this year's college graduates still available: {string.Join(", ", grads.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : ""), "Roster");
         }
     }

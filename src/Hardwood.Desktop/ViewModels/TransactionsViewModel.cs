@@ -77,6 +77,12 @@ public sealed partial class TransactionsViewModel : PageViewModel
     /// <summary>Trades only exist under the old NABL rules; the open market has transfers instead.</summary>
     public bool TradesOpen => !Session.League.Finance.OpenMarket && Session.InNabl;
     [ObservableProperty] private string _faStatus = "";
+    /// <summary>H39 (run 81): the Waive tab's own status line (it showed the Free agents hint).</summary>
+    [ObservableProperty] private string _waiveStatus = "";
+    /// <summary>H43/H44 (run 81): out of work or at a college program, the page shows why instead of its tabs.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Open))] private bool _closed;
+    public bool Open => !Closed;
+    [ObservableProperty] private string _closedText = "";
     [ObservableProperty] private string _capText = "";
 
     // Trade builder
@@ -103,6 +109,16 @@ public sealed partial class TransactionsViewModel : PageViewModel
     {
         PendingWaive = null;   // H24: a question left open doesn't outlive the page as it was (code review)
         var s = Session; var fin = s.League.Finance;
+        // H43/H44 (run 81): no club of yours to sign for, waive from or trade: say so and show nothing to press.
+        if (s.RosterMovesClosed is { } closed)
+        {
+            Closed = true;
+            ClosedText = closed + (s.Employed ? "" : " Open jobs are on the Board page.");
+            FreeAgents.Clear(); FreeAgentCards.Clear(); Ours.Clear(); Theirs.Clear(); OurPicks.Clear(); TheirPicks.Clear();
+            CapText = DeadlineText = FaStatus = ""; CanPropose = false;
+            return;
+        }
+        Closed = false; ClosedText = "";
         var keep = _talkingTo;
         _rebuilding = true;
         FreeAgents.Clear(); FreeAgentCards.Clear();
@@ -131,7 +147,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         if (!TradesOpen)
         {
             DeadlineText = s.WindowText + " Free agents can be signed at any time through contract talks.";
-            CapText = $"Roster {s.HumanTeam.Roster.Count}/{s.MyRosterMax} · {Budgets.Describe(s.HumanTeam)}";
+            CapText = $"Roster {s.HumanTeam.Roster.Count}/{s.MyRosterMax} · {s.MyBudgetLine}";
             CanPropose = false;
             FaStatus = "Select a free agent to see his ask and make an offer.";
         }
@@ -145,6 +161,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         var row = SelectedFreeAgent;
         if (row == null) return;
         var s = Session; var fin = s.League.Finance; var team = s.HumanTeam;
+        if (s.RosterMovesClosed is { } closed) { FaStatus = closed; return; }
         if (s.Abroad) { FaStatus = "Clubs abroad sign players in the summer (your sporting director handles it for now)."; return; }
         if (team.Roster.Count >= fin.RosterMax) { FaStatus = "Roster is full. Waive someone first."; return; }
         long ask = ContractMarket.MarketSalary(row.Player.CurrentAbility, row.Player.Age(s.Today), fin);
@@ -180,15 +197,16 @@ public sealed partial class TransactionsViewModel : PageViewModel
     {
         if (piece == null) return;
         var s = Session;
-        if (s.HumanTeam.Roster.Count <= s.MyRosterMin) { PendingWaive = null; FaStatus = $"You need at least {s.MyRosterMin} players."; return; }
-        FaStatus = "";
+        if (s.RosterMovesClosed is { } closed) { PendingWaive = null; WaiveStatus = closed; return; }
+        if (s.HumanTeam.Roster.Count <= s.MyRosterMin) { PendingWaive = null; WaiveStatus = $"You need at least {s.MyRosterMin} players."; return; }
+        WaiveStatus = "";
         PendingWaive = piece;
     }
 
     [RelayCommand]
     public void CancelWaive()
     {
-        if (PendingWaive is { } w) FaStatus = $"{w.Name} stays.";
+        if (PendingWaive is { } w) WaiveStatus = $"{w.Name} stays.";
         PendingWaive = null;
     }
 
@@ -197,17 +215,11 @@ public sealed partial class TransactionsViewModel : PageViewModel
     {
         if (PendingWaive is not { } piece) return;
         PendingWaive = null;
-        var s = Session; var team = s.HumanTeam;
-        if (!team.Roster.Contains(piece.Player)) return;
-        if (team.Roster.Count <= s.MyRosterMin) { FaStatus = $"You need at least {s.MyRosterMin} players."; return; }
-        var p = piece.Player;
-        team.Roster.Remove(p);
-        p.TeamId = null; p.Contract = null;
-        s.League.FreeAgents.Add(p);
-        team.DepthChart = null;
-        s.Post($"Waived {p.Name}", $"{p.Name} has been released and is a free agent.", "Transactions");
-        s.SaveNow();
-        FaStatus = $"Waived {p.Name}.";
+        var s = Session;
+        if (!s.HumanTeam.Roster.Contains(piece.Player) && s.RosterMovesClosed == null) return;
+        // H44 (run 81): the rules live in GameSession.Waive (closed out of work and at a college program).
+        if (s.Waive(piece.Player) is { } why) { WaiveStatus = why; return; }
+        WaiveStatus = $"Waived {piece.Player.Name}.";
         Shell.AfterTick();
     }
 
