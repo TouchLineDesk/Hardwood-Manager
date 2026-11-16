@@ -168,6 +168,16 @@ public sealed partial class BoardViewModel : PageViewModel
         return $"{wins}-{losses}: on pace for {(double)wins / games * seasonGames:0} wins of {seasonGames}";
     }
 
+    /// <summary>Hired this season after your club's regular season ended: its record isn't yours to be judged on.</summary>
+    private static bool HiredAfterSeason(Hardwood.Core.Season.GameSession s)
+    {
+        var job = s.Job; var t = s.HumanTeam;
+        if (job.HiredSeason != s.League.Season || job.HiredOn == default) return false;
+        var mine = s.Schedule.Where(g => g.Home == t || g.Away == t).Select(g => g.Date).ToList();
+        if (mine.Count > 0) return job.HiredOn > mine.Max();
+        return job.HiredOn.Month is >= 5 and <= 9;   // a league whose games aren't on your schedule: after the spring
+    }
+
     public override void Refresh()
     {
         var s = Session; var job = s.Job; var coach = s.Coach;
@@ -179,8 +189,10 @@ public sealed partial class BoardViewModel : PageViewModel
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
             var e = job.Current;
             Goal = e == null ? "" : $"{(e.Survive ? "Stay up (newly promoted)" : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
-            Pace = PaceLine(rec.Wins, rec.Losses, ctx.SeasonGames, e?.TargetWins,
-                s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason);
+            bool over = s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason;
+            Pace = HiredAfterSeason(s) && (over || rec.Games >= ctx.SeasonGames)
+                ? $"Last season, before you came: {rec.Wins}-{rec.Losses}"
+                : PaceLine(rec.Wins, rec.Losses, ctx.SeasonGames, e?.TargetWins, over);
             Demands.Clear();
             if (e != null)
                 foreach (var d in e.Demands)

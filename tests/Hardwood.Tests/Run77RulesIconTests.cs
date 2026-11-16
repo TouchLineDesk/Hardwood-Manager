@@ -178,4 +178,30 @@ public class Run77RulesIconTests
             finally { window?.Close(); if (File.Exists(path)) File.Delete(path); }
         });
     }
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public void A_pyramid_clubs_summer_payroll_bars_also_start_from_next_season()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hw-run77d-{Guid.NewGuid():N}.hwsave");
+        MainWindow? window = null;
+        WithSettings(() =>
+        {
+            try
+            {
+                var (s, vm, w, settle) = Open(path, (world, _) => world[UsaPyramid.Tier2].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(15).Id, 31);
+                window = w;
+                Assert.False(s.League.Teams.Contains(s.HumanTeam));
+                int season = s.League.Season;
+                int guard = 0;
+                while (s.Phase != SessionPhase.Offseason && guard++ < 400) s.AdvanceDay();
+                Assert.Equal(SessionPhase.Offseason, s.Phase);
+                Assert.True(HomeViewModel.SummerCounted(s, s.HumanTeam));
+                vm.Navigate("Home"); settle();
+                var home = (HomeViewModel)vm.CurrentPage!;
+                home.Refresh(); settle();
+                Assert.StartsWith($"{season + 1}-", home.Payroll![0].Label);
+                return 0;
+            }
+            finally { window?.Close(); if (File.Exists(path)) File.Delete(path); }
+        });
+    }
 }
