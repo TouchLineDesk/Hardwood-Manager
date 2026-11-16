@@ -62,12 +62,27 @@
   <Style Selector="Border.badBar">
     <Setter Property="Background" Value="{StaticResource HwBadBrush}"/>
   </Style>
+  <!-- Run 75: an All-League or All-Star player as a chip; your own players' cards and chips take the accent border. -->
+  <Style Selector="Border.honourChip">
+    <Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="15"/>
+    <Setter Property="Padding" Value="3,2,10,2"/>
+  </Style>
+  <Style Selector="Border.honourChip.mine">
+    <Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/>
+  </Style>
   <Style Selector="Border.panel">
     <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
     <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="CornerRadius" Value="6"/>
     <Setter Property="Padding" Value="12"/>
+  </Style>
+  <Style Selector="Border.panel.mine">
+    <Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/>
+    <Setter Property="BorderThickness" Value="2"/>
   </Style>
   <Style Selector="Button.nav">
     <Setter Property="HorizontalAlignment" Value="Stretch"/>

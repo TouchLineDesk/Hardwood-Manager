@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Hardwood.Core.Model;
 using Hardwood.Core.Season;
@@ -7,6 +8,9 @@ namespace Hardwood.Desktop.ViewModels;
 
 public sealed class VoteRow
 {
+    public Player? Player { get; init; }
+    public Team? Club { get; init; }
+    public double ShareValue { get; init; }
     public int Rank { get; init; }
     public string Name { get; init; } = "";
     public string Team { get; init; } = "";
@@ -15,9 +19,70 @@ public sealed class VoteRow
     public string StatLine { get; init; } = "";
 }
 
+/// <summary>Run 75 (review #13 rank 12): one award's winner as a trophy card.</summary>
+public sealed class WinnerCard
+{
+    public string Award { get; init; } = "";
+    public string Icon { get; init; } = "Trophy";
+    public Player? Player { get; init; }
+    public Team? Club { get; init; }
+    public string Name { get; init; } = "";
+    public string TeamLine { get; init; } = "";
+    public string StatLine { get; init; } = "";
+    public string Vote { get; init; } = "";
+    public bool HasVote => Vote.Length > 0;
+    public bool IsCoach => Player == null && Club != null;
+    public bool HasPortrait => Player != null;
+    public bool Mine { get; init; }
+    public IBrush Stripe { get; init; } = Brushes.Gray;
+    public string Tip => $"{Award}: {Name}{(TeamLine.Length > 0 ? $", {TeamLine}" : "")}{(StatLine.Length > 0 ? $". {StatLine}" : "")}";
+}
+
+/// <summary>One line of an award's vote ladder: the share as a bar.</summary>
+public sealed class LadderRow
+{
+    public int Rank { get; init; }
+    public string Name { get; init; } = "";
+    public string Team { get; init; } = "";
+    public string Share { get; init; } = "";
+    public double BarWidth { get; init; }
+    public bool Winner { get; init; }
+    public double BarOpacity => Winner ? 1.0 : 0.55;
+    public bool Mine { get; init; }
+    public string Tip { get; init; } = "";
+}
+
+public sealed class LadderCard
+{
+    public string Award { get; init; } = "";
+    public List<LadderRow> Rows { get; init; } = new();
+    public string More { get; init; } = "";
+    public bool HasMore => More.Length > 0;
+}
+
+/// <summary>A player on an All-League team or an All-Star roster, as a chip.</summary>
+public sealed class HonourChip
+{
+    public Player? Player { get; init; }
+    public Team? Club { get; init; }
+    public string Name { get; init; } = "";
+    public string Team { get; init; } = "";
+    public bool Mine { get; init; }
+    public bool Star { get; init; }
+}
+
+public sealed class HonourLine
+{
+    public string Title { get; init; } = "";
+    public List<HonourChip> Players { get; init; } = new();
+}
+
 public sealed class HallRow
 {
     public required Player Player { get; init; }
+    public Team? Club { get; init; }
+    public string Initials => string.Concat(Player.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0]));
+    public string Inducted => $"Inducted {Year}";
     public string Name => Player.Name;
     public int Year { get; init; }
     public string Career { get; init; } = "";
@@ -41,6 +106,29 @@ public sealed partial class AwardsViewModel : PageViewModel
     public ObservableCollection<HallRow> Hall { get; } = new();
     [ObservableProperty] private string _hallNote = "";
 
+    // Run 75 (review #13 rank 12): the winners as trophy cards, each vote as a ladder of bars, the teams as chips.
+    public string[] Views { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCards), nameof(ShowTable))] private string _view = "Cards";
+    public bool ShowCards => View == "Cards";
+    public bool ShowTable => !ShowCards;
+    public ObservableCollection<WinnerCard> Winners { get; } = new();
+    public ObservableCollection<LadderCard> Ladders { get; } = new();
+    public ObservableCollection<HonourLine> AllLeagueTeams { get; } = new();
+    public ObservableCollection<HonourLine> AllStarTeams { get; } = new();
+    [ObservableProperty] private string _allStarLine = "";
+    [ObservableProperty] private bool _hasWinners;
+    [ObservableProperty] private bool _hasLadders;
+    [ObservableProperty] private bool _hasAllLeague;
+    [ObservableProperty] private bool _hasAllStars;
+    /// <summary>A new real career has no awards of its own yet: the real last season's winners stand in.</summary>
+    [ObservableProperty] private string _emptyNote = "";
+    [ObservableProperty] private bool _hasEmptyNote;
+    [ObservableProperty] private bool _hasAllStarPanel;
+    [ObservableProperty] private bool _hasSeason;
+
+    /// <summary>The widest a ladder bar gets (the winner's share is scaled against 100%).</summary>
+    public const double LadderBarMax = 120;
+
     public AwardsViewModel(MainViewModel shell) : base(shell) { }
 
     partial void OnSeasonChanged(string? value) => Show();
@@ -59,37 +147,133 @@ public sealed partial class AwardsViewModel : PageViewModel
     private void Show()
     {
         Mvp.Clear(); Roy.Clear(); Dpoy.Clear(); SixthMan.Clear();
+        Winners.Clear(); Ladders.Clear(); AllLeagueTeams.Clear(); AllStarTeams.Clear(); AllStarLine = ""; EmptyNote = ""; ExtraCards.Clear();
         var s = Session;
         var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).ToDictionary(p => p.Id);
         string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
-        string TeamOf(int? id) => id is { } i && s.Stats.TryGetValue(i, out var st) ? s.FindTeam(st.TeamId)!.Abbreviation
-            : id is { } j && all.TryGetValue(j, out var p) && p.TeamId is { } t ? s.FindTeam(t)!.Abbreviation : "FA";
+        Team? ClubOf(int? id) => id is { } i && s.Stats.TryGetValue(i, out var st) ? s.FindTeam(st.TeamId)
+            : id is { } j && all.TryGetValue(j, out var p) && p.TeamId is { } t ? s.FindTeam(t) : null;
+        string TeamOf(int? id) => ClubOf(id)?.Abbreviation ?? "FA";
+        Player? P(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p : null;
 
-        if (Season == null) { Headline = "No awards yet"; Summary = "Awards are voted after the regular season; All-Stars are named in February."; AllLeague = ""; AllStars = ""; return; }
-        SeasonAwards? a; SeasonSummary? summary = null;
-        if (Season.EndsWith("(in progress)")) a = s.Midseason;
-        else
+        try
         {
-            int year = int.Parse(Season[..4]);
-            summary = s.League.History.First(h => h.Season == year);
-            a = summary.Awards;
+            if (Season == null)
+            {
+                Headline = "No awards yet"; Summary = "Awards are voted after the regular season; All-Stars are named in February."; AllLeague = ""; AllStars = "";
+                EmptyNote = RealLastSeason();
+                return;
+            }
+            SeasonAwards? a; SeasonSummary? summary = null;
+            if (Season.EndsWith("(in progress)")) a = s.Midseason;
+            else
+            {
+                int year = int.Parse(Season[..4]);
+                summary = s.League.History.First(h => h.Season == year);
+                a = summary.Awards;
+            }
+            if (a == null) { Headline = Season; Summary = "No award data for this season."; AllLeague = ""; AllStars = ""; return; }
+
+            Headline = summary != null ? $"{Season} awards" : $"{Season}: All-Star weekend";
+            Summary = summary != null
+                ? $"Champions: {s.FindTeam(summary.ChampionTeamId)!.FullName} over {s.FindTeam(summary.RunnerUpTeamId)!.FullName} · Finals MVP {Name(summary.FinalsMvpPlayerId)} · Coach of the Year: {(a.CoachOfYearTeamId is { } c ? s.FindTeam(c)!.FullName : "-")} ({a.CoachOfYearNote})"
+                : "Season in progress. Full awards arrive after the Finals.";
+            AllLeague = a.AllLeague.Count == 0 ? "" : string.Join("\n", a.AllLeague.Select((t, i) => $"{(i == 0 ? "First" : i == 1 ? "Second" : "Third")} team: {string.Join(", ", t.Select(id => $"{Name(id)} ({TeamOf(id)})"))}"));
+            AllStars = a.AllStarsEast.Count == 0 ? "No All-Star Game this season." :
+                $"All-Star Game: {a.AllStarGame}. MVP {Name(a.AllStarMvpId)}.\nEast: {string.Join(", ", a.AllStarsEast.Select(id => Name(id)))}\nWest: {string.Join(", ", a.AllStarsWest.Select(id => Name(id)))}";
+
+            void Fill(ObservableCollection<VoteRow> list, List<VoteLine> votes)
+            {
+                int rank = 1;
+                foreach (var v in votes)
+                    list.Add(new VoteRow { Rank = rank++, Name = v.Name, Team = v.Team, Share = $"{v.Share * 100:F0}%", ShareValue = v.Share, Points = v.Points.ToString("0"), StatLine = v.StatLine,
+                                           Player = P(v.PlayerId), Club = ClubOf(v.PlayerId) });
+            }
+            Fill(Mvp, a.MvpVoting); Fill(Roy, a.RoyVoting); Fill(Dpoy, a.DpoyVoting); Fill(SixthMan, a.SixthManVoting);
+
+            // The honour lines: the three All-League teams and the two All-Star rosters (the game's MVP starred).
+            string[] ordinal = { "First team", "Second team", "Third team" };
+            for (int i = 0; i < a.AllLeague.Count; i++)
+                AllLeagueTeams.Add(new HonourLine { Title = i < 3 ? ordinal[i] : $"Team {i + 1}", Players = a.AllLeague[i].Select(id => Chip(id, false)).ToList() });
+            if (a.AllStarsEast.Count > 0)
+            {
+                AllStarLine = $"{a.AllStarGame}{(a.AllStarGame.Length > 0 ? " · " : "")}MVP {Name(a.AllStarMvpId)}";
+                AllStarTeams.Add(new HonourLine { Title = "East", Players = a.AllStarsEast.Select(id => Chip(id, id == a.AllStarMvpId)).ToList() });
+                AllStarTeams.Add(new HonourLine { Title = "West", Players = a.AllStarsWest.Select(id => Chip(id, id == a.AllStarMvpId)).ToList() });
+            }
+            else AllStarLine = "No All-Star Game this season.";
+
+            // Finals MVP and Coach of the Year join the four voted awards as cards.
+            if (summary != null)
+            {
+                var champ = s.FindTeam(summary.ChampionTeamId);
+                if (summary.FinalsMvpPlayerId is { } f)
+                    ExtraCards.Add(Card("Finals MVP", "Trophy", P(f), champ, Name(f), champ != null ? $"Champions: {champ.FullName}" : "", ""));
+                if (a.CoachOfYearTeamId is { } coy && s.FindTeam(coy) is { } ct)
+                    ExtraCards.Add(Card("Coach of the Year", "ClipboardList", null, ct, ct.FullName, "Head coach", a.CoachOfYearNote));
+            }
         }
-        if (a == null) { Headline = Season; Summary = "No award data for this season."; return; }
-
-        Headline = summary != null ? $"{Season} awards" : $"{Season}: All-Star weekend";
-        Summary = summary != null
-            ? $"Champions: {s.FindTeam(summary.ChampionTeamId)!.FullName} over {s.FindTeam(summary.RunnerUpTeamId)!.FullName} · Finals MVP {Name(summary.FinalsMvpPlayerId)} · Coach of the Year: {(a.CoachOfYearTeamId is { } c ? s.FindTeam(c)!.FullName : "-")} ({a.CoachOfYearNote})"
-            : "Season in progress. Full awards arrive after the Finals.";
-        AllLeague = a.AllLeague.Count == 0 ? "" : string.Join("\n", a.AllLeague.Select((t, i) => $"{(i == 0 ? "First" : i == 1 ? "Second" : "Third")} team: {string.Join(", ", t.Select(id => $"{Name(id)} ({TeamOf(id)})"))}"));
-        AllStars = a.AllStarsEast.Count == 0 ? "No All-Star Game this season." :
-            $"All-Star Game: {a.AllStarGame}. MVP {Name(a.AllStarMvpId)}.\nEast: {string.Join(", ", a.AllStarsEast.Select(id => Name(id)))}\nWest: {string.Join(", ", a.AllStarsWest.Select(id => Name(id)))}";
-
-        void Fill(ObservableCollection<VoteRow> list, List<VoteLine> votes)
+        finally
         {
-            int rank = 1;
-            foreach (var v in votes) list.Add(new VoteRow { Rank = rank++, Name = v.Name, Team = v.Team, Share = $"{v.Share * 100:F0}%", Points = v.Points.ToString("0"), StatLine = v.StatLine });
+            BuildCards();
         }
-        Fill(Mvp, a.MvpVoting); Fill(Roy, a.RoyVoting); Fill(Dpoy, a.DpoyVoting); Fill(SixthMan, a.SixthManVoting);
+
+        HonourChip Chip(int id, bool star) => new()
+        {
+            Player = P(id), Club = ClubOf(id), Name = Name(id), Team = TeamOf(id), Star = star, Mine = ClubOf(id) == s.HumanTeam && s.Employed,
+        };
+    }
+
+    /// <summary>Cards that don't come from a vote (Finals MVP, Coach of the Year), kept for <see cref="BuildCards"/>.</summary>
+    private readonly List<WinnerCard> ExtraCards = new();
+
+    private WinnerCard Card(string award, string icon, Player? p, Team? club, string name, string teamLine, string stat, string vote = "") => new()
+    {
+        Award = award, Icon = icon, Player = p, Club = club, Name = name, TeamLine = teamLine, StatLine = stat, Vote = vote,
+        Mine = club != null && club == Session.HumanTeam && Session.Employed,
+        Stripe = new SolidColorBrush(club != null ? ThemeService.AccentFor(club) : ThemeService.DefaultAccent),
+    };
+
+    /// <summary>Builds the winner cards and the vote ladders from the four vote lists (public so the layout check can
+    /// rebuild them after seeding the lists with the longest real names).</summary>
+    public void BuildCards()
+    {
+        Winners.Clear(); Ladders.Clear();
+        var s = Session;
+        foreach (var (award, icon, list) in new[] { ("Most Valuable Player", "Award", Mvp), ("Defensive Player of the Year", "Shield", Dpoy),
+                                                     ("Rookie of the Year", "Star", Roy), ("Sixth Man of the Year", "ArrowLeftRight", SixthMan) })
+        {
+            if (list.Count == 0) continue;
+            var w = list[0];
+            string teamLine = w.Club?.FullName ?? w.Team;
+            Winners.Add(Card(award, icon, w.Player, w.Club, w.Name, teamLine, w.StatLine, $"{w.Share} of the vote"));
+            var rows = list.Take(5).Select(v => new LadderRow
+            {
+                Rank = v.Rank, Name = v.Name, Team = v.Team, Share = v.Share, Winner = v.Rank == 1,
+                BarWidth = Math.Max(2, Math.Round(Math.Clamp(v.ShareValue, 0, 1) * LadderBarMax)),
+                Mine = v.Club != null && v.Club == s.HumanTeam && s.Employed,
+                Tip = $"{v.Rank}. {v.Name} ({v.Team}): {v.Share} of the vote. {v.StatLine}",
+            }).ToList();
+            Ladders.Add(new LadderCard { Award = award, Rows = rows, More = list.Count > 5 ? $"{list.Count - 5} more got votes (Full table)" : "" });
+        }
+        foreach (var c in ExtraCards) Winners.Add(c);
+        HasWinners = Winners.Count > 0;
+        HasLadders = Ladders.Count > 0;
+        HasAllLeague = AllLeagueTeams.Count > 0;
+        HasAllStars = AllStarTeams.Count > 0;
+        HasEmptyNote = EmptyNote.Length > 0;
+        HasAllStarPanel = AllStarLine.Length > 0 || HasAllStars;
+        HasSeason = Season != null;
+    }
+
+    /// <summary>In a real career before the first awards: who won them last season, for real.</summary>
+    private string RealLastSeason()
+    {
+        if (!Hardwood.Core.RealWorld.RealWorldData.IsReal(Session.League)) return "";
+        var last = Hardwood.Core.RealWorld.RealWorldData.Seasons.Where(x => x.Season < Session.League.Season).OrderByDescending(x => x.Season).FirstOrDefault();
+        if (last == null) return "";
+        return $"Last season, for real ({last.Label}): MVP {last.Mvp ?? "-"} · {last.Champion} beat {last.RunnerUp} in the Finals · Finals MVP {last.FinalsMvp ?? "-"}. "
+             + "This career's first All-Stars are named in February, and its awards are voted after the regular season.";
     }
 
     private void FillHall()
@@ -104,6 +288,7 @@ public sealed partial class AwardsViewModel : PageViewModel
             Hall.Add(new HallRow
             {
                 Player = p, Year = h.Year, Score = h.Score,
+                Club = c?.GamesByTeam.Count > 0 ? s.FindTeam(c.GamesByTeam.MaxBy(x => x.Value).Key) : null,
                 Career = c == null ? "" : $"{c.Seasons} seasons · {c.Points:N0} pts · {c.Ppg:F1}/{c.Rpg:F1}/{c.Apg:F1}",
                 Honours = c == null ? "" : string.Join(" · ", new[] { (c.Mvps, "MVP"), (c.Titles, "title"), (c.FinalsMvps, "Finals MVP"), (c.AllLeague, "All-League"), (c.AllStars, "All-Star"), (c.Dpoys, "DPOY") }.Where(x => x.Item1 > 0).Select(x => $"{x.Item1}× {x.Item2}")),
             });

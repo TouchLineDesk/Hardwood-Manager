@@ -59,6 +59,7 @@ public class LayoutCheckTests
                 if (v.CurrentPage is ScheduleViewModel sc) sc.GameView = "Cards";
                 if (v.CurrentPage is RotationViewModel rv) rv.View = "Cards";
                 if (v.CurrentPage is SquadViewModel sq) sq.View = "Cards";
+                if (v.CurrentPage is AwardsViewModel aw) aw.View = "Cards";
             });
         yield return ("Player", v =>
         {
@@ -236,8 +237,15 @@ public class LayoutCheckTests
             {
                 list.Clear();
                 foreach (var (name, i) in new[] { "Shai Gilgeous-Alexander", "Giannis Antetokounmpo", "Nickeil Alexander-Walker" }.Select((n, i) => (n, i)))
-                    list.Add(new VoteRow { Rank = i + 1, Name = name, Team = "OKC", Share = "21%", StatLine = "29.8 pts, 14.4 reb, 10.6 ast, 68 wins" });
+                    list.Add(new VoteRow { Rank = i + 1, Name = name, Team = "OKC", Share = "21%", ShareValue = 0.21, StatLine = "29.8 pts, 14.4 reb, 10.6 ast, 68 wins" });
             }
+            a.BuildCards();   // run 75: the winner cards and ladders with the longest names
+        });
+        // Run 75 (review #13 rank 12): Awards opens on cards; its vote tables are checked here.
+        yield return ("Awards table", v =>
+        {
+            v.Navigate("Awards");
+            ((AwardsViewModel)v.CurrentPage!).View = "Full table";
         });
     }
 
