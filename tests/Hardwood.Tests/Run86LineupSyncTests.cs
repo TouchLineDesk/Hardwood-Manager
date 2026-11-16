@@ -130,9 +130,18 @@ public class Run86LineupSyncTests
             // Hide puts it away.
             page.HideBreakCommand.Execute(null); Settle();
             Assert.False(card.IsEffectivelyVisible);
+            Assert.True(page.CanReopenBreak);
             Assert.True(view.GetVisualDescendants().OfType<Hardwood.Desktop.Controls.LiveCourt>().First().IsEffectivelyVisible);
             _out.WriteLine($"{club}: box rows {withCardRows:0} with the card, {box.Bounds.Height:0} with the big court");
             Assert.True(withCardRows >= box.Bounds.Height - 2, $"box rows {withCardRows:0} with the card, {box.Bounds.Height:0} without");
+            // Game flow puts it away too, and "Break card" brings it back.
+            page.ReopenBreakCommand.Execute(null); Settle();
+            Assert.True(card.IsEffectivelyVisible);
+            page.ToFlowCommand.Execute(null); Settle();
+            Assert.False(card.IsEffectivelyVisible);
+            page.ReopenBreakCommand.Execute(null); Settle();
+            Assert.True(card.IsEffectivelyVisible && !page.FlowShown);
+            page.ToCourtCommand.Execute(null); Settle();
             var problems = LayoutCheck.Scan(window);
             Assert.True(problems.Count == 0, $"Live game final, box score at 1480x900:\n" + string.Join("\n", problems));
         }

@@ -75,8 +75,11 @@
       <Border x:Name="CourtPanel" Classes="panel" Padding="8" Margin="0,0,0,10">
         <StackPanel Spacing="4">
           <WrapPanel Margin="4,0,4,4">
-            <Button Content="On the floor" Command="{Binding ToCourtCommand}" Classes.primary="{Binding ShowCourt}" Padding="10,3" Margin="0,0,6,0" VerticalAlignment="Center"/>
-            <Button Content="Game flow" Command="{Binding ToFlowCommand}" Classes.primary="{Binding ShowFlow}" Padding="10,3" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <Button Content="On the floor" Command="{Binding ToCourtCommand}" Classes.primary="{Binding CourtShown}" Padding="10,3" Margin="0,0,6,0" VerticalAlignment="Center"/>
+            <Button Content="Game flow" Command="{Binding ToFlowCommand}" Classes.primary="{Binding FlowShown}" Padding="10,3" Margin="0,0,6,0" VerticalAlignment="Center"/>
+            <Button Content="Break card" Command="{Binding ReopenBreakCommand}" IsVisible="{Binding CanReopenBreak}" Padding="10,3" Margin="0,0,12,0" VerticalAlignment="Center"
+                    ToolTip.Tip="Bring back this break's card (the read and the numbers)"/>
+            <Border Width="6" IsVisible="{Binding !CanReopenBreak}"/>
             <Border Background="#26303B" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
               <TextBlock FontSize="11.5"><Run Text="Win chance " Foreground="#8B96A5"/><Run Text="{Binding WinChance}" FontWeight="SemiBold"/></TextBlock>
             </Border>
@@ -101,7 +104,7 @@
                 <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="12" VerticalAlignment="Center"/>
               </WrapPanel>
                 <Button Grid.Column="1" Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1" Margin="8,0,0,0" VerticalAlignment="Top"
-                        ToolTip.Tip="Hide the card and see the court again; Play goes on to the next period"/>
+                        ToolTip.Tip="Put the card away and see the court again; Break card brings it back"/>
               </Grid>
               <TextBlock Text="{Binding BreakLine}" TextWrapping="Wrap"/>
               <!-- D75 A (run 69): the assistant's halftime read as a one-click suggestion. -->

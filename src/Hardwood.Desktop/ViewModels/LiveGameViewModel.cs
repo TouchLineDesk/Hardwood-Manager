@@ -121,7 +121,13 @@ public sealed partial class LiveGameViewModel : PageViewModel
     /// to follow), and the full glide when you Step while paused.</summary>
     public double MotionMs => Running ? Hardwood.Desktop.Controls.TrackerMotion.DurationFor(_speedsMs[_speed]) : 650;
     partial void OnShowCourtChanged(bool value) { OnPropertyChanged(nameof(ShowFlow)); OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); }
-    partial void OnShowBreakChanged(bool value) { OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); }
+    partial void OnShowBreakChanged(bool value) { OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); OnPropertyChanged(nameof(CanReopenBreak)); }
+    // The card of the current break or the final, put away with Hide / On the floor / Game flow, comes back with "Break card"
+    // until play goes on (code review, run 86).
+    private bool _breakCardUp;
+    public bool CanReopenBreak => _breakCardUp && !ShowBreak;
+    [RelayCommand] private void ReopenBreak() { if (_breakCardUp) ShowBreak = true; }
+    private void EndBreakCard() { _breakCardUp = false; ShowBreak = false; OnPropertyChanged(nameof(CanReopenBreak)); }
     public Avalonia.Media.Color HomeDot => Bright(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color AwayDot => Bright(Distinct(AwayTeam, Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor)));
 
@@ -320,7 +326,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public void StepOne()
     {
         if (Complete || Running) return;
-        ShowBreak = false;
+        EndBreakCard();
         Advance(1);
         if (!Complete && !Running && !ShowBreak) Status = "Stepped one possession. Step again, or press Play.";
     }
@@ -403,6 +409,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
             foreach (var h in Hardwood.Core.Engine.GameHighlights.For(r, final: true, max: 3))
                 chips.Add(new(h.Title, h.Value, h.Detail, h.Tone));
         BreakChips = chips;
+        _breakCardUp = true;
         ShowBreak = true;
     }
 
@@ -566,6 +573,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
         for (int i = 0; i < 5; i++)
         {
             var p = i < floor.Count ? floor[i] : null;
+            // A player the picker can't list (hurt but dressed) shows as empty, and that isn't counted as an edit.
+            if (p != null && !Lineup[i].Options.Contains(p)) p = null;
             if (Lineup[i].Selected != p) Lineup[i].Selected = p;
             _lastSynced[i] = p;
         }
@@ -583,7 +592,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         if (Complete) return;
         if (Running) { _timer.Stop(); Running = false; Status = "Paused. Change your lineup or tactics, then press Play."; }
-        else { _timer.Start(); Running = true; Status = ""; ShowBreak = false; }
+        else { _timer.Start(); Running = true; Status = ""; EndBreakCard(); }
     }
 
     /// <summary>Skip the ticker to its next fact.</summary>
