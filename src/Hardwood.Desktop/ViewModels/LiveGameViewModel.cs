@@ -195,6 +195,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (_live.Complete)
         {
             _timer.Stop(); Running = false; Complete = true;
+            RestoreRead();
             Status = $"Final: {AwayName} {AwayScore}, {HomeName} {HomeScore}. Continue to record the result and move on.";
             ShowBreakCard(final: true);
         }
@@ -235,23 +236,109 @@ public sealed partial class LiveGameViewModel : PageViewModel
         string Pct(TeamBox b) => b.FGA == 0 ? "-" : $"{100.0 * b.FGM / b.FGA:0}%";
         chips.Add(new("Shooting", $"{Pct(r.Away)} · {Pct(r.Home)}", $"{r.Away.Team.Abbreviation} · {r.Home.Team.Abbreviation} from the field", "info"));
         chips.Add(new("Win chance", WinChance, final ? "" : "heading into the next period", "info"));
-        if (!final)
+        bool halftime = !final && period * 2 == r.Periods;
+        ReadSuggestion = null;
+        if (!final && _live.HalftimeRead(Us) is var (cs, cd))
         {
-            // The in-game read (#268): what the other bench is really running, and the assistant's counter.
-            var them = r.Home.Team == Us ? r.Away.Team : r.Home.Team;
-            var (cs, cd) = Hardwood.Core.Engine.CoachAi.Counter(Hardwood.Core.Engine.CoachAi.Rotation(Us, null), them.Tactic.System, them.Tactic.Scheme);
+            // The in-game read (#268): what the other bench is really running, and the assistant's counter, worked out
+            // exactly as Continue does at halftime (the players still able to play).
             bool already = cs == Us.Tactic.System && cd == Us.Tactic.Scheme;
-            string N(Hardwood.Core.Model.OffensiveSystem x) => Hardwood.Core.Model.Systems.Name(x).ToLower();
-            string D(Hardwood.Core.Model.DefensiveScheme x) => Hardwood.Core.Model.Systems.Name(x).ToLower();
-            chips.Add(new($"{them.Abbreviation} tactics", already ? "Countered" : "Switch?",
-                $"They run {N(them.Tactic.System)} and {D(them.Tactic.Scheme)}. " + (already ? "You're in the counter." : $"Counter: {N(cs)} and {D(cd)}."),
-                already ? "good" : "warn"));
+            if (halftime && !already)
+                // D75 A (run 69): at halftime the read is a one-click suggestion instead of a chip.
+                ReadSuggestion = (cs, cd);
+            else
+                chips.Add(new($"{Them.Abbreviation} tactics", already ? "Countered" : "Switch?",
+                    $"They run {N(Them.Tactic.System)} and {D(Them.Tactic.Scheme)}. " + (already ? "You're in the counter." : $"Counter: {N(cs)} and {D(cd)}."),
+                    already ? "good" : "warn"));
         }
+        UpdateRead();
         if (final)
             foreach (var h in Hardwood.Core.Engine.GameHighlights.For(r, final: true, max: 3))
                 chips.Add(new(h.Title, h.Value, h.Detail, h.Tone));
         BreakChips = chips;
         ShowBreak = true;
+    }
+
+    private static string N(OffensiveSystem x) => Systems.Name(x).ToLower();
+    private static string D(DefensiveScheme x) => Systems.Name(x).ToLower();
+
+    // D75 A (run 69): the halftime read as a suggestion on the halftime card, applied with one click.
+    /// <summary>The counter the assistant suggests at this halftime, or null (not halftime, or you're already in it).</summary>
+    public (OffensiveSystem System, DefensiveScheme Scheme)? ReadSuggestion { get; private set; }
+    /// <summary>Your own system and scheme before you applied the read: put back when the game ends (second half only).</summary>
+    private (OffensiveSystem System, DefensiveScheme Scheme)? _beforeRead;
+    [ObservableProperty] private bool _hasReadSuggestion;
+    [ObservableProperty] private bool _readApplied;
+    [ObservableProperty] private string _readTitle = "";
+    [ObservableProperty] private string _readLine = "";
+    [ObservableProperty] private string _readNote = "";
+    public bool CanApplyRead => HasReadSuggestion && !ReadApplied;
+    partial void OnHasReadSuggestionChanged(bool value) => OnPropertyChanged(nameof(CanApplyRead));
+    partial void OnReadAppliedChanged(bool value) => OnPropertyChanged(nameof(CanApplyRead));
+
+    private void UpdateRead()
+    {
+        HasReadSuggestion = ReadSuggestion != null || ReadApplied;
+        if (!HasReadSuggestion) return;
+        var t = Them.Tactic;
+        if (ReadApplied && _applied is { } a)
+        {
+            ReadTitle = "Assistant's read: applied";
+            ReadLine = $"You switched to {N(a.System)} and {D(a.Scheme)} against their {N(t.System)} and {D(t.Scheme)}.";
+            ReadNote = _beforeRead is { } b
+                ? $"For the second half only: after the game your tactics go back to {N(b.System)} and {D(b.Scheme)}."
+                : "For the second half only.";
+            return;
+        }
+        var (cs, cd) = ReadSuggestion!.Value;
+        var changes = new List<string>();
+        if (cs != Us.Tactic.System) changes.Add($"run {N(cs)}");
+        if (cd != Us.Tactic.Scheme) changes.Add($"play {D(cd)}");
+        ReadTitle = "Assistant's halftime read";
+        ReadLine = $"{Them.Abbreviation} are running {N(t.System)} and {D(t.Scheme)}. Our players suit the counter: {string.Join(" and ", changes)}.";
+        ReadNote = Us.Tactic.HalftimeAdjust && !Us.Tactic.Auto
+            ? "On Continue this is applied for you (Tactics: halftime read on). Watching live, it's your call. Second half only."
+            : "Second half only: your Tactics page keeps your own plan.";
+    }
+
+    private (OffensiveSystem System, DefensiveScheme Scheme)? _applied;
+
+    /// <summary>Apply the assistant's halftime read for the second half (D75 A).</summary>
+    [RelayCommand]
+    public void ApplyRead()
+    {
+        if (ReadSuggestion is not { } s || ReadApplied) return;
+        _beforeRead = (Us.Tactic.System, Us.Tactic.Scheme);
+        Us.Tactic.System = s.System; Us.Tactic.Scheme = s.Scheme;
+        _applied = s;
+        ReadApplied = true;
+        OnPropertyChanged(nameof(OffenseChoice)); OnPropertyChanged(nameof(DefenseChoice));
+        UpdateRead();
+        // The chip strip's read is the same; no need to rebuild it.
+        Status = $"Second half: {N(s.System)} and {D(s.Scheme)}. Press Play to go on.";
+    }
+
+    /// <summary>Take the read back off and return to your own plan.</summary>
+    [RelayCommand]
+    public void UndoRead()
+    {
+        if (!ReadApplied) return;
+        RestoreRead();
+        Status = $"Back to your plan: {N(Us.Tactic.System)} and {D(Us.Tactic.Scheme)}.";
+    }
+
+    /// <summary>
+    /// Put your own system and scheme back (at Undo, or when the game ends, so the read is for the second half only, as on
+    /// Continue). Anything you changed yourself after applying it is kept.
+    /// </summary>
+    public void RestoreRead()
+    {
+        if (!ReadApplied || _beforeRead is not { } b || _applied is not { } a) return;
+        if (Us.Tactic.System == a.System) Us.Tactic.System = b.System;
+        if (Us.Tactic.Scheme == a.Scheme) Us.Tactic.Scheme = b.Scheme;
+        ReadApplied = false; _beforeRead = null; _applied = null;
+        OnPropertyChanged(nameof(OffenseChoice)); OnPropertyChanged(nameof(DefenseChoice));
+        UpdateRead();
     }
 
     public override void Refresh()
@@ -359,6 +446,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         _timer.Stop(); Running = false;
         _live.Finish();
+        RestoreRead();
         Refresh();
         Complete = true;
         Status = $"Final: {AwayName} {AwayScore}, {HomeName} {HomeScore}.";
@@ -370,6 +458,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         _timer.Stop();
         if (!_live.Complete) _live.Finish();
+        RestoreRead();
         Session.FinishLiveDay(_live, _played);
         Shell.AfterTick();
         Shell.ShowBoxScore(_live.Result);

@@ -127,6 +127,21 @@
                 <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="12" VerticalAlignment="Center"/>
               </StackPanel>
               <TextBlock Text="{Binding BreakLine}" TextWrapping="Wrap"/>
+              <!-- D75 A (run 69): the assistant's halftime read as a one-click suggestion. -->
+              <Border IsVisible="{Binding HasReadSuggestion}" Background="#1C2430" BorderBrush="#E0A93B" BorderThickness="3,0,0,0"
+                      CornerRadius="4" Padding="10,6" Margin="0,2,0,2">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ReadTitle}" FontWeight="Bold" Foreground="#E0A93B"/>
+                    <TextBlock Text="{Binding ReadLine}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding ReadNote}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="10,0,0,0">
+                    <Button Content="Apply the read" Command="{Binding ApplyReadCommand}" IsVisible="{Binding CanApplyRead}" Classes="primary"/>
+                    <Button Content="Undo" Command="{Binding UndoReadCommand}" IsVisible="{Binding ReadApplied}"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
               <c:StatStrip ItemsSource="{Binding BreakChips}" Accent="{DynamicResource HwAccent}"/>
             </StackPanel>
           </Border>
