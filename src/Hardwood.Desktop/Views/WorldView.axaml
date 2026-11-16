@@ -166,10 +166,16 @@
           <ItemsControl ItemsSource="{Binding Rules}" MaxWidth="900" HorizontalAlignment="Left">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:RuleRow">
-                <Grid ColumnDefinitions="140,*" Margin="0,0,0,10">
-                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
-                </Grid>
+                <!-- Review #13 rank 14: each rule as a row with its icon in an accent chip. -->
+                <Border Classes="panel" Margin="0,0,0,8" Padding="12,10">
+                  <Grid ColumnDefinitions="40,140,*">
+                    <Border Width="30" Height="30" CornerRadius="15" Background="{DynamicResource HwPanelAltBrush}" VerticalAlignment="Top">
+                      <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Value}" TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                  </Grid>
+                </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

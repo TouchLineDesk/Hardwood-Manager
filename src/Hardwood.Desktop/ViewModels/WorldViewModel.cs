@@ -51,7 +51,28 @@ public sealed class WorldLeaderRow
     public string Tp { get; init; } = "";
 }
 
-public sealed record RuleRow(string Label, string Value);
+public sealed record RuleRow(string Label, string Value)
+{
+    /// <summary>Review #13 rank 14: an icon per rule (Lucide, <see cref="Hardwood.Desktop.Controls.IconData"/>).</summary>
+    public string Icon => IconFor(Label);
+
+    public static string IconFor(string label) => label switch
+    {
+        "Level" => "TrendingUp",
+        "Game" => "Activity",
+        "Season" => "CalendarDays",
+        "Playoffs" => "Trophy",
+        "March Madness" => "Award",
+        "Rosters" => "Users",
+        "Money" or "Wages" => "DollarSign",
+        "Format" => "ListOrdered",
+        "Imports" => "Plane",
+        "Pro age" => "GraduationCap",
+        "Recruiting" => "Handshake",
+        "Simulation" => "Play",
+        _ => "ClipboardList",
+    };
+}
 /// <summary>One colour in the standings key (playoffs, third place, promotion, relegation).</summary>
 public sealed record ZoneKey(Avalonia.Media.IBrush Brush, string Label);
 public sealed record CompetitionChoice(string Key, string Name);

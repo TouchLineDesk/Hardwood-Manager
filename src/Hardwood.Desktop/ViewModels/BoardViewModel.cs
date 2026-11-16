@@ -153,6 +153,21 @@ public sealed partial class BoardViewModel : PageViewModel
         _ => ("Critical", "#F85149"),
     };
 
+    /// <summary>
+    /// H23: the season's line. In season, the pace over the regular season; once the regular season is over (or the record
+    /// passes its length, as college tournament games do) the finished record against the target.
+    /// </summary>
+    public static string PaceLine(int wins, int losses, int seasonGames, int? target, bool seasonOver)
+    {
+        int games = wins + losses;
+        if (games == 0) return seasonOver ? "No games played this season." : "The season hasn't started.";
+        if (seasonOver || games >= seasonGames)
+            return target is { } tw
+                ? $"Finished {wins}-{losses} (target: around {tw} wins): {(wins >= tw ? "met" : $"missed by {tw - wins}")}"
+                : $"Finished {wins}-{losses}";
+        return $"{wins}-{losses}: on pace for {(double)wins / games * seasonGames:0} wins of {seasonGames}";
+    }
+
     public override void Refresh()
     {
         var s = Session; var job = s.Job; var coach = s.Coach;
@@ -164,7 +179,8 @@ public sealed partial class BoardViewModel : PageViewModel
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
             var e = job.Current;
             Goal = e == null ? "" : $"{(e.Survive ? "Stay up (newly promoted)" : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
-            Pace = rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}: on pace for {rec.WinPct * ctx.SeasonGames:0} wins of {ctx.SeasonGames}" : "The season hasn't started.";
+            Pace = PaceLine(rec.Wins, rec.Losses, ctx.SeasonGames, e?.TargetWins,
+                s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason);
             Demands.Clear();
             if (e != null)
                 foreach (var d in e.Demands)
