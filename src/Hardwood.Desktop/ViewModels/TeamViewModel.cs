@@ -26,6 +26,13 @@ public sealed class TeamPlayerRow
     public string Bpg { get; init; } = "";
     public string Fg { get; init; } = "";
     public string Tp { get; init; } = "";
+    /// <summary>Run 70 (review #13 rank 8): the collector card's inputs: the club (its colours and crest), what your
+    /// scouts know of him, and his line this season in this club's league.</summary>
+    public Team? Club { get; init; }
+    public double Knowledge { get; init; } = 1.0;
+    public string CardFooter { get; init; } = "";
+    /// <summary>Set by the page so a card's double-click opens his page.</summary>
+    public IRelayCommand? Open { get; init; }
 }
 
 public sealed class TeamGameRow
@@ -60,6 +67,14 @@ public sealed partial class TeamViewModel : PageViewModel
     public ObservableCollection<TeamPlayerRow> Players { get; } = new();
     public ObservableCollection<TeamGameRow> Games { get; } = new();
     [ObservableProperty] private TeamPlayerRow? _selectedPlayer;
+
+    // Run 70 (review #13 rank 8): another club's roster opens on collector cards in the club's colours, as your own
+    // Roster does; the table (and its column views) is one click away.
+    public string[] RosterViews { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowRosterCards), nameof(ShowRosterTable))] private string _rosterView = "Cards";
+    public bool ShowRosterCards => RosterView == "Cards";
+    public bool ShowRosterTable => !ShowRosterCards;
+    [ObservableProperty] private string _rosterNote = "";
     public bool IsYours => Team == Session.HumanTeam;
 
     public TeamViewModel(MainViewModel shell, Team team) : base(shell) => Team = team;
@@ -112,12 +127,15 @@ public sealed partial class TeamViewModel : PageViewModel
         var stats = (home?.Stats() ?? new()).Where(x => x.TeamId == t.Id).ToDictionary(x => x.PlayerId);
         var today = s.Today;
         Players.Clear();
+        bool prospect = s.World.College?.Programs.Contains(t) == true;
         foreach (var p in t.Roster.OrderByDescending(p => stats.TryGetValue(p.Id, out var st) ? st.Min : 0).ThenByDescending(p => p.CurrentAbility))
         {
-            double k = Scouting.Knowledge(s.HumanTeam, p, prospect: s.World.College?.Programs.Contains(t) == true);
+            double k = Scouting.Knowledge(s.HumanTeam, p, prospect: prospect);
             stats.TryGetValue(p.Id, out var st);
+            var player = p;
             Players.Add(new TeamPlayerRow
             {
+                Club = t, Knowledge = k, CardFooter = CardLine(st, p, today), Open = new RelayCommand(() => Shell.ShowPlayer(player)),
                 Player = p, Age = p.Age(today), CA = Scouting.Ability(p, k).ToString(), PA = Scouting.Potential(p, k).ToString(),
                 Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M × {c.Years}y" : "-",
                 Status = p.IsAvailable(today) ? "" : $"Out {p.Injury!.DaysOut(today)}d", // the injury itself is on his page (too long for this column at 1280 px)
@@ -125,6 +143,10 @@ public sealed partial class TeamViewModel : PageViewModel
                 Fg = st is { Fga: > 0 } ? st.FgPct.ToString(".000") : "-", Tp = st is { Tpa: > 0 } ? st.TpPct.ToString(".000") : "-",
             });
         }
+
+        int injured = t.Roster.Count(p => !p.IsAvailable(today));
+        RosterNote = $"{t.Roster.Count} players, most minutes first" + (injured > 0 ? $" · {injured} injured" : "")
+            + (IsYours ? "" : " · ability as your scouts believe") + ". Click to flip, double-click to open.";
 
         // Games in every competition this season.
         Games.Clear();
@@ -149,6 +171,11 @@ public sealed partial class TeamViewModel : PageViewModel
     }
 
     private const string CompetitionSeasonStage = Hardwood.Core.World.CompetitionSeason.RegularSeason;
+    /// <summary>The card's foot (no minutes: they ran under the Flip mark at 180 px): his line this season in this club's league, else his contract, else his age.</summary>
+    public static string CardLine(BookStat? st, Player p, DateOnly today)
+        => st is { G: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast"
+         : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {(c.Years <= 0 ? "expiring" : c.Years + " yr")}" : $"Age {p.Age(today)}";
+
     private static string F(double? v) => v is { } x ? x.ToString("0.0") : "-";
     private static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 }

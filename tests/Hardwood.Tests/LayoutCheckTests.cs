@@ -60,6 +60,12 @@ public class LayoutCheckTests
             roster.Open(roster.Rows[0]);
         });
         yield return ("Team page", v => v.ShowTeam(v.Session!.League.Teams.First(t => t != v.Session.HumanTeam)));
+        // Run 70 (review #13 rank 8): the team page opens on collector cards; its table is checked here.
+        yield return ("Team page table", v =>
+        {
+            v.ShowTeam(v.Session!.League.Teams.OrderByDescending(t => t.FullName.Length).First(t => t != v.Session.HumanTeam));
+            ((TeamViewModel)v.CurrentPage!).RosterView = "Full table";
+        });
         yield return ("Records book", v => v.Navigate("History"));
         yield return ("Recruiting", v =>
         {

@@ -31,13 +31,30 @@
     <TabControl>
       <TabItem Header="Roster">
         <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
-            <Button Content="Open player" Command="{Binding OpenPlayerCommand}" IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True"/>
-            <TextBlock Text="Ability ranges are what your scouts believe. Click a name to open the player." Classes="muted" VerticalAlignment="Center"/>
-          </StackPanel>
-          <c:ColumnPicker DockPanel.Dock="Top" Key="team-roster" Target="{Binding #TeamRosterGrid}"
+          <!-- Run 70 (review #13 rank 8): collector cards in the club's colours first, as on your own Roster; the table one click away. -->
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0,0,0,6">
+            <ComboBox x:Name="TeamRosterViews" ItemsSource="{Binding RosterViews}" SelectedItem="{Binding RosterView}" Width="120" VerticalAlignment="Center" ToolTip.Tip="Player cards, or the full table with every column"/>
+            <TextBlock Grid.Column="1" Text="{Binding RosterNote}" Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="10,0,0,0" IsVisible="{Binding ShowRosterCards}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0" IsVisible="{Binding ShowRosterTable}">
+              <Button Content="Open player" Command="{Binding OpenPlayerCommand}" IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True"/>
+              <TextBlock Text="Ability ranges are what your scouts believe. Click a name to open the player." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Grid>
+          <c:ColumnPicker DockPanel.Dock="Top" Key="team-roster" Target="{Binding #TeamRosterGrid}" IsVisible="{Binding ShowRosterTable}"
                           Presets="Scouting=Pos,Age,Nat,CA,PA|Stats=Pos,G,PPG,RPG,APG|Contracts=Pos,Age,CA,Contract"/>
-          <DataGrid x:Name="TeamRosterGrid" ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" RowHeight="28">
+          <Panel>
+          <ScrollViewer x:Name="TeamRosterCards" IsVisible="{Binding ShowRosterCards}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Players}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TeamPlayerRow">
+                  <c:PlayerCard Player="{Binding Player}" Team="{Binding Club}" Knowledge="{Binding Knowledge}" Footer="{Binding CardFooter}" Width="180" Height="268" Margin="0,0,10,10"
+                                DoubleTapped="OnCardDoubleTapped" ToolTip.Tip="Click to flip · double-click to open his page"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <DataGrid x:Name="TeamRosterGrid" ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" RowHeight="28" IsVisible="{Binding ShowRosterTable}">
             <DataGrid.Columns>
               <DataGridTemplateColumn Header="Player" Width="170">
                 <DataGridTemplateColumn.CellTemplate>
@@ -57,6 +74,7 @@
               <DataGridTextColumn Header="" Binding="{Binding Status}" Width="*" MinWidth="60"/>
             </DataGrid.Columns>
           </DataGrid>
+          </Panel>
         </DockPanel>
       </TabItem>
       <TabItem Header="Stats">
