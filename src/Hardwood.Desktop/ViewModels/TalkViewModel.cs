@@ -42,7 +42,7 @@ public sealed partial class TalkViewModel : ViewModelBase
     public void Show(Player? p)
     {
         Player = p;
-        Reply = ""; Signed = false; _offers = 0; _lastReply = "";
+        Reply = ""; Signed = false; _offers = 0; _lastReply = ""; ConfirmingRelease = false;
         if (p == null)
         {
             // H1: the renewal flag used to survive a cleared panel, leaving a Release button that did nothing.
@@ -90,6 +90,7 @@ public sealed partial class TalkViewModel : ViewModelBase
     private void Offer()
     {
         if (Player is not { } p) return;
+        ConfirmingRelease = false;
         // H9 (run 67): an empty (or zero) Wage or Years box made Make offer do nothing and say nothing.
         if (Wage is not { } w || w <= 0 || Years is not { } y || y < 1)
         {
@@ -111,9 +112,29 @@ public sealed partial class TalkViewModel : ViewModelBase
         _after();
     }
 
+    // H24 (bug hunt, Nov 16): Release asks first.
+    [ObservableProperty] private bool _confirmingRelease;
+
     [RelayCommand]
     private void Release()
     {
+        if (Player is not { } p || !CanRelease) return;
+        Reply = $"Release {p.Name}? He becomes a free agent and you lose the right to re-sign him. You can't undo it.";
+        ConfirmingRelease = true;
+    }
+
+    [RelayCommand]
+    private void CancelRelease()
+    {
+        if (!ConfirmingRelease) return;
+        ConfirmingRelease = false;
+        Reply = Player is { } p ? $"{p.Name} stays in talks." : "";
+    }
+
+    [RelayCommand]
+    private void ConfirmRelease()
+    {
+        ConfirmingRelease = false;
         if (Player is not { } p || !CanRelease) return;
         Session.ReleaseExpiring(p);
         Reply = $"{p.Name} has been released.";

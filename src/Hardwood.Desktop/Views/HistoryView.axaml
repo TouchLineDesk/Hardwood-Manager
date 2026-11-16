@@ -1,41 +1,97 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.HistoryView"
              x:DataType="vm:HistoryViewModel">
   <UserControl.Resources>
-    <!-- A records table (roadmap 4): top five, your club's entries in the accent colour. -->
+    <!-- A records table (roadmap 4). Run 76 (review #13 rank 15): the holder leads the card with his photo (the club's crest
+         for a team record) under the club's colour; places 2-5 follow as lines. Your club's entries in the accent colour. -->
     <DataTemplate x:Key="RecordCard" x:DataType="vm:RecordTable">
-      <Border Classes="panel" Width="318" Margin="0,0,10,10" VerticalAlignment="Top">
-        <StackPanel Spacing="4">
-          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-          <TextBlock Text="No record yet: it's set the first time it happens." Classes="muted" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding Empty}"/>
-          <ItemsControl ItemsSource="{Binding Rows}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:RecordRow">
-                <Grid ColumnDefinitions="22,58,*" Margin="0,2">
-                  <TextBlock Text="{Binding Rank}" Classes="muted" FontSize="12"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="Bold" FontSize="14"/>
-                  <StackPanel Grid.Column="2">
-                    <TextBlock Text="{Binding Who}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Ours}"/>
-                    <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
+      <Border Classes="panel" Classes.mine="{Binding TopOurs}" Width="318" Margin="0,0,10,10" Padding="0" VerticalAlignment="Top">
+        <Border BorderBrush="{Binding Stripe}" BorderThickness="0,5,0,0" CornerRadius="5" Padding="12,8,12,10">
+          <StackPanel Spacing="4">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="No record yet: it's set the first time it happens." Classes="muted" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding Empty}"/>
+            <Grid ColumnDefinitions="52,*" IsVisible="{Binding HasTop}" Margin="0,2,0,2">
+              <Panel Width="48" Height="48" VerticalAlignment="Top">
+                <c:Avatar Player="{Binding Leader}" Team="{Binding LeaderClub}" Width="48" Height="48" IsVisible="{Binding HasPhoto}"/>
+                <c:TeamLogo Team="{Binding LeaderClub}" ShowText="False" Width="46" Height="46" IsVisible="{Binding HasCrest}"/>
+              </Panel>
+              <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Top.Value}" FontWeight="Bold" FontSize="22"/>
+                <TextBlock Text="{Binding Top.Who}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Classes.accent="{Binding TopOurs}"/>
+                <TextBlock Text="{Binding Top.When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Rest}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RecordRow">
+                  <Grid ColumnDefinitions="22,58,*" Margin="0,2">
+                    <TextBlock Text="{Binding Rank}" Classes="muted" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="Bold" FontSize="13"/>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="{Binding Who}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Ours}"/>
+                      <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
       </Border>
     </DataTemplate>
-    <!-- A real NBA record (R1): the mark, who holds it, and when. -->
+    <!-- A real NBA record (R1): the mark, who holds it, and when. Run 76: his photo if he's in the game, else the club's
+         crest, else the trophy; the club's colour as a stripe. -->
     <DataTemplate x:Key="RealCard" x:DataType="vm:RealRecordCard">
-      <Border Classes="panel" Width="296" Margin="0,0,10,10" VerticalAlignment="Top">
-        <StackPanel Spacing="2">
-          <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-          <TextBlock Text="{Binding Value}" FontWeight="Bold" FontSize="22"/>
-          <TextBlock Text="{Binding Holder}" FontSize="12" TextWrapping="Wrap"/>
-          <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
-        </StackPanel>
+      <Border Classes="panel" Width="296" Margin="0,0,10,10" Padding="0" VerticalAlignment="Top" ToolTip.Tip="{Binding Holder}">
+        <Border BorderBrush="{Binding Stripe}" BorderThickness="0,5,0,0" CornerRadius="5" Padding="12,8,12,10">
+          <Grid ColumnDefinitions="52,*">
+            <Panel Width="48" Height="48" VerticalAlignment="Top" Margin="0,4,0,0">
+              <c:Avatar Player="{Binding Player}" Team="{Binding Club}" Width="48" Height="48" IsVisible="{Binding HasPhoto}"/>
+              <c:TeamLogo Team="{Binding Club}" ShowText="False" Width="46" Height="46" IsVisible="{Binding HasCrest}"/>
+              <c:Icon Kind="Trophy" Width="30" Height="30" Foreground="{DynamicResource HwAccentBrush}" IsVisible="{Binding HasIcon}"/>
+            </Panel>
+            <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="1">
+              <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding Value}" FontWeight="Bold" FontSize="22"/>
+              <TextBlock Text="{Binding Holder}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Broken}"/>
+              <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Border>
+    </DataTemplate>
+    <!-- Run 76: a season as the champion's card (crest, colour, who they beat, the MVPs). -->
+    <DataTemplate x:Key="SeasonCardTemplate" x:DataType="vm:SeasonCard">
+      <Border Classes="panel" Classes.mine="{Binding Mine}" Width="300" MinHeight="132" Margin="0,0,10,10" Padding="0" ToolTip.Tip="{Binding Tip}">
+        <Border BorderBrush="{Binding Stripe}" BorderThickness="0,5,0,0" CornerRadius="5" Padding="12,8,12,10">
+          <StackPanel Spacing="5">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:Icon Kind="Trophy" Width="15" Height="15" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding Season}" Classes="accent" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+            <Grid ColumnDefinitions="56,*">
+              <Panel Width="52" Height="52" VerticalAlignment="Top">
+                <c:TeamLogo Team="{Binding Champion}" ShowText="False" Width="52" Height="52" IsVisible="{Binding HasCrest}"/>
+                <c:Icon Kind="Trophy" Width="32" Height="32" Foreground="{DynamicResource HwAccentBrush}" IsVisible="{Binding !HasCrest}"/>
+              </Panel>
+              <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ChampionName}" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding Beat}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Grid>
+            <TextBlock FontSize="12" TextWrapping="Wrap">
+              <Run Text="Finals MVP " Foreground="{DynamicResource HwMutedBrush}"/><Run Text="{Binding FinalsMvp}" FontWeight="SemiBold"/>
+            </TextBlock>
+            <TextBlock FontSize="12" TextWrapping="Wrap">
+              <Run Text="MVP " Foreground="{DynamicResource HwMutedBrush}"/><Run Text="{Binding Mvp}" FontWeight="SemiBold"/>
+            </TextBlock>
+            <TextBlock Text="{Binding Extra}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding HasExtra}"/>
+            <TextBlock Text="{Binding OurRecord}" FontSize="12" FontWeight="SemiBold" Classes="accent" IsVisible="{Binding HasOurRecord}"/>
+          </StackPanel>
+        </Border>
       </Border>
     </DataTemplate>
   </UserControl.Resources>
@@ -44,33 +100,60 @@
     <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" Classes="muted" Margin="0,0,0,8"/>
     <TabControl SelectedIndex="{Binding Tab}">
       <TabItem Header="Seasons">
-        <DataGrid ItemsSource="{Binding Rows}">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="96"/>
-            <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="200"/>
-            <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="200"/>
-            <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="180"/>
-            <DataGridTextColumn Header="Finals MVP" Binding="{Binding FinalsMvp}" Width="170"/>
-            <DataGridTextColumn Header="Scoring leader" Binding="{Binding ScoringLeader}" Width="170"/>
-            <DataGridTextColumn Header="Your record" Binding="{Binding OurRecord}" Width="*"/>
-          </DataGrid.Columns>
-        </DataGrid>
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <TextBlock Text="{Binding SeasonsNote}" TextWrapping="Wrap" VerticalAlignment="Center" IsVisible="{Binding HasSeasonsNote}"/>
+            <ComboBox x:Name="Views" Grid.Column="1" ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" IsVisible="{Binding HasSeasonCards}"
+                      ToolTip.Tip="Each season as the champion's card, or the full table"/>
+          </Grid>
+          <Panel>
+            <ScrollViewer x:Name="SeasonCardsView" IsVisible="{Binding ShowCards}">
+              <StackPanel Spacing="6">
+                <ItemsControl x:Name="SeasonCards" ItemsSource="{Binding SeasonCards}" ItemTemplate="{StaticResource SeasonCardTemplate}" IsVisible="{Binding HasSeasonCards}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <TextBlock Text="{Binding RealPastTitle}" Classes="h2" IsVisible="{Binding HasRealPast}"/>
+                <ItemsControl x:Name="RealPastCards" ItemsSource="{Binding RealPastCards}" ItemTemplate="{StaticResource SeasonCardTemplate}" IsVisible="{Binding HasRealPast}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <TextBlock Text="Every real season since 1946-47 is on the NBA history tab." Classes="muted" FontSize="11.5" IsVisible="{Binding HasRealPast}"/>
+              </StackPanel>
+            </ScrollViewer>
+            <DataGrid x:Name="SeasonsTable" ItemsSource="{Binding Rows}" IsVisible="{Binding ShowTable}">
+              <DataGrid.Columns>
+                <!-- Run 76: the scoring leader moved to the cards so "Your record" fits at 1480 px with the assistant. -->
+                <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="76"/>
+                <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="190"/>
+                <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="190"/>
+                <DataGridTextColumn Header="MVP" Binding="{Binding Mvp}" Width="160"/>
+                <DataGridTextColumn Header="Finals MVP" Binding="{Binding FinalsMvp}" Width="160"/>
+                <DataGridTextColumn Header="Your record" Binding="{Binding OurRecord}" Width="*" MinWidth="150"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </Panel>
+        </DockPanel>
       </TabItem>
       <TabItem Header="Records book">
         <ScrollViewer>
           <StackPanel Spacing="6">
             <TextBlock Text="Single game (regular season)" Classes="h2"/>
-            <ItemsControl ItemsSource="{Binding GameRecords}" ItemTemplate="{StaticResource RecordCard}">
+            <ItemsControl x:Name="GameRecordCards" ItemsSource="{Binding GameRecordsSet}" ItemTemplate="{StaticResource RecordCard}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             </ItemsControl>
+            <TextBlock Text="{Binding GameRecordsToSet}" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
+                       IsVisible="{Binding GameRecordsToSet, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <TextBlock Text="Single season" Classes="h2"/>
-            <ItemsControl ItemsSource="{Binding SeasonRecords}" ItemTemplate="{StaticResource RecordCard}">
+            <ItemsControl x:Name="SeasonRecordCards" ItemsSource="{Binding SeasonRecordsSet}" ItemTemplate="{StaticResource RecordCard}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             </ItemsControl>
+            <TextBlock Text="{Binding SeasonRecordsToSet}" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
+                       IsVisible="{Binding SeasonRecordsToSet, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <TextBlock Text="Career (including this season)" Classes="h2"/>
-            <ItemsControl ItemsSource="{Binding CareerRecords}" ItemTemplate="{StaticResource RecordCard}">
+            <ItemsControl x:Name="CareerRecordCards" ItemsSource="{Binding CareerRecordsSet}" ItemTemplate="{StaticResource RecordCard}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             </ItemsControl>
+            <TextBlock Text="{Binding CareerRecordsToSet}" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
+                       IsVisible="{Binding CareerRecordsToSet, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -96,14 +179,19 @@
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:RealTitlesRow">
-                  <Border Classes="panel" Width="210" Margin="0,0,8,8">
-                    <StackPanel>
-                      <TextBlock Text="{Binding Team}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Ours}"/>
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="{Binding Titles}" FontWeight="Bold" FontSize="20"/>
-                        <TextBlock Text="{Binding Last, StringFormat='titles · last {0}'}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </StackPanel>
+                  <Border Classes="panel" Classes.mine="{Binding Ours}" Width="230" Margin="0,0,8,8" Padding="0">
+                    <Border BorderBrush="{Binding Stripe}" BorderThickness="4,0,0,0" CornerRadius="5" Padding="8,6">
+                      <Grid ColumnDefinitions="40,*">
+                        <c:TeamLogo Team="{Binding Club}" ShowText="False" Width="36" Height="36" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                          <TextBlock Text="{Binding Team}" FontSize="12" TextWrapping="Wrap" Classes.accent="{Binding Ours}"/>
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding Titles}" FontWeight="Bold" FontSize="20"/>
+                            <TextBlock Text="{Binding Last, StringFormat='titles · last {0}'}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
                   </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
