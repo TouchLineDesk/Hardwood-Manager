@@ -55,7 +55,10 @@ public sealed class Reflow
         // little in it the narrower stacked width said "fits", so it went back, didn't fit, and Avalonia gave up on an
         // infinite layout loop.
         if (!Stacked) _sideBySideWidth = rightW;
-        else if (_sideBySideWidth > 0) rightW = Math.Max(rightW, _sideBySideWidth);
+        // Run 72: and only by that: stacked, a panel that spans the page can be far wider than it was beside the left part
+        // (Schedule & Results' scores wrap across the page), and taking the wider of the two kept it stacked for ever after
+        // the left part had shrunk (the table switched to tiles).
+        else if (_sideBySideWidth > 0) rightW = _sideBySideWidth;
         double need = (_leftNeed?.Invoke() ?? _left.DesiredSize.Width) + rightW + _gap;
         // A little hysteresis so it doesn't flip back and forth at the boundary.
         bool stack = Stacked ? need > _grid.Bounds.Width - 8 : need > _grid.Bounds.Width;

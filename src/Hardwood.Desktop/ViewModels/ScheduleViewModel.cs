@@ -25,6 +25,29 @@ public sealed class GameRow
     public bool HasBox => Result != null && Result.Home.Lines.Count > 0;
     /// <summary>H8 (run 65): played before you took the job, so only the score is kept.</summary>
     public bool NotCoached => Game.NotCoached;
+
+    // Run 72 (review #13 rank 9): the game as a scoreboard tile: a W/L stripe, the opponent's logo, the score big.
+    /// <summary>"W", "L", "next" (your next game) or "later" (to come): picks the tile's stripe colour.</summary>
+    public string Kind { get; init; } = "later";
+    public bool IsNext => Kind == "next";
+    /// <summary>"vs Boston Celtics" / "at #5 Duke": the opponent alone, without the event.</summary>
+    public string TileOpponent { get; init; } = "";
+    /// <summary>"Sat, Nov 22 · home", then the event when it isn't a league game.</summary>
+    public string TileWhen => $"{Game.Date:ddd, MMM d} · {(Game.Home ? "home" : "away")}";
+    public bool HasEvent => Competition.Length > 0;
+    /// <summary>The big line: "W 112-104" for a result, "Next game" or "To come".</summary>
+    public string TileScore => Played ? ResultText : IsNext ? "Next game" : "To come";
+    /// <summary>The small line: the top performer for a result; the head-to-head going in for one to come.</summary>
+    public string TileFoot => Played ? (TopPerformer.Length > 0 ? TopPerformer : "Score only")
+        : HeadToHead is "–" or "" ? "No meetings yet" : $"Head-to-head {HeadToHead} going in";
+}
+
+/// <summary>Run 72: one box of the form strip (the last ten results in the games shown).</summary>
+public sealed class FormBox
+{
+    public required string Letter { get; init; }
+    public bool Won => Letter == "W";
+    public string Tip { get; init; } = "";
 }
 
 /// <summary>A Schedule &amp; Results filter chip (#529): its name, how many games and the record in them.</summary>
@@ -38,6 +61,8 @@ public sealed class FilterChip
 
 public sealed class SeriesRow
 {
+    public Hardwood.Core.Model.Team? High { get; init; }
+    public Hardwood.Core.Model.Team? Low { get; init; }
     public required string Round { get; init; }
     public required string Matchup { get; init; }
     public required string Score { get; init; }
@@ -83,9 +108,23 @@ public sealed partial class ScheduleViewModel : PageViewModel
     [ObservableProperty] private bool _hasMeetings;
     public ObservableCollection<string> RivalMeetings { get; } = new();
     private List<MyGame> _all = new();
+
+    // Run 72 (review #13 rank 9): the games as scoreboard tiles with a form strip first; the table one click away.
+    public string[] GameViews { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCards), nameof(ShowTable))] private string _gameView = "Cards";
+    public bool ShowCards => GameView == "Cards";
+    public bool ShowTable => !ShowCards;
+    /// <summary>The last ten results in the games shown, oldest first.</summary>
+    public ObservableCollection<FormBox> Form { get; } = new();
+    [ObservableProperty] private string _formText = "";
+    [ObservableProperty] private bool _hasForm;
+    /// <summary>H20 (run 72): once your club is out of the postseason, the page says so.</summary>
+    [ObservableProperty] private string _seasonOver = "";
     private Dictionary<int, H2HRecord> _h2h = new();
 
     public ScheduleViewModel(MainViewModel shell) : base(shell) { }
+    /// <summary>Run 72: raised at the end of <see cref="Refresh"/> (and a filter change) so the tiles scroll to the game picked.</summary>
+    public event Action? Refreshed;
 
     [RelayCommand]
     public void SetFilter(string? name)
@@ -153,6 +192,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
             asOf[g] = h.Line;
         }
         int w = 0, l = 0;
+        var nextGame = _all.Where(g => !g.Played).OrderBy(g => g.Date).FirstOrDefault();
         foreach (var g in _all.Where(g => ScheduleFilter.Matches(g, Filter)))
         {
             var r = g.Result;
@@ -172,9 +212,12 @@ public sealed partial class ScheduleViewModel : PageViewModel
             // The rank at tip-off for a result, the rank now for a game to come (#528).
             string opponent = s.InCollege ? $"{(g.Home ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City)}"
                 : $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}" + (comp.Length > 0 ? $" · {comp}" : "");
+            string tileOpp = s.InCollege ? $"{(g.Home ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City)}"
+                : $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}";
+            string kind = g.Played ? (g.Won ? "W" : "L") : nextGame == g ? "next" : "later";
             Games.Add(new GameRow
             {
-                Game = g, Opponent = opponent, OpponentTeam = g.Opponent,
+                Game = g, Opponent = opponent, OpponentTeam = g.Opponent, Kind = kind, TileOpponent = tileOpp,
                 Competition = comp, Score = score, Outcome = outcome, Record = g.Played ? $"{w}-{l}" : "", TopPerformer = top,
                 HeadToHead = asOf.TryGetValue(g, out var line) ? line : "–",
             });
@@ -182,6 +225,11 @@ public sealed partial class ScheduleViewModel : PageViewModel
         FilterSummary = Filter == ScheduleFilter.All ? "" : $"{Filter}: {w}-{l}" + (Games.Count(g => !g.Played) is > 0 and var left ? $", {left} to play" : "");
         var next = Games.FirstOrDefault(g => !g.Played);
         Selected = next ?? Games.LastOrDefault();
+        (FormText, var boxes) = FormLine(Games.Where(g => g.Played).Select(g => g.Game).ToList());
+        Form.Clear();
+        foreach (var b in boxes) Form.Add(b);
+        HasForm = Form.Count > 0;
+        SeasonOver = MainViewModel.SeasonOverText(s) is { } over ? $"{char.ToUpper(over[0])}{over[1..]}: the rest of the playoffs go on without you. Continue or Sim week moves on to the summer." : "";
         ShowRival(Selected?.OpponentTeam);
 
         Series.Clear();
@@ -190,12 +238,12 @@ public sealed partial class ScheduleViewModel : PageViewModel
             foreach (var se in hl.Season.Series)
             {
                 var hi = s.FindTeam(se.HighId)!; var lo = s.FindTeam(se.LowId)!;
-                Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{hi.FullName} vs {lo.FullName}",
+                Series.Add(new SeriesRow { High = hi, Low = lo, Round = se.Round, Matchup = $"{hi.FullName} vs {lo.FullName}",
                     Score = se.Complete ? $"{s.FindTeam(se.WinnerId!.Value)!.Abbreviation} wins {se.Score}" : se.Score, Involved = hi == us || lo == us });
             }
         if (s.Postseason != null)
             foreach (var se in s.Postseason.Series)
-                Series.Add(new SeriesRow { Round = se.Round, Matchup = $"{se.Higher.FullName} vs {se.Lower.FullName}", Score = se.Complete ? $"{se.Winner!.Abbreviation} wins {Math.Max(se.HigherWins, se.LowerWins)}-{Math.Min(se.HigherWins, se.LowerWins)}" : se.Score, Involved = se.Higher == us || se.Lower == us });
+                Series.Add(new SeriesRow { High = se.Higher, Low = se.Lower, Round = se.Round, Matchup = $"{se.Higher.FullName} vs {se.Lower.FullName}", Score = se.Complete ? $"{se.Winner!.Abbreviation} wins {Math.Max(se.HigherWins, se.LowerWins)}-{Math.Min(se.HigherWins, se.LowerWins)}" : se.Score, Involved = se.Higher == us || se.Lower == us });
 
         LeagueScores.Clear();
         var yesterday = s.Today.AddDays(-1);
@@ -210,6 +258,25 @@ public sealed partial class ScheduleViewModel : PageViewModel
 
         var rec = s.MyRecord;
         Summary = $"{s.HumanLeagueName}: {rec.Wins}-{rec.Losses} · home {rec.HomeWins}-{rec.HomeLosses} · {rec.PointsFor / Math.Max(1.0, rec.Games):F1} for, {rec.PointsAgainst / Math.Max(1.0, rec.Games):F1} against";
+        Refreshed?.Invoke();
+    }
+}
+
+public sealed partial class ScheduleViewModel
+{
+    /// <summary>Run 72: the form strip's boxes (the last ten results, oldest first) and its line:
+    /// "Last 10: 7-3 · won 3 in a row". Empty with no game played.</summary>
+    public static (string text, List<FormBox> boxes) FormLine(IReadOnlyList<MyGame> played)
+    {
+        var last = played.OrderBy(g => g.Date).TakeLast(10).ToList();
+        if (last.Count == 0) return ("", new());
+        var boxes = last.Select(g => new FormBox { Letter = g.Won ? "W" : "L",
+            Tip = $"{g.Date:MMM d} · {(g.Home ? "vs" : "at")} {g.Opponent.FullName} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}" }).ToList();
+        int lw = last.Count(g => g.Won);
+        bool won = last[^1].Won;
+        int run = last.AsEnumerable().Reverse().TakeWhile(g => g.Won == won).Count();
+        string streak = run >= 2 ? $"{(won ? "won" : "lost")} {run} in a row" : won ? "won the last one" : "lost the last one";
+        return ($"Last {last.Count}: {lw}-{last.Count - lw} · {streak}", boxes);
     }
 }
 

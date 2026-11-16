@@ -55,8 +55,11 @@ public sealed partial class MainViewModel : ViewModelBase
     public bool ShowSimButtons => InSeason && !InLiveGame;
     /// <summary>Next game needs a club (bug hunt H15): out of work, Sim week and Continue still move time on.</summary>
     [ObservableProperty] private bool _employed = true;
-    public bool ShowNextGameButton => ShowSimButtons && Employed;
+    /// <summary>H20 (run 72): out of the postseason there's no next game to sim to, so Next game goes too.</summary>
+    [ObservableProperty] private bool _seasonOver;
+    public bool ShowNextGameButton => ShowSimButtons && Employed && !SeasonOver;
     partial void OnEmployedChanged(bool value) => OnPropertyChanged(nameof(ShowNextGameButton));
+    partial void OnSeasonOverChanged(bool value) => OnPropertyChanged(nameof(ShowNextGameButton));
     partial void OnInSeasonChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
     partial void OnInLiveGameChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
 
@@ -290,6 +293,7 @@ public sealed partial class MainViewModel : ViewModelBase
         var rec = s.MyRecord;
         RecordText = !s.Employed ? "" : rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
         var outText = SeasonOverText(s);
+        SeasonOver = outText != null;
         PhaseText = s.InCollege && s.Employed && s.World.College is { } cw && cw.Season.Year == s.League.Season
             ? $"{s.MyConference!.Short} · {(cw.Season.ChampionId != null ? "season over" : cw.StageText.ToLower())}"
             : s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
