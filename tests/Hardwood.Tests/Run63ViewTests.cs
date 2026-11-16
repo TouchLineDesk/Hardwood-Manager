@@ -112,6 +112,7 @@ public class Run63ViewTests
 
             // A team page's roster.
             vm.ShowTeam(s.League.Teams.First(t => t != s.HumanTeam)); Settle();
+            ((TeamViewModel)vm.CurrentPage!).RosterView = "Full table"; Settle();   // cards first since run 70
             var team = window.GetVisualDescendantsOf<ColumnPicker>().Single(p => p.Key == "team-roster");
             team.Choose("Stats"); Settle();
             Assert.Equal(new[] { "Player", "Pos", "G", "PPG", "RPG", "APG", "" }, Shown(team));
