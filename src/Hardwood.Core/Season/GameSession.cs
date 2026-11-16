@@ -1072,9 +1072,27 @@ public sealed partial class GameSession
         var ours = a.AllLeague.SelectMany(t => t).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => Name(id)).ToList();
         if (ours.Count > 0) parts.Insert(0, $"Your All-League honourees: {string.Join(", ", ours)}.");
         Post($"Season awards: {Name(a.Mvp)} is MVP", string.Join("\n\n", parts), "Awards");
-        var honours = Offseason!.Report.HallOfFame.Select(h => $"Hall of Fame: {h.Name}, inducted after a {League.Careers[h.Id].Seasons}-season career: {League.Careers[h.Id].Points:N0} points, {League.Careers[h.Id].Mvps} MVP{(League.Careers[h.Id].Mvps == 1 ? "" : "s")}, {League.Careers[h.Id].Titles} title{(League.Careers[h.Id].Titles == 1 ? "" : "s")}, {League.Careers[h.Id].AllStars} All-Star selections.")
+        var honours = Offseason!.Report.HallOfFame.Select(h => HallOfFameLine(h, League.Careers[h.Id]))
             .Concat(Offseason.Report.RetiredNumbers.Select(x => $"{x.Item2.FullName} retire {x.Item1.Name}'s number.")).ToList();
         if (honours.Count > 0) Post(honours.Count == 1 ? honours[0].Split(',')[0].Split(" retire ")[0] : $"Hall of Fame and retired numbers ({honours.Count})", string.Join("\n", honours), "Awards");
+    }
+
+    /// <summary>
+    /// The inbox line for a Hall of Fame induction. H36 (bug hunt, Nov 16; run 79): a real veteran's career is seeded with
+    /// his real points and MVP / Finals MVP awards only (<see cref="RealWorld.RealCareers"/>), so his titles and All-Star
+    /// selections count only the seasons played here; the line says so instead of "0 titles, 0 All-Star selections".
+    /// </summary>
+    public static string HallOfFameLine(Player h, CareerTotals c)
+    {
+        static string N(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
+        var line = $"Hall of Fame: {h.Name}, inducted after a {c.Seasons}-season career: {c.Points:N0} points, {N(c.Mvps, "MVP", "MVPs")}";
+        if (!RealWorld.RealCareers.Players.ContainsKey(h.Name))
+            return line + $", {N(c.Titles, "title", "titles")}, {N(c.AllStars, "All-Star selection", "All-Star selections")}.";
+        if (c.FinalsMvps > 0) line += $", {N(c.FinalsMvps, "Finals MVP", "Finals MVPs")}";
+        line += ".";
+        if (c.Titles > 0 || c.AllStars > 0)
+            line += $" In the seasons played here: {N(c.Titles, "title", "titles")}, {N(c.AllStars, "All-Star selection", "All-Star selections")}.";
+        return line;
     }
 
     private bool HumanTeamHad(Player p) => Stats.TryGetValue(p.Id, out var s) && s.TeamId == HumanTeam.Id;
