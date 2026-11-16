@@ -41,6 +41,10 @@ public sealed class AppSettings
     /// <summary>Text and interface size (roadmap 1): 0.9-1.3, applied to the whole window. 1.0 = 100%.</summary>
     public double UiScale { get; set; } = 1.0;
 
+    /// <summary>The live game's court grows into the window's room, the play by play folding under it (run 85,
+    /// tracker slice 3). Off: the court keeps its 300 px.</summary>
+    public bool LiveBigCourt { get; set; } = true;
+
     /// <summary>Custom views on the big tables (#465): each table's chosen view and "My view" columns, by table key.</summary>
     public Dictionary<string, Controls.TableViewChoice> TableViews { get; set; } = new();
 

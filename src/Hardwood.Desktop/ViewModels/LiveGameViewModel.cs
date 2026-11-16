@@ -65,6 +65,20 @@ public sealed partial class LiveGameViewModel : PageViewModel
     [RelayCommand] private void ToCourt() => ShowCourt = true;
     [RelayCommand] private void ToFlow() => ShowCourt = false;
 
+    /// <summary>The big view (run 85, tracker slice 3): the court takes the room the window has, the play by play and
+    /// box score folding under it; off keeps the court at 300 px. Remembered in the settings.</summary>
+    [ObservableProperty] private bool _bigCourt = AppSettings.Current.LiveBigCourt;
+    public string BigCourtLabel => BigCourt ? "Smaller court" : "Bigger court";
+    partial void OnBigCourtChanged(bool value)
+    {
+        OnPropertyChanged(nameof(BigCourtLabel));
+        var settings = AppSettings.Current;
+        if (settings.LiveBigCourt == value) return;
+        settings.LiveBigCourt = value;
+        settings.Save();   // never throws
+    }
+    [RelayCommand] private void ToggleBigCourt() => BigCourt = !BigCourt;
+
     // Beside the court (run 83): the play by play or a compact live box score, one tab at a time.
     [ObservableProperty] private bool _showBox;
     public bool ShowLog => !ShowBox;

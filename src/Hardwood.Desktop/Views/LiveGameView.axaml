@@ -4,7 +4,7 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.LiveGameView"
              x:DataType="vm:LiveGameViewModel">
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
+  <Grid x:Name="RootGrid" RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
     <!-- Scoreboard: arena floor, team colours, big score (game-day presentation, decision #69) -->
     <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" MinHeight="118">
       <Grid>
@@ -68,10 +68,10 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,10,0">
+    <Grid x:Name="LeftCol" Grid.Row="1" Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,10,0">
       <!-- On the floor (Danny, run 45: the whole court, every shot as it happens) and the game flow (roadmap 2: win
            probability and momentum, quarter splits, run alerts) share one panel, so the play by play keeps its room. -->
-      <Border Classes="panel" Padding="8" Margin="0,0,0,10">
+      <Border x:Name="CourtPanel" Classes="panel" Padding="8" Margin="0,0,0,10">
         <StackPanel Spacing="4">
           <WrapPanel Margin="4,0,4,4">
             <Button Content="On the floor" Command="{Binding ToCourtCommand}" Classes.primary="{Binding ShowCourt}" Padding="10,3" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -79,9 +79,12 @@
             <Border Background="#26303B" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
               <TextBlock FontSize="11.5"><Run Text="Win chance " Foreground="#8B96A5"/><Run Text="{Binding WinChance}" FontWeight="SemiBold"/></TextBlock>
             </Border>
-            <Border Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,1" IsVisible="{Binding HasRunAlert}" VerticalAlignment="Center">
+            <Border Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" IsVisible="{Binding HasRunAlert}" VerticalAlignment="Center">
               <TextBlock Text="{Binding RunAlert}" FontSize="11.5" FontWeight="SemiBold" Foreground="#F0A33A"/>
             </Border>
+            <!-- The big view (run 85, tracker slice 3): the court takes the window's room; the play by play folds under it. -->
+            <Button x:Name="BigCourtButton" Content="{Binding BigCourtLabel}" Command="{Binding ToggleBigCourtCommand}" IsVisible="{Binding ShowCourt}" Padding="10,3" VerticalAlignment="Center"
+                    ToolTip.Tip="Bigger: the court fills the room the window has and the play by play folds under it. Smaller: the court keeps 300 px."/>
           </WrapPanel>
           <!-- The 2D tracker (D67 B, run 80): the latest play in words over the court that draws it. -->
           <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
@@ -114,8 +117,8 @@
         </StackPanel>
       </Border>
 
-      <!-- Play by play -->
-      <Border Grid.Row="1" Classes="panel" Padding="8">
+      <!-- Play by play (folds under the big court, keeping at least LiveGameView.MinLogHeight) -->
+      <Border x:Name="LogPanel" Grid.Row="1" Classes="panel" Padding="8">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="4,0,4,6">
             <Button Content="Play by play" Command="{Binding ToLogCommand}" Classes.primary="{Binding ShowLog}" Padding="10,3"/>
@@ -160,7 +163,7 @@
           <ScrollViewer x:Name="LiveBox" IsVisible="{Binding ShowBox}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="4,0,18,0">
                 <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,6,0,2">
-                  <TextBlock Grid.Column="1" Text="{Binding AwayBoxTitle}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="1" Text="{Binding AwayBoxTitle}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap"/>
                   <TextBlock Grid.Column="2" Text="MIN" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
                   <TextBlock Grid.Column="3" Text="PTS" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
                   <TextBlock Grid.Column="4" Text="REB" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
@@ -173,8 +176,8 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:LiveBoxRow">
                     <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,1">
-                      <Ellipse Width="6" Height="6" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" FontSize="12"/>
+                      <Ellipse Width="6" Height="6" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding Weight}" TextWrapping="Wrap" FontSize="12"/>
                       <TextBlock Grid.Column="2" Text="{Binding Min}" TextAlignment="Right" FontSize="12"/>
                       <TextBlock Grid.Column="3" Text="{Binding Pts}" TextAlignment="Right" FontWeight="SemiBold" FontSize="12"/>
                       <TextBlock Grid.Column="4" Text="{Binding Reb}" TextAlignment="Right" FontSize="12"/>
@@ -187,7 +190,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
                 <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,6,0,2">
-                  <TextBlock Grid.Column="1" Text="{Binding HomeBoxTitle}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="1" Text="{Binding HomeBoxTitle}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap"/>
                   <TextBlock Grid.Column="2" Text="MIN" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
                   <TextBlock Grid.Column="3" Text="PTS" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
                   <TextBlock Grid.Column="4" Text="REB" Classes="muted" FontSize="10.5" TextAlignment="Right"/>
@@ -200,8 +203,8 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:LiveBoxRow">
                     <Grid ColumnDefinitions="10,*,34,34,34,34,48,48,28" Margin="0,1">
-                      <Ellipse Width="6" Height="6" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" FontSize="12"/>
+                      <Ellipse Width="6" Height="6" Fill="{StaticResource HwGoodBrush}" IsVisible="{Binding OnCourt}" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding Weight}" TextWrapping="Wrap" FontSize="12"/>
                       <TextBlock Grid.Column="2" Text="{Binding Min}" TextAlignment="Right" FontSize="12"/>
                       <TextBlock Grid.Column="3" Text="{Binding Pts}" TextAlignment="Right" FontWeight="SemiBold" FontSize="12"/>
                       <TextBlock Grid.Column="4" Text="{Binding Reb}" TextAlignment="Right" FontSize="12"/>
