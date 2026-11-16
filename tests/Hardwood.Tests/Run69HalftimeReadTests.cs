@@ -145,6 +145,14 @@ public class Run69HalftimeReadTests
             Assert.Equal(own, (t.System, t.Scheme));
             Assert.True(page.CanApplyRead);
 
+            // Code review: applied, then Main menu or closing the window saves mid-game: your own plan is what's saved.
+            page.ApplyRead();
+            Assert.True(vm.SaveOnLeave());
+            Assert.Equal(own, (t.System, t.Scheme));
+            Assert.False(page.ReadApplied);
+            Assert.True(page.CanApplyRead);
+            Assert.Equal("Assistant's halftime read", page.ReadTitle);
+
             // Applied, then the game ends: your own plan comes back (second half only, as on Continue).
             page.ApplyRead();
             page.SimToEnd();

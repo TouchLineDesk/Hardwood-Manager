@@ -330,6 +330,8 @@ public sealed partial class MainViewModel : ViewModelBase
     public bool SaveOnLeave()
     {
         if (Session == null || IsBusy) return false;
+        // D75 A (run 69): leaving mid-game, a halftime read you applied was for the second half only: save your own plan.
+        if (CurrentPage is LiveGameViewModel live) live.RestoreRead();
         try { Session.SaveNow(); return true; }
         catch (Exception e) { Console.Error.WriteLine($"Save on leave failed: {e.Message}"); return false; }
     }

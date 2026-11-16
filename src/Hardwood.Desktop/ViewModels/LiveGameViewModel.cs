@@ -324,7 +324,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         if (!ReadApplied) return;
         RestoreRead();
-        UpdateRead();
         Status = $"Back to your plan: {N(Us.Tactic.System)} and {D(Us.Tactic.Scheme)}.";
     }
 
@@ -339,6 +338,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (Us.Tactic.Scheme == a.Scheme) Us.Tactic.Scheme = b.Scheme;
         ReadApplied = false; _beforeRead = null; _applied = null;
         OnPropertyChanged(nameof(OffenseChoice)); OnPropertyChanged(nameof(DefenseChoice));
+        UpdateRead();
     }
 
     public override void Refresh()
