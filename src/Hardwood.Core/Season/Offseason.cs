@@ -683,7 +683,8 @@ public sealed class Offseason
             Season = _league.Season,
             ChampionTeamId = finals.Winner.Id,
             RunnerUpTeamId = finals.Loser.Id,
-            Records = _league.Teams.Select(t => (t.Id, _outcome.Standings[t].Wins, _outcome.Standings[t].Losses)).ToList(),
+            // H33 (run 82): in table order (win %, then point difference), so the summer's relegation breaks ties as Standings shows them.
+            Records = _outcome.Standings.All().Where(r => _league.Teams.Contains(r.Team)).Select(r => (r.Team.Id, r.Wins, r.Losses)).ToList(),
             ScoringLeaderPlayerId = scoring?.PlayerId,
             MvpPlayerId = awards.Mvp,
             FinalsMvpPlayerId = finalsMvp,

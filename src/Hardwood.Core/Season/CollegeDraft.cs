@@ -24,11 +24,11 @@ public static class CollegeDraft
         var clubs = new List<Team>();
         // The NBA's top three in each division, in the table order the season finished in.
         var table = outcome.Standings.All().Select(r => r.Team).Where(league.Teams.Contains).ToList();
-        // The club that goes down is picked as UsaPyramid.Promote picks it (fewest wins, then most losses, then the lowest id),
-        // which can differ from the table's tie-break; it never has a pick.
+        // The club that goes down is the division's last in this table order, as UsaPyramid.Promote picks it (H33, run 82:
+        // level records go by point difference, as Standings shows them); it never has a pick.
         foreach (var div in table.GroupBy(t => (t.Conference, t.Division)))
         {
-            var down = div.OrderBy(t => outcome.Standings[t].Wins).ThenByDescending(t => outcome.Standings[t].Losses).ThenBy(t => t.Id).First();
+            var down = div.Last();
             clubs.AddRange(div.Where(t => t != down).Take(PlacesPerDivision));
         }
         // Tier-2 division winners go up at the end of the summer: their picks are next season's NBA picks.

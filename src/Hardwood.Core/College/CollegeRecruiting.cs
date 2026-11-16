@@ -225,6 +225,15 @@ public sealed partial class CollegeWorld
             }
             b.Open[t.Id] = Scholarships - returning;
         }
+        // H49 (bug hunt, Nov 16; run 82): from signing day until the summer enrollment, an earlier class has signed but
+        // isn't on the roster yet. Those players hold scholarships next season too, so they count as returning.
+        foreach (var p in Prospects)
+            if (Recruits.TryGetValue(p.Id, out var signed) && signed.ClassOf < classOf && signed.CommittedTo is { } at
+                && b.Open.ContainsKey(at) && p.Age(summer) < GraduateAge)
+            {
+                b.Open[at]--;
+                b.AtPosition[(at, p.PrimaryPosition)] = b.AtPosition.GetValueOrDefault((at, p.PrimaryPosition)) + 1;
+            }
         foreach (var p in ClassOf(classOf))
             if (Recruits[p.Id].CommittedTo is { } to)
             {
@@ -234,7 +243,8 @@ public sealed partial class CollegeWorld
         return b;
     }
 
-    /// <summary>Scholarships a program can still offer to a class: 13, less the scholarship players still there next season, less commitments.</summary>
+    /// <summary>Scholarships a program can still offer to a class: 13, less the scholarship players still there next season
+    /// (a class signed but not yet enrolled included, H49), less commitments.</summary>
     public int OpenScholarships(Team t, int classOf) => Math.Max(0, BoardFor(classOf).Open[t.Id]);
 
     /// <summary>
