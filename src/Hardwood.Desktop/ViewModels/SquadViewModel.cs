@@ -6,17 +6,41 @@ using Hardwood.Core.People;
 
 namespace Hardwood.Desktop.ViewModels;
 
-public sealed class MoodRow
+public sealed partial class MoodRow : ObservableObject
 {
     public required Player Player { get; init; }
+    public Team? Team { get; init; }
+    public DateOnly Today { get; init; }
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
-    public string Mood => PeopleEngine.Mood(Player.Morale);
+    public string Mood => PeopleEngine.Mood(Morale);   // the shown number, so a 49.6 shown as 50 reads "Content" (code review)
     public int Morale => (int)Math.Round(Player.Morale);
-    public string MoodIcon => Player.Morale >= 60 ? "Smile" : Player.Morale >= 45 ? "Meh" : "Frown";
-    public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Player.Morale >= 60 ? "#3FB950" : Player.Morale >= 45 ? "#D29922" : "#F85149"));
+    /// <summary>Run 74: the face and colour follow the mood word's bands (PeopleEngine.Mood and the chips: Happy 68+,
+    /// Content 50+, Unhappy below 50); before, the face turned green at 60, so a "Content" 62 looked happy.</summary>
+    public static int Band(double morale) => Math.Round(morale) >= 68 ? 2 : Math.Round(morale) >= 50 ? 1 : 0;
+    public static string BandColor(double morale) => Band(morale) switch { 2 => "#3FB950", 1 => "#D29922", _ => "#F85149" };
+    public string MoodIcon => Band(Player.Morale) switch { 2 => "Smile", 1 => "Meh", _ => "Frown" };
+    public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(BandColor(Player.Morale)));
     public string MainReason { get; init; } = "";
     public string Status { get; init; } = "";
+    public bool HasStatus => Status.Length > 0;
+    public bool StatusBad => Player.TradeRequested;
+    public bool HasWorry => MainReason.Length > 0;
+    public string ShortName => Player.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries) is { Length: > 1 } n ? $"{n[0][0]}. {string.Join(' ', n.Skip(1))}" : Player.Name;
+    public string CardLine => $"{Pos} · {Player.Age(Today)} · {Mood}";
+    public string WorryLine => HasWorry ? MainReason : "Nothing on his mind";
+    public string CardTip => $"{Player.Name}: {Mood.ToLower()} ({Morale}/100)" + (HasWorry ? $". Biggest worry: {MainReason}" : "") + (HasStatus ? $". {Status}" : "") + ". Click to talk to him.";
+    [ObservableProperty] private bool _picked;
+}
+
+/// <summary>Run 74: one lane of the dressing room (unsettled, content or happy), worst first.</summary>
+public sealed class MoodLane
+{
+    public required string Title { get; init; }
+    public required string Note { get; init; }
+    public required string Color { get; init; }
+    public Avalonia.Media.IBrush Brush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Color));
+    public List<MoodRow> Rows { get; init; } = new();
 }
 
 public sealed class TalkButton
@@ -33,6 +57,8 @@ public sealed class FactorRow
     public required double Effect { get; init; }
     public string EffectText => Effect >= 0 ? $"+{Effect:0}" : $"{Effect:0}";
     public bool Positive => Effect >= 0;
+    /// <summary>Run 74: the bar's length, against the biggest factor in the list (0–<see cref="SquadViewModel.FactorBarMax"/> px).</summary>
+    public double BarWidth { get; init; }
 }
 
 /// <summary>
@@ -45,13 +71,31 @@ public sealed partial class SquadViewModel : PageViewModel
     public SquadViewModel(MainViewModel shell) : base(shell) { }
 
     [ObservableProperty] private string _chemistryHeadline = "";
+    public const double FactorBarMax = 90;
+    /// <summary>Run 74 (review #13 rank 11): the page opens on the dressing room as cards; the table is one switch away.</summary>
+    public string[] Views { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCards), nameof(ShowTable))] private string _view = "Cards";
+    public bool ShowCards => View == "Cards";
+    public bool ShowTable => !ShowCards;
+    public ObservableCollection<MoodLane> Lanes { get; } = new();
+    [ObservableProperty] private double _chemistry;
+    [ObservableProperty] private string _chemistryWord = "";
+    [ObservableProperty] private string _chemistryNumber = "";
+    [ObservableProperty] private Avalonia.Media.Color _chemistryColor;
+    [ObservableProperty] private string _moraleSummary = "";
     /// <summary>Roadmap 1: the dressing room at a glance (chemistry, moods, trade requests, promises).</summary>
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
     public Avalonia.Media.Color Accent => ThemeService.AccentFor(Session.HumanTeam);
     public ObservableCollection<FactorRow> ChemistryFactors { get; } = new();
     public ObservableCollection<MoodRow> Players { get; } = new();
     [ObservableProperty] private MoodRow? _selected;
-    partial void OnSelectedChanged(MoodRow? value) => ShowPlayer();
+    partial void OnSelectedChanged(MoodRow? value)
+    {
+        foreach (var r in Players) r.Picked = r == value;
+        ShowPlayer();
+    }
+    /// <summary>A card was clicked: he's the one in the side panel (talk to him there).</summary>
+    public void Pick(MoodRow row) => Selected = row;
     public ObservableCollection<FactorRow> PlayerFactors { get; } = new();
     public ObservableCollection<TalkButton> Topics { get; } = new();
     [ObservableProperty] private string _playerHeadline = "";
@@ -69,7 +113,7 @@ public sealed partial class SquadViewModel : PageViewModel
     {
         var roster = team.Roster;
         // The same bands as the Mood column (PeopleEngine.Mood): Happy 68+, Unhappy below 50.
-        int happy = roster.Count(p => p.Morale >= 68), unhappy = roster.Count(p => p.Morale < 50 && !p.TradeRequested),
+        int happy = roster.Count(p => MoodRow.Band(p.Morale) == 2), unhappy = roster.Count(p => MoodRow.Band(p.Morale) == 0 && !p.TradeRequested),
             requests = roster.Count(p => p.TradeRequested), promises = Session.Promises.Count(pr => roster.Any(p => p.Id == pr.PlayerId));
         var lowest = roster.OrderBy(p => p.Morale).FirstOrDefault();
         return new List<Hardwood.Desktop.Controls.Chip>
@@ -88,9 +132,15 @@ public sealed partial class SquadViewModel : PageViewModel
         var team = Session.HumanTeam;
         string label = team.Chemistry >= 75 ? "excellent" : team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "average" : "poor";
         ChemistryHeadline = $"Team chemistry: {label} ({team.Chemistry:0}/100)";
+        Chemistry = team.Chemistry;
+        ChemistryWord = char.ToUpper(label[0]) + label[1..];
+        ChemistryNumber = $"{team.Chemistry:0} / 100";
+        ChemistryColor = Avalonia.Media.Color.Parse(team.Chemistry >= 62 ? "#3FB950" : team.Chemistry >= 48 ? "#D29922" : "#F85149");
         ChemistryFactors.Clear();
-        foreach (var (r, e) in PeopleEngine.ChemistryFactors(team).Concat(Session.SpiritFactors()).OrderByDescending(x => Math.Abs(x.effect)))
-            ChemistryFactors.Add(new FactorRow { Reason = r, Effect = e });
+        var factors = PeopleEngine.ChemistryFactors(team).Concat(Session.SpiritFactors()).OrderByDescending(x => Math.Abs(x.effect)).ToList();
+        double big = factors.Count == 0 ? 1 : Math.Max(1, factors.Max(x => Math.Abs(x.effect)));
+        foreach (var (r, e) in factors)
+            ChemistryFactors.Add(new FactorRow { Reason = r, Effect = e, BarWidth = Math.Max(3, FactorBarMax * Math.Abs(e) / big) });
 
         var keep = Selected?.Player;
         Players.Clear();
@@ -102,10 +152,26 @@ public sealed partial class SquadViewModel : PageViewModel
             Players.Add(new MoodRow
             {
                 Player = p,
+                Team = team,
+                Today = Session.Today,
                 MainReason = worst.reason != null && worst.effect < 0 ? worst.reason : "",
                 Status = p.TradeRequested ? "Wants a trade" : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min") : "",
             });
         }
+        Lanes.Clear();
+        foreach (var (band, title, note) in new[]
+        {
+            (0, "Unsettled", "below 50: talk to them before it spreads"),
+            (1, "Content", "50 to 67"),
+            (2, "Happy", "68 and up"),
+        })
+        {
+            var rows = Players.Where(r => MoodRow.Band(r.Player.Morale) == band).ToList();
+            if (rows.Count > 0)
+                Lanes.Add(new MoodLane { Title = $"{title} ({rows.Count})", Note = note, Color = MoodRow.BandColor(band switch { 2 => 100, 1 => 50, _ => 0 }), Rows = rows });
+        }
+        MoraleSummary = team.Roster.Count == 0 ? "" : $"Average morale {team.Roster.Average(p => p.Morale):0} · " +
+            string.Join(" · ", Lanes.Select(l => l.Title.ToLower()));
         Selected = Players.FirstOrDefault(r => r.Player == keep) ?? Players.FirstOrDefault();
         PromisesText = Session.Promises.Count == 0 ? "No promises outstanding." : string.Join("\n", Session.Promises.Select(pr =>
         {

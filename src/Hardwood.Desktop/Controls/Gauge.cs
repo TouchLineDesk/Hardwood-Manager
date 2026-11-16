@@ -16,14 +16,17 @@ public sealed class Gauge : Control
     public static readonly StyledProperty<double> MaximumProperty = AvaloniaProperty.Register<Gauge, double>(nameof(Maximum), 100);
     public static readonly StyledProperty<string?> WordProperty = AvaloniaProperty.Register<Gauge, string?>(nameof(Word));
     public static readonly StyledProperty<string?> NumberProperty = AvaloniaProperty.Register<Gauge, string?>(nameof(Number));
+    /// <summary>Run 74: a fixed arc colour (Squad's chemistry dial is good-to-bad, not cool-to-hot). Null keeps the blend.</summary>
+    public static readonly StyledProperty<Color?> ArcColorProperty = AvaloniaProperty.Register<Gauge, Color?>(nameof(ArcColor));
 
     public double Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
     public double Minimum { get => GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
     public double Maximum { get => GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
     public string? Word { get => GetValue(WordProperty); set => SetValue(WordProperty, value); }
     public string? Number { get => GetValue(NumberProperty); set => SetValue(NumberProperty, value); }
+    public Color? ArcColor { get => GetValue(ArcColorProperty); set => SetValue(ArcColorProperty, value); }
 
-    static Gauge() => AffectsRender<Gauge>(ValueProperty, MinimumProperty, MaximumProperty, WordProperty, NumberProperty);
+    static Gauge() => AffectsRender<Gauge>(ValueProperty, MinimumProperty, MaximumProperty, WordProperty, NumberProperty, ArcColorProperty);
 
     private static readonly Color Low = Color.Parse("#58A6FF"), Mid = Color.Parse("#3FB950"), High = Color.Parse("#F0883E");
 
@@ -50,7 +53,7 @@ public sealed class Gauge : Control
         const double start = 150, sweep = 240; // degrees, clockwise from the +x axis (screen coordinates)
         ctx.DrawGeometry(null, new Pen(new SolidColorBrush(Color.Parse("#2A333D")), 9, lineCap: PenLineCap.Round), Arc(c, r, start, sweep));
         if (frac > 0.005)
-            ctx.DrawGeometry(null, new Pen(new SolidColorBrush(Blend(frac)), 9, lineCap: PenLineCap.Round), Arc(c, r, start, sweep * frac));
+            ctx.DrawGeometry(null, new Pen(new SolidColorBrush(ArcColor ?? Blend(frac)), 9, lineCap: PenLineCap.Round), Arc(c, r, start, sweep * frac));
         // The needle's tip.
         double ang = (start + sweep * frac) * Math.PI / 180;
         ctx.DrawEllipse(Brushes.White, null, new Point(c.X + Math.Cos(ang) * r, c.Y + Math.Sin(ang) * r), 4, 4);

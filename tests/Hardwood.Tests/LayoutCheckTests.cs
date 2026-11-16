@@ -58,6 +58,7 @@ public class LayoutCheckTests
                 v.Navigate(nav.Name);
                 if (v.CurrentPage is ScheduleViewModel sc) sc.GameView = "Cards";
                 if (v.CurrentPage is RotationViewModel rv) rv.View = "Cards";
+                if (v.CurrentPage is SquadViewModel sq) sq.View = "Cards";
             });
         yield return ("Player", v =>
         {
@@ -83,6 +84,12 @@ public class LayoutCheckTests
         {
             v.Navigate("Rotation");
             ((RotationViewModel)v.CurrentPage!).View = "Full table";
+        });
+        // Run 74 (review #13 rank 11): Squad opens on mood cards; its table is checked here.
+        yield return ("Squad table", v =>
+        {
+            v.Navigate("Squad");
+            ((SquadViewModel)v.CurrentPage!).View = "Full table";
         });
         yield return ("Records book", v => v.Navigate("History"));
         yield return ("Recruiting", v =>
@@ -437,7 +444,8 @@ public class LayoutCheckTests
             {
                 ("Home", v => v.Navigate("Home")), ("Roster", v => v.Navigate("Roster")), ("Board", v => v.Navigate("Board")),
                 ("Standings", v => v.Navigate("Standings")), ("Schedule & Results", v => { v.Navigate("Schedule & Results"); ((ScheduleViewModel)v.CurrentPage!).GameView = "Cards"; }),
-                ("Squad", v => v.Navigate("Squad")), ("Rotation", v => { v.Navigate("Rotation"); ((RotationViewModel)v.CurrentPage!).View = "Cards"; }),
+                ("Squad", v => { v.Navigate("Squad"); ((SquadViewModel)v.CurrentPage!).View = "Cards"; }),
+                ("Squad table", v => { v.Navigate("Squad"); ((SquadViewModel)v.CurrentPage!).View = "Full table"; }), ("Rotation", v => { v.Navigate("Rotation"); ((RotationViewModel)v.CurrentPage!).View = "Cards"; }),
                 ("Rotation table", v => { v.Navigate("Rotation"); ((RotationViewModel)v.CurrentPage!).View = "Full table"; }), ("Tactics", v => v.Navigate("Tactics")),
                 ("Box score", v =>
                 {
