@@ -108,8 +108,13 @@ public class Run80TrackerTests
         var later = new List<PlayEvent> { E(PlayKind.Shot), E(PlayKind.DefensiveRebound), E(PlayKind.Foul), E(PlayKind.FreeThrow) };
         Assert.Equal(3, LiveGameViewModel.HeadlinePlay(later, 0));
         // An and-one: the basket, not its free throw.
-        var andOne = new List<PlayEvent> { E(PlayKind.Shot) with { Made = true }, E(PlayKind.Foul), E(PlayKind.FreeThrow) };
+        var andOne = new List<PlayEvent> { E(PlayKind.Shot) with { Made = true }, E(PlayKind.Foul) with { Home = false, Other = p }, E(PlayKind.FreeThrow) };
         Assert.Equal(0, LiveGameViewModel.HeadlinePlay(andOne, 0));
+        // His basket, then someone else's trip, then his own trip: the latest trip, not an and-one.
+        var q = new Player { FirstName = "C", LastName = "Dee" };
+        var mixed = new List<PlayEvent> { E(PlayKind.Shot) with { Made = true }, E(PlayKind.FreeThrow) with { Actor = q, Home = false },
+                                          E(PlayKind.Foul) with { Home = false, Actor = q, Other = p }, E(PlayKind.FreeThrow) };
+        Assert.Equal(3, LiveGameViewModel.HeadlinePlay(mixed, 0));
         Assert.Equal("BEE", TrackerLayout.Label(p));
     }
 
@@ -162,6 +167,9 @@ public class Run80TrackerTests
             var view = window.GetVisualDescendants().OfType<LiveGameView>().First(v => v.Bounds.Width > 0);
             var court = view.GetVisualDescendants().OfType<LiveCourt>().First();
             Assert.Same(page.Frame, court.Frame);
+            // Every shot has its dot, and the shot drawn sits on its dot.
+            Assert.Equal(live.Result.Home.FGA + live.Result.Away.FGA, page.CourtShots.Count);
+            if (page.Frame!.From is { } fromSpot) Assert.Contains(page.CourtShots, d => d.Spot == fromSpot);
             Assert.True(court.Bounds.Height >= 200, $"court {court.Bounds}");   // the tracker is the live game's main view
             var step = view.GetVisualDescendants().OfType<Button>().First(b => (b.Content as string) == "Step");
             Assert.True(step.IsEffectivelyEnabled);

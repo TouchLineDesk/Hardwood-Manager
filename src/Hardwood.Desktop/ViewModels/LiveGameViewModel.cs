@@ -50,7 +50,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
 
     // The whole court (Danny, run 45): every shot placed as it happens, from the zone counts' changes between refreshes.
     private readonly List<Hardwood.Desktop.Controls.LiveShot> _shots = new();
-    private int[] _seenAwayAtt = new int[5], _seenAwayMk = new int[5], _seenHomeAtt = new int[5], _seenHomeMk = new int[5];
+    private int _shotPlaysSeen;
     public IReadOnlyList<Hardwood.Desktop.Controls.LiveShot> CourtShots => _shots;
     [ObservableProperty] private int _courtVersion;
     /// <summary>The live panel shows the court (default) or the game flow chart.</summary>
@@ -116,7 +116,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
             if (plays[i].Kind == PlayKind.FreeThrow)
             {
                 int j = i;
-                while (j - 1 >= first && plays[j - 1].Kind is PlayKind.FreeThrow or PlayKind.Foul) j--;
+                var ft = plays[i].Actor;
+                // Only his own trip: his free throws and the foul on him.
+                while (j - 1 >= first && (plays[j - 1] is { Kind: PlayKind.FreeThrow } f && f.Actor == ft || plays[j - 1] is { Kind: PlayKind.Foul } g && g.Other == ft)) j--;
                 if (j - 1 >= first && plays[j - 1] is { Kind: PlayKind.Shot, Made: true } shot && shot.Actor == plays[i].Actor) return j - 1;
             }
             return i;
@@ -160,16 +162,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
         return d >= 120 ? c : Avalonia.Media.Color.Parse(t.SecondaryColor);
     }
 
-    private void AddShots(bool home, int[] att, int[] mk, ref int[] seenAtt, ref int[] seenMk)
-    {
-        for (int z = 0; z < 5; z++)
-        {
-            int newMk = Math.Max(0, mk[z] - seenMk[z]), newAtt = Math.Max(0, att[z] - seenAtt[z]);
-            for (int i = 0; i < newAtt; i++)
-                _shots.Add(new Hardwood.Desktop.Controls.LiveShot(home, (ShotZone)z, i < newMk, _shots.Count));
-        }
-        seenAtt = (int[])att.Clone(); seenMk = (int[])mk.Clone();
-    }
     /// <summary>The court as a brush, so the picture fills the scoreboard without setting its size.</summary>
     public Avalonia.Media.IBrush? CourtBrush => HomeCourt is { } b ? new Avalonia.Media.ImageBrush(b) { Stretch = Avalonia.Media.Stretch.UniformToFill, Opacity = 0.75 } : null;
 
@@ -470,9 +462,13 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Splits = GameFlowInfo.Splits(r);
         AwayZoneAttempts = ZoneSum(r.Away, l => l.ZoneAttempts); AwayZoneMakes = ZoneSum(r.Away, l => l.ZoneMakes);
         HomeZoneAttempts = ZoneSum(r.Home, l => l.ZoneAttempts); HomeZoneMakes = ZoneSum(r.Home, l => l.ZoneMakes);
+        // The court's shot dots come from the engine's plays (run 80), in order, so each dot sits where the tracker
+        // drew that shot.
         int before = _shots.Count;
-        AddShots(false, AwayZoneAttempts, AwayZoneMakes, ref _seenAwayAtt, ref _seenAwayMk);
-        AddShots(true, HomeZoneAttempts, HomeZoneMakes, ref _seenHomeAtt, ref _seenHomeMk);
+        var plays = r.Plays;
+        for (; _shotPlaysSeen < plays.Count; _shotPlaysSeen++)
+            if (plays[_shotPlaysSeen] is { Kind: PlayKind.Shot } sp)
+                _shots.Add(new Hardwood.Desktop.Controls.LiveShot(sp.Home, sp.Zone, sp.Made, _shotPlaysSeen));
         if (_shots.Count != before) CourtVersion++;
         UpdateFrame();
         Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);

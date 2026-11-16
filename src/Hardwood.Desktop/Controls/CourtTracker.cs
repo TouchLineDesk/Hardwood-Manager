@@ -18,7 +18,7 @@ public sealed record TrackerFrame(IReadOnlyList<TrackerMarker> Markers, Point Ba
 /// Places the ten players for a play. <b>Presentation only:</b> the engine resolves possessions, not movement, so the
 /// spots are a standard half-court set for the side with the ball, each defender between his man and the basket, and
 /// the player who made the play moved to where it happened (the shot's zone, the glass, the line). Nothing here is read
-/// back by the game, and it uses no random numbers from it (the shot's spot is the same stable spot the shot dots use).
+/// back by the game, and it uses no random numbers from it (the shot's spot is the same stable spot as its dot: both are seeded by the play's index).
 /// Home attacks the right-hand basket, as on the shot court.
 /// </summary>
 public static class TrackerLayout
