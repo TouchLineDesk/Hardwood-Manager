@@ -112,20 +112,17 @@ internal sealed class BugFinder
         {
             _vm.Navigate("Schedule & Results");
             if (_vm.CurrentPage is not ScheduleViewModel sched) { Add("dead end", "Schedule & Results", "the sidebar's link didn't open the schedule", true); return; }
-            // A played game of yours whose row has no box score is a lost-data finding, not a missing Back (run 55: bug #18 was #19).
-            // Bug-hunt H8 (Nov 15): only games since you took the job count. After a move (the sweep presses Accept on the Board),
-            // the new club's earlier games were played by the AI and never had a box; those are logged, not reported.
-            var hired = S.Job.HiredOn;
-            var bare = sched.Games.Where(g => g.Played && !g.HasBox).ToList();
-            var mine = bare.Where(g => g.Game.Date >= hired).ToList();
-            if (mine.Count > 0)
-                Add("lost data", "Schedule & Results", $"the played game on {mine[0].Game.Date:MMM d} has a score but no box score "
-                    + $"({mine.Count} of {sched.Games.Count(g => g.Played)} played rows, {mine[0].Game.Competition} / {mine[0].Game.Stage}, "
-                    + $"{(mine[0].Result == null ? "no result held" : "a result with no lines")}; {S.HumanTeam.FullName}, filter \"{sched.Filter}\")");
-            else if (bare.Count > 0)
-                Log?.Invoke($"Schedule & Results ({when}): {bare.Count} played games from before you took over {S.HumanTeam.FullName} on {hired:MMM d yyyy} have scores and no box (not yours)");
+            // A played game whose row has no box score is a lost-data finding, not a missing Back (run 55: bug #18 was #19).
+            // H8 (run 65): a game from before you took the job keeps only its score, as the row says; any other is lost data.
+            if (sched.Games.FirstOrDefault(g => g.Played && !g.HasBox && !g.BeforeYouArrived) is { } lost && sched.Games.Any(g => g.HasBox))
+                Add("lost data", "Schedule & Results", $"the played game on {lost.Game.Date:MMM d} has a score but no box score, though other games have one ({S.HumanTeam.FullName})");
             var played = sched.Games.FirstOrDefault(g => g.Played && g.HasBox);
-            if (played == null) return;
+            if (played == null)
+            {
+                if (sched.Games.FirstOrDefault(g => g.Played && !g.BeforeYouArrived) is { } bare)
+                    Add("lost data", "Schedule & Results", $"the played game on {bare.Game.Date:MMM d} has a score but no box score ({S.HumanTeam.FullName}, {S.HumanLeagueName}; {(S.Employed ? "employed" : "out of work")}; stored boxes: {S.AbroadResults.Count} below the NBA, {S.CollegeResults.Count} college)");
+                return;
+            }
             sched.OpenBox(played);
             CheckWayBack("Box score", "Schedule & Results", when);
         });
