@@ -215,6 +215,10 @@ internal sealed class BugFinder
     // Buttons the bot leaves alone: they end the career, open the file system or leave the app.
     private static readonly string[] Skip = { "Back to start", "Browse", "Choose folder", "Pick", "Open folder", "Quit", "Retire", "Resign", "Leave the club", "Load", "Export", "Reset", "Main menu" };
 
+    /// <summary>A button that cuts a player from your roster (Waive, Release, Release selected): the sweep leaves these alone.</summary>
+    public static bool IsCut(string label) =>
+        label.StartsWith("Waive", StringComparison.OrdinalIgnoreCase) || label.StartsWith("Release", StringComparison.OrdinalIgnoreCase);
+
     private void PressAll(string page, int? tab, string when)
     {
         var labels = new List<string>();
@@ -225,6 +229,10 @@ internal sealed class BugFinder
             // Bug-hunt Nov 15: the Board's Accept takes another club's job offer, which turned the "gleague" career into a
             // college one after its first season (and made H8 look like lost data). The fired career takes its job itself.
             if (page == "Board" && l.StartsWith("Accept", StringComparison.OrdinalIgnoreCase)) continue;
+            // Bug-hunt Nov 16: Waive (Transactions) and Release / Release selected (Offseason) cut a player for good. The sweep
+            // waived Wembanyama from the nba-contender career on its first day and thinned the bottom career's roster to 8,
+            // so later seasons no longer played the career they were meant to.
+            if (IsCut(l)) continue;
             if (!labels.Contains(l)) labels.Add(l);
         }
         foreach (var label in labels.Take(30))
