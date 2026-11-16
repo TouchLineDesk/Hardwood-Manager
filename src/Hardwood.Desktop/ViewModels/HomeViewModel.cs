@@ -75,6 +75,14 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private string _comparisonNote = "";
     [ObservableProperty] private IReadOnlyList<Bar>? _payroll;
     [ObservableProperty] private IReadOnlyList<RefLine>? _payrollLines;
+    /// <summary>H25: true once this summer has counted the club's contracts down (the NBA's offseason from re-signing on; the world's summer for everyone else).</summary>
+    public static bool SummerCounted(GameSession s, Hardwood.Core.Model.Team team) =>
+        s.Phase == SessionPhase.Offseason
+        && (s.League.Teams.Contains(team)
+            ? s.Offseason is { } o && o.Phase != Hardwood.Core.Season.OffseasonPhase.NotStarted
+            // Clubs abroad and in tiers 2-5 count down in the world's summer (GameWorld.BeginSummer).
+            : s.World.SummerStarted == s.League.Season + 1);
+
     /// <summary>"Payroll committed", or "Roster by class" at a college program (C2).</summary>
     [ObservableProperty] private string _payrollTitle = "Payroll committed";
     [ObservableProperty] private string _payrollIcon = "DollarSign";
@@ -207,11 +215,14 @@ public sealed partial class HomeViewModel : PageViewModel
         // Payroll committed for this and the next three seasons.
         var fin = s.League.Finance;
         var bars = new List<Bar>();
+        // H25: once the summer has counted contracts down, a deal's years left start from next season, so the bars do too
+        // (before, the first bar was labelled with the season just played but left out its expiring deals).
+        int from = s.League.Season + (SummerCounted(s, team) ? 1 : 0);
         for (int k = 0; k < 4; k++)
         {
             // A contract with N years left covers this season and the next N-1.
             long sum = team.Roster.Where(p => p.Contract is { } c && c.Years > k).Sum(p => p.Contract!.Salary);
-            bars.Add(new Bar { Label = $"{s.League.Season + k}-{(s.League.Season + k + 1) % 100:00}", Value = sum / 1e6,
+            bars.Add(new Bar { Label = $"{from + k}-{(from + k + 1) % 100:00}", Value = sum / 1e6,
                 ValueText = sum >= 10_000_000 ? $"${sum / 1e6:0}M" : $"${sum / 1e6:0.0}M", Color = k == 0 ? ThemeService.Accent : Color.Parse("#4A5563") });
         }
         Payroll = bars;

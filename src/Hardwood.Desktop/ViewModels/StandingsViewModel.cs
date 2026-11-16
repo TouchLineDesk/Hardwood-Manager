@@ -99,6 +99,9 @@ public sealed partial class StandingsViewModel : PageViewModel
         return i < 0 ? 99 : i;
     }
 
+    /// <summary>"East" → "Eastern Conference"; other names as they are.</summary>
+    public static string ConfName(string c) => c is "East" ? "Eastern Conference" : c is "West" ? "Western Conference" : c;
+
     private static IEnumerable<IGrouping<string, StandingRow>> InOrder(IEnumerable<StandingRow> rows) =>
         rows.GroupBy(r => r.Div).OrderBy(g => DivOrder(g.First().Team)).ThenBy(g => g.Key);
     public IReadOnlyList<Hardwood.Desktop.Controls.LineSeries> Race { get; private set; } = Array.Empty<Hardwood.Desktop.Controls.LineSeries>();
@@ -133,6 +136,7 @@ public sealed partial class StandingsViewModel : PageViewModel
         if (s.HumanLeague is { } hl)
         {
             // Abroad: your league on the left, the NABL on the right.
+            string? cardsLeft = null, cardsRight = null;
             int playoff = hl.Profile.Playoffs.Length > 0 ? hl.Profile.Playoffs[0].Teams : 0;
             FillRecords(East, s.MyStandings.All(), r => r <= playoff ? "Playoffs" : "");
             FillRecords(West, s.Standings.All(), _ => "");
@@ -173,12 +177,16 @@ public sealed partial class StandingsViewModel : PageViewModel
                             foreach (var g in groups)
                                 (g.Key.Split(" · ")[0] == firstConf ? LeftCards : RightCards).Add(new DivisionCard(g.Key, g.ToList()));
                             ShowCards = true;
+                            // H21: both columns are your league's conferences, not the NBA (the table view's right-hand list).
+                            string second = groups.Select(g => g.Key.Split(" · ")[0]).FirstOrDefault(c => c != firstConf) ?? "";
+                            cardsLeft = $"{hl.Profile.Name} · {ConfName(firstConf)}";
+                            cardsRight = second.Length > 0 ? $"{hl.Profile.Name} · {ConfName(second)}" : "";
                         }
                     }
                     else { PlayoffLabel = "Promotion"; ShowPlayIn = false; ShowRelegation = true; }
                 }
             }
-            LeftTitle = hl.Profile.Name; RightTitle = Hardwood.Core.Names.Brand.Top;
+            LeftTitle = cardsLeft ?? hl.Profile.Name; RightTitle = cardsRight ?? Hardwood.Core.Names.Brand.Top;
             Note = hl.Profile.DivisionPlayoffs
                 ? (hl.Clubs.Count == Hardwood.Core.World.UsaPyramid.ProSize ? "Colours by place in each division." : "The table decides the title this season.")
                 : playoff > 0 ? $"Top {playoff} reach the playoffs ({string.Join(", ", hl.Profile.Playoffs.Select(p => p.Name.ToLower()))})." : "";
