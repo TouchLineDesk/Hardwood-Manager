@@ -325,7 +325,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         OnPropertyChanged(nameof(CanReleaseFromRoster));
         ShowContracts = ShowFreeAgency = ShowBuyouts = false;
         Headline = $"Summer {o.Season + 1} · {team.FullName}";
-        Instructions = "A college summer has no contracts, wages or free agents. Your seniors have graduated into the pros and your signed class has enrolled. "
+        Instructions = "A college summer has no contracts, wages or free agents. Seniors graduate into the pros and the signed class enrolls when the summer begins. "
                      + "The pros' draft and free agency run until the new season: press Continue to move the summer along.";
         var c = s.World.College;
         int walkOns = c == null ? 0 : team.Roster.Count(p => c.WalkOnIds.Contains(p.Id));
@@ -342,7 +342,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
             lines.Add($"Class of {cls}: {commits} committed to you, {open} scholarship{(open == 1 ? "" : "s")} still open.");
             lines.Add("Recruit the class on the College page (Recruiting). Rising seniors can be courted now; they commit from September 1.");
         }
-        lines.Add("Who left and who joined is in your inbox (\"Graduation and enrollment\").");
+        if (s.Inbox.Any(m => m.Title == "Graduation and enrollment" && m.Date.Year == o.Season + 1))
+            lines.Add("Who left and who joined is in your inbox (\"Graduation and enrollment\").");
         if (ShowDraft) lines.Add("The pros' draft is on the Draft tab: watch where your graduates go. College programs don't draft.");
         CollegeSummerText = string.Join("\n\n", lines);
         if (ShowDraft)
@@ -351,6 +352,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             DraftText = o.Phase == OffseasonPhase.Draft ? "The pros' draft is under way. College programs don't pick; your graduates can be taken."
                                                         : "The pros' draft follows their contract decisions. College programs don't pick; your graduates can be taken.";
             DraftHint = "";
+            DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted." : $"The best {DraftPool.Count} graduates, in the pros' scouts' order (potential first).";
         }
         if (Tab is 0 or 1 or 2) Tab = 3;
         if (Tab == 4 && !ShowDraft) Tab = 3;

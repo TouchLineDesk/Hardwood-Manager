@@ -32,6 +32,13 @@ public class Run79CollegeSummerTests
         Assert.Contains("8 offers out to the Class of 2028", note);
         Assert.Contains("only 5 (2 scholarships open + 3)", note);
         Assert.Contains("fewer than 5", note);
+
+        // The last place filled: the limit drops to 0 (code review).
+        var none = CollegeViewModel.OffersChip(3, 0);
+        Assert.Equal("no places left", none.Sub);
+        var noneNote = CollegeViewModel.OverOffersNote(3, 0, 0, 2028);
+        Assert.Contains("unless a scholarship opens up", noneNote);
+        Assert.DoesNotContain("fewer than 0", noneNote);
     }
 
     [Fact]
@@ -98,6 +105,7 @@ public class Run79CollegeSummerTests
             Assert.Contains("no contracts", page.Instructions);
             Assert.Contains("Class of", page.CollegeSummerText);
             Assert.Contains("College page", page.CollegeSummerText);
+            Assert.Contains("Graduation and enrollment", page.CollegeSummerText);   // he coached here when the summer began
             Assert.Equal(s.HumanTeam.Roster.Count, page.Roster.Count);
             Assert.Empty(page.FreeAgents);
             Assert.Empty(page.Expiring);
@@ -125,6 +133,7 @@ public class Run79CollegeSummerTests
                 {
                     Assert.Contains("College programs don't pick", page.DraftText);
                     Assert.Equal("", page.DraftHint);
+                    Assert.DoesNotContain("your board", page.DraftNote);
                 }
             }
         }

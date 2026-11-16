@@ -199,19 +199,21 @@ public sealed partial class CollegeViewModel
     [RelayCommand] private void OpenTrail() { if (SelectedTrail?.Player is { } p) Shell.ShowPlayer(p); }
 
     /// <summary>
-    /// H22 (bug hunt, Nov 16; run 79): the offer limit is open scholarships + 3, and every commitment uses a scholarship,
-    /// so offers made while more were open can outnumber the new limit ("8 of 5"). They stay out (nobody's offer is
-    /// pulled); the chip says so, and that no new offer can go out until enough of them are answered.
+    /// H22 (bug hunt, Nov 16; run 79): the offer limit is open scholarships + 3 (0 once none is open), so when places
+    /// fill after offers went out (above all the last one: the limit drops from 4 to 0) the offers out can outnumber the
+    /// limit ("8 of 5", "3 of 0"). They stay out (nobody's offer is pulled); the chip and the trail note say so.
     /// </summary>
     public static Chip OffersChip(int offersOut, int limit)
     {
         if (offersOut <= limit) return new("Offers out", $"{offersOut} of {limit}", "uncommitted prospects", "");
-        return new("Offers out", $"{offersOut} of {limit}", "over: no new offers yet", "warn");
+        return new("Offers out", $"{offersOut} of {limit}", limit == 0 ? "no places left" : "over: no new offers yet", "warn");
     }
 
     /// <summary>H22: why the offers out can pass the limit, in the trail's note.</summary>
     public static string OverOffersNote(int offersOut, int limit, int open, int year) => offersOut <= limit ? ""
-        : $"You have {offersOut} offers out to the Class of {year} but can now have only {limit} ({open} scholarship{(open == 1 ? "" : "s")} open + 3): "
-          + "commitments filled places after those offers went out. They stay out, and any of them can still commit while a place is open; "
-          + "you can make a new offer once fewer than " + limit + " are out. ";
+        : limit == 0
+            ? $"Your {offersOut} offers out to the Class of {year} stay out, but none of them can commit to you unless a scholarship opens up. "
+            : $"You have {offersOut} offers out to the Class of {year} but can now have only {limit} ({open} scholarship{(open == 1 ? "" : "s")} open + 3): "
+              + "places filled after those offers went out. They stay out, and any of them can still commit while a place is open; "
+              + $"you can make a new offer once fewer than {limit} are out. ";
 }
