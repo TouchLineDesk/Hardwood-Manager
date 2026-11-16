@@ -113,10 +113,18 @@ public sealed partial class TransactionsViewModel : PageViewModel
         if (s.RosterMovesClosed is { } closed)
         {
             Closed = true;
+            WaiveStatus = "";   // code review: an old "Waived …" line doesn't follow you to the next job
             ClosedText = closed + (s.Employed ? "" : " Open jobs are on the Board page.");
             FreeAgents.Clear(); FreeAgentCards.Clear(); Ours.Clear(); Theirs.Clear(); OurPicks.Clear(); TheirPicks.Clear();
             CapText = DeadlineText = FaStatus = ""; CanPropose = false;
             return;
+        }
+        if (Closed)
+        {
+            // Back in work (perhaps at another club): the partner list is rebuilt for the new club (code review).
+            Partners.Clear();
+            foreach (var t in s.League.Teams.Where(t => t != s.HumanTeam).OrderBy(t => t.City)) Partners.Add(t);
+            _partner = Partners.FirstOrDefault(); OnPropertyChanged(nameof(Partner));
         }
         Closed = false; ClosedText = "";
         var keep = _talkingTo;

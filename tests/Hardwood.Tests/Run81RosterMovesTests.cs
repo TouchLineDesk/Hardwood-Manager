@@ -94,6 +94,12 @@ public class Run81RosterMovesTests
             Assert.False(eval.Accepted);
             s.IncomingBids.Add(new IncomingBid { PlayerId = roster[0].Id, FromTeamId = partner.Id, Fee = 5_000_000 });
             Assert.Equal("You aren't coaching a club right now.", s.AcceptBid(s.IncomingBids[^1]));
+            if (club.Staff.FirstOrDefault() is { } coachOnStaff)
+            {
+                s.FireStaff(coachOnStaff);   // code review: the old club's staff stay too
+                Assert.Contains(coachOnStaff, club.Staff);
+                Assert.StartsWith("You aren't coaching", s.ExtendStaff(coachOnStaff));
+            }
             Assert.Equal(roster, club.Roster.ToList());
             Assert.Equal(faBefore, s.League.FreeAgents.Count);
 

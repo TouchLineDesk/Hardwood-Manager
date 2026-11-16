@@ -167,6 +167,7 @@ public sealed partial class GameSession
 
     public bool HireStaff(Staff st)
     {
+        if (!Employed) return false;   // run 81 (code review, like H43): out of work there are no staff of yours to change
         if (!League.FreeStaff.Remove(st)) return false;
         var existing = HumanTeam.Staff.FirstOrDefault(x => x.Role == st.Role);
         if (existing != null) { HumanTeam.Staff.Remove(existing); existing.TeamId = null; League.FreeStaff.Add(existing); }
@@ -181,6 +182,7 @@ public sealed partial class GameSession
 
     public void FireStaff(Staff st)
     {
+        if (!Employed) return;   // run 81 (code review, like H43)
         if (!HumanTeam.Staff.Remove(st)) return;
         st.TeamId = null;
         League.FreeStaff.Add(st);
