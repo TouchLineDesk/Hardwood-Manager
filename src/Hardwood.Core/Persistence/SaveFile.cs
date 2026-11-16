@@ -471,7 +471,7 @@ public sealed class SaveFile
         }
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT season, team_id, wins, losses FROM season_record";
+            cmd.CommandText = "SELECT season, team_id, wins, losses FROM season_record ORDER BY rowid"; // H33: table order is the relegation tiebreak
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 league.History.First(h => h.Season == r.GetInt32(0)).Records.Add((r.GetInt32(1), r.GetInt32(2), r.GetInt32(3)));

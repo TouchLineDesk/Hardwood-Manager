@@ -365,6 +365,10 @@ public sealed partial class OffseasonViewModel : PageViewModel
         Talk.Show(null);
     }
 
+    /// <summary>H50 (bug hunt, Nov 16; run 82): the draft board gives a graduate's age on July 1, the day classes graduate
+    /// and the rules count "turn pro at 23" from, so a May graduate reads 23, not 22. Other Offseason lists keep today's age (H38).</summary>
+    public static DateOnly DraftAgeDay(DateOnly today) => today.Month < 7 ? new DateOnly(today.Year, 7, 1) : today;
+
     private void FillDraft(GameSession s, Offseason o, Hardwood.Core.Model.Team team)
     {
         OnTheClock = o.Phase == OffseasonPhase.Draft && o.OnTheClock == team;
@@ -375,7 +379,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         int rank = 1;
         var keep = _boardPick;
         foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
-            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(Session.Today), Knowledge = Scouting.Knowledge(team, p) });
+            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p) });
         foreach (var r in DraftPool.Take(SummerCards.DraftCount)) DraftCards.Add(r);
         if (keep != null && !DraftCards.Any(r => r.Player == keep) && DraftPool.FirstOrDefault(r => r.Player == keep) is { } further) DraftCards.Add(further);
         DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted."

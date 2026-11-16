@@ -709,6 +709,8 @@ public sealed partial class GameSession
             var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
                 relegated: GoingDown(), wonDivision: wonDivision);
             Post(Boss(title), Boss(body), "Board");
+            if (RelegationTiebreak() is { } tie)
+                Post("Relegated on a tiebreak", tie + " The last club in each division goes down at the end of the summer; clubs level on record are split by point difference.", "Board");
             if (sacked) Fire();
             else overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
         }
@@ -731,13 +733,45 @@ public sealed partial class GameSession
             if (!Postseason.UsesDivisions(League) || World.Competitions.All(c => c.Key != UsaPyramid.Tier2)) return false;
             var div = League.Teams.Where(t => t.Conference == HumanTeam.Conference && t.Division == HumanTeam.Division).ToList();
             if (div.Count < 2) return false;
-            return div.OrderBy(t => Standings[t].Wins).ThenByDescending(t => Standings[t].Losses).ThenBy(t => t.Id).First() == HumanTeam;
+            // H33 (run 82): the same order as the Standings page and the summer's relegation (win %, then point difference).
+            var order = Standings.All().Select((r, i) => (r.Team, i)).ToDictionary(x => x.Team, x => x.i);
+            return div.OrderByDescending(t => order[t]).First() == HumanTeam;
         }
         if (HumanLeague is not { } c || !UsaPyramid.IsNational(c.Key) || c.Key == UsaPyramid.Tier5 || !c.Season.Fixtures.Any(f => f.Played)) return false;
         var table = c.Season.Table().Select(r => r.TeamId).ToList();
         var mine = UsaPyramid.Divisions(c.Key, c.Clubs).FirstOrDefault(d => d.Teams.Contains(HumanTeam)).Teams;
         if (mine == null || mine.Count < 2) return false;
         return table.LastOrDefault(id => mine.Any(x => x.Id == id)) == HumanTeam.Id;
+    }
+
+    /// <summary>
+    /// H33 (bug hunt, Nov 16; run 82): when your club goes down level on record with others in its division, the tiebreak
+    /// that decided it, in words ("Level at 35-27 with … : point difference decided it (… −40, … +12)."). Null when it
+    /// wasn't a tie, or you aren't going down.
+    /// </summary>
+    public string? RelegationTiebreak()
+    {
+        if (!GoingDown()) return null;
+        List<(string Name, int W, int L, int Diff)> rows;
+        if (InNabl)
+            rows = Standings.All().Where(r => r.Team.Conference == HumanTeam.Conference && r.Team.Division == HumanTeam.Division)
+                .Select(r => (r.Team.FullName, r.Wins, r.Losses, r.PointsFor - r.PointsAgainst)).ToList();
+        else if (HumanLeague is { } c && UsaPyramid.Divisions(c.Key, c.Clubs).FirstOrDefault(d => d.Teams.Contains(HumanTeam)).Teams is { } mine)
+        {
+            var names = mine.ToDictionary(t => t.Id, t => t.FullName);
+            rows = c.Season.Table().Where(r => names.ContainsKey(r.TeamId)).Select(r => (names[r.TeamId], r.Wins, r.Losses, r.Diff)).ToList();
+        }
+        else return null;
+        if (rows.Count < 2) return null;
+        var last = rows[^1];
+        var level = rows.Where(r => r.W == last.W && r.L == last.L).ToList();
+        if (level.Count < 2) return null;
+        static string Signed(int d) => d > 0 ? $"+{d}" : d < 0 ? $"\u2212{-d}" : "0";
+        string others = string.Join(" and ", level.Where(r => r.Name != last.Name).Select(r => r.Name));
+        bool sameDiff = level.Count(r => r.Diff == last.Diff) > 1;
+        return $"Level at {last.W}-{last.L} with {others}: "
+             + (sameDiff ? "point difference was level too, so the league's draw order decided it" : "point difference decided it")
+             + $" ({string.Join(", ", level.Select(r => $"{r.Name} {Signed(r.Diff)}"))}).";
     }
 
     /// <summary>A computer-run club changes coach; while you're out of work the job is open to you.</summary>
