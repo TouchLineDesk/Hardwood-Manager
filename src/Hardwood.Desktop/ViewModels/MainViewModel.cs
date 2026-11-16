@@ -324,6 +324,8 @@ public sealed partial class MainViewModel : ViewModelBase
         if (inbox != null) { int unread = s.Inbox.Count(m => !m.Read); inbox.Badge = unread > 0 ? unread.ToString() : ""; }
         bool college = s.Employed && s.InCollege;
         foreach (var item in Nav.Where(n => n.Name is "Transactions" or "Offseason")) item.IsVisible = !college;
+        // H43 (run 81): out of work there is no roster of yours to sign for, waive from or trade.
+        if (!s.Employed && Nav.FirstOrDefault(n => n.Name == "Transactions") is { } tx) tx.IsVisible = false;
         var off = Nav.FirstOrDefault(n => n.Name == "Offseason");
         if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
     }

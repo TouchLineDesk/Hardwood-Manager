@@ -211,9 +211,11 @@ public sealed partial class InboxViewModel : PageViewModel
         var rec = s.MyRecord;
         int rank = s.MyRank;
         var hurt = s.HumanTeam.Roster.Where(p => !p.IsAvailable(s.Today)).ToList();
+        // H15b (run 81): out of work, the summary isn't your old club's.
+        if (!s.Employed) { Summary = $"{s.Coach.Name} · out of work · open jobs are on the Board page"; return; }
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
                   // College programs pay no wages (#307): the line read "wages $0.0M of a $0.0M budget".
-                  + (s.InCollege ? "" : $" · {Budgets.Describe(s.HumanTeam)}")
+                  + (s.InCollege || !s.Employed ? "" : $" · {s.MyBudgetLine}")
                   + (hurt.Count > 0 ? $" · Injured: {string.Join(", ", hurt.Select(p => $"{p.LastName} ({p.Injury!.DaysOut(s.Today)}d)"))}" : "");
     }
 

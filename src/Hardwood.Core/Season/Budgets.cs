@@ -177,11 +177,16 @@ public static class Budgets
     /// <summary>Wages the club has room for under its budget right now.</summary>
     public static long Room(Team t) => t.Money.WageBudget - ContractMarket.Payroll(t);
 
-    public static string Describe(Team t)
+    /// <summary>Money as the budget lines show it: "$58M", or "$4.2M" under ten million.</summary>
+    public static string Money(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
+
+    /// <summary>The wage line. <paramref name="payroll"/> defaults to every contract on the roster; the summer passes the
+    /// committed wages instead (H45, run 81: <see cref="GameSession.MyBudgetLine"/>).</summary>
+    public static string Describe(Team t, long? payroll = null, string label = "wages")
     {
-        static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
-        long pay = ContractMarket.Payroll(t);
-        return $"wages {M(pay)} of a {M(t.Money.WageBudget)} budget" + (pay > t.Money.WageBudget ? $" ({M(pay - t.Money.WageBudget)} over)" : $" · {M(t.Money.WageBudget - pay)} to spend")
+        static string M(long v) => Money(v);
+        long pay = payroll ?? ContractMarket.Payroll(t);
+        return $"{label} {M(pay)} of a {M(t.Money.WageBudget)} budget" + (pay > t.Money.WageBudget ? $" ({M(pay - t.Money.WageBudget)} over)" : $" · {M(t.Money.WageBudget - pay)} to spend")
             + (t.Money.Parachute > 0 ? $" · parachute {M(t.Money.Parachute)}" : "") + (t.Money.Embargo ? " · TRANSFER EMBARGO (debt)" : "");
     }
 

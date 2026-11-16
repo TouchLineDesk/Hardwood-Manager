@@ -93,6 +93,52 @@ public sealed partial class GameSession
         _talks.TryGetValue(p.Id, out var t) ? t.opening
         : ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id);
 
+    /// <summary>
+    /// Bug hunt H43/H44 (run 81): why waiving, trading or accepting bids is closed to you, or null. Out of work, the
+    /// session still points at your old club (<see cref="Fire"/> leaves <c>HumanTeam</c> there), so without this a
+    /// manager with no job could cut or trade its players; a college program has scholarship players, not pros.
+    /// </summary>
+    public string? RosterMovesClosed =>
+        !Employed ? "You aren't coaching a club right now."
+        : InCollege ? "A college program doesn't sign, waive or trade professionals: your roster is your scholarship players and walk-ons, and it changes through recruiting (College → Recruiting)."
+        : null;
+
+    /// <summary>
+    /// Waive one of your players: he becomes a free agent at once (H44, run 81: moved here from the Transactions page so
+    /// the checks live with the rule). Returns null when done, else why not. Reads no random numbers.
+    /// </summary>
+    public string? Waive(Player p)
+    {
+        if (RosterMovesClosed is { } closed) return closed;
+        var team = HumanTeam;
+        if (!team.Roster.Contains(p)) return $"{p.Name} isn't on your roster.";
+        if (team.Roster.Count <= MyRosterMin) return $"You need at least {MyRosterMin} players.";
+        team.Roster.Remove(p);
+        p.TeamId = null; p.Contract = null;
+        League.FreeAgents.Add(p);
+        team.DepthChart = null;
+        Post($"Waived {p.Name}", $"{p.Name} has been released and is a free agent.", "Transactions");
+        SaveNow();
+        return null;
+    }
+
+    /// <summary>
+    /// Bug hunt H45 (run 81): your wages against the budget, the way every summer screen counts them. In the summer the
+    /// deals that are up (and leave unless renewed) aren't counted as spent; they're named beside it, so the
+    /// Transactions header, the Offseason page and the summer inbox lines agree. In season it is <see cref="Budgets.Describe"/>.
+    /// </summary>
+    public string MyBudgetLine
+    {
+        get
+        {
+            var expiring = MyExpiring;
+            if (expiring.Count == 0) return Budgets.Describe(HumanTeam);
+            long up = expiring.Sum(p => p.Contract?.Salary ?? 0);
+            return Budgets.Describe(HumanTeam, MyCommittedWages, "wages committed")
+                + $" (not counting {Budgets.Money(up)} of {expiring.Count} expiring deal{(expiring.Count == 1 ? "" : "s")})";
+        }
+    }
+
     /// <summary>Rounds of talks so far with this player (0 = not started).</summary>
     public int TalkRound(Player p) => _talks.TryGetValue(p.Id, out var t) ? t.round : 0;
 

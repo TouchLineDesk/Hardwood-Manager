@@ -188,6 +188,7 @@ public sealed partial class GameSession
     /// <summary>Accept a bid for one of your players: he talks to them and, if he agrees, leaves.</summary>
     public string AcceptBid(IncomingBid bid)
     {
+        if (RosterMovesClosed is { } closed) return closed; // H43 (run 81): a bid left from a job you no longer have
         IncomingBids.Remove(bid);
         var p = HumanTeam.Roster.FirstOrDefault(x => x.Id == bid.PlayerId);
         var buyer = FindTeam(bid.FromTeamId);

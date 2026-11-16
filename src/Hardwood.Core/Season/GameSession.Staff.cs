@@ -50,6 +50,7 @@ public sealed partial class GameSession
     /// <summary>Hire on the terms he gave in the interview.</summary>
     public string HireOnTerms(Staff st)
     {
+        if (!Employed) return "You aren't coaching a club right now.";   // run 81 (code review, like H43)
         var a = Interview(st);
         if (!a.Willing) return a.Text;
         if (!HireStaff(st)) return $"{st.Name} is no longer available.";
@@ -64,6 +65,7 @@ public sealed partial class GameSession
     /// </summary>
     public StaffAnswer StaffRenewal(Staff st)
     {
+        if (!Employed) return new StaffAnswer(false, 0, 0, "You aren't coaching a club right now.");   // run 81 (code review)
         if (st.TeamId != HumanTeam.Id) return new StaffAnswer(false, 0, 0, $"{st.Name} doesn't work for you.");
         if (st.ContractYears > 1) return new StaffAnswer(false, st.Salary, st.ContractYears, $"{st.Name} has {st.ContractYears} years left; talk again in his final year.");
         double gap = Standing(st) - ClubPull;

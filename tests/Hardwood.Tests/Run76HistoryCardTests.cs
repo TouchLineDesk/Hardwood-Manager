@@ -191,7 +191,7 @@ public class Run76HistoryCardTests
             tx.CancelWaive();
             Assert.False(tx.ConfirmingWaive);
             Assert.Contains(star.Player, team.Roster);
-            Assert.Equal($"{star.Name} stays.", tx.FaStatus);
+            Assert.Equal($"{star.Name} stays.", tx.WaiveStatus);   // H39 (run 81): the Waive tab has its own line
 
             // A question left open doesn't outlive a refresh (code review).
             tx.Waive(star);

@@ -7,10 +7,17 @@
   <DockPanel>
     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
       <TextBlock Text="Transactions" Classes="h1" Margin="0"/>
-      <TextBlock Text="{Binding CapText}" Classes="muted"/>
-      <TextBlock Text="{Binding DeadlineText}" Classes="muted"/>
+      <TextBlock Text="{Binding CapText}" Classes="muted" IsVisible="{Binding Open}"/>
+      <TextBlock Text="{Binding DeadlineText}" Classes="muted" IsVisible="{Binding Open}"/>
     </StackPanel>
-    <TabControl SelectedIndex="{Binding Tab}">
+    <!-- H43/H44 (run 81): out of work or at a college program, why the page is closed instead of its tabs. -->
+    <Border x:Name="ClosedPanel" DockPanel.Dock="Top" Classes="panel" IsVisible="{Binding Closed}" HorizontalAlignment="Left" MaxWidth="720">
+      <Grid ColumnDefinitions="Auto,*">
+        <c:Icon Kind="ArrowLeftRight" Width="18" Height="18" VerticalAlignment="Top" Margin="0,1,8,0"/>
+        <TextBlock Grid.Column="1" Text="{Binding ClosedText}" TextWrapping="Wrap"/>
+      </Grid>
+    </Border>
+    <TabControl SelectedIndex="{Binding Tab}" IsVisible="{Binding Open}">
       <TabItem Header="Transfer market">
         <Grid ColumnDefinitions="*,300" RowDefinitions="Auto,*">
           <!-- Wraps rather than running under the side panel at big text sizes (roadmap 1). -->
@@ -318,7 +325,7 @@
         <Grid RowDefinitions="Auto,Auto,*">
           <TextBlock Text="Press Waive beside a player to release him outright: he becomes a free agent and his deal comes off your books." Classes="muted" TextWrapping="Wrap"/>
           <StackPanel Grid.Row="1">
-            <TextBlock Text="{Binding FaStatus}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4,0,6" IsVisible="{Binding FaStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock x:Name="WaiveStatusText" Text="{Binding WaiveStatus}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4,0,6" IsVisible="{Binding WaiveStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <!-- H24: Waive asks before it cuts anyone. -->
             <Border x:Name="WaiveConfirm" Classes="panel" Margin="0,4,0,6" IsVisible="{Binding ConfirmingWaive}" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="1">
               <Grid ColumnDefinitions="Auto,*,Auto">
