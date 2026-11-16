@@ -176,7 +176,7 @@ internal sealed class BugFinder
     }
 
     /// <summary>A screenshot of the page as it stands, when this sweep is on the tour (before any button is pressed).</summary>
-    private void Tour(string page, string when)
+    public void Tour(string page, string when)
     {
         if (_shots == null || !TourAt.Any(t => when.StartsWith(t, StringComparison.OrdinalIgnoreCase))) return;
         try
@@ -317,7 +317,7 @@ internal sealed class BugFinder
     }
 
     /// <summary>Checks on what the page shows: empty lists with no word of explanation, and placeholder text.</summary>
-    private void Scan(string page, string when)
+    public void Scan(string page, string when)
     {
         var root = Content();
         if (root == null) { Add("dead end", page, "the page shows nothing (no content)", true); return; }

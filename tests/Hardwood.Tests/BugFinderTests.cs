@@ -22,7 +22,8 @@ namespace Hardwood.Tests;
 /// <para>Off by default (it takes a while): set HW_BUGFINDER to a folder for the report and screenshots;
 /// HW_BUGFINDER_CAREERS picks careers (comma-separated: nba-contender, nba-rebuild, gleague, bottom, college, fired);
 /// HW_BUGFINDER_SEASONS sets how many seasons each plays (default 1);
-/// HW_BUGFINDER_TOUR saves a screenshot of every page and tab at some sweeps ("1": the first day and day 70).</para>
+/// HW_BUGFINDER_TOUR saves a screenshot of every page and tab at some sweeps ("1": the first day and day 70;
+/// "live game" adds the live court and its box score tab, mid-game and at the final).</para>
 /// </summary>
 [Collection(SharedUiState.Name)]
 public class BugFinderTests
@@ -210,11 +211,14 @@ public class BugFinderTests
             if (b == null) { bf.Add("dead end", "Live game", $"no \"{label}\" button mid-game"); continue; }
             try { Click(b); bf.Settle(); } catch (Exception ex) { bf.Add("crash", "Live game", $"\"{label}\": {(ex.InnerException ?? ex).Message}", true); }
         }
+        // The 2D tracker and the live box score (v0.98.0): step into the game, then look at the court and the box tab.
+        LiveTracker(live, window, bf, 60, "mid-game");
         var sim = Find(window, "Sim to end");
         if (sim == null) { bf.Add("dead end", "Live game", "no Sim to end button", true); live.SimToEnd(); }
         else Click(sim);
         bf.Settle();
         if (!live.Complete) bf.Add("dead end", "Live game", "Sim to end didn't finish the game", true);
+        LiveTracker(live, window, bf, 0, "final");
         var cont = Find(window, "Continue");
         if (cont == null) { bf.Add("dead end", "Live game", "a finished live game has no Continue", true); live.Continue(); }
         else Click(cont);
@@ -229,6 +233,39 @@ public class BugFinderTests
         if (vm.InLiveGame) { bf.Add("dead end", "Live game", "still in the live game after Continue (the sidebar stays locked)", true); vm.InLiveGame = false; }
         vm.Navigate("Home");
         L($"live game played: {vm.Session!.MyRecord.Wins}-{vm.Session.MyRecord.Losses}");
+    }
+
+    /// <summary>The live court and the box score tab beside it (v0.98.0's tracker slice): Step a number of plays, scan the
+    /// court, open the Box score tab and check each team's line agrees with the scoreboard (the team row, the players'
+    /// points added up, five on the floor mid-game). Tour shots are labelled "live game mid-game" / "live game final".</summary>
+    private static void LiveTracker(LiveGameViewModel live, MainWindow window, BugFinder bf, int steps, string when)
+    {
+        try
+        {
+            live.ShowCourt = true;
+            for (int i = 0; i < steps && live.CanStep; i++) live.StepOne();
+            bf.Settle();
+            bf.Scan("Live game", $"live game {when}");
+            bf.Tour("Live game court", $"live game {when}");
+            var boxTab = Find(window, "Box score");
+            if (boxTab == null) { bf.Add("dead end", "Live game", $"no Box score tab beside the court ({when})", true); return; }
+            Click(boxTab); bf.Settle();
+            if (!live.ShowBox) { bf.Add("no feedback", "Live game", $"the Box score tab didn't open the box score ({when})", true); return; }
+            foreach (var (side, rows, score) in new[] { ("away", live.AwayBox, live.AwayScore), ("home", live.HomeBox, live.HomeScore) })
+            {
+                if (rows.Count == 0 || !rows[^1].Total) { bf.Add("wrong number", "Live game", $"the {side} box score has no team row ({when})", true); continue; }
+                if (rows[^1].Pts != score.ToString())
+                    bf.Add("wrong number", "Live game", $"the {side} box score's team row says {rows[^1].Pts} points, the scoreboard {score} ({when})", true);
+                int sum = rows.Where(r => !r.Total).Sum(r => int.TryParse(r.Pts, out var p) ? p : 0);
+                if (sum != score) bf.Add("wrong number", "Live game", $"the {side} players' points add up to {sum}, the scoreboard says {score} ({when})", true);
+                int on = rows.Count(r => r.OnCourt);
+                if (!live.Complete && on != 5) bf.Add("wrong number", "Live game", $"the {side} box score marks {on} players on the floor ({when})", true);
+            }
+            bf.Scan("Live game box score", $"live game {when}");
+            bf.Tour("Live game box score", $"live game {when}");
+            if (Find(window, "Play by play") is { } log) { Click(log); bf.Settle(); }
+        }
+        catch (Exception ex) { bf.Add("crash", "Live game", $"tracker / box score ({when}): {(ex.InnerException ?? ex).Message}", true); }
     }
 
     private static void Offseason(MainViewModel vm, BugFinder bf, Action<string> L)
