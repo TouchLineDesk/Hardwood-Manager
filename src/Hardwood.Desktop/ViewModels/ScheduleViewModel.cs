@@ -123,6 +123,8 @@ public sealed partial class ScheduleViewModel : PageViewModel
     private Dictionary<int, H2HRecord> _h2h = new();
 
     public ScheduleViewModel(MainViewModel shell) : base(shell) { }
+    /// <summary>Run 72: raised at the end of <see cref="Refresh"/> (and a filter change) so the tiles scroll to the game picked.</summary>
+    public event Action? Refreshed;
 
     [RelayCommand]
     public void SetFilter(string? name)
@@ -256,6 +258,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
 
         var rec = s.MyRecord;
         Summary = $"{s.HumanLeagueName}: {rec.Wins}-{rec.Losses} · home {rec.HomeWins}-{rec.HomeLosses} · {rec.PointsFor / Math.Max(1.0, rec.Games):F1} for, {rec.PointsAgainst / Math.Max(1.0, rec.Games):F1} against";
+        Refreshed?.Invoke();
     }
 }
 

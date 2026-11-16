@@ -33,15 +33,19 @@ public partial class ScheduleView : UserControl
         {
             if (s is not ScheduleViewModel vm) return;
             if (e.PropertyName == nameof(ScheduleViewModel.ShowEvent)) Apply(vm);
-            if (e.PropertyName is nameof(ScheduleViewModel.Selected) or nameof(ScheduleViewModel.GameView)) Reveal(vm);
+            // Not on Selected (code review): a click or arrow key picks a tile already in view, and scrolling then would move
+            // the list between the two presses of a double-click.
+            if (e.PropertyName == nameof(ScheduleViewModel.GameView)) Reveal(vm);
         }
+        void OnRefreshed() { if (watched != null) Reveal(watched); }
         DataContextChanged += (_, _) =>
         {
-            if (watched != null) watched.PropertyChanged -= OnVmChanged;
+            if (watched != null) { watched.PropertyChanged -= OnVmChanged; watched.Refreshed -= OnRefreshed; }
             watched = DataContext as ScheduleViewModel;
             if (watched == null) return;
             Apply(watched);
             watched.PropertyChanged += OnVmChanged;
+            watched.Refreshed += OnRefreshed;
             Reveal(watched);
         };
         // The tiles exist only once the list is laid out: reveal again then (the first visit, and back from a box score).
