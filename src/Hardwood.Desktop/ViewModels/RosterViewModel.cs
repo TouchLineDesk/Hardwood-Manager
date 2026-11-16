@@ -84,7 +84,13 @@ public sealed partial class RosterViewModel : PageViewModel
 
     public RosterViewModel(MainViewModel shell) : base(shell)
     {
-        foreach (var t in Session.League.Teams.OrderBy(t => t.City)) Teams.Add(t);
+        // Bug hunt H18: a college coach's program isn't in the pro league, so the Team box was blank. His own league comes
+        // first (the conference in college, his tier in the pyramid), then the top league's clubs as before.
+        var mine = (Session.InCollege && Session.World.College is { } col && Session.MyConference is { } conf
+            ? col.InConference(conf.Key)
+            : Session.HumanLeague?.Clubs ?? Enumerable.Empty<Team>()).Append(Session.HumanTeam).Distinct().OrderBy(t => t.City).ToList();
+        foreach (var t in mine) Teams.Add(t);
+        foreach (var t in Session.League.Teams.Where(t => !mine.Contains(t)).OrderBy(t => t.City)) Teams.Add(t);
         _team = Session.HumanTeam;
     }
 

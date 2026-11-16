@@ -447,6 +447,25 @@ public class LayoutCheckTests
                         col.OfferTrailCommand.Execute(null);
                     }
                 }),
+                // Run 68 (review #13 rank 7): the board's full table, the high-school class as star cards (the longest
+                // name picked) and as a table, and the class rankings.
+                ("Recruiting cards", v =>
+                {
+                    v.Navigate("College");
+                    var col = (CollegeViewModel)v.CurrentPage!;
+                    col.Tab = 5; col.TrailView = "All uncommitted"; col.BoardView = "Cards";
+                    col.PickTrail(col.TrailCards.OrderByDescending(r => r.Name.Length + r.LeaningText.Length).First());
+                }),
+                ("Recruiting table", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 5; col.TrailView = "All uncommitted"; col.BoardView = "Full table"; }),
+                ("High school", v =>
+                {
+                    v.Navigate("College");
+                    var col = (CollegeViewModel)v.CurrentPage!;
+                    col.Tab = 6; col.BoardView = "Cards"; col.StarFilter = "All";
+                    col.PickHighSchool(col.HighSchoolCards.OrderByDescending(r => r.Name.Length + r.Where.Length).First());
+                }),
+                ("High school table", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 6; col.BoardView = "Full table"; }),
+                ("Class rankings", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 7; col.BoardView = "Cards"; }),
             };
             foreach (var (width, guide, scale) in new[] { (1480, true, 1.0), (1480, false, 1.0), (1280, true, 1.0), (1280, false, 1.0), (1280, true, 1.3) })
             {

@@ -17,6 +17,27 @@ public partial class StandingsView : UserControl
         InitializeComponent();
         Tables.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) Arrange(Tables.Bounds.Width); };
         Cards.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) ArrangeCards(Cards.Bounds.Width); };
+        // Bug hunt H18: college conferences have no divisions, so their Div column was empty. Hide it when no row has one.
+        foreach (var grid in new[] { EastGrid, WestGrid })
+        {
+            var g = grid;
+            g.PropertyChanged += (_, e) => { if (e.Property == DataGrid.ItemsSourceProperty) Watch(g); };
+            Watch(g);
+        }
+    }
+
+    private static void Watch(DataGrid grid)
+    {
+        if (grid.ItemsSource is System.Collections.Specialized.INotifyCollectionChanged live)
+            live.CollectionChanged += (_, _) => ShowDivIfAny(grid);
+        ShowDivIfAny(grid);
+    }
+
+    /// <summary>The Div column shows only when some row in the table has a division (public for the tests).</summary>
+    public static void ShowDivIfAny(DataGrid grid)
+    {
+        if (grid.Columns.FirstOrDefault(c => c.Header as string == "Div") is not { } col) return;
+        col.IsVisible = grid.ItemsSource is IEnumerable<ViewModels.StandingRow> rows && rows.Any(r => r.Div.Length > 0);
     }
 
     private void ArrangeCards(double width)

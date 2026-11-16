@@ -4,6 +4,14 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.CollegeView"
              x:DataType="vm:CollegeViewModel">
+  <UserControl.Styles>
+    <!-- Run 68 (bug hunt H18): seven tabs at the theme's 24 px wrapped "Class rankings" onto a second line at 1480 px. -->
+    <Style Selector="TabControl#CollegeTabs > TabItem">
+      <Setter Property="FontSize" Value="18"/>
+      <Setter Property="MinHeight" Value="40"/>
+      <Setter Property="Padding" Value="10,0"/>
+    </Style>
+  </UserControl.Styles>
   <DockPanel>
     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="2">
       <StackPanel Orientation="Horizontal" Spacing="10">
@@ -12,7 +20,7 @@
       </StackPanel>
       <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap"/>
     </StackPanel>
-    <TabControl IsVisible="{Binding HasCollege}" SelectedIndex="{Binding Tab}">
+    <TabControl x:Name="CollegeTabs" IsVisible="{Binding HasCollege}" SelectedIndex="{Binding Tab}">
       <TabItem Header="Top 25">
         <!-- Danny, #528: the Top 25 as a grid of logos with the rank in each tile, re-ranked after every game. -->
         <DockPanel>
@@ -290,10 +298,55 @@
             <WrapPanel>
               <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding TrailClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding TrailViews}" SelectedItem="{Binding TrailView}" MinWidth="170" Margin="0,0,8,4"/>
+              <ComboBox ItemsSource="{Binding BoardViews}" SelectedItem="{Binding BoardView}" Width="120" Margin="0,0,8,4" ToolTip.Tip="Star cards, or the full table with every prospect"/>
               <CheckBox Content="My assistant uses the hours I leave" IsChecked="{Binding AssistantRecruits}" Margin="0,0,8,4"/>
             </WrapPanel>
+            <TextBlock Text="{Binding TrailCardNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasTrailEmpty}"/>
+            <Border Classes="panel" IsVisible="{Binding HasTrailEmpty}" HorizontalAlignment="Left">
+              <TextBlock x:Name="TrailEmptyText" Text="{Binding TrailEmpty}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+            </Border>
             <Grid x:Name="TrailRowGrid" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-              <DataGrid x:Name="TrailGrid" ItemsSource="{Binding TrailRows}" SelectedItem="{Binding SelectedTrail}" Height="500" VerticalAlignment="Top">
+              <Panel x:Name="TrailBoard" VerticalAlignment="Top">
+              <ScrollViewer x:Name="TrailCardScroll" IsVisible="{Binding ShowBoardCards}" Height="500" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="TrailCards" ItemsSource="{Binding TrailCards}" VerticalAlignment="Top">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="270" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TrailRow">
+                      <Button Classes="marketCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              Click="OnTrailClick" ToolTip.Tip="Pick him to recruit him">
+                        <Border BorderBrush="{Binding StarBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                          <StackPanel Spacing="5">
+                            <Grid ColumnDefinitions="Auto,52,*">
+                              <TextBlock Text="{Binding RankText}" FontSize="18" FontWeight="Bold" Foreground="{Binding StarBrush}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip.Tip="{Binding StarTip}"/>
+                              <c:Avatar Grid.Column="1" Player="{Binding Player}" Width="48" Height="48" VerticalAlignment="Center"/>
+                              <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Spacing="1">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                                <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock FontSize="15" ToolTip.Tip="{Binding StarTip}"><Run Text="{Binding StarsOn}" Foreground="#FFC83D"/><Run Text="{Binding StarsOff}" Foreground="#3A4452"/></TextBlock>
+                              </StackPanel>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="His interest in your program, 0 to 100">
+                              <TextBlock Text="Interest" FontSize="11" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                              <c:RatingBar Grid.Column="1" Value="{Binding Interest}" Maximum="100" Fill="{Binding InterestBrush}" VerticalAlignment="Center"/>
+                              <TextBlock Grid.Column="2" Text="{Binding InterestText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto" Height="22">
+                              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" ToolTip.Tip="The program he leans to today">
+                                <c:TeamLogo Team="{Binding LeaningTeam}" Width="18" Height="18" ShowText="False" IsVisible="{Binding HasLeaning}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding LeaningText}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="130"/>
+                              </StackPanel>
+                              <Border Grid.Column="1" Background="{Binding StatusBrush}" CornerRadius="9" Padding="7,1" VerticalAlignment="Center" ToolTip.Tip="{Binding Status}">
+                                <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis" MaxWidth="150"/>
+                              </Border>
+                            </Grid>
+                          </StackPanel>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+              <DataGrid x:Name="TrailGrid" ItemsSource="{Binding TrailRows}" SelectedItem="{Binding SelectedTrail}" Height="500" VerticalAlignment="Top" IsVisible="{Binding ShowBoardTable}">
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
                   <DataGridTemplateColumn Header="Stars" Width="92">
@@ -303,7 +356,7 @@
                       </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                   </DataGridTemplateColumn>
-                  <DataGridTextColumn Header="Prospect" Binding="{Binding Name}" Width="140"/>
+                  <DataGridTextColumn Header="Prospect" Binding="{Binding Name}" Width="176"/>
                   <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
                   <DataGridTextColumn Header="State" Binding="{Binding State}" Width="56"/>
                   <DataGridTemplateColumn Header="Interest" Width="100">
@@ -320,6 +373,7 @@
                   <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*" MinWidth="130"/>
                 </DataGrid.Columns>
               </DataGrid>
+              </Panel>
               <StackPanel x:Name="TrailPanel" Grid.Column="1" Width="330" Margin="10,0,0,0" Spacing="8" VerticalAlignment="Top">
                 <TextBlock Text="Pick a prospect to recruit him." Classes="muted" IsVisible="{Binding !HasTrail}" TextWrapping="Wrap"/>
                 <Border Classes="panel" IsVisible="{Binding HasTrail}">
@@ -353,11 +407,45 @@
             <WrapPanel>
               <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding HighSchoolClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding StarFilters}" SelectedItem="{Binding StarFilter}" MinWidth="140" Margin="0,0,8,4"/>
+              <ComboBox ItemsSource="{Binding BoardViews}" SelectedItem="{Binding BoardView}" Width="120" Margin="0,0,8,4" ToolTip.Tip="Star cards, or the full table with every prospect"/>
               <Button Content="Open player" Command="{Binding OpenHighSchoolCommand}" IsEnabled="{Binding SelectedHighSchool, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a prospect in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,4"/>
               <TextBlock Text="Stars are the recruiting services' opinion, not a promise: busts and sleepers happen." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
             </WrapPanel>
+            <TextBlock Text="{Binding HighSchoolCardNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding ShowBoardCards}"/>
+            <TextBlock Text="{Binding HighSchoolHint}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding HasHighSchoolHint}"/>
           </StackPanel>
-          <DataGrid ItemsSource="{Binding HighSchoolers}" SelectedItem="{Binding SelectedHighSchool}">
+          <Panel>
+          <ScrollViewer IsVisible="{Binding ShowBoardCards}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="HighSchoolCards" ItemsSource="{Binding HighSchoolCards}" VerticalAlignment="Top">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="280" MaxColumns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HighSchoolRow">
+                  <Button Classes="marketCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnHighSchoolClick" ToolTip.Tip="Pick him (then Open player for his page)">
+                    <Border BorderBrush="{Binding StarBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                      <StackPanel Spacing="5">
+                        <Grid ColumnDefinitions="Auto,52,*">
+                          <TextBlock Text="{Binding RankText}" FontSize="18" FontWeight="Bold" Foreground="{Binding StarBrush}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip.Tip="{Binding StarTip}"/>
+                          <c:Avatar Grid.Column="1" Player="{Binding Player}" Width="48" Height="48" VerticalAlignment="Center"/>
+                          <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                            <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock FontSize="15" ToolTip.Tip="{Binding StarTip}"><Run Text="{Binding StarsOn}" Foreground="#FFC83D"/><Run Text="{Binding StarsOff}" Foreground="#3A4452"/></TextBlock>
+                          </StackPanel>
+                        </Grid>
+                        <TextBlock Text="{Binding Where}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Where}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                          <c:TeamLogo Team="{Binding CommittedTeam}" Width="20" Height="20" ShowText="False" IsVisible="{Binding HasCommit}" VerticalAlignment="Center"/>
+                          <TextBlock Text="{Binding CommitText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <DataGrid ItemsSource="{Binding HighSchoolers}" SelectedItem="{Binding SelectedHighSchool}" IsVisible="{Binding ShowBoardTable}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
               <DataGridTemplateColumn Header="Stars" Width="92">
@@ -375,6 +463,7 @@
               <DataGridTextColumn Header="State" Binding="{Binding State}" Width="*" MinWidth="56"/>
             </DataGrid.Columns>
           </DataGrid>
+          </Panel>
         </DockPanel>
       </TabItem>
       <TabItem Header="Class rankings" IsVisible="{Binding HasRecruiting}">
