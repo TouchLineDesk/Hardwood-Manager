@@ -73,7 +73,85 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.Color FloorColor => Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor);
     public Avalonia.Media.Color FloorTrim => Avalonia.Media.Color.Parse(HomeTeam.SecondaryColor);
     public string FloorName => HomeTeam.Name;
-    public string CourtLegend => $"{AwayName} shoot left, {HomeName} shoot right · dot: made · ring: missed · gold ring: the latest shot";
+    public string CourtLegend => $"{AwayName} attack left, {HomeName} attack right · gold ring: the player in the play · faint dots: the game's shots · player spots are drawn for show; every result comes from the game engine";
+
+    // The 2D tracker (D67 B, run 80): the latest play drawn on the court, with the ten players and the ball.
+    [ObservableProperty] private Hardwood.Desktop.Controls.TrackerFrame? _frame;
+    [ObservableProperty] private string _playCaption = "Tip-off.";
+    private int _framePlay = -1;
+
+    /// <summary>Build the tracker's frame from the engine's latest play and the two fives on the floor.</summary>
+    private void UpdateFrame()
+    {
+        var plays = _live.Result.Plays;
+        if (plays.Count == _framePlay + 1 && Frame != null) return;
+        int first = _framePlay + 1;
+        _framePlay = plays.Count - 1;
+        if (plays.Count == 0)
+        {
+            PlayCaption = "Tip-off.";
+            Frame = Hardwood.Desktop.Controls.TrackerLayout.Build(null, 0, _live.HomeOnCourt, _live.AwayOnCourt, PlayCaption);
+            return;
+        }
+        int idx = HeadlinePlay(plays, first);
+        var play = plays[idx];
+        var last = plays[^1];
+        string line = Caption(play);
+        if (last != play && last.Kind is not PlayKind.Foul) line += " · " + Caption(last);
+        PlayCaption = $"{_live.PeriodText} {Clk(play.Clock)}  {line}";
+        Frame = Hardwood.Desktop.Controls.TrackerLayout.Build(play, idx, _live.HomeOnCourt, _live.AwayOnCourt, PlayCaption);
+    }
+
+    /// <summary>
+    /// The play the tracker draws for the possessions just played: the latest shot, steal, turnover or free throw (a
+    /// rebound or foul shows the shot or trip it came from); free throws after a made basket (an and-one) show the basket.
+    /// </summary>
+    public static int HeadlinePlay(IReadOnlyList<PlayEvent> plays, int first)
+    {
+        first = Math.Clamp(first, 0, plays.Count - 1);
+        static bool Ball(PlayKind k) => k is PlayKind.Shot or PlayKind.Steal or PlayKind.Turnover or PlayKind.FreeThrow;
+        for (int i = plays.Count - 1; i >= first; i--)
+        {
+            if (!Ball(plays[i].Kind)) continue;
+            if (plays[i].Kind == PlayKind.FreeThrow)
+            {
+                int j = i;
+                while (j - 1 >= first && plays[j - 1].Kind is PlayKind.FreeThrow or PlayKind.Foul) j--;
+                if (j - 1 >= first && plays[j - 1] is { Kind: PlayKind.Shot, Made: true } shot && shot.Actor == plays[i].Actor) return j - 1;
+            }
+            return i;
+        }
+        for (int i = plays.Count - 1; i >= first; i--) if (plays[i].Kind == PlayKind.PeriodEnd) return i;
+        return plays.Count - 1;
+    }
+
+    private static string Clk(double c) => $"{(int)(c / 60)}:{(int)(c % 60):00}";
+
+    /// <summary>One line for a play, as the tracker shows it.</summary>
+    public string Caption(PlayEvent e)
+    {
+        string team = (e.Home ? HomeTeam : AwayTeam).Abbreviation;
+        string Who(Player? p) => p?.LastName ?? "";
+        string shot = e.Zone switch
+        {
+            ShotZone.Rim => "at the rim", ShotZone.ShortMid => "a short jumper", ShotZone.LongMid => "a long two",
+            ShotZone.CornerThree => "a corner three", _ => "a three",
+        };
+        return e.Kind switch
+        {
+            PlayKind.Shot when e.Made => $"{team}: {Who(e.Actor)} scores {(e.Zone == ShotZone.Rim ? "at the rim" : "with " + shot)}" + (e.Other != null ? $" (assist {Who(e.Other)})" : ""),
+            PlayKind.Shot when e.Blocked => $"{team}: {Who(e.Actor)} is blocked by {Who(e.Other)}",
+            PlayKind.Shot => $"{team}: {Who(e.Actor)} misses {(e.Zone == ShotZone.Rim ? "at the rim" : shot)}",
+            PlayKind.FreeThrow => $"{team}: {Who(e.Actor)} at the line, {(e.Made ? "good" : "no good")}",
+            PlayKind.Turnover => $"{team}: turnover by {Who(e.Actor)}",
+            PlayKind.Steal => $"{team}: {Who(e.Actor)} steals it from {Who(e.Other)}",
+            PlayKind.OffensiveRebound => $"{team}: offensive rebound, {Who(e.Actor)}",
+            PlayKind.DefensiveRebound => $"{team}: {Who(e.Actor)} rebounds",
+            PlayKind.Foul => e.Other != null ? $"{team}: foul by {Who(e.Actor)} on {Who(e.Other)}" : $"{team}: foul by {Who(e.Actor)}",
+            PlayKind.PeriodEnd => $"End of the period: {AwayName} {e.AwayScore}, {HomeName} {e.HomeScore}",
+            _ => "",
+        };
+    }
 
     private static Avalonia.Media.Color Distinct(Team t, Avalonia.Media.Color other)
     {
@@ -177,13 +255,25 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
 
-    partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); }
-    partial void OnCompleteChanged(bool value) => OnPropertyChanged(nameof(PlayPauseText));
+    partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
+    partial void OnCompleteChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(CanStep)); }
 
-    private void Tick()
+    private void Tick() => Advance(_speed == 2 ? 3 : 1);
+
+    /// <summary>While paused: play one possession and stop (the tracker's step control).</summary>
+    [RelayCommand]
+    public void StepOne()
+    {
+        if (Complete || Running) return;
+        ShowBreak = false;
+        Advance(1);
+        if (!Complete && !Running && !ShowBreak) Status = "Stepped one possession. Step again, or press Play.";
+    }
+    public bool CanStep => !Complete && !Running;
+
+    private void Advance(int steps)
     {
         // A few possessions per tick at the faster speeds keeps the log readable without being sluggish.
-        int steps = _speed == 2 ? 3 : 1;
         bool periodEnded = false;
         for (int i = 0; i < steps && !_live.Complete && !periodEnded; i++)
         {
@@ -384,6 +474,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         AddShots(false, AwayZoneAttempts, AwayZoneMakes, ref _seenAwayAtt, ref _seenAwayMk);
         AddShots(true, HomeZoneAttempts, HomeZoneMakes, ref _seenHomeAtt, ref _seenHomeMk);
         if (_shots.Count != before) CourtVersion++;
+        UpdateFrame();
         Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);
         TeamStats = GameFlowInfo.TeamStats(r);
         var facts = GameHighlights.Ticker(r);

@@ -332,6 +332,7 @@ public sealed class GameSimulator
             _awayByPeriod.Add(Score(_away) - _periodAwayStart);
             _home.Box.PointsByPeriod = _homeByPeriod.ToArray();
             _away.Box.PointsByPeriod = _awayByPeriod.ToArray();
+            if (_log) _result.Plays.Add(new PlayEvent(_period, _clock, PlayKind.PeriodEnd, false, null, null, ShotZone.Rim, false, Score(_home), Score(_away)));
             _pbp?.PeriodEnd(_period, _clock, _home.Team.Abbreviation, _away.Team.Abbreviation, Score(_home), Score(_away),
                             Score(_home) - _periodHomeStart, Score(_away) - _periodAwayStart);
             _periodOpen = false;
@@ -490,6 +491,7 @@ public sealed class GameSimulator
                 var fouler = PickDefender(def, null, ShotZone.ShortMid);
                 CommitFoul(def, fouler);
                 var target = off.OnCourt[_rng.Next(5)];
+                Play(PlayKind.Foul, def, fouler, target);
                 ShootFreeThrows(off, def, target, 2);
                 Log($"{fouler.LastName} fouls {target.LastName} to stop the clock");
                 possessionLive = false;
@@ -504,6 +506,7 @@ public sealed class GameSimulator
                 {
                     var fouler = PickDefender(def, null, ShotZone.ShortMid);
                     CommitFoul(def, fouler);
+                    Play(PlayKind.Foul, def, fouler);
                     if (def.TeamFouls >= _rules.TeamFoulBonusThreshold)
                     {
                         var shooter = PickShooter(off, wasTransition);
@@ -559,8 +562,9 @@ public sealed class GameSimulator
                 def.Line(thief).Steals++;
                 _transition = true;
                 Log($"{thief.LastName} steals from {culprit.LastName}");
+                Play(PlayKind.Steal, def, thief, culprit);
             }
-            else Log($"Turnover by {culprit.LastName}");
+            else { Log($"Turnover by {culprit.LastName}"); Play(PlayKind.Turnover, off, culprit); }
             return true;
         }
 
@@ -734,6 +738,7 @@ public sealed class GameSimulator
 
             // Blocks (only on missed shots inside the arc)
             bool made = _rng.Chance(pMake);
+            Player? blocker = null;
             if (!made && !zone.IsThree())
             {
                 double blockRate = (zone == ShotZone.Rim ? _cfg.BlockRateRim : _cfg.BlockRateMid)
@@ -741,6 +746,7 @@ public sealed class GameSimulator
                 if (!fouled && _rng.Chance(blockRate))
                 {
                     def.Line(defender).Blocks++;
+                    blocker = defender;
                     Log($"{defender.LastName} blocks {shooter.LastName}");
                 }
             }
@@ -754,16 +760,20 @@ public sealed class GameSimulator
                     var assister = RecordFieldGoal(off, shooter, zone, made: true, transition);
                     line.AndOnes++;
                     _pbp?.MadeBasket(_period, _clock, off.Team.Abbreviation, Score(off), Score(def), line, shooter, assister, zone, andOne: true);
+                    Play(PlayKind.Shot, off, shooter, assister, zone, made: true);
+                    Play(PlayKind.Foul, def, defender, shooter, zone);
                     ShootFreeThrows(off, def, shooter, 1);
                 }
                 else
                 {
+                    Play(PlayKind.Foul, def, defender, shooter, zone);
                     ShootFreeThrows(off, def, shooter, zone.IsThree() ? 3 : 2);
                 }
                 return false;
             }
 
             var assist = RecordFieldGoal(off, shooter, zone, made, transition);
+            Play(PlayKind.Shot, off, shooter, made ? assist : blocker, zone, made);
             if (made)
             {
                 _pbp?.MadeBasket(_period, _clock, off.Team.Abbreviation, Score(off), Score(def), line, shooter, assist, zone, andOne: false);
@@ -825,6 +835,7 @@ public sealed class GameSimulator
                 // A putback chance is quick.
                 BurnClock(Math.Clamp(_rng.NextGaussian(6, 3), 1, 14));
                 Log($"Offensive rebound {r.LastName}");
+                Play(PlayKind.OffensiveRebound, off, r);
                 return _clock > 0;
             }
             else
@@ -832,6 +843,7 @@ public sealed class GameSimulator
                 var w = def.OnCourt.Select(p => Math.Pow(p.Attributes[Attr.DefensiveRebounding] + (p.HeightCm - 195) * 0.12 + p.Attributes[Attr.Strength] * 0.2, 2)).ToArray();
                 var r = def.OnCourt[_rng.WeightedIndex(w)];
                 def.Line(r).DReb++;
+                Play(PlayKind.DefensiveRebound, def, r);
                 if (_rng.Chance(0.18)) _transition = true; // outlet and run
                 return false;
             }
@@ -844,9 +856,11 @@ public sealed class GameSimulator
             for (int i = 0; i < count; i++)
             {
                 line.FTA++;
-                if (_rng.Chance(p)) { line.FTM++; line.Points++; _lastScorer = line.Player; _pbp?.FreeThrow(line.Player); }
-                else if (i == count - 1)
+                if (_rng.Chance(p)) { line.FTM++; line.Points++; _lastScorer = line.Player; _pbp?.FreeThrow(line.Player); Play(PlayKind.FreeThrow, off, shooter, made: true); }
+                else
                 {
+                    Play(PlayKind.FreeThrow, off, shooter);
+                    if (i < count - 1) continue;
                     // Missed last free throw: live rebound.
                     int dummy = 0;
                     if (Rebound(off, def, ShotZone.Rim, ref dummy))
@@ -993,5 +1007,11 @@ public sealed class GameSimulator
         }
 
         private void Log(string s) => _pbp?.Line(_period, _clock, s);
+
+        /// <summary>Record a play as data for the tracker (logged games only; reads no random numbers, run 80).</summary>
+        private void Play(PlayKind kind, Side side, Player? actor, Player? other = null, ShotZone zone = ShotZone.Rim, bool made = false)
+        {
+            if (_log) _result.Plays.Add(new PlayEvent(_period, _clock, kind, side.IsHome, actor, other, zone, made, Score(_home), Score(_away)));
+        }
     }
 }
