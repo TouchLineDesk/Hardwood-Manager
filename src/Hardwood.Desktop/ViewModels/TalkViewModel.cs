@@ -89,7 +89,16 @@ public sealed partial class TalkViewModel : ViewModelBase
     [RelayCommand]
     private void Offer()
     {
-        if (Player is not { } p || Wage is not { } w || Years is not { } y) return;
+        if (Player is not { } p) return;
+        // H9 (run 67): an empty (or zero) Wage or Years box made Make offer do nothing and say nothing.
+        if (Wage is not { } w || w <= 0 || Years is not { } y || y < 1)
+        {
+            var d = Session.PeekDemand(p);
+            Reply = $"Enter a wage and years first. His agent asks ${d.Wage / 1e6:F2}M a year for {d.Years} year{(d.Years == 1 ? "" : "s")}, so the boxes are back at his ask: press Make offer to offer that, or change it.";
+            if (Wage is not > 0) Wage = Math.Round((decimal)(d.Wage / 1e6), 2);
+            if (Years is not >= 1) Years = d.Years;
+            return;
+        }
         var r = Session.Offer(p, (long)Math.Round(w * 1_000_000m / 10_000m) * 10_000, (int)y);
         _offers++;
         Reply = NumberedReply(_offers, r.Text, _lastReply);

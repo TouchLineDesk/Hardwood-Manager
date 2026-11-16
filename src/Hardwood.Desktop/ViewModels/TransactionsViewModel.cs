@@ -44,7 +44,29 @@ public sealed partial class TransactionsViewModel : PageViewModel
     [ObservableProperty] private PlayerRow? _selectedFreeAgent;
     public Player? SelectedFreeAgentPlayer => SelectedFreeAgent?.Player;
     public double FreeAgentKnowledge => SelectedFreeAgent?.Knowledge ?? 1.0;
-    partial void OnSelectedFreeAgentChanged(PlayerRow? value) { OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge)); Talk.Show(value?.Player); }
+    partial void OnSelectedFreeAgentChanged(PlayerRow? value)
+    {
+        OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge));
+        foreach (var c in FreeAgentCards) c.Picked = value != null && c.Player == value.Player;
+        if (!_rebuilding) Talk.Show(value?.Player);
+    }
+    /// <summary>True while Refresh rebuilds the lists: the table drops and regains the same man, and his talks
+    /// (with the answer to your last offer) must stay on screen.</summary>
+    private bool _rebuilding;
+
+    // Run 67 (review #13 rank 6, bug hunt H9): free agents as cards with ask chips; the full table one click away.
+    public string[] FaViews { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowFaCards), nameof(ShowFaTable))] private string _faView = "Cards";
+    public bool ShowFaCards => FaView == "Cards";
+    public bool ShowFaTable => !ShowFaCards;
+    public ObservableCollection<FreeAgentRow> FreeAgentCards { get; } = new();
+    [ObservableProperty] private string _faCardsNote = "";
+
+    /// <summary>A free agent's card picks him for talks (the same as picking his row in the table).</summary>
+    public void PickFreeAgentCard(FreeAgentRow card)
+    {
+        if (FreeAgents.FirstOrDefault(r => r.Player == card.Player) is { } row) SelectedFreeAgent = row;
+    }
     /// <summary>Contract talks with the selected free agent (decision #89).</summary>
     public TalkViewModel Talk { get; }
     /// <summary>Trades only exist under the old NABL rules; the open market has transfers instead.</summary>
@@ -75,9 +97,24 @@ public sealed partial class TransactionsViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session; var fin = s.League.Finance;
-        FreeAgents.Clear();
+        var keep = SelectedFreeAgent?.Player;
+        _rebuilding = true;
+        FreeAgents.Clear(); FreeAgentCards.Clear();
         foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
-        SelectedFreeAgent ??= FreeAgents.FirstOrDefault();
+        long room = s.MyWageRoom;
+        foreach (var r in FreeAgents.Take(SummerCards.FreeAgentCount)) FreeAgentCards.Add(SummerCards.FreeAgent(s, r.Player, s.Today, false, room));
+        if (keep != null && !FreeAgentCards.Any(c => c.Player == keep) && s.League.FreeAgents.Contains(keep))
+            FreeAgentCards.Insert(0, SummerCards.FreeAgent(s, keep, s.Today, false, room));
+        FaCardsNote = FreeAgents.Count == 0 ? "There are no free agents right now."
+            : FreeAgents.Count <= SummerCards.FreeAgentCount ? $"All {FreeAgents.Count} free agent{(FreeAgents.Count == 1 ? "" : "s")}, best first, with what each asks of your club. Pick a card to talk to him."
+            : $"The best {SummerCards.FreeAgentCount} of {FreeAgents.Count:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists them all.";
+        // Keep the man you were talking to (the rows are rebuilt), so an offer's answer stays on screen.
+        var again = keep == null ? null : FreeAgents.FirstOrDefault(r => r.Player == keep);
+        if (again != null) SelectedFreeAgent = again;
+        _rebuilding = false;
+        // Nobody picked yet: the best free agent. The man you were talking to has signed: his answer stays up.
+        if (again == null && keep == null) SelectedFreeAgent = FreeAgents.FirstOrDefault();
+        else if (Talk.Player != keep) Talk.Show(keep);
         long payroll = ContractMarket.Payroll(s.HumanTeam);
         CapText = $"Roster {s.HumanTeam.Roster.Count}/{fin.RosterMax} · " + fin.Describe(payroll);
         DeadlineText = s.Phase == SessionPhase.Offseason ? "Offseason: trades are open."

@@ -140,6 +140,21 @@ public class LayoutCheckTests
             tx.Tab = 0; tx.MarketView = "Cards";
             tx.SelectedMarket = tx.MarketCards.OrderByDescending(r => r.Name.Length + r.ClubName.Length).First();
         });
+        // Run 67 (review #13 rank 6, H9): free agents as cards with ask chips, the longest name picked; and the table,
+        // whose rating columns used to cut a scouts' range ("15.8-1").
+        yield return ("Free agent cards", v =>
+        {
+            v.Navigate("Transactions");
+            var tx = (TransactionsViewModel)v.CurrentPage!;
+            tx.Tab = 3; tx.FaView = "Cards";
+            if (tx.FreeAgentCards.Count > 0) tx.PickFreeAgentCard(tx.FreeAgentCards.OrderByDescending(r => r.CardName.Length).First());
+        });
+        yield return ("Free agent table", v =>
+        {
+            v.Navigate("Transactions");
+            var tx = (TransactionsViewModel)v.CurrentPage!;
+            tx.Tab = 3; tx.FaView = "Full table";
+        });
         // Run 66 (review #13 rank 5): staff cards with a vacant role and "Fills a vacancy" chips; the longest name picked.
         yield return ("Staff cards", v =>
         {

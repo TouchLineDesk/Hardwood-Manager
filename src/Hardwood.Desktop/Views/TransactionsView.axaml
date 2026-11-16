@@ -232,11 +232,67 @@
       </TabItem>
       <TabItem Header="Free agents">
         <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,330">
-          <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,6"/>
+          <StackPanel Spacing="4" Margin="0,0,0,6">
+            <ComboBox ItemsSource="{Binding FaViews}" SelectedItem="{Binding FaView}" Width="120" ToolTip.Tip="Player cards, or the full table with every rating"/>
+            <TextBlock Text="{Binding FaStatus}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
           <ScrollViewer Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0">
             <ContentControl Content="{Binding Talk}"/>
           </ScrollViewer>
-          <DockPanel Grid.Row="1">
+          <DockPanel Grid.Row="1" IsVisible="{Binding ShowFaCards}">
+            <TextBlock DockPanel.Dock="Top" Text="{Binding FaCardsNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl x:Name="FreeAgentCards" ItemsSource="{Binding FreeAgentCards}" VerticalAlignment="Top">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="270" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:FreeAgentRow">
+                    <Button Classes="marketCard summerCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnFreeAgentCardClick" ToolTip.Tip="Pick him to see his ask and make an offer">
+                    <Border BorderBrush="{Binding FitBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                      <StackPanel Spacing="5">
+                        <Grid ColumnDefinitions="56,*,Auto">
+                          <c:Avatar Player="{Binding Player}" Width="52" Height="52" VerticalAlignment="Center"/>
+                          <StackPanel Grid.Column="1" Margin="8,0,6,0" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding CardName}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding CardName}"/>
+                            <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" VerticalAlignment="Center" ToolTip.Tip="Current ability as your scouts see him">
+                            <TextBlock Text="{Binding CA}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/>
+                            <TextBlock Text="CA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                          </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Bars}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:SkillBar">
+                                <Grid ColumnDefinitions="28,*,Auto" Height="15" Margin="0,0,8,0" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                  <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"/>
+                                  <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="11" Margin="5,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        <WrapPanel>
+                          <Border Background="#2A3440" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding AskTip}">
+                            <TextBlock Text="{Binding AskChip}" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                          <Border Background="{Binding FitBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding FitTip}">
+                            <TextBlock Text="{Binding FitText}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                          <Border Background="{x:Static vm:SummerCards.GraduateBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding Graduate}" ToolTip.Tip="This year's college graduate, undrafted">
+                            <TextBlock Text="Graduate" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                        </WrapPanel>
+                      </StackPanel>
+                    </Border>
+                  </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+          <DockPanel Grid.Row="1" IsVisible="{Binding ShowFaTable}">
           <c:ColumnPicker DockPanel.Dock="Top" Key="freeagents" Target="{Binding #FreeAgentGrid}"
                           Presets="Quick look=Pos,Age,OVR,Status|Ratings=Pos,Age,OVR,CA,PA,Sho,Ply,Def,Phy"/>
           <DataGrid x:Name="FreeAgentGrid" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
@@ -244,13 +300,14 @@
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="192"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="50"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="46"/>
-              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="52"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="52"/>
-              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="52"/>
-              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="50"/>
-              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="50"/>
-              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="50"/>
-              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="50"/>
+              <!-- H9 (run 67): a scouts' range ("15.8-16.4") was cut at 52 px; the columns size to their cells now. -->
+              <DataGridTextColumn Header="OVR" Binding="{Binding Ovr}" Width="SizeToCells" MinWidth="52"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="SizeToCells" MinWidth="48"/>
+              <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="SizeToCells" MinWidth="48"/>
+              <DataGridTextColumn Header="Sho" Binding="{Binding Sho}" Width="SizeToCells" MinWidth="48"/>
+              <DataGridTextColumn Header="Ply" Binding="{Binding Ply}" Width="SizeToCells" MinWidth="48"/>
+              <DataGridTextColumn Header="Def" Binding="{Binding Def}" Width="SizeToCells" MinWidth="48"/>
+              <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="SizeToCells" MinWidth="48"/>
               <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="SizeToCells" MinWidth="60"/>
             </DataGrid.Columns>
           </DataGrid>
