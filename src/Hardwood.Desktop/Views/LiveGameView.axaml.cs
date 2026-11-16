@@ -22,6 +22,7 @@ public partial class LiveGameView : UserControl
     public const double MinSideWidth = 330;
 
     private LiveGameViewModel? _vm;
+    private bool _fitPending = true;
 
     public LiveGameView()
     {
@@ -39,8 +40,10 @@ public partial class LiveGameView : UserControl
         };
         // The big view (tracker slice 3): fit the court to the column's height whenever the room changes.
         RootGrid.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitColumns(); };
-        LeftCol.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitCourt(); };
-        CourtPanel.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitCourt(); };
+        // The cap is worked out again only when the room changes (the column, the big view, the court tab), not when the
+        // caption or tab row wraps to another line, so the court doesn't pulse from play to play (code review, run 85).
+        LeftCol.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) { _fitPending = true; FitCourt(); } };
+        CourtPanel.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty && _fitPending) FitCourt(); };
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -56,7 +59,12 @@ public partial class LiveGameView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(LiveGameViewModel.BigCourt)) FitColumns();
-        if (e.PropertyName is nameof(LiveGameViewModel.BigCourt) or nameof(LiveGameViewModel.ShowCourt)) FitCourt();
+        if (e.PropertyName is nameof(LiveGameViewModel.BigCourt) or nameof(LiveGameViewModel.ShowCourt))
+        {
+            // After the layout pass, when the court's bounds are current again.
+            _fitPending = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(FitCourt, Avalonia.Threading.DispatcherPriority.Background);
+        }
     }
 
     /// <summary>True when the big view widens the court's column at this page width.</summary>
@@ -87,8 +95,10 @@ public partial class LiveGameView : UserControl
         {
             double overhead = CourtPanel.Bounds.Height - Court.Bounds.Height;
             cap = BigCourtCap(LeftCol.Bounds.Height, overhead, CourtPanel.Margin.Bottom);
+            _fitPending = false;
         }
-        else if (_vm is { BigCourt: true, ShowCourt: false }) return;   // the court is hidden: keep its size for when it comes back
+        else if (_vm is { BigCourt: true }) return;   // the court is hidden or not laid out yet: keep its size for now
+        else _fitPending = false;
         if (Math.Abs(Court.MaxHeight - cap) > 1) Court.MaxHeight = cap;
     }
 }

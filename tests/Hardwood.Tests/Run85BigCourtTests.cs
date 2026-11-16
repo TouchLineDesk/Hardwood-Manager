@@ -37,7 +37,8 @@ public class Run85BigCourtTests
     {
         var path = Path.Combine(Path.GetTempPath(), $"hw-run85-{Guid.NewGuid():N}.hwsave");
         var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
-        AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
+        var settingsPath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
+        AppSettings.FilePath = settingsPath;
         AppSettings.Use(new AppSettings { AutoPortraits = false, UiScale = scale });
         string? dir = Environment.GetEnvironmentVariable("HW_SCREENSHOT_DIR") is { Length: > 0 } d ? d : null;
         MainWindow? window = null;
@@ -76,6 +77,8 @@ public class Run85BigCourtTests
             if (scale == 1.0) Assert.True(big > LiveGameView.SmallCourtHeight + 20, $"court only {big:0} px tall at {width}x{height}");
             Assert.True(log.Bounds.Height >= LiveGameView.MinLogHeight - 1, $"play by play only {log.Bounds.Height:0} px");
             Assert.True(Math.Abs(court.Bounds.Width / big - LiveCourt.Aspect) < 0.02);   // still 94:50
+            // The court keeps its size from play to play (the cap only moves when the room does).
+            for (int i = 0; i < 12; i++) { page.StepOne(); Settle(); Assert.True(Math.Abs(court.Bounds.Height - big) < 1, $"court went {big:0} -> {court.Bounds.Height:0} on a new play"); }
             var problems = LayoutCheck.Scan(window);
             Assert.True(problems.Count == 0, $"Live game, big court {width}x{height} @{scale}:\n" + string.Join("\n", problems));
             if (dir != null) { using var f = window.CaptureRenderedFrame(); f?.Save(Path.Combine(dir, shot + ".png")); }
@@ -117,6 +120,7 @@ public class Run85BigCourtTests
             window?.Close();
             AppSettings.Use(oldSettings); AppSettings.FilePath = oldPath;
             try { File.Delete(path); } catch { }
+            try { File.Delete(settingsPath); } catch { }
         }
     }
 }
