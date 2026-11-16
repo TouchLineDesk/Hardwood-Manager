@@ -611,7 +611,10 @@ public static class UsaPyramid
             int W(Team t) => wins.TryGetValue(t.Id, out var w) ? w.wins : 41;
             int L(Team t) => wins.TryGetValue(t.Id, out var w) ? w.losses : 41;
             // H33 (run 82): level records go by the table's order (point difference; seasons from v0.97.2 store it), as Standings shows.
-            var place = last.Records.Select((r, i) => (r.teamId, i)).ToDictionary(x => x.teamId, x => x.i);
+            // A season stored before v0.97.2 is in team order: its ties keep the old rule (the lowest id goes down).
+            static double RecPct((int teamId, int wins, int losses) r) => r.wins + r.losses == 0 ? 0 : (double)r.wins / (r.wins + r.losses);
+            bool tableOrder = last.Records.Zip(last.Records.Skip(1)).All(x => RecPct(x.First) >= RecPct(x.Second));
+            var place = tableOrder ? last.Records.Select((r, i) => (r.teamId, i)).ToDictionary(x => x.teamId, x => x.i) : new Dictionary<int, int>();
             int P(Team t) => place.TryGetValue(t.Id, out var i) ? i : -1;
             foreach (var div in nabl.Teams.GroupBy(t => (t.Conference, t.Division)).OrderBy(g => g.Key.Conference).ThenBy(g => g.Key.Division).ToList())
                 down.Add(div.OrderBy(W).ThenByDescending(L).ThenByDescending(P).ThenBy(t => t.Id).First());
