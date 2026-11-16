@@ -881,6 +881,24 @@ public static class UsaPyramid
                     (gone.Count > 0 ? $"{t.FullName} let {string.Join(", ", gone.Select(p => p.Name))} go. " : "")
                     + (signed.Count > 0 ? $"In: {string.Join(", ", signed.Select(p => $"{p.Name} ({p.PrimaryPosition})"))}." : "")));
         }
+        // H29/H12 (run 78): your own club skips the rebuild above (you pick your squad), but it still opens the top league's
+        // season at that league's minimum: promotion comes after the top league's own opening-night fill, so a promoted
+        // club came up with the lower tier's 11. The best unsigned players take one-year minimum deals to make up the numbers.
+        if (up.FirstOrDefault(t => t.Id == world.ManagedClubId) is { } mine && mine.Roster.Count < fin.RosterMin)
+        {
+            var filled = new List<Player>();
+            foreach (var p in top.FreeAgents.Where(p => p.DraftRightsTeamId == null || p.DraftRightsTeamId == mine.Id).OrderByDescending(p => p.CurrentAbility).ToList())
+            {
+                if (mine.Roster.Count >= fin.RosterMin) break;
+                top.FreeAgents.Remove(p);
+                p.Contract = new Contract { Years = 1, Salary = fin.MinSalary, StartSeason = on.Year };
+                p.TeamId = mine.Id; p.DraftRightsTeamId = null;
+                mine.Roster.Add(p); filled.Add(p);
+            }
+            if (filled.Count > 0)
+                news.Add(($"{mine.FullName} make up the numbers",
+                    $"The {Hardwood.Core.Names.Brand.Top} needs {fin.RosterMin} players, so your sporting director signed {string.Join(", ", filled.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year minimum deals."));
+        }
         return news;
     }
 

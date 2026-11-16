@@ -164,6 +164,30 @@ public class PyramidTests
     }
 
     [Fact]
+    public void Your_promoted_club_reaches_the_top_leagues_roster_minimum()
+    {
+        // Run 78 (H29/H12): your club skips the promoted clubs' rebuild, and promotion comes after the top league's
+        // opening-night fill, so it came up with the lower tier's minimum (11, or 10 before) and opened short of 13.
+        var (nabl, world) = NewWorld(5);
+        world.FinishSeasons(new GameSimulator());
+        nabl.History.Add(new SeasonSummary { Season = 2026, Records = nabl.Teams.OrderBy(t => t.Id).Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() });
+        var t2 = world[UsaPyramid.Tier2];
+        var table = t2.Season.Table().Select(r => world.TeamById(r.TeamId)!).ToList();
+        var mine = UsaPyramid.Divisions(t2.Key, t2.Clubs).Select(d => table.First(d.Teams.Contains)).First();
+        world.ManagedClubId = mine.Id;
+        while (mine.Roster.Count > GameWorld.RosterMinimum) { var p = mine.Roster[^1]; mine.Roster.Remove(p); p.TeamId = null; p.Contract = null; }
+        var kept = mine.Roster.ToList();
+
+        var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
+
+        Assert.Contains(mine, nabl.Teams);
+        Assert.Equal(nabl.Finance.RosterMin, mine.Roster.Count);
+        Assert.All(kept, p => Assert.Contains(p, mine.Roster));                  // nobody you picked is cut
+        Assert.All(mine.Roster.Except(kept), p => Assert.Equal(nabl.Finance.MinSalary, p.Contract!.Salary));
+        Assert.Contains(news, n => n.Item1.Contains("make up the numbers"));
+    }
+
+    [Fact]
     public void A_second_drop_keeps_what_is_left_of_the_first_parachute()
     {
         // #363 (run 29's nabl-weak): NBA -> tier 2 -> tier 3 in two summers. The second drop used to overwrite the
