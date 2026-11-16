@@ -70,6 +70,12 @@ public class Run68CollegeCardTests
             Assert.True(roster.Teams.Take(20).Count(t => s.World.College!.Programs.Contains(t)) >= 8, "the conference's programs come first");
             var box = window.GetVisualDescendants().OfType<ComboBox>().First(c => ReferenceEquals(c.ItemsSource, roster.Teams));
             Assert.Same(s.HumanTeam, box.SelectedItem);
+            // Code review: a conference rival in season isn't in the NBA's standings, so his page has no trade line (it threw).
+            var rival = roster.Teams.First(t => t != s.HumanTeam && s.World.College!.Programs.Contains(t));
+            roster.Team = rival; Settle();
+            Assert.Same(rival, roster.Team);
+            Assert.Contains("scouting knowledge", roster.Summary);
+            roster.Team = s.HumanTeam;
 
             // H18: college conferences have no divisions, so Standings shows no Div column.
             vm.Navigate("Standings"); Settle();
