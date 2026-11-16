@@ -164,6 +164,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
     /// <summary>The graduate on top of your board. Kept apart from <see cref="SelectedProspect"/>, which the table
     /// clears whenever the pool is rebuilt.</summary>
     private Player? _boardPick;
+    /// <summary>The summer's phase when the page last refreshed (H21).</summary>
+    private OffseasonPhase? _talkPhase;
     partial void OnSelectedProspectChanged(ProspectRow? oldValue, ProspectRow? newValue)
     {
         if (newValue != null) _boardPick = newValue.Player;
@@ -291,6 +293,12 @@ public sealed partial class OffseasonViewModel : PageViewModel
         if (Tab == 4 && !ShowDraft) Tab = 1;
         if (Talk.Player == null || (!s.MyExpiring.Contains(Talk.Player) && !s.League.FreeAgents.Contains(Talk.Player) && !Talk.Signed))
             Talk.Show(Expiring.FirstOrDefault()?.Player ?? FreeAgents.FirstOrDefault()?.Player);
+        // H21 (run 75): a renewal panel left open into free agency read "New deal for …" with Release for a player
+        // who had already gone to the pool. When the summer moves on and he is no longer yours to renew, the panel
+        // reopens on him as he now is: "Sign …" for a free agent, without Release. (A Release press keeps its answer.)
+        else if (o != null && o.Phase != _talkPhase && Talk.IsRenewal && !s.MyExpiring.Contains(Talk.Player))
+            Talk.Show(Talk.Player);
+        _talkPhase = o?.Phase;
         MarkTalk();
     }
 

@@ -175,12 +175,12 @@ public sealed partial class GameSession
             Post($"{p.Name} re-signs", $"{p.Name} agrees a new deal: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
             return;
         }
-        League.FreeAgents.Remove(p);
+        League.FreeAgents.RemoveAll(x => x.Id == p.Id);   // H21: every entry, never one of two
         p.Contract = InNabl ? new Contract { Years = years, Salary = wage, StartSeason = ContractStart }
                             : GameWorld.ContractAt(p, wage, years, ContractDate, ContractStart);
         p.TeamId = team.Id;
         p.DraftRightsTeamId = null;
-        team.Roster.Add(p);
+        if (!team.Roster.Contains(p)) team.Roster.Add(p);
         team.DepthChart = null;
         People.PeopleEngine.Joined(p);
         if (InNabl && Offseason != null) Offseason.Report.FreeAgentSignings.Add((p, team, wage, years));
@@ -197,7 +197,7 @@ public sealed partial class GameSession
             World.AwaitingDecision[HumanTeam.Id].Remove(p);
             HumanTeam.Roster.Remove(p);
             p.TeamId = null; p.Contract = null;
-            League.FreeAgents.Add(p);
+            if (!League.FreeAgents.Contains(p)) League.FreeAgents.Add(p);
         }
         _talks.Remove(p.Id);
         HumanTeam.DepthChart = null;

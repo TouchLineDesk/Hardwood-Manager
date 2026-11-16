@@ -1305,6 +1305,7 @@ public sealed partial class GameSession
     {
         SyncHeadToHead(); // the day's results into the head-to-head book (#529)
         if (Save == null) return;
+        HealDuplicatePlayers();
         LastSaved = Today; LastSavedAt = DateTime.Now; _lastSavedPhase = Phase;
         // A college program you coach keeps its staff in the save like a club abroad (C2).
         var clubs = World.Clubs.Concat(World.College?.Programs.Where(t => t.Staff.Count > 0) ?? Enumerable.Empty<Team>());
@@ -1314,6 +1315,23 @@ public sealed partial class GameSession
         Save.SavePeople(this);
         Save.SaveCareer(this);
         Saved?.Invoke();
+    }
+
+    /// <summary>
+    /// Bug hunt H21 (run 75): a player in the free-agent pool and on a roster at once made every later save fail
+    /// ("UNIQUE constraint failed: player.id"), losing everything played after it. Before each save, anyone on a roster
+    /// (here, abroad or in college) leaves the pool, and the pool lists each player once. No random numbers.
+    /// Returns how many entries were dropped.
+    /// </summary>
+    public int HealDuplicatePlayers()
+    {
+        var placed = new HashSet<int>(League.Teams.SelectMany(t => t.Roster).Select(p => p.Id));
+        foreach (var p in World.Players) placed.Add(p.Id);
+        if (World.College?.Programs is { } programs) foreach (var p in programs.SelectMany(t => t.Roster)) placed.Add(p.Id);
+        var seen = new HashSet<int>();
+        int before = League.FreeAgents.Count;
+        League.FreeAgents.RemoveAll(p => placed.Contains(p.Id) || !seen.Add(p.Id));
+        return before - League.FreeAgents.Count;
     }
 
     public static GameSession Load(string path)
