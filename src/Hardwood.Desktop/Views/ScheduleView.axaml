@@ -31,8 +31,62 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
         <TextBlock Text="{Binding FilterSummary}" Classes="muted" IsVisible="{Binding FilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <!-- Run 72 (review #13 rank 9): the view switch and the form strip (the last ten results in the games shown). -->
+        <WrapPanel>
+          <ComboBox x:Name="GameViews" ItemsSource="{Binding GameViews}" SelectedItem="{Binding GameView}" Width="120" Margin="0,0,14,4" VerticalAlignment="Center" ToolTip.Tip="Scoreboard tiles, or the full table"/>
+          <StackPanel x:Name="FormStrip" Orientation="Horizontal" Spacing="8" Margin="0,0,0,4" VerticalAlignment="Center" IsVisible="{Binding HasForm}">
+            <ItemsControl ItemsSource="{Binding Form}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FormBox">
+                  <Border Width="20" Height="20" CornerRadius="4" Background="{Binding Won, Converter={x:Static c:Converters.WinLossBrush}}" ToolTip.Tip="{Binding Tip}">
+                    <TextBlock Text="{Binding Letter}" Foreground="#111" FontWeight="Bold" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding FormText}" Classes="muted" VerticalAlignment="Center"/>
+          </StackPanel>
+        </WrapPanel>
+        <!-- H20 (run 72): out of the postseason, the page says so. -->
+        <TextBlock Text="{Binding SeasonOver}" Foreground="{DynamicResource HwAccentBrush}" TextWrapping="Wrap" IsVisible="{Binding SeasonOver, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" RowHeight="28">
+      <Panel>
+      <!-- Run 72: scoreboard tiles first: a W/L stripe, the opponent's logo, the score big and the top performer. Click picks, double-click opens the box score. -->
+      <ListBox x:Name="GameTiles" ItemsSource="{Binding Games}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" IsVisible="{Binding ShowCards}"
+               Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+        <ListBox.Styles>
+          <Style Selector="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,10,10"/><Setter Property="CornerRadius" Value="6"/></Style>
+          <Style Selector="ListBoxItem:selected /template/ ContentPresenter"><Setter Property="Background" Value="Transparent"/></Style>
+          <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="Transparent"/></Style>
+          <Style Selector="ListBoxItem:selected Border.tile"><Setter Property="BorderBrush" Value="{DynamicResource HwAccentBrush}"/></Style>
+          <Style Selector="ListBoxItem:pointerover Border.tile"><Setter Property="Background" Value="{StaticResource HwPanelAltBrush}"/></Style>
+        </ListBox.Styles>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:GameRow">
+            <Border Classes="panel tile" Width="204" Height="134" Padding="0" ClipToBounds="True" BorderThickness="2" ToolTip.Tip="Click to see the head-to-head · double-click to open the box score">
+              <Grid ColumnDefinitions="5,*">
+                <Border Background="{Binding Kind, Converter={x:Static c:Converters.ResultStripe}}"/>
+                <StackPanel Grid.Column="1" Margin="10,7,8,6" Spacing="2">
+                  <TextBlock Text="{Binding TileWhen}" Classes="muted" FontSize="11.5"/>
+                  <Grid ColumnDefinitions="Auto,*" Height="34">
+                    <c:TeamLogo Team="{Binding OpponentTeam}" Width="30" Height="30" ShowText="False" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding TileOpponent}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="12.5"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding TileScore}" FontSize="19" FontWeight="Bold"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Record}" Classes="muted" VerticalAlignment="Bottom" Margin="6,0,0,3"/>
+                  </Grid>
+                  <TextBlock Text="{Binding TileFoot}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasEvent}"/>
+                  <TextBlock Text="{Binding Competition}" Foreground="{DynamicResource HwAccentBrush}" FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasEvent}"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <DataGrid x:Name="GameTable" ItemsSource="{Binding Games}" IsVisible="{Binding ShowTable}" SelectedItem="{Binding Selected}" DoubleTapped="OnRowDoubleTapped" RowHeight="28">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="72"/>
           <DataGridTemplateColumn Header="" Width="34">
@@ -49,6 +103,7 @@
           <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="*" MinWidth="200"/>
         </DataGrid.Columns>
       </DataGrid>
+      </Panel>
     </DockPanel>
     <StackPanel x:Name="Side" Grid.Column="1" Spacing="10" Width="300" Margin="16,0,0,0">
       <!-- #529: the head-to-head with the selected game's opponent, counted from the career's start only. -->
@@ -92,16 +147,21 @@
         <TextBlock Text="Playoffs" Classes="h2" Margin="0" VerticalAlignment="Center"/>
       </StackPanel>
       <!-- One card per series: round above, matchup and series score below, so long round names wrap rather than clip. -->
-      <ScrollViewer IsVisible="{Binding ShowPlayoffs}" MaxHeight="440">
+      <ScrollViewer x:Name="SeriesList" IsVisible="{Binding ShowPlayoffs}" MaxHeight="440">
         <ItemsControl ItemsSource="{Binding Series}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SeriesRow">
               <Border Classes="panel" Padding="10,6" Margin="0,0,0,6" BorderBrush="{Binding Involved, Converter={x:Static c:Converters.AccentIfTrue}}">
                 <StackPanel Spacing="2">
                   <TextBlock Text="{Binding Round}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding Matchup}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Score}" Margin="10,0,0,0" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"/>
+                  <!-- Run 72: both clubs' logos beside the matchup. -->
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="2" Margin="0,0,8,0" VerticalAlignment="Center">
+                      <c:TeamLogo Team="{Binding High}" Width="24" Height="24" ShowText="False"/>
+                      <c:TeamLogo Team="{Binding Low}" Width="24" Height="24" ShowText="False"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Matchup}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Score}" Margin="10,0,0,0" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
                   </Grid>
                 </StackPanel>
               </Border>

@@ -52,7 +52,8 @@ public class LayoutCheckTests
         // The live panel's other view: the game flow chart (the court is the default, Danny, run 45).
         if (live != null) yield return ("Live flow", v => { v.CurrentPage = live; live.ShowCourt = false; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
-            yield return (nav.Name, v => v.Navigate(nav.Name));
+            // The page keeps its view between visits (run 72): each size checks the tiles here and the table below.
+            yield return (nav.Name, v => { v.Navigate(nav.Name); if (v.CurrentPage is ScheduleViewModel sc) sc.GameView = "Cards"; });
         yield return ("Player", v =>
         {
             v.Navigate("Roster");
@@ -65,6 +66,12 @@ public class LayoutCheckTests
         {
             v.ShowTeam(v.Session!.League.Teams.OrderByDescending(t => t.FullName.Length).First(t => t != v.Session.HumanTeam));
             ((TeamViewModel)v.CurrentPage!).RosterView = "Full table";
+        });
+        // Run 72 (review #13 rank 9): Schedule & Results opens on scoreboard tiles; its table is checked here.
+        yield return ("Schedule table", v =>
+        {
+            v.Navigate("Schedule & Results");
+            ((ScheduleViewModel)v.CurrentPage!).GameView = "Full table";
         });
         yield return ("Records book", v => v.Navigate("History"));
         yield return ("Recruiting", v =>
@@ -418,7 +425,7 @@ public class LayoutCheckTests
             var pages = new (string name, Action<MainViewModel> open)[]
             {
                 ("Home", v => v.Navigate("Home")), ("Roster", v => v.Navigate("Roster")), ("Board", v => v.Navigate("Board")),
-                ("Standings", v => v.Navigate("Standings")), ("Schedule & Results", v => v.Navigate("Schedule & Results")),
+                ("Standings", v => v.Navigate("Standings")), ("Schedule & Results", v => { v.Navigate("Schedule & Results"); ((ScheduleViewModel)v.CurrentPage!).GameView = "Cards"; }),
                 ("Squad", v => v.Navigate("Squad")), ("Rotation", v => v.Navigate("Rotation")), ("Tactics", v => v.Navigate("Tactics")),
                 ("Box score", v =>
                 {
@@ -426,11 +433,13 @@ public class LayoutCheckTests
                     var sched = (ScheduleViewModel)v.CurrentPage!;
                     sched.OpenBox(sched.Games.Last(g => g.Played));
                 }),
+                ("Schedule table", v => { v.Navigate("Schedule & Results"); ((ScheduleViewModel)v.CurrentPage!).GameView = "Full table"; }),
                 // Danny's #529: the schedule filtered to one event (the longest chip row a college season has), with the head-to-head card.
                 ("Schedule filtered", v =>
                 {
                     v.Navigate("Schedule & Results");
                     var sched = (ScheduleViewModel)v.CurrentPage!;
+                    sched.GameView = "Cards";
                     sched.SetFilter(sched.Filters.Last().Name);
                     sched.Selected = sched.Games.FirstOrDefault(g => g.Played) ?? sched.Games.FirstOrDefault();
                 }),

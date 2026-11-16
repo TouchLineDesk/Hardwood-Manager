@@ -118,6 +118,12 @@ public sealed partial class HomeViewModel : PageViewModel
             var report = CoachAi.ScoutingReport(team, opp, next.Date);
             Scouting = report.Split(". ").FirstOrDefault() is { } first ? first.TrimEnd('.') + "." : report;
         }
+        else if (MainViewModel.SeasonOverText(s) is { } over)
+        {
+            // H20 (run 72): out of the postseason, the card says why there's no game.
+            Opponent = null; NextGame = $"{char.ToUpper(over[0])}{over[1..]}"; Scouting = "";
+            NextDetail = "The rest of the playoffs go on without you. Continue or Sim week moves on to the summer.";
+        }
         else { Opponent = null; NextGame = "No game scheduled"; NextDetail = s.Phase == SessionPhase.Offseason ? "It's the offseason." : ""; Scouting = ""; }
 
         Table.Clear();
