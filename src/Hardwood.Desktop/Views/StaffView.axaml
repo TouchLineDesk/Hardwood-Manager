@@ -10,7 +10,11 @@
       <c:StatStrip ItemsSource="{Binding Chips}" Accent="{Binding Accent}"/>
       <TextBlock Text="{Binding Status}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
-      <!-- Stacked rather than side by side (critic review #4: half-width tables cut off salary and ratings). -->
+      <!-- Run 66 (review #13 rank 5, Danny's #464): staff as cards (role badge, the five ratings as bars, the deal as a chip);
+           the market as cards with roles as chips; both tables one click away. -->
+      <Grid ColumnDefinitions="Auto,*">
+        <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" ToolTip.Tip="Cards, or the full tables with every rating"/>
+      </Grid>
       <StackPanel Spacing="12">
         <StackPanel>
           <Grid ColumnDefinitions="*,Auto,Auto">
@@ -19,7 +23,72 @@
             <Button Grid.Column="2" Content="Release selected" Command="{Binding FireCommand}" IsEnabled="{Binding SelectedOurs, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick someone on your staff first" ToolTip.ShowOnDisabled="True" VerticalAlignment="Bottom"/>
           </Grid>
           <TextBlock Text="{Binding Renewal}" TextWrapping="Wrap" Margin="0,4" IsVisible="{Binding Renewal, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-          <DataGrid ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="200">
+          <StackPanel IsVisible="{Binding ShowCards}" Margin="0,4,0,0">
+            <ItemsControl x:Name="OurCards" ItemsSource="{Binding Ours}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="250" MaxColumns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StaffRow">
+                  <Button Classes="marketCard staffCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnOursClick" ToolTip.Tip="Pick him to extend or release">
+                      <Border BorderBrush="{Binding RoleBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="9,7">
+                        <StackPanel Spacing="5">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Spacing="2">
+                              <Border Background="{Binding RoleBrush}" CornerRadius="4" Padding="7,1" HorizontalAlignment="Left">
+                                <TextBlock Text="{Binding Role}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                              </Border>
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                              <TextBlock Text="{Binding AgeLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StyleText}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0" ToolTip.Tip="His role's key rating, out of 20">
+                              <TextBlock Text="{Binding Key}" FontSize="26" FontWeight="Bold" Foreground="{Binding KeyBrush}" HorizontalAlignment="Right"/>
+                              <TextBlock Text="{Binding KeyLabel}" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                          </Grid>
+                          <ItemsControl ItemsSource="{Binding Bars}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:StaffBar">
+                                <Grid ColumnDefinitions="34,*,24" Height="15" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                  <TextBlock Text="{Binding Label}" FontSize="11" FontWeight="{Binding Weight}" VerticalAlignment="Center"/>
+                                  <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="11" FontWeight="{Binding Weight}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <WrapPanel>
+                            <Border Background="{Binding CompareBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding HasCompare}" ToolTip.Tip="{Binding CompareTip}">
+                              <TextBlock Text="{Binding Compare}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                            <Border Background="{Binding ContractBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding ContractTip}">
+                              <TextBlock Text="{Binding ContractChip}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                          </WrapPanel>
+                        </StackPanel>
+                      </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl x:Name="VacantCards" ItemsSource="{Binding Vacant}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="250" MaxColumns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:VacantRole">
+                  <Border Classes="panel" BorderBrush="{Binding RoleBrush}" BorderThickness="4,1,1,1" Margin="0,0,10,10" Padding="9,7">
+                    <StackPanel Spacing="4">
+                      <Border Background="{Binding RoleBrush}" CornerRadius="4" Padding="7,1" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                      </Border>
+                      <TextBlock Text="Vacant" FontWeight="SemiBold" FontSize="14" Foreground="#F85149"/>
+                      <TextBlock Text="{Binding Text}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                      <Button Content="Find one ›" Click="OnFindClick" HorizontalAlignment="Left" ToolTip.Tip="Show the staff market for this role"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <DataGrid x:Name="StaffOursGrid" ItemsSource="{Binding Ours}" SelectedItem="{Binding SelectedOurs}" Height="200" IsVisible="{Binding ShowTable}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="170"/>
@@ -32,14 +101,75 @@
           </DataGrid>
         </StackPanel>
         <StackPanel>
-          <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+          <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBlock Text="Staff market" Classes="h2"/>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding RoleFilter}" Width="190" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
-            <Button Grid.Column="2" Content="Interview" Command="{Binding InterviewCandidateCommand}" IsEnabled="{Binding SelectedMarket, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a candidate in the staff market first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
-            <Button Grid.Column="3" Classes="primary" Content="Hire on his terms" Command="{Binding HireCommand}" IsEnabled="{Binding CanHire}" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="1" Content="Interview" Command="{Binding InterviewCandidateCommand}" IsEnabled="{Binding SelectedMarket, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a candidate in the staff market first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,0" VerticalAlignment="Bottom"/>
+            <Button Grid.Column="2" Classes="primary" Content="Hire on his terms" Command="{Binding HireCommand}" IsEnabled="{Binding CanHire}" VerticalAlignment="Bottom"/>
           </Grid>
+          <ItemsControl x:Name="RoleChips" ItemsSource="{Binding RoleChips}" Margin="0,4,0,0">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FilterChip">
+                <Button Classes="filter" Classes.on="{Binding Selected}" Margin="0,0,6,4" ToolTip.Tip="{Binding Tip}" Tag="{Binding Name}" Click="OnRoleClick">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Record}" Classes="filterRecord"/>
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <TextBlock Text="{Binding Interview}" TextWrapping="Wrap" Margin="0,4" IsVisible="{Binding Interview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-          <DataGrid ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="240">
+          <StackPanel IsVisible="{Binding ShowCards}">
+            <TextBlock Text="{Binding MarketCardsNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <ItemsControl x:Name="StaffMarketCards" ItemsSource="{Binding MarketCards}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="250" MaxColumns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StaffRow">
+                  <Button Classes="marketCard staffCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnMarketClick" ToolTip.Tip="Pick him, then Interview">
+                      <Border BorderBrush="{Binding RoleBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="9,7">
+                        <StackPanel Spacing="5">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Spacing="2">
+                              <Border Background="{Binding RoleBrush}" CornerRadius="4" Padding="7,1" HorizontalAlignment="Left">
+                                <TextBlock Text="{Binding Role}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                              </Border>
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                              <TextBlock Text="{Binding AgeLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StyleText}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0" ToolTip.Tip="His role's key rating, out of 20">
+                              <TextBlock Text="{Binding Key}" FontSize="26" FontWeight="Bold" Foreground="{Binding KeyBrush}" HorizontalAlignment="Right"/>
+                              <TextBlock Text="{Binding KeyLabel}" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                          </Grid>
+                          <ItemsControl ItemsSource="{Binding Bars}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:StaffBar">
+                                <Grid ColumnDefinitions="34,*,24" Height="15" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                  <TextBlock Text="{Binding Label}" FontSize="11" FontWeight="{Binding Weight}" VerticalAlignment="Center"/>
+                                  <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding Value}" FontSize="11" FontWeight="{Binding Weight}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <WrapPanel>
+                            <Border Background="{Binding CompareBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding HasCompare}" ToolTip.Tip="{Binding CompareTip}">
+                              <TextBlock Text="{Binding Compare}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                            <Border Background="{Binding ContractBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding ContractTip}">
+                              <TextBlock Text="{Binding ContractChip}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                          </WrapPanel>
+                        </StackPanel>
+                      </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <DataGrid x:Name="StaffMarketGrid" ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedMarket}" Height="240" IsVisible="{Binding ShowTable}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="190"/>
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="170"/>

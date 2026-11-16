@@ -5,7 +5,13 @@ using Hardwood.Core.Model;
 
 namespace Hardwood.Desktop.ViewModels;
 
-public sealed class StaffRow
+/// <summary>One rating on a staff card (run 66): a label, the 1–20 value as a bar, and whether it's the role's key.</summary>
+public sealed record StaffBar(string Label, int Value, bool IsKey, Avalonia.Media.IBrush Brush, string Tip)
+{
+    public Avalonia.Media.FontWeight Weight => IsKey ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal;
+}
+
+public sealed partial class StaffRow : ObservableObject
 {
     public required Staff Staff { get; init; }
     public string Role => Staff.RoleName(Staff.Role);
@@ -24,6 +30,87 @@ public sealed class StaffRow
     /// <summary>His way of working (roadmap 12): one of two styles per role, each with an effect.</summary>
     public string Style => Staff.Style;
     public string StyleText => Staff.StyleText;
+
+    // ---- Run 66 (review #13 rank 5, Danny's #464): the staff card. ----
+    /// <summary>The card is lit when he's the one picked.</summary>
+    [ObservableProperty] private bool _picked;
+    /// <summary>On the market: is he better than the man you have in the role? "" on your own staff.</summary>
+    public string Compare { get; init; } = "";
+    public Avalonia.Media.IBrush CompareBrush { get; init; } = StaffCards.Neutral;
+    public string CompareTip { get; init; } = "";
+    public bool HasCompare => Compare.Length > 0;
+    public Avalonia.Media.IBrush RoleBrush => StaffCards.RoleBrush(Staff.Role);
+    public Avalonia.Media.IBrush KeyBrush => StaffCards.BandBrush(Key);
+    public string KeyLabel => StaffCards.KeyName(Staff.Role);
+    public string AgeLine => $"Age {Age} · {Style}";
+    /// <summary>The five ratings as bars, the role's own first and in bold.</summary>
+    public List<StaffBar> Bars => StaffCards.Bars(Staff);
+    /// <summary>Your staff: years left, amber in his final year. The market: what he'd ask a season.</summary>
+    public string ContractChip => Pay >= 0 ? $"Asks {Salary} a season" : Staff.ContractYears > 1 ? $"{Staff.ContractYears} yrs left · {Salary}" : $"Final year · {Salary}";
+    public Avalonia.Media.IBrush ContractBrush => Pay < 0 && Staff.ContractYears <= 1 ? StandingRow.PlayInBrush : StaffCards.Neutral;
+    public string ContractTip => Pay >= 0 ? "His salary a season if you hire him (staff pay isn't counted against the cap)"
+        : Staff.ContractYears > 1 ? "Years left on his deal and his salary a season" : "His deal ends this summer: pick him and press Extend, or he leaves";
+}
+
+/// <summary>Run 66: the colours and bars shared by the staff cards.</summary>
+public static class StaffCards
+{
+    public static readonly Avalonia.Media.IBrush Neutral = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A3440"));
+    private static readonly Avalonia.Media.IBrush Other = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#5A6573"));
+    private static readonly Avalonia.Media.IBrush Mid = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2F6FB3"));
+    private static readonly Dictionary<StaffRole, Avalonia.Media.IBrush> Roles = new()
+    {
+        [StaffRole.AssistantCoach] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#7A4FB3")),
+        [StaffRole.DevelopmentCoach] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2E8B57")),
+        [StaffRole.StrengthCoach] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B7642A")),
+        [StaffRole.Physio] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B23A5A")),
+        [StaffRole.Scout] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2F7F9F")),
+    };
+
+    public static Avalonia.Media.IBrush RoleBrush(StaffRole r) => Roles[r];
+
+    /// <summary>15+ green, 8–14 blue, 7 and under red: the same bands the coach chips use.</summary>
+    public static Avalonia.Media.IBrush BandBrush(int v) => v >= 15 ? StandingRow.PlayoffBrush : v <= 7 ? StandingRow.RelegationBrush : Mid;
+
+    public static string KeyName(StaffRole r) => r switch
+    {
+        StaffRole.AssistantCoach => "Coaching",
+        StaffRole.DevelopmentCoach => "Development",
+        StaffRole.StrengthCoach => "Fitness",
+        StaffRole.Physio => "Medical",
+        _ => "Scouting",
+    };
+
+    private static readonly (StaffRole Role, string Label, string Tip)[] Order =
+    {
+        (StaffRole.AssistantCoach, "Coa", "Coaching: tactics and in-game work; also feeds development"),
+        (StaffRole.DevelopmentCoach, "Dev", "Development: teaching young players, the main driver of growth"),
+        (StaffRole.StrengthCoach, "Fit", "Fitness: lowers injury risk and slows physical decline"),
+        (StaffRole.Physio, "Med", "Medical: shortens injuries"),
+        (StaffRole.Scout, "Sco", "Scouting: how much of other players' ratings you can see"),
+    };
+
+    private static int Value(Staff s, StaffRole r) => r switch
+    {
+        StaffRole.AssistantCoach => s.Coaching,
+        StaffRole.DevelopmentCoach => s.Development,
+        StaffRole.StrengthCoach => s.Fitness,
+        StaffRole.Physio => s.Medical,
+        _ => s.Scouting,
+    };
+
+    /// <summary>The five ratings, the role's key one first (in its band colour) and the rest in grey.</summary>
+    public static List<StaffBar> Bars(Staff s) =>
+        Order.OrderBy(o => o.Role == s.Role ? 0 : 1)
+             .Select(o => { int v = Value(s, o.Role); bool key = o.Role == s.Role; return new StaffBar(o.Label, v, key, key ? BandBrush(v) : Other, $"{o.Tip}. {v} of 20" + (key ? " (his role's key rating)" : "")); })
+             .ToList();
+}
+
+/// <summary>Run 66: a role with nobody in it, as a card that sends you to the market for one.</summary>
+public sealed record VacantRole(StaffRole Role, string Text)
+{
+    public string Name => Staff.RoleName(Role);
+    public Avalonia.Media.IBrush RoleBrush => StaffCards.RoleBrush(Role);
 }
 
 public sealed partial class FocusRow : ObservableObject
@@ -50,6 +137,17 @@ public sealed partial class StaffViewModel : PageViewModel
     public string[] RoleFilters { get; } = { "All roles", "Assistant coach", "Development coach", "Strength & conditioning", "Physio", "Head scout" };
     public string[] FocusOptions { get; } = { "Balanced", "Shooting", "Playmaking", "Defense", "Mental", "Physical" };
     [ObservableProperty] private string _roleFilter = "All roles";
+    // Run 66 (review #13 rank 5): cards first, the tables one click away; roles as chips with counts.
+    public string[] Views { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCards), nameof(ShowTable))] private string _view = "Cards";
+    public bool ShowCards => View == "Cards";
+    public bool ShowTable => !ShowCards;
+    /// <summary>How many market candidates get a card (the best by their role's key rating); the rest are in the table.</summary>
+    public const int CardCount = 12;
+    public ObservableCollection<StaffRow> MarketCards { get; } = new();
+    public ObservableCollection<VacantRole> Vacant { get; } = new();
+    [ObservableProperty] private List<FilterChip> _roleChips = new();
+    [ObservableProperty] private string _marketCardsNote = "";
     [ObservableProperty] private StaffRow? _selectedOurs;
     [ObservableProperty] private StaffRow? _selectedMarket;
     [ObservableProperty] private string _status = "";
@@ -78,6 +176,8 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _developmentChips = new();
     public bool TrainingManual => !DelegateTraining;
     partial void OnSelectedMarketChanged(StaffRow? value) { Interview = ""; CanHire = false; }
+    partial void OnSelectedMarketChanged(StaffRow? oldValue, StaffRow? newValue) { if (oldValue != null) oldValue.Picked = false; if (newValue != null) newValue.Picked = true; }
+    partial void OnSelectedOursChanged(StaffRow? oldValue, StaffRow? newValue) { if (oldValue != null) oldValue.Picked = false; if (newValue != null) newValue.Picked = true; }
     partial void OnDelegateTrainingChanged(bool value)
     {
         OnPropertyChanged(nameof(TrainingManual));
@@ -109,12 +209,15 @@ public sealed partial class StaffViewModel : PageViewModel
     {
         _loading = true;
         var s = Session; var team = s.HumanTeam;
-        Ours.Clear();
+        var keepOurs = SelectedOurs?.Staff;
+        Ours.Clear(); Vacant.Clear();
         foreach (var role in Enum.GetValues<StaffRole>())
         {
             var st = team.Staff.FirstOrDefault(x => x.Role == role);
             if (st != null) Ours.Add(new StaffRow { Staff = st, Age = st.Age(s.Today) });
+            else Vacant.Add(new VacantRole(role, VacancyText(role)));
         }
+        if (keepOurs != null && Ours.FirstOrDefault(r => r.Staff == keepOurs) is { } again) { again.Picked = true; SelectedOurs = again; }
         FillMarket();
         Players.Clear();
         double staffTotal = 0; (Player p, double c)? riser = null;
@@ -154,10 +257,72 @@ public sealed partial class StaffViewModel : PageViewModel
 
     private void FillMarket()
     {
+        var keep = SelectedMarket?.Staff;
         Market.Clear();
+        var team = Session.HumanTeam;
         foreach (var st in Session.League.FreeStaff.Where(st => RoleFilter == "All roles" || Staff.RoleName(st.Role) == RoleFilter).OrderByDescending(st => st.KeyAttribute))
-            Market.Add(new StaffRow { Staff = st, Age = st.Age(Session.Today), Pay = Session.StaffPayFor(st) });
+        {
+            var (cmp, brush, tip) = CompareWith(team.Staff.FirstOrDefault(x => x.Role == st.Role), st);
+            Market.Add(new StaffRow { Staff = st, Age = st.Age(Session.Today), Pay = Session.StaffPayFor(st), Compare = cmp, CompareBrush = brush, CompareTip = tip });
+        }
+        MarketCards.Clear();
+        foreach (var r in Market.Take(CardCount)) MarketCards.Add(r);
+        if (keep != null && Market.FirstOrDefault(r => r.Staff == keep) is { } again)
+        {
+            if (!MarketCards.Contains(again)) MarketCards.Insert(0, again);
+            again.Picked = true;
+            if (SelectedMarket != again) SelectedMarket = again;
+        }
+        else if (SelectedMarket != null) SelectedMarket = null;
+        var free = Session.League.FreeStaff;
+        RoleChips = RoleFilters.Select(f => new FilterChip
+        {
+            Name = f, Selected = f == RoleFilter,
+            Record = (f == "All roles" ? free.Count : free.Count(x => Staff.RoleName(x.Role) == f)).ToString("N0"),
+            Tip = f == "All roles" ? "Every candidate on the staff market" : $"Only {f.ToLowerInvariant()} candidates",
+        }).ToList();
+        MarketCardsNote = Market.Count == 0 ? (RoleFilter == "All roles" ? "Nobody is on the staff market right now. Candidates appear as clubs change their staff." : $"No {RoleFilter.ToLowerInvariant()} is on the market right now. Pick another role.")
+            : Market.Count <= CardCount ? $"All {Market.Count} candidates, best first by their role's key rating. Pick one, then Interview."
+            : $"The best {CardCount} of {Market.Count:N0}, by their role's key rating. Pick one, then Interview; Full table lists them all.";
     }
+
+    /// <summary>Run 66: a role chip on the staff market.</summary>
+    public void SetRole(string role)
+    {
+        if (!RoleFilters.Contains(role)) return;
+        RoleFilter = role;
+    }
+
+    /// <summary>Run 66: a vacant role's card sends you to the market for that role, in cards.</summary>
+    public void FindFor(StaffRole role)
+    {
+        View = "Cards";
+        RoleFilter = Staff.RoleName(role);
+    }
+
+    /// <summary>Run 66: how a candidate compares with the man you have in his role.</summary>
+    public static (string Text, Avalonia.Media.IBrush Brush, string Tip) CompareWith(Staff? yours, Staff him)
+    {
+        string key = StaffCards.KeyName(him.Role).ToLowerInvariant();
+        if (yours == null) return ("Fills a vacancy", StandingRow.PlayoffBrush, $"You have no {Staff.RoleName(him.Role).ToLowerInvariant()}: an empty role hurts");
+        int d = him.KeyAttribute - yours.KeyAttribute;
+        if (d == 0) return ($"Level with {yours.LastName}", StaffCards.Neutral, $"Same {key} as {yours.Name} ({yours.KeyAttribute})");
+        return ($"{d:+0;-0} on {yours.LastName}", d > 0 ? StandingRow.PlayoffBrush : StandingRow.RelegationBrush,
+                $"{key} {him.KeyAttribute} against {yours.Name}'s {yours.KeyAttribute}");
+    }
+
+    private static string VacancyText(StaffRole r) => r switch
+    {
+        StaffRole.AssistantCoach => "Nobody helps with tactics or the training ground.",
+        StaffRole.DevelopmentCoach => "Young players grow slower without him.",
+        StaffRole.StrengthCoach => "Injury risk is higher without him.",
+        StaffRole.Physio => "Injuries last longer without him.",
+        _ => "You see less of other players' ratings.",
+    };
+
+    /// <summary>Run 66: pressing a card picks him (your staff or the market).</summary>
+    public void PickOurs(StaffRow row) => SelectedOurs = row;
+    public void PickMarket(StaffRow row) => SelectedMarket = row;
 
     private void UpdateEffects()
     {

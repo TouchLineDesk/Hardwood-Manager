@@ -140,6 +140,16 @@ public class LayoutCheckTests
             tx.Tab = 0; tx.MarketView = "Cards";
             tx.SelectedMarket = tx.MarketCards.OrderByDescending(r => r.Name.Length + r.ClubName.Length).First();
         });
+        // Run 66 (review #13 rank 5): staff cards with a vacant role and "Fills a vacancy" chips; the longest name picked.
+        yield return ("Staff cards", v =>
+        {
+            var t = v.Session!.HumanTeam;
+            if (t.Staff.FirstOrDefault(x => x.Role == Hardwood.Core.Model.StaffRole.StrengthCoach) is { } sc) v.Session.FireStaff(sc);
+            v.Navigate("Staff & Training");
+            var st = (StaffViewModel)v.CurrentPage!;
+            st.View = "Cards"; st.FindFor(Hardwood.Core.Model.StaffRole.StrengthCoach);
+            if (st.MarketCards.Count > 0) st.PickMarket(st.MarketCards.OrderByDescending(r => r.Name.Length).First());
+        });
         // Danny, #447 / D54: the My bids list, one row in every status, with the longest names and reactions.
         yield return ("My bids", v =>
         {
