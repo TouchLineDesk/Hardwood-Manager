@@ -51,6 +51,7 @@ public class BugFinderTests
         var bf = new BugFinder(vm, window, Path.Combine(dir, "shots"));
         var log = new List<string>();
         void L(string x) { log.Add($"{DateTime.Now:HH:mm:ss} {x}"); _out.WriteLine(x); File.AppendAllText(Path.Combine(dir, "progress.txt"), x + "\n"); }
+        bf.Log = L;
         try
         {
             foreach (var career in careers)
@@ -99,9 +100,13 @@ public class BugFinderTests
         bool livePlayed = false, firedDone = career != "fired";
         var sweepAt = new HashSet<int> { 70 };
         int days = 0, inSeasonDays = 0, guard = 0;
+        var club = vm.Session!.HumanTeam;
         while (vm.Session!.League.Season < startYear + seasons && guard++ < 1400)
         {
             var s = vm.Session!;
+            // A change of club (a job taken) is worth a line in the log.
+            if (s.HumanTeam.Id != club.Id) { L($"{career}: the club is now {s.HumanTeam.FullName} ({s.HumanLeagueName}, was {club.FullName}) on {s.Today:MMM d yyyy}"); }
+            club = s.HumanTeam;
             if (s.Phase == SessionPhase.Offseason) { Offseason(vm, bf, L); continue; }
             // One live game a career, the way the player sees it: the studio show, the live game, the box score.
             if (!livePlayed && s.Phase == SessionPhase.RegularSeason && s.HumanPlaysToday && s.Employed)
@@ -117,7 +122,7 @@ public class BugFinderTests
             if (vm.Session!.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason || s.InCollege) inSeasonDays++;
             if (days % 3 == 0 || vm.Session.Phase != phase) vm.AfterTick();
             bf.Invariants();
-            if (vm.Session.Phase != phase) { L($"{career}: {phase} → {vm.Session.Phase} on {vm.Session.Today:MMM d yyyy}"); vm.AfterTick(); bf.SweepAll($"start of {vm.Session.Phase}"); bf.SaveAndReload($"start of {vm.Session.Phase}"); }
+            if (vm.Session.Phase != phase) { L($"{career}: {phase} → {vm.Session.Phase} on {vm.Session.Today:MMM d yyyy} ({vm.Session.HumanTeam.FullName}, {vm.Session.HumanLeagueName})"); vm.AfterTick(); bf.SweepAll($"start of {vm.Session.Phase}"); bf.SaveAndReload($"start of {vm.Session.Phase}"); }
             if (sweepAt.Contains(inSeasonDays) && vm.Session.Phase != SessionPhase.Offseason)
             {
                 sweepAt.Remove(inSeasonDays);

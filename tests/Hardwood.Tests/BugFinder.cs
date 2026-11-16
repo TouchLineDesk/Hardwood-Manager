@@ -32,6 +32,8 @@ internal sealed class BugFinder
     // Buttons are pressed once per career, page and phase; later visits only look.
     private readonly HashSet<string> _pressed = new();
     public int Pages, Tabs, Buttons, Days, Reloads;
+    /// <summary>Where extra detail goes (the progress log), when the test sets it.</summary>
+    public Action<string>? Log { get; set; }
 
     public BugFinder(MainViewModel vm, MainWindow window, string? shots)
     {
@@ -199,6 +201,9 @@ internal sealed class BugFinder
         {
             var l = Label(b);
             if (Skip.Any(s => l.StartsWith(s, StringComparison.OrdinalIgnoreCase))) continue;
+            // Bug-hunt Nov 15: the Board's Accept takes another club's job offer, which turned the "gleague" career into a
+            // college one after its first season (and made H8 look like lost data). The fired career takes its job itself.
+            if (page == "Board" && l.StartsWith("Accept", StringComparison.OrdinalIgnoreCase)) continue;
             if (!labels.Contains(l)) labels.Add(l);
         }
         foreach (var label in labels.Take(30))
@@ -211,9 +216,13 @@ internal sealed class BugFinder
             string where = tab is int ti && Tabs_() is { } tcc ? $"{page} → {TabHeader(tcc, ti)}" : page;
             var before = Snapshot();
             var pageBefore = _vm.CurrentPage;
+            var clubBefore = _vm.Session.HumanTeam;
             var ex = Press(b);
             Settle();
             Buttons++;
+            // A press that changes your club is logged: the sweep moved the career and later findings are about the new club.
+            if (_vm.Session is { } after && after.HumanTeam != clubBefore)
+                Log?.Invoke($"{where}: \"{label}\" ({when}) moved the career from {clubBefore.FullName} to {after.HumanTeam.FullName} ({after.HumanLeagueName})");
             if (ex != null) { Add("crash", where, $"pressing \"{label}\" ({when}): {ex.GetType().Name}: {ex.Message} {Frame(ex)}", true); continue; }
             if (_vm.CurrentPage != pageBefore || _vm.Session == null) continue;
             if (Snapshot() == before) Add("no feedback", where, $"\"{label}\" changes nothing on screen ({when})", true);
