@@ -10,6 +10,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 63: custom views on the big tables (Danny, #465; Phase 3, #653). A View button above Roster, the
 /// transfer market, free agents, League Leaders and a team page's roster: ready-made views, a tick box per column,
 /// "My view" remembered per table in settings.json.</summary>
+[Collection(SharedUiState.Name)]   // run 65: it swaps AppSettings, app-wide state (raced PortraitServiceTests in CI)
 public class Run63ViewTests
 {
     [Avalonia.Headless.XUnit.AvaloniaFact]
