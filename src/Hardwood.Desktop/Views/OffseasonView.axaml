@@ -10,12 +10,63 @@
       <TextBlock Text="{Binding Instructions}" Classes="muted" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding CapText}" IsVisible="{Binding InOffseason}" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding Status}" Classes="accent"/>
+      <!-- Run 67 (review #13 rank 6, Danny's #464): the summer boards as player cards; the full tables one click away. -->
+      <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" Margin="0,4,0,0" IsVisible="{Binding InOffseason}" ToolTip.Tip="Player cards, or the full tables with every rating"/>
     </StackPanel>
 
     <Grid ColumnDefinitions="3*,2*" IsVisible="{Binding InOffseason}">
       <TabControl SelectedIndex="{Binding Tab}">
         <TabItem Header="Contracts up" IsEnabled="{Binding ShowContracts}">
-          <DataGrid ItemsSource="{Binding Expiring}" SelectedItem="{Binding SelectedExpiring}">
+          <Panel>
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowCards}">
+            <ItemsControl x:Name="ExpiringCards" ItemsSource="{Binding Expiring}" VerticalAlignment="Top">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="270" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ExpiringRow">
+                  <Button Classes="marketCard summerCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnExpiringClick" ToolTip.Tip="Pick him to talk about a new deal">
+                    <Border BorderBrush="{Binding Team, Converter={x:Static c:Converters.TeamAccentBrush}}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                      <StackPanel Spacing="5">
+                        <Grid ColumnDefinitions="56,*,Auto">
+                          <c:Avatar Player="{Binding Player}" Team="{Binding Team}" Width="52" Height="52" VerticalAlignment="Center"/>
+                          <StackPanel Grid.Column="1" Margin="8,0,6,0" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                            <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding LastSeason}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="Last season, per game"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" VerticalAlignment="Center" ToolTip.Tip="Current ability">
+                            <TextBlock Text="{Binding CA}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/>
+                            <TextBlock Text="CA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                          </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Bars}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:SkillBar">
+                                <Grid ColumnDefinitions="28,*,Auto" Height="15" Margin="0,0,8,0" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                  <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"/>
+                                  <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="11" Margin="5,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        <WrapPanel>
+                          <Border Background="#2A3440" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="What his agent asks: wage a season × years">
+                            <TextBlock Text="{Binding AskChip}" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                          <Border Background="{Binding FitBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding FitTip}">
+                            <TextBlock Text="{Binding Fits}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                        </WrapPanel>
+                      </StackPanel>
+                    </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <DataGrid x:Name="ExpiringGrid" ItemsSource="{Binding Expiring}" SelectedItem="{Binding SelectedExpiring}" IsVisible="{Binding ShowTable}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64"/>
@@ -27,9 +78,64 @@
               <DataGridTextColumn Header="" Binding="{Binding Fits}" Width="100"/>
             </DataGrid.Columns>
           </DataGrid>
+          </Panel>
         </TabItem>
         <TabItem Header="Free agents" IsEnabled="{Binding ShowFreeAgency}">
-          <DataGrid ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}">
+          <Panel>
+          <DockPanel IsVisible="{Binding ShowCards}">
+            <TextBlock DockPanel.Dock="Top" Text="{Binding FreeAgentNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="FreeAgentCards" ItemsSource="{Binding FreeAgentCards}" VerticalAlignment="Top">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="270" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FreeAgentRow">
+                  <Button Classes="marketCard summerCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnFreeAgentClick" ToolTip.Tip="Pick him to see his ask and make an offer">
+                    <Border BorderBrush="{Binding FitBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                      <StackPanel Spacing="5">
+                        <Grid ColumnDefinitions="56,*,Auto">
+                          <c:Avatar Player="{Binding Player}" Width="52" Height="52" VerticalAlignment="Center"/>
+                          <StackPanel Grid.Column="1" Margin="8,0,6,0" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding CardName}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding CardName}"/>
+                            <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" VerticalAlignment="Center" ToolTip.Tip="Current ability as your scouts see him">
+                            <TextBlock Text="{Binding CA}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Right"/>
+                            <TextBlock Text="CA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                          </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Bars}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:SkillBar">
+                                <Grid ColumnDefinitions="28,*,Auto" Height="15" Margin="0,0,8,0" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                  <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"/>
+                                  <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="11" Margin="5,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        <WrapPanel>
+                          <Border Background="#2A3440" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding AskTip}">
+                            <TextBlock Text="{Binding AskChip}" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                          <Border Background="{Binding FitBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding FitTip}">
+                            <TextBlock Text="{Binding FitText}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                          <Border Background="{x:Static vm:SummerCards.GraduateBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" IsVisible="{Binding Graduate}" ToolTip.Tip="This year's college graduate, undrafted">
+                            <TextBlock Text="Graduate" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                          </Border>
+                        </WrapPanel>
+                      </StackPanel>
+                    </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+          <DataGrid x:Name="SummerFreeAgentGrid" ItemsSource="{Binding FreeAgents}" SelectedItem="{Binding SelectedFreeAgent}" IsVisible="{Binding ShowTable}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="190"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="60"/>
@@ -43,6 +149,7 @@
               <DataGridTextColumn Header="Phy" Binding="{Binding Phy}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
+          </Panel>
         </TabItem>
         <TabItem Header="Overseas (buyouts)" IsVisible="{Binding ShowBuyouts}">
           <Grid RowDefinitions="Auto,Auto,*">
@@ -85,11 +192,58 @@
         <TabItem Header="Draft" IsVisible="{Binding ShowDraft}">
           <Grid RowDefinitions="Auto,Auto,2*,Auto,*">
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button Classes="primary" Content="Draft selected" Command="{Binding DraftCommand}" IsEnabled="{Binding OnTheClock}"/>
+              <Button Classes="primary" Content="{Binding DraftButton}" Command="{Binding DraftCommand}" IsEnabled="{Binding OnTheClock}" ToolTip.Tip="Your turn comes in the lottery's order" ToolTip.ShowOnDisabled="True"/>
               <TextBlock Text="College draft" Classes="h2" Margin="0" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock Grid.Row="1" Text="{Binding DraftText}" TextWrapping="Wrap" Opacity="0.8" Margin="0,4,0,6"/>
-            <DataGrid Grid.Row="2" ItemsSource="{Binding DraftPool}" SelectedItem="{Binding SelectedProspect}">
+            <StackPanel Grid.Row="1" Margin="0,4,0,6" Spacing="2">
+              <TextBlock Text="{Binding DraftText}" TextWrapping="Wrap" Opacity="0.8"/>
+              <TextBlock Text="{Binding DraftHint}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}" IsVisible="{Binding DraftHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+              <TextBlock Text="{Binding DraftNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding ShowCards}"/>
+            </StackPanel>
+            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowCards}">
+              <ItemsControl x:Name="DraftCards" ItemsSource="{Binding DraftCards}" VerticalAlignment="Top">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="270" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ProspectRow">
+                    <Button Classes="marketCard summerCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            Click="OnProspectClick" ToolTip.Tip="Put him top of your board">
+                      <Border BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
+                        <StackPanel Spacing="5">
+                          <Grid ColumnDefinitions="Auto,56,*,Auto">
+                            <TextBlock Text="{Binding RankText}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip.Tip="Your scouts' rank: potential first"/>
+                            <c:Avatar Grid.Column="1" Player="{Binding Player}" Width="52" Height="52" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="2" Margin="8,0,6,0" VerticalAlignment="Center" Spacing="1">
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                              <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="Current ability as your scouts see him">
+                                <Run Text="CA "/><Run Text="{Binding CA}" FontWeight="SemiBold"/>
+                              </TextBlock>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center" ToolTip.Tip="{Binding PaTip}">
+                              <TextBlock Text="{Binding PA}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right"/>
+                              <TextBlock Text="PA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                          </Grid>
+                          <ItemsControl ItemsSource="{Binding Bars}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:SkillBar">
+                                <Grid ColumnDefinitions="28,*,Auto" Height="15" Margin="0,0,8,0" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                  <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"/>
+                                  <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="11" Margin="5,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Border>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <DataGrid x:Name="DraftGrid" Grid.Row="2" ItemsSource="{Binding DraftPool}" SelectedItem="{Binding SelectedProspect}" IsVisible="{Binding ShowTable}">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="48"/>
                 <DataGridTextColumn Header="Graduate" Binding="{Binding Name}" Width="200"/>

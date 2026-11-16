@@ -7,7 +7,7 @@ using Hardwood.Core.World;
 
 namespace Hardwood.Desktop.ViewModels;
 
-public sealed class ExpiringRow
+public sealed partial class ExpiringRow : ObservableObject
 {
     public required Player Player { get; init; }
     public string Name => Player.Name;
@@ -18,12 +18,26 @@ public sealed class ExpiringRow
     public string LastSeason { get; init; } = "";
     public string Ask { get; init; } = "";
     public string Fits { get; init; } = "";
+    // Run 67: the card.
+    public Hardwood.Core.Model.Team? Team { get; init; }
+    [ObservableProperty] private bool _picked;
+    public string CardLine => $"{Pos} · {Age} · PA {PA}";
+    public string AskChip { get; init; } = "";
+    public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits budget" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
+    public string FitTip { get; init; } = "";
+    public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, 1);
 }
 
-public sealed class ProspectRow
+public sealed partial class ProspectRow : ObservableObject
 {
     public required Player Player { get; init; }
     public int Rank { get; init; }
+    [ObservableProperty] private bool _picked;
+    /// <summary>Run 67: the draft board's card.</summary>
+    public string CardLine => $"{Pos} · {Age} · {Height}";
+    public string RankText => $"#{Rank}";
+    public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, Knowledge);
+    public string PaTip => Knowledge >= 0.999 ? "Potential: how good he can become" : "Potential as your scouts see him (a range until they know him well)";
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
     public int Age { get; init; }
@@ -118,8 +132,69 @@ public sealed partial class OffseasonViewModel : PageViewModel
     /// <summary>The talks panel on the right.</summary>
     public TalkViewModel Talk { get; }
 
-    partial void OnSelectedExpiringChanged(ExpiringRow? value) { if (value != null) Talk.Show(value.Player); }
-    partial void OnSelectedFreeAgentChanged(FreeAgentRow? value) { if (value != null) Talk.Show(value.Player); }
+    // Run 67 (review #13 rank 6, Danny's #464): the boards open on player cards; the full tables are one click away.
+    public string[] Views { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCards), nameof(ShowTable))] private string _view = "Cards";
+    public bool ShowCards => View == "Cards";
+    public bool ShowTable => !ShowCards;
+    public ObservableCollection<FreeAgentRow> FreeAgentCards { get; } = new();
+    public ObservableCollection<ProspectRow> DraftCards { get; } = new();
+    [ObservableProperty] private string _freeAgentNote = "";
+    [ObservableProperty] private string _draftNote = "";
+    /// <summary>What the picked graduate means for you: press Draft now, or he's on your board until your turn.</summary>
+    [ObservableProperty] private string _draftHint = "";
+    [ObservableProperty] private string _draftButton = "Draft selected";
+
+    partial void OnSelectedExpiringChanged(ExpiringRow? oldValue, ExpiringRow? newValue)
+    {
+        if (newValue == null) return;   // a cleared list (a refresh) keeps the talks panel and its answer
+        Talk.Show(newValue.Player); MarkTalk();
+    }
+    partial void OnSelectedFreeAgentChanged(FreeAgentRow? oldValue, FreeAgentRow? newValue)
+    {
+        if (newValue == null) return;
+        Talk.Show(newValue.Player); MarkTalk();
+    }
+    /// <summary>Light the card of the man in talks, on both boards (abroad, Contracts up and Free agents are open at once).</summary>
+    private void MarkTalk()
+    {
+        foreach (var r in Expiring) r.Picked = r.Player == Talk.Player;
+        foreach (var r in FreeAgents) r.Picked = r.Player == Talk.Player;
+    }
+    /// <summary>The graduate on top of your board. Kept apart from <see cref="SelectedProspect"/>, which the table
+    /// clears whenever the pool is rebuilt.</summary>
+    private Player? _boardPick;
+    partial void OnSelectedProspectChanged(ProspectRow? oldValue, ProspectRow? newValue)
+    {
+        if (newValue != null) _boardPick = newValue.Player;
+        foreach (var r in DraftPool) r.Picked = newValue != null && r.Player == newValue.Player;
+        UpdateDraftHint();
+    }
+
+    /// <summary>A card press (run 67).</summary>
+    public void PickExpiring(ExpiringRow row)
+    {
+        if (SelectedExpiring == row) { Talk.Show(row.Player); MarkTalk(); }   // back to him after talking to someone else
+        else SelectedExpiring = row;
+    }
+    public void PickFreeAgent(FreeAgentRow row)
+    {
+        if (SelectedFreeAgent == row) { Talk.Show(row.Player); MarkTalk(); }
+        else SelectedFreeAgent = row;
+    }
+    public void PickProspect(ProspectRow row) => SelectedProspect = row;
+
+    private void UpdateDraftHint()
+    {
+        var p = SelectedProspect?.Player;
+        DraftButton = p != null && OnTheClock ? $"Draft {p.Name}" : "Draft selected";
+        var o = Session.Offseason;
+        if (p == null || o == null || !ShowDraft) { DraftHint = ""; return; }
+        var mine = Enumerable.Range(o.NextPickIndex, Math.Max(0, o.PickOwners.Count - o.NextPickIndex)).Where(i => o.PickOwners[i] == Session.HumanTeam).Select(i => i + 1).ToList();
+        DraftHint = OnTheClock ? $"Press Draft to take {p.Name} with pick {o.NextPickIndex + 1}."
+            : mine.Count > 0 ? $"{p.Name} is top of your board. You pick #{mine[0]}; if he's still there, take him then."
+            : $"You have no pick left this year, so {p.Name} will go to another club.";
+    }
 
     public OffseasonViewModel(MainViewModel shell) : base(shell) => Talk = new TalkViewModel(shell, Refresh);
 
@@ -128,6 +203,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         var s = Session; var o = s.Offseason;
         InOffseason = s.Phase == SessionPhase.Offseason && o != null;
         Expiring.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear(); DraftPool.Clear(); DraftSlots.Clear();
+        FreeAgentCards.Clear(); DraftCards.Clear(); FreeAgentNote = DraftNote = DraftHint = "";
         ShowDraft = InOffseason && o!.CollegeDraftOn && o.Phase is OffseasonPhase.ReSigning or OffseasonPhase.Draft;
         OnTheClock = false; DraftText = "";
         if (!InOffseason || !s.Employed)
@@ -159,26 +235,44 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 : "Free agency: make offers to free agents, including this year's college graduates (age 23). Players ask more to join a weaker team, and the owner won't let you go over the wage budget.")
             + (s.Abroad ? " Anyone you haven't renewed by the end of the summer leaves." : "");
 
-        double know = 1;
         foreach (var p in s.MyExpiring)
         {
             s.MyStats.TryGetValue(p.Id, out var st);
             var d = s.PeekDemand(p);
+            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits budget" : "Over budget";
             Expiring.Add(new ExpiringRow
             {
-                Player = p, Age = p.Age(o.Date),
+                Player = p, Age = p.Age(o.Date), Team = team,
                 LastSeason = st != null ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min" : "-",
                 Ask = $"${d.Wage / 1e6:F2}M × {d.Years}",
-                Fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits budget" : "Over budget",
+                AskChip = SummerCards.AskChip(d),
+                Fits = fits,
+                FitTip = fits switch
+                {
+                    "Won't stay" => $"{p.Name} is too unhappy here to sign a new deal",
+                    "Fits budget" => "His ask fits your wage budget with the deals you have",
+                    _ => "His ask would take you over the wage budget; the owner won't allow it",
+                },
+                Picked = Talk.Player == p,
             });
         }
         if (freeAgency)
+        {
+            long room = s.MyWageRoom;
             foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility).Take(250))
             {
-                var d = s.PeekDemand(p);
-                know = Scouting.Knowledge(team, p);
-                FreeAgents.Add(new FreeAgentRow { Player = p, Age = p.Age(o.Date), Knowledge = know, Ask = d, Graduate = p.RookieSeason == o.Season + 1 });
+                var row = SummerCards.FreeAgent(s, p, o.Date, p.RookieSeason == o.Season + 1, room);
+                row.Picked = Talk.Player == p;
+                FreeAgents.Add(row);
             }
+            foreach (var r in FreeAgents.Take(SummerCards.FreeAgentCount)) FreeAgentCards.Add(r);
+            // Bid from the table on someone further down: his card goes first so the picked man is on screen.
+            if (Talk.Player is { } tp && !FreeAgentCards.Any(r => r.Player == tp) && FreeAgents.FirstOrDefault(r => r.Player == tp) is { } extra)
+                FreeAgentCards.Insert(0, extra);
+            int all = s.League.FreeAgents.Count;
+            FreeAgentNote = all == 0 ? "No free agents are left."
+                : $"The best {Math.Min(all, SummerCards.FreeAgentCount)} of {all:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists {Math.Min(all, 250)}.";
+        }
         foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
         if (ShowBuyouts)
             foreach (var p in s.World.Players.Where(p => p.CurrentAbility >= 95).OrderByDescending(p => p.CurrentAbility).Take(200))
@@ -197,6 +291,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         if (Tab == 4 && !ShowDraft) Tab = 1;
         if (Talk.Player == null || (!s.MyExpiring.Contains(Talk.Player) && !s.League.FreeAgents.Contains(Talk.Player) && !Talk.Signed))
             Talk.Show(Expiring.FirstOrDefault()?.Player ?? FreeAgents.FirstOrDefault()?.Player);
+        MarkTalk();
     }
 
     private void FillDraft(GameSession s, Offseason o, Hardwood.Core.Model.Team team)
@@ -207,8 +302,14 @@ public sealed partial class OffseasonViewModel : PageViewModel
             : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : "You have no pick this year. The draft follows contract decisions.")
             : "The draft is under way.";
         int rank = 1;
+        var keep = _boardPick;
         foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
             DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(o.Date), Knowledge = Scouting.Knowledge(team, p) });
+        foreach (var r in DraftPool.Take(SummerCards.DraftCount)) DraftCards.Add(r);
+        if (keep != null && !DraftCards.Any(r => r.Player == keep) && DraftPool.FirstOrDefault(r => r.Player == keep) is { } further) DraftCards.Add(further);
+        DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted."
+            : DraftPool.Count <= SummerCards.DraftCount ? $"All {DraftPool.Count} graduates, in your scouts' order (potential first). Pick a card to put him top of your board."
+            : $"Your scouts' top {SummerCards.DraftCount} of {DraftPool.Count} graduates, potential first. Pick a card to put him top of your board; the full table lists them all.";
         var made = o.Report.Draft.ToDictionary(d => d.Pick);
         for (int i = 0; i < o.PickOwners.Count; i++)
         {
@@ -221,7 +322,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 Ours = o.PickOwners[i] == team,
             });
         }
-        SelectedProspect ??= DraftPool.FirstOrDefault();
+        // Keep your pick across a refresh (the rows are rebuilt); he may have gone to another club meanwhile.
+        SelectedProspect = DraftPool.FirstOrDefault(r => r.Player == keep) ?? DraftPool.FirstOrDefault();
+        UpdateDraftHint();
     }
 
     [RelayCommand]
@@ -231,6 +334,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         if (p == null || !OnTheClock) return;
         var pick = Session.MakePick(p);
         Status = $"You drafted {p.Name} with pick {pick.Pick}: ${p.Contract!.Salary / 1e6:F2}M a year for {p.Contract.Years} years.";
+        _boardPick = null;
         SelectedProspect = null;
         Shell.AfterTick();
         Refresh();
@@ -278,10 +382,20 @@ public sealed class DraftSlotRow
 }
 
 /// <summary>A free agent with his ask of your club.</summary>
-public sealed class FreeAgentRow
+public sealed partial class FreeAgentRow : ObservableObject
 {
     public required Player Player { get; init; }
     public required ContractDemand Ask { get; init; }
+    // Run 67: the card (SummerCards.FreeAgent fills these).
+    [ObservableProperty] private bool _picked;
+    public string CardName => Player.Name;
+    public string CardLine => $"{Pos} · {Age} · PA {PA}";
+    public string AskChip => SummerCards.AskChip(Ask);
+    public string AskTip => $"His agent asks {SummerCards.Money(Ask.Wage)} a year for {Ask.Years} year{(Ask.Years == 1 ? "" : "s")} from your club";
+    public string FitText { get; init; } = "";
+    public Avalonia.Media.IBrush FitBrush { get; init; } = SummerCards.Neutral;
+    public string FitTip { get; init; } = "";
+    public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, Knowledge);
     public string Name => Player.Name + (Graduate ? "  (graduate)" : "");
     public string Pos => Player.PrimaryPosition.ToString();
     public int Age { get; init; }
