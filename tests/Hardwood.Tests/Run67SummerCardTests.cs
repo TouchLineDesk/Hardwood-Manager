@@ -114,6 +114,17 @@ public class Run67SummerCardTests
                 Assert.False(string.IsNullOrEmpty(tx.Talk.Reply));
                 Assert.DoesNotContain("Enter a wage", tx.Talk.Reply);
                 if (s.League.FreeAgents.Contains(pick.Player)) Assert.Same(pick.Player, tx.Talk.Player);
+                // An accepted offer (two refreshes follow it) keeps his answer on screen (code review).
+                var cheap = tx.FreeAgentCards.Last();
+                tx.PickFreeAgentCard(cheap);
+                var want = s.PeekDemand(cheap.Player);
+                tx.Talk.Wage = Math.Round((decimal)(want.Wage / 1e6), 2) + 0.05m; tx.Talk.Years = want.Years;
+                tx.Talk.OfferCommand.Execute(null); Settle();
+                Assert.True(tx.Talk.Signed, tx.Talk.Reply);
+                Assert.Same(cheap.Player, tx.Talk.Player);
+                var answer = tx.Talk.Reply;
+                tx.Refresh(); Settle();
+                Assert.Equal(answer, tx.Talk.Reply);
             }
             Snap("fa-cards.png");
             tx.FaView = "Full table"; Settle();

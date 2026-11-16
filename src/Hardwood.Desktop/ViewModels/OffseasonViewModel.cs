@@ -147,14 +147,19 @@ public sealed partial class OffseasonViewModel : PageViewModel
 
     partial void OnSelectedExpiringChanged(ExpiringRow? oldValue, ExpiringRow? newValue)
     {
-        foreach (var r in Expiring) r.Picked = r == newValue;
-        if (newValue != null) Talk.Show(newValue.Player);
+        if (newValue == null) return;   // a cleared list (a refresh) keeps the talks panel and its answer
+        Talk.Show(newValue.Player); MarkTalk();
     }
     partial void OnSelectedFreeAgentChanged(FreeAgentRow? oldValue, FreeAgentRow? newValue)
     {
-        if (newValue == null) return;   // a cleared list (a refresh) keeps the talks panel and its answer
-        foreach (var r in FreeAgents) r.Picked = r.Player == newValue.Player;
-        Talk.Show(newValue.Player);
+        if (newValue == null) return;
+        Talk.Show(newValue.Player); MarkTalk();
+    }
+    /// <summary>Light the card of the man in talks, on both boards (abroad, Contracts up and Free agents are open at once).</summary>
+    private void MarkTalk()
+    {
+        foreach (var r in Expiring) r.Picked = r.Player == Talk.Player;
+        foreach (var r in FreeAgents) r.Picked = r.Player == Talk.Player;
     }
     /// <summary>The graduate on top of your board. Kept apart from <see cref="SelectedProspect"/>, which the table
     /// clears whenever the pool is rebuilt.</summary>
@@ -167,8 +172,16 @@ public sealed partial class OffseasonViewModel : PageViewModel
     }
 
     /// <summary>A card press (run 67).</summary>
-    public void PickExpiring(ExpiringRow row) => SelectedExpiring = row;
-    public void PickFreeAgent(FreeAgentRow row) => SelectedFreeAgent = row;
+    public void PickExpiring(ExpiringRow row)
+    {
+        if (SelectedExpiring == row) { Talk.Show(row.Player); MarkTalk(); }   // back to him after talking to someone else
+        else SelectedExpiring = row;
+    }
+    public void PickFreeAgent(FreeAgentRow row)
+    {
+        if (SelectedFreeAgent == row) { Talk.Show(row.Player); MarkTalk(); }
+        else SelectedFreeAgent = row;
+    }
     public void PickProspect(ProspectRow row) => SelectedProspect = row;
 
     private void UpdateDraftHint()
@@ -278,8 +291,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         if (Tab == 4 && !ShowDraft) Tab = 1;
         if (Talk.Player == null || (!s.MyExpiring.Contains(Talk.Player) && !s.League.FreeAgents.Contains(Talk.Player) && !Talk.Signed))
             Talk.Show(Expiring.FirstOrDefault()?.Player ?? FreeAgents.FirstOrDefault()?.Player);
-        foreach (var r in Expiring) r.Picked = r.Player == Talk.Player;
-        foreach (var r in FreeAgents) r.Picked = r.Player == Talk.Player;
+        MarkTalk();
     }
 
     private void FillDraft(GameSession s, Offseason o, Hardwood.Core.Model.Team team)

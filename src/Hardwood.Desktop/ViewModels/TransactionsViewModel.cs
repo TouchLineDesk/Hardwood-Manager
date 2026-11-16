@@ -48,8 +48,13 @@ public sealed partial class TransactionsViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(SelectedFreeAgentPlayer)); OnPropertyChanged(nameof(FreeAgentKnowledge));
         foreach (var c in FreeAgentCards) c.Picked = value != null && c.Player == value.Player;
-        if (!_rebuilding) Talk.Show(value?.Player);
+        if (_rebuilding) return;
+        if (value != null) _talkingTo = value.Player;
+        Talk.Show(value?.Player);
     }
+    /// <summary>The free agent in talks. Kept apart from <see cref="SelectedFreeAgent"/>, which the table clears when
+    /// the list is rebuilt (an offer refreshes the page twice: code review, run 67).</summary>
+    private Player? _talkingTo;
     /// <summary>True while Refresh rebuilds the lists: the table drops and regains the same man, and his talks
     /// (with the answer to your last offer) must stay on screen.</summary>
     private bool _rebuilding;
@@ -97,7 +102,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session; var fin = s.League.Finance;
-        var keep = SelectedFreeAgent?.Player;
+        var keep = _talkingTo;
         _rebuilding = true;
         FreeAgents.Clear(); FreeAgentCards.Clear();
         foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
