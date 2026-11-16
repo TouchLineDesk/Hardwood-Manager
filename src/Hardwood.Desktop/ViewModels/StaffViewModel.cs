@@ -175,7 +175,12 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private string _coachNote = "";
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _developmentChips = new();
     public bool TrainingManual => !DelegateTraining;
-    partial void OnSelectedMarketChanged(StaffRow? value) { Interview = ""; CanHire = false; }
+    partial void OnSelectedMarketChanged(StaffRow? value)
+    {
+        CanHire = false;
+        // Run 66: picking a card says what's next (the bug finder saw a pick change nothing but the card's border).
+        Interview = value == null ? "" : $"{value.Name}, {value.Role.ToLowerInvariant()}: press Interview to hear whether he'd come and on what terms.";
+    }
     partial void OnSelectedMarketChanged(StaffRow? oldValue, StaffRow? newValue) { if (oldValue != null) oldValue.Picked = false; if (newValue != null) newValue.Picked = true; }
     partial void OnSelectedOursChanged(StaffRow? oldValue, StaffRow? newValue) { if (oldValue != null) oldValue.Picked = false; if (newValue != null) newValue.Picked = true; }
     partial void OnDelegateTrainingChanged(bool value)
@@ -218,6 +223,7 @@ public sealed partial class StaffViewModel : PageViewModel
             else Vacant.Add(new VacantRole(role, VacancyText(role)));
         }
         if (keepOurs != null && Ours.FirstOrDefault(r => r.Staff == keepOurs) is { } again) { again.Picked = true; SelectedOurs = again; }
+        else if (SelectedOurs != null) SelectedOurs = null;   // he was released or left: nothing picked, no stale renewal line
         FillMarket();
         Players.Clear();
         double staffTotal = 0; (Player p, double c)? riser = null;
@@ -385,8 +391,10 @@ public sealed partial class StaffViewModel : PageViewModel
     partial void OnSelectedOursChanged(StaffRow? value)
     {
         CanExtend = false;
-        if (value == null) return;
+        if (value == null) { Renewal = ""; return; }
         var a = Session.StaffRenewal(value.Staff);
+        CanExtend = a.Willing;
+        if (_loading) return;   // Refresh re-picking the same man keeps the page's line as it was
         Renewal = a.Text; CanExtend = a.Willing;
     }
 

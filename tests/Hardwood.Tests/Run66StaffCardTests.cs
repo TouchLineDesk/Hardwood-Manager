@@ -88,6 +88,14 @@ public class Run66StaffCardTests
             Assert.False(string.IsNullOrEmpty(st.Renewal));
             st.PickOurs(st.Ours[1]);
             Assert.False(st.Ours[0].Picked); Assert.True(st.Ours[1].Picked);
+            // Releasing him leaves nothing picked and no stale renewal line (code review).
+            int before = st.Ours.Count;
+            st.Fire(); Settle();
+            st = Assert.IsType<StaffViewModel>(vm.CurrentPage);
+            Assert.Equal(before - 1, st.Ours.Count);
+            Assert.Null(st.SelectedOurs);
+            Assert.DoesNotContain(st.Ours, r => r.Picked);
+            Assert.False(st.CanExtend);
 
             // The market: the best 12 by key rating, the same order as the table; role chips with counts that add up.
             Assert.Equal(st.Market.Take(StaffViewModel.CardCount), st.MarketCards);
@@ -115,7 +123,10 @@ public class Run66StaffCardTests
                 mc.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)); Settle();
                 Assert.Same(st.MarketCards[0], st.SelectedMarket);
                 Assert.True(st.MarketCards[0].Picked);
+                Assert.Contains("press Interview", st.Interview);
+                var hint = st.Interview;
                 st.InterviewCandidate();
+                Assert.NotEqual(hint, st.Interview);
                 Assert.False(string.IsNullOrEmpty(st.Interview));
                 // A role that hides him drops the pick.
                 st.SetRole("Physio"); Settle();
