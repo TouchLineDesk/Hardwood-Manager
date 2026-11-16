@@ -22,6 +22,11 @@
         <Button Classes="primary" Content="Make offer" Command="{Binding OfferCommand}" IsEnabled="{Binding CanTalk}"/>
         <Button Content="Release" Command="{Binding ReleaseCommand}" IsVisible="{Binding IsRenewal}" IsEnabled="{Binding CanRelease}" ToolTip.Tip="{Binding ReleaseTip}" ToolTip.ShowOnDisabled="True"/>
       </StackPanel>
+      <!-- H24: Release asks before it lets him go. -->
+      <StackPanel x:Name="ReleaseConfirm" Orientation="Horizontal" Spacing="8" IsVisible="{Binding ConfirmingRelease}">
+        <Button Content="Keep talking" Command="{Binding CancelReleaseCommand}"/>
+        <Button Classes="primary" Content="Release him" Command="{Binding ConfirmReleaseCommand}"/>
+      </StackPanel>
       <TextBlock Text="{Binding Reply}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"/>
     </StackPanel>
   </Border>

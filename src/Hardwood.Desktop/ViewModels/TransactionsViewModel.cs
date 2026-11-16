@@ -165,11 +165,39 @@ public sealed partial class TransactionsViewModel : PageViewModel
         Shell.AfterTick();
     }
 
+    // H24 (bug hunt, Nov 16): Waive asks first. One press used to release the player and save at once, and the list is
+    // sorted best first, so a misclick on the top row cut your star for good.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ConfirmingWaive), nameof(WaiveQuestion))] private TradePiece? _pendingWaive;
+    public bool ConfirmingWaive => PendingWaive != null;
+    public string WaiveQuestion => PendingWaive is { } w
+        ? $"Waive {w.Name}? He becomes a free agent at once, his deal comes off your books and any club can sign him. You can't undo it."
+        : "";
+
+    /// <summary>Waive beside a player: asks first (<see cref="ConfirmWaive"/> does it).</summary>
     [RelayCommand]
     public void Waive(TradePiece? piece)
     {
         if (piece == null) return;
+        var s = Session;
+        if (s.HumanTeam.Roster.Count <= s.League.Finance.RosterMin) { PendingWaive = null; FaStatus = $"You need at least {s.League.Finance.RosterMin} players."; return; }
+        FaStatus = "";
+        PendingWaive = piece;
+    }
+
+    [RelayCommand]
+    public void CancelWaive()
+    {
+        if (PendingWaive is { } w) FaStatus = $"{w.Name} stays.";
+        PendingWaive = null;
+    }
+
+    [RelayCommand]
+    public void ConfirmWaive()
+    {
+        if (PendingWaive is not { } piece) return;
+        PendingWaive = null;
         var s = Session; var team = s.HumanTeam;
+        if (!team.Roster.Contains(piece.Player)) return;
         if (team.Roster.Count <= s.League.Finance.RosterMin) { FaStatus = $"You need at least {s.League.Finance.RosterMin} players."; return; }
         var p = piece.Player;
         team.Roster.Remove(p);

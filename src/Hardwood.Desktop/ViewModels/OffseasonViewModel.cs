@@ -359,13 +359,36 @@ public sealed partial class OffseasonViewModel : PageViewModel
         Refresh();
     }
 
+    // H24 (bug hunt, Nov 16): Release selected asks first, as Waive does.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ConfirmingRelease), nameof(ReleaseQuestion))] private Player? _pendingRelease;
+    public bool ConfirmingRelease => PendingRelease != null;
+    public string ReleaseQuestion => PendingRelease is { } r
+        ? $"Release {r.Name}? He becomes a free agent at once and any club can sign him. You can't undo it."
+        : "";
+
+    /// <summary>Release selected: asks first (<see cref="ConfirmRelease"/> does it).</summary>
     [RelayCommand]
     public void WaivePlayer()
     {
         if (SelectedRosterPlayer == null) return;
-        var p = SelectedRosterPlayer.Player;
+        PendingRelease = SelectedRosterPlayer.Player;
+    }
+
+    [RelayCommand]
+    public void CancelRelease()
+    {
+        if (PendingRelease is { } r) Status = $"{r.Name} stays.";
+        PendingRelease = null;
+    }
+
+    [RelayCommand]
+    public void ConfirmRelease()
+    {
+        if (PendingRelease is not { } p) return;
+        PendingRelease = null;
+        if (!Session.Employed || !Session.HumanTeam.Roster.Contains(p)) return;
         if (Session.MyExpiring.Contains(p)) Session.ReleaseExpiring(p);
-        else if (Session.InNabl) Session.Offseason!.Waive(Session.HumanTeam, p);
+        else if (Session.InNabl && Session.Offseason is { } summer) summer.Waive(Session.HumanTeam, p);
         else { Session.HumanTeam.Roster.Remove(p); p.TeamId = null; p.Contract = null; Session.League.FreeAgents.Add(p); Session.SaveNow(); }
         Status = $"Released {p.Name}.";
         Shell.AfterTick();
