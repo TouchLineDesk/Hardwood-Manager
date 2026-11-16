@@ -61,7 +61,7 @@ public sealed class ProspectListRow
 }
 
 /// <summary>A high-school prospect in a recruiting class (decision #162).</summary>
-public sealed class HighSchoolRow
+public sealed partial class HighSchoolRow : ObservableObject
 {
     public required Player Player { get; init; }
     public int Rank { get; init; }
@@ -72,6 +72,19 @@ public sealed class HighSchoolRow
     public string HighSchool { get; init; } = "";
     public string State { get; init; } = "";
     public string Committed { get; init; } = "";
+    // Run 68 (review #13 rank 7): the prospect as a star card.
+    public int StarCount { get; init; }
+    public Team? CommittedTeam { get; init; }
+    [ObservableProperty] private bool _picked;
+    public string RankText => $"#{Rank}";
+    public string StarsOn => CollegeCards.On(StarCount);
+    public string StarsOff => CollegeCards.Off(StarCount);
+    public Avalonia.Media.IBrush StarBrush => CollegeCards.StarEdge(StarCount);
+    public string CardLine => $"{Pos} · {PlayerRow.FormatHeight(Player.HeightCm)} · age {Age}";
+    public string Where => $"{HighSchool}, {CollegeWorld.StateName(State)}";
+    public bool HasCommit => CommittedTeam != null;
+    public string CommitText => CommittedTeam is { } t ? $"Committed to {t.City}" : "Uncommitted";
+    public string StarTip => CollegeCards.StarTip(StarCount, Rank);
 }
 
 /// <summary>A program's recruiting class.</summary>
@@ -191,6 +204,24 @@ public sealed partial class CollegeViewModel : PageViewModel
     public ObservableCollection<ClassRankRow> ClassRanks { get; } = new();
     [ObservableProperty] private string _classNote = "";
 
+    // Run 68 (review #13 rank 7, Danny's #464): the recruiting boards open on star cards; the full tables are one click away.
+    public string[] BoardViews { get; } = { "Cards", "Full table" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowBoardCards), nameof(ShowBoardTable))] private string _boardView = "Cards";
+    public bool ShowBoardCards => BoardView == "Cards";
+    public bool ShowBoardTable => !ShowBoardCards;
+    public ObservableCollection<HighSchoolRow> HighSchoolCards { get; } = new();
+    [ObservableProperty] private string _highSchoolCardNote = "";
+    [ObservableProperty] private string _highSchoolHint = "";
+    public bool HasHighSchoolHint => HighSchoolHint.Length > 0;
+    partial void OnHighSchoolHintChanged(string value) => OnPropertyChanged(nameof(HasHighSchoolHint));
+    partial void OnSelectedHighSchoolChanged(HighSchoolRow? value)
+    {
+        foreach (var r in HighSchoolers) r.Picked = r == value;
+        HighSchoolHint = value == null ? "" : $"{value.Name} ({char.ToLowerInvariant(value.CommitText[0])}{value.CommitText[1..]}) picked: press Open player for his page, or pick another card.";
+    }
+    /// <summary>A card press picks him, as a row click in the table does.</summary>
+    public void PickHighSchool(HighSchoolRow row) => SelectedHighSchool = row;
+
     // Senior recruiting (decision #157): court seniors so they sign for you on graduation day.
     public ObservableCollection<RecruitRow> Recruits { get; } = new();
     [ObservableProperty] private RecruitRow? _selectedRecruit;
@@ -283,7 +314,7 @@ public sealed partial class CollegeViewModel : PageViewModel
 
     private void FillHighSchool()
     {
-        HighSchoolers.Clear(); HighSchoolChips.Clear(); ClassRanks.Clear();
+        HighSchoolers.Clear(); HighSchoolCards.Clear(); HighSchoolChips.Clear(); ClassRanks.Clear(); HighSchoolCardNote = "";
         if (Session.World.College is not { Recruiting: true } c || ClassYear == 0) return;
         int year = ClassYear;
         var today = Session.Today;
@@ -305,7 +336,13 @@ public sealed partial class CollegeViewModel : PageViewModel
             {
                 Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", Age = p.Age(today), HighSchool = r.HighSchool,
                 State = r.State, Committed = r.CommittedTo is { } to ? c.Program(to)!.City : "Uncommitted",
+                StarCount = r.Stars, CommittedTeam = r.CommittedTo is { } to2 ? c.Program(to2) : null,
             });
+        foreach (var r in HighSchoolers.Take(CollegeCards.CardCount)) HighSchoolCards.Add(r);
+        string which = StarFilter == "All" ? "" : $" ({StarFilter.ToLowerInvariant()})";
+        HighSchoolCardNote = HighSchoolers.Count == 0 ? $"No prospects{which} in the Class of {year}. Pick another filter."
+            : HighSchoolers.Count <= CollegeCards.CardCount ? $"All {HighSchoolers.Count} prospects{which} in the Class of {year}, best first. Pick a card, then Open player."
+            : $"The best {CollegeCards.CardCount} of {HighSchoolers.Count}{which} in the Class of {year}. Pick a card, then Open player; the full table lists them all.";
         int rank = 1;
         foreach (var x in ranking.Take(50))
             ClassRanks.Add(new ClassRankRow { Rank = rank++, Team = x.Program, Conference = ConfName(c, x.Program), Commits = x.Commits, FiveStars = x.FiveStars, FourStars = x.FourStars, Points = x.Points });

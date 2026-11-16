@@ -52,7 +52,7 @@
     <Grid x:Name="Tables" ColumnDefinitions="*,*" IsVisible="{Binding ShowTables}">
       <DockPanel x:Name="LeftTable" Margin="0,0,8,12">
         <TextBlock DockPanel.Dock="Top" Text="{Binding LeftTitle}" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding East}" CanUserSortColumns="False" RowHeight="28">
+        <DataGrid x:Name="EastGrid" ItemsSource="{Binding East}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
             <DataGridTemplateColumn Header="#" Width="40">
               <DataGridTemplateColumn.CellTemplate>
@@ -86,7 +86,7 @@
       </DockPanel>
       <DockPanel x:Name="RightTable" Grid.Column="1" Margin="0,0,0,12">
         <TextBlock DockPanel.Dock="Top" Text="{Binding RightTitle}" Classes="h2" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding West}" CanUserSortColumns="False" RowHeight="28">
+        <DataGrid x:Name="WestGrid" ItemsSource="{Binding West}" CanUserSortColumns="False" RowHeight="28">
           <DataGrid.Columns>
             <DataGridTemplateColumn Header="#" Width="40">
               <DataGridTemplateColumn.CellTemplate>

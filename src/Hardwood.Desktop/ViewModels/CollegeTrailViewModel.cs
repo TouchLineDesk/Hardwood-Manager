@@ -8,7 +8,7 @@ using Hardwood.Desktop.Controls;
 namespace Hardwood.Desktop.ViewModels;
 
 /// <summary>A high-school prospect on a college coach's recruiting board (C3, #173).</summary>
-public sealed class TrailRow
+public sealed partial class TrailRow : ObservableObject
 {
     public required Player Player { get; init; }
     public int Rank { get; init; }
@@ -20,6 +20,21 @@ public sealed class TrailRow
     public string InterestText { get; init; } = "";
     public string Leaning { get; init; } = "";
     public string Status { get; init; } = "";
+    // Run 68 (review #13 rank 7): the prospect as a star card on your board.
+    public int StarCount { get; init; }
+    public Team? LeaningTeam { get; init; }
+    public string HighSchool { get; init; } = "";
+    [ObservableProperty] private bool _picked;
+    public string RankText => $"#{Rank}";
+    public string StarsOn => CollegeCards.On(StarCount);
+    public string StarsOff => CollegeCards.Off(StarCount);
+    public Avalonia.Media.IBrush StarBrush => CollegeCards.StarEdge(StarCount);
+    public string CardLine => $"{Pos} · {PlayerRow.FormatHeight(Player.HeightCm)} · {CollegeWorld.StateName(State)}";
+    public string StarTip => CollegeCards.StarTip(StarCount, Rank);
+    public bool HasLeaning => LeaningTeam != null;
+    public string LeaningText => LeaningTeam == null ? "No leader yet" : $"Leans {Leaning}";
+    public Avalonia.Media.IBrush StatusBrush => CollegeCards.StatusBrush(Status);
+    public Avalonia.Media.IBrush InterestBrush => CollegeCards.InterestBrush(Interest);
 }
 
 /// <summary>The recruiting trail on the College page, for a college coach (slice C3, decisions #173-#178).</summary>
@@ -47,7 +62,20 @@ public sealed partial class CollegeViewModel
 
     partial void OnTrailViewChanged(string value) => FillTrail();
     partial void OnTrailClassChanged(string value) => FillTrail();
-    partial void OnSelectedTrailChanged(TrailRow? value) { OnPropertyChanged(nameof(HasTrail)); OnPropertyChanged(nameof(TrailName)); TrailReply = ""; FillTrailPanel(); }
+    partial void OnSelectedTrailChanged(TrailRow? value)
+    {
+        foreach (var r in TrailRows) r.Picked = r == value;
+        OnPropertyChanged(nameof(HasTrail)); OnPropertyChanged(nameof(TrailName)); TrailReply = ""; FillTrailPanel();
+    }
+    /// <summary>Run 68: your board as star cards (the best 30 of the view; the picked prospect is kept on it).</summary>
+    public ObservableCollection<TrailRow> TrailCards { get; } = new();
+    [ObservableProperty] private string _trailCardNote = "";
+    /// <summary>Why the board is empty (it used to be a blank table).</summary>
+    [ObservableProperty] private string _trailEmpty = "";
+    public bool HasTrailEmpty => TrailEmpty.Length > 0;
+    partial void OnTrailEmptyChanged(string value) => OnPropertyChanged(nameof(HasTrailEmpty));
+    /// <summary>A card press picks him, as a row click in the table does.</summary>
+    public void PickTrail(TrailRow row) => SelectedTrail = row;
     partial void OnAssistantRecruitsChanged(bool value) { if (_trailLoading) return; Session.Delegated.Recruiting = value; Session.SaveNow(); FillTrail(); }
 
     private int TrailYear => int.TryParse(TrailClass.Replace("Class of ", "").Split(' ')[0], out var y) ? y : 0;
@@ -55,7 +83,7 @@ public sealed partial class CollegeViewModel
     private void FillTrail()
     {
         var keep = SelectedTrail?.Player;
-        TrailRows.Clear();
+        TrailRows.Clear(); TrailCards.Clear(); TrailEmpty = ""; TrailCardNote = "";
         OnPropertyChanged(nameof(IsCollegeCoach)); OnPropertyChanged(nameof(IsProRecruiting));
         if (!Session.TrailOpen || Session.TrailWorld is not { } c) return;
         _trailLoading = true; AssistantRecruits = Session.Delegated.Recruiting; _trailLoading = false;
@@ -87,6 +115,7 @@ public sealed partial class CollegeViewModel
             TrailRows.Add(new TrailRow
             {
                 Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", State = r.State,
+                StarCount = r.Stars, LeaningTeam = lean, HighSchool = r.HighSchool,
                 Interest = interest, InterestText = $"{interest:0}",
                 Leaning = lean == null ? "-" : lean == me ? "You" : lean.City,
                 Status = r.CommittedTo is { } to ? (to == me.Id ? "Committed to you" : $"Committed: {c.Program(to)!.City}")
@@ -111,6 +140,19 @@ public sealed partial class CollegeViewModel
         TrailNote = full + (Session.Delegated.Recruiting
             ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits. A prospect can only commit to you once you've offered."
             : "You recruit high-school seniors only, and you have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");
+        foreach (var r in TrailRows.Take(CollegeCards.CardCount)) TrailCards.Add(r);
+        if (keep != null && !TrailCards.Any(r => r.Player == keep) && TrailRows.FirstOrDefault(r => r.Player == keep) is { } further) TrailCards.Add(further);
+        TrailEmpty = TrailRows.Count > 0 ? ""
+            : TrailView == "Best fits" && open == 0 ? $"No best fits: every scholarship in the Class of {year} is taken. \"All uncommitted\", \"5-star\" and \"4-star\" still list the class."
+            : TrailView == "Best fits" && closed ? $"No best fits: signing day has passed for the Class of {year}. Pick the rising seniors' class."
+            : TrailView switch
+            {
+                "My board" => $"Your board for the Class of {year} is empty. Pick a prospect in \"Best fits\" and press Board +/- or Offer.",
+                "Committed to you" => $"No one in the Class of {year} has committed to you yet. A prospect can only commit once you've offered.",
+                _ => $"No prospects in \"{TrailView}\" for the Class of {year}.",
+            };
+        TrailCardNote = TrailRows.Count <= CollegeCards.CardCount ? $"{TrailRows.Count} prospects in \"{TrailView}\". Pick a card to recruit him."
+            : $"The first {CollegeCards.CardCount} of {TrailRows.Count} in \"{TrailView}\". Pick a card to recruit him; the full table lists them all.";
         SelectedTrail = keep == null ? null : TrailRows.FirstOrDefault(x => x.Player == keep);
         FillTrailPanel();
     }
