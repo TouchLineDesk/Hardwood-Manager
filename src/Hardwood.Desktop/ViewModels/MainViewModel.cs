@@ -348,6 +348,8 @@ public sealed partial class MainViewModel : ViewModelBase
         if (s.Phase == SessionPhase.Offseason || s.HumanLeague is not { } hl) return null;
         var cs = hl.Season;
         if (cs.Stage == Hardwood.Core.World.CompetitionSeason.RegularSeason || cs.IsComplete) return null;
+        // Still in a continental cup (code review): not over yet.
+        if (!s.HumanSeasonOver) return null;
         if (cs.Fixtures.Any(f => !f.Played && (f.HomeId == me.Id || f.AwayId == me.Id))) return null;
         if (cs.Series.Any(x => !x.Complete && (x.HighId == me.Id || x.LowId == me.Id))) return null;
         var mine = cs.Series.Where(x => x.HighId == me.Id || x.LowId == me.Id).ToList();

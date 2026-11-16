@@ -335,6 +335,7 @@ public sealed partial class LeadersViewModel : PageViewModel
     private readonly Dictionary<string, string> _keys = new();
     partial void OnLeagueNameChanged(string? value) { if (!_filling) Refresh(); }
     private bool _filling;
+    private string? _homeKey;
 
     public LeadersViewModel(MainViewModel shell) : base(shell) => FillLeagues();
     partial void OnCategoryChanged(string value) => FillTable();
@@ -345,6 +346,7 @@ public sealed partial class LeadersViewModel : PageViewModel
         var s = Session;
         _filling = true;
         LeagueNames.Clear(); _keys.Clear();
+        _homeKey = LeagueBook.HomeOf(s, s.HumanTeam)?.Key;
         void Add(LeagueBook? b) { if (b != null && !_keys.ContainsValue(b.Key)) { LeagueNames.Add(b.Name); _keys[b.Name] = b.Key; } }
         Add(LeagueBook.HomeOf(s, s.HumanTeam));
         Add(LeagueBook.Get(s, LeagueBook.NablKey));
@@ -384,7 +386,8 @@ public sealed partial class LeadersViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session;
-        if (LeagueName == null || !LeagueNames.Contains(LeagueName)) FillLeagues();
+        // A job move changes your league (code review): the page is cached, so rebuild the list when it does.
+        if (LeagueName == null || !LeagueNames.Contains(LeagueName) || LeagueBook.HomeOf(s, s.HumanTeam)?.Key != _homeKey) FillLeagues();
         var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.World.Players)
             .Concat(s.World.College?.Players ?? Enumerable.Empty<Player>())
             .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
