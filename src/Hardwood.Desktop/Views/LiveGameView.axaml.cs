@@ -21,6 +21,9 @@ public partial class LiveGameView : UserControl
     public const double WideViewWidth = 900;
     public const double MinSideWidth = 330;
 
+    /// <summary>H57 (run 86): the break card takes the court's place in its panel, up to this height (it scrolls past it).</summary>
+    public const double BreakCardMax = 280;
+
     private LiveGameViewModel? _vm;
     private bool _fitPending = true;
 
@@ -59,7 +62,7 @@ public partial class LiveGameView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(LiveGameViewModel.BigCourt)) FitColumns();
-        if (e.PropertyName is nameof(LiveGameViewModel.BigCourt) or nameof(LiveGameViewModel.ShowCourt))
+        if (e.PropertyName is nameof(LiveGameViewModel.BigCourt) or nameof(LiveGameViewModel.CourtShown))
         {
             // After the layout pass, when the court's bounds are current again.
             _fitPending = true;
@@ -91,7 +94,7 @@ public partial class LiveGameView : UserControl
     private void FitCourt()
     {
         double cap = SmallCourtHeight;
-        if (_vm is { BigCourt: true, ShowCourt: true } && LeftCol.Bounds.Height > 0 && Court.Bounds.Height > 0)
+        if (_vm is { BigCourt: true, CourtShown: true } && LeftCol.Bounds.Height > 0 && Court.Bounds.Height > 0)
         {
             double overhead = CourtPanel.Bounds.Height - Court.Bounds.Height;
             cap = BigCourtCap(LeftCol.Bounds.Height, overhead, CourtPanel.Margin.Bottom);

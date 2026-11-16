@@ -62,8 +62,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
     /// <summary>The live panel shows the court (default) or the game flow chart.</summary>
     [ObservableProperty] private bool _showCourt = true;
     public bool ShowFlow => !ShowCourt;
-    [RelayCommand] private void ToCourt() => ShowCourt = true;
-    [RelayCommand] private void ToFlow() => ShowCourt = false;
+    /// <summary>H57 (run 86): at a break the card takes the court panel; the court or the flow chart shows otherwise.</summary>
+    public bool CourtShown => ShowCourt && !ShowBreak;
+    public bool FlowShown => ShowFlow && !ShowBreak;
+    [RelayCommand] private void ToCourt() { ShowCourt = true; ShowBreak = false; }
+    [RelayCommand] private void ToFlow() { ShowCourt = false; ShowBreak = false; }
 
     /// <summary>The big view (run 85, tracker slice 3): the court takes the room the window has, the play by play and
     /// box score folding under it; off keeps the court at 300 px. Remembered in the settings.</summary>
@@ -117,7 +120,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
     /// <summary>How long the tracker's motion lasts (run 83): most of a tick at Slow and Normal, none at Fast (too quick
     /// to follow), and the full glide when you Step while paused.</summary>
     public double MotionMs => Running ? Hardwood.Desktop.Controls.TrackerMotion.DurationFor(_speedsMs[_speed]) : 650;
-    partial void OnShowCourtChanged(bool value) => OnPropertyChanged(nameof(ShowFlow));
+    partial void OnShowCourtChanged(bool value) { OnPropertyChanged(nameof(ShowFlow)); OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); }
+    partial void OnShowBreakChanged(bool value) { OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); }
     public Avalonia.Media.Color HomeDot => Bright(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color AwayDot => Bright(Distinct(AwayTeam, Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor)));
 
@@ -352,6 +356,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
     // Match day part 3: the break card (end of a period, halftime, final).
     [ObservableProperty] private bool _pauseAtBreaks = true;
     [ObservableProperty] private bool _showBreak;
+    /// <summary>H57 (run 86): put the break card away to see the court again.</summary>
+    [RelayCommand] private void HideBreak() => ShowBreak = false;
     [ObservableProperty] private string _breakTitle = "";
     [ObservableProperty] private string _breakLine = "";
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _breakChips = new();
@@ -505,12 +511,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
             var l = theirBox.LineFor(p);
             TheirFloor.Add(new OnCourtRow { Player = p, OnCourt = true, Line = $"{l.Points} pts · {l.Rebounds} reb · {l.Assists} ast · {l.Fouls} pf" });
         }
-        // Keep the lineup pickers in sync with who is actually out there unless the user is editing while paused.
-        if (Running || Lineup.All(s => s.Selected == null))
-        {
-            int i = 0;
-            foreach (var p in ourFloor.OrderBy(p => p.PrimaryPosition)) { if (i < 5) Lineup[i++].Selected = p; }
-        }
+        // Keep the lineup pickers in sync with who is actually out there (H55, run 86): after every play, Step, Sim to end
+        // and the final, unless the user has changed a picker since the last sync (while paused) or an applied five is
+        // still waiting for the next dead ball.
+        if (ShouldSyncLineup(Running, _live.Complete, _live.LineupPending(Us), LineupEdited))
+            SyncLineup(ourFloor.OrderBy(p => p.PrimaryPosition).Take(5).ToList());
 
         var log = _live.Log;
         for (; _logShown < log.Count; _logShown++) Log.Insert(0, log[_logShown]);
@@ -545,6 +550,25 @@ public sealed partial class LiveGameViewModel : PageViewModel
             if (key != _lastRunKey) { _lastRunKey = key; Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {RunAlert}"); }
         }
         while (Log.Count > 300) Log.RemoveAt(Log.Count - 1);
+    }
+
+    // What the pickers last showed from the floor (or the five last applied): a picker that differs is the user's edit.
+    private readonly Player?[] _lastSynced = new Player?[5];
+    public bool LineupEdited => Lineup.Select((s, i) => s.Selected != _lastSynced[i]).Any(d => d);
+
+    /// <summary>H55: the pickers follow the floor while the game runs and at the final; while paused they follow it too,
+    /// unless the user has changed one; and never while an applied five is still waiting to go in.</summary>
+    public static bool ShouldSyncLineup(bool running, bool complete, bool pending, bool edited) =>
+        complete || (!pending && (running || !edited));
+
+    private void SyncLineup(IReadOnlyList<Player> floor)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            var p = i < floor.Count ? floor[i] : null;
+            if (Lineup[i].Selected != p) Lineup[i].Selected = p;
+            _lastSynced[i] = p;
+        }
     }
 
     public static int[] ZoneSum(TeamBox b, Func<PlayerLine, int[]> f)
@@ -583,9 +607,15 @@ public sealed partial class LiveGameViewModel : PageViewModel
     [RelayCommand]
     public void ApplyLineup()
     {
+        if (Complete) return;
         var five = Lineup.Select(s => s.Selected).Where(p => p != null).Distinct().ToList();
         if (five.Count < 5) { Status = "Pick five different players."; return; }
+        // H55: say who can't go in, rather than quietly sending four.
+        var ourBox = _live.Result.Home.Team == Us ? _live.Result.Home : _live.Result.Away;
+        var out_ = five.Where(p => ourBox.LineFor(p!).FouledOut).ToList();
+        if (out_.Count > 0) { Status = $"{string.Join(", ", out_.Select(p => p!.LastName))} fouled out: pick someone else."; return; }
         _live.RequestLineup(Us, five!);
+        for (int i = 0; i < 5; i++) _lastSynced[i] = Lineup[i].Selected;
         Status = Running ? "Lineup goes in at the next dead ball." : "Lineup set; it goes in at the next dead ball once you press Play.";
     }
 

@@ -279,7 +279,7 @@ public sealed partial class WorldViewModel : PageViewModel
         else { LeftTitle = ""; RightTitle = ""; }
         HasRight = RightCards.Count > 0;
         var zones = LeftCards.Concat(RightCards).SelectMany(c => c.Rows).Select(r => r.Zone).Where(z => z.Length > 0).Distinct().ToHashSet();
-        if (zones.Contains("Promotion")) Keys.Add(new ZoneKey(StandingRow.PromotionBrush, b.Key == LeagueBook.NablKey ? "Division winner" : "Division winner: promoted"));
+        if (zones.Contains("Promotion")) Keys.Add(new ZoneKey(StandingRow.PromotionBrush, b.Key == LeagueBook.NablKey ? "Division winner" : "Division winner: promoted (level records: point difference decides)"));
         if (zones.Contains("Playoffs")) Keys.Add(new ZoneKey(StandingRow.PlayoffBrush, "Playoffs"));
         if (zones.Contains("Play-in")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Play-in"));
         if (zones.Contains("Third place")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Third-place tournament"));

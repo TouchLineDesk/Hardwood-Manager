@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:v="using:Hardwood.Desktop.Views"
              x:Class="Hardwood.Desktop.Views.LiveGameView"
              x:DataType="vm:LiveGameViewModel">
   <Grid x:Name="RootGrid" RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
@@ -83,59 +84,25 @@
               <TextBlock Text="{Binding RunAlert}" FontSize="11.5" FontWeight="SemiBold" Foreground="#F0A33A"/>
             </Border>
             <!-- The big view (run 85, tracker slice 3): the court takes the window's room; the play by play folds under it. -->
-            <Button x:Name="BigCourtButton" Content="{Binding BigCourtLabel}" Command="{Binding ToggleBigCourtCommand}" IsVisible="{Binding ShowCourt}" Padding="10,3" VerticalAlignment="Center"
+            <Button x:Name="BigCourtButton" Content="{Binding BigCourtLabel}" Command="{Binding ToggleBigCourtCommand}" IsVisible="{Binding CourtShown}" Padding="10,3" VerticalAlignment="Center"
                     ToolTip.Tip="Bigger: the court fills the room the window has and the play by play folds under it. Smaller: the court keeps 300 px."/>
           </WrapPanel>
-          <!-- The 2D tracker (D67 B, run 80): the latest play in words over the court that draws it. -->
-          <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
-          <Grid IsVisible="{Binding ShowCourt}" HorizontalAlignment="Center">
-            <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
-                         FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
-            <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
-            <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
-          </Grid>
-          <TextBlock Text="{Binding CourtLegend}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
-          <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowFlow}">
-          <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
-          <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:SplitRow">
-                <StackPanel Orientation="Horizontal" Margin="0,2" Opacity="{Binding Opacity}">
-                  <TextBlock Text="{Binding Team}" Width="44" FontWeight="SemiBold" FontSize="12"/>
-                  <ItemsControl ItemsSource="{Binding Cells}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Width="30" TextAlignment="Center" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <TextBlock Text="{Binding Total}" Width="34" TextAlignment="Right" FontWeight="Bold" FontSize="12"/>
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- Play by play (folds under the big court, keeping at least LiveGameView.MinLogHeight) -->
-      <Border x:Name="LogPanel" Grid.Row="1" Classes="panel" Padding="8">
-        <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="4,0,4,6">
-            <Button Content="Play by play" Command="{Binding ToLogCommand}" Classes.primary="{Binding ShowLog}" Padding="10,3"/>
-            <Button x:Name="BoxTab" Content="Box score" Command="{Binding ToBoxCommand}" Classes.primary="{Binding ShowBox}" Padding="10,3"/>
-          </StackPanel>
-          <TextBlock DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
-          <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
           <!-- Match day part 3: the break card, like a broadcast's quarter-break graphic. -->
           <!-- Scrolls rather than being cut when its chips wrap onto extra lines (big text, narrow window). -->
-          <ScrollViewer DockPanel.Dock="Top" IsVisible="{Binding ShowBreak}" MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <!-- H57 (run 86): at a break the card takes the court's place in this panel (Hide, On the floor or Game flow bring the
+               court back), so the play by play and box score under it keep all their rows. -->
+          <ScrollViewer x:Name="BreakCard" IsVisible="{Binding ShowBreak}" MaxHeight="{x:Static v:LiveGameView.BreakCardMax}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <Border Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
-                  CornerRadius="6" Padding="10,8" Margin="4,0,4,8">
+                  CornerRadius="6" Padding="10,8" Margin="4,0,4,4">
             <StackPanel Spacing="4">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBlock Text="{Binding BreakTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}"/>
+              <Grid ColumnDefinitions="*,Auto">
+              <WrapPanel>
+                <TextBlock Text="{Binding BreakTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}" Margin="0,0,10,0"/>
                 <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="12" VerticalAlignment="Center"/>
-              </StackPanel>
+              </WrapPanel>
+                <Button Grid.Column="1" Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1" Margin="8,0,0,0" VerticalAlignment="Top"
+                        ToolTip.Tip="Hide the card and see the court again; Play goes on to the next period"/>
+              </Grid>
               <TextBlock Text="{Binding BreakLine}" TextWrapping="Wrap"/>
               <!-- D75 A (run 69): the assistant's halftime read as a one-click suggestion. -->
               <Border IsVisible="{Binding HasReadSuggestion}" Background="#1C2430" BorderBrush="#E0A93B" BorderThickness="3,0,0,0"
@@ -156,6 +123,47 @@
             </StackPanel>
           </Border>
           </ScrollViewer>
+          <!-- The 2D tracker (D67 B, run 80): the latest play in words over the court that draws it. -->
+          <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
+          <Grid IsVisible="{Binding CourtShown}" HorizontalAlignment="Center">
+            <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
+                         FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
+            <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
+            <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
+          </Grid>
+          <TextBlock Text="{Binding CourtLegend}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
+          <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding FlowShown}">
+          <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
+          <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SplitRow">
+                <StackPanel Orientation="Horizontal" Margin="0,2" Opacity="{Binding Opacity}">
+                  <TextBlock Text="{Binding Team}" Width="44" FontWeight="SemiBold" FontSize="12"/>
+                  <ItemsControl ItemsSource="{Binding Cells}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Width="30" TextAlignment="Center" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding Total}" Width="34" TextAlignment="Right" FontWeight="Bold" FontSize="12"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+
+      <!-- Play by play (folds under the big court, keeping at least LiveGameView.MinLogHeight) -->
+      <Border x:Name="LogPanel" Grid.Row="1" Classes="panel" Padding="8">
+        <DockPanel>
+          <StackPanel x:Name="LogTabs" DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="4,0,4,6">
+            <Button Content="Play by play" Command="{Binding ToLogCommand}" Classes.primary="{Binding ShowLog}" Padding="10,3"/>
+            <Button x:Name="BoxTab" Content="Box score" Command="{Binding ToBoxCommand}" Classes.primary="{Binding ShowBox}" Padding="10,3"/>
+          </StackPanel>
+          <TextBlock x:Name="LogHeadline" DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
+          <TextBlock x:Name="LogStatus" DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
           <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5" IsVisible="{Binding ShowLog}">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
