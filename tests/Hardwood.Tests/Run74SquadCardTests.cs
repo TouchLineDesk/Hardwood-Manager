@@ -25,7 +25,8 @@ public class Run74SquadCardTests
         Assert.Equal(1, MoodRow.Band(62));
         Assert.Equal(2, MoodRow.Band(68));
         Assert.Equal(1, MoodRow.Band(50));
-        Assert.Equal(0, MoodRow.Band(49.6));
+        Assert.Equal(1, MoodRow.Band(49.6));   // shown as 50: the lane follows the number on the card
+        Assert.Equal(0, MoodRow.Band(49.4));
         Assert.Equal("#D29922", MoodRow.BandColor(62));
     }
 

@@ -13,11 +13,11 @@ public sealed partial class MoodRow : ObservableObject
     public DateOnly Today { get; init; }
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
-    public string Mood => PeopleEngine.Mood(Player.Morale);
+    public string Mood => PeopleEngine.Mood(Morale);   // the shown number, so a 49.6 shown as 50 reads "Content" (code review)
     public int Morale => (int)Math.Round(Player.Morale);
     /// <summary>Run 74: the face and colour follow the mood word's bands (PeopleEngine.Mood and the chips: Happy 68+,
     /// Content 50+, Unhappy below 50); before, the face turned green at 60, so a "Content" 62 looked happy.</summary>
-    public static int Band(double morale) => morale >= 68 ? 2 : morale >= 50 ? 1 : 0;
+    public static int Band(double morale) => Math.Round(morale) >= 68 ? 2 : Math.Round(morale) >= 50 ? 1 : 0;
     public static string BandColor(double morale) => Band(morale) switch { 2 => "#3FB950", 1 => "#D29922", _ => "#F85149" };
     public string MoodIcon => Band(Player.Morale) switch { 2 => "Smile", 1 => "Meh", _ => "Frown" };
     public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(BandColor(Player.Morale)));
@@ -26,7 +26,7 @@ public sealed partial class MoodRow : ObservableObject
     public bool HasStatus => Status.Length > 0;
     public bool StatusBad => Player.TradeRequested;
     public bool HasWorry => MainReason.Length > 0;
-    public string ShortName => Player.Name.Split(' ') is { Length: > 1 } n ? $"{n[0][0]}. {string.Join(' ', n.Skip(1))}" : Player.Name;
+    public string ShortName => Player.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries) is { Length: > 1 } n ? $"{n[0][0]}. {string.Join(' ', n.Skip(1))}" : Player.Name;
     public string CardLine => $"{Pos} · {Player.Age(Today)} · {Mood}";
     public string WorryLine => HasWorry ? MainReason : "Nothing on his mind";
     public string CardTip => $"{Player.Name}: {Mood.ToLower()} ({Morale}/100)" + (HasWorry ? $". Biggest worry: {MainReason}" : "") + (HasStatus ? $". {Status}" : "") + ". Click to talk to him.";
@@ -113,7 +113,7 @@ public sealed partial class SquadViewModel : PageViewModel
     {
         var roster = team.Roster;
         // The same bands as the Mood column (PeopleEngine.Mood): Happy 68+, Unhappy below 50.
-        int happy = roster.Count(p => p.Morale >= 68), unhappy = roster.Count(p => p.Morale < 50 && !p.TradeRequested),
+        int happy = roster.Count(p => MoodRow.Band(p.Morale) == 2), unhappy = roster.Count(p => MoodRow.Band(p.Morale) == 0 && !p.TradeRequested),
             requests = roster.Count(p => p.TradeRequested), promises = Session.Promises.Count(pr => roster.Any(p => p.Id == pr.PlayerId));
         var lowest = roster.OrderBy(p => p.Morale).FirstOrDefault();
         return new List<Hardwood.Desktop.Controls.Chip>
