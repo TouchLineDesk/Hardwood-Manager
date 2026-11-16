@@ -55,6 +55,13 @@
   <Style Selector="TextBlock.bad">
     <Setter Property="Foreground" Value="{StaticResource HwBadBrush}"/>
   </Style>
+  <!-- Run 74: Squad's chemistry factor bars. -->
+  <Style Selector="Border.goodBar">
+    <Setter Property="Background" Value="{StaticResource HwGoodBrush}"/>
+  </Style>
+  <Style Selector="Border.badBar">
+    <Setter Property="Background" Value="{StaticResource HwBadBrush}"/>
+  </Style>
   <Style Selector="Border.panel">
     <Setter Property="Background" Value="{StaticResource HwPanelBrush}"/>
     <Setter Property="BorderBrush" Value="{StaticResource HwBorderBrush}"/>

@@ -4,28 +4,99 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              x:Class="Hardwood.Desktop.Views.SquadView"
              x:DataType="vm:SquadViewModel">
-  <Grid ColumnDefinitions="*,300">
-    <DockPanel Margin="0,0,12,0">
-      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
-        <TextBlock Text="Squad" Classes="h1" Margin="0"/>
+  <!-- Run 74: side by side when there is room; on narrow windows the side panel drops under the cards and the page scrolls (Reflow). -->
+  <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
+  <Grid x:Name="Page" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+    <DockPanel x:Name="Main">
+      <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Squad" Classes="h1" Margin="0"/>
+          <ComboBox x:Name="Views" Grid.Column="1" ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" VerticalAlignment="Top"
+                    ToolTip.Tip="The dressing room as cards, or the full table"/>
+        </Grid>
         <c:StatStrip ItemsSource="{Binding Chips}" Accent="{Binding Accent}"/>
-        <TextBlock Text="{Binding ChemistryHeadline}" Classes="h2" Margin="0"/>
-        <ItemsControl ItemsSource="{Binding ChemistryFactors}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:FactorRow">
-              <Grid ColumnDefinitions="40,*">
-                <TextBlock Text="{Binding EffectText}" FontWeight="SemiBold" Classes.good="{Binding Positive}" Classes.bad="{Binding !Positive}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Reason}" Classes="muted" TextWrapping="Wrap"/>
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <!-- Run 74 (review #13 rank 11): chemistry as a dial, and what moves it as bars. -->
+        <Grid ColumnDefinitions="Auto,*">
+          <c:Gauge x:Name="ChemistryDial" Width="124" Value="{Binding Chemistry}" Maximum="100" Word="{Binding ChemistryWord}" Number="{Binding ChemistryNumber}"
+                   ArcColor="{Binding ChemistryColor}" VerticalAlignment="Top" ToolTip.Tip="{Binding ChemistryHeadline}"/>
+          <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="3">
+            <TextBlock Text="{Binding ChemistryHeadline}" Classes="h2" Margin="0"/>
+            <ItemsControl x:Name="ChemistryBars" ItemsSource="{Binding ChemistryFactors}" Grid.IsSharedSizeScope="True">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FactorRow">
+                  <Grid Margin="0,1">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" MinWidth="34" SharedSizeGroup="Effect"/>
+                      <ColumnDefinition Width="96"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding EffectText}" FontWeight="SemiBold" Classes.good="{Binding Positive}" Classes.bad="{Binding !Positive}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Border Grid.Column="1" Height="8" CornerRadius="4" Background="#2A333D" VerticalAlignment="Center" Margin="0,0,6,0">
+                      <Border Height="8" CornerRadius="4" HorizontalAlignment="Left" Width="{Binding BarWidth}"
+                              Classes.goodBar="{Binding Positive}" Classes.badBar="{Binding !Positive}"/>
+                    </Border>
+                    <TextBlock Grid.Column="2" Text="{Binding Reason}" Classes="muted" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Grid>
+        <TextBlock Text="{Binding MoraleSummary}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}" IsReadOnly="True" RowHeight="NaN">
+
+      <Panel>
+        <!-- Run 74: every player as a card in his mood's lane, the unsettled first. Click one to talk to him. -->
+        <ScrollViewer x:Name="MoodCards" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowCards}">
+          <ItemsControl ItemsSource="{Binding Lanes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:MoodLane">
+                <StackPanel Spacing="4" Margin="0,0,0,10">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Border Width="10" Height="10" CornerRadius="5" Background="{Binding Brush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Note}" Classes="muted" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:MoodRow">
+                        <Button Classes="marketCard" Classes.picked="{Binding Picked}" Width="206" MinHeight="104" Margin="0,0,8,8" Padding="0" VerticalAlignment="Top"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Click="OnCardClick" ToolTip.Tip="{Binding CardTip}">
+                          <Border BorderBrush="{Binding MoodBrush}" BorderThickness="0,4,0,0" CornerRadius="3" Padding="8,6">
+                            <StackPanel Spacing="4">
+                              <Grid ColumnDefinitions="40,*">
+                                <c:Avatar Player="{Binding Player}" Team="{Binding Team}" Width="38" Height="38" VerticalAlignment="Top"/>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="1" VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding ShortName}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                  <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                              </Grid>
+                              <Grid ColumnDefinitions="Auto,*,28">
+                                <c:Icon Kind="{Binding MoodIcon}" Width="16" Height="16" Foreground="{Binding MoodBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <c:RatingBar Grid.Column="1" Value="{Binding Morale}" Maximum="100" Fill="{Binding MoodBrush}" VerticalAlignment="Center" ToolTip.Tip="Morale, out of 100"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Morale}" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Right"/>
+                              </Grid>
+                              <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Classes.bad="{Binding StatusBad}" Classes.accent="{Binding !StatusBad}"
+                                         IsVisible="{Binding HasStatus}" TextWrapping="Wrap"/>
+                              <TextBlock Text="{Binding WorryLine}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                            </StackPanel>
+                          </Border>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+
+      <DataGrid x:Name="MoodTable" IsVisible="{Binding ShowTable}" ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}" IsReadOnly="True" RowHeight="NaN">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="150"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="50"/>
-          <DataGridTemplateColumn Header="Mood" Width="112">
+          <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="152"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="44"/>
+          <DataGridTemplateColumn Header="Mood" Width="134">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:MoodRow">
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="6,0" VerticalAlignment="Center">
@@ -35,27 +106,32 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="Morale" Width="120" SortMemberPath="Morale">
+          <DataGridTemplateColumn Header="Morale" Width="100" SortMemberPath="Morale">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:MoodRow">
-                <Grid ColumnDefinitions="*,30" Margin="6,0" VerticalAlignment="Center">
-                  <ProgressBar Value="{Binding Morale}" Maximum="100" Height="6" MinWidth="60" Foreground="{Binding MoodBrush}" VerticalAlignment="Center"/>
+                <Grid ColumnDefinitions="*,28" Margin="6,0" VerticalAlignment="Center">
+                  <ProgressBar Value="{Binding Morale}" Maximum="100" Height="6" MinWidth="50" Foreground="{Binding MoodBrush}" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="1" Text="{Binding Morale}" HorizontalAlignment="Right"/>
                 </Grid>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
-          <DataGridTemplateColumn Header="Biggest worry" Width="*" MinWidth="130">
+          <DataGridTemplateColumn Header="Status" Width="100">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MoodRow"><TextBlock Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="6,3" Classes.bad="{Binding StatusBad}"/></DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Biggest worry" Width="*" MinWidth="120">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:MoodRow"><TextBlock Text="{Binding MainReason}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="6,3"/></DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
+      </Panel>
     </DockPanel>
 
-    <StackPanel Grid.Column="1" Spacing="10">
+    <StackPanel x:Name="Side" Grid.Column="1" Spacing="10" Width="300" Margin="12,0,0,0">
       <Border Classes="panel">
         <StackPanel Spacing="6">
           <Grid ColumnDefinitions="*,Auto">
@@ -103,4 +179,5 @@
       </Border>
     </StackPanel>
   </Grid>
+  </ScrollViewer>
 </UserControl>
