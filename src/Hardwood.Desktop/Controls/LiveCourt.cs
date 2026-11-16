@@ -76,6 +76,8 @@ public sealed class LiveCourt : Control
     private TrackerPose? _pose, _startPose;
     private readonly System.Diagnostics.Stopwatch _clock = new();
     private bool _ticking;
+    private double _motionMs;   // fixed when a motion starts, so pausing or a speed change mid-motion never rewinds it
+    private TrackerFrame? _target;   // the frame the running motion is heading for
 
     /// <summary>What the court shows now (the motion's current pose, moved on to the clock), for tests and screenshots.</summary>
     public TrackerPose? Pose { get { Advance(); return _pose; } }
@@ -91,8 +93,11 @@ public sealed class LiveCourt : Control
         {
             _startPose = null; _pose = TrackerMotion.Still(frame); return;
         }
-        // Start from what is on screen now, even mid-motion, so nothing jumps.
+        // Start from what is on screen now (moved on to the clock), even mid-motion, so nothing jumps.
+        Advance();
         _startPose = _pose;
+        _motionMs = MotionMs;
+        _target = frame;
         _clock.Restart();
         _pose = TrackerMotion.At(_startPose, frame, 0);
         if (!_ticking) { _ticking = true; top.RequestAnimationFrame(OnAnimationFrame); }
@@ -100,6 +105,7 @@ public sealed class LiveCourt : Control
 
     private void OnAnimationFrame(TimeSpan _)
     {
+        Advance();   // so the loop ends even while the court is hidden (Game flow tab) and Render isn't called
         InvalidateVisual();
         if (_startPose != null && Frame != null && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnAnimationFrame);
         else _ticking = false;
@@ -109,8 +115,8 @@ public sealed class LiveCourt : Control
     /// the court behind.</summary>
     private void Advance()
     {
-        if (_startPose == null || Frame is not { } frame) return;
-        double t = MotionMs <= 0 ? 1 : _clock.Elapsed.TotalMilliseconds / MotionMs;
+        if (_startPose == null || _target is not { } frame) return;
+        double t = _motionMs <= 0 ? 1 : _clock.Elapsed.TotalMilliseconds / _motionMs;
         _pose = TrackerMotion.At(_startPose, frame, t);
         if (t >= 1) _startPose = null;
     }

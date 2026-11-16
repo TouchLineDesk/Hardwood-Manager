@@ -153,7 +153,7 @@
             </StackPanel>
           </Border>
           </ScrollViewer>
-<ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5" IsVisible="{Binding ShowLog}">
+          <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5" IsVisible="{Binding ShowLog}">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
           <!-- The tracker's second slice (run 83): a compact live box score beside the court; green dot: on the floor. -->
