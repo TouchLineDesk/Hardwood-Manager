@@ -249,7 +249,7 @@ public static class Assistant
         ("Schedule & Results", "The fixture list and every result, with box scores."),
     };
 
-    private static int RosterMin(GameSession s) => s.InCollege ? 0 : s.InNabl ? s.League.Finance.RosterMin : World.GameWorld.ManagedMinimum;
+    private static int RosterMin(GameSession s) => s.InCollege ? 0 : s.MyRosterMin;
 
     private static string Names(IEnumerable<Player> ps)
     {

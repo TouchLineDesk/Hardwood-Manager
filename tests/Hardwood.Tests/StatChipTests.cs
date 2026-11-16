@@ -111,7 +111,7 @@ public class StatChipTests
             int injured = team.Roster.Count(p => p.Injury is { } inj && inj.IsOut(s.Today));
             Assert.Equal(injured.ToString(), C(rv.Chips, "Injured").Value);
             Assert.Equal(injured > 0 ? "bad" : "good", C(rv.Chips, "Injured").Tone);
-            Assert.Equal(team.Roster.Count(p => p.Contract is { Years: <= 0 }).ToString(), C(rv.Chips, "Expiring").Value);
+            Assert.Equal(team.Roster.Count(p => s.EndsThisSummer(p, team)).ToString(), C(rv.Chips, "Expiring").Value);   // H30: in season, final-year deals (Years 1)
             Assert.Equal(PlayerViewModel.Money(ContractMarket.Payroll(team)), C(rv.Chips, "Wages").Value);
             Assert.Equal(team.Roster.OrderByDescending(p => p.CurrentAbility).First().Name.Split(' ').Last(), C(rv.Chips, "Best player").Value);
             // "Unhappy" agrees with the Mood column: anyone shown as Unhappy or Very unhappy, or asking out.

@@ -32,8 +32,13 @@ public sealed class GameWorld
     public const int FirstTeamId = 1001;
     /// <summary>Roster size for every club outside the NABL.</summary>
     public const int RosterSize = 13;
-    /// <summary>The fewest players your club abroad may start a season with (the sporting director fills to this).</summary>
-    public const int ManagedMinimum = 10;
+    /// <summary>H29: the fewest players a club outside the NBA may carry (tiers 2-5 and abroad). One number everywhere: the
+    /// sporting director fills your club to it, the assistant warns below it, minimum deals and the roster-fill reserve use it.</summary>
+    public const int RosterMinimum = RosterSize - 2;
+    /// <summary>The most players a club outside the NBA may carry.</summary>
+    public const int RosterMaximum = RosterSize + 2;
+    /// <summary>The fewest players your club abroad may start a season with (the sporting director fills to this): the league minimum (H29; was 10, one under it).</summary>
+    public const int ManagedMinimum = RosterMinimum;
 
     private readonly Rng _rng;
     private readonly Dictionary<int, Team> _teams = new();

@@ -25,8 +25,24 @@ public sealed partial class GameSession
         : InNabl ? (Offseason is { Phase: OffseasonPhase.ReSigning } o && o.Expiring.TryGetValue(HumanTeam.Id, out var l) ? l : Array.Empty<Player>())
         : World.AwaitingDecision.TryGetValue(HumanTeam.Id, out var w) ? w : Array.Empty<Player>();
 
-    /// <summary>The fewest players your league lets you carry.</summary>
-    public int MyRosterMin => InNabl ? League.Finance.RosterMin : GameWorld.RosterSize - 2;
+    /// <summary>The fewest players your league lets you carry (H29: the one number every screen, the assistant and the
+    /// sporting director use: the NBA's 13, or 11 in tiers 2-5 and abroad).</summary>
+    public int MyRosterMin => InNabl ? League.Finance.RosterMin : GameWorld.RosterMinimum;
+    /// <summary>The most players your league lets you carry (the NBA's 15, or 15 outside it).</summary>
+    public int MyRosterMax => InNabl ? League.Finance.RosterMax : GameWorld.RosterMaximum;
+
+    /// <summary>
+    /// H25/H30: true once this summer has counted a club's contracts down (the NBA's offseason from re-signing on; the world's
+    /// summer for clubs abroad and in tiers 2-5). Before that, a deal with one year left is in its final season.
+    /// </summary>
+    public bool ContractsCounted(Team team) =>
+        Phase == SessionPhase.Offseason
+        && (League.Teams.Contains(team)
+            ? Offseason is { } o && o.Phase != OffseasonPhase.NotStarted
+            : World.SummerStarted == League.Season + 1);
+
+    /// <summary>H30: deals that end this summer: in season, those in their final year (Years 1); once counted, those at 0.</summary>
+    public bool EndsThisSummer(Player p, Team team) => p.Contract is { } c && c.Years <= (ContractsCounted(team) ? 0 : 1);
 
     /// <summary>Over the wage budget by more than a rounding margin (1%), as the owner sees it.</summary>
     public bool OverWageBudget => HumanTeam.Money.Ready && MyCommittedWages > HumanTeam.Money.WageBudget * 1.01;
@@ -90,9 +106,9 @@ public sealed partial class GameSession
         if (renewal) return Offseason.WontReSign(p) ? $"{p.Name} is too unhappy here to sign a new deal." : null;
         if (p.TeamId == HumanTeam.Id) return "His contract isn't up yet.";
         if (AgreedFees.ContainsKey(p.Id))
-            return HumanTeam.Roster.Count >= League.Finance.RosterMax ? "Your roster is full. Release someone first." : null;
+            return HumanTeam.Roster.Count >= MyRosterMax ? "Your roster is full. Release someone first." : null;
         if (!League.FreeAgents.Contains(p)) return $"{p.Name} is under contract elsewhere. Agree a fee with his club first (Transactions page).";
-        if (HumanTeam.Roster.Count >= League.Finance.RosterMax) return "Your roster is full. Release someone first.";
+        if (HumanTeam.Roster.Count >= MyRosterMax) return "Your roster is full. Release someone first.";
         if (AimsHigher(p) is { } higher) return higher;
         if (Phase == SessionPhase.Offseason && Offseason?.Phase == OffseasonPhase.ReSigning && InNabl)
             return "Free agency opens after the re-signing period. Continue to free agency first.";

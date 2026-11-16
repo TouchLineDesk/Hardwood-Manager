@@ -259,14 +259,14 @@ public sealed partial class GameSession
         {
             if (deals >= maxDeals) break;
             bool nabl = League.Teams.Contains(buyer);
-            int max = nabl ? League.Finance.RosterMax : GameWorld.RosterSize + 2;
+            int max = nabl ? League.Finance.RosterMax : GameWorld.RosterMaximum;
             if (buyer.Roster.Count >= max || buyer.Money.TransferBudget < 100_000 || buyer.Roster.Count < 5) continue;
             double scale = ScaleOf(buyer);
             var sorted = buyer.Roster.Select(p => p.CurrentAbility).OrderByDescending(x => x).ToList();
             int fifth = sorted[Math.Min(4, sorted.Count - 1)], best = sorted[0];
             var pick = pool.Where(x => x.t != buyer && x.t.Roster.Contains(x.p) && ScaleOf(x.t) <= scale + 1e-9
                                        && x.p.CurrentAbility >= fifth + 4 && x.p.CurrentAbility <= best + 6
-                                       && x.t.Roster.Count > (League.Teams.Contains(x.t) ? League.Finance.RosterMin : GameWorld.RosterSize - 2))
+                                       && x.t.Roster.Count > (League.Teams.Contains(x.t) ? League.Finance.RosterMin : GameWorld.RosterMinimum))
                 .OrderByDescending(x => x.p.CurrentAbility + _rng.NextDouble() * 8).Take(6)
                 .Select(x => (x.p, x.t, fee: TransferMarket.Ask(x.p, x.t, Today, ScaleOf(x.t), League.Finance),
                               wage: ContractTalks.Demand(x.p, buyer, Today, scale, League.Finance, false)))

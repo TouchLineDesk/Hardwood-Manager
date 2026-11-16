@@ -229,7 +229,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         long committed = s.MyCommittedWages, budget = team.Money.WageBudget;
         static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
         CapText = $"Wages committed {M(committed)} of a {M(budget)} budget · {(budget >= committed ? $"{M(budget - committed)} to spend" : $"{M(committed - budget)} over")}"
-                  + $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {fin.RosterMin}-{fin.RosterMax})";
+                  + (s.InCollege ? "" : $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {s.MyRosterMin}-{s.MyRosterMax})");
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
         Instructions = o.Phase == OffseasonPhase.Draft && o.CollegeDraftOn
             ? "The college draft: one round, in the lottery's order. When you're on the clock, pick a graduate on the Draft tab; press Continue and your scouts pick for you. Free agency opens when the draft ends."

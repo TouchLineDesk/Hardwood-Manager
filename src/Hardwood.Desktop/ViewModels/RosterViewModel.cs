@@ -32,7 +32,11 @@ public sealed class PlayerRow
     public string Phy => Scouting.GroupAverage(Player, AttrGroup.Physical, Knowledge);
     public string Salary => Player.Contract is { } c ? $"${c.Salary / 1e6:F1}M" : "-";
     public long SalaryValue => Player.Contract?.Salary ?? 0;
-    public string Years => Player.Contract is { } c ? (c.Years <= 0 ? "Expiring" : $"{c.Years} yr") : "-";
+    /// <summary>H30: set when the club's contracts haven't counted down yet this summer (in season, Years 1 is the final year).</summary>
+    public bool BeforeCountdown { get; init; }
+    public string Years => YearsText(Player.Contract, BeforeCountdown);
+    public static string YearsText(Contract? c, bool beforeCountdown) =>
+        c == null ? "-" : c.Years <= 0 ? "Expiring" : c.Years == 1 && beforeCountdown ? "Final year" : $"{c.Years} yr";
     public string Status { get; init; } = "";
     public string Mood => Player.TeamId == null ? "" : Hardwood.Core.People.PeopleEngine.Mood(Player.Morale) + (Player.TradeRequested ? " (wants out)" : "");
     public double Mpg { get; init; }
@@ -54,15 +58,17 @@ public sealed class PlayerRow
     {
         (p.TeamId == s.HumanTeam.Id ? s.MyStats : s.Stats).TryGetValue(p.Id, out var st);
         string status = p.IsAvailable(s.Today) ? "" : $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)";
+        var club = p.TeamId is { } cid ? s.FindTeam(cid) : null;
+        bool before = club != null && !s.ContractsCounted(club);
         return new PlayerRow
         {
-            Player = p, Age = p.Age(s.Today), Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
+            Player = p, Age = p.Age(s.Today), BeforeCountdown = before, Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",
             Team = team ?? (p.TeamId is { } id ? s.FindTeam(id)!.Abbreviation : "FA"),
             TeamObj = p.TeamId is { } tid ? s.FindTeam(tid)! : null,
             CardFooter = st is { Games: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min"
-                       : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {(c.Years <= 0 ? "expiring" : c.Years + " yr")}" : $"Age {p.Age(s.Today)}",
+                       : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {YearsText(c, before).ToLowerInvariant()}" : $"Age {p.Age(s.Today)}",
         };
     }
 }
@@ -104,6 +110,9 @@ public sealed partial class RosterViewModel : PageViewModel
         {
             new("Players", roster.Count.ToString(), roster.Count == 0 ? "" : $"average age {roster.Average(p => p.Age(s.Today)):0.0}", "team"),
         };
+        // H29: your club below its league's minimum says so (the same number the assistant and the sporting director use).
+        if (team == s.HumanTeam && s.Employed && !s.InCollege && roster.Count < s.MyRosterMin)
+            chips[0] = new("Players", roster.Count.ToString(), $"short: the league needs {s.MyRosterMin}-{s.MyRosterMax}", "bad");
         var college = s.World.College is { } cw && cw.Programs.Contains(team) ? cw : null;
         if (college != null)
         {
@@ -128,8 +137,9 @@ public sealed partial class RosterViewModel : PageViewModel
         chips.Add(injured.Count == 0
             ? new("Injured", "0", "everyone fit", "good")
             : new("Injured", injured.Count.ToString(), string.Join(", ", injured.Take(2).Select(p => p.Name.Split(' ').Last())) + (injured.Count > 2 ? $" +{injured.Count - 2}" : ""), "bad"));
-        int expiring = roster.Count(p => p.Contract is { Years: <= 0 });
-        if (college == null) chips.Add(new("Expiring", expiring.ToString(), expiring == 0 ? "no deals end this summer" : "deals end this summer", expiring > 0 ? "warn" : ""));
+        // H30: in season a deal in its final year has Years 1 (the countdown comes at the start of the summer).
+        int expiring = roster.Count(p => s.EndsThisSummer(p, team));
+        if (college == null) chips.Add(new("Expiring", expiring.ToString(), expiring == 0 ? "no deals end this summer" : expiring == 1 ? "deal ends this summer" : "deals end this summer", expiring > 0 ? "warn" : ""));
         if (roster.Count > 0)
         {
             var best = roster.OrderByDescending(p => p.CurrentAbility).First();
