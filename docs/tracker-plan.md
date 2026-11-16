@@ -36,7 +36,12 @@ Movement AI, a spatial simulation, a second simulator, 3D, heavy animation tooli
    `TrackerLayout.Build` made.
 2. **Beside it (done, run 83):** a **Play by play | Box score** switch on the panel under the court; the compact box
    score (MIN PTS REB AST FG 3P PF, a green dot for the five on the floor, team totals) is rebuilt only while shown.
-3. **Big view:** a larger court (the play by play folding under it) for wide windows; check 1480 px and 130% text.
+3. **Big view (done, run 85, v0.99.0):** on by default (**Smaller court** / **Bigger court** on the court's tab row,
+   remembered in the settings). The court's height cap follows the column (the panel's own rows, its margin and at
+   least 180 px for the play by play / box score folding under it; never under 300), and from a page width of 900 px
+   the columns go 2:1 instead of 3:2 (the side tabs keep at least 330 px). Measured court: 1480×900 610×325 (was
+   553×295), 1920×1080 911×485 (was about 564×300), 2560×1440 1338×712. At 130% text on 1480 the page is narrow, so the
+   columns stay 3:2 and the court is as before (348×186); the box score's names now wrap rather than being cut there.
 4. **Veto check D78** lists what shipped (see `claude/for-danny.md`).
 
 ## Risks
