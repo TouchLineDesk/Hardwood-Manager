@@ -39,7 +39,7 @@ public class Run65BoxTests
         {
             PlayUntil(s, () => s.MyGames().Count(g => g.Played) >= 8);
             var mine = s.MyGames().Where(g => g.Played).ToList();
-            Assert.All(mine, g => { Assert.NotNull(g.Result); Assert.False(g.BeforeYouArrived); });
+            Assert.All(mine, g => { Assert.NotNull(g.Result); Assert.False(g.NotCoached); });
 
             // Take another G League club's job while in work, as an accepted offer does.
             var other = s.World[UsaPyramid.Tier2].Clubs.First(t => t != s.HumanTeam && s.World.FixturesOf(t.Id).Count(x => x.fixture.Played) >= 5);
@@ -48,7 +48,7 @@ public class Run65BoxTests
             Assert.Equal(other, s.HumanTeam);
             int before = s.MyGames().Count(g => g.Played);
             Assert.True(before >= 5);
-            Assert.All(s.MyGames().Where(g => g.Played), g => { Assert.True(g.BeforeYouArrived); Assert.Null(g.Result); Assert.NotNull(g.Us); });
+            Assert.All(s.MyGames().Where(g => g.Played), g => { Assert.True(g.NotCoached); Assert.Null(g.Result); Assert.NotNull(g.Us); });
 
             // The new club's next games are yours: they keep their box scores, through a reload.
             PlayUntil(s, () => s.MyGames().Count(g => g.Played) >= before + 3);
@@ -56,9 +56,9 @@ public class Run65BoxTests
             foreach (var x in new[] { s, loaded })
             {
                 var played = x.MyGames().Where(g => g.Played).ToList();
-                Assert.Equal(before, played.Count(g => g.BeforeYouArrived));
-                Assert.All(played.Where(g => !g.BeforeYouArrived), g => Assert.True(g.Result is { } r && r.Home.Lines.Count > 0));
-                Assert.True(played.Count(g => !g.BeforeYouArrived) >= 3);
+                Assert.Equal(before, played.Count(g => g.NotCoached));
+                Assert.All(played.Where(g => !g.NotCoached), g => Assert.True(g.Result is { } r && r.Home.Lines.Count > 0));
+                Assert.True(played.Count(g => !g.NotCoached) >= 3);
             }
         }
         finally { File.Delete(path); }
@@ -73,7 +73,24 @@ public class Run65BoxTests
             PlayUntil(s, () => s.MyGames().Count(g => g.Played) >= 4);
             s.SaveNow();
             var loaded = GameSession.Load(path);
-            Assert.All(loaded.MyGames().Where(g => g.Played), g => { Assert.False(g.BeforeYouArrived); Assert.NotNull(g.Result); });
+            Assert.All(loaded.MyGames().Where(g => g.Played), g => { Assert.False(g.NotCoached); Assert.NotNull(g.Result); });
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Games_played_while_you_are_out_of_work_are_marked_too()
+    {
+        var (s, path) = GleagueCareer();
+        try
+        {
+            PlayUntil(s, () => s.MyGames().Count(g => g.Played) >= 4);
+            int coached = s.MyGames().Count(g => g.Played);
+            Assert.Null(s.Resign());
+            PlayUntil(s, () => s.MyGames().Count(g => g.Played) >= coached + 3);
+            var played = s.MyGames().Where(g => g.Played).ToList();
+            Assert.Equal(coached, played.Count(g => !g.NotCoached && g.Result != null));
+            Assert.All(played.Skip(coached), g => { Assert.True(g.NotCoached); Assert.Null(g.Result); });
         }
         finally { File.Delete(path); }
     }
@@ -91,7 +108,7 @@ public class Run65BoxTests
             var other = s.World[UsaPyramid.Tier2].Clubs.First(t => t != s.HumanTeam && s.World.FixturesOf(t.Id).Count(x => x.fixture.Played) >= 2);
             s.Job.Vacancies.Add(new Vacancy { TeamId = other.Id, Opened = s.Today, Status = "offered", DecideOn = s.Today.AddDays(7) });
             Assert.Null(s.AcceptOffer(other.Id));
-            PlayUntil(s, () => s.MyGames().Any(g => g.Played && !g.BeforeYouArrived));
+            PlayUntil(s, () => s.MyGames().Any(g => g.Played && !g.NotCoached));
 
             var vm = new MainViewModel();
             var window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
@@ -99,13 +116,13 @@ public class Run65BoxTests
             vm.AttachSession(s);
             vm.Navigate("Schedule & Results");
             var sched = Assert.IsType<ScheduleViewModel>(vm.CurrentPage);
-            var old = sched.Games.First(g => g.Played && g.BeforeYouArrived);
+            var old = sched.Games.First(g => g.Played && g.NotCoached);
             Assert.False(old.HasBox);
-            Assert.Equal(ScheduleViewModel.BeforeYouArrivedText, old.TopPerformer);
+            Assert.Equal(ScheduleViewModel.NotCoachedText, old.TopPerformer);
             Assert.NotEmpty(old.Score);
             sched.Selected = old;
             Assert.False(sched.CanOpenBox);
-            Assert.Equal(ScheduleViewModel.BeforeYouArrivedTip, sched.OpenBoxTip);
+            Assert.Equal(ScheduleViewModel.NotCoachedTip, sched.OpenBoxTip);
             if (Environment.GetEnvironmentVariable("HW_SCREENSHOT_DIR") is { Length: > 0 } dir)
             {
                 window.UpdateLayout();
@@ -114,9 +131,9 @@ public class Run65BoxTests
                 frame?.Save(Path.Combine(dir, "schedule-before-you-arrived.png"));
             }
 
-            var ours = sched.Games.First(g => g.Played && !g.BeforeYouArrived);
+            var ours = sched.Games.First(g => g.Played && !g.NotCoached);
             Assert.True(ours.HasBox);
-            Assert.NotEqual(ScheduleViewModel.BeforeYouArrivedText, ours.TopPerformer);
+            Assert.NotEqual(ScheduleViewModel.NotCoachedText, ours.TopPerformer);
             sched.Selected = ours;
             Assert.True(sched.CanOpenBox);
             Assert.DoesNotContain("before you took", sched.OpenBoxTip);

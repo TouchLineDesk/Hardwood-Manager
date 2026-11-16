@@ -318,6 +318,8 @@ public sealed partial class TransactionsViewModel
             Market.Insert(0, row);
         }
         Tab = 0;
+        // Run 65: the market opens on cards; a player from below the best 24 (or filtered out) gets his card at the front.
+        if (!MarketCards.Contains(row)) MarketCards.Insert(0, row);
         SelectedMarket = row;
         if (bid.Status == MyBidStatus.Countered) BidFee = Math.Round((decimal)(bid.Counter / 1e6), 2);
     }

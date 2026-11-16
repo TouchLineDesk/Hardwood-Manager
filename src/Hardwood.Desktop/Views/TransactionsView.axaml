@@ -104,7 +104,7 @@
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="40"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="40"/>
               <DataGridTextColumn Header="PA" Binding="{Binding PA}" Width="40"/>
-              <DataGridTemplateColumn Header="Joins?" Width="102">
+              <DataGridTemplateColumn Header="Joins?" Width="102" SortMemberPath="Interest">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:MarketRow">
                     <Border Background="{Binding InterestBrush}" CornerRadius="4" Padding="6,0" Margin="4,0" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="{Binding InterestTip}">
@@ -114,7 +114,7 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
               <!-- Run 65: the club's stance as a coloured chip, not a word repeated down the column. -->
-              <DataGridTemplateColumn Header="Club stance" Width="118">
+              <DataGridTemplateColumn Header="Club stance" Width="118" SortMemberPath="Stance">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:MarketRow">
                     <Border Background="{Binding StanceBrush}" CornerRadius="4" Padding="6,0" Margin="4,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding HasStance}" ToolTip.Tip="{Binding StanceTip}">
