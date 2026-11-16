@@ -51,6 +51,8 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public Team Team => Session.HumanTeam;
     [ObservableProperty] private string _headline = "";
+    /// <summary>H52 (run 84): the Game plan and Rotation buttons show only while you coach a club.</summary>
+    [ObservableProperty] private bool _coaching = true;
     [ObservableProperty] private string _subline = "";
     [ObservableProperty] private Color _glow;
     [ObservableProperty] private Team? _opponent;
@@ -94,6 +96,7 @@ public sealed partial class HomeViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session; var team = Team; var rec = s.MyRecord;
+        Coaching = s.Employed;
         Glow = ThemeService.Accent;
         var conf = s.MyTable;
         int seed = s.MyRank;

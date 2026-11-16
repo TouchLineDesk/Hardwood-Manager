@@ -110,7 +110,7 @@ public sealed partial class RotationViewModel : PageViewModel
         _loading = true;
         var team = Session.HumanTeam;
         var chart = team.DepthChart ?? Suggest(team);
-        team.DepthChart = chart;
+        if (Session.Employed) team.DepthChart = chart;   // H52 (run 84): never write a chart to a club you've left
 
         Rows.Clear();
         foreach (var p in team.Roster.OrderByDescending(p => chart.MinutesTargets.GetValueOrDefault(p.Id)).ThenByDescending(p => p.Overall))
@@ -253,7 +253,7 @@ public sealed partial class RotationViewModel : PageViewModel
     /// <summary>True when the five picks are valid and now the chart's starters.</summary>
     public bool StartersChanged()
     {
-        if (_loading) return false;
+        if (_loading || !Session.Employed) return false;
         var chart = Session.HumanTeam.DepthChart!;
         var ids = Starters.Select(s => s.Selected?.Id).ToList();
         if (ids.Any(id => id == null) || ids.Distinct().Count() < 5)
@@ -273,7 +273,7 @@ public sealed partial class RotationViewModel : PageViewModel
 
     public void Recalc()
     {
-        if (_loading) return;
+        if (_loading || !Session.Employed) return;
         var chart = Session.HumanTeam.DepthChart!;
         chart.MinutesTargets = Rows.Where(r => r.Minutes > 0).ToDictionary(r => r.Player.Id, r => r.Minutes);
         double total = Rows.Sum(r => r.Minutes);
@@ -291,6 +291,7 @@ public sealed partial class RotationViewModel : PageViewModel
     [RelayCommand]
     public void AutoRotation()
     {
+        if (!Session.Employed) return;   // H52 (run 84)
         var team = Session.HumanTeam;
         string before = ChartKey(team.DepthChart);
         team.DepthChart = Suggest(team, Session.Today);

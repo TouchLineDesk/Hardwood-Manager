@@ -103,10 +103,13 @@ public class Run81RosterMovesTests
             Assert.Equal(roster, club.Roster.ToList());
             Assert.Equal(faBefore, s.League.FreeAgents.Count);
 
-            // The page: no Transactions in the menu; reached anyway (a link), it says why and shows no tabs.
+            // The page: no Transactions in the menu; a link to it opens the Board page (run 84, H52); the page itself, if
+            // shown anyway, says why and shows no tabs.
             Assert.False(vm.Nav.First(n => n.Name == "Transactions").IsVisible);
             vm.Navigate("Transactions"); Settle();
-            tx = Assert.IsType<TransactionsViewModel>(vm.CurrentPage);
+            Assert.IsType<BoardViewModel>(vm.CurrentPage);
+            tx = (TransactionsViewModel)vm.Page("Transactions");
+            vm.CurrentPage = tx;
             tx.Refresh(); Settle();
             Assert.True(tx.Closed);
             Assert.Contains("aren't coaching", tx.ClosedText);
