@@ -5,14 +5,17 @@ using Hardwood.Core.Model;
 
 namespace Hardwood.Desktop.Controls;
 
-/// <summary>One player's marker on the tracker: where he stands (court feet), his side and a short label.</summary>
-public sealed record TrackerMarker(Point Spot, bool Home, string Label, bool Actor);
+/// <summary>One player's marker on the tracker: where he stands (court feet), his side and a short label.
+/// <see cref="Key"/> is the player's id, so a marker can glide from one frame to the next (run 83).</summary>
+public sealed record TrackerMarker(Point Spot, bool Home, string Label, bool Actor, int Key = 0);
 
 /// <summary>
 /// One frame of the 2D tracker (D67 B, run 80): ten labelled markers, the ball, and what the play was. Built from the
 /// engine's own play (<see cref="PlayEvent"/>) and the two fives on the floor.
+/// <see cref="Pass"/> (run 83) is where the assister stood when a made shot was assisted: the ball goes to him, then to
+/// the shooter, then to the rim.
 /// </summary>
-public sealed record TrackerFrame(IReadOnlyList<TrackerMarker> Markers, Point Ball, Point? From, string Caption, bool HomeOffense, PlayKind? Kind, bool Made);
+public sealed record TrackerFrame(IReadOnlyList<TrackerMarker> Markers, Point Ball, Point? From, string Caption, bool HomeOffense, PlayKind? Kind, bool Made, Point? Pass = null);
 
 /// <summary>
 /// Places the ten players for a play. <b>Presentation only:</b> the engine resolves possessions, not movement, so the
@@ -149,12 +152,20 @@ public static class TrackerLayout
             if (play.Kind is PlayKind.Steal) ball = def[id];
         }
 
+        // An assisted make: the passer is drawn where he stands in the set, and the ball goes through him (run 83).
+        Point? pass = null;
+        if (play is { Kind: PlayKind.Shot, Made: true, Other: { } assister })
+        {
+            int ip = Idx(offFive, assister);
+            if (ip >= 0 && ip != ia) pass = Clamp(off[ip]);
+        }
+
         var markers = new List<TrackerMarker>(10);
         for (int i = 0; i < offFive.Count; i++)
-            markers.Add(new TrackerMarker(Clamp(off[i]), homeO, Label(offFive[i]), offFive[i] == actor || offFive[i] == other));
+            markers.Add(new TrackerMarker(Clamp(off[i]), homeO, Label(offFive[i]), offFive[i] == actor || offFive[i] == other, offFive[i].Id));
         for (int i = 0; i < defFive.Count; i++)
-            markers.Add(new TrackerMarker(Clamp(def[i]), !homeO, Label(defFive[i]), defFive[i] == actor || defFive[i] == other));
-        return new TrackerFrame(markers, Clamp(ball), from, caption, homeO, play?.Kind, play?.Made ?? false);
+            markers.Add(new TrackerMarker(Clamp(def[i]), !homeO, Label(defFive[i]), defFive[i] == actor || defFive[i] == other, defFive[i].Id));
+        return new TrackerFrame(markers, Clamp(ball), from, caption, homeO, play?.Kind, play?.Made ?? false, pass);
     }
 
     /// <summary>The five in set order: guards up top, bigs inside (by listed position, then the order on the floor).</summary>

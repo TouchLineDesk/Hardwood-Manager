@@ -56,6 +56,10 @@ public sealed class LiveCourt : Control
     /// <summary>The 2D tracker's frame (D67 B, run 80): ten players and the ball for the latest play, drawn over the shots.</summary>
     public static readonly StyledProperty<TrackerFrame?> FrameProperty = AvaloniaProperty.Register<LiveCourt, TrackerFrame?>(nameof(Frame));
 
+    /// <summary>How long a play's motion lasts (ms, run 83); 0 draws each frame at once.</summary>
+    public static readonly StyledProperty<double> MotionMsProperty = AvaloniaProperty.Register<LiveCourt, double>(nameof(MotionMs));
+
+    public double MotionMs { get => GetValue(MotionMsProperty); set => SetValue(MotionMsProperty, value); }
     public IImage? Floor { get => GetValue(FloorProperty); set => SetValue(FloorProperty, value); }
     public IReadOnlyList<LiveShot>? Shots { get => GetValue(ShotsProperty); set => SetValue(ShotsProperty, value); }
     public int Version { get => GetValue(VersionProperty); set => SetValue(VersionProperty, value); }
@@ -67,6 +71,49 @@ public sealed class LiveCourt : Control
     public TrackerFrame? Frame { get => GetValue(FrameProperty); set => SetValue(FrameProperty, value); }
 
     static LiveCourt() => AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty, FloorColorProperty, FloorTrimProperty, FloorNameProperty, FrameProperty);
+
+    // The motion between frames (run 83): what was on screen when the new frame came, and when it came.
+    private TrackerPose? _pose, _startPose;
+    private readonly System.Diagnostics.Stopwatch _clock = new();
+    private bool _ticking;
+
+    /// <summary>What the court shows now (the motion's current pose, moved on to the clock), for tests and screenshots.</summary>
+    public TrackerPose? Pose { get { Advance(); return _pose; } }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != FrameProperty) return;
+        var frame = Frame;
+        if (frame == null) { _pose = _startPose = null; return; }
+        var top = TopLevel.GetTopLevel(this);
+        if (MotionMs <= 0 || _pose == null || top == null)
+        {
+            _startPose = null; _pose = TrackerMotion.Still(frame); return;
+        }
+        // Start from what is on screen now, even mid-motion, so nothing jumps.
+        _startPose = _pose;
+        _clock.Restart();
+        _pose = TrackerMotion.At(_startPose, frame, 0);
+        if (!_ticking) { _ticking = true; top.RequestAnimationFrame(OnAnimationFrame); }
+    }
+
+    private void OnAnimationFrame(TimeSpan _)
+    {
+        InvalidateVisual();
+        if (_startPose != null && Frame != null && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnAnimationFrame);
+        else _ticking = false;
+    }
+
+    /// <summary>Move the motion on to now: the pose follows the clock, so a late or missed animation frame never leaves
+    /// the court behind.</summary>
+    private void Advance()
+    {
+        if (_startPose == null || Frame is not { } frame) return;
+        double t = MotionMs <= 0 ? 1 : _clock.Elapsed.TotalMilliseconds / MotionMs;
+        _pose = TrackerMotion.At(_startPose, frame, t);
+        if (t >= 1) _startPose = null;
+    }
 
     /// <summary>A court is 94 by 50 feet.</summary>
     public const double Aspect = 94.0 / 50.0;
@@ -157,23 +204,30 @@ public sealed class LiveCourt : Control
         // With the tracker on, the game's shots stay as a faint record under the players.
         using (ctx.PushOpacity(frame != null ? 0.4 : 1.0))
             DrawShots(ctx, shots, s, P, latestRing: frame == null);
-        if (frame != null) DrawFrame(ctx, frame, s, P);
+        Advance();
+        if (frame != null) DrawFrame(ctx, frame, _pose ?? TrackerMotion.Still(frame), s, P);
     }
 
     /// <summary>Ten players and the ball (presentation only: see <see cref="TrackerLayout"/>).</summary>
-    private void DrawFrame(DrawingContext ctx, TrackerFrame f, double s, Func<double, double, Point> P)
+    private void DrawFrame(DrawingContext ctx, TrackerFrame f, TrackerPose pose, double s, Func<double, double, Point> P)
     {
         double r = Math.Max(5, s * 1.75);
         var face = new Typeface("Inter", FontStyle.Normal, FontWeight.Bold);
         double fs = Math.Max(8, Math.Min(12, s * 1.4));
-        // The shot's path: from where he shot to where the ball went.
-        if (f.From is { } from)
+        // The pass (run 83): a thin dotted line from the passer to the shooter, drawn as the ball travels it.
+        if (pose.PassFrom is { } pf && pose.PassTo is { } pt)
+        {
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)), Math.Max(1.3, s * 0.24)) { DashStyle = DashStyle.Dot };
+            ctx.DrawLine(pen, P(pf.X, pf.Y), P(pt.X, pt.Y));
+        }
+        // The shot's path: from where he shot to where the ball is (the rim, once it gets there).
+        if (pose.ShotFrom is { } from && pose.ShotTo is { } to)
         {
             var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 255, 224, 102)), Math.Max(1.5, s * 0.3)) { DashStyle = f.Made ? null : DashStyle.Dash };
-            ctx.DrawLine(pen, P(from.X, from.Y), P(f.Ball.X, f.Ball.Y));
+            ctx.DrawLine(pen, P(from.X, from.Y), P(to.X, to.Y));
         }
         // Defence first, so the side with the ball sits on top.
-        foreach (var m in f.Markers.OrderBy(m => m.Home == f.HomeOffense ? 1 : 0).ThenBy(m => m.Actor ? 1 : 0))
+        foreach (var m in pose.Markers.OrderBy(m => m.Home == f.HomeOffense ? 1 : 0).ThenBy(m => m.Actor ? 1 : 0))
         {
             var c = m.Home ? HomeColor : AwayColor;
             var p = P(m.Spot.X, m.Spot.Y);
@@ -195,7 +249,7 @@ public sealed class LiveCourt : Control
                 ctx.DrawText(tagText, new Point(tag.X + 2, tag.Y));
             }
         }
-        var b = P(f.Ball.X, f.Ball.Y);
+        var b = P(pose.Ball.X, pose.Ball.Y);
         double br = Math.Max(3.5, s * 0.75);
         ctx.DrawEllipse(new SolidColorBrush(Color.Parse("#F08A24")), new Pen(new SolidColorBrush(Color.Parse("#2A1A0C")), 1.4), b, br, br);
         ctx.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#2A1A0C")), 0.9), new Point(b.X - br, b.Y), new Point(b.X + br, b.Y));
