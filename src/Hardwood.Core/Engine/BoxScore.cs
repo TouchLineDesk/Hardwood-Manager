@@ -79,6 +79,8 @@ public sealed class GameResult
     public ulong Seed { get; init; }
     public DateOnly? Date { get; init; }
     public List<string> PlayLog { get; } = new();
+    /// <summary>Every play as data, for the 2D tracker (games with a play log only; run 80). Not saved.</summary>
+    public List<PlayEvent> Plays { get; } = new();
     /// <summary>The score after every possession that changed it (games with a play log only; see <see cref="GameFlow"/>).</summary>
     public List<FlowPoint> Flow { get; } = new();
     /// <summary>Seconds played so far and the period being played (kept up to date while a live game runs).</summary>

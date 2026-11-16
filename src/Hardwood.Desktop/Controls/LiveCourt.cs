@@ -53,6 +53,8 @@ public sealed class LiveCourt : Control
     public static readonly StyledProperty<Color> FloorColorProperty = AvaloniaProperty.Register<LiveCourt, Color>(nameof(FloorColor), Color.Parse("#1D3FA3"));
     public static readonly StyledProperty<Color> FloorTrimProperty = AvaloniaProperty.Register<LiveCourt, Color>(nameof(FloorTrim), Color.Parse("#F0A33A"));
     public static readonly StyledProperty<string?> FloorNameProperty = AvaloniaProperty.Register<LiveCourt, string?>(nameof(FloorName));
+    /// <summary>The 2D tracker's frame (D67 B, run 80): ten players and the ball for the latest play, drawn over the shots.</summary>
+    public static readonly StyledProperty<TrackerFrame?> FrameProperty = AvaloniaProperty.Register<LiveCourt, TrackerFrame?>(nameof(Frame));
 
     public IImage? Floor { get => GetValue(FloorProperty); set => SetValue(FloorProperty, value); }
     public IReadOnlyList<LiveShot>? Shots { get => GetValue(ShotsProperty); set => SetValue(ShotsProperty, value); }
@@ -62,8 +64,9 @@ public sealed class LiveCourt : Control
     public Color FloorColor { get => GetValue(FloorColorProperty); set => SetValue(FloorColorProperty, value); }
     public Color FloorTrim { get => GetValue(FloorTrimProperty); set => SetValue(FloorTrimProperty, value); }
     public string? FloorName { get => GetValue(FloorNameProperty); set => SetValue(FloorNameProperty, value); }
+    public TrackerFrame? Frame { get => GetValue(FrameProperty); set => SetValue(FrameProperty, value); }
 
-    static LiveCourt() => AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty, FloorColorProperty, FloorTrimProperty, FloorNameProperty);
+    static LiveCourt() => AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty, FloorColorProperty, FloorTrimProperty, FloorNameProperty, FrameProperty);
 
     /// <summary>A court is 94 by 50 feet.</summary>
     public const double Aspect = 94.0 / 50.0;
@@ -149,8 +152,58 @@ public sealed class LiveCourt : Control
             }
         }
 
-        var shots = Shots;
-        if (shots == null || shots.Count == 0) return;
+        var shots = Shots ?? Array.Empty<LiveShot>();
+        var frame = Frame;
+        // With the tracker on, the game's shots stay as a faint record under the players.
+        using (ctx.PushOpacity(frame != null ? 0.4 : 1.0))
+            DrawShots(ctx, shots, s, P, latestRing: frame == null);
+        if (frame != null) DrawFrame(ctx, frame, s, P);
+    }
+
+    /// <summary>Ten players and the ball (presentation only: see <see cref="TrackerLayout"/>).</summary>
+    private void DrawFrame(DrawingContext ctx, TrackerFrame f, double s, Func<double, double, Point> P)
+    {
+        double r = Math.Max(5, s * 1.75);
+        var face = new Typeface("Inter", FontStyle.Normal, FontWeight.Bold);
+        double fs = Math.Max(8, Math.Min(12, s * 1.4));
+        // The shot's path: from where he shot to where the ball went.
+        if (f.From is { } from)
+        {
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 255, 224, 102)), Math.Max(1.5, s * 0.3)) { DashStyle = f.Made ? null : DashStyle.Dash };
+            ctx.DrawLine(pen, P(from.X, from.Y), P(f.Ball.X, f.Ball.Y));
+        }
+        // Defence first, so the side with the ball sits on top.
+        foreach (var m in f.Markers.OrderBy(m => m.Home == f.HomeOffense ? 1 : 0).ThenBy(m => m.Actor ? 1 : 0))
+        {
+            var c = m.Home ? HomeColor : AwayColor;
+            var p = P(m.Spot.X, m.Spot.Y);
+            bool offence = m.Home == f.HomeOffense;
+            ctx.DrawEllipse(new SolidColorBrush(Color.FromArgb(110, 0, 0, 0)), null, new Point(p.X + 1.5, p.Y + 2), r, r);
+            ctx.DrawEllipse(new SolidColorBrush(offence ? c : Color.FromArgb(235, c.R, c.G, c.B)),
+                new Pen(new SolidColorBrush(m.Actor ? Color.Parse("#FFE066") : offence ? Colors.White : Color.FromArgb(200, 20, 20, 24)), m.Actor ? 2.5 : 1.4), p, r, r);
+            double lum = (0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B) / 255;
+            var txt = new FormattedText(m.Label, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, fs,
+                lum > 0.6 ? new SolidColorBrush(Color.Parse("#111418")) : Brushes.White);
+            if (txt.Width <= r * 2.1)
+                ctx.DrawText(txt, new Point(p.X - txt.Width / 2, p.Y - txt.Height / 2));
+            else
+            {
+                // Too small to hold the label: put it under the marker on a dark tag.
+                var tagText = new FormattedText(m.Label, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, fs, Brushes.White);
+                var tag = new Rect(p.X - tagText.Width / 2 - 2, p.Y + r + 1, tagText.Width + 4, tagText.Height);
+                ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(170, 10, 12, 16)), null, tag, 2, 2);
+                ctx.DrawText(tagText, new Point(tag.X + 2, tag.Y));
+            }
+        }
+        var b = P(f.Ball.X, f.Ball.Y);
+        double br = Math.Max(3.5, s * 0.75);
+        ctx.DrawEllipse(new SolidColorBrush(Color.Parse("#F08A24")), new Pen(new SolidColorBrush(Color.Parse("#2A1A0C")), 1.4), b, br, br);
+        ctx.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#2A1A0C")), 0.9), new Point(b.X - br, b.Y), new Point(b.X + br, b.Y));
+    }
+
+    private void DrawShots(DrawingContext ctx, IReadOnlyList<LiveShot> shots, double s, Func<double, double, Point> P, bool latestRing)
+    {
+        if (shots.Count == 0) return;
         double r = Math.Max(3, s * 0.85);
         for (int i = 0; i < shots.Count; i++)
         {
@@ -165,7 +218,7 @@ public sealed class LiveCourt : Control
                 ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb(150, 0, 0, 0)), Math.Max(2.5, r * 0.65)), p, r * 0.9, r * 0.9);
                 ctx.DrawEllipse(null, new Pen(new SolidColorBrush(c), Math.Max(1.5, r * 0.4)), p, r * 0.9, r * 0.9);
             }
-            if (latest) ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Color.Parse("#FFE066")), 2), p, r * 2.1, r * 2.1);
+            if (latest && latestRing) ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Color.Parse("#FFE066")), 2), p, r * 2.1, r * 2.1);
         }
     }
 }

@@ -45,6 +45,7 @@
         </Grid>
           <StackPanel x:Name="ScoreButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
             <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
+            <Button Content="Step" Command="{Binding StepOneCommand}" IsEnabled="{Binding CanStep}" ToolTip.Tip="Paused: play one possession and stop"/>
             <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
             <CheckBox Content="Stop at breaks" IsChecked="{Binding PauseAtBreaks}" VerticalAlignment="Center" ToolTip.Tip="Pause at the end of each period for the break card"/>
             <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="96">
@@ -82,15 +83,17 @@
               <TextBlock Text="{Binding RunAlert}" FontSize="11.5" FontWeight="SemiBold" Foreground="#F0A33A"/>
             </Border>
           </WrapPanel>
-          <TextBlock Text="{Binding CourtLegend}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
+          <!-- The 2D tracker (D67 B, run 80): the latest play in words over the court that draws it. -->
+          <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
           <Grid IsVisible="{Binding ShowCourt}" HorizontalAlignment="Center">
             <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="190"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}"
                          FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
             <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
             <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
                         HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
           </Grid>
+          <TextBlock Text="{Binding CourtLegend}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding ShowCourt}"/>
           <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowFlow}">
           <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
           <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
