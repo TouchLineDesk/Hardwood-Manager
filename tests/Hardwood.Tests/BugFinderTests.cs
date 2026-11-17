@@ -336,12 +336,14 @@ public class BugFinderTests
     private static void FindWork(MainViewModel vm, BugFinder bf, Action<string> L)
     {
         var s = vm.Session!;
-        int days = 0;
-        while (!vm.Session!.Employed && days++ < 120)
+        int days = 0, steps = 0;
+        var sackedOn = s.Today;
+        // Bug-hunt Nov 17 (fourth): the bot applied to the first three openings in list order and none at all in the summer,
+        // so a coach sacked in May sat out until October and the finder blamed the game. Apply the way a player would: in the
+        // summer too, best hire chance first. Then check the game answers by the date its "decide by" message promised.
+        while (!vm.Session!.Employed && steps++ < 160)
         {
             s = vm.Session!;
-            if (s.Phase == SessionPhase.Offseason) { s.AdvanceOffseason(); continue; }
-            foreach (var v in s.Job.Vacancies.Where(x => x.Status == "open").Take(3).ToList()) s.Apply(v.TeamId);
             foreach (var v in s.Job.Vacancies.Where(x => x.Status == "offered").ToList())
             {
                 var err = s.AcceptOffer(v.TeamId);
@@ -349,12 +351,30 @@ public class BugFinderTests
                 break;
             }
             if (s.Employed) break;
+            var ranked = s.Job.Vacancies.Where(x => x.Status == "open")
+                .Select(x => (v: x, t: s.FindTeam(x.TeamId)))
+                .Where(x => x.t != null)
+                .OrderByDescending(x => Hardwood.Core.Jobs.Board.HireChance(s.Coach, s.ContextOf(x.t!), x.t!))
+                .Take(3).ToList();
+            foreach (var (v, _) in ranked) s.Apply(v.TeamId);
+            if (s.Phase == SessionPhase.Offseason)
+            {
+                var phase = s.Offseason?.Phase;
+                s.AdvanceOffseason();
+                var late = s.Job.Vacancies.Where(x => x.Status == "applied" && x.DecideOn is { } d && d.DayNumber < s.Today.DayNumber - 7).ToList();
+                if (late.Count > 0 && s.Phase != SessionPhase.Offseason)
+                    bf.Add("state", "Board", $"out of work, {late.Count} summer application(s) promised an answer by {late.Min(x => x.DecideOn):MMM d} were still unanswered on {s.Today:MMM d yyyy} (applied in the {phase} phase)", true);
+                if (s.Employed) break;
+                continue;
+            }
+            days++;
             s.AdvanceDay();
             bf.Invariants();
         }
         vm.AfterTick();
-        if (!vm.Session.Employed) bf.Add("dead end", "Board", $"out of work for {days} days after applying to every opening (reputation {vm.Session.Coach.Reputation:0})", true);
-        else { L($"re-hired by {vm.Session.HumanTeam.FullName} on {vm.Session.Today:MMM d yyyy} after {days} days"); bf.SweepAll("first day of the new job"); bf.SaveAndReload("re-hired"); }
+        int waited = vm.Session.Today.DayNumber - sackedOn.DayNumber;
+        if (!vm.Session.Employed) bf.Add("dead end", "Board", $"out of work for {waited} days (since {sackedOn:MMM d yyyy}) after applying to the three best openings each step (reputation {vm.Session.Coach.Reputation:0})", true);
+        else { L($"re-hired by {vm.Session.HumanTeam.FullName} on {vm.Session.Today:MMM d yyyy} after {waited} days ({days} game days)"); bf.SweepAll("first day of the new job"); bf.SaveAndReload("re-hired"); }
     }
 
     private static readonly string[] Rank = { "crash", "save", "state", "mismatch", "dead end", "wrong text", "no feedback", "empty" };
