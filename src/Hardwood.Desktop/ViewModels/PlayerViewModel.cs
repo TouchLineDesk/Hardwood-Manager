@@ -39,6 +39,9 @@ public sealed partial class PlayerViewModel : PageViewModel
     public Player Player { get; }
     public override string Title => Player.Name;
 
+    /// <summary>H76 (run 97): a college player who wants out is thinking of transferring; programs don't trade.</summary>
+    private static bool InCollegeProgram(Hardwood.Core.Season.GameSession s, Player p) => p.TeamId is { } id && s.FindTeam(id) is { } t && s.IsCollegeProgram(t);
+
     public PlayerViewModel(MainViewModel shell, Player player) : base(shell)
     {
         Player = player;
@@ -100,7 +103,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
             : p.InjuryHistory.Count > 0 ? $"Healthy · {p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}" : "Healthy";
-        MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested ? " · has asked to be traded" : "")
+        MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested ? (InCollegeProgram(s, p) ? " · thinking of transferring" : " · has asked to be traded") : "")
             ;
         Chips = BuildChips(p, k);
         Hint = "";
@@ -188,7 +191,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         if (p.TeamId != null)
         {
             var mood = Hardwood.Core.People.PeopleEngine.Mood(p.Morale);
-            chips.Add(new("Mood", mood, p.TradeRequested ? "has asked to be traded" : $"morale {p.Morale:0}/100",
+            chips.Add(new("Mood", mood, p.TradeRequested ? (InCollegeProgram(s, p) ? "thinking of transferring" : "has asked to be traded") : $"morale {p.Morale:0}/100",
                 p.TradeRequested || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
         }
         if (s.Stats.TryGetValue(p.Id, out var cur) && cur.Games > 0)

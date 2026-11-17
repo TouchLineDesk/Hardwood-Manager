@@ -199,7 +199,8 @@ public sealed partial class GameSession
     {
         if (!Employed) return;
         bool summer = Phase == SessionPhase.Offseason;
-        var rng = CareerRng(4);
+        // The date stands still all summer, so each summer step gets its own salt (run 97, independent review of PR #158).
+        var rng = CareerRng(summer ? 4 + 16 * (1 + (int)(Offseason?.Phase ?? 0)) : 4);
         foreach (var v in LiveVacancies.ToList())
         {
             if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
@@ -230,7 +231,8 @@ public sealed partial class GameSession
     /// </summary>
     private void SummerJobMarket()
     {
-        var rng = CareerRng(8);
+        // The date stands still all summer, so each step gets its own salt (independent review of PR #158).
+        var rng = CareerRng(8 + 16 * (1 + (int)(Offseason?.Phase ?? 0)));
         foreach (var v in Job.Vacancies.Where(v => v.Status == "applied").ToList())
         {
             if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
