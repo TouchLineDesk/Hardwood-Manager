@@ -142,6 +142,29 @@ public sealed record RevealRegion(string Name, bool Shown, string Line, IReadOnl
     public bool Hidden => !Shown;
 }
 
+/// <summary>A team on the Final Four weekend page (C4 part 2): its region, seed, record and the road there.</summary>
+public sealed record FinalFourTeam(string Region, string Seed, string Name, string Record, string Route, string Tag, bool Mine, bool Out)
+{
+    public bool HasTag => Tag.Length > 0;
+    public double Fade => Out ? 0.55 : 1.0;
+}
+
+/// <summary>One side of a Final Four game: seed, school, score, and whether it won.</summary>
+public sealed record WeekendSide(string Seed, string Name, string Score, bool Won, bool Mine);
+
+/// <summary>A national semi-final or the championship game: both sides, the date or "Final", and each side's leading scorer.</summary>
+public sealed record WeekendGame(string Title, string When, WeekendSide A, WeekendSide B, string Stars, bool Mine)
+{
+    public bool HasStars => Stars.Length > 0;
+}
+
+/// <summary>A highlight card of the champions' run: the round, the result, the star and what made it.</summary>
+public sealed record MontageCard(string Round, string Result, string Opponent, string Star, string Tag)
+{
+    public bool HasStar => Star.Length > 0;
+    public bool HasTag => Tag.Length > 0;
+}
+
 /// <summary>A round of the selected region: its name and boxes.</summary>
 public sealed record BracketColumn(string Title, IReadOnlyList<BracketCard> Cards, int Rows);
 
@@ -235,6 +258,20 @@ public sealed partial class CollegeViewModel : PageViewModel
         Revealed.GetValue(c.Season, _ => new System.Runtime.CompilerServices.StrongBox<int>(0)).Value = 4;
         FillBracket();
     }
+    // The Final Four weekend (C4 part 2, #164): the neutral site, the four teams and their roads, the semis and the final,
+    // then the champions' run as highlight cards.
+    public const string FinalFourView = "Final Four";
+    [ObservableProperty] private bool _showFinalFour;
+    [ObservableProperty] private string _weekendTitle = "";
+    [ObservableProperty] private string _weekendSub = "";
+    [ObservableProperty] private List<FinalFourTeam> _weekendTeams = new();
+    [ObservableProperty] private List<WeekendGame> _weekendGames = new();
+    [ObservableProperty] private List<MontageCard> _montage = new();
+    [ObservableProperty] private string _montageTitle = "";
+    [ObservableProperty] private string _montageSub = "";
+    public bool HasMontage => Montage.Count > 0;
+    partial void OnMontageChanged(List<MontageCard> value) => OnPropertyChanged(nameof(HasMontage));
+    private CollegeSeason? _finalFourOpenedFor;
     [ObservableProperty] private string _bracketNote = "";
     /// <summary>A region's bracket needs the room for eight games; the Final Four view only two rows (C4 part 2).</summary>
     [ObservableProperty] private double _bracketHeight = 620;
@@ -362,6 +399,9 @@ public sealed partial class CollegeViewModel : PageViewModel
                 BracketView = region >= 0 ? MadnessBracket.Regions[region] : MadnessBracket.Regions[0];
             }
         }
+        // Once the Final Four is set, the page opens on the weekend (once a season, so you can still look back at a region).
+        bool fourSet = s.Games.Count(g => g.Event == CollegeWorld.Madness && g.Round == 4 && g.Played) == 4;
+        if (fourSet && _finalFourOpenedFor != s) { _finalFourOpenedFor = s; BracketView = FinalFourView; }
         FillBracket();
         FillProspects();
         FillRecruits();
@@ -525,7 +565,9 @@ public sealed partial class CollegeViewModel : PageViewModel
         var s = c.Season;
         SeedLines = new(); Bubble = new(); BracketologyChips = new();
         RevealRegions = new(); SelectionBubble = new();
+        WeekendTeams = new(); WeekendGames = new(); Montage = new();
         FieldPicked = s.Selected;
+        ShowFinalFour = s.Selected && BracketView == FinalFourView;
         ShowSelection = s.Selected && BracketView == SelectionView;
         if (!s.Selected) { FillBracketology(c); return; }
         if (ShowSelection) { FillSelection(c); return; }
@@ -544,13 +586,8 @@ public sealed partial class CollegeViewModel : PageViewModel
                 var cards = boxes.Where(b => b.Round == r && MadnessBracket.RegionOf(b) == region).OrderBy(b => b.Slot).Select(Card).ToList();
                 return new BracketColumn(CollegeWorld.RoundName(r), cards, cards.Count);
             }).ToList();
-        BracketHeight = region >= 0 ? 620 : 200;
-        if (region < 0)
-            BracketColumns = new()
-            {
-                new BracketColumn("Final Four", boxes.Where(b => b.Round == 5).OrderBy(b => b.Slot).Select(Card).ToList(), 2),
-                new BracketColumn("Championship", boxes.Where(b => b.Round == 6).Select(Card).ToList(), 1),
-            };
+        BracketHeight = 620;
+        if (region < 0) FillFinalFour(c, boxes);
         // The tournament at a glance.
         var played = boxes.Where(b => b.Played).ToList();
         var cinderella = boxes.Where(b => b.Round >= 3).SelectMany(b => new[] { (b.TeamA, b.SeedA), (b.TeamB, b.SeedB) })
@@ -583,6 +620,110 @@ public sealed partial class CollegeViewModel : PageViewModel
         }
         MadnessChips = chips;
     }
+
+    /// <summary>
+    /// The Final Four weekend (C4 part 2, college-sim-design #164): the neutral site and dates, the four regional champions
+    /// with their road there (or who's still alive), the two national semi-finals and the championship game with each side's
+    /// leading scorer, and once it's won, the champions' run as highlight cards with the Most Outstanding Player.
+    /// </summary>
+    private void FillFinalFour(CollegeWorld c, List<BracketBox> boxes)
+    {
+        var s = c.Season;
+        int y = s.Year + 1;
+        int? me = Session.Employed && Session.InCollege ? Session.HumanTeam.Id : null;
+        var games = s.Games.Where(g => g.Event == CollegeWorld.Madness).ToList();
+        var losers = games.Where(g => g.Played).Select(g => g.WinnerId == g.HomeId ? g.AwayId : g.HomeId).ToHashSet();
+        string School(int id) => c.Program(id)?.City ?? "?";
+        string Rec(int id) { var (w, l) = c.Record(id); return $"{w}-{l}"; }
+        int Seed(int id) => s.Seeds.GetValueOrDefault(id);
+        var dates = s.RoundDates.TryGetValue(CollegeWorld.Madness, out var d) ? d : new List<DateOnly>();
+        string host = MadnessBracket.FinalFourHost(y);
+        WeekendTitle = $"The {y} Final Four · {host}";
+        WeekendSub = dates.Count >= 7
+            ? $"A neutral court. National semi-finals {dates[5]:dddd, MMMM d} · championship game {dates[6]:dddd, MMMM d}."
+            : "A neutral court.";
+
+        // The four regional champions (or who's left in each region).
+        var teams = new List<FinalFourTeam>();
+        for (int r = 0; r < 4; r++)
+        {
+            string region = MadnessBracket.Regions[r];
+            var e8 = boxes.FirstOrDefault(b => b.Round == 4 && b.Slot == r);
+            if (e8?.Winner is not { } w)
+            {
+                var alive = MadnessBracket.RegionField(s, r).SelectMany(p => p.Top.Teams.Concat(p.Bottom.Teams))
+                    .Where(id => !losers.Contains(id)).OrderBy(Seed).ToList();
+                string still = alive.Count == 0 ? "" : $"Still alive ({alive.Count}): " + string.Join(", ", alive.Take(4).Select(id => $"{Seed(id)} {School(id)}")) + (alive.Count > 4 ? " …" : "");
+                string when = dates.Count > 4 ? $"Regional final {dates[4]:MMM d}." : "";
+                teams.Add(new(region.ToUpperInvariant(), "", "To be decided", when, still, "", me is { } m0 && alive.Contains(m0), false));
+                continue;
+            }
+            var road = games.Where(g => g.Played && g.Round <= 4 && (g.HomeId == w || g.AwayId == w)).OrderBy(g => g.Round).ToList();
+            double margin = road.Count == 0 ? 0 : road.Average(g => Math.Abs(g.HomePts!.Value - g.AwayPts!.Value));
+            var last = road.LastOrDefault();
+            string beat = last == null ? "" : $" Beat {Seed(Opp(last, w))} {School(Opp(last, w))} in the Elite Eight.";
+            string routeLine = $"{road.Count} wins, by {margin:0.0} a game.{beat}";
+            string tag = Seed(w) >= 10 ? "CINDERELLA" : Seed(w) == 1 ? "TOP SEED" : "";
+            teams.Add(new(region.ToUpperInvariant(), $"No. {Seed(w)} seed", c.Program(w)?.FullName ?? "?", Rec(w), routeLine, tag, w == me, losers.Contains(w)));
+        }
+        WeekendTeams = teams;
+
+        // The two semis and the final.
+        WeekendSide Side(int? id, string fallback, int? score, bool won) => id is { } x
+            ? new(Seed(x).ToString(), School(x), score?.ToString() ?? "", won, x == me)
+            : new("", fallback, "", false, false);
+        string StarsOf(CollegeGame? g) => g == null ? "" : string.Join("  ·  ", new[] { (g.HomeStar, g.HomeId), (g.AwayStar, g.AwayId) }
+            .Where(x => x.Item1 != null).Select(x => $"{x.Item1!.Line} ({School(x.Item2)})"));
+        WeekendGame Game(BracketBox? b, string title, string fa, string fb)
+        {
+            var g = b == null ? null : games.FirstOrDefault(x => x.Round == b.Round && x.Slot == b.Slot);
+            string when = b is { Played: true } ? "Final" + (g?.Overtimes switch { null or 0 => "", 1 => " (OT)", var n => $" ({n}OT)" })
+                : b?.Date is { } bd ? bd.ToString("ddd, MMM d") : "";
+            bool mine = me is { } mm && (b?.TeamA == mm || b?.TeamB == mm);
+            return new(title, when, Side(b?.TeamA, fa, b?.ScoreA, b?.Played == true && b.Winner == b.TeamA),
+                Side(b?.TeamB, fb, b?.ScoreB, b?.Played == true && b.Winner == b.TeamB), b?.Played == true ? StarsOf(g) : "", mine);
+        }
+        var R = MadnessBracket.Regions;
+        WeekendGames = new()
+        {
+            Game(boxes.FirstOrDefault(b => b.Round == 5 && b.Slot == 0), $"National semi-final · {R[0]} v {R[1]}", $"{R[0]} champion", $"{R[1]} champion"),
+            Game(boxes.FirstOrDefault(b => b.Round == 5 && b.Slot == 1), $"National semi-final · {R[2]} v {R[3]}", $"{R[2]} champion", $"{R[3]} champion"),
+            Game(boxes.FirstOrDefault(b => b.Round == 6), "Championship game", "Semi-final winner", "Semi-final winner"),
+        };
+
+        // The champions' run: a highlight card for every game they won, and the weekend's Most Outstanding Player.
+        MontageTitle = MontageSub = "";
+        if (s.ChampionId is not { } champ) return;
+        var run = games.Where(g => g.Played && (g.HomeId == champ || g.AwayId == champ)).OrderBy(g => g.Round).ToList();
+        var cards = new List<MontageCard>();
+        foreach (var g in run)
+        {
+            bool home = g.HomeId == champ;
+            int ours = home ? g.HomePts!.Value : g.AwayPts!.Value, theirs = home ? g.AwayPts!.Value : g.HomePts!.Value, opp = Opp(g, champ);
+            int m = ours - theirs;
+            string ot = g.Overtimes switch { 0 => "", 1 => " (OT)", var n => $" ({n}OT)" };
+            string tag = g.Round == 6 ? "NATIONAL CHAMPIONS"
+                : Seed(champ) - Seed(opp) >= 4 ? $"UPSET · a {Seed(champ)} over a {Seed(opp)}"
+                : m <= 3 ? $"SURVIVED · by {m}"
+                : g.Overtimes > 0 ? "IN OVERTIME"
+                : m >= 20 ? $"ROUT · by {m}" : "";
+            var star = home ? g.HomeStar : g.AwayStar;
+            cards.Add(new(CollegeWorld.RoundName(g.Round).ToUpperInvariant(), $"W {ours}-{theirs}{ot}", $"v No. {Seed(opp)} {c.Program(opp)?.FullName}", star?.Line ?? "", tag));
+        }
+        Montage = cards;
+        var team = c.Program(champ);
+        int reg = c.RegionOf(champ);
+        double avg = run.Count == 0 ? 0 : run.Average(g => Math.Abs(g.HomePts!.Value - g.AwayPts!.Value));
+        MontageTitle = $"The champions' run: {team?.FullName}";
+        var weekend = run.Where(g => g.Round >= 5).Select(g => g.HomeId == champ ? g.HomeStar : g.AwayStar).Where(x => x != null).ToList();
+        var mop = weekend.GroupBy(x => x!.PlayerId).Select(gr => (gr.First()!.Name, Pts: gr.Sum(x => x!.Pts), N: gr.Count()))
+            .OrderByDescending(x => x.Pts).FirstOrDefault();
+        MontageSub = $"No. {Seed(champ)} seed{(reg >= 0 ? $" in the {R[reg]}" : "")} · {run.Count} wins, by {avg:0.0} a game"
+            + (mop.Name != null ? $" · Most Outstanding Player: {mop.Name}, {mop.Pts} points in the Final Four" : "");
+        WeekendSub = $"Champions: {team?.FullName}, in {host}." + (dates.Count >= 7 ? $" National semi-finals {dates[5]:MMMM d} · championship game {dates[6]:MMMM d}." : "");
+    }
+
+    private static int Opp(CollegeGame g, int id) => g.HomeId == id ? g.AwayId : g.HomeId;
 
     /// <summary>
     /// Selection Sunday as a reveal (C4 part 2): the regions one at a time in bracket order (1 v 16, 8 v 9 …), your seed

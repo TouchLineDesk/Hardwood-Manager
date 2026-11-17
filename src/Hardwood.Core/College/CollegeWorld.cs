@@ -26,8 +26,21 @@ public sealed class CollegeGame
     /// <summary>Each side's Top 25 rank at tip-off (#528), so a result reads "#5 Duke 78, Kansas 71" as it stood. Null: unranked, or played before v0.78.0.</summary>
     public int? HomeRank { get; set; }
     public int? AwayRank { get; set; }
+    /// <summary>March Madness (C4 part 2): each side's leading scorer, for the Final Four weekend and the champions' run.
+    /// Null for other games and for games played before v0.101.0.</summary>
+    public GameStar? HomeStar { get; set; }
+    public GameStar? AwayStar { get; set; }
+    /// <summary>Overtimes in a March Madness game (0 for other games and older saves).</summary>
+    public int Overtimes { get; set; }
     public bool Played => HomePts != null;
     public int? WinnerId => !Played ? null : HomePts > AwayPts ? HomeId : AwayId;
+}
+
+/// <summary>A side's leading scorer in a March Madness game (points, then rebounds and assists break ties). The name is kept
+/// so the line still reads after he graduates.</summary>
+public sealed record GameStar(int PlayerId, string Name, int Pts, int Reb, int Ast)
+{
+    public string Line => $"{Name} {Pts} pts" + (Reb >= 5 ? $" · {Reb} reb" : "") + (Ast >= 5 ? $" · {Ast} ast" : "");
 }
 
 /// <summary>A college season (decision #96) and everything it decides. Saved as JSON with the world.</summary>
@@ -496,6 +509,13 @@ public sealed partial class CollegeWorld
             st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
             st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
         }
+        if (g.Event == Madness)
+        {
+            static GameStar? Star(TeamBox box) => box.Lines.Where(l => l.Seconds > 0)
+                .OrderByDescending(l => l.Points).ThenByDescending(l => l.Rebounds + l.Assists).ThenBy(l => l.Player.Id)
+                .Select(l => new GameStar(l.Player.Id, l.Player.Name, l.Points, l.Rebounds, l.Assists)).FirstOrDefault();
+            g.HomeStar = Star(r.Home); g.AwayStar = Star(r.Away); g.Overtimes = r.Overtimes;
+        }
         UpdateElo(g);
     }
 
@@ -678,7 +698,7 @@ public sealed partial class CollegeWorld
             {
                 var ff = winners.Select((w, i) => $"{WithSeed(w)} ({MadnessBracket.Regions[i]})");
                 News.Add(($"The Final Four: {string.Join(", ", winners.Select(w => Program(w)!.FullName))}",
-                    $"The {y} Final Four: {string.Join(", ", ff)}. The semi-finals are on {s.RoundDates[Madness][5]:MMMM d}." + UpsetLines()));
+                    $"The {y} Final Four: {string.Join(", ", ff)}. The semi-finals are on {s.RoundDates[Madness][5]:MMMM d} in {MadnessBracket.FinalFourHost(y)}." + UpsetLines()));
                 CinderellaNews(winners, 5);
                 break;
             }
@@ -888,6 +908,19 @@ public static class MadnessBracket
         }
         return boxes;
     }
+
+    /// <summary>
+    /// Where the Final Four is played: a neutral site, chosen years ahead. The real hosts for 2027-2031 (Detroit, San Antonio,
+    /// Indianapolis, Las Vegas, Arlington), then a rotation of past hosts. <paramref name="year"/> is the spring of the final.
+    /// </summary>
+    public static string FinalFourHost(int year) => year switch
+    {
+        2027 => "Detroit, Michigan", 2028 => "San Antonio, Texas", 2029 => "Indianapolis, Indiana", 2030 => "Las Vegas, Nevada", 2031 => "Arlington, Texas",
+        _ => Hosts[((year % Hosts.Length) + Hosts.Length) % Hosts.Length],
+    };
+
+    private static readonly string[] Hosts =
+        { "Indianapolis, Indiana", "Houston, Texas", "Glendale, Arizona", "Atlanta, Georgia", "New Orleans, Louisiana", "San Antonio, Texas", "Minneapolis, Minnesota", "Detroit, Michigan" };
 
     /// <summary>Seeds in bracket order within a region: slot i of the region's 16 holds seed <c>Order[i]</c>.</summary>
     public static readonly int[] Order = { 1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15 };

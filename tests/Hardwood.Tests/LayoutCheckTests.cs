@@ -585,7 +585,9 @@ public class LayoutCheckTests
                         using var frame = window.CaptureRenderedFrame();
                         frame?.Save(Path.Combine(shots, $"{width}-bracket-{view.Replace(' ', '-').ToLower()}.png"));
                     }
-                    Assert.Equal(view == "Final Four" ? 2 : 4, college.BracketColumns.Count);
+                    // Run 90: the Final Four view is the weekend page (four teams, the semis and the final), not two bracket columns.
+                    Assert.Equal(view == "Final Four" ? 0 : 4, college.BracketColumns.Count);
+                    if (view == "Final Four") Assert.True(college.ShowFinalFour && college.WeekendGames.Count == 3 && college.WeekendTeams.Count == 4);
                     foreach (var p in LayoutCheck.Scan(window)) problems.Add($"{width}px {view} | {p}");
                 }
         }
