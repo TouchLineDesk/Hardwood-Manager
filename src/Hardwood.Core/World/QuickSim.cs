@@ -52,14 +52,47 @@ public static class QuickSim
         var pts = Share(points, weight);
         var reb = Share(teamReb, rotation.Select((p, i) => mins[i] * (p.PrimaryPosition switch { Position.C => 1.8, Position.PF => 1.5, Position.SF => 1.0, _ => 0.7 })).ToArray());
         var ast = Share(teamAst, rotation.Select((p, i) => mins[i] * (p.PrimaryPosition switch { Position.PG => 2.2, Position.SG => 1.2, Position.SF => 0.9, _ => 0.6 })).ToArray());
+        // H63 (run 91): steals, blocks, threes and shooting by skill come from a side stream seeded by the game itself,
+        // so the main stream (and every seeded result) is untouched. Before this they were never recorded here, and the
+        // League Leaders' steals, blocks, 3P% and FG% boards outside full-engine games held only your club's players.
+        var side = new Rng(SideSeed(t.Id, date, points));
+        bool long48 = gameMinutes >= 48;
+        int teamStl = Math.Max(0, (int)Math.Round(side.NextGaussian(long48 ? 7.6 : 6.6, 2.2)));
+        int teamBlk = Math.Max(0, (int)Math.Round(side.NextGaussian(long48 ? 4.9 : 3.3, 1.8)));
+        int teamTpa = Math.Max(0, (int)Math.Round(side.NextGaussian(points * (long48 ? 0.36 : 0.34), 4)));
+        var stl = Share(teamStl, rotation.Select((p, i) => mins[i] * (0.5 + p.Attributes[Attr.Steal] / 10.0) * (0.6 + p.Tendencies.GambleSteals / 75.0)).ToArray());
+        var blk = Share(teamBlk, rotation.Select((p, i) => mins[i] * Math.Pow(p.Attributes[Attr.Block] / 10.0, 1.3) * (p.PrimaryPosition switch { Position.C => 2.6, Position.PF => 1.8, Position.SF => 0.9, _ => 0.5 })).ToArray());
+        var tpa = Share(teamTpa, rotation.Select((p, i) => pts[i] * (0.03 + p.Tendencies.ThreePointRate / 100.0) * (0.4 + p.Attributes[Attr.ThreePoint] / 10.0)).ToArray());
         for (int i = 0; i < rotation.Count; i++)
         {
             var p = rotation[i];
             var st = stats.TryGetValue(p.Id, out var x) ? x : stats[p.Id] = new StatLine();
             st.TeamId = t.Id; st.G++; st.Min += mins[i] * scale; st.Pts += pts[i]; st.Reb += reb[i]; st.Ast += ast[i];
-            int fga = (int)Math.Round(pts[i] / 1.1); st.Fga += fga; st.Fgm += (int)Math.Round(fga * 0.46);
+            int fga = (int)Math.Round(pts[i] / 1.25); // NBA 2024-25: about 1.27 points a shot (was 1.1, with a flat 46%)
+            var (fgm, threesA, threesM) = Shooting(p, pts[i], fga, tpa[i], side);
+            st.Fga += fga; st.Fgm += fgm; st.Tpa += threesA; st.Tpm += threesM; st.Stl += stl[i]; st.Blk += blk[i];
         }
     }
+
+    /// <summary>A player's makes from his attempts: three-point % from his three-point rating (about 35% at 10 of 20), two-point %
+    /// from his finishing (about 52%); never more makes than his points allow.</summary>
+    public static (int Fgm, int Tpa, int Tpm) Shooting(Player p, int points, int fga, int tpa, Rng side)
+    {
+        tpa = Math.Min(tpa, fga);
+        double p3 = Math.Clamp(0.27 + 0.008 * p.Attributes[Attr.ThreePoint], 0.2, 0.46);
+        int tpm = 0;
+        for (int k = 0; k < tpa; k++) if (side.NextDouble() < p3) tpm++;
+        tpm = Math.Min(tpm, points / 3);
+        double finish = (p.Attributes[Attr.CloseShot] + p.Attributes[Attr.Layup] + p.Attributes[Attr.MidRange]) / 3.0;
+        double p2 = Math.Clamp(0.44 + 0.008 * finish + (p.PrimaryPosition is Position.C ? 0.04 : p.PrimaryPosition is Position.PF ? 0.02 : 0), 0.38, 0.66);
+        int twoA = fga - tpa, twoM = 0;
+        for (int k = 0; k < twoA; k++) if (side.NextDouble() < p2) twoM++;
+        twoM = Math.Min(twoM, Math.Max(0, (points - 3 * tpm) / 2));
+        return (tpm + twoM, tpa, tpm);
+    }
+
+    private static ulong SideSeed(int teamId, DateOnly date, int points) =>
+        0xC0FFEE1234567UL ^ ((ulong)(uint)teamId << 32) ^ ((ulong)(uint)date.DayNumber << 8) ^ (ulong)(uint)points * 0x9E3779B97F4A7C15UL;
 
     /// <summary>Split a whole number in proportion to weights (largest remainders), so lines add up to the team total.</summary>
     private static int[] Share(int total, double[] w)
