@@ -75,7 +75,10 @@ public class WorldTests
             Assert.Equal(teams * (teams - 1) / 2 * comp.Profile.RoundRobins, regular);
             Assert.All(s.Series, x => Assert.True(x.Complete));
             // The division format (D36) adds the third-place tournament's seven series.
-            Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2) + (comp.Profile.DivisionPlayoffs ? 7 : 0), s.Series.Count);
+            // Run 102: tier 2's runners-up-only bracket skips the first round (its division winners play the promotion playoffs,
+            // which a world played without the top league's season never starts).
+            int skipped = comp.Key == UsaPyramid.Tier2 && UsaPyramid.PlaysPromotion(world, world.Nabl) ? comp.Profile.Playoffs[0].Teams / 2 : 0;
+            Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2) - skipped + (comp.Profile.DivisionPlayoffs ? 7 : 0), s.Series.Count);
         }
         // No club plays twice on one day, across all competitions.
         var games = world.Playing.SelectMany(c => c.Season.Fixtures).SelectMany(f => new[] { (f.HomeId, f.Date), (f.AwayId, f.Date) }).ToList();

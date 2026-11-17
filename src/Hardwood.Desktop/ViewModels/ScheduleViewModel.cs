@@ -253,6 +253,13 @@ public sealed partial class ScheduleViewModel : PageViewModel
 
         Series.Clear();
         ShowPlayoffs = s.Postseason != null || s.HumanLeague?.Season.Series.Count > 0;
+        // A top-league club's promotion playoff (run 102) is in tier 2's season.
+        if (s.InNabl && Hardwood.Core.World.UsaPyramid.PromotionSeriesOf(s.World, us.Id) is { } ps)
+        {
+            var hi = s.FindTeam(ps.HighId)!; var lo = s.FindTeam(ps.LowId)!;
+            Series.Add(new SeriesRow { High = hi, Low = lo, Round = ps.Round, Matchup = $"{hi.FullName} vs {lo.FullName}",
+                Score = ps.Complete ? $"{s.FindTeam(ps.WinnerId!.Value)!.Abbreviation} wins {ps.Score}" : ps.Score, Involved = true });
+        }
         if (s.HumanLeague is { } hl)
             foreach (var se in hl.Season.Series)
             {

@@ -121,11 +121,14 @@ public class DivisionPlayoffTests
             var table = s.Table();
             var divs = UsaPyramid.Divisions(key, c.Clubs);
             List<int> Place(int k) => divs.Select(d => d.Teams.OrderBy(t => table.FindIndex(x => x.TeamId == t.Id)).ElementAt(k - 1).Id).ToList();
-            var topTwo = Place(1).Concat(Place(2)).ToHashSet();
-            var first = s.Series.Where(x => x.Round == "First round").ToList();
-            Assert.Equal(8, first.Count);
+            // Run 102 (Danny, Nov 17): tier 2's division winners play the promotion playoffs instead, so its eight runners-up
+            // play for the title from the conference semi-finals; tier 3 keeps the top two in each division.
+            bool runnersUp = key == UsaPyramid.Tier2;
+            var topTwo = (runnersUp ? Place(2) : Place(1).Concat(Place(2))).ToHashSet();
+            var first = s.Series.Where(x => x.Round == (runnersUp ? "Conference semi-finals" : "First round")).ToList();
+            Assert.Equal(runnersUp ? 4 : 8, first.Count);
             Assert.True(topTwo.SetEquals(first.SelectMany(x => new[] { x.HighId, x.LowId })));
-            Assert.Equal(15, s.Series.Count(x => !Postseason.IsThirdPlace(x.Round)));
+            Assert.Equal(runnersUp ? 7 : 15, s.Series.Count(x => !Postseason.IsThirdPlace(x.Round)));
             Assert.Equal(7, s.Series.Count(x => Postseason.IsThirdPlace(x.Round)));
             Assert.Contains(s.ChampionId!.Value, topTwo);
             Assert.NotNull(s.ThirdPlaceId);

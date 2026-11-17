@@ -519,7 +519,7 @@ public static class UsaPyramid
     /// four divisions, best record first) and the eight third-placed teams (best record first). Null when the league isn't laid
     /// out in two conferences of four divisions of four (an older save's 24 before its summer).
     /// </summary>
-    public static (List<int> East, List<int> West, List<int> Thirds)? DivisionField(string key, IReadOnlyList<Team> clubs, List<TableRow> table)
+    public static (List<int> East, List<int> West, List<int> Thirds)? DivisionField(string key, IReadOnlyList<Team> clubs, List<TableRow> table, bool winnersOut = false)
     {
         var divs = Divisions(key, clubs);
         if (divs.Count != 8 || divs.Any(d => d.Teams.Count != 4)) return null;
@@ -529,7 +529,9 @@ public static class UsaPyramid
         foreach (var (name, teams) in divs)
         {
             var ranked = teams.OrderBy(Rank).ThenBy(t => t.Id).ToList();
-            (name.StartsWith("East") ? east : west).AddRange(ranked.Take(2).Select(t => t.Id));
+            // Run 102 (Danny, Nov 17): with the promotion playoffs, a tier-2 division winner plays the NBA's 4th instead, so
+            // only the runners-up play for the title (four a conference).
+            (name.StartsWith("East") ? east : west).AddRange((winnersOut ? ranked.Skip(1).Take(1) : ranked.Take(2)).Select(t => t.Id));
             thirds.Add(ranked[2].Id);
         }
         List<int> Sort(List<int> ids) => ids.OrderBy(id => order.GetValueOrDefault(id, int.MaxValue)).ToList();
@@ -544,6 +546,36 @@ public static class UsaPyramid
         Start = (10, 24), RoundDays = roundsPerWeek == 2 ? new[] { DayOfWeek.Tuesday, DayOfWeek.Saturday } : new[] { DayOfWeek.Saturday },
         Clubs = clubs.ToArray(),
     };
+
+    // ------------------------------------------------------------------------------------------
+    // The promotion playoffs (Danny, Nov 17, 2026, run 102).
+
+    /// <summary>The round name of the NBA ↔ tier-2 promotion playoff series (kept in tier 2's season).</summary>
+    public const string PromotionRound = "Promotion playoff";
+    /// <summary>Games a promotion playoff needs: best of three, the tier-2 club at home in Games 1 and 3.</summary>
+    public const int PromotionBestOf = 3;
+    public static bool IsPromotion(string round) => round == PromotionRound;
+
+    /// <summary>
+    /// Danny's promotion playoffs (Nov 17, 2026): instead of the NBA's 4th-placed club in each division going down and the
+    /// paired tier-2 division winner coming up automatically, the two play a best-of-three alongside the NBA playoffs (the
+    /// tier-2 club hosts Games 1 and 3). The winner plays in the NBA next season; the loser in tier 2. They apply when the
+    /// top league plays the division format and tier 2 is laid out in the same eight divisions of four. Tier 2's division
+    /// winners then skip tier 2's own playoffs; lower boundaries stay automatic.
+    /// </summary>
+    public static bool PlaysPromotion(GameWorld world, League nabl)
+    {
+        if (!Season.Postseason.UsesDivisions(nabl) || world.Competitions.FirstOrDefault(c => c.Key == Tier2) is not { } t2) return false;
+        if (!Balanced(t2.Clubs) || t2.Clubs.Count != NationalSize) return false;
+        var top = nabl.Teams.Select(t => (t.Conference, t.Division)).ToHashSet();
+        var below = t2.Clubs.Select(t => (t.Conference, t.Division)).ToHashSet();
+        return top.SetEquals(below);
+    }
+
+    /// <summary>The finished promotion playoff a top-league or tier-2 club played this season, if any.</summary>
+    public static SeriesState? PromotionSeriesOf(GameWorld world, int teamId) =>
+        world.Competitions.FirstOrDefault(c => c.Key == Tier2)?.Season.Series
+            .FirstOrDefault(x => IsPromotion(x.Round) && (x.HighId == teamId || x.LowId == teamId));
 
     // ------------------------------------------------------------------------------------------
     // Promotion and relegation (each summer, before the next season's fixtures are made).
@@ -594,6 +626,7 @@ public static class UsaPyramid
         var t5Divs = t4 != null && t5 != null ? DivisionsNow(t5) : null;
 
         var up = new List<Team>(); var down = new List<Team>();
+        var promotionPlayoffs = new List<(Team Top, Team Challenger, bool ChallengerWon, string Score)>();
         void JoinTop(Team p, WorldCompetition from)
         {
             from.Clubs.Remove(p); nabl.Teams.Add(p); up.Add(p);
@@ -616,11 +649,28 @@ public static class UsaPyramid
             bool tableOrder = last.Records.Zip(last.Records.Skip(1)).All(x => RecPct(x.First) >= RecPct(x.Second));
             var place = tableOrder ? last.Records.Select((r, i) => (r.teamId, i)).ToDictionary(x => x.teamId, x => x.i) : new Dictionary<int, int>();
             int P(Team t) => place.TryGetValue(t.Id, out var i) ? i : -1;
+            // The promotion playoffs (run 102): a finished series decides its pairing; a division without one (an older save, a
+            // season before the playoffs existed) keeps the automatic swap.
+            var series = t2.Season.Series.Where(x => IsPromotion(x.Round) && x.Complete).ToList();
+            var stayUp = new HashSet<int>(); var stayDown = new HashSet<int>(); var winners = new List<Team>();
+            foreach (var x in series)
+            {
+                var nbaClub = nabl.Teams.FirstOrDefault(t => t.Id == x.LowId);
+                var challenger = t2.Clubs.FirstOrDefault(t => t.Id == x.HighId);
+                if (nbaClub == null || challenger == null) continue;
+                if (x.WinnerId == nbaClub.Id) { stayUp.Add(nbaClub.Id); stayDown.Add(challenger.Id); }
+                else { down.Add(nbaClub); winners.Add(challenger); }
+                promotionPlayoffs.Add((nbaClub, challenger, x.WinnerId == challenger.Id, x.Score));
+            }
+            var decided = promotionPlayoffs.Select(x => (x.Top.Conference, x.Top.Division)).ToHashSet();
             foreach (var div in nabl.Teams.GroupBy(t => (t.Conference, t.Division)).OrderBy(g => g.Key.Conference).ThenBy(g => g.Key.Division).ToList())
-                down.Add(div.OrderBy(W).ThenByDescending(L).ThenByDescending(P).ThenBy(t => t.Id).First());
+                if (!decided.Contains(div.Key))
+                    down.Add(div.OrderBy(W).ThenByDescending(L).ThenByDescending(P).ThenBy(t => t.Id).First());
             // Paired divisions (#424): a club keeps its division's name going down, and a tier-2 winner keeps its own going up.
             foreach (var r in down) { nabl.Teams.Remove(r); t2.Clubs.Add(r); }
-            foreach (var d in t2Divs) JoinTop(d.Teams[0], t2);
+            foreach (var w in winners) JoinTop(w, t2);
+            foreach (var d in t2Divs)
+                if (!decided.Contains((d.Teams[0].Conference, d.Teams[0].Division)) && t2.Clubs.Contains(d.Teams[0])) JoinTop(d.Teams[0], t2);
         }
         // Tier 2 ↔ tier 3: the last in each tier-2 division ↔ the tier-3 division winners.
         var t2Down = t2Divs.Select(d => d.Teams.Last()).Where(t => t2.Clubs.Contains(t) && !up.Contains(t) && !down.Contains(t)).ToList();
@@ -667,9 +717,7 @@ public static class UsaPyramid
             if (topPlayed)
             {
                 if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled) || RealLabels(nabl.Teams) != RealWorld.RealWorldData.IsReal(nabl)) RealignTop(nabl, up);
-                news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
-                    + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
-                news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
+                news.AddRange(TopNews(t2, up, down, fillTop, promotionPlayoffs, Names));
             }
             void UpAndDown(WorldCompetition upper, WorldCompetition lower, List<Team> wentUp, List<Team> wentDown, List<Team> filled) =>
                 news.Add(($"{upper.Profile.Name}: up and down", $"Division winners promoted from {lower.Profile.Name}: {Names(wentUp)}. Last in their divisions, relegated to {lower.Profile.Name}: {Names(wentDown)}."
@@ -716,9 +764,7 @@ public static class UsaPyramid
             if (topPlayed)
             {
                 if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled) || RealLabels(nabl.Teams) != RealWorld.RealWorldData.IsReal(nabl)) RealignTop(nabl, up);
-                news.Add(($"Promoted to the {Hardwood.Core.Names.Brand.Top}: {Names(up)}", $"{Names(up.Except(fillTop))} won their divisions in {t2.Profile.Name} and move up to the {Hardwood.Core.Names.Brand.Top}."
-                    + (fillTop.Count > 0 ? $" The league grows to {ProSize} teams: {Names(fillTop)} also come up." : "")));
-                news.Add(($"Relegated from the {Hardwood.Core.Names.Brand.Top}: {Names(down)}", $"{Names(down)} finished last in their divisions and drop into {t2.Profile.Name}."));
+                news.AddRange(TopNews(t2, up, down, fillTop, promotionPlayoffs, Names));
             }
             news.Add(($"{t2.Profile.Name}: up and down", $"Division winners promoted from {t3.Profile.Name}: {Names(t3Up)}. Last in their divisions, relegated to {t3.Profile.Name}: {Names(t2Down)}."
                 + (fill2.Count > 0 ? $" {t2.Profile.Name} grows to {NationalSize} clubs: {Names(fill2)} also come up." : "")));
@@ -788,6 +834,32 @@ public static class UsaPyramid
         }
         news.AddRange(RebuildPromoted(world, nabl, up, on));
         world.Index();
+        return news;
+    }
+
+    /// <summary>The summer's headlines for the top league's ups and downs, with the promotion playoffs' results (run 102).</summary>
+    private static List<(string, string)> TopNews(WorldCompetition t2, List<Team> up, List<Team> down, List<Team> fillTop,
+        List<(Team Top, Team Challenger, bool ChallengerWon, string Score)> playoffs, Func<IEnumerable<Team>, string> names)
+    {
+        var news = new List<(string, string)>();
+        string top = Hardwood.Core.Names.Brand.Top;
+        var viaPlayoff = playoffs.Where(x => x.ChallengerWon).Select(x => x.Challenger).ToList();
+        var auto = up.Except(fillTop).Except(viaPlayoff).ToList();
+        var parts = new List<string>();
+        if (viaPlayoff.Count > 0) parts.Add($"{names(viaPlayoff)} won their divisions in {t2.Profile.Name} and then the promotion playoff, and move up to the {top}.");
+        if (auto.Count > 0) parts.Add($"{names(auto)} won their divisions in {t2.Profile.Name} and move up to the {top}.");
+        if (fillTop.Count > 0) parts.Add($"The league grows to {ProSize} teams: {names(fillTop)} also come up.");
+        if (up.Count > 0) news.Add(($"Promoted to the {top}: {names(up)}", string.Join(" ", parts)));
+        var lost = playoffs.Where(x => x.ChallengerWon).Select(x => x.Top).ToList();
+        var autoDown = down.Except(lost).ToList();
+        var downParts = new List<string>();
+        if (lost.Count > 0) downParts.Add($"{names(lost)} finished last in their divisions, lost the promotion playoff and drop into {t2.Profile.Name}.");
+        if (autoDown.Count > 0) downParts.Add($"{names(autoDown)} finished last in their divisions and drop into {t2.Profile.Name}.");
+        if (down.Count > 0) news.Add(($"Relegated from the {top}: {names(down)}", string.Join(" ", downParts)));
+        var saved = playoffs.Where(x => !x.ChallengerWon).ToList();
+        if (saved.Count > 0)
+            news.Add(($"Staying up: {names(saved.Select(x => x.Top))}", string.Join(" ", saved.Select(x =>
+                $"{x.Top.FullName} beat {x.Challenger.FullName} {x.Score} in the promotion playoff and stay in the {top}; {x.Challenger.FullName} stay in {t2.Profile.Name}."))));
         return news;
     }
 
