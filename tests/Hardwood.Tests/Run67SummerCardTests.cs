@@ -156,6 +156,10 @@ public class Run67SummerCardTests
                 Snap("offseason-contracts-cards.png");
                 Assert.True(last.Picked, "after snap: " + off.Talk.Player?.Name + " / " + string.Join(",", off.Expiring.Where(r => r.Picked).Select(r => r.Name)));
                 Assert.Same(last.Player, off.Talk.Player);
+                // H18 (run 100): the talk says, by name, that he goes if nothing is agreed.
+                if (off.Talk.CanTalk) Assert.Contains($"{last.Player.Name} leaves as a free agent if he's unsigned when contract decisions end", off.Talk.AskText);
+                Assert.True(off.ShowTalkPanel);
+                Assert.False(off.ShowProspectPanel);
             }
             foreach (var p in s.MyExpiring.ToList()) s.ReleaseExpiring(p);
             s.AdvanceOffseason(); vm.AfterTick(); off.Refresh(); Settle();
@@ -164,6 +168,11 @@ public class Run67SummerCardTests
             if (s.Offseason!.Phase == OffseasonPhase.Draft)
             {
                 off.Tab = 4; Settle();
+                // H18 (run 100): the side panel is the picked graduate's scouting card, not the last contract talk.
+                Assert.True(off.ShowProspectPanel);
+                Assert.False(off.ShowTalkPanel);
+                Assert.True(Named<ScrollViewer>("ProspectPanel").IsEffectivelyVisible);
+                Assert.Equal(off.SelectedProspect!.Name, Named<TextBlock>("ProspectName").Text);
                 Assert.True(Named<ItemsControl>("DraftCards").IsEffectivelyVisible);
                 Assert.False(Named<DataGrid>("DraftGrid").IsEffectivelyVisible);
                 Assert.Equal(off.DraftPool.Take(off.DraftCards.Count), off.DraftCards);
@@ -177,6 +186,9 @@ public class Run67SummerCardTests
                 Assert.True(second.Picked);
                 Assert.Single(off.DraftPool, r => r.Picked);
                 Assert.Contains(second.Player.Name, off.DraftHint);
+                Assert.Equal(second.Name, Named<TextBlock>("ProspectName").Text);
+                Assert.StartsWith($"No. 2 of {s.Offseason.Prospects.Count}", second.BoardLine);
+                Assert.Equal(off.DraftHint, Named<TextBlock>("ProspectHint").Text);
                 // Others pick until you're on the clock (or the draft ends); the pick survives refreshes while he's there.
                 while (!s.Offseason.DraftComplete && s.Offseason.OnTheClock != s.HumanTeam)
                     s.MakePick(s.Offseason.Prospects.First(p => p != second.Player));
@@ -208,6 +220,15 @@ public class Run67SummerCardTests
             Assert.Contains("free agents by ability", off.FreeAgentNote);
             var grad = off.FreeAgents.FirstOrDefault(f => f.Graduate);
             if (grad != null) Assert.EndsWith("(graduate)", grad.Name);
+            // H18 (run 100): a man you're talking to from further down goes after the best, not ahead of them.
+            if (off.FreeAgents.Count > SummerCards.FreeAgentCount)
+            {
+                var low = off.FreeAgents[^1];
+                off.Talk.Show(low.Player); off.Refresh(); Settle();
+                Assert.Same(off.FreeAgents[0].Player, off.FreeAgentCards[0].Player);
+                Assert.Same(low.Player, off.FreeAgentCards[^1].Player);
+                Assert.EndsWith($"{low.Player.Name}, whom you're talking to, is last.", off.FreeAgentNote);
+            }
             var fa = off.FreeAgentCards[0];
             var fc = window.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("summerCard") && b.DataContext == fa);
             fc.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)); Settle();

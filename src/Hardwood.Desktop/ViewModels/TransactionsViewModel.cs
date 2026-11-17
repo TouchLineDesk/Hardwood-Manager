@@ -133,11 +133,13 @@ public sealed partial class TransactionsViewModel : PageViewModel
         foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
         long room = s.MyWageRoom;
         foreach (var r in FreeAgents.Take(SummerCards.FreeAgentCount)) FreeAgentCards.Add(SummerCards.FreeAgent(s, r.Player, s.Today, false, room));
-        if (keep != null && !FreeAgentCards.Any(c => c.Player == keep) && s.League.FreeAgents.Contains(keep))
-            FreeAgentCards.Insert(0, SummerCards.FreeAgent(s, keep, s.Today, false, room));
-        FaCardsNote = FreeAgents.Count == 0 ? "There are no free agents right now."
+        // H18 (run 100): the man you're talking to from further down goes after the best, not ahead of them.
+        bool extra = keep != null && !FreeAgentCards.Any(c => c.Player == keep) && s.League.FreeAgents.Contains(keep);
+        if (extra) FreeAgentCards.Add(SummerCards.FreeAgent(s, keep!, s.Today, false, room));
+        FaCardsNote = (FreeAgents.Count == 0 ? "There are no free agents right now."
             : FreeAgents.Count <= SummerCards.FreeAgentCount ? $"All {FreeAgents.Count} free agent{(FreeAgents.Count == 1 ? "" : "s")}, best first, with what each asks of your club. Pick a card to talk to him."
-            : $"The best {SummerCards.FreeAgentCount} of {FreeAgents.Count:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists them all.";
+            : $"The best {SummerCards.FreeAgentCount} of {FreeAgents.Count:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists them all.")
+            + (extra ? $" {keep!.Name}, whom you're talking to, is last." : "");
         // Keep the man you were talking to (the rows are rebuilt), so an offer's answer stays on screen.
         var again = keep == null ? null : FreeAgents.FirstOrDefault(r => r.Player == keep);
         if (again != null) SelectedFreeAgent = again;

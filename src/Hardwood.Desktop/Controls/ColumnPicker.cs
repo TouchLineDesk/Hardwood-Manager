@@ -28,6 +28,15 @@ public sealed class ColumnPicker : StackPanel
     public string Key { get => GetValue(KeyProperty); set => SetValue(KeyProperty, value); }
     public DataGrid? Target { get => GetValue(TargetProperty); set => SetValue(TargetProperty, value); }
     public string Presets { get => GetValue(PresetsProperty); set => SetValue(PresetsProperty, value); }
+    /// <summary>H68 (run 100): columns to set aside, in this order, when the view's columns are wider than the table
+    /// ("Clause,Contract,PA"). They come back as soon as there is room. The saved view never changes.</summary>
+    public static readonly StyledProperty<string> FitDropProperty = AvaloniaProperty.Register<ColumnPicker, string>(nameof(FitDrop), "");
+    public string FitDrop { get => GetValue(FitDropProperty); set => SetValue(FitDropProperty, value); }
+    private readonly List<string> _fitHidden = new();
+    /// <summary>The columns the view shows that are set aside for now because the table is too narrow (in drop order).</summary>
+    public IReadOnlyList<string> FitHidden => _fitHidden;
+    private DataGrid? _watched;
+    private double _fitWidth = -1;
 
     private readonly ToggleButton _toggle = new() { HorizontalAlignment = HorizontalAlignment.Left };
     private readonly Border _panel = new() { Classes = { "panel" }, IsVisible = false, Margin = new Thickness(0, 6, 0, 6) };
@@ -66,7 +75,13 @@ public sealed class ColumnPicker : StackPanel
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == TargetProperty || change.Property == KeyProperty || change.Property == PresetsProperty)
+        if (change.Property == TargetProperty)
+        {
+            if (_watched != null) _watched.SizeChanged -= OnTargetSized;
+            _watched = Target;
+            if (_watched != null) _watched.SizeChanged += OnTargetSized;
+        }
+        if (change.Property == TargetProperty || change.Property == KeyProperty || change.Property == PresetsProperty || change.Property == FitDropProperty)
             Apply();
     }
 
@@ -75,6 +90,20 @@ public sealed class ColumnPicker : StackPanel
         base.OnAttachedToVisualTree(e);
         Apply();
     }
+
+    private void OnTargetSized(object? sender, SizeChangedEventArgs e)
+    {
+        // Only a change in width can change what fits; heights change every time a row is added.
+        if (string.IsNullOrEmpty(FitDrop) || Math.Abs(e.NewSize.Width - _fitWidth) < 0.5) return;
+        Apply();
+    }
+
+    /// <summary>How wide a column needs to be: its set width; a star column's minimum (it takes what's left);
+    /// otherwise its measured width, never less than its minimum.</summary>
+    public static double WidthOf(DataGridColumn c) =>
+        c.Width.IsAbsolute ? c.Width.Value
+        : c.Width.IsStar ? (double.IsNaN(c.MinWidth) ? 0 : c.MinWidth)
+        : Math.Max(double.IsNaN(c.ActualWidth) ? 0 : c.ActualWidth, double.IsNaN(c.MinWidth) ? 0 : c.MinWidth);
 
     // --- The model (public for tests) ---
 
@@ -133,7 +162,7 @@ public sealed class ColumnPicker : StackPanel
     public void SetShown(string header, bool shown)
     {
         if (string.IsNullOrEmpty(Key) || Target == null) return;
-        var now = new HashSet<string>(Choosable.Where(c => c.IsVisible).Select(HeaderOf));
+        var now = new HashSet<string>(Choosable.Where(c => c.IsVisible || _fitHidden.Contains(HeaderOf(c))).Select(HeaderOf));
         if (shown) now.Add(header); else now.Remove(header);
         var choice = AppSettings.Current.TableViews.GetValueOrDefault(Key) ?? new TableViewChoice();
         choice.View = MineName;
@@ -151,9 +180,30 @@ public sealed class ColumnPicker : StackPanel
         var current = Current;
         var cols = Views.First(v => v.Name == current).Columns;
         foreach (var c in Choosable) c.IsVisible = cols.Contains(HeaderOf(c));
+        // H68 (run 100): at 1280 px and 130% the market table was cut after "Joins?", losing the club's stance and the
+        // fee. Set aside the least-needed columns until the rest fit; the view itself is untouched.
+        _fitHidden.Clear();
+        _fitWidth = Target.Bounds.Width;
+        if (!string.IsNullOrEmpty(FitDrop) && _fitWidth > 0)
+        {
+            double room = _fitWidth - 24;   // the row header's edge and a vertical scroll bar
+            double Used() => Target.Columns.Where(c => c.IsVisible).Sum(WidthOf);
+            foreach (var header in FitDrop.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (Used() <= room) break;
+                if (Choosable.FirstOrDefault(c => HeaderOf(c) == header && c.IsVisible) is not { } col) continue;
+                col.IsVisible = false;
+                _fitHidden.Add(header);
+            }
+        }
         var total = Target.Columns.Count;
         var shown = Target.Columns.Count(c => c.IsVisible);
-        _toggle.Content = current == AllName ? "View: all columns ▾" : $"View: {current} ({shown} of {total} columns) ▾";
+        _toggle.Content = (current == AllName && _fitHidden.Count == 0 ? "View: all columns" : $"View: {(current == AllName ? "all columns" : current)} ({shown} of {total} columns)")
+                          + (_fitHidden.Count > 0 ? $" · {_fitHidden.Count} hidden to fit" : "") + " ▾";
+        if (_fitHidden.Count > 0)
+            ToolTip.SetTip(_toggle, $"The window is too narrow for every column, so {string.Join(", ", _fitHidden)} {(_fitHidden.Count == 1 ? "is" : "are")} set aside until there's room. Your view is unchanged.");
+        else
+            ToolTip.SetTip(_toggle, "Choose which columns this table shows. Your choice is remembered.");
         Rebuild();
     }
 
@@ -177,7 +227,7 @@ public sealed class ColumnPicker : StackPanel
             foreach (var c in Choosable)
             {
                 var header = HeaderOf(c);
-                var box = new CheckBox { Content = header, IsChecked = c.IsVisible, MinWidth = 92, Margin = new Thickness(0, 0, 6, 0) };
+                var box = new CheckBox { Content = header, IsChecked = c.IsVisible || _fitHidden.Contains(header), MinWidth = 92, Margin = new Thickness(0, 0, 6, 0) };
                 box.IsCheckedChanged += (_, _) => { if (!_building) SetShown(header, box.IsChecked == true); };
                 _boxes.Children.Add(box);
             }
