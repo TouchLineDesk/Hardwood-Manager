@@ -63,6 +63,8 @@ public static class ScheduleBuilder
             }
             // Three divisions of five (the NBA's real layout): each team needs 6 extra conference games (a 4th game vs 6 of its
             // 10 non-division rivals). For each pair of divisions (A,B), team i of A plays team (i+k) mod 5 of B for k = 0..2.
+            // Any other shape (uneven divisions, e.g. the real 30 in D33's divisions of 3 and 4) is topped up below (K4).
+            if (divisions.Count != 3 || divisions.Any(d => d.Count != 5)) continue;
             for (int dA = 0; dA < divisions.Count; dA++)
             for (int dB = dA + 1; dB < divisions.Count; dB++)
             {
@@ -76,6 +78,7 @@ public static class ScheduleBuilder
             }
         }
 
+        TopUp(pairs, teams, rng);
         BalanceHomeGames(pairs, teams);
         rng.Shuffle(pairs);
 
@@ -115,51 +118,96 @@ public static class ScheduleBuilder
     }
 
     /// <summary>
-    /// Flip home/away on individual games until every team hosts exactly half its games.
-    /// Uses augmenting paths: a surplus team hands a home game to an opponent, who may hand one on, until a deficit team is reached.
+    /// Any league shape the fixed patterns above don't cover (K4: uneven divisions, an odd-sized conference) gets its extra games
+    /// here: the team furthest short of 82 plays the conference rival (outside its division first) it has had the fewest extra
+    /// games against and who is also short, then the other conference, then anyone short. A standard shape has no one short, so
+    /// nothing is drawn from <paramref name="rng"/> and existing schedules are unchanged. If the shortfall is odd, one team plays 81.
     /// </summary>
-    private static void BalanceHomeGames(List<(Team home, Team away)> pairs, List<Team> teams)
+    internal static void TopUp(List<(Team home, Team away)> pairs, List<Team> teams, Rng rng, int games = 82)
     {
-        int target = pairs.Count * 2 / teams.Count / 2; // 41 for an 82-game season
-        var homes = teams.ToDictionary(t => t.Id, _ => 0);
-        foreach (var (h, _) in pairs) homes[h.Id]++;
-
+        var count = teams.ToDictionary(t => t.Id, _ => 0);
+        foreach (var (h, a) in pairs) { count[h.Id]++; count[a.Id]++; }
+        if (teams.All(t => count[t.Id] >= games)) return;
+        var extra = new Dictionary<(int, int), int>();
+        int Extra(Team a, Team b) => extra.GetValueOrDefault(a.Id < b.Id ? (a.Id, b.Id) : (b.Id, a.Id));
         while (true)
         {
-            var over = teams.FirstOrDefault(t => homes[t.Id] > target);
-            if (over == null) break;
+            var t = teams.Where(x => count[x.Id] < games).OrderBy(x => count[x.Id]).ThenBy(x => x.Id).FirstOrDefault();
+            if (t == null) break;
+            var short_ = teams.Where(x => x != t && count[x.Id] < games).ToList();
+            var opp = short_.Where(x => x.Conference == t.Conference && x.Division != t.Division)
+                          .OrderBy(x => Extra(t, x)).ThenBy(x => count[x.Id]).ThenBy(x => x.Id).FirstOrDefault()
+                   ?? short_.Where(x => x.Conference != t.Conference)
+                          .OrderBy(x => Extra(t, x)).ThenBy(x => count[x.Id]).ThenBy(x => x.Id).FirstOrDefault()
+                   ?? short_.OrderBy(x => Extra(t, x)).ThenBy(x => count[x.Id]).ThenBy(x => x.Id).FirstOrDefault();
+            if (opp == null) break; // an odd total: this team plays one game fewer
+            pairs.Add(rng.Chance(0.5) ? (t, opp) : (opp, t));
+            count[t.Id]++; count[opp.Id]++;
+            var key = t.Id < opp.Id ? (t.Id, opp.Id) : (opp.Id, t.Id);
+            extra[key] = extra.GetValueOrDefault(key) + 1;
+        }
+    }
 
-            // BFS from the surplus team along games it hosts.
-            var prevGame = new Dictionary<int, int>(); // team id -> index of game flipped to reach it
+    /// <summary>
+    /// Flip home/away on individual games until every team hosts half its games (41 of 82; with an odd count, the half rounded
+    /// either way). Uses augmenting paths: a surplus team hands a home game to an opponent, who may hand one on, until a team
+    /// with room is reached; then any team still short takes one back the same way. Such an orientation always exists, so this
+    /// never gives up; if it somehow did, the schedule keeps its imbalance rather than stopping the season (K4).
+    /// </summary>
+    internal static void BalanceHomeGames(List<(Team home, Team away)> pairs, List<Team> teams)
+    {
+        var games = teams.ToDictionary(t => t.Id, _ => 0);
+        var homes = teams.ToDictionary(t => t.Id, _ => 0);
+        foreach (var (h, a) in pairs) { homes[h.Id]++; games[h.Id]++; games[a.Id]++; }
+        int Lo(int id) => games[id] / 2;
+        int Hi(int id) => (games[id] + 1) / 2;
+
+        // Too many home games: push them along games the team hosts until someone with room takes one.
+        while (teams.FirstOrDefault(t => homes[t.Id] > Hi(t.Id)) is { } over)
+        {
+            int reached = Augment(over.Id, fromHome: true, v => homes[v] < Hi(v));
+            if (reached < 0) return;
+            homes[over.Id]--; homes[reached]++;
+        }
+        // Too few: pull one along games the team plays away, from someone who can spare one.
+        while (teams.FirstOrDefault(t => homes[t.Id] < Lo(t.Id)) is { } under)
+        {
+            int reached = Augment(under.Id, fromHome: false, v => homes[v] > Lo(v));
+            if (reached < 0) return;
+            homes[under.Id]++; homes[reached]--;
+        }
+
+        // BFS from `start` along games it hosts (fromHome) or plays away; flips the path to the first team that `done`, and returns it.
+        int Augment(int start, bool fromHome, Func<int, bool> done)
+        {
+            var prevGame = new Dictionary<int, int> { [start] = -1 };
             var queue = new Queue<int>();
-            queue.Enqueue(over.Id);
-            prevGame[over.Id] = -1;
+            queue.Enqueue(start);
             int reached = -1;
             while (queue.Count > 0 && reached < 0)
             {
                 int u = queue.Dequeue();
                 for (int i = 0; i < pairs.Count; i++)
                 {
-                    if (pairs[i].home.Id != u) continue;
-                    int v = pairs[i].away.Id;
+                    int me = fromHome ? pairs[i].home.Id : pairs[i].away.Id;
+                    if (me != u) continue;
+                    int v = fromHome ? pairs[i].away.Id : pairs[i].home.Id;
                     if (prevGame.ContainsKey(v)) continue;
                     prevGame[v] = i;
-                    if (homes[v] < target) { reached = v; break; }
+                    if (done(v)) { reached = v; break; }
                     queue.Enqueue(v);
                 }
             }
-            if (reached < 0) throw new InvalidOperationException("Cannot balance home games");
-
-            // Flip every game along the path.
+            if (reached < 0) return -1;
             int cur = reached;
             while (prevGame[cur] >= 0)
             {
                 int gi = prevGame[cur];
                 var (h, a) = pairs[gi];
                 pairs[gi] = (a, h);
-                cur = h.Id;
+                cur = fromHome ? h.Id : a.Id;
             }
-            homes[over.Id]--; homes[reached]++;
+            return reached;
         }
     }
 }
