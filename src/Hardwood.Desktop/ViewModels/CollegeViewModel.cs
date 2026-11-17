@@ -127,6 +127,21 @@ public sealed record SeedLine(string Seed, IReadOnlyList<SeedCell> Teams, bool M
 /// <summary>A bubble list: "Last four in", "First four out", "Next four out".</summary>
 public sealed record BubbleList(string Title, IReadOnlyList<SeedCell> Teams, string Tone);
 
+/// <summary>A team (or a First Four pair) on Selection Sunday's reveal (C4 part 2).</summary>
+public sealed record RevealRow(string Seed, string Name, string Record, string Tag, bool Mine)
+{
+    public bool HasTag => Tag.Length > 0;
+}
+
+/// <summary>A first-round pairing on the reveal: 1 v 16, 8 v 9 …</summary>
+public sealed record RevealPair(RevealRow Top, RevealRow Bottom, bool Mine);
+
+/// <summary>A region on Selection Sunday: hidden until revealed, then its eight pairings.</summary>
+public sealed record RevealRegion(string Name, bool Shown, string Line, IReadOnlyList<RevealPair> Pairs, bool Mine)
+{
+    public bool Hidden => !Shown;
+}
+
 /// <summary>A round of the selected region: its name and boxes.</summary>
 public sealed record BracketColumn(string Title, IReadOnlyList<BracketCard> Cards, int Rows);
 
@@ -169,13 +184,57 @@ public sealed partial class CollegeViewModel : PageViewModel
     public ObservableCollection<RankRow> ConferenceRows { get; } = new();
     public ObservableCollection<string> Bracket { get; } = new();
     // March Madness as a bracket (college depth part 2): pick a region or the Final Four.
-    public List<string> BracketViews { get; } = MadnessBracket.Regions.Append("Final Four").ToList();
+    public const string SelectionView = "Selection Sunday";
+    public List<string> BracketViews { get; } = MadnessBracket.Regions.Prepend(SelectionView).Append("Final Four").ToList();
     [ObservableProperty] private string _bracketView = "East";
     [ObservableProperty] private List<BracketColumn> _bracketColumns = new();
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _madnessChips = new();
     public bool HasBracket => BracketColumns.Count > 0;
     partial void OnBracketColumnsChanged(List<BracketColumn> value) => OnPropertyChanged(nameof(HasBracket));
     partial void OnBracketViewChanged(string value) => FillBracket();
+    /// <summary>The field has been picked: the view picker and the tournament chips show (the bracket or the reveal).</summary>
+    [ObservableProperty] private bool _fieldPicked;
+
+    // Selection Sunday as a reveal (C4 part 2, college-sim-design #164): the four regions one at a time, then the bubble.
+    // How many regions you've revealed is kept per season while the game is open; once a game is played it's all shown.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CollegeSeason, System.Runtime.CompilerServices.StrongBox<int>> Revealed = new();
+    [ObservableProperty] private bool _showSelection;
+    [ObservableProperty] private List<RevealRegion> _revealRegions = new();
+    [ObservableProperty] private List<BubbleList> _selectionBubble = new();
+    [ObservableProperty] private string _selectionIntro = "";
+    [ObservableProperty] private string _revealButton = "";
+    [ObservableProperty] private bool _canReveal;
+    public bool HasSelectionBubble => SelectionBubble.Count > 0;
+    partial void OnSelectionBubbleChanged(List<BubbleList> value) => OnPropertyChanged(nameof(HasSelectionBubble));
+    private CollegeSeason? _revealOpenedFor, _bracketOpenedFor;
+
+    /// <summary>Regions revealed so far this season (0-4).</summary>
+    public int RevealedRegions
+    {
+        get
+        {
+            if (Session.World.College is not { } c || !c.Season.Selected) return 0;
+            if (c.Season.Games.Any(g => g.Event == CollegeWorld.Madness && g.Played)) return 4;
+            return Revealed.GetValue(c.Season, _ => new System.Runtime.CompilerServices.StrongBox<int>(0)).Value;
+        }
+    }
+
+    [RelayCommand]
+    private void RevealNext()
+    {
+        if (Session.World.College is not { } c || !c.Season.Selected) return;
+        var box = Revealed.GetValue(c.Season, _ => new System.Runtime.CompilerServices.StrongBox<int>(0));
+        box.Value = Math.Min(4, Math.Max(box.Value, RevealedRegions) + 1);
+        FillBracket();
+    }
+
+    [RelayCommand]
+    private void RevealAll()
+    {
+        if (Session.World.College is not { } c || !c.Season.Selected) return;
+        Revealed.GetValue(c.Season, _ => new System.Runtime.CompilerServices.StrongBox<int>(0)).Value = 4;
+        FillBracket();
+    }
     [ObservableProperty] private string _bracketNote = "";
     /// <summary>A region's bracket needs the room for eight games; the Final Four view only two rows (C4 part 2).</summary>
     [ObservableProperty] private double _bracketHeight = 620;
@@ -289,6 +348,20 @@ public sealed partial class CollegeViewModel : PageViewModel
             ? $"Re-ranked after every game, on the rating · arrows: since the last day of games ({LastGameDay(c):MMM d})"
             : "Preseason: ranked on the rating. Re-ranked after every game once the season tips off.";
         FillConference();
+        // Between Selection Sunday and the first game, March Madness opens on the reveal.
+        // (The page is kept while the game is open, so this is decided once per season.) Once the games start, a page
+        // still on the reveal moves to your region's bracket (or the East).
+        bool madnessStarted = s.Games.Any(g => g.Event == CollegeWorld.Madness && g.Played);
+        if (s.Selected && !madnessStarted && _revealOpenedFor != s) { _revealOpenedFor = s; BracketView = SelectionView; }
+        if (madnessStarted && _bracketOpenedFor != s)
+        {
+            _bracketOpenedFor = s;
+            if (BracketView == SelectionView)
+            {
+                int region = Session.Employed && Session.InCollege ? c.RegionOf(Session.HumanTeam.Id) : -1;
+                BracketView = region >= 0 ? MadnessBracket.Regions[region] : MadnessBracket.Regions[0];
+            }
+        }
         FillBracket();
         FillProspects();
         FillRecruits();
@@ -451,7 +524,11 @@ public sealed partial class CollegeViewModel : PageViewModel
         if (Session.World.College is not { } c) return;
         var s = c.Season;
         SeedLines = new(); Bubble = new(); BracketologyChips = new();
+        RevealRegions = new(); SelectionBubble = new();
+        FieldPicked = s.Selected;
+        ShowSelection = s.Selected && BracketView == SelectionView;
         if (!s.Selected) { FillBracketology(c); return; }
+        if (ShowSelection) { FillSelection(c); return; }
         BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Every March Madness game uses the full match engine. Upsets (a seed four or more lines worse winning) are marked.";
         var boxes = MadnessBracket.Boxes(s);
         // Brackets use the school name ("Jersey Christian"), as on TV; the full name is a click away.
@@ -505,6 +582,98 @@ public sealed partial class CollegeViewModel : PageViewModel
             else chips.Insert(0, new("Our seed", "Left out", c.Bracketology().StatusOf(me), "bad"));
         }
         MadnessChips = chips;
+    }
+
+    /// <summary>
+    /// Selection Sunday as a reveal (C4 part 2): the regions one at a time in bracket order (1 v 16, 8 v 9 …), your seed
+    /// once your region is out, and the bubble when all four are.
+    /// </summary>
+    private void FillSelection(CollegeWorld c)
+    {
+        var s = c.Season;
+        int shown = RevealedRegions;
+        int? me = Session.Employed && Session.InCollege ? Session.HumanTeam.Id : null;
+        var auto = new Dictionary<int, string>();
+        foreach (var conf in c.Active)
+            if (s.ConferenceChampions.TryGetValue(conf.Key, out var champ)) auto.TryAdd(champ, conf.Short);
+        string School(int id) => c.Program(id)?.City ?? "?";
+        string Rec(int id) { var (w, l) = c.Record(id); return $"{w}-{l}"; }
+        RevealRow Row(SelectionLine line)
+        {
+            bool mine = me is { } m && line.Teams.Contains(m);
+            if (line.Teams.Count == 0) return new(line.Seed.ToString(), "To be decided", "", "", false);
+            if (line.FirstFour)
+                return new(line.Seed.ToString(), string.Join(" / ", line.Teams.Select(School)), string.Join(" · ", line.Teams.Select(Rec)), "FIRST FOUR", mine);
+            int id = line.Teams[0];
+            string tag = auto.TryGetValue(id, out var cs) ? cs : s.LastFourIn.Contains(id) ? "LAST IN" : "";
+            return new(line.Seed.ToString(), School(id), Rec(id), tag, mine);
+        }
+        int myRegion = me is { } mr ? c.RegionOf(mr) : -1;
+        var regions = new List<RevealRegion>();
+        for (int r = 0; r < 4; r++)
+        {
+            string name = MadnessBracket.Regions[r];
+            if (r >= shown)
+            {
+                regions.Add(new(name, false, r == shown ? "Revealed next" : "To come", Array.Empty<RevealPair>(), false));
+                continue;
+            }
+            var pairs = MadnessBracket.RegionField(s, r).Select(p => new RevealPair(Row(p.Top), Row(p.Bottom), Row(p.Top).Mine || Row(p.Bottom).Mine)).ToList();
+            var top = MadnessBracket.RegionField(s, r).FirstOrDefault().Top;
+            string line = top is { Teams.Count: > 0 } ? $"No. 1 seed: {c.Program(top.Teams[0])?.FullName}" : "";
+            regions.Add(new(name, true, line, pairs, r == myRegion));
+        }
+        RevealRegions = regions;
+        int autos = auto.Count;
+        bool all = shown >= 4;
+        SelectionIntro = all
+            ? $"The field of 68: {autos} conference tournament champions and {68 - autos} at-large teams. Pick a region above for its bracket as the games are played."
+            : $"The committee has picked the field of 68: {autos} conference tournament champions and {68 - autos} at-large teams. The four regions are revealed one at a time, in bracket order.";
+        CanReveal = !all;
+        RevealButton = all ? "All four regions revealed" : $"Reveal the {MadnessBracket.Regions[shown]}";
+        BracketNote = "";
+        // Chips: your seed (once your region is out), the regions so far, the No. 1 seeds; the bubble at the end.
+        var chips = new List<Hardwood.Desktop.Controls.Chip>();
+        if (me is { } mine)
+        {
+            if (myRegion >= 0 && myRegion < shown)
+            {
+                int seed = s.Seeds.GetValueOrDefault(mine);
+                chips.Add(new("Our seed", $"No. {seed}", $"{MadnessBracket.Regions[myRegion]} · {FirstOpponent(c, mine)}", "good"));
+            }
+            else if (myRegion >= 0 || !all)
+                chips.Add(new("Our seed", "?", all ? "" : myRegion >= 0 ? "keep revealing" : "still to come", "team"));
+            else
+                chips.Add(new("Our seed", "Left out", s.FirstFourOut.Contains(mine) ? "first four out" : s.NextFourOut.Contains(mine) ? "next four out" : "not near the bubble", "bad"));
+        }
+        chips.Add(new("Regions revealed", $"{shown} of 4", all ? "the field is set" : $"next: {MadnessBracket.Regions[shown]}", "team"));
+        var ones = Enumerable.Range(0, shown).Select(r => MadnessBracket.RegionField(s, r).FirstOrDefault().Top).Where(t => t is { Teams.Count: > 0 }).Select(t => School(t!.Teams[0])).ToList();
+        chips.Add(new("No. 1 seeds", ones.Count == 0 ? "?" : ones.Count.ToString(), string.Join(", ", ones.Take(2)) + (ones.Count > 2 ? " …" : ""), ones.Count > 0 ? "good" : ""));
+        if (all && s.LastFourIn.Count > 0) chips.Add(new("Last team in", School(s.LastFourIn[^1]), Rec(s.LastFourIn[^1]), "warn"));
+        if (all && s.FirstFourOut.Count > 0) chips.Add(new("First team out", School(s.FirstFourOut[0]), Rec(s.FirstFourOut[0]), ""));
+        MadnessChips = chips;
+        if (all && s.LastFourIn.Count > 0)
+        {
+            SeedCell Cell(int id) => new(School(id), Rec(id), "", id == me);
+            SelectionBubble = new()
+            {
+                new("Last four in", s.LastFourIn.Select(Cell).ToList(), "good"),
+                new("First four out", s.FirstFourOut.Select(Cell).ToList(), "warn"),
+                new("Next four out", s.NextFourOut.Select(Cell).ToList(), "bad"),
+            };
+        }
+    }
+
+    /// <summary>"vs No. 13 Vermont, Thu Mar 19", or the First Four game, for the reveal's seed chip.</summary>
+    private static string FirstOpponent(CollegeWorld c, int me)
+    {
+        var s = c.Season;
+        var ff = s.Games.FirstOrDefault(g => g.Event == CollegeWorld.Madness && g.Round == 0 && (g.HomeId == me || g.AwayId == me));
+        if (ff != null) return $"First Four vs {c.Program(ff.HomeId == me ? ff.AwayId : ff.HomeId)?.City}";
+        int slot = s.Bracket.IndexOf(me);
+        if (slot < 0) return "";
+        int opp = s.Bracket[slot ^ 1];
+        return opp > 0 ? $"vs No. {s.Seeds.GetValueOrDefault(opp)} {c.Program(opp)?.City}" : "vs a First Four winner";
     }
 
     /// <summary>Bracketology (C4 part 1): seed lines, the bubble and your projection, until the real field is picked.</summary>

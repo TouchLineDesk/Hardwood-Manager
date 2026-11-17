@@ -854,6 +854,9 @@ public sealed record BracketBox(int Round, int Slot, int? TeamA, int SeedA, int?
     public bool Upset => Played && (Winner == TeamA ? SeedA - SeedB : SeedB - SeedA) >= 4;
 }
 
+/// <summary>One seed line of a region on Selection Sunday: the seed and its team, or both First Four teams.</summary>
+public sealed record SelectionLine(int Seed, IReadOnlyList<int> Teams, bool FirstFour);
+
 public static class MadnessBracket
 {
     public static readonly string[] Regions = { "East", "West", "South", "Midwest" };
@@ -884,6 +887,29 @@ public static class MadnessBracket
             }
         }
         return boxes;
+    }
+
+    /// <summary>Seeds in bracket order within a region: slot i of the region's 16 holds seed <c>Order[i]</c>.</summary>
+    public static readonly int[] Order = { 1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15 };
+
+    /// <summary>
+    /// A region as Selection Sunday reveals it (C4 part 2): its eight first-round pairings in bracket order (1 v 16,
+    /// 8 v 9 …). A line filled by a First Four game lists both teams. Empty for seasons not yet picked.
+    /// </summary>
+    public static List<(SelectionLine Top, SelectionLine Bottom)> RegionField(CollegeSeason s, int region)
+    {
+        var pairs = new List<(SelectionLine, SelectionLine)>();
+        if (!s.Selected || s.Bracket.Count < 64 || region is < 0 or > 3) return pairs;
+        var playIns = s.Games.Where(g => g.Event == CollegeWorld.Madness && g.Round == 0).ToList();
+        SelectionLine Line(int i)
+        {
+            int slot = region * 16 + i;
+            var ff = playIns.FirstOrDefault(g => g.Slot == slot);
+            return ff != null ? new SelectionLine(Order[i], new[] { ff.HomeId, ff.AwayId }, true)
+                              : new SelectionLine(Order[i], s.Bracket[slot] > 0 ? new[] { s.Bracket[slot] } : Array.Empty<int>(), false);
+        }
+        for (int i = 0; i < 16; i += 2) pairs.Add((Line(i), Line(i + 1)));
+        return pairs;
     }
 
     /// <summary>Which region a box belongs to (rounds 1-4), or -1 for the Final Four and the final.</summary>
