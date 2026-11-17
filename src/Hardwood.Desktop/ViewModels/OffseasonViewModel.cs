@@ -54,7 +54,7 @@ public sealed partial class ProspectRow : ObservableObject
     public int Of { get; init; }
     public string BoardLine => $"No. {Rank} of {Of} on your scouts' board · {Pos} · age {Age} · {Height}";
     public string ScoutLine => Knowledge >= 0.999 ? "Your scouts know him well: these are his true ratings."
-        : $"Your scouts' read ({Knowledge:P0} known): ratings are ranges until they see more of him.";
+        : $"Your scouts' read ({Knowledge * 100:0}% known): ratings are ranges until they see more of him.";
 }
 
 public sealed class PickRow
