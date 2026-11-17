@@ -147,6 +147,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         // Nobody picked yet: the best free agent. The man you were talking to has signed: his answer stays up.
         if (again == null && keep == null) SelectedFreeAgent = FreeAgents.FirstOrDefault();
         else if (Talk.Player != keep) Talk.Show(keep);
+        Talk.RefreshBudget();   // H84 (run 103): the panel's budget is the page's, after a signing too
         long payroll = ContractMarket.Payroll(s.HumanTeam);
         CapText = $"Roster {s.HumanTeam.Roster.Count}/{s.MyRosterMax} · " + fin.Describe(payroll);
         DeadlineText = s.Phase == SessionPhase.Offseason ? "Offseason: trades are open."

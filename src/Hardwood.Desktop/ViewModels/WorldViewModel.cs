@@ -279,11 +279,14 @@ public sealed partial class WorldViewModel : PageViewModel
         else { LeftTitle = ""; RightTitle = ""; }
         HasRight = RightCards.Count > 0;
         var zones = LeftCards.Concat(RightCards).SelectMany(c => c.Rows).Select(r => r.Zone).Where(z => z.Length > 0).Distinct().ToHashSet();
-        if (zones.Contains("Promotion")) Keys.Add(new ZoneKey(StandingRow.PromotionBrush, b.Key == LeagueBook.NablKey ? "Division winner" : "Division winner: promoted (level records: point difference decides)"));
+        // H85 (run 103): tier 2's winners and the NBA's last meet in the promotion playoff (#873); "level records" is said once.
+        bool tier2 = b.Key == Hardwood.Core.World.UsaPyramid.Tier2, top = b.Key == LeagueBook.NablKey;
+        if (zones.Contains("Promotion")) Keys.Add(new ZoneKey(StandingRow.PromotionBrush, top ? "Division winner" : tier2 ? StandingRow.PromotionPlayoffKey : "Division winner: promoted"));
         if (zones.Contains("Playoffs")) Keys.Add(new ZoneKey(StandingRow.PlayoffBrush, "Playoffs"));
         if (zones.Contains("Play-in")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Play-in"));
         if (zones.Contains("Third place")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Third-place tournament"));
-        if (zones.Contains("Relegation")) Keys.Add(new ZoneKey(StandingRow.RelegationBrush, "Relegated"));
+        if (zones.Contains("Relegation")) Keys.Add(new ZoneKey(StandingRow.RelegationBrush, top ? StandingRow.StayUpKey : "Relegated"));
+        if (!college && (zones.Contains("Promotion") || zones.Contains("Relegation"))) Keys.Add(new ZoneKey(Avalonia.Media.Brushes.Transparent, StandingRow.LevelRecords));
         if (college) Keys.Add(new ZoneKey(Avalonia.Media.Brushes.Transparent, "One card per conference, ranked on the conference record (Conf); W-L is the overall record"));
     }
 

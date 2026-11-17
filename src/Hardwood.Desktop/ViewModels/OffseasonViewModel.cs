@@ -256,7 +256,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         ShowFreeAgency = freeAgency;
         ShowBuyouts = s.InNabl && freeAgency;
         long committed = s.MyCommittedWages, budget = team.Money.WageBudget;
-        static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
+        static string M(long v) => TalkViewModel.M(v);   // H84: the talk panel writes money the same way
         CapText = $"Wages committed {M(committed)} of a {M(budget)} budget · {(budget >= committed ? $"{M(budget - committed)} to spend" : $"{M(committed - budget)} over")}"
                   + (s.InCollege ? "" : $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {s.MyRosterMin}-{s.MyRosterMax})");
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
@@ -333,6 +333,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         else if (o != null && o.Phase != _talkPhase && Talk.IsRenewal && !s.MyExpiring.Contains(Talk.Player))
             Talk.Show(Talk.Player);
         _talkPhase = o?.Phase;
+        Talk.RefreshBudget();   // H84 (run 103): the panel's budget follows the header after a signing
         MarkTalk();
     }
 

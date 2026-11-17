@@ -57,27 +57,59 @@ public sealed partial class TalkViewModel : ViewModelBase
         var why = s.CannotTalk(p);
         CanTalk = why == null;
         var d = s.PeekDemand(p);
-        AskText = why ?? $"His agent asks ${d.Wage / 1e6:F2}M a year for {d.Years} year{(d.Years == 1 ? "" : "s")}." + Context(p);
+        _lead = why;
+        _withContext = why == null;
+        if (why == null) _lead = $"His agent asks ${d.Wage / 1e6:F2}M a year for {d.Years} year{(d.Years == 1 ? "" : "s")}.";
+        RefreshBudget();
         Wage = Math.Round((decimal)(d.Wage / 1e6), 2);
         Years = d.Years;
+    }
+
+    /// <summary>The panel's first sentence (his ask, why you can't talk, or the deal he signed) and whether the budget line follows.</summary>
+    private string? _lead;
+    private bool _withContext;
+
+    /// <summary>
+    /// H84 (run 103): the budget line is worked out again whenever the page refreshes, so after a signing (or anything else
+    /// that moves the wages) it reads the same "to spend" as the page's header instead of the figure from when talks opened.
+    /// The reply to your last offer stays as it is.
+    /// </summary>
+    public void RefreshBudget()
+    {
+        if (Player is not { } p) return;
+        AskText = (_lead ?? "") + (_withContext ? Context(p) : "");
+    }
+
+    /// <summary>Money as the Offseason header writes it: whole millions from $10M up, one decimal below.</summary>
+    public static string M(long v) => Budgets.Money(v);
+
+    /// <summary>
+    /// H84 (run 103): the budget sentence. It starts from the header's own figure (the budget less the wages committed),
+    /// then says what's left for this deal once the owner's reserves are kept back, so the two never show different numbers.
+    /// </summary>
+    public static string BudgetLine(long budget, long committed, long seniors, long fill)
+    {
+        long spend = budget - committed;
+        if (spend < 0) return $" You are {M(-spend)} over your wage budget.";
+        var parts = new List<string>();
+        if (seniors > 0) parts.Add($"{M(seniors)} for your committed college seniors");
+        if (fill > 0) parts.Add($"{M(fill)} for the minimum deals the roster still needs");
+        if (parts.Count == 0) return $" You have {M(spend)} of wage budget to spend.";
+        long room = spend - seniors - fill;
+        var kept = string.Join(" and ", parts);
+        return room >= 0
+            ? $" You have {M(spend)} of wage budget to spend, {M(room)} of it for this deal after keeping {kept}."
+            : $" You have {M(spend)} of wage budget to spend, but keeping {kept} leaves nothing for this deal ({M(-room)} short).";
     }
 
     private string Context(Player p)
     {
         var s = Session;
-        long room = s.MyWageRoom;
         // Over budget reads as such, not as "$-1.1M to spend" (review #14, the bug finder).
-        return (room >= 0 ? $" You have ${room / 1e6:F1}M of wage budget to spend" : $" You are ${-room / 1e6:F1}M over your wage budget") + Kept(s.MyReservedWages, s.MyRosterFillReserve) + (p.Morale < 45 && IsRenewal ? " He isn't happy here, which pushes his price up." : "")
+        return BudgetLine(s.HumanTeam.Money.WageBudget, s.MyCommittedWages, s.MyReservedWages, s.MyRosterFillReserve)
+            + (p.Morale < 45 && IsRenewal && !Signed ? " He isn't happy here, which pushes his price up." : "")
             // H18 (run 100): say plainly what happens if you don't act, by name.
-            + (IsRenewal ? $" {p.Name} leaves as a free agent if he's unsigned {(s.InNabl ? "when contract decisions end" : "at the end of the summer")}." : "");
-    }
-
-    private static string Kept(long seniors, long fill)
-    {
-        var parts = new List<string>();
-        if (seniors > 0) parts.Add($"${seniors / 1e6:F1}M kept for your committed college seniors");
-        if (fill > 0) parts.Add($"${fill / 1e6:F1}M kept for the minimum deals the roster still needs");
-        return parts.Count == 0 ? "." : $" (after {string.Join(" and ", parts)}).";
+            + (IsRenewal && !Signed ? $" {p.Name} leaves as a free agent if he's unsigned {(s.InNabl ? "when contract decisions end" : "at the end of the summer")}." : "");
     }
 
     private int _offers;
@@ -108,10 +140,19 @@ public sealed partial class TalkViewModel : ViewModelBase
         _lastReply = r.Text;
         Signed = r.Accepted;
         if (r.Accepted || r.WalkedAway) CanTalk = false;
-        if (r.Accepted) { CanRelease = false; ReleaseTip = $"{p.Name} has signed his new deal"; }
+        if (r.Accepted)
+        {
+            CanRelease = false; ReleaseTip = $"{p.Name} has signed his new deal";
+            // H84 (run 103): the panel says he's signed and on what, instead of still reading "Sign …" with his old ask.
+            long pay = (long)Math.Round(w * 1_000_000m / 10_000m) * 10_000; int yrs = (int)y;   // the offer he accepted
+            Title = $"{p.Name} has signed";
+            _lead = $"Signed · ${pay / 1e6:F2}M × {yrs} year{(yrs == 1 ? "" : "s")}.";
+            _withContext = true;
+        }
         else if (!r.Accepted) { Wage = Math.Round((decimal)(r.Ask.Wage / 1e6), 2); }
         _shell.AfterTick();
         _after();
+        RefreshBudget();
     }
 
     // H24 (bug hunt, Nov 16): Release asks first.
