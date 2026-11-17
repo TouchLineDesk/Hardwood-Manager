@@ -69,7 +69,12 @@
               <Grid ColumnDefinitions="5,*">
                 <Border Background="{Binding Kind, Converter={x:Static c:Converters.ResultStripe}}"/>
                 <StackPanel Grid.Column="1" Margin="10,7,8,6" Spacing="2">
-                  <TextBlock Text="{Binding TileWhen}" Classes="muted" FontSize="11.5"/>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding TileWhen}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                    <!-- C5 part 1 (run 94): a rivalry or a ranked matchup. -->
+                    <TextBlock Grid.Column="1" Text="{Binding Tag}" IsVisible="{Binding HasTag}" ToolTip.Tip="{Binding TagTip}" Foreground="{DynamicResource HwAccentBrush}"
+                               FontSize="10.5" FontWeight="Bold" LetterSpacing="0.5" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                  </Grid>
                   <Grid ColumnDefinitions="Auto,*" Height="34">
                     <c:TeamLogo Team="{Binding OpponentTeam}" Width="30" Height="30" ShowText="False" Margin="0,0,8,0" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="{Binding TileOpponent}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="12.5"/>
@@ -122,6 +127,8 @@
             </Grid>
             <TextBlock Text="{Binding RivalPoints}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding RivalPoints, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <TextBlock Text="{Binding RivalLast}" TextWrapping="Wrap" IsVisible="{Binding RivalLast, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock x:Name="RivalryLine" Text="{Binding RivalryLine}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}"
+                       IsVisible="{Binding RivalryLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
           <StackPanel Spacing="2" Width="274">
             <TextBlock Text="This season" Classes="muted" FontSize="11.5" Margin="0,4,0,0" IsVisible="{Binding HasMeetings}"/>

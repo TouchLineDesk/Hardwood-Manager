@@ -34,6 +34,11 @@ public sealed class GameRow
     public string TileOpponent { get; init; } = "";
     /// <summary>"Sat, Nov 22 · home", then the event when it isn't a league game.</summary>
     public string TileWhen => $"{Game.Date:ddd, MMM d} · {(Game.Home ? "home" : "away")}";
+    /// <summary>C5 part 1 (run 94): "RIVALRY" / "IN-STATE", else "#5 v #9" for two ranked sides; empty otherwise.</summary>
+    public string Tag => Game.Rivalry?.Tag ?? (Game.OurRank is { } a && Game.OpponentRank is { } b ? $"#{a} v #{b}" : "");
+    public bool HasTag => Tag.Length > 0;
+    public string TagTip => Game.Rivalry is { } r ? $"{r.Title}: {(r.InState ? "in-state conference rivals" : "a real college rivalry")}"
+        : HasTag ? "Both sides ranked in the Top 25 at tip-off" : "";
     public bool HasEvent => Competition.Length > 0;
     /// <summary>The big line: "W 112-104" for a result, "Next game" or "To come".</summary>
     public string TileScore => Played ? ResultText : IsNext ? "Next game" : "To come";
@@ -106,6 +111,8 @@ public sealed partial class ScheduleViewModel : PageViewModel
     [ObservableProperty] private string _rivalLast = "";
     [ObservableProperty] private string _rivalSince = "";
     [ObservableProperty] private bool _hasMeetings;
+    /// <summary>C5 part 1: "Crosstown Shootout · You lead the series 2-1 since 2026-27" for a rival; empty otherwise.</summary>
+    [ObservableProperty] private string _rivalryLine = "";
     public ObservableCollection<string> RivalMeetings { get; } = new();
     private List<MyGame> _all = new();
 
@@ -123,6 +130,10 @@ public sealed partial class ScheduleViewModel : PageViewModel
     private Dictionary<int, H2HRecord> _h2h = new();
 
     public ScheduleViewModel(MainViewModel shell) : base(shell) { }
+
+    /// <summary>C5 part 1: a college coach's filter for the games against rivals.</summary>
+    public const string RivalryFilter = "Rivalry games";
+    private static bool Matches(MyGame g, string filter) => filter == RivalryFilter ? g.Rivalry != null : ScheduleFilter.Matches(g, filter);
     /// <summary>Run 72: raised at the end of <see cref="Refresh"/> (and a filter change) so the tiles scroll to the game picked.</summary>
     public event Action? Refreshed;
 
@@ -142,6 +153,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
         HasRival = opp != null;
         RivalMeetings.Clear();
         HasMeetings = false;
+        RivalryLine = "";
         if (opp == null) return;
         var s = Session;
         var r = _h2h.TryGetValue(opp.Id, out var rec) ? rec : s.HeadToHead(opp);
@@ -151,6 +163,12 @@ public sealed partial class ScheduleViewModel : PageViewModel
         RivalPoints = r.Games == 0 ? "" : $"{r.PointsFor / (double)r.Games:F1} for, {r.PointsAgainst / (double)r.Games:F1} against a game · {r.Games} game{(r.Games == 1 ? "" : "s")}";
         RivalLast = r.LastDate is { } d ? $"Last meeting: {(r.LastUs > r.LastThem ? "W" : "L")} {r.LastUs}-{r.LastThem} {(r.LastHome ? "at home" : "away")}, {d:MMM d, yyyy}" : "";
         RivalSince = $"Your record {s.HeadToHeadSince}.";
+        if (s.InCollege && s.World.College is { } cw && cw.RivalryOf(s.HumanTeam.Id, opp.Id) is { } rv)
+        {
+            var series = cw.SeriesOf(s.HumanTeam.Id, opp.Id);
+            string last = series?.LastDate is { } ld ? $" · last: {cw.Program(series.LastWinner)?.City} {series.LastWinnerPts}-{series.LastLoserPts}, {ld:MMM yyyy}" : "";
+            RivalryLine = $"{rv.Title} · " + (cw.SeriesLine(s.HumanTeam.Id, opp.Id) ?? "no meetings yet in this career") + last;
+        }
         foreach (var g in _all.Where(g => g.Opponent == opp))
             RivalMeetings.Add(g.Played ? $"{g.Date:MMM d} · {(g.Home ? "home" : "away")} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}"
                 : $"{g.Date:MMM d} · {(g.Home ? "home" : "away")} · to come{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}");
@@ -171,11 +189,12 @@ public sealed partial class ScheduleViewModel : PageViewModel
         _all = s.MyGames();
         _h2h = s.HeadToHeads(_all);
         var names = ScheduleFilter.For(_all);
+        if (_all.Any(g => g.Rivalry != null)) names.Insert(Math.Min(names.Count, 1 + names.Count(n => n is ScheduleFilter.Regular or ScheduleFilter.NonConference or ScheduleFilter.Conference)), RivalryFilter);
         if (!names.Contains(Filter)) Filter = ScheduleFilter.All;
         Filters.Clear();
         foreach (var name in names)
         {
-            var part = _all.Where(g => ScheduleFilter.Matches(g, name)).ToList();
+            var part = _all.Where(g => Matches(g, name)).ToList();
             int pw = part.Count(g => g.Played && g.Won), pl = part.Count(g => g.Played && !g.Won);
             Filters.Add(new FilterChip { Name = name, Record = pw + pl == 0 ? $"{part.Count} to play" : $"{pw}-{pl}", Selected = name == Filter,
                 Tip = $"{part.Count} game{(part.Count == 1 ? "" : "s")}: {pw + pl} played, {part.Count - pw - pl} to come" });
@@ -193,7 +212,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
         }
         int w = 0, l = 0;
         var nextGame = _all.Where(g => !g.Played).OrderBy(g => g.Date).FirstOrDefault();
-        foreach (var g in _all.Where(g => ScheduleFilter.Matches(g, Filter)))
+        foreach (var g in _all.Where(g => Matches(g, Filter)))
         {
             var r = g.Result;
             string score = "", outcome = "", top = "";
