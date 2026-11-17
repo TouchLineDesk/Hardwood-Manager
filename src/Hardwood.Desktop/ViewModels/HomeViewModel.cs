@@ -54,6 +54,19 @@ public sealed partial class HomeViewModel : PageViewModel
     /// <summary>H52 (run 84): the Game plan and Rotation buttons show only while you coach a club.</summary>
     [ObservableProperty] private bool _coaching = true;
     [ObservableProperty] private string _subline = "";
+    /// <summary>
+    /// Bug hunt H15b (run 93): out of work, Home showed the club you'd left (its crest, standings row, squad pulse, payroll and
+    /// next game). Now the hero says you're out of work, the card beside it counts the open jobs, the squad panels give way to
+    /// those jobs, and a button opens them on the Board page.
+    /// </summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HeroTeam))] private bool _outOfWork;
+    /// <summary>The hero crest: your club, or none out of work.</summary>
+    public Team? HeroTeam => OutOfWork ? null : Session.HumanTeam;
+    /// <summary>"NEXT GAME", or "OPEN JOBS" out of work.</summary>
+    [ObservableProperty] private string _cardTitle = "NEXT GAME";
+    [ObservableProperty] private string _cardIcon = "CalendarDays";
+    public ObservableCollection<HomeRow> Jobs { get; } = new();
+    [ObservableProperty] private string _jobsNote = "";
     [ObservableProperty] private Color _glow;
     [ObservableProperty] private Team? _opponent;
     partial void OnOpponentChanged(Team? value) => OnPropertyChanged(nameof(HasOpponent));
@@ -117,7 +130,10 @@ public sealed partial class HomeViewModel : PageViewModel
         var s = Session; var team = Team; var rec = s.MyRecord;
         // H73 (run 92): after a job change the hero crest kept the old club; Team is read from the session, so say it changed.
         OnPropertyChanged(nameof(Team));
+        OnPropertyChanged(nameof(HeroTeam));
         Coaching = s.Employed;
+        OutOfWork = !s.Employed;
+        CardTitle = "NEXT GAME"; CardIcon = "CalendarDays";
         Madness = !s.InCollege && s.World.College is { } college ? college.Watch(s.Today) : null;
         Glow = ThemeService.Accent;
         var conf = s.MyTable;
@@ -160,7 +176,7 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             i++;
             if (i > 8 && r.Team != team) continue;
-            Table.Add(new TableRow { Rank = i, Team = r.Team, Label = s.InCollege ? r.Team.City : null, Record = $"{r.Wins}-{r.Losses}", Diff = $"{(r.PointDiff >= 0 ? "+" : "")}{r.PointDiff:0.0}", Ours = r.Team == team });
+            Table.Add(new TableRow { Rank = i, Team = r.Team, Label = s.InCollege ? r.Team.City : null, Record = $"{r.Wins}-{r.Losses}", Diff = $"{(r.PointDiff >= 0 ? "+" : "")}{r.PointDiff:0.0}", Ours = r.Team == team && s.Employed });
         }
 
         string chem = team.Chemistry >= 75 ? "excellent" : team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "average" : "poor";
@@ -263,6 +279,52 @@ public sealed partial class HomeViewModel : PageViewModel
             new LineSeries { Name = "Average morale", Values = s.MoodHistory.Select(x => x.Morale).ToArray(), Color = Color.Parse("#58A6FF") },
         } : null;
         MoodLabels = HasMood ? s.MoodHistory.Select((x, idx) => idx % 4 == 0 ? x.Date.ToString("MMM d") : "").ToArray() : null;
+        RefreshJobs(s);
+    }
+
+    /// <summary>H15b (run 93): out of work, the hero and the middle column are about finding the next job.</summary>
+    private void RefreshJobs(GameSession s)
+    {
+        Jobs.Clear();
+        if (s.Employed) { JobsNote = ""; return; }
+        var coach = s.Coach;
+        Headline = "Out of work";
+        var last = coach.History.LastOrDefault();
+        Subline = (last != null ? $"Last job: {last.TeamName} ({last.Ended.ToLower()}, {Hardwood.Core.Jobs.JobRecords.Seasons(last)}) · " : "")
+            + $"reputation {coach.Reputation:0}/100";
+        ChemistryText = "";
+        Opponent = null; Scouting = "";
+        CardTitle = "OPEN JOBS"; CardIcon = "Shield";
+        var live = s.LiveVacancies.Select(v => (v, t: s.FindTeam(v.TeamId))).Where(x => x.t != null).ToList();
+        int offers = live.Count(x => x.v.Status == "offered"), applied = live.Count(x => x.v.Status == "applied");
+        NextGame = offers > 0 ? $"{offers} offer{(offers == 1 ? "" : "s")} waiting"
+            : live.Count == 0 ? "No open jobs yet" : $"{live.Count} open job{(live.Count == 1 ? "" : "s")}";
+        NextDetail = offers > 0 ? "Accept or decline on the Board page."
+            : applied > 0 ? $"{applied} application{(applied == 1 ? "" : "s")} waiting for an answer."
+            : live.Count == 0 ? "Clubs post openings when they change coach." : "Apply on the Board page.";
+        foreach (var (v, t) in live
+                     .OrderBy(x => x.v.Status switch { "offered" => 0, "applied" => 1, _ => 2 })
+                     .ThenByDescending(x => Hardwood.Core.Jobs.Board.HireChance(coach, s.ContextOf(x.t!), x.t!))
+                     .Take(6))
+        {
+            double chance = Hardwood.Core.Jobs.Board.HireChance(coach, s.ContextOf(t!), t!);
+            Jobs.Add(new HomeRow
+            {
+                Icon = v.Status == "offered" ? "Handshake" : v.Status == "applied" ? "ClipboardPen" : "Shield",
+                IconBrush = v.Status == "offered" ? Good : v.Status == "applied" ? Warn : Muted,
+                Title = t!.FullName, Highlight = v.Status == "offered",
+                // What to do first, then where: league names run long ("National Basketball Association").
+                Detail = v.Status switch
+                {
+                    "offered" => "Offer! Answer on the Board page",
+                    "applied" => $"Applied · decision by {v.DecideOn:MMM d}",
+                    _ => chance >= 0.6 ? "Good chance" : chance >= 0.3 ? "Worth a try" : "Long shot",
+                } + $" · {s.ContextOf(t).Name}",
+            });
+        }
+        JobsNote = live.Count > Jobs.Count ? $"and {live.Count - Jobs.Count} more on the Board page"
+            : live.Count == 0 ? "None yet. Keep pressing Continue: clubs that sack their coach post the job, and college programs post theirs at the end of the season."
+            : "Keep pressing Continue while you wait: the computer runs every team.";
     }
 
     private static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });

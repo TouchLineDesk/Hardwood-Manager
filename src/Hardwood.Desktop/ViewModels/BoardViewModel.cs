@@ -248,7 +248,7 @@ public sealed partial class BoardViewModel : PageViewModel
         CoachAttrs.Clear();
         foreach (var a in Enum.GetValues<CoachAttr>()) CoachAttrs.Add(new CoachAttrView { Label = Coach.Label(a), Value = coach[a] });
         JobHistory = coach.History.Count == 0 ? "No previous jobs." :
-            string.Join("\n", coach.History.Select(h => $"{h.TeamName}, {h.FromSeason}-{h.ToSeason}: {h.Ended.ToLower()} ({h.Wins}-{h.Losses} in the last season)"));
+            string.Join("\n", coach.History.Select(Hardwood.Core.Jobs.JobRecords.Line)); // H19 (run 93): season labels
 
         Vacancies.Clear();
         bool summer = s.Phase == Hardwood.Core.Season.SessionPhase.Offseason;

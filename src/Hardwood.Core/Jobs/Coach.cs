@@ -70,3 +70,16 @@ public sealed class Coach
 }
 
 public sealed record JobRecord(int TeamId, string TeamName, int FromSeason, int ToSeason, int Wins, int Losses, string Ended);
+
+/// <summary>
+/// Bug hunt H19 (run 93): a job's seasons as the game labels them everywhere else. A record's seasons are start years, so
+/// "2026-2028" read as two seasons ending in 2028 when the last one was 2028-29; now "2026-27 to 2028-29".
+/// A static helper rather than a property, so saves keep exactly the fields they had.
+/// </summary>
+public static class JobRecords
+{
+    public static string Season(int year) => $"{year}-{(year + 1) % 100:00}";
+    public static string Seasons(JobRecord h) => h.FromSeason >= h.ToSeason ? Season(h.ToSeason) : $"{Season(h.FromSeason)} to {Season(h.ToSeason)}";
+    /// <summary>"Anchorage Steelheads, 2026-27 to 2028-29: sacked (10-52 in the last season)".</summary>
+    public static string Line(JobRecord h) => $"{h.TeamName}, {Seasons(h)}: {h.Ended.ToLower()} ({h.Wins}-{h.Losses} in the last season)";
+}
