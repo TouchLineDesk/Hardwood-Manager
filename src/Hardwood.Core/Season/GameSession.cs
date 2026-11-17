@@ -883,7 +883,10 @@ public sealed partial class GameSession
         team.DepthChart = null;
         Promises.Clear();
         MoodHistory.Clear();
-        Post($"Welcome to the {team.FullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game.", "Board");
+        // H56 (run 87): the contracts you inherit were signed before you came, so an owner who isn't in debt funds them.
+        long funded = Budgets.OwnerFunds(team, MyCommittedWages);
+        Post($"Welcome to the {team.FullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game."
+            + (funded > 0 ? $" The contracts you inherit come to ${MyCommittedWages / 1e6:F1}M, so the owner has raised the wage budget by ${funded / 1e6:F1}M to cover them." : ""), "Board");
         PostExpectations();
     }
 

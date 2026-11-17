@@ -174,6 +174,24 @@ public static class Budgets
     private const int MinRoster = 13;
     private static long MinWage => Finance.HardCapDefault.MinSalary;
 
+    /// <summary>
+    /// H56 (run 87): the owner funds wages the coach can't refuse: the contracts he inherits when he takes the job, and the
+    /// minimum deals that make up a short roster. An owner who isn't in debt raises the wage budget to cover
+    /// <paramref name="committed"/> (rounded up to $0.1M), as #374's floor does at the summer and on relegation; an owner in
+    /// debt doesn't. Returns how much the budget went up (0 if it already covered them).
+    /// Before, a solvent club's budget could sit below wages nobody could shed: the Knicks hired a coach on Oct 21 with
+    /// $190.2M of contracts on a $181.0M budget (28 weeks "over"), and the Aces' sporting director filled the roster past a
+    /// budget set at exactly the signed deals (30 weeks over by $0.6M), so the board judged the coach on a budget he couldn't meet.
+    /// </summary>
+    public static long OwnerFunds(Team t, long committed)
+    {
+        var m = t.Money;
+        if (!m.Ready || m.Balance < 0 || committed <= m.WageBudget) return 0;
+        long was = m.WageBudget;
+        m.WageBudget = (long)Math.Ceiling(committed / 100_000.0) * 100_000;
+        return m.WageBudget - was;
+    }
+
     /// <summary>Wages the club has room for under its budget right now.</summary>
     public static long Room(Team t) => t.Money.WageBudget - ContractMarket.Payroll(t);
 
