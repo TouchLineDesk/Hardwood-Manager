@@ -129,6 +129,9 @@ public static class Board
         return ctx.Teams.OrderByDescending(Score).ThenBy(t => t.Id).ToList().IndexOf(team) + 1;
     }
 
+    /// <summary>A goal inside a sentence: only its first letter lowered, so "Reach the Final Four" reads "reach the Final Four" (H65).</summary>
+    public static string LowerFirst(string text) => text.Length == 0 ? text : char.ToLowerInvariant(text[0]) + text[1..];
+
     public static string Describe(SeasonGoal g) => g switch
     {
         SeasonGoal.Title => "Win the championship",
@@ -156,9 +159,13 @@ public static class Board
     /// What a season came to, in the past tense (review #14 bug #16: the review printed the goal's wording for the result,
     /// so a club that missed the playoffs "resulted" in "develop the squad and show progress").
     /// </summary>
-    public static string DescribeResult(SeasonGoal achieved, LeagueContext ctx, bool relegated = false, bool wonDivision = false)
+    public static string DescribeResult(SeasonGoal achieved, LeagueContext ctx, bool relegated = false, bool wonDivision = false, int madnessRound = -1)
     {
         if (relegated) return "relegated, last in your division";
+        // H65: the round reached, when it's known (a team out in the Round of 32 won a game; one out in the First Four was in the field).
+        if (ctx.IsCollege && madnessRound == 0) return "made the First Four, out before the Round of 64";
+        if (ctx.IsCollege && achieved == SeasonGoal.Playoffs && madnessRound == 2) return "won a game in March Madness, out in the Round of 32";
+        if (ctx.IsCollege && achieved == SeasonGoal.Playoffs && madnessRound == 1) return "made March Madness, out in the Round of 64";
         if (ctx.IsCollege) return achieved switch
         {
             SeasonGoal.Title => "won the national championship",
@@ -512,7 +519,7 @@ public static class Board
         SeasonReview(job, coach, LeagueContext.Nabl(league), team, achieved, wins, losses, stats, today, league.Season);
 
     public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, LeagueContext ctx, Team team, SeasonGoal achieved,
-        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season, bool relegated = false, bool wonDivision = false)
+        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season, bool relegated = false, bool wonDivision = false, int madnessRound = -1)
     {
         var e = job.Current ?? SetExpectations(ctx, team, season);
         e.Achieved = achieved;
@@ -532,8 +539,8 @@ public static class Board
         // (Replayed careers, Nov 10: a 54-28 team set "conference finals" was sacked after a first-round exit.)
         if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
         else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
-        string goalText = e.Survive ? "stay up" : Describe(e.Goal, ctx).ToLower();
-        string result = DescribeResult(achieved, ctx, relegated, wonDivision);
+        string goalText = e.Survive ? "stay up" : LowerFirst(Describe(e.Goal, ctx));
+        string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound);
         if (e.Survive && !relegated) result = "stayed up, " + result;
         var lines = new List<string> { $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins)." };
         foreach (var d in e.Demands)

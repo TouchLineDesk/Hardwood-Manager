@@ -168,7 +168,7 @@ public sealed partial class CollegeWorld
             }
             string tag = seed <= 4 ? "a protected seed" : seed >= 12 ? "a long shot, if a dangerous one" : p.LastFourIn.Contains(me) ? "one of the last four in" : "";
             CoachNews.Add(($"Selection Sunday: we're a No. {seed} seed",
-                $"{t.FullName} are the No. {seed} seed in the {regionName} region, with {how}{(tag.Length > 0 ? $": {tag}" : "")}.\n{opener}\nThe whole bracket is on the College page (March Madness)."));
+                $"{t.FullName} are the No. {seed} seed in the {regionName} region, with {how}{(tag.Length > 0 ? $": {tag}" : "")}.\n{opener}\nThe reveal, region by region, and the whole bracket are on the College page (March Madness → Selection Sunday)."));
         }
         else
         {

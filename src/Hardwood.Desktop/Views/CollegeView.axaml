@@ -162,8 +162,80 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
-            <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding HasBracket}"/>
-            <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding HasBracket}"/>
+            <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding FieldPicked}"/>
+            <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding FieldPicked}"/>
+            <!-- Selection Sunday as a reveal (C4 part 2): the regions one at a time, then the bubble. -->
+            <StackPanel Spacing="6" IsVisible="{Binding ShowSelection}">
+              <TextBlock Text="{Binding SelectionIntro}" Classes="muted" TextWrapping="Wrap"/>
+              <WrapPanel IsVisible="{Binding CanReveal}">
+                <Button Content="{Binding RevealButton}" Command="{Binding RevealNextCommand}" IsEnabled="{Binding CanReveal}" Classes="primary" Margin="0,0,8,4"/>
+                <Button Content="Reveal all" Command="{Binding RevealAllCommand}" IsEnabled="{Binding CanReveal}" Margin="0,0,8,4"/>
+              </WrapPanel>
+              <ItemsControl ItemsSource="{Binding RevealRegions}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RevealRegion">
+                    <Border Background="#161C24" CornerRadius="8" Padding="10,8" Margin="0,0,8,8" BorderThickness="0,3,0,0"
+                            BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                      <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="Auto,*">
+                          <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="muted" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Border IsVisible="{Binding Hidden}" Background="#1C232C" CornerRadius="6" Height="64">
+                          <TextBlock Text="?" FontSize="28" FontWeight="Bold" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ItemsControl ItemsSource="{Binding Pairs}" IsVisible="{Binding Shown}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RevealPair">
+                              <Border Background="#1C232C" CornerRadius="6" Padding="8,3" Margin="0,2" BorderThickness="3,0,0,0"
+                                      BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                                <StackPanel>
+                                  <Grid ColumnDefinitions="24,*,Auto,Auto">
+                                    <TextBlock Text="{Binding Top.Seed}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Top.Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Top.Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Top.Tag}" FontSize="10" FontWeight="Bold" Foreground="#58A6FF" IsVisible="{Binding Top.HasTag}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Top.Record}" FontSize="11" Classes="muted" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                  </Grid>
+                                  <Grid ColumnDefinitions="24,*,Auto,Auto">
+                                    <TextBlock Text="{Binding Bottom.Seed}" Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Bottom.Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Bottom.Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Bottom.Tag}" FontSize="10" FontWeight="Bold" Foreground="#58A6FF" IsVisible="{Binding Bottom.HasTag}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Bottom.Record}" FontSize="11" Classes="muted" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                  </Grid>
+                                </StackPanel>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding SelectionBubble}" IsVisible="{Binding HasSelectionBubble}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:BubbleList">
+                    <Border Background="#1C232C" CornerRadius="6" Padding="10,6" Margin="0,0,8,0">
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Classes="muted"/>
+                        <ItemsControl ItemsSource="{Binding Teams}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SeedCell">
+                              <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Record}" FontSize="12" Classes="muted" Margin="8,0,0,0"/>
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
             <ItemsControl ItemsSource="{Binding BracketColumns}" Height="{Binding BracketHeight}" IsVisible="{Binding HasBracket}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
