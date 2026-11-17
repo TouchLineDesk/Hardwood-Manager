@@ -164,6 +164,33 @@ public class PyramidTests
     }
 
     [Fact]
+    public void Your_relegated_club_is_made_up_to_the_minimum_after_relegation_releases()
+    {
+        // H88 (run 104): relegation clauses ran after your sporting director's summer signings and your club skipped the
+        // refill after them, so Charlotte FC opened the ABA season with 10 players (minimum 11).
+        var (nabl, world) = NewWorld(5);
+        world.FinishSeasons(new GameSimulator());
+        nabl.History.Add(new SeasonSummary { Season = 2026, Records = nabl.Teams.OrderBy(t => t.Id).Select((t, i) => (t.Id, 20 + i, 62 - i)).ToList() });
+        var t2 = world[UsaPyramid.Tier2];
+        var table = t2.Season.Table().Select(r => world.TeamById(r.TeamId)!).ToList();
+        var mine = UsaPyramid.Divisions(t2.Key, t2.Clubs).Select(d => table.Last(d.Teams.Contains)).First();
+        world.ManagedClubId = mine.Id;
+        // Far too good for tier 3 and young: the relegation release is on the table for each of them.
+        var date = new DateOnly(2027, 8, 15);
+        foreach (var p in mine.Roster.Where(p => p.Age(date) < 31)) { p.PotentialAbility = 195; p.CurrentAbility = 190; }
+        Assert.True(mine.Roster.Count(p => p.Age(date) < 31) >= 4, "the case needs young players to release");
+
+        world.EndSummer(2027, new GameSimulator(), nabl.FreeAgents);
+
+        Assert.Contains(mine, world[UsaPyramid.Tier3].Clubs);
+        Assert.Contains(world.News, n => n.Item1.Contains("relegation clauses") && n.Item1.StartsWith(mine.FullName));
+        Assert.True(mine.Roster.Count >= GameWorld.ManagedMinimum, $"{mine.Roster.Count} players, minimum {GameWorld.ManagedMinimum}");
+        var fill = world.News.First(n => n.Item1 == $"{mine.FullName} make up the numbers");
+        Assert.Contains("your sporting director signed", fill.Item2);
+        Assert.All(mine.Roster, p => Assert.NotNull(p.Contract));
+    }
+
+    [Fact]
     public void Your_promoted_club_reaches_the_top_leagues_roster_minimum()
     {
         // Run 78 (H29/H12): your club skips the promoted clubs' rebuild, and promotion comes after the top league's
@@ -233,6 +260,41 @@ public class PyramidTests
         foreach (var p in broke.Roster) if (p.Contract is { } c) c.Salary *= 3;
         Budgets.Rescale(broke, t2Scale, arena, 1);
         Assert.True(broke.Money.WageBudget < ContractMarket.Payroll(broke));
+    }
+
+    [Fact]
+    public void A_promoted_club_never_has_less_to_spend_than_in_the_league_below()
+    {
+        // H86 (run 104): the Kings fell NBA -> G League -> ABA, then won promotion back to the G League. The ABA budget
+        // ($28.8M) carried the first parachute and the payroll floor; the G League budget from revenue alone was $14.5M,
+        // $6.5M under the contracts they brought up.
+        var (nabl, world) = NewWorld(11);
+        double t2Scale = world[UsaPyramid.Tier2].Profile.SalaryScale, t3Scale = world[UsaPyramid.Tier3].Profile.SalaryScale;
+        double arena = world[UsaPyramid.Tier2].Clubs.Average(x => (double)x.ArenaCapacity);
+        var t = nabl.Teams.OrderBy(x => x.Id).First();
+        t.Money.Balance = 1;
+        Budgets.Rescale(t, t2Scale, arena, 1);
+        Budgets.Summer(new[] { t }, t2Scale, _ => 0.2, _ => false, endedSeason: 2026);
+        Budgets.Rescale(t, t3Scale, arena, t2Scale);
+        Budgets.Summer(new[] { t }, t3Scale, _ => 0.7, _ => false, endedSeason: 2027);
+        t.Money.Balance = Math.Max(1, t.Money.Balance);
+        long belowBudget = t.Money.WageBudget;
+        Budgets.Rescale(t, t2Scale, arena, t3Scale);
+        // What the new league's revenue alone gives (the old behaviour).
+        long revenueOnly = (long)Math.Round(t.Money.Income * Budgets.WageShare(t.Owner) / 100_000) * 100_000;
+        Assert.Equal(0, t.Money.Parachute);
+        Assert.True(belowBudget > revenueOnly, $"the case needs a parachute-fed budget below: {belowBudget:N0} vs {revenueOnly:N0}");
+        Assert.True(t.Money.WageBudget >= belowBudget, $"promoted budget {t.Money.WageBudget:N0} vs the league below's {belowBudget:N0}");
+        Assert.True(t.Money.WageBudget >= ContractMarket.Payroll(t), $"budget {t.Money.WageBudget:N0} vs payroll {ContractMarket.Payroll(t):N0}");
+
+        // An owner in debt sets the budget from the new league's revenue, as before.
+        var broke = nabl.Teams.OrderBy(x => x.Id).Skip(1).First();
+        Budgets.Rescale(broke, t3Scale, arena, 1);
+        long brokeBelow = broke.Money.WageBudget;
+        broke.Money.Balance = -500_000_000;
+        Budgets.Rescale(broke, t2Scale, arena, t3Scale);
+        Assert.Equal((long)Math.Round(broke.Money.Income * Budgets.WageShare(broke.Owner) / 100_000) * 100_000, broke.Money.WageBudget);
+        Assert.True(broke.Money.WageBudget < brokeBelow);
     }
 
     [Fact]
