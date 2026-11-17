@@ -14,6 +14,8 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
     public int? OpponentRank { get; init; }
     /// <summary>Your own rank the same way.</summary>
     public int? OurRank { get; init; }
+    /// <summary>College (C5 part 1): the rivalry this game belongs to, if any.</summary>
+    public College.Rivalry? Rivalry { get; init; }
     /// <summary>Its Schedule &amp; Results filter (#529): the season's part, the tournament's name, or the playoffs (<see cref="ScheduleFilter"/>).</summary>
     public string Group { get; init; } = ScheduleFilter.Regular;
     /// <summary>H8 (run 65): a played game you didn't coach: from before you took this job (a move in the summer or
@@ -183,6 +185,7 @@ public sealed partial class GameSession
                     OpponentRank = g.Played ? (home ? g.AwayRank : g.HomeRank) : cw.Rank(opp.Id),
                     OurRank = g.Played ? (home ? g.HomeRank : g.AwayRank) : cw.Rank(us.Id),
                     Group = ScheduleFilter.CollegeGroup(g.Event, g.Stage),
+                    Rivalry = cw.RivalryOf(us.Id, opp.Id),
                     NotCoached = g.Played && r == null && (g.Date <= Job.HiredOn || !Job.Employed),
                 });
             }
@@ -287,6 +290,24 @@ public sealed partial class GameSession
         CollegeResults[Key(g)] = r;
         KeepNewest(CollegeResults);
         ReportGame(r);
+        ReportRivalry(g);
+    }
+
+    /// <summary>C5 part 1 (run 94): after your program plays a rival, one inbox line with the result and the series. No random numbers.</summary>
+    private void ReportRivalry(College.CollegeGame g)
+    {
+        var cw = World.College!;
+        int us = HumanTeam.Id;
+        if (!Employed || !InCollege || (g.HomeId != us && g.AwayId != us) || g.WinnerId is not { } w) return;
+        int them = g.HomeId == us ? g.AwayId : g.HomeId;
+        if (cw.RivalryOf(us, them) is not { } rv || cw.Program(them) is not { } opp) return;
+        bool won = w == us;
+        int ours = g.HomeId == us ? g.HomePts!.Value : g.AwayPts!.Value, theirs = g.HomeId == us ? g.AwayPts!.Value : g.HomePts!.Value;
+        string title = rv.Name != null ? $"{rv.Name}: {(won ? "a win" : "a loss")} against {opp.City}, {ours}-{theirs}"
+            : $"{(won ? "Beat" : "Lost to")} {(rv.InState ? "in-state rival" : "rival")} {opp.City}, {ours}-{theirs}";
+        string body = $"{(won ? "You won" : "You lost")} {rv.Label} {(g.HomeId == us ? "at home" : g.Event != null ? "on a neutral court" : "on the road")}. "
+            + (cw.SeriesLine(us, them) is { } line ? line + "." : "");
+        Post(title, body, "League");
     }
 
     private void RecordAbroad(WorldCompetition comp, Fixture f, GameResult r)

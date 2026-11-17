@@ -479,6 +479,7 @@ public sealed partial class CollegeWorld
             var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
             UpdateElo(g);
+            NoteRivalry(g); // C5 part 1: no random numbers
         }
     }
 
@@ -517,6 +518,7 @@ public sealed partial class CollegeWorld
             g.HomeStar = Star(r.Home); g.AwayStar = Star(r.Away); g.Overtimes = r.Overtimes;
         }
         UpdateElo(g);
+        NoteRivalry(g);
     }
 
     /// <summary>The round a program reached in this season's March Madness (-1 = not in the field; 0 = lost in the First Four ... 7 = champion).</summary>

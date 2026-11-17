@@ -30,7 +30,7 @@ public static class WorldStore
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college', $v)", ("$v", SaveFile.ToJson(new CollegeState(
                 col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
                     col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic), col.Tradition.GetValueOrDefault(t.Id))).ToList(),
-                col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek))));
+                col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series))));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
             ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));
         int order = 0;
@@ -57,7 +57,8 @@ public static class WorldStore
     private sealed record CollegeState(List<ProgramState> Programs, Dictionary<int, int> Destined, Hardwood.Core.College.CollegeSeason Season,
                                        List<Hardwood.Core.College.CollegeChampion> History, bool Recruiting = false,
                                        Dictionary<int, Hardwood.Core.College.Recruit>? Recruits = null, List<int>? WalkOns = null, DateOnly? RecruitingDay = null,
-                                       int TrailHours = 0, DateOnly? TrailWeek = null);
+                                       int TrailHours = 0, DateOnly? TrailWeek = null,
+                                       Dictionary<string, Hardwood.Core.College.RivalrySeries>? Series = null);
 
     public static GameWorld? LoadWorld(this SaveFile file, League nabl, IEnumerable<Player> overseasPlayers, IEnumerable<Player>? collegePlayers = null)
     {
@@ -159,6 +160,7 @@ public static class WorldStore
                 foreach (var id in cs.WalkOns ?? new()) col.WalkOnIds.Add(id);
                 col.RecruitingDay = cs.RecruitingDay;
                 col.TrailHours = cs.TrailHours; col.TrailWeek = cs.TrailWeek; // C3; missing before v0.48.0
+                col.Series = cs.Series ?? new(); // C5 part 1 (run 94); missing before v0.103.0
                 var byId = col.Programs.ToDictionary(t => t.Id);
                 foreach (var p in collegePlayers ?? Enumerable.Empty<Player>())
                 {
