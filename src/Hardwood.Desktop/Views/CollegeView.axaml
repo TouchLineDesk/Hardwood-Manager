@@ -236,6 +236,82 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
+            <!-- The Final Four weekend (C4 part 2): the neutral site, the four teams, the semis and the final, the champions' run. -->
+            <StackPanel Spacing="8" IsVisible="{Binding ShowFinalFour}">
+              <StackPanel Spacing="2">
+                <TextBlock Text="{Binding WeekendTitle}" FontSize="22" FontWeight="Bold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding WeekendSub}" Classes="muted" TextWrapping="Wrap"/>
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding WeekendTeams}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:FinalFourTeam">
+                    <Border Background="#161C24" CornerRadius="8" Padding="10,8" Margin="0,0,8,0" BorderThickness="0,3,0,0" Opacity="{Binding Fade}"
+                            BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                      <StackPanel Spacing="3">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <TextBlock Text="{Binding Region}" FontSize="11" FontWeight="Bold" Classes="muted"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Tag}" FontSize="10" FontWeight="Bold" Foreground="#58A6FF" IsVisible="{Binding HasTag}" Margin="6,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="{Binding Seed}" FontSize="12" Classes="muted"/>
+                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Record}" FontSize="12" Classes="muted"/>
+                        <TextBlock Text="{Binding Route}" FontSize="12" TextWrapping="Wrap"/>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding WeekendGames}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WeekendGame">
+                    <Border Background="#1C232C" CornerRadius="8" Padding="10,8" Margin="0,0,8,0" BorderThickness="3,0,0,0"
+                            BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                      <StackPanel Spacing="3">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Classes="muted" TextWrapping="Wrap"/>
+                          <TextBlock Grid.Column="1" Text="{Binding When}" FontSize="11" Classes="muted" Margin="8,0,0,0"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="24,*,Auto">
+                          <TextBlock Text="{Binding A.Seed}" Classes="muted" FontSize="12" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding A.Name}" FontSize="15" TextWrapping="Wrap" FontWeight="{Binding A.Won, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                          <TextBlock Grid.Column="2" Text="{Binding A.Score}" FontSize="15" Margin="8,0,0,0" FontWeight="{Binding A.Won, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="24,*,Auto">
+                          <TextBlock Text="{Binding B.Seed}" Classes="muted" FontSize="12" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding B.Name}" FontSize="15" TextWrapping="Wrap" FontWeight="{Binding B.Won, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                          <TextBlock Grid.Column="2" Text="{Binding B.Score}" FontSize="15" Margin="8,0,0,0" FontWeight="{Binding B.Won, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding Stars}" FontSize="11" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasStars}"/>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Spacing="4" IsVisible="{Binding HasMontage}" Margin="0,6,0,0">
+                <TextBlock Text="{Binding MontageTitle}" FontSize="18" FontWeight="Bold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding MontageSub}" Classes="muted" TextWrapping="Wrap"/>
+                <ItemsControl ItemsSource="{Binding Montage}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MontageCard">
+                      <Border Background="#161C24" CornerRadius="8" Padding="10,8" Margin="0,0,8,8" BorderThickness="0,0,0,3" BorderBrush="{DynamicResource HwAccentBrush}">
+                        <StackPanel Spacing="2">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Round}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Result}" FontSize="14" FontWeight="Bold" Margin="8,0,0,0"/>
+                          </Grid>
+                          <TextBlock Text="{Binding Opponent}" FontSize="12" TextWrapping="Wrap"/>
+                          <TextBlock Text="{Binding Star}" FontSize="12" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasStar}"/>
+                          <TextBlock Text="{Binding Tag}" FontSize="10" FontWeight="Bold" Foreground="#58A6FF" IsVisible="{Binding HasTag}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
             <ItemsControl ItemsSource="{Binding BracketColumns}" Height="{Binding BracketHeight}" IsVisible="{Binding HasBracket}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
