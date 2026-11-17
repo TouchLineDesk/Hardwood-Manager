@@ -72,7 +72,9 @@ public class Run90FinalFourTests
             Assert.Equal(CollegeViewModel.FinalFourView, college.BracketView);
             Assert.True(college.ShowFinalFour);
             Assert.All(college.WeekendTeams, t => Assert.StartsWith("No. ", t.Seed));
-            Assert.All(college.WeekendTeams, t => Assert.Matches(@"^4 wins, by \d+\.\d a game\. Beat \d+ .+ in the Elite Eight\.$", t.Route));
+            // Four wins to the Final Four; five for a First Four winner (an 11 or 16 seed: UConn here since run 102 changed the world's draws).
+            Assert.All(college.WeekendTeams, t => Assert.Matches((t.Seed is "No. 11 seed" or "No. 16 seed" ? "^[45]" : "^4")
+                + @" wins, by \d+\.\d a game\. Beat \d+ .+ in the Elite Eight\.$", t.Route));
             Assert.Equal(new[] { "EAST", "WEST", "SOUTH", "MIDWEST" }, college.WeekendTeams.Select(t => t.Region));
             Assert.All(college.WeekendGames.Take(2), g => Assert.True(g.A.Seed.Length > 0 && g.B.Seed.Length > 0 && g.A.Score == ""));
             Assert.Equal("Semi-final winner", college.WeekendGames[2].A.Name);
