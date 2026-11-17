@@ -164,7 +164,15 @@ internal sealed class BugFinder
                 tabs = Tabs_();
                 if (tabs == null || i >= tabs.ItemCount) break;
                 if (tabs.ContainerFromIndex(i) is TabItem { IsVisible: false }) continue;
-                tabs.SelectedIndex = i;
+                // Bug-hunt Nov 17: on College the tab picked straight after Navigate didn't always stay picked (the tour's
+                // "Conferences" shot showed Top 25 and its "March Madness" shot showed Conferences), so the Final Four page
+                // was never seen. Pick it again until it holds; a tab that won't hold is a finding.
+                for (int tries = 0; tries < 4 && tabs.SelectedIndex != i; tries++) { tabs.SelectedIndex = i; Settle(); }
+                if (tabs.SelectedIndex != i)
+                {
+                    Add("dead end", $"{name} → {TabHeader(tabs, i)}", $"the tab didn't stay selected (shows {TabHeader(tabs, tabs.SelectedIndex)})", true);
+                    continue;
+                }
                 Settle();
                 Tabs++;
                 string tabName = $"{name} → {TabHeader(tabs, i)}";
@@ -183,6 +191,9 @@ internal sealed class BugFinder
         {
             var dir = Path.Combine(_shots, "tour");
             Directory.CreateDirectory(dir);
+            Settle();
+            // The first capture renders the frame that's pending; the second is the page as it now stands.
+            _window.CaptureRenderedFrame()?.Dispose();
             Settle();
             using var frame = _window.CaptureRenderedFrame();
             frame?.Save(Path.Combine(dir, $"{Slug(Career)}-{_vm.Session?.Today.Year}-{Slug(when)}-{Slug(page)}.png"));

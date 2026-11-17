@@ -103,7 +103,7 @@ public class BugFinderTests
         bf.Invariants();
 
         int startYear = vm.Session!.League.Season;
-        bool livePlayed = false, firedDone = career != "fired";
+        bool livePlayed = false, firedDone = career != "fired", wasEmployed = vm.Session!.Employed;
         var sweepAt = new HashSet<int> { 70 };
         int days = 0, inSeasonDays = 0, guard = 0;
         var club = vm.Session!.HumanTeam;
@@ -113,6 +113,19 @@ public class BugFinderTests
             // A change of club (a job taken) is worth a line in the log.
             if (s.HumanTeam.Id != club.Id) { L($"{career}: the club is now {s.HumanTeam.FullName} ({s.HumanLeagueName}, was {club.FullName}) on {s.Today:MMM d yyyy}"); }
             club = s.HumanTeam;
+            // Bug-hunt Nov 17: a board's sacking (the bottom career after its first season) was never logged, and the bot
+            // then sat out of work for the rest of the run, so promotion was never reached. Log it and look for work.
+            if (wasEmployed && !s.Employed)
+            {
+                var job = s.Coach.History.LastOrDefault();
+                L($"{career}: sacked by the board on {s.Today:MMM d yyyy}{(job != null ? $" ({job.TeamName}, {job.Wins}-{job.Losses})" : "")}");
+                vm.AfterTick();
+                bf.SweepAll("out of work");
+                FindWork(vm, bf, L);
+                wasEmployed = vm.Session!.Employed;
+                continue;
+            }
+            wasEmployed = s.Employed;
             if (s.Phase == SessionPhase.Offseason) { Offseason(vm, bf, L); continue; }
             // One live game a career, the way the player sees it: the studio show, the live game, the box score.
             if (!livePlayed && s.Phase == SessionPhase.RegularSeason && s.HumanPlaysToday && s.Employed)
@@ -142,6 +155,7 @@ public class BugFinderTests
             {
                 firedDone = true;
                 Fired(vm, bf, L);
+                wasEmployed = vm.Session!.Employed;
             }
         }
         vm.AfterTick();
@@ -315,7 +329,13 @@ public class BugFinderTests
         vm.AfterTick();
         L($"fired on {s.Today:MMM d yyyy}");
         bf.SweepAll("out of work");
-        // Look for work the way the player does: the Board page lists openings with an Apply button.
+        FindWork(vm, bf, L);
+    }
+
+    /// <summary>Look for work the way the player does: the Board page lists openings with an Apply button.</summary>
+    private static void FindWork(MainViewModel vm, BugFinder bf, Action<string> L)
+    {
+        var s = vm.Session!;
         int days = 0;
         while (!vm.Session!.Employed && days++ < 120)
         {
