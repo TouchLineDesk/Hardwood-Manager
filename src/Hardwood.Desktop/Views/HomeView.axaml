@@ -42,6 +42,9 @@
                   <!-- C5 part 2 (run 95): the college home court (an arena's own edge). -->
                   <TextBlock x:Name="CourtLine" Text="{Binding CourtLine}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" MaxWidth="300"
                              IsVisible="{Binding CourtLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <!-- C5 (run 96): the conference's style in conference play. -->
+                  <TextBlock x:Name="StyleLine" Text="{Binding StyleLine}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" MaxWidth="300"
+                             IsVisible="{Binding StyleLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                   <TextBlock Text="{Binding Scouting}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="300" Margin="0,4,0,0" IsVisible="{Binding Scouting, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                   <Button Classes="link" Content="Pre-game show" Command="{Binding StudioCommand}" IsVisible="{Binding HasOpponent}" Margin="0,4,0,0" ToolTip.Tip="The HSN desk previews the game"/>
                   <Button Classes="primary" Content="See open jobs" Command="{Binding GoCommand}" CommandParameter="Board" IsVisible="{Binding OutOfWork}" Margin="0,6,0,0" ToolTip.Tip="Board → Out of work: open jobs"/>

@@ -144,10 +144,17 @@ public sealed class EngineConfig
     /// <summary>The settings a game under these rules plays with: talent scaled, and no home edge on a neutral court.</summary>
     public EngineConfig For(Model.Rules rules)
     {
-        if (rules.TalentScale == 1.0 && !rules.NeutralSite && rules.HomeScale == 1.0) return this;
+        if (rules.TalentScale == 1.0 && !rules.NeutralSite && rules.HomeScale == 1.0 && rules.ShotLogitShift == 0 && rules.FoulScale == 1.0) return this;
         var c = rules.TalentScale == 1.0 ? (EngineConfig)MemberwiseClone() : ForTalentScale(rules.TalentScale);
         if (rules.NeutralSite) c.HomeLogit = 0;
         else c.HomeLogit *= rules.HomeScale; // C5 part 2: a college arena's home court
+        // C5 (run 96): a conference's style. The arrays are copied, never changed in place (the clone shares them).
+        if (rules.ShotLogitShift != 0) c.ZoneBaseLogit = ZoneBaseLogit.Select(x => x + rules.ShotLogitShift).ToArray();
+        if (rules.FoulScale != 1.0)
+        {
+            c.NonShootingFoulRate = NonShootingFoulRate * rules.FoulScale;
+            c.ShootingFoulRateByZone = ShootingFoulRateByZone.Select(x => x * rules.FoulScale).ToArray();
+        }
         return c;
     }
 }
