@@ -15,6 +15,8 @@ public sealed class SeasonAwards
     public List<VoteLine> SixthManVoting { get; init; } = new();
     public int? CoachOfYearTeamId { get; init; }
     public string CoachOfYearNote { get; init; } = "";
+    /// <summary>The coach who won it, as named that season (H58, run 88; empty in saves before v0.99.3).</summary>
+    public string CoachOfYearName { get; init; } = "";
     /// <summary>Three teams of five player ids.</summary>
     public List<List<int>> AllLeague { get; init; } = new();
     public List<int> AllStarsEast { get; init; } = new();
@@ -156,6 +158,7 @@ public sealed class AwardsEngine
             Season = season,
             MvpVoting = mvp, RoyVoting = roy, DpoyVoting = dpoy, SixthManVoting = sixth,
             CoachOfYearTeamId = coy.t.Id,
+            CoachOfYearName = coy.t.CoachName,
             CoachOfYearNote = $"Expected {Ordinal(expected[coy.t.Id])}, finished {Ordinal(actual[coy.t.Id])} with {TeamWins(coy.t.Id)} wins.",
             AllLeague = allLeague,
             AllStarsEast = midseason?.AllStarsEast ?? new(), AllStarsWest = midseason?.AllStarsWest ?? new(),
