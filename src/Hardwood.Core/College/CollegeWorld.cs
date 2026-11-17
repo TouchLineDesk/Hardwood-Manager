@@ -497,7 +497,7 @@ public sealed partial class CollegeWorld
             Record(g, sim.Simulate(home, away, GameRules(g), rng.NextULong(), false, g.Date));
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null, homePoints: HomeCourtPoints(g.HomeId)); // NCAA ~72 a side
+            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null, homePoints: HomeCourtPoints(g.HomeId), totalScale: StyleOf(g).PointsScale); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
             UpdateElo(g);
             NoteRivalry(g); // C5 part 1: no random numbers
@@ -509,7 +509,7 @@ public sealed partial class CollegeWorld
 
     /// <summary>College rules for a game in this world: a neutral court for events, else the home program's own arena (C5 part 2).</summary>
     public Rules GameRules(CollegeGame g) =>
-        g.Event != null ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 };
+        StyleOf(g).Apply(g.Event != null ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 }); // C5: + the conference's style
 
     /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
     public int? ManagedProgramId { get; set; }

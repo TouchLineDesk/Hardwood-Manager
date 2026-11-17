@@ -18,6 +18,8 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
     public College.Rivalry? Rivalry { get; init; }
     /// <summary>College (C5 part 2): an event on a neutral court (no home edge).</summary>
     public bool Neutral { get; init; }
+    /// <summary>College (C5, run 96): the conference whose style this game is played in (conference play and its tournament).</summary>
+    public string? StyleConference { get; init; }
     /// <summary>Its Schedule &amp; Results filter (#529): the season's part, the tournament's name, or the playoffs (<see cref="ScheduleFilter"/>).</summary>
     public string Group { get; init; } = ScheduleFilter.Regular;
     /// <summary>H8 (run 65): a played game you didn't coach: from before you took this job (a move in the summer or
@@ -189,6 +191,7 @@ public sealed partial class GameSession
                     Group = ScheduleFilter.CollegeGroup(g.Event, g.Stage),
                     Rivalry = cw.RivalryOf(us.Id, opp.Id),
                     Neutral = g.Event != null,
+                    StyleConference = cw.StyleConference(g),
                     NotCoached = g.Played && r == null && (g.Date <= Job.HiredOn || !Job.Employed),
                 });
             }

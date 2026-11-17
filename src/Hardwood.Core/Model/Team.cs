@@ -233,7 +233,9 @@ public sealed record Rules(
     double PaceScale = 1.0,
     double TalentScale = 1.0,
     bool NeutralSite = false,
-    double HomeScale = 1.0)
+    double HomeScale = 1.0,
+    double ShotLogitShift = 0,
+    double FoulScale = 1.0)
 {
     /// <summary>The home side's edge in points, as the quick sim and the pregame line see it (2.5 in the pros; C5 part 2: a college arena's own).</summary>
     public double HomePoints => NeutralSite ? 0 : 2.5 * HomeScale;

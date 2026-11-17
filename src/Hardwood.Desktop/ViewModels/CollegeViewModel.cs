@@ -205,6 +205,8 @@ public sealed partial class CollegeViewModel : PageViewModel
     public List<string> ConferenceNames { get; private set; } = CollegeWorld.Conferences.Select(c => c.Name).ToList();
     [ObservableProperty] private string _conference = CollegeWorld.Conferences[0].Name;
     public ObservableCollection<RankRow> ConferenceRows { get; } = new();
+    /// <summary>C5 (run 96): the picked conference's playing style.</summary>
+    [ObservableProperty] private string _conferenceStyle = "";
     public ObservableCollection<string> Bracket { get; } = new();
     // March Madness as a bracket (college depth part 2): pick a region or the Final Four.
     public const string SelectionView = "Selection Sunday";
@@ -563,8 +565,10 @@ public sealed partial class CollegeViewModel : PageViewModel
     private void FillConference()
     {
         ConferenceRows.Clear();
+        ConferenceStyle = "";
         if (Session.World.College is not { } c) return;
         if (c.Active.FirstOrDefault(x => x.Name == Conference) is not { } conf) return;
+        ConferenceStyle = CollegeWorld.StyleLine(conf.Key) + " in conference play and the conference tournament.";
         int rank = 1;
         foreach (var (id, w, l) in c.ConferenceTable(conf.Key))
         {

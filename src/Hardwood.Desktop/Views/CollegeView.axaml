@@ -82,6 +82,8 @@
       <TabItem Header="Conferences">
         <DockPanel>
           <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding ConferenceNames}" SelectedItem="{Binding Conference}" MinWidth="260" Margin="0,0,0,6"/>
+          <TextBlock x:Name="ConferenceStyle" DockPanel.Dock="Top" Text="{Binding ConferenceStyle}" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
+                     IsVisible="{Binding ConferenceStyle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <DataGrid ItemsSource="{Binding ConferenceRows}" CanUserSortColumns="False">
             <DataGrid.Columns>
               <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>

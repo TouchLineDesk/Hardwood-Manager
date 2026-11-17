@@ -104,6 +104,8 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private string _gameTag = "";
     /// <summary>C5 part 2 (run 95): a college game's home court, e.g. "Cameron Indoor Stadium: one of the loudest in the country (+4.4 points to the home side)"; empty on a neutral court or in the pros.</summary>
     [ObservableProperty] private string _courtLine = "";
+    /// <summary>C5 (run 96): a college conference game's style.</summary>
+    [ObservableProperty] private string _styleLine = "";
 
     private static readonly IBrush Good = new SolidColorBrush(Color.Parse("#3FB950"));
     private static readonly IBrush Bad = new SolidColorBrush(Color.Parse("#F85149"));
@@ -155,7 +157,7 @@ public sealed partial class HomeViewModel : PageViewModel
             : $"{s.HumanLeagueName} · season {s.League.Season}-{(s.League.Season + 1) % 100:00}";
 
         var next = s.NextMyGame;
-        GameTag = ""; CourtLine = "";
+        GameTag = ""; CourtLine = ""; StyleLine = "";
         if (next != null)
         {
             var opp = next.Opponent;
@@ -166,6 +168,7 @@ public sealed partial class HomeViewModel : PageViewModel
                 + (orec.Games > 0 ? $" · they're {orec.Wins}-{orec.Losses}" : "");
             GameTag = CollegeGameTag(s, team, next);
             CourtLine = CollegeCourtLine(s, team, next);
+            StyleLine = s.InCollege && next.StyleConference is { } sk ? Hardwood.Core.College.CollegeWorld.StyleLine(sk) : "";
             var report = CoachAi.ScoutingReport(team, opp, next.Date);
             Scouting = report.Split(". ").FirstOrDefault() is { } first ? first.TrimEnd('.') + "." : report;
         }
@@ -318,7 +321,7 @@ public sealed partial class HomeViewModel : PageViewModel
         Subline = (last != null ? $"Last job: {last.TeamName} ({last.Ended.ToLower()}, {Hardwood.Core.Jobs.JobRecords.Seasons(last)}) · " : "")
             + $"reputation {coach.Reputation:0}/100";
         ChemistryText = "";
-        Opponent = null; Scouting = ""; GameTag = ""; CourtLine = "";
+        Opponent = null; Scouting = ""; GameTag = ""; CourtLine = ""; StyleLine = "";
         CardTitle = "OPEN JOBS"; CardIcon = "Shield";
         var live = s.LiveVacancies.Select(v => (v, t: s.FindTeam(v.TeamId))).Where(x => x.t != null).ToList();
         int offers = live.Count(x => x.v.Status == "offered"), applied = live.Count(x => x.v.Status == "applied");
