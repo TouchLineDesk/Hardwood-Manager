@@ -51,7 +51,9 @@ public class Run94RivalryTests
             Assert.Equal(RealColleges.StateOf(cw.Program(r.A)!.City), RealColleges.StateOf(cw.Program(r.B)!.City));
             Assert.False(listed.Contains(r.A) && listed.Contains(r.B));
         });
-        Assert.Equal("an in-state rivalry", inState[0].Label);
+        Assert.Equal("an in-state rivalry game", inState[0].Label);
+        Assert.Equal("the Cy-Hawk Series game", cw.RivalryOf(Id("Iowa"), Id("Iowa State"))!.Label);
+        Assert.Equal("a Philadelphia Big 5 game", cw.RivalryOf(Id("Penn"), Id("Temple"))!.Label);
         Assert.Equal("#5 vs #9", CollegeWorld.RankedMatchup(5, 9));
         Assert.Null(CollegeWorld.RankedMatchup(5, null));
     }

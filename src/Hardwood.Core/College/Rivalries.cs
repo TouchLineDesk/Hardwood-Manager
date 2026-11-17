@@ -7,7 +7,14 @@ namespace Hardwood.Core.College;
 public sealed record Rivalry(int A, int B, string? Name, bool InState)
 {
     /// <summary>"the Crosstown Shootout", "a rivalry game", "an in-state rivalry".</summary>
-    public string Label => Name != null ? (Name.StartsWith("Philadelphia") || Name == "Bedlam" ? Name : $"the {Name}") : InState ? "an in-state rivalry" : "a rivalry game";
+    public string Label => Name switch
+    {
+        null => InState ? "an in-state rivalry game" : "a rivalry game",
+        "Philadelphia Big 5" => "a Philadelphia Big 5 game",
+        "Bedlam" => "Bedlam",
+        _ when Name.EndsWith("Series") || Name.EndsWith("Rivalry") => $"the {Name} game",
+        _ => $"the {Name}",
+    };
     /// <summary>The short tag on a schedule tile.</summary>
     public string Tag => InState ? "IN-STATE" : "RIVALRY";
     /// <summary>"Crosstown Shootout" / "Rivalry" / "In-state rivalry": a heading.</summary>
