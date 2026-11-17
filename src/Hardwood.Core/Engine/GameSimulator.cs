@@ -259,7 +259,7 @@ public sealed class GameSimulator
             {
                 // The pregame line, as the quick sim sees it: strength gap plus home court, spread scaled to game length.
                 double spread = rules.GameMinutes / 40.0;
-                result.PregameEdge = (World.QuickSim.Strength(home.Team) - World.QuickSim.Strength(away.Team)) * 0.55 * spread + (rules.NeutralSite ? 0 : 2.5);
+                result.PregameEdge = (World.QuickSim.Strength(home.Team) - World.QuickSim.Strength(away.Team)) * 0.55 * spread + rules.HomePoints;
                 result.MarginSpread = 11 * spread;
             }
         }

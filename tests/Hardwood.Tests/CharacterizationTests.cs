@@ -161,7 +161,10 @@ public class CharacterizationTests
         var s = GameSession.NewGame(2026, BenchClub(2026), savePath: null);
         Days(s, 30);
         Assert.True(s.Results.Count > 100, $"a month of NBA games ({s.Results.Count})");
-        Pin("career seed 2026, 30 days, no saves", "CF89DF441AA947D3", Session(s));
+        // Run 95 (C5 part 2, #848): re-pinned (was CF89DF441AA947D3 since run 57). The college world plays on the session's
+        // random stream, and scheduled rivals and arena home courts change college scores, so a few quick-sim tie-breaks
+        // draw differently and the NBA's days after them move. The NBA's own odds are unchanged (audit on both seeds).
+        Pin("career seed 2026, 30 days, no saves", "F5CA4EEE5084B908", Session(s));
     }
 
     [Fact]

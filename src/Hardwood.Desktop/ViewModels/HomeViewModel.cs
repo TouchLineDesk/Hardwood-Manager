@@ -102,6 +102,8 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private string _tableTitle = "Conference";
     /// <summary>C5 part 1 (run 94): "Crosstown Shootout · You lead the series 2-1 since 2026-27" or "Ranked matchup: #5 vs #9"; empty otherwise.</summary>
     [ObservableProperty] private string _gameTag = "";
+    /// <summary>C5 part 2 (run 95): a college game's home court, e.g. "Cameron Indoor Stadium: one of the loudest in the country (+4.4 points to the home side)"; empty on a neutral court or in the pros.</summary>
+    [ObservableProperty] private string _courtLine = "";
 
     private static readonly IBrush Good = new SolidColorBrush(Color.Parse("#3FB950"));
     private static readonly IBrush Bad = new SolidColorBrush(Color.Parse("#F85149"));
@@ -153,7 +155,7 @@ public sealed partial class HomeViewModel : PageViewModel
             : $"{s.HumanLeagueName} · season {s.League.Season}-{(s.League.Season + 1) % 100:00}";
 
         var next = s.NextMyGame;
-        GameTag = "";
+        GameTag = ""; CourtLine = "";
         if (next != null)
         {
             var opp = next.Opponent;
@@ -163,6 +165,7 @@ public sealed partial class HomeViewModel : PageViewModel
             NextDetail = $"{next.Date:ddd MMM d}{(next.Date == s.Today ? " (today)" : "")}" + (next.Competition != s.HumanLeagueName ? $" · {next.Competition}" : "")
                 + (orec.Games > 0 ? $" · they're {orec.Wins}-{orec.Losses}" : "");
             GameTag = CollegeGameTag(s, team, next);
+            CourtLine = CollegeCourtLine(s, team, next);
             var report = CoachAi.ScoutingReport(team, opp, next.Date);
             Scouting = report.Split(". ").FirstOrDefault() is { } first ? first.TrimEnd('.') + "." : report;
         }
@@ -297,6 +300,13 @@ public sealed partial class HomeViewModel : PageViewModel
         return string.Join(" · ", parts);
     }
 
+    /// <summary>C5 part 2: the home court a college game is played on (none for neutral-court events).</summary>
+    public static string CollegeCourtLine(GameSession s, Hardwood.Core.Model.Team us, MyGame g)
+    {
+        if (!s.InCollege || s.World.College is not { } cw || g.Neutral) return "";
+        return cw.HomeCourtLine(g.Home ? us.Id : g.Opponent.Id);
+    }
+
     /// <summary>H15b (run 93): out of work, the hero and the middle column are about finding the next job.</summary>
     private void RefreshJobs(GameSession s)
     {
@@ -308,7 +318,7 @@ public sealed partial class HomeViewModel : PageViewModel
         Subline = (last != null ? $"Last job: {last.TeamName} ({last.Ended.ToLower()}, {Hardwood.Core.Jobs.JobRecords.Seasons(last)}) · " : "")
             + $"reputation {coach.Reputation:0}/100";
         ChemistryText = "";
-        Opponent = null; Scouting = ""; GameTag = "";
+        Opponent = null; Scouting = ""; GameTag = ""; CourtLine = "";
         CardTitle = "OPEN JOBS"; CardIcon = "Shield";
         var live = s.LiveVacancies.Select(v => (v, t: s.FindTeam(v.TeamId))).Where(x => x.t != null).ToList();
         int offers = live.Count(x => x.v.Status == "offered"), applied = live.Count(x => x.v.Status == "applied");

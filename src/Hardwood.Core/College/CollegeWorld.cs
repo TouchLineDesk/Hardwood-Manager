@@ -366,11 +366,30 @@ public sealed partial class CollegeWorld
         var ids = Programs.Select(t => t.Id).ToList();
         // Non-conference: ten rounds, Tuesdays and Fridays from early November, against teams from other conferences.
         var day = new DateOnly(year, 11, 6);
+        // C5 part 2: listed rivals in different conferences meet every season, in the earliest round both are free
+        // (no random numbers); home alternates by year. Everyone else in that round is paired at random as before.
+        var booked = new List<HashSet<int>>();
+        var rivalGames = new List<(int Round, int Home, int Away)>();
+        foreach (var rv in NonConferenceRivalries())
+        {
+            int r = 0;
+            while (r < 10 && r < booked.Count && (booked[r].Contains(rv.A) || booked[r].Contains(rv.B))) r++;
+            if (r >= 10) continue;
+            while (booked.Count <= r) booked.Add(new HashSet<int>());
+            booked[r].Add(rv.A); booked[r].Add(rv.B);
+            bool aHome = (year + rv.A + rv.B) % 2 == 0;
+            rivalGames.Add((r, aHome ? rv.A : rv.B, aHome ? rv.B : rv.A));
+        }
         for (int round = 0; round < 10; round++)
         {
             while (day.DayOfWeek is not (DayOfWeek.Tuesday or DayOfWeek.Friday)) day = day.AddDays(1);
             if (day.Month == 11 && day.Day >= 24 && day.Day <= 28) { day = day.AddDays(1); round--; continue; } // invitational week
+            var taken = round < booked.Count ? booked[round] : null;
+            foreach (var (_, h, a) in rivalGames.Where(x => x.Round == round))
+                s.Games.Add(new CollegeGame { Date = day, HomeId = h, AwayId = a, Stage = "Non-conference" });
+            // Shuffle every program as before (the same random draws, so nothing else in the world moves), then drop the rivals.
             var pool = ids.OrderBy(_ => rng.NextDouble()).ToList();
+            if (taken != null) pool.RemoveAll(taken.Contains);
             while (pool.Count >= 2)
             {
                 int a = pool[0]; pool.RemoveAt(0);
@@ -380,6 +399,8 @@ public sealed partial class CollegeWorld
                 s.Games.Add(new CollegeGame { Date = day, HomeId = rng.Chance(0.5) ? a : b, AwayId = 0, Stage = "Non-conference" });
                 s.Games[^1].AwayId = s.Games[^1].HomeId == a ? b : a;
             }
+            // One home-or-away draw for each rivalry game too (its home is set by the year), so the round draws what it always did.
+            for (int k = 0; k < (taken?.Count ?? 0) / 2; k++) rng.Chance(0.5);
             day = day.AddDays(1);
         }
         // Invitationals (Thanksgiving week): eight brackets of eight, invited by prestige with some luck.
@@ -473,10 +494,10 @@ public sealed partial class CollegeWorld
         var home = Program(g.HomeId)!; var away = Program(g.AwayId)!;
         // March Madness gets the full match engine (decision #95), and so does every game of a program you coach (C2, #168).
         if (g.Event == Madness || g.HomeId == ManagedProgramId || g.AwayId == ManagedProgramId)
-            Record(g, sim.Simulate(home, away, RulesFor(g), rng.NextULong(), false, g.Date));
+            Record(g, sim.Simulate(home, away, GameRules(g), rng.NextULong(), false, g.Date));
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null); // NCAA ~72 a side
+            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null, homePoints: HomeCourtPoints(g.HomeId)); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
             UpdateElo(g);
             NoteRivalry(g); // C5 part 1: no random numbers
@@ -485,6 +506,10 @@ public sealed partial class CollegeWorld
 
     /// <summary>College rules for a game: events (invitationals, showcases, tournaments) are on a neutral court.</summary>
     public static Rules RulesFor(CollegeGame g) => g.Event != null ? Rules.CollegeNeutral : Rules.College;
+
+    /// <summary>College rules for a game in this world: a neutral court for events, else the home program's own arena (C5 part 2).</summary>
+    public Rules GameRules(CollegeGame g) =>
+        g.Event != null ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 };
 
     /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
     public int? ManagedProgramId { get; set; }
@@ -536,7 +561,7 @@ public sealed partial class CollegeWorld
         var elo = Season.Elo;
         double rh = elo.GetValueOrDefault(g.HomeId, 1500), ra = elo.GetValueOrDefault(g.AwayId, 1500);
         bool neutral = g.Event != null;
-        double expected = 1 / (1 + Math.Pow(10, (ra - rh - (neutral ? 0 : 60)) / 400));
+        double expected = 1 / (1 + Math.Pow(10, (ra - rh - (neutral ? 0 : 60 * HomeCourtPoints(g.HomeId) / 2.5)) / 400));
         double result = g.HomePts > g.AwayPts ? 1 : 0;
         double margin = Math.Log(Math.Abs(g.HomePts!.Value - g.AwayPts!.Value) + 1);
         double k = 24 * margin * 0.6;
