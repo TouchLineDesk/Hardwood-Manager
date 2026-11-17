@@ -920,6 +920,7 @@ public sealed class GameWorld
                     signing = NewPlayer(team, myComp.Profile, club, team.Roster.Count, 0, date, gen, _rng, foreignSlot: false, ageOverride: _rng.Next(21, 30), caOverride: target);
                     signing.Contract!.StartSeason = newYear;
                     signing.Contract.Years = 1;
+                    signing.Contract.Buyout = BuyoutFor(signing, signing.Contract.Salary, 1, date); // priced for the one year (run 104 review)
                     team.Roster.Add(signing);
                 }
                 made.Add(signing);
