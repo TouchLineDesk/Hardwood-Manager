@@ -31,7 +31,7 @@ public class Run75AwardCardTests
             DpoyVoting = Votes(pool.Skip(6).Take(3), 0.5, 0.3, 0.2),
             RoyVoting = Votes(pool.Skip(9).Take(2), 0.9, 0.1),
             SixthManVoting = Votes(pool.Skip(11).Take(2), 0.7, 0.3),
-            CoachOfYearTeamId = others[0].Id, CoachOfYearNote = "58-24, up 17 wins",
+            CoachOfYearTeamId = others[0].Id, CoachOfYearNote = "58-24, up 17 wins", CoachOfYearName = "Christopher Kensington-Whitaker",   // H58 (run 88): the coach, and a long name
             AllLeague = new() { pool.Take(5).Select(p => p.Id).ToList(), pool.Skip(5).Take(5).Select(p => p.Id).ToList(), new List<int> { mine[0].Id }.Concat(pool.Skip(10).Take(4).Select(p => p.Id)).ToList() },
             AllStarsEast = pool.Take(6).Select(p => p.Id).ToList(),
             AllStarsWest = pool.Skip(6).Take(6).Select(p => p.Id).ToList(),
@@ -109,6 +109,8 @@ public class Run75AwardCardTests
             Assert.True(coy.IsCoach);
             Assert.False(coy.HasPortrait);
             Assert.Equal("58-24, up 17 wins", coy.StatLine);
+            Assert.Equal("Christopher Kensington-Whitaker", coy.Name);                       // H58 (run 88): the coach, not the club
+            Assert.Equal($"Head coach, {s.FindTeam(summary.Awards!.CoachOfYearTeamId!.Value)!.FullName}", coy.TeamLine);
             var cards = view.FindControl<ItemsControl>("WinnerCards")!.GetVisualDescendants().OfType<Border>().Where(b => b.DataContext is WinnerCard && b.Classes.Contains("panel")).ToList();
             Assert.Equal(6, cards.Count);
             Assert.All(cards, c => Assert.True(c.Bounds.Width > 200 && c.Bounds.Height > 100, $"{c.Bounds}"));

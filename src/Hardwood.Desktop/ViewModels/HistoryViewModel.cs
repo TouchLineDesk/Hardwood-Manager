@@ -240,7 +240,9 @@ public sealed partial class HistoryViewModel : PageViewModel
     {
         Rows.Clear();
         var s = Session;
-        var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
+        // H64 (run 88): award winners and record holders who moved abroad are still named (they were "-" once they left).
+        var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).Concat(s.World?.Players ?? Enumerable.Empty<Player>())
+            .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
         string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
         var cards = new List<SeasonCard>();
         foreach (var h in s.League.History.OrderByDescending(h => h.Season))

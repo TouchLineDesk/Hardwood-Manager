@@ -187,7 +187,7 @@ public sealed partial class AwardsViewModel : PageViewModel
 
             Headline = summary != null ? $"{Season} awards" : $"{Season}: All-Star weekend";
             Summary = summary != null
-                ? $"Champions: {s.FindTeam(summary.ChampionTeamId)!.FullName} over {s.FindTeam(summary.RunnerUpTeamId)!.FullName} · Finals MVP {Name(summary.FinalsMvpPlayerId)} · Coach of the Year: {(a.CoachOfYearTeamId is { } c ? s.FindTeam(c)!.FullName : "-")} ({a.CoachOfYearNote})"
+                ? $"Champions: {s.FindTeam(summary.ChampionTeamId)!.FullName} over {s.FindTeam(summary.RunnerUpTeamId)!.FullName} · Finals MVP {Name(summary.FinalsMvpPlayerId)} · Coach of the Year: {(a.CoachOfYearName.Length > 0 ? a.CoachOfYearName + ", " : "")}{(a.CoachOfYearTeamId is { } c ? s.FindTeam(c)!.FullName : "-")} ({a.CoachOfYearNote})"
                 : "Season in progress. Full awards arrive after the Finals.";
             AllLeague = a.AllLeague.Count == 0 ? "" : string.Join("\n", a.AllLeague.Select((t, i) => $"{(i == 0 ? "First" : i == 1 ? "Second" : "Third")} team: {string.Join(", ", t.Select(id => $"{Name(id)} ({TeamOf(id)})"))}"));
             AllStars = a.AllStarsEast.Count == 0 ? "No All-Star Game this season." :
@@ -221,7 +221,12 @@ public sealed partial class AwardsViewModel : PageViewModel
                 if (summary.FinalsMvpPlayerId is { } f)
                     ExtraCards.Add(Card("Finals MVP", "Trophy", P(f), champ, Name(f), champ != null ? $"Champions: {champ.FullName}" : "", ""));
                 if (a.CoachOfYearTeamId is { } coy && s.FindTeam(coy) is { } ct)
-                    ExtraCards.Add(Card("Coach of the Year", "ClipboardList", null, ct, ct.FullName, "Head coach", a.CoachOfYearNote, coach: true));
+                    {
+                    // H58 (run 88): the coach, not the club, under the award; older saves didn't keep his name.
+                    ExtraCards.Add(a.CoachOfYearName.Length > 0
+                        ? Card("Coach of the Year", "ClipboardList", null, ct, a.CoachOfYearName, $"Head coach, {ct.FullName}", a.CoachOfYearNote, coach: true)
+                        : Card("Coach of the Year", "ClipboardList", null, ct, ct.FullName, "Head coach", a.CoachOfYearNote, coach: true));
+                }
             }
         }
         finally

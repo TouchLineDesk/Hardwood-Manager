@@ -630,6 +630,11 @@ public sealed class Offseason
                 if (team.Roster.Count >= fin.RosterMin) break;
                 SignFreeAgent(team, p, 1, fin.MinSalary);
             }
+        // H56 (run 88): your sporting director's end-of-summer signings (the last of them a minimum deal that may go over
+        // the budget to reach the roster minimum) are the owner's to fund, as run 87 did abroad (GameWorld) and for your own
+        // minimum offers. The Spurs opened 2027-28 at $172.93M on $171.90M (nba-real-strong, seed 31) without it.
+        if (fin.OpenMarket && HumanTeamId is int hid && _league.Teams.FirstOrDefault(t => t.Id == hid) is { } human)
+            Budgets.OwnerFunds(human, ContractMarket.Payroll(human));
         AiHireStaff(null);
 
         // The rest of the world signs from the pool before the leftovers retire (decision #41).

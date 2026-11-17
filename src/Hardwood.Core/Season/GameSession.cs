@@ -1107,7 +1107,7 @@ public sealed partial class GameSession
         if (a.RoyVoting.Count > 0) parts.Add($"Rookie of the Year: {Name(a.Roy)}\n{Voting(a.RoyVoting)}");
         parts.Add($"Defensive Player of the Year: {Name(a.Dpoy)}\n{Voting(a.DpoyVoting)}");
         if (a.SixthManVoting.Count > 0) parts.Add($"Sixth Man of the Year: {Name(a.SixthMan)}\n{Voting(a.SixthManVoting)}");
-        if (a.CoachOfYearTeamId is { } coy) parts.Add($"Coach of the Year: {League.TeamById(coy).FullName}. {a.CoachOfYearNote}" + (coy == HumanTeam.Id ? " That's you." : ""));
+        if (a.CoachOfYearTeamId is { } coy) parts.Add($"Coach of the Year: {(a.CoachOfYearName.Length > 0 ? a.CoachOfYearName + ", " : "")}{League.TeamById(coy).FullName}. {a.CoachOfYearNote}" + (coy == HumanTeam.Id ? " That's you." : ""));
         parts.Add(string.Join("\n", a.AllLeague.Select((t, i) => $"All-League {(i == 0 ? "first" : i == 1 ? "second" : "third")} team: {string.Join(", ", t.Select(id => Name(id)))}")));
         if (summary.FinalsMvpPlayerId is { } fm) parts.Add($"Finals MVP: {Name(fm)} ({League.TeamById(summary.ChampionTeamId).FullName}).");
         var ours = a.AllLeague.SelectMany(t => t).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => Name(id)).ToList();
