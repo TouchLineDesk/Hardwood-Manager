@@ -148,8 +148,11 @@ public static class CoachAi
             lines.Add($"Their go-to scorer is {star.Name} ({star.PrimaryPosition}). " + (dbl ? "He dominates their offense: consider doubling him." : "He isn't dominant enough to double; put a stopper on him.")
                       + (stopper != null ? $" Best stopper: {stopper.Name}." : ""));
         lines.Add($"Assistant's suggestion: {Systems.Name(ourSystem).ToLower()} on offense, {Systems.Name(ourScheme).ToLower()} on defense.");
-        double m = Tactics.Matchup(theirSystem, ourScheme);
-        if (m < 0) lines.Add($"{Systems.Name(ourScheme)} is a good answer to {Systems.Name(theirSystem).ToLower()}.");
+        // K2: the same matchup model as the Tactics page; a poor side says why it's still his pick.
+        var read = new MatchupRead(theirSystem, theirScheme);
+        if (read.Defence(ourScheme) >= MatchupRead.Notable) lines.Add($"{Systems.Name(ourScheme)} is a good answer to {Systems.Name(theirSystem).ToLower()}.");
+        if (read.WhySystem(ourSystem) is { Length: > 0 } ws) lines.Add(ws);
+        if (read.WhyScheme(ourScheme) is { Length: > 0 } wd) lines.Add(wd);
         // Being predictable has a cost (#267): after three games of the same thing, the other bench has it on film.
         if (!us.Tactic.Auto && (OnFilm(us.Tactic.RecentSystems) || OnFilm(us.Tactic.RecentSchemes)))
             lines.Add($"They've seen us run {Systems.Name(us.Tactic.RecentSystems[^1]).ToLower()} and {Systems.Name(us.Tactic.RecentSchemes[^1]).ToLower()} defense {FilmReadGames} games running and will plan for it; a change would catch them out.");

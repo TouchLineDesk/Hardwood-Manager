@@ -11,8 +11,14 @@ public sealed record TacticSetup(
     double Pace, int ThreePointEmphasis, int CrashGlass, int DefensiveAggression, int StarUsage,
     double SystemFit, double SchemeFit, double Edge, bool Recommended)
 {
-    /// <summary>The setup's overall rating, 0..1: the two fits, plus the matchup edge against the next opponent.</summary>
-    public double Score => Math.Clamp((SystemFit + SchemeFit) / 2 + Edge * 2.5, 0, 1);
+    /// <summary>
+    /// The setup's value on the one matchup model (<see cref="MatchupRead.Value"/>, K2): the two fits, plus the matchup
+    /// edge against the next opponent. The assistant's pick is the card with the highest value.
+    /// </summary>
+    public double Value => MatchupRead.Value(SystemFit, SchemeFit, Edge, System, Scheme);
+
+    /// <summary>The setup's rating for its bar and stars, 0..1 (the value, clamped).</summary>
+    public double Score => Math.Clamp(Value, 0, 1);
 
     public void ApplyTo(Tactic t)
     {
@@ -65,21 +71,22 @@ public static class TacticSetups
     {
         var rot = CoachAi.Rotation(team, on);
         var five = StartingFive(team, on);
-        (OffensiveSystem s, DefensiveScheme d)? theirs = opp == null ? null : CoachAi.TheirPlan(opp, team, on);
-        double Edge(OffensiveSystem s, DefensiveScheme d) => theirs is { } t ? Tactics.Matchup(s, t.d) - Tactics.Matchup(t.s, d) : 0;
-        TacticSetup Make(string key, string title, string pitch, OffensiveSystem s, DefensiveScheme d, double pace = 99, int three = 50, int glass = 50, int aggr = 50, int star = 50, IReadOnlyCollection<Player>? who = null) =>
-            new(key, title, pitch, s, d, pace, three, glass, aggr, star, Systems.Fit(s, who ?? rot), Systems.Fit(d, who ?? rot), Edge(s, d), false);
+        var read = opp == null ? null : MatchupRead.Of(team, opp, on);
+        double Edge(OffensiveSystem s, DefensiveScheme d) => read?.Edge(s, d) ?? 0;
+        // K2: every card is rated on the same rotation and the same model, so the cards, the board and the assistant agree.
+        TacticSetup Make(string key, string title, string pitch, OffensiveSystem s, DefensiveScheme d, double pace = 99, int three = 50, int glass = 50, int aggr = 50, int star = 50) =>
+            new(key, title, pitch, s, d, pace, three, glass, aggr, star, Systems.Fit(s, rot), Systems.Fit(d, rot), Edge(s, d), false);
 
         var list = new List<TacticSetup>();
         var bestS = CoachAi.BestSystem(rot); var bestD = CoachAi.BestScheme(rot);
         list.Add(Make("fit", "Best fit", $"What your rotation suits most: {Systems.Name(bestS).ToLower()} and {Systems.Name(bestD).ToLower()}.", bestS, bestD));
-        if (opp != null && theirs is { } th)
+        if (opp != null && read != null)
         {
-            var (cs, cd) = CoachAi.Counter(rot, th.s, th.d);
-            list.Add(Make("plan", $"Game plan: {opp.Name}", $"They should run {Systems.Name(th.s).ToLower()} and {Systems.Name(th.d).ToLower()}; this counters both.", cs, cd));
+            var (cs, cd) = CoachAi.Counter(rot, read.TheirSystem, read.TheirScheme);
+            list.Add(Make("plan", $"Game plan: {opp.Name}", read.PlanPitch(cs, cd), cs, cd));
         }
         var fs = CoachAi.BestSystem(five); var fd = CoachAi.BestScheme(five);
-        list.Add(Make("five", "Built on your starting five", $"Suits {string.Join(", ", five.Take(5).Select(p => p.LastName))}.", fs, fd, who: five));
+        list.Add(Make("five", "Built on your starting five", $"Suits {string.Join(", ", five.Take(5).Select(p => p.LastName))}.", fs, fd));
         list.Add(Make("threes", "Three-point barrage", "Push the pace and let it fly: spacing, corner threes and drives.", OffensiveSystem.PaceAndSpace, CoachAi.BestScheme(rot), pace: 104, three: 82, glass: 35));
         list.Add(Make("inside", "Inside power", "Pound it inside, crash the glass and protect the rim.", OffensiveSystem.PostCentric, DefensiveScheme.Drop, pace: 94, three: 28, glass: 75));
         var lockScheme = Enum.GetValues<DefensiveScheme>().Where(x => x != DefensiveScheme.Man).OrderByDescending(x => Systems.Fit(x, rot)).First();
@@ -88,7 +95,8 @@ public static class TacticSetups
         list.Add(Make("star", go != null ? $"Ride {go.LastName}" : "Ride the star", "Clear out for your best scorer and feed him.", OffensiveSystem.Isolation, bestD, pace: 96, star: 82));
         list.Add(Make("move", "Ball movement", "Cut, screen and share it: more assists and open looks.", OffensiveSystem.Motion, bestD, star: 30));
 
-        var best = list.OrderByDescending(x => x.Score).First();
+        // On a tie (the best fit is already the counter) the game-plan card carries the pick, so the badge sits on the plan.
+        var best = list.OrderByDescending(x => x.Value).ThenByDescending(x => x.Key == "plan").First();
         return list.Select(x => x == best ? x with { Recommended = true } : x).ToList();
     }
 }

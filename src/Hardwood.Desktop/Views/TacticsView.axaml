@@ -90,6 +90,8 @@
                   <TextBlock Text="{Binding TheirAttackEdge}" FontSize="11" FontWeight="Bold" Foreground="#0E1116"/>
                 </Border>
               </Grid>
+              <!-- K2: the assistant says why he picked a side the board calls a disadvantage, or what he'd run instead -->
+              <TextBlock Text="{Binding BoardNote}" IsVisible="{Binding HasBoardNote}" FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource HwMutedBrush}"/>
               <TextBlock Text="Starting fives" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,0"/>
               <ItemsControl ItemsSource="{Binding Board}">
                 <ItemsControl.ItemTemplate>

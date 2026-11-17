@@ -21,7 +21,9 @@ public sealed class SystemOption
     public IReadOnlyList<string> Reasons { get; init; } = Array.Empty<string>();
     public bool HasReasons => Reasons.Count > 0;
     public string FitText => (System is OffensiveSystem.Balanced || Scheme is DefensiveScheme.Man ? "baseline" : $"fit {TacticsViewModel.StarText(Fit * 5)}")
-        + (Matchup >= 0.02 ? " · good matchup" : Matchup <= -0.02 ? " · poor matchup" : "") + (Recommended ? " · assistant's pick" : "");
+        + (MatchupRead.Tag(Matchup) is { Length: > 0 } tag ? " · " + tag : "")
+        // K2: the assistant's pick can be a poor matchup when the roster's fit outweighs it; say so instead of contradicting.
+        + (Recommended ? (Matchup <= -MatchupRead.Notable ? " · assistant's pick: the fit outweighs it" : " · assistant's pick") : "");
     public override string ToString() => Name;
 }
 
@@ -66,11 +68,22 @@ public sealed class SetupCard
     public string FitStars => TacticsViewModel.StarText(Setup.Score * 5);
     public bool Recommended => Setup.Recommended;
     public bool Active { get; init; }
+    /// <summary>The matchup edge of the tactic in use, so a card only says it plays into their hands when it's worse (K2).</summary>
+    public double CurrentEdge { get; init; }
     public string Badge => Active ? "IN USE" : Recommended ? "ASSISTANT'S PICK" : "";
     public bool HasBadge => Badge.Length > 0;
-    public string EdgeText => Setup.Edge >= 0.02 ? "Beats their plan" : Setup.Edge <= -0.02 ? "Plays into their hands" : "";
+    public string EdgeText => EdgeOf(Setup, CurrentEdge);
+    /// <summary>
+    /// The card's matchup line on the one model (K2): "Beats their plan" when its edge is good; for the assistant's pick
+    /// with a poor edge, "Least-bad matchup"; "Plays into their hands" only when it's poor and worse than what's in use.
+    /// </summary>
+    public static string EdgeOf(TacticSetup s, double currentEdge) =>
+        s.Edge >= MatchupRead.PlanNotable ? "Beats their plan"
+        : s.Edge <= -MatchupRead.PlanNotable && s.Recommended ? "Least-bad matchup"
+        : s.Edge <= -MatchupRead.PlanNotable && s.Edge < currentEdge - 1e-9 ? "Plays into their hands"
+        : "";
     public bool HasEdge => EdgeText.Length > 0;
-    public Avalonia.Media.IBrush EdgeBrush => new Avalonia.Media.SolidColorBrush(Setup.Edge >= 0 ? Controls.StatChip.Good : Controls.StatChip.Bad);
+    public Avalonia.Media.IBrush EdgeBrush => new Avalonia.Media.SolidColorBrush(Setup.Edge >= 0 ? Controls.StatChip.Good : Setup.Recommended ? Controls.StatChip.Warn : Controls.StatChip.Bad);
     public Avalonia.Media.IBrush ScoreBrush => new Avalonia.Media.SolidColorBrush(Setup.Score >= 0.5 ? Controls.StatChip.Good : Setup.Score >= 0.35 ? Controls.StatChip.Warn : Controls.StatChip.Bad);
     public double ScoreWidth => Math.Max(4, Setup.Score * 150);
     public IRelayCommand ApplyCommand => new RelayCommand(() => Owner.ApplySetup(Setup));
@@ -187,6 +200,10 @@ public sealed partial class TacticsViewModel : PageViewModel
     [ObservableProperty] private string _theirAttack = "";
     [ObservableProperty] private string _ourAttackEdge = "";
     [ObservableProperty] private string _theirAttackEdge = "";
+    /// <summary>The assistant's word under the board when a side is a disadvantage (K2): why he picked it, or what he'd run.</summary>
+    [ObservableProperty] private string _boardNote = "";
+    public bool HasBoardNote => BoardNote.Length > 0;
+    partial void OnBoardNoteChanged(string value) => OnPropertyChanged(nameof(HasBoardNote));
     [ObservableProperty] private Avalonia.Media.IBrush _ourAttackBrush = Avalonia.Media.Brushes.Gray;
     [ObservableProperty] private Avalonia.Media.IBrush _theirAttackBrush = Avalonia.Media.Brushes.Gray;
     public string PaceWord => Pace < 95 ? "Slow" : Pace > 103 ? "Fast" : "Normal";
@@ -204,8 +221,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         return Avalonia.Media.Color.FromRgb((byte)(c.R + (255 - c.R) * t), (byte)(c.G + (255 - c.G) * t), (byte)(c.B + (255 - c.B) * t));
     }
 
-    private static string EdgeWords(double edge) => edge >= 0.03 ? "Big edge" : edge >= 0.015 ? "Edge" : edge <= -0.03 ? "Big disadvantage" : edge <= -0.015 ? "Disadvantage" : "Even";
-    private static Avalonia.Media.IBrush EdgeBrushOf(double edge) => new Avalonia.Media.SolidColorBrush(edge >= 0.015 ? Controls.StatChip.Good : edge <= -0.015 ? Controls.StatChip.Bad : Controls.StatChip.Muted);
+    private static string EdgeWords(double edge) => MatchupRead.Words(edge);
+    private static Avalonia.Media.IBrush EdgeBrushOf(double edge) => new Avalonia.Media.SolidColorBrush(edge >= MatchupRead.Notable ? Controls.StatChip.Good : edge <= -MatchupRead.Notable ? Controls.StatChip.Bad : Controls.StatChip.Muted);
 
     /// <summary>The diagram, the cards and the board follow the current tactic.</summary>
     private void RefreshOverhaul()
@@ -216,17 +233,21 @@ public sealed partial class TacticsViewModel : PageViewModel
         DiagramSystem = Tac.System; DiagramScheme = Tac.Scheme;
         DefenceNote = PlayBook.DefenceNote(Tac.Scheme);
         PlayLabels = TacticSetups.StartingFive(team, on).Select(p => p.LastName).ToList();
+        var read = next == null ? null : MatchupRead.Of(team, next.Opponent, on);
+        double currentEdge = read?.Edge(Tac.System, Tac.Scheme) ?? 0;
         Setups.Clear();
         foreach (var s in TacticSetups.Suggest(team, next?.Opponent, on))
-            Setups.Add(new SetupCard { Setup = s, Owner = this, Active = s.Matches(Tac) });
+            Setups.Add(new SetupCard { Setup = s, Owner = this, Active = s.Matches(Tac), CurrentEdge = currentEdge });
         Board.Clear();
         HasOpponent = next != null;
-        if (next != null)
+        BoardNote = "";
+        if (next != null && read != null)
         {
             var opp = next.Opponent;
-            var (ts, td) = CoachAi.TheirPlan(opp, team, on);
+            var (ts, td) = (read.TheirSystem, read.TheirScheme);
             BoardTitle = $"Matchup board: {team.Name} vs {opp.Name}";
-            double ours = Hardwood.Core.Engine.Tactics.Matchup(Tac.System, td), theirs = -Hardwood.Core.Engine.Tactics.Matchup(ts, Tac.Scheme);
+            double ours = read.Attack(Tac.System), theirs = read.Defence(Tac.Scheme);
+            BoardNote = BoardNoteFor(read, CoachAi.Rotation(team, on), Tac.System, Tac.Scheme);
             OurAttack = $"Your {Hardwood.Core.Model.Systems.Name(Tac.System).ToLower()} vs their {Hardwood.Core.Model.Systems.Name(td).ToLower()}";
             TheirAttack = $"Their {Hardwood.Core.Model.Systems.Name(ts).ToLower()} vs your {Hardwood.Core.Model.Systems.Name(Tac.Scheme).ToLower()}";
             OurAttackEdge = EdgeWords(ours); OurAttackBrush = EdgeBrushOf(ours);
@@ -234,6 +255,22 @@ public sealed partial class TacticsViewModel : PageViewModel
             foreach (var m in TacticSetups.Board(team, opp, on)) Board.Add(new MatchupRow { M = m });
         }
         else BoardTitle = "Matchup board: no game scheduled";
+    }
+
+    /// <summary>
+    /// The assistant's line under the board (K2): when a side of the plan in use is a disadvantage, either why he picked
+    /// it (the fit outweighs it) or what he'd run instead. Empty when neither side is a disadvantage.
+    /// </summary>
+    public static string BoardNoteFor(MatchupRead read, IReadOnlyCollection<Player> rot, OffensiveSystem system, DefensiveScheme scheme)
+    {
+        if (rot.Count == 0) return "";
+        var pickS = CoachAi.BestSystem(rot, read.TheirScheme); var pickD = CoachAi.BestScheme(rot, read.TheirSystem);
+        var lines = new List<string>();
+        if (read.Attack(system) <= -MatchupRead.Notable)
+            lines.Add(system == pickS ? read.WhySystem(system) : $"On offense your assistant would run {Hardwood.Core.Model.Systems.Name(pickS).ToLower()}.");
+        if (read.Defence(scheme) <= -MatchupRead.Notable)
+            lines.Add(scheme == pickD ? read.WhyScheme(scheme) : $"On defense your assistant would play {Hardwood.Core.Model.Systems.Name(pickD).ToLower()}.");
+        return lines.Count == 0 ? "" : "Assistant: " + string.Join(" ", lines);
     }
 
     public void ApplySetup(TacticSetup s)
@@ -253,21 +290,21 @@ public sealed partial class TacticsViewModel : PageViewModel
 
         // What the next opponent will probably run, to show each option's matchup.
         var nextOpp = Session.NextMyGame?.Opponent;
-        var theirPlan = nextOpp == null ? ((OffensiveSystem, DefensiveScheme)?)null : CoachAi.TheirPlan(nextOpp, team, Session.NextMyGame?.Date ?? Session.Today);
-        DefensiveScheme? theirScheme = theirPlan?.Item2;
-        OffensiveSystem? theirSystem = theirPlan?.Item1;
+        var optRead = nextOpp == null ? null : MatchupRead.Of(team, nextOpp, Session.NextMyGame?.Date ?? Session.Today);
+        DefensiveScheme? theirScheme = optRead?.TheirScheme;
+        OffensiveSystem? theirSystem = optRead?.TheirSystem;
         var bestSystem = CoachAi.BestSystem(rot, theirScheme);
         var bestScheme = CoachAi.BestScheme(rot, theirSystem);
         Systems.Clear();
         foreach (var s in Enum.GetValues<OffensiveSystem>())
             Systems.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(s), Description = Hardwood.Core.Model.Systems.Describe(s), Fit = Hardwood.Core.Model.Systems.Fit(s, rot), System = s,
                 Reasons = Hardwood.Core.Model.Systems.Reasons(s, rot).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
-                Matchup = theirScheme is { } ts ? Hardwood.Core.Engine.Tactics.Matchup(s, ts) : 0, Recommended = s == bestSystem });
+                Matchup = optRead?.Attack(s) ?? 0, Recommended = s == bestSystem });
         Schemes.Clear();
         foreach (var d in Enum.GetValues<DefensiveScheme>())
             Schemes.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(d), Description = Hardwood.Core.Model.Systems.Describe(d), Fit = Hardwood.Core.Model.Systems.Fit(d, rot), Scheme = d,
                 Reasons = Hardwood.Core.Model.Systems.Reasons(d, rot).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
-                Matchup = theirSystem is { } tsys ? -Hardwood.Core.Engine.Tactics.Matchup(tsys, d) : 0, Recommended = d == bestScheme });
+                Matchup = optRead?.Defence(d) ?? 0, Recommended = d == bestScheme });
         SelectedSystem = Systems.First(o => o.System == t.System);
         SelectedScheme = Schemes.First(o => o.Scheme == t.Scheme);
 
