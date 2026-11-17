@@ -81,13 +81,15 @@ public sealed record MatchupRead(OffensiveSystem TheirSystem, DefensiveScheme Th
         string sys = Systems.Name(TheirSystem).ToLower(), sch = Systems.Name(TheirScheme).ToLower();
         double a = Attack(s), f = Defence(d);
         bool aGood = a >= Notable, fGood = f >= Notable, aPoor = a <= -Notable, fPoor = f <= -Notable;
-        string whys = string.Join(" ", new[] { WhySystem(s), WhyScheme(d) }.Where(x => x.Length > 0));
+        // Kept short for the card; the board note carries the full reason (WhySystem / WhyScheme).
+        bool forFit = WhySystem(s).Contains("fit is worth more") || WhyScheme(d).Contains("fit is worth more");
+        string whys = forFit ? "Your players' fit outweighs the matchup; the board says why." : "Nothing matches up better, so this is the least-bad plan.";
         if (aGood && fGood) return head + "; this counters both.";
         if (aGood && !fPoor) return head + $"; this beats their {sch} and holds even on defense.";
         if (fGood && !aPoor) return head + $"; this stops their {sys} and holds even on offense.";
         if (aGood) return head + $"; this beats their {sch} but gives ground on defense. " + whys;
         if (fGood) return head + $"; this stops their {sys} but gives ground on offense. " + whys;
-        if (aPoor || fPoor) return head + ". The best plan for your players. " + whys;
+        if (aPoor || fPoor) return head + ". " + whys;
         return head + "; this is the best your players can do against it.";
     }
 }
