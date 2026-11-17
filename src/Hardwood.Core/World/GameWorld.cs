@@ -443,6 +443,8 @@ public sealed class GameWorld
         var s = t2.Season;
         // Tier 2's regular season must be over (its own playoffs may be running, or even finished).
         if (s.Stage == CompetitionSeason.RegularSeason || s.Series.Any(x => UsaPyramid.IsPromotion(x.Round))) return made;
+        // A bracket seeded the old way (a save from before run 102) already has its division winners in it: no playoffs.
+        if (s.Series.Any(x => x.RoundIndex == 0 && !Postseason.IsThirdPlace(x.Round))) return made;
         var order = s.Table().Select((r, i) => (r.TeamId, i)).ToDictionary(x => x.TeamId, x => x.i);
         foreach (var (conf, div) in Nabl.Teams.Select(t => (t.Conference, t.Division)).Distinct().OrderBy(x => x.Conference)
                      .ThenBy(x => Array.IndexOf(UsaPyramid.DivisionNames(x.Conference, UsaPyramid.DivisionNames(x.Conference, true).Contains(x.Division)), x.Division)).ToList())
@@ -562,6 +564,10 @@ public sealed class GameWorld
         int ri = main[0].RoundIndex;
         if (ri == p.Playoffs.Length - 1)
         {
+            // A bracket of runners-up (run 102) plays its third-place final alongside the title final: crown it first, so
+            // the trophy, the prize and the history row's third-place club all land (review, run 102).
+            if (s.Series.FirstOrDefault(x => x.Round == ThirdFinal) is { Complete: true } tf3 && s.ThirdPlaceId == null)
+                CrownThirdPlace(comp, tf3.WinnerId!.Value, tf3.LoserId!.Value);
             Crown(comp, main[0].WinnerId!.Value, main[0].LoserId!.Value);
             return true;
         }

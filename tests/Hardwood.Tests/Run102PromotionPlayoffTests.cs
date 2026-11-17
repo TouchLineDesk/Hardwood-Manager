@@ -83,6 +83,9 @@ public class Run102PromotionPlayoffTests
         world.FinishSeasons(sim);
         Assert.All(series, x => Assert.True(x.Complete));
         Assert.True(t2.Season.IsComplete);
+        // Tier 2's third-place tournament is still crowned (review, run 102), and its history row names the club.
+        Assert.NotNull(t2.Season.ThirdPlaceId);
+        Assert.NotNull(t2.History[^1].ThirdPlaceName);
         foreach (var x in series)
         {
             var games = t2.Season.Fixtures.Where(f => f.SeriesId == x.Id).OrderBy(f => f.Date).ToList();
@@ -111,6 +114,18 @@ public class Run102PromotionPlayoffTests
         Assert.All(nabl.Teams.GroupBy(t => (t.Conference, t.Division)), g => Assert.Equal(4, g.Count()));
         if (outcome.Any(o => !o.up)) Assert.Contains(news, n => n.Title.StartsWith("Staying up"));
         if (outcome.Any(o => o.up)) Assert.Contains(news, n => n.Body.Contains("promotion playoff"));
+    }
+
+    [Fact]
+    public void A_bracket_seeded_before_the_playoffs_existed_gets_none()
+    {
+        // A save from before run 102, made between tier 2's last regular-season day and the NBA's: its bracket already has the
+        // division winners in a first round, so no club is booked twice on one day (review, run 102).
+        var (nabl, world) = NewWorld(5);
+        var t2 = world[UsaPyramid.Tier2];
+        world.PlayThrough(new DateOnly(2027, 4, 12), new GameSimulator());
+        t2.Season.Series.Add(new SeriesState { Id = t2.Season.Series.Count + 1, RoundIndex = 0, Round = "First round", BestOf = 5, HighId = t2.Clubs[0].Id, LowId = t2.Clubs[1].Id });
+        Assert.Empty(world.StartPromotionPlayoffs(TopTable(nabl), new DateOnly(2027, 4, 12)));
     }
 
     [Fact]

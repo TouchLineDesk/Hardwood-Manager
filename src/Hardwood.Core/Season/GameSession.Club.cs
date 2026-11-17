@@ -258,7 +258,7 @@ public sealed partial class GameSession
     /// </summary>
     public bool AwaitingPromotionPlayoff =>
         Employed && HumanLeague is { Key: UsaPyramid.Tier2 } c && c.Season.Stage != CompetitionSeason.RegularSeason
-        && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) == null && Phase != SessionPhase.Offseason
+        && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) == null && Phase is SessionPhase.Preseason or SessionPhase.RegularSeason
         && UsaPyramid.PlaysPromotion(World, League) && UsaPyramid.WonDivision(c, HumanTeam);
 
     /// <summary>The first day of a career year: a week before the NABL opens, or before your overseas league starts if earlier.</summary>
