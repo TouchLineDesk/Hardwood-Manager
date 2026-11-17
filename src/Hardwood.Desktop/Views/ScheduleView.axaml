@@ -102,7 +102,8 @@
           <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="*" MinWidth="220"/>
           <DataGridTextColumn Header="Event" Binding="{Binding Competition}" Width="186" IsVisible="False"/>
           <!-- The result and score in one column ("W 78-66"), so the H2H column (#529) fits beside them. -->
-          <DataGridTextColumn Header="Score" Binding="{Binding ResultText}" Width="114"/>
+          <!-- Run 101: 130 fits the widest result, a three-digit multi-overtime game ("W 161-158 2OT", 119 px at 100%). -->
+          <DataGridTextColumn Header="Score" Binding="{Binding ResultText}" Width="130"/>
           <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="56"/>
           <DataGridTextColumn Header="H2H" Binding="{Binding HeadToHead}" Width="50"/>
           <DataGridTextColumn Header="Top performer" Binding="{Binding TopPerformer}" Width="*" MinWidth="200"/>
