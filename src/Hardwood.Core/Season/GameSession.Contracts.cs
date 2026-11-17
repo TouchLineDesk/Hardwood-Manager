@@ -212,6 +212,8 @@ public sealed partial class GameSession
         {
             _talks.Remove(p.Id);
             Sign(p, wage, years);
+            // H56 (run 87): a minimum deal that makes up the roster may go over the budget (above); the owner funds it.
+            if (fillsRoster) Budgets.OwnerFunds(HumanTeam, MyCommittedWages);
         }
         SaveNow();
         return reply;

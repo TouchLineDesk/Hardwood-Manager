@@ -801,6 +801,9 @@ public sealed class GameWorld
             }
         }
         Departed.Clear();
+        // H56 (run 87): the minimum deals your sporting director signed to make up your roster are the owner's to fund.
+        if (ManagedClubId is int mid && clubs.FirstOrDefault(x => x.team.Id == mid).team is { } managed)
+            Budgets.OwnerFunds(managed, ContractMarket.Payroll(managed));
         // Promotion and relegation through the USA pyramid, before next season's fixtures (decisions #78-79, #91).
         foreach (var n in UsaPyramid.Promote(this, Nabl, new StaffGenerator(new Rng(_rng.NextULong())), date)) News.Add(n);
         // Relegation releases leave gaps: those clubs sign again at their new level.
