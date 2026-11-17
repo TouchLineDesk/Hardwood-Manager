@@ -122,7 +122,7 @@ public sealed partial class SquadViewModel : PageViewModel
             new("Happy", happy.ToString(), $"of {roster.Count} players", happy >= roster.Count / 2 ? "good" : ""),
             new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody unsettled" : lowest != null ? $"lowest: {lowest.Name.Split(' ').Last()} ({lowest.Morale:0})" : "",
                 roster.Any(p => p.Morale < 35 && !p.TradeRequested) ? "bad" : unhappy > 0 ? "warn" : "good"),
-            new("Trade requests", requests.ToString(), requests == 0 ? "nobody wants out" : "want out", requests > 0 ? "bad" : "good"),
+            new(Session.InCollege ? "Thinking of transferring" : "Trade requests", requests.ToString(), requests == 0 ? "nobody wants out" : "want out", requests > 0 ? "bad" : "good"),
             new("Promises", promises.ToString(), promises == 0 ? "none outstanding" : "you must keep them", promises > 0 ? "info" : ""),
         };
     }
