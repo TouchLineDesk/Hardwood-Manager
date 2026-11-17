@@ -38,6 +38,12 @@ public static class RealColleges
     /// <summary>A real program's home state by its school name, or null for any other name.</summary>
     public static string? StateOf(string school) => _states.Value.TryGetValue(school, out var s) ? s : null;
 
+    private static readonly Lazy<Dictionary<string, string>> _arenas = new(() =>
+        Programs.Where(p => !string.IsNullOrWhiteSpace(p.Arena)).ToDictionary(p => p.School, p => p.Arena, StringComparer.Ordinal));
+
+    /// <summary>A real program's home arena by its school name (C5 part 2), or null.</summary>
+    public static string? ArenaOf(string school) => _arenas.Value.TryGetValue(school, out var a) ? a : null;
+
     /// <summary>
     /// Starting prestige from real standing: the conference it plays in today, its NCAA tournament history (appearances,
     /// Final Fours, titles) and its recent record (appearances 2016-2026). Soft-capped near the top, so the blue bloods sit

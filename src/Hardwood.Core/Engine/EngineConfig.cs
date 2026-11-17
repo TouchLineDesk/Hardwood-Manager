@@ -144,9 +144,10 @@ public sealed class EngineConfig
     /// <summary>The settings a game under these rules plays with: talent scaled, and no home edge on a neutral court.</summary>
     public EngineConfig For(Model.Rules rules)
     {
-        if (rules.TalentScale == 1.0 && !rules.NeutralSite) return this;
+        if (rules.TalentScale == 1.0 && !rules.NeutralSite && rules.HomeScale == 1.0) return this;
         var c = rules.TalentScale == 1.0 ? (EngineConfig)MemberwiseClone() : ForTalentScale(rules.TalentScale);
         if (rules.NeutralSite) c.HomeLogit = 0;
+        else c.HomeLogit *= rules.HomeScale; // C5 part 2: a college arena's home court
         return c;
     }
 }

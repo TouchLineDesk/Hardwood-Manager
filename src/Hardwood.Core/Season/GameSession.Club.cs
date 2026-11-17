@@ -16,6 +16,8 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
     public int? OurRank { get; init; }
     /// <summary>College (C5 part 1): the rivalry this game belongs to, if any.</summary>
     public College.Rivalry? Rivalry { get; init; }
+    /// <summary>College (C5 part 2): an event on a neutral court (no home edge).</summary>
+    public bool Neutral { get; init; }
     /// <summary>Its Schedule &amp; Results filter (#529): the season's part, the tournament's name, or the playoffs (<see cref="ScheduleFilter"/>).</summary>
     public string Group { get; init; } = ScheduleFilter.Regular;
     /// <summary>H8 (run 65): a played game you didn't coach: from before you took this job (a move in the summer or
@@ -186,6 +188,7 @@ public sealed partial class GameSession
                     OurRank = g.Played ? (home ? g.HomeRank : g.AwayRank) : cw.Rank(us.Id),
                     Group = ScheduleFilter.CollegeGroup(g.Event, g.Stage),
                     Rivalry = cw.RivalryOf(us.Id, opp.Id),
+                    Neutral = g.Event != null,
                     NotCoached = g.Played && r == null && (g.Date <= Job.HiredOn || !Job.Employed),
                 });
             }
@@ -264,9 +267,9 @@ public sealed partial class GameSession
             if (live)
             {
                 _liveCollege = cg;
-                return _sim.StartLive(h, a, College.CollegeWorld.RulesFor(cg), _rng.NextULong(), Today);
+                return _sim.StartLive(h, a, cw.GameRules(cg), _rng.NextULong(), Today);
             }
-            var cr = _sim.Simulate(h, a, College.CollegeWorld.RulesFor(cg), _rng.NextULong(), keepLog: true, date: Today);
+            var cr = _sim.Simulate(h, a, cw.GameRules(cg), _rng.NextULong(), keepLog: true, date: Today);
             RecordCollege(cg, cr);
             played.Add(cr);
             return null;
