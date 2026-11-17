@@ -501,7 +501,9 @@ public static class Board
         }
         if (season.ChampionId == teamId) return SeasonGoal.Title;
         if (season.RunnerUpId == teamId) return SeasonGoal.Finals;
-        var mine = season.Series.Where(x => x.HighId == teamId || x.LowId == teamId).ToList();
+        // A promotion playoff (run 102) isn't a round of the league's own playoffs: a division winner who played one is judged
+        // on winning the division (the caller's credit), not as a playoff team.
+        var mine = season.Series.Where(x => (x.HighId == teamId || x.LowId == teamId) && !World.UsaPyramid.IsPromotion(x.Round)).ToList();
         if (mine.Count == 0) return SeasonGoal.Develop;
         // The third-place tournament (D36) stands where the play-in did.
         var main = mine.Where(x => !Season.Postseason.IsThirdPlace(x.Round)).ToList();

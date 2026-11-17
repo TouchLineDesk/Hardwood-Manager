@@ -536,10 +536,17 @@ public sealed partial class GameSession
             bool sameDivision = them.Division == us.Division && them.Conference == us.Conference;
             if (sameDivision) show.ImpactLines.Add(new(big, "A division game: it counts twice. You win, you take one from the team you're chasing."));
             int gamesLeft = Schedule.Count(g => (g.Home == us || g.Away == us) && !Results.ContainsKey(g.Index));
+            // Run 102 (Danny, Nov 17): between the top league and tier 2, fourth and the tier-2 winner play a promotion playoff.
+            bool playoff = UsaPyramid.PlaysPromotion(World, League);
+            string tier2 = World.Competitions.FirstOrDefault(c => c.Key == UsaPyramid.Tier2)?.Profile.Name ?? "the tier below";
             if (InNabl && zNow == "Relegation" && gamesLeft > 0)
-                show.ImpactLines.Add(new(host, $"Fourth in the division means the drop to the G League. {gamesLeft} games left to climb out."));
+                show.ImpactLines.Add(new(host, playoff
+                    ? $"Fourth in the division means a best-of-three promotion playoff against the {tier2}'s {us.Division} winner, with your place on the line. {gamesLeft} games left to climb out."
+                    : $"Fourth in the division means the drop to the G League. {gamesLeft} games left to climb out."));
             else if (zNow == "Promotion")
-                show.ImpactLines.Add(new(host, "First place in the division goes up a tier at the end of the season. Every game matters."));
+                show.ImpactLines.Add(new(host, playoff && HumanLeague?.Key == UsaPyramid.Tier2
+                    ? $"First place in the division earns a best-of-three promotion playoff against the {Hardwood.Core.Names.Brand.Top}'s last club in the {us.Division}. Every game matters."
+                    : "First place in the division goes up a tier at the end of the season. Every game matters."));
         }
         else
         {

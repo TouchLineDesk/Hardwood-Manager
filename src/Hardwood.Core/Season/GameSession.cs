@@ -310,7 +310,9 @@ public sealed partial class GameSession
     public bool HumanPlaysToday =>
         Abroad ? Employed && Phase != SessionPhase.Offseason && (InCollege ? World.College!.GameOn(HumanTeam.Id, Today) != null : World.GameOn(HumanTeam.Id, Today) != null) :
         Employed && (Phase == SessionPhase.RegularSeason || (Phase == SessionPhase.Preseason && Today >= OpeningNight)) && GamesOn(Today).Any(g => g.Home == HumanTeam || g.Away == HumanTeam)
-        || (Employed && Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam));
+        || (Employed && Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam))
+        // A promotion playoff (run 102): the top league's 4th-placed club plays it in tier 2's fixtures.
+        || (Employed && Phase == SessionPhase.Postseason && World.GameOn(HumanTeam.Id, Today) != null);
 
     /// <summary>
     /// Start today with the human game held back as a <see cref="GameSimulator.LiveGame"/>. Everyone else's games are played.
@@ -509,15 +511,18 @@ public sealed partial class GameSession
             {
                 Phase = SessionPhase.Postseason;
                 Postseason = new Postseason(League, Standings);
+                var promotion = World.StartPromotionPlayoffs(Standings, Today);
                 if (InNabl && Postseason.DivisionFormat)
                 {
                     var rec = Standings[HumanTeam];
                     int place = Standings.Conference(HumanTeam.Conference).Where(r => r.Team.Division == HumanTeam.Division).ToList().FindIndex(r => r.Team == HumanTeam) + 1;
                     int seed = Postseason.DivisionSeeds(Standings, HumanTeam.Conference).IndexOf(HumanTeam) + 1;
+                    var ourPromo = promotion.FirstOrDefault(x => x.Top == HumanTeam);
                     Post("Regular season complete",
                         $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(place)} in the {HumanTeam.Conference} · {HumanTeam.Division}. " +
                         (seed > 0 ? $"You are in the playoffs as the {HumanTeam.Conference}'s {Ordinal(seed)} seed."
                          : place == 3 ? $"You play in the {Postseason.ThirdPlaceName} with the other seven third-placed teams."
+                         : ourPromo.Challenger != null ? $"You play the promotion playoff against {ourPromo.Challenger.FullName}, the {HumanTeam.Division} winners in {World[UsaPyramid.Tier2].Profile.Name}: best of three, Games 1 and 3 at their place. Win it and you stay up; lose it and you go down at the end of the summer."
                          : "Your season is over."), "League");
                 }
                 else if (InNabl)
@@ -528,6 +533,7 @@ public sealed partial class GameSession
                         $"You finished {rec.Wins}-{rec.Losses}, {Ordinal(seed)} in the {HumanTeam.Conference}. " +
                         (seed <= 6 ? "You are in the playoffs." : seed <= 10 ? "You are in the play-in." : (League.Finance.OpenMarket ? "Your season is over." : "Your season is over; the lottery awaits.")), "League");
                 }
+                PostPromotionPlayoffs(promotion);
             }
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
@@ -711,6 +717,8 @@ public sealed partial class GameSession
             Post(Boss(title), Boss(body), "Board");
             if (RelegationTiebreak() is { } tie)
                 Post("Relegated on a tiebreak", tie + " The last club in each division goes down at the end of the summer; clubs level on record are split by point difference.", "Board");
+            if (InNabl && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { Complete: true } ps && ps.LoserId == HumanTeam.Id && FindTeam(ps.WinnerId!.Value) is { } beat)
+                Post("Relegated", $"{beat.FullName} beat you {ps.Score} in the promotion playoff. You go down to {World[UsaPyramid.Tier2].Profile.Name} at the end of the summer.", "Board");
             if (sacked) Fire();
             else overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
         }
@@ -719,6 +727,21 @@ public sealed partial class GameSession
         // The career path (#651): college programs change coaches too, then bigger clubs may come for you.
         CollegeCoachingChanges();
         CareerApproaches(overachieved);
+    }
+
+    /// <summary>The promotion playoffs have started (run 102): your own pairing goes to the inbox, the rest to the digest.</summary>
+    private void PostPromotionPlayoffs(List<(Team Top, Team Challenger)> pairs)
+    {
+        if (pairs.Count == 0) return;
+        string tier2 = World[UsaPyramid.Tier2].Profile.Name;
+        string list = string.Join("\n", pairs.Select(x => $"{x.Challenger.FullName} ({tier2}) vs {x.Top.FullName}"));
+        string body = $"The last club in each {Hardwood.Core.Names.Brand.Top} division plays the winner of the same division in {tier2}, best of three, "
+            + "the challenger at home in Games 1 and 3. The winner plays in the " + Hardwood.Core.Names.Brand.Top + $" next season.\n\n{list}";
+        var ours = pairs.FirstOrDefault(x => x.Challenger == HumanTeam);
+        if (ours.Top != null)
+            Post("Promotion playoff", $"You won the {HumanTeam.Division} and play {ours.Top.FullName} for a place in the {Hardwood.Core.Names.Brand.Top}: best of three, Games 1 and 3 at home. Win it and you go up at the end of the summer.\n\n{body}", "League");
+        else if (pairs.Any(x => x.Top == HumanTeam)) Post("Promotion playoffs begin", body, "League");
+        else PostWorld("Promotion playoffs begin", body);
     }
 
     /// <summary>
@@ -731,6 +754,8 @@ public sealed partial class GameSession
         if (InNabl)
         {
             if (!Postseason.UsesDivisions(League) || World.Competitions.All(c => c.Key != UsaPyramid.Tier2)) return false;
+            // The promotion playoff decides it (run 102): down only if you lost it.
+            if (UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { } ps) return ps.Complete && ps.LoserId == HumanTeam.Id;
             var div = League.Teams.Where(t => t.Conference == HumanTeam.Conference && t.Division == HumanTeam.Division).ToList();
             if (div.Count < 2) return false;
             // H33 (run 82): the same order as the Standings page and the summer's relegation (win %, then point difference).
@@ -752,6 +777,7 @@ public sealed partial class GameSession
     public string? RelegationTiebreak()
     {
         if (!GoingDown()) return null;
+        if (InNabl && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) != null) return null;   // the playoff decided it, not the tie
         List<(string Name, int W, int L, int Diff)> rows;
         if (InNabl)
             rows = Standings.All().Where(r => r.Team.Conference == HumanTeam.Conference && r.Team.Division == HumanTeam.Division)

@@ -245,7 +245,7 @@ public sealed class LeagueBook
         var w = s.World;
         var p = c.Profile;
         var se = c.Season;
-        Team T(int id) => w.TeamById(id)!;
+        Team T(int id) => w.FixtureTeam(id)!;   // a promotion playoff's top-league club too (run 102)
         var teams = se.Participants.Select(id => w.TeamById(id)).OfType<Team>().ToList();
         int playoffTeams = p.Playoffs.Length > 0 ? p.Playoffs[0].Teams : 0;
         bool pyramid = UsaPyramid.IsPyramid(p.Key);
@@ -290,7 +290,7 @@ public sealed class LeagueBook
                 kv.Value.Stl, kv.Value.Blk, kv.Value.Fgm, kv.Value.Fga, kv.Value.Tpm, kv.Value.Tpa)).ToList(),
             Series = () => se.Series.Select(x => $"{x.Round}: {T(x.HighId).Abbreviation} {x.HighWins}-{x.LowWins} {T(x.LowId).Abbreviation}"
                 + (x.Complete ? $" ({T(x.WinnerId!.Value).Abbreviation} win)" : "")).ToList(),
-            Bracket = () => se.Series.OrderBy(x => x.Id).Select(x => new BookSeries(x.Round, T(x.HighId), T(x.LowId), x.HighWins, x.LowWins,
+            Bracket = () => se.Series.Where(x => !UsaPyramid.IsPromotion(x.Round)).OrderBy(x => x.Id).Select(x => new BookSeries(x.Round, T(x.HighId), T(x.LowId), x.HighWins, x.LowWins,
                 x.WinnerId is { } wid ? T(wid) : null, Postseason.IsThirdPlace(x.Round))).ToList(),
             ChampionRows = () => c.History.AsEnumerable().Reverse().Select(h =>
             {

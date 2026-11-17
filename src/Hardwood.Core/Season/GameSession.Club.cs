@@ -167,6 +167,16 @@ public sealed partial class GameSession
                 list.Add(new MyGame(r.Date ?? Today, home ? r.Away.Team : r.Home.Team, home, League.Name, se.Round,
                     home ? r.Home.Points : r.Away.Points, home ? r.Away.Points : r.Home.Points, r) { Group = ScheduleFilter.ProGroup(League.Name, se.Round, League.Name) });
             }
+            // A promotion playoff (run 102) is in tier 2's fixtures.
+            foreach (var (comp, f) in World.FixturesOf(us.Id))
+            {
+                bool home = f.HomeId == us.Id;
+                if (World.FixtureTeam(home ? f.AwayId : f.HomeId) is not { } opp) continue;
+                AbroadResults.TryGetValue(Key(comp, f), out var r);
+                list.Add(new MyGame(f.Date, opp, home, comp.Profile.Name, f.Stage,
+                    f.Played ? (home ? f.HomePts : f.AwayPts) : null, f.Played ? (home ? f.AwayPts : f.HomePts) : null, r)
+                    { Group = ScheduleFilter.ProGroup(comp.Profile.Name, f.Stage, HumanLeagueName) });
+            }
             return list.OrderBy(g => g.Date).ToList();
         }
         if (InCollege)
@@ -200,7 +210,7 @@ public sealed partial class GameSession
         foreach (var (comp, f) in World.FixturesOf(us.Id))
         {
             bool home = f.HomeId == us.Id;
-            var opp = World.TeamById(home ? f.AwayId : f.HomeId);
+            var opp = World.FixtureTeam(home ? f.AwayId : f.HomeId);
             if (opp == null) continue;
             AbroadResults.TryGetValue(Key(comp, f), out var r);
             list.Add(new MyGame(f.Date, opp, home, comp.Profile.Name, f.Stage,
@@ -239,7 +249,17 @@ public sealed partial class GameSession
         InNabl || !Employed
         || (InCollege ? World.College!.Season.ChampionId != null
             : World.FixturesOf(HumanTeam.Id).All(x => x.fixture.Played)
-              && !World.Playing.Any(c => c.Season.Series.Any(s => !s.Complete && (s.HighId == HumanTeam.Id || s.LowId == HumanTeam.Id))));
+              && !World.Playing.Any(c => c.Season.Series.Any(s => !s.Complete && (s.HighId == HumanTeam.Id || s.LowId == HumanTeam.Id)))
+              && !AwaitingPromotionPlayoff);
+
+    /// <summary>
+    /// Run 102: your tier-2 club won its division and waits for the top league's regular season to end, when its promotion
+    /// playoff starts. Its season isn't over.
+    /// </summary>
+    public bool AwaitingPromotionPlayoff =>
+        Employed && HumanLeague is { Key: UsaPyramid.Tier2 } c && c.Season.Stage != CompetitionSeason.RegularSeason
+        && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) == null && Phase != SessionPhase.Offseason
+        && UsaPyramid.PlaysPromotion(World, League) && UsaPyramid.WonDivision(c, HumanTeam);
 
     /// <summary>The first day of a career year: a week before the NABL opens, or before your overseas league starts if earlier.</summary>
     public DateOnly CareerYearStart()
@@ -277,8 +297,9 @@ public sealed partial class GameSession
             played.Add(cr);
             return null;
         }
-        if (!Employed || InNabl || World.GameOn(HumanTeam.Id, Today) is not { } g) return null;
-        var home = World.TeamById(g.fixture.HomeId)!; var away = World.TeamById(g.fixture.AwayId)!;
+        // A top-league club plays only a promotion playoff here (run 102).
+        if (!Employed || World.GameOn(HumanTeam.Id, Today) is not { } g) return null;
+        var home = World.FixtureTeam(g.fixture.HomeId)!; var away = World.FixtureTeam(g.fixture.AwayId)!;
         if (live)
         {
             _liveWorld = g;

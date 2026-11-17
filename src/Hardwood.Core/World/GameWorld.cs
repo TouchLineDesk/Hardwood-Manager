@@ -64,6 +64,9 @@ public sealed class GameWorld
     public IEnumerable<Team> Clubs => Competitions.SelectMany(c => c.Clubs);
     public IEnumerable<Player> Players => Clubs.SelectMany(t => t.Roster);
     public Team? TeamById(int id) => _teams.GetValueOrDefault(id);
+    /// <summary>A club in any fixture: the world's, or a top-league club playing a promotion playoff (run 102). Top-league
+    /// clubs stay out of <see cref="TeamById"/>, which callers read as "a club abroad".</summary>
+    public Team? FixtureTeam(int id) => _teams.GetValueOrDefault(id) ?? Nabl.Teams.FirstOrDefault(t => t.Id == id);
     /// <summary>The domestic league (or guest pool) a club belongs to.</summary>
     public WorldCompetition HomeOf(Team t) => Competitions.First(c => c.Clubs.Contains(t));
 
@@ -88,7 +91,8 @@ public sealed class GameWorld
     public void Record(WorldCompetition comp, Fixture f, GameResult r)
     {
         f.HomePts = r.Home.Points; f.AwayPts = r.Away.Points;
-        AddLines(comp.Season.Stats, r);
+        // A promotion playoff's lines stay out of tier 2's stats (a top-league club's players aren't tier 2's).
+        if (!UsaPyramid.IsPromotion(f.Stage)) AddLines(comp.Season.Stats, r);
         AfterResult(comp, f);
     }
 
@@ -363,7 +367,8 @@ public sealed class GameWorld
     private void PlayCompetition(WorldCompetition comp, DateOnly until, GameSimulator sim)
     {
         var s = comp.Season;
-        while (!s.IsComplete)
+        // A promotion playoff can outlast tier 2's own final (run 102): its games are still played.
+        while (!s.IsComplete || PromotionPending(s))
         {
             var next = s.Fixtures.Where(f => !f.Played).OrderBy(f => f.Date).FirstOrDefault();
             if (next == null || next.Date > until)
@@ -378,8 +383,8 @@ public sealed class GameWorld
 
     private void Play(WorldCompetition comp, Fixture f, GameSimulator sim)
     {
-        var home = _teams[f.HomeId]; var away = _teams[f.AwayId];
-        var stats = comp.Season.Stats;
+        var home = FixtureTeam(f.HomeId)!; var away = FixtureTeam(f.AwayId)!;
+        var stats = UsaPyramid.IsPromotion(f.Stage) ? new Dictionary<int, StatLine>() : comp.Season.Stats;
         if (comp.FullSim)
         {
             var r = sim.Simulate(home, away, comp.Profile.Rules, _rng.NextULong(), false, f.Date);
@@ -405,13 +410,51 @@ public sealed class GameWorld
         }
     }
 
-    private static void AfterResult(WorldCompetition comp, Fixture f)
+    private static bool PromotionPending(CompetitionSeason s) => s.Series.Any(x => UsaPyramid.IsPromotion(x.Round) && !x.Complete);
+
+    private void AfterResult(WorldCompetition comp, Fixture f)
     {
         if (f.SeriesId is { } sid)
         {
             var series = comp.Season.Series.First(x => x.Id == sid);
             if (f.WinnerId == series.HighId) series.HighWins++; else series.LowWins++;
+            if (UsaPyramid.IsPromotion(series.Round) && series.Complete && FixtureTeam(series.WinnerId!.Value) is { } w && FixtureTeam(series.LoserId!.Value) is { } l)
+            {
+                string top = Hardwood.Core.Names.Brand.Top;
+                bool up = series.WinnerId == series.HighId;
+                News.Add(up
+                    ? ($"Promotion playoff: {w.FullName} beat {l.FullName}", $"{w.FullName} beat {l.FullName} {series.Score} and will play in the {top} next season; {l.FullName} drop into {comp.Profile.Name} at the end of the summer.")
+                    : ($"Promotion playoff: {w.FullName} stay up", $"{w.FullName} beat {l.FullName} {series.Score} and keep their place in the {top}; {l.FullName} stay in {comp.Profile.Name}."));
+            }
         }
+    }
+
+    /// <summary>
+    /// Start the promotion playoffs (run 102, <see cref="UsaPyramid.PlaysPromotion"/>) once both regular seasons are over: in
+    /// each division, the top league's last club against the paired tier-2 division's winner, best of three, the tier-2 club
+    /// at home in Games 1 and 3. Game 1 is on the next playoff day after <paramref name="today"/>. Does nothing if they've
+    /// started, don't apply, or tier 2 is still in its regular season. Returns the pairings (top-league club, challenger).
+    /// </summary>
+    public List<(Team Top, Team Challenger)> StartPromotionPlayoffs(Season.Standings topTable, DateOnly today)
+    {
+        var made = new List<(Team, Team)>();
+        if (!UsaPyramid.PlaysPromotion(this, Nabl)) return made;
+        var t2 = this[UsaPyramid.Tier2];
+        var s = t2.Season;
+        // Tier 2's regular season must be over (its own playoffs may be running, or even finished).
+        if (s.Stage == CompetitionSeason.RegularSeason || s.Series.Any(x => UsaPyramid.IsPromotion(x.Round))) return made;
+        var order = s.Table().Select((r, i) => (r.TeamId, i)).ToDictionary(x => x.TeamId, x => x.i);
+        foreach (var (conf, div) in Nabl.Teams.Select(t => (t.Conference, t.Division)).Distinct().OrderBy(x => x.Conference)
+                     .ThenBy(x => Array.IndexOf(UsaPyramid.DivisionNames(x.Conference, UsaPyramid.DivisionNames(x.Conference, true).Contains(x.Division)), x.Division)).ToList())
+        {
+            var last = topTable.Conference(conf).Where(r => r.Team.Division == div).Select(r => r.Team).LastOrDefault();
+            var winner = t2.Clubs.Where(t => t.Conference == conf && t.Division == div).OrderBy(t => order.GetValueOrDefault(t.Id, int.MaxValue)).ThenBy(t => t.Id).FirstOrDefault();
+            if (last == null || winner == null) continue;
+            s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = UsaPyramid.PromotionRound, BestOf = UsaPyramid.PromotionBestOf, HighId = winner.Id, LowId = last.Id });
+            made.Add((last, winner));
+        }
+        ScheduleNextGames(t2, notBefore: today.AddDays(1));
+        return made;
     }
 
     /// <summary>Move the competition forward when nothing is left to play: seed the playoffs, add the next game of each series, or crown a champion.</summary>
@@ -420,6 +463,12 @@ public sealed class GameWorld
         var s = comp.Season;
         var p = comp.Profile;
         if (s.Fixtures.Any(f => !f.Played)) return false;
+        if (s.IsComplete)
+        {
+            if (!PromotionPending(s)) return false;
+            ScheduleNextGames(comp);
+            return true;
+        }
         // A league with fewer than two clubs has nothing to play and no champion (review #11: a drained local league crashed here).
         if (s.Stage == CompetitionSeason.RegularSeason && s.Participants.Count < 2) { s.Stage = CompetitionSeason.Complete; return true; }
 
@@ -477,22 +526,28 @@ public sealed class GameWorld
         {
             var table = s.Table();
             var clubs = s.Participants.Select(id => _teams[id]).ToList();
-            if (UsaPyramid.DivisionField(p.Key, clubs, table) is not { } field)
+            // Run 102: tier 2's division winners play the promotion playoffs instead (Danny: the runners-up play for the title).
+            bool winnersOut = p.Key == UsaPyramid.Tier2 && UsaPyramid.PlaysPromotion(this, Nabl);
+            if (UsaPyramid.DivisionField(p.Key, clubs, table, winnersOut) is not { } field)
             {
                 Crown(comp, table[0].TeamId, table[1].TeamId);   // not (yet) four divisions of four: the table decides
                 return true;
             }
-            var first = p.Playoffs[0];
+            // Four seeds a conference start a round later (1v4, 2v3), eight start at the first round.
+            int startRi = winnersOut ? 1 : 0;
+            var first = p.Playoffs[startRi];
+            var pairs = winnersOut ? new[] { (0, 3), (1, 2) } : new[] { (0, 7), (3, 4), (2, 5), (1, 6) };
             foreach (var seeds in new[] { field.East, field.West })
-                foreach (var (a, b) in new[] { (0, 7), (3, 4), (2, 5), (1, 6) })
-                    s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = first.Name, BestOf = first.BestOf, HighId = seeds[a], LowId = seeds[b] });
+                foreach (var (a, b) in pairs)
+                    s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = startRi, Round = first.Name, BestOf = first.BestOf, HighId = seeds[a], LowId = seeds[b] });
             foreach (var (a, b) in new[] { (0, 7), (3, 4), (2, 5), (1, 6) })
                 s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = ThirdQuarters, BestOf = 3, HighId = field.Thirds[a], LowId = field.Thirds[b] });
             s.Stage = first.Name;
             ScheduleNextGames(comp);
             return true;
         }
-        if (s.Series.Any(x => !x.Complete)) { ScheduleNextGames(comp); return true; }
+        // The promotion playoffs run alongside and don't hold up the title bracket (run 102).
+        if (s.Series.Any(x => !x.Complete && !UsaPyramid.IsPromotion(x.Round))) { ScheduleNextGames(comp); return true; }
 
         var tableIds = s.Table().Select(r => r.TeamId).ToList();
         int Seed(int id) { int i = tableIds.IndexOf(id); return i < 0 ? int.MaxValue : i; }
@@ -513,12 +568,15 @@ public sealed class GameWorld
         var next = p.Playoffs[ri + 1];
         for (int i = 0; i + 1 < main.Count; i += 2) s.Series.Add(Pair(main[i], main[i + 1], ri + 1, next.Name, next.BestOf));
 
-        // The third-place bracket: quarter-finals, semi-finals, final, alongside the first three rounds.
-        string? thirdFrom = ri == 0 ? ThirdQuarters : ri == 1 ? ThirdSemis : null;
+        // The third-place bracket: quarter-finals, semi-finals, final, alongside the first three rounds the title bracket plays
+        // (counted from its first: a bracket of runners-up starts at the conference semi-finals, run 102).
+        int firstRi = s.Series.Where(x => !Postseason.IsThirdPlace(x.Round) && !UsaPyramid.IsPromotion(x.Round)).Min(x => x.RoundIndex);
+        int step = ri - firstRi;
+        string? thirdFrom = step == 0 ? ThirdQuarters : step == 1 ? ThirdSemis : null;
         if (thirdFrom != null)
         {
             var done = s.Series.Where(x => x.Round == thirdFrom).ToList();
-            string to = ri == 0 ? ThirdSemis : ThirdFinal;
+            string to = step == 0 ? ThirdSemis : ThirdFinal;
             for (int i = 0; i + 1 < done.Count; i += 2) s.Series.Add(Pair(done[i], done[i + 1], ri + 1, to, 3));
         }
         else if (s.Series.FirstOrDefault(x => x.Round == ThirdFinal) is { Complete: true } tf && s.ThirdPlaceId == null)
@@ -542,12 +600,13 @@ public sealed class GameWorld
     }
 
     /// <summary>Add the next game for every series in the current round that needs one.</summary>
-    private void ScheduleNextGames(WorldCompetition comp)
+    private void ScheduleNextGames(WorldCompetition comp, DateOnly? notBefore = null)
     {
         var s = comp.Season;
         var p = comp.Profile;
         var lastPlayed = s.Fixtures.Where(f => f.Played).Select(f => f.Date).DefaultIfEmpty(new DateOnly(s.Year, p.Start.Month, p.Start.Day)).Max();
-        foreach (var series in s.Series.Where(x => (x.Round == s.Stage || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round))) && !x.Complete))
+        if (notBefore is { } nb && lastPlayed < nb.AddDays(-1)) lastPlayed = nb.AddDays(-1);
+        foreach (var series in s.Series.Where(x => (x.Round == s.Stage || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round)) || UsaPyramid.IsPromotion(x.Round)) && !x.Complete))
         {
             if (s.Fixtures.Any(f => f.SeriesId == series.Id && !f.Played)) continue;
             int gameNo = series.HighWins + series.LowWins + 1;
