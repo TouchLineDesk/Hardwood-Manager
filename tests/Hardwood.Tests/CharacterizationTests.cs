@@ -116,9 +116,10 @@ public class CharacterizationTests
     }
 
     [Theory]
-    // Run 101 (H78): the schedule's dates changed (was 296945 / 296650); the champion and the league's scoring didn't move.
+    // Run 101 (H78): the schedule's dates changed (was 296945 / 296650, OKC both); scoring moved under 0.2%, and seed 77's
+    // title now goes to Detroit (a different playoff draw, not a strength change).
     [InlineData(2026UL, "OKC", 296382L)]
-    [InlineData(77UL, "OKC", 296763L)]
+    [InlineData(77UL, "DET", 296763L)]
     public void The_bench_season_matches_the_baseline(ulong seed, string champion, long expected)
     {
         var (league, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);

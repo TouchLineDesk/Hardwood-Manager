@@ -112,7 +112,9 @@ public static class ScheduleBuilder
     {
         var schedule = new List<ScheduledGame>();
         var remaining = new List<(Team home, Team away)>(pairs);
-        var last = opening.AddDays(SeasonDays - 1);
+        // Apr 12 of the next year (the 174th day from Oct 21, or the 175th across a Feb 29); an unusual opening keeps 174 days.
+        var last = new DateOnly(opening.Year + 1, 4, 12);
+        if (last.DayNumber - opening.DayNumber < 150) last = opening.AddDays(SeasonDays - 1);
         var left = teams.ToDictionary(t => t.Id, _ => 0);
         foreach (var (h, a) in pairs) { left[h.Id]++; left[a.Id]++; }
         var played = teams.ToDictionary(t => t.Id, _ => new List<int>());   // day numbers, ascending
@@ -178,7 +180,7 @@ public static class ScheduleBuilder
                 if (backToBacks[id] >= BackToBackCap) return false;
                 // Pass 0 takes a back-to-back while the team is behind the real league's pace (about 14 in 82 games), so
                 // they are spread through the season instead of piling up where the slate is full; pass 1 fills the day.
-                return pass == 1 || backToBacks[id] < BackToBackPace * n / 82.0;
+                return pass == 1 || backToBacks[id] < BackToBackPace * n / (double)(n + left[id]);
             }
         }
         return schedule;

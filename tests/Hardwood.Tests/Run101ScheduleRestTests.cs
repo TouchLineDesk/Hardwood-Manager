@@ -30,6 +30,7 @@ public class Run101ScheduleRestTests
             yield return ("NBA layout", Shape(new[] { 5, 5, 5 }, new[] { 5, 5, 5 }), seed);
             yield return ("D33's 32", Shape(new[] { 4, 4, 4, 4 }, new[] { 4, 4, 4, 4 }), seed);
             yield return ("real 30", RealCheck.Build(seed), seed);
+            yield return ("31, uneven", Shape(new[] { 5, 5, 5 }, new[] { 5, 5, 6 }), seed);
         }
     }
 
@@ -77,6 +78,31 @@ public class Run101ScheduleRestTests
             // Every team plays in the season's last week (it ends together, not with a straggler's tail).
             var lastWeek = s.Where(g => g.Date > new DateOnly(2027, 4, 5)).SelectMany(g => new[] { g.Home, g.Away }).ToHashSet();
             Assert.Equal(league.Teams.Count, lastWeek.Count);
+        }
+    }
+
+    [Fact]
+    public void Every_career_season_keeps_the_rules_and_ends_on_Apr_12()
+    {
+        // Oct 21 falls on a different weekday each year, so the week's heavy and light nights move (review, run 101);
+        // 2027-28 and 2031-32 cross a Feb 29.
+        for (int year = 2027; year <= 2033; year++)
+        {
+            var league = Shape(new[] { 4, 4, 4, 4 }, new[] { 4, 4, 4, 4 });
+            var opening = new DateOnly(year, 10, 21);
+            var s = ScheduleBuilder.Build(league, opening, new Rng((ulong)year));
+            Assert.Equal(new DateOnly(year + 1, 4, 12), s.Max(g => g.Date));
+            var counts = new List<int>();
+            foreach (var t in league.Teams)
+            {
+                var d = Days(s, t);
+                Assert.Equal(82, d.Count);
+                for (int i = 2; i < d.Count; i++) Assert.NotEqual(2, d[i] - d[i - 2]);
+                for (int i = 3; i < d.Count; i++) Assert.True(d[i] - d[i - 3] >= 5);
+                counts.Add(Enumerable.Range(1, d.Count - 1).Count(i => d[i] - d[i - 1] == 1));
+            }
+            Assert.InRange(counts.Average(), 11.0, 16.0);
+            Assert.True(counts.Max() <= ScheduleBuilder.BackToBackCap, $"{year}: {counts.Max()} back-to-backs");
         }
     }
 
