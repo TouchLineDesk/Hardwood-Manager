@@ -105,9 +105,11 @@ public class WorldTests
         var aus = world[Competitions.Australia];
         Assert.True(aus.FullSim);
         Assert.True(aus.Season.IsComplete);
-        // Engine lines carry three-point attempts; the quick model doesn't.
+        // Engine lines carry three-point attempts. Since H63 (run 91) the quick model records them too, so the
+        // quick-simmed league is told apart by its flag.
         Assert.Contains(aus.Season.Stats.Values, l => l.Tpa > 0);
-        Assert.DoesNotContain(world[Competitions.China].Season.Stats.Values, l => l.Tpa > 0);
+        Assert.False(world[Competitions.China].FullSim);
+        Assert.Contains(world[Competitions.China].Season.Stats.Values, l => l.Tpa > 0 && l.Stl > 0);
     }
 
     [Fact]
