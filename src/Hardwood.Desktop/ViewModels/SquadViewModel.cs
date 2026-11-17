@@ -155,7 +155,7 @@ public sealed partial class SquadViewModel : PageViewModel
                 Team = team,
                 Today = Session.Today,
                 MainReason = worst.reason != null && worst.effect < 0 ? worst.reason : "",
-                Status = p.TradeRequested ? "Wants a trade" : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min") : "",
+                Status = p.TradeRequested ? (Session.InCollege ? "Thinking of transferring" : "Wants a trade") : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min") : "",
             });
         }
         Lanes.Clear();
@@ -198,12 +198,12 @@ public sealed partial class SquadViewModel : PageViewModel
         if (p == null) { PlayerHeadline = ""; PlayerScore = ""; return; }
         Session.MyStats.TryGetValue(p.Id, out var st);
         // Bug list #14: the score is its own unwrapped text, so "(61/100)" never breaks mid-number in the narrow panel.
-        PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested ? ", wants a trade" : "");
+        PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested ? (Session.InCollege ? ", thinking of transferring" : ", wants a trade") : "");
         PlayerScore = $"{p.Morale:0}/100";
         foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });
         var blocked = Talks.Unavailable(p, Session.Today);
-        foreach (var topic in Talks.Available(p))
+        foreach (var topic in Talks.Available(p, Session.InCollege))
         {
             var t = topic;
             Topics.Add(new TalkButton { Label = Talks.Label(t), Command = new RelayCommand(() => Talk(p, t), () => blocked == null), Tip = blocked ?? $"Talk to {p.Name.Split(' ').Last()}" });

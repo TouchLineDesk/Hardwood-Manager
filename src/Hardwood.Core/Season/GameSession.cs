@@ -826,9 +826,9 @@ public sealed partial class GameSession
         v.Status = "applied";
         // In work, the career path's own random numbers (#651); out of work, as before.
         v.DecideOn = Today.AddDays(3 + (Employed ? CareerRng(7).Next(0, 5) : _rng.Next(0, 5)));
-        Post($"Application sent: {FindTeam(teamId)!.FullName}", Phase == SessionPhase.Offseason && Employed
-            ? $"They'll answer at the next step of the summer. You stay with the {HumanTeam.FullName} unless you accept an offer."
-            : $"They'll decide by {v.DecideOn:MMM d}." + (Employed ? $" You stay with the {HumanTeam.FullName} unless you accept an offer." : ""), "Board");
+        bool summer = Phase == SessionPhase.Offseason;
+        Post($"Application sent: {FindTeam(teamId)!.FullName}", (summer ? "They'll answer at the next step of the summer." : $"They'll decide by {v.DecideOn:MMM d}.")
+            + (Employed ? $" You stay with the {HumanTeam.FullName} unless you accept an offer." : ""), "Board");
         SaveNow();
         return null;
     }
@@ -967,6 +967,7 @@ public sealed partial class GameSession
         {
             string title = e.Kind switch
             {
+                People.PeopleEventKind.TradeRequest when InCollege => $"{e.Player.Name} is thinking of transferring",
                 People.PeopleEventKind.TradeRequest => $"{e.Player.Name} requests a trade",
                 People.PeopleEventKind.WantsTalk => $"{e.Player.Name} wants a word",
                 People.PeopleEventKind.PromiseKept => $"Promise kept: {e.Player.Name}",
@@ -974,10 +975,24 @@ public sealed partial class GameSession
                 People.PeopleEventKind.Settled => $"{e.Player.Name} settles",
                 _ => e.Player.Name,
             };
-            Post(title, e.Text, "Squad");
+            Post(title, InCollege ? CollegeWording(e) : e.Text, "Squad");
         }
         WeeklyMedia();
     }
+
+    /// <summary>
+    /// H76 (bug hunt Nov 17, run 97): a college player who wants out is thinking of transferring. Programs don't trade or
+    /// sell, so the message offers only what a college coach can do: talk to him.
+    /// </summary>
+    public static string CollegeWording(People.PeopleEvent e) => e.Kind switch
+    {
+        People.PeopleEventKind.TradeRequest =>
+            $"{e.Player.Name} is unhappy and thinking of transferring. Talk to him on the Squad page (convince him to stay, or ask what's wrong). "
+            + $"If nothing changes he'll decide within about {People.PeopleEngine.RequestWeeks} weeks whether to knuckle down.",
+        People.PeopleEventKind.Settled when e.Text.Contains("trade request") =>
+            $"{e.Player.Name} has put his transfer thoughts aside and will see out the season. He hasn't forgotten; expect the question again in the summer.",
+        _ => e.Text,
+    };
 
     /// <summary>Hold a one-on-one conversation with one of your players. Returns his reply (or why you can't talk now).</summary>
     public People.TalkResult Talk(Player p, People.TalkTopic topic)
@@ -1143,7 +1158,8 @@ public sealed partial class GameSession
     {
         if (Offseason == null) return;
         Offseason.HumanTeamId ??= ControlledTeamId; // a restored summer (a save made mid-draft) didn't carry it
-        CareerMarketStep(); // clubs answer your summer applications at each step (#651)
+        // Clubs answer your summer applications at each step (#651), in work or out of it (H75, run 97).
+        if (Employed) CareerMarketStep(); else SummerJobMarket();
         switch (Offseason.Phase)
         {
             case OffseasonPhase.ReSigning:
@@ -1185,6 +1201,7 @@ public sealed partial class GameSession
                 Offseason.Complete();
                 CloseSummerOpenings();
                 StartNewSeason();
+                if (!Employed) CarrySummerSearch();
                 // Promotion and relegation happen at the end of the summer (decision #79).
                 if (Employed && HumanLeagueName != leagueBefore)
                 {
