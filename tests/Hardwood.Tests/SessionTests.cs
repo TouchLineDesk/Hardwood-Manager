@@ -36,15 +36,17 @@ public class SessionTests
             Assert.Equal(SessionPhase.RegularSeason, s.Phase);
             int playedBefore = s.Results.Count;
             var recBefore = (s.Standings[team].Wins, s.Standings[team].Losses);
-            // The engine should land within a few minutes of each healthy rotation player's target. When a rotation teammate
-            // has been hurt, the bench covers his minutes, so allow a little more on top.
-            bool covering = rotation.Any(p => p.InjuryHistory.Count > 0);
-            foreach (var kv in chart.MinutesTargets)
-            {
-                var player = team.Roster.First(p => p.Id == kv.Key);
-                if (player.InjuryHistory.Count > 0) continue;
-                Assert.InRange(s.Stats[kv.Key].Mpg, kv.Value - 5, kv.Value + (covering ? 7 : 5));
-            }
+            // The engine should land within a few minutes of each healthy rotation player's target. When rotation teammates
+            // have been hurt, the healthy ones cover their minutes, so allow their share of the minutes missed on top.
+            // (Run 101, H78: with the new schedule's dates, seed 77 hurts four of the ten for 17-19 games each, about 61
+            // minutes a game; a flat +7 assumed one short absence.)
+            int teamGames = s.HumanResults.Count();
+            var healthy = rotation.Where(p => p.InjuryHistory.Count == 0).ToList();
+            double missed = rotation.Where(p => p.InjuryHistory.Count > 0)
+                .Sum(p => chart.MinutesTargets[p.Id] * (teamGames - (s.Stats.TryGetValue(p.Id, out var st) ? st.Games : 0))) / Math.Max(1, teamGames);
+            double cover = healthy.Count == rotation.Count ? 0 : Math.Max(2, missed / Math.Max(1, healthy.Count));
+            foreach (var p in healthy)
+                Assert.InRange(s.Stats[p.Id].Mpg, chart.MinutesTargets[p.Id] - 5, chart.MinutesTargets[p.Id] + 5 + cover);
 
             s.SaveNow(); // the day loop saves weekly since D74 B (#635)
             var loaded = GameSession.Load(path);

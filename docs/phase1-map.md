@@ -55,7 +55,7 @@ It is 32 tables, and nearly all of them are rewritten on every save (other clubs
 - **A save of a loaded career loads back the same again.**
 - **Saving draws from both random streams.** A career that saves plays a different future from one that doesn't, and carrying on in memory after a save differs from loading that save. *Phase 2 note (D74): a faster save must keep these two draws, or every seeded career moves. Saving less often (D74 B) would change results by itself.* **Done in v0.80.0 (run 60):** the day loop saves every 7 days and at phase changes (`GameSession.SaveIfDue`); decisions, Save now and leaving still call `SaveNow`. Each save still makes both draws. No pinned hash moved: the characterization pins play without saves, and the save tests check invariants.
 - **Watching your game live plays the same day as pressing Continue**, game for game, except for the halftime read (applied for you on Continue, left to you live).
-- The baseline's fingerprints hold in CI: the 200-game table (22839796 / 22262109) and the headless season (OKC, 296945 / OKC 296650), and a managed career's first 30 days are pinned by hash.
+- The baseline's fingerprints hold in CI: the 200-game table (22839796 / 22262109) and the headless season (OKC, 296382 / DET 296763; re-pinned in run 101 when H78 changed the schedule's dates, was OKC 296945 / OKC 296650), and a managed career's first 30 days are pinned by hash.
 
 ## 3. A proposed split (one narrow step at a time, each with these tests unchanged)
 
