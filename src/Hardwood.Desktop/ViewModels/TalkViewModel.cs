@@ -87,7 +87,7 @@ public sealed partial class TalkViewModel : ViewModelBase
     /// H84 (run 103): the budget sentence. It starts from the header's own figure (the budget less the wages committed),
     /// then says what's left for this deal once the owner's reserves are kept back, so the two never show different numbers.
     /// </summary>
-    public static string BudgetLine(long budget, long committed, long seniors, long fill)
+    public static string BudgetLine(long budget, long committed, long seniors, long fill, bool signed = false)
     {
         long spend = budget - committed;
         if (spend < 0) return $" You are {M(-spend)} over your wage budget.";
@@ -97,16 +97,17 @@ public sealed partial class TalkViewModel : ViewModelBase
         if (parts.Count == 0) return $" You have {M(spend)} of wage budget to spend.";
         long room = spend - seniors - fill;
         var kept = string.Join(" and ", parts);
+        var deal = signed ? "another deal" : "this deal";   // review (run 103): once he has signed, the room is for the next one
         return room >= 0
-            ? $" You have {M(spend)} of wage budget to spend, {M(room)} of it for this deal after keeping {kept}."
-            : $" You have {M(spend)} of wage budget to spend, but keeping {kept} leaves nothing for this deal ({M(-room)} short).";
+            ? $" You have {M(spend)} of wage budget to spend, {M(room)} of it for {deal} after keeping {kept}."
+            : $" You have {M(spend)} of wage budget to spend, but keeping {kept} leaves nothing for {deal} ({M(-room)} short).";
     }
 
     private string Context(Player p)
     {
         var s = Session;
         // Over budget reads as such, not as "$-1.1M to spend" (review #14, the bug finder).
-        return BudgetLine(s.HumanTeam.Money.WageBudget, s.MyCommittedWages, s.MyReservedWages, s.MyRosterFillReserve)
+        return BudgetLine(s.HumanTeam.Money.WageBudget, s.MyCommittedWages, s.MyReservedWages, s.MyRosterFillReserve, Signed)
             + (p.Morale < 45 && IsRenewal && !Signed ? " He isn't happy here, which pushes his price up." : "")
             // H18 (run 100): say plainly what happens if you don't act, by name.
             + (IsRenewal && !Signed ? $" {p.Name} leaves as a free agent if he's unsigned {(s.InNabl ? "when contract decisions end" : "at the end of the summer")}." : "");

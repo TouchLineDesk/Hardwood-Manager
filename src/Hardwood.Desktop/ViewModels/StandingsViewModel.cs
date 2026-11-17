@@ -164,7 +164,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 // A pyramid league by division (#318-#319), with its promotion and relegation places.
                 var book = Hardwood.Core.Season.LeagueBook.Get(s, hl.Key);
                 bool divisional = hl.Profile.DivisionPlayoffs && hl.Clubs.Count == Hardwood.Core.World.UsaPyramid.ProSize;
-                bool tier2 = hl.Key == Hardwood.Core.World.UsaPyramid.Tier2;
+                bool tier2 = hl.Key == Hardwood.Core.World.UsaPyramid.Tier2 && Hardwood.Core.World.UsaPyramid.PlaysPromotion(s.World, s.League);   // review: only when the playoff runs
                 if (book != null)
                 {
                     var rows = book.Table();
@@ -224,7 +224,8 @@ public sealed partial class StandingsViewModel : PageViewModel
         ShowRelegation = (ByDivision || divisions) && s.World.Competitions.Any(c => c.Key == Hardwood.Core.World.UsaPyramid.Tier2);
         if (divisions) PlayInLabel = "Third-place tournament";
         string t2 = StandingRow.Tier2Name(s);
-        if (ShowRelegation) RelegationLabel = StandingRow.StayUpKey;   // H85 (run 103, #873)
+        bool promoPlayoff = Hardwood.Core.World.UsaPyramid.PlaysPromotion(s.World, s.League);   // review: an older layout keeps the straight swap
+        if (ShowRelegation && promoPlayoff) RelegationLabel = StandingRow.StayUpKey;   // H85 (run 103, #873)
         Fill(East, Conference.East, divisions);
         Fill(West, Conference.West, divisions);
         if (ByDivision)
@@ -234,7 +235,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             ShowCards = true;
         }
         Note = divisions
-            ? (ByDivision ? $"Each division's top two make the playoffs, third plays the third-place tournament, fourth plays the {t2} division winner (best of 3) to stay up. {StandingRow.LevelRecords}" : "Colours by place in each division; seeds by record.")
+            ? (ByDivision ? $"Each division's top two make the playoffs, third plays the third-place tournament, {(promoPlayoff ? $"fourth plays the {t2} division winner (best of 3) to stay up" : "fourth goes down")}. {StandingRow.LevelRecords}" : "Colours by place in each division; seeds by record.")
             : ByDivision ? "By division: ranks and games back within each division; the playoff colours still follow the conference table."
             : "Top 6 qualify directly; 7-10 play in.";
         BuildRace();
@@ -316,7 +317,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
                 Last10 = last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "",
                 IsHuman = r.Team == Session.HumanTeam,
-                ZoneNote = lastInDivision ? StandingRow.StayUpTip(StandingRow.Tier2Name(Session)) : null,
+                ZoneNote = lastInDivision && Hardwood.Core.World.UsaPyramid.PlaysPromotion(Session.World, Session.League) ? StandingRow.StayUpTip(StandingRow.Tier2Name(Session)) : null,
             });
             rank++;
         }

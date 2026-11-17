@@ -33,6 +33,9 @@ public class Run103BudgetAndLegendTests
         // Reserves bigger than the room.
         Assert.Equal(" You have $1.0M of wage budget to spend, but keeping $1.5M for the minimum deals the roster still needs leaves nothing for this deal ($0.5M short).",
             TalkViewModel.BudgetLine(10_000_000, 9_000_000, 0, 1_500_000));
+        // Once he has signed, the room left is for another deal (review).
+        Assert.EndsWith("$18M of it for another deal after keeping $2.3M for the minimum deals the roster still needs.",
+            TalkViewModel.BudgetLine(166_000_000, 146_000_000, 0, 2_300_000, signed: true));
         // Over: never "$-1.1M to spend".
         Assert.Equal(" You are $1.1M over your wage budget.", TalkViewModel.BudgetLine(10_000_000, 11_100_000, 0, 500_000));
         // The panel and the header write money the same way.
@@ -147,5 +150,22 @@ public class Run103BudgetAndLegendTests
         var last = ns.East.Concat(ns.West).Where(r => r.Zone == "Relegation").ToList();
         Assert.NotEmpty(last);
         Assert.All(last, r => Assert.Equal(StandingRow.StayUpTip(StandingRow.Tier2Name(nba)), r.ZoneTip));
+        Assert.True(UsaPyramid.PlaysPromotion(nba.World, nba.League));
+        // Leagues → NBA and tier 2: the chips' tooltips agree with the keys (review).
+        vm2.Navigate("Leagues");
+        if (vm2.CurrentPage is WorldViewModel w)
+        {
+            w.Region = "USA";
+            var nbaChoice = w.Competitions.FirstOrDefault(c => c.Key == LeagueBook.NablKey);
+            if (nbaChoice != null)
+            {
+                w.Selected = nbaChoice;
+                Assert.NotEmpty(w.LeftCards);
+                var reds = w.LeftCards.Concat(w.RightCards).SelectMany(c => c.Rows).Where(r => r.Zone == "Relegation").ToList();
+                Assert.NotEmpty(reds);
+                Assert.All(reds, r => Assert.Equal(StandingRow.StayUpTip(StandingRow.Tier2Name(nba)), r.ZoneTip));
+                Assert.Contains(w.Keys, k => k.Label == StandingRow.StayUpKey);
+            }
+        }
     }
 }
