@@ -75,11 +75,11 @@ public sealed class SetupCard
     public string EdgeText => EdgeOf(Setup, CurrentEdge);
     /// <summary>
     /// The card's matchup line on the one model (K2): "Beats their plan" when its edge is good; for the assistant's pick
-    /// with a poor edge, "Least-bad matchup"; "Plays into their hands" only when it's poor and worse than what's in use.
+    /// with a poor edge, "Fit outweighs the matchup"; "Plays into their hands" only when it's poor and worse than what's in use.
     /// </summary>
     public static string EdgeOf(TacticSetup s, double currentEdge) =>
         s.Edge >= MatchupRead.PlanNotable ? "Beats their plan"
-        : s.Edge <= -MatchupRead.PlanNotable && s.Recommended ? "Least-bad matchup"
+        : s.Edge <= -MatchupRead.PlanNotable && s.Recommended ? "Fit outweighs the matchup"
         : s.Edge <= -MatchupRead.PlanNotable && s.Edge < currentEdge - 1e-9 ? "Plays into their hands"
         : "";
     public bool HasEdge => EdgeText.Length > 0;
@@ -267,9 +267,9 @@ public sealed partial class TacticsViewModel : PageViewModel
         var pickS = CoachAi.BestSystem(rot, read.TheirScheme); var pickD = CoachAi.BestScheme(rot, read.TheirSystem);
         var lines = new List<string>();
         if (read.Attack(system) <= -MatchupRead.Notable)
-            lines.Add(system == pickS ? read.WhySystem(system) : $"On offense your assistant would run {Hardwood.Core.Model.Systems.Name(pickS).ToLower()}.");
+            lines.Add(system == pickS ? read.WhySystem(system) : $"On offense your assistant would run {Hardwood.Core.Model.Systems.Name(pickS).ToLower()}." + (read.WhySystem(pickS) is { Length: > 0 } w ? " " + w : ""));
         if (read.Defence(scheme) <= -MatchupRead.Notable)
-            lines.Add(scheme == pickD ? read.WhyScheme(scheme) : $"On defense your assistant would play {Hardwood.Core.Model.Systems.Name(pickD).ToLower()}.");
+            lines.Add(scheme == pickD ? read.WhyScheme(scheme) : $"On defense your assistant would play {Hardwood.Core.Model.Systems.Name(pickD).ToLower()}." + (read.WhyScheme(pickD) is { Length: > 0 } w2 ? " " + w2 : ""));
         return lines.Count == 0 ? "" : "Assistant: " + string.Join(" ", lines);
     }
 
@@ -286,7 +286,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         _loading = true;
         var team = Session.HumanTeam;
         var t = team.Tactic;
-        var rot = CoachAi.Rotation(team, Session.Today);
+        // K2 review: the option list reads the same rotation as the cards and the board (the next game's date).
+        var rot = CoachAi.Rotation(team, Session.NextMyGame?.Date ?? Session.Today);
 
         // What the next opponent will probably run, to show each option's matchup.
         var nextOpp = Session.NextMyGame?.Opponent;

@@ -52,38 +52,42 @@ public sealed record MatchupRead(OffensiveSystem TheirSystem, DefensiveScheme Th
     public static string Tag(double edge) => edge >= Notable ? "good matchup" : edge <= -Notable ? "poor matchup" : "";
 
     /// <summary>
-    /// Why the assistant picks a system whose matchup is poor: the roster's fit outweighs it, and nothing his players
-    /// suit does better. Empty when the matchup isn't poor.
+    /// Why the assistant picks a system whose matchup is poor: either something would match up better but the roster's
+    /// fit is worth more, or nothing matches up better at all. Empty when the matchup isn't poor.
     /// </summary>
     public string WhySystem(OffensiveSystem pick)
     {
         if (Attack(pick) > -Notable) return "";
-        var better = Enum.GetValues<OffensiveSystem>().Where(s => Attack(s) >= Notable).OrderByDescending(Attack).FirstOrDefault();
-        return Attack(better) >= Notable
-            ? $"{Systems.Name(pick)} runs into their {Systems.Name(TheirScheme).ToLower()}, but your players don't suit {Systems.Name(better).ToLower()}, which would beat it; the fit is worth more."
-            : $"Nothing beats their {Systems.Name(TheirScheme).ToLower()}; {Systems.Name(pick).ToLower()} is the least-bad option for this roster.";
+        var better = Enum.GetValues<OffensiveSystem>().OrderByDescending(Attack).First();
+        return Attack(better) > Attack(pick) + 1e-9
+            ? $"{Systems.Name(pick)} runs into their {Systems.Name(TheirScheme).ToLower()}; {Systems.Name(better).ToLower()} would match up better, but your players don't suit it and the fit is worth more."
+            : $"Nothing matches up better against their {Systems.Name(TheirScheme).ToLower()}; {Systems.Name(pick).ToLower()} is the least-bad option.";
     }
 
     /// <summary>Why the assistant picks a scheme whose matchup is poor. Empty when it isn't.</summary>
     public string WhyScheme(DefensiveScheme pick)
     {
         if (Defence(pick) > -Notable) return "";
-        var better = Enum.GetValues<DefensiveScheme>().Where(d => Defence(d) >= Notable).OrderByDescending(Defence).FirstOrDefault();
-        return Defence(better) >= Notable
-            ? $"{Systems.Name(pick)} suits their {Systems.Name(TheirSystem).ToLower()} more than you'd like, but your players don't suit {Systems.Name(better).ToLower()}, which would stop it; the fit is worth more."
-            : $"Nothing stops their {Systems.Name(TheirSystem).ToLower()}; {Systems.Name(pick).ToLower()} is the least-bad option for this roster.";
+        var better = Enum.GetValues<DefensiveScheme>().OrderByDescending(Defence).First();
+        return Defence(better) > Defence(pick) + 1e-9
+            ? $"{Systems.Name(pick)} suits their {Systems.Name(TheirSystem).ToLower()} more than you'd like; {Systems.Name(better).ToLower()} would match up better, but your players don't suit it and the fit is worth more."
+            : $"Nothing matches up better against their {Systems.Name(TheirSystem).ToLower()}; {Systems.Name(pick).ToLower()} is the least-bad option.";
     }
 
-    /// <summary>The game-plan card's pitch: says "counters both" only when it does.</summary>
+    /// <summary>The game-plan card's pitch, side by side on the board's own thresholds: "counters both" only when it does.</summary>
     public string PlanPitch(OffensiveSystem s, DefensiveScheme d)
     {
         string head = $"They should run {Systems.Name(TheirSystem).ToLower()} and {Systems.Name(TheirScheme).ToLower()}";
+        string sys = Systems.Name(TheirSystem).ToLower(), sch = Systems.Name(TheirScheme).ToLower();
         double a = Attack(s), f = Defence(d);
-        if (a >= 0 && f >= 0 && (a > 0 || f > 0)) return head + "; this counters both.";
-        if (a >= Notable && f < 0) return head + $"; this beats their {Systems.Name(TheirScheme).ToLower()} and gives a little back on defense. The best your players can do.";
-        if (f >= Notable && a < 0) return head + $"; this stops their {Systems.Name(TheirSystem).ToLower()} and gives a little back on offense. The best your players can do.";
-        if (Edge(s, d) <= -PlanNotable)
-            return head + ". The least-bad plan for your players. " + string.Join(" ", new[] { WhySystem(s), WhyScheme(d) }.Where(x => x.Length > 0));
+        bool aGood = a >= Notable, fGood = f >= Notable, aPoor = a <= -Notable, fPoor = f <= -Notable;
+        string whys = string.Join(" ", new[] { WhySystem(s), WhyScheme(d) }.Where(x => x.Length > 0));
+        if (aGood && fGood) return head + "; this counters both.";
+        if (aGood && !fPoor) return head + $"; this beats their {sch} and holds even on defense.";
+        if (fGood && !aPoor) return head + $"; this stops their {sys} and holds even on offense.";
+        if (aGood) return head + $"; this beats their {sch} but gives ground on defense. " + whys;
+        if (fGood) return head + $"; this stops their {sys} but gives ground on offense. " + whys;
+        if (aPoor || fPoor) return head + ". The best plan for your players. " + whys;
         return head + "; this is the best your players can do against it.";
     }
 }

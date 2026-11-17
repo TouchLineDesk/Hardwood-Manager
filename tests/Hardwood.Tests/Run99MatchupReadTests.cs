@@ -70,7 +70,12 @@ public class Run99MatchupReadTests
             // "Counters both" only when it does.
             var plan = setups.Single(s => s.Key == "plan");
             if (plan.Pitch.Contains("counters both"))
-                Assert.True(read.Attack(plan.System) >= 0 && read.Defence(plan.Scheme) >= 0);
+                Assert.True(read.Attack(plan.System) >= MatchupRead.Notable && read.Defence(plan.Scheme) >= MatchupRead.Notable);
+            // "Least-bad" only when nothing matches up better on that side.
+            if (read.WhyScheme(plan.Scheme).Contains("least-bad"))
+                Assert.All(Enum.GetValues<DefensiveScheme>(), d => Assert.True(read.Defence(d) <= read.Defence(plan.Scheme) + 1e-9));
+            if (read.WhySystem(plan.System).Contains("least-bad"))
+                Assert.All(Enum.GetValues<OffensiveSystem>(), x => Assert.True(read.Attack(x) <= read.Attack(plan.System) + 1e-9));
         }
     }
 
@@ -84,9 +89,14 @@ public class Run99MatchupReadTests
         Assert.Equal("poor matchup", MatchupRead.Tag(sw));
         Assert.Contains("fit is worth more", read.WhyScheme(DefensiveScheme.SwitchEverything)); // the 2-3 zone would stop it
         Assert.Equal("", read.WhyScheme(DefensiveScheme.Zone23));
-        // Against motion nothing stops it: the pick is the least-bad option.
+        // The reviewer's case: against motion, man and drop are even, so the zone is picked for fit, not as the least-bad.
         var read2 = new MatchupRead(OffensiveSystem.Motion, DefensiveScheme.Man);
-        Assert.Contains("least-bad", read2.WhyScheme(DefensiveScheme.Zone23));
+        Assert.Contains("fit is worth more", read2.WhyScheme(DefensiveScheme.Zone23));
+        Assert.DoesNotContain("least-bad", read2.WhyScheme(DefensiveScheme.Zone23));
+        // Against their man-to-man every system is even: a plan that only stops their offense doesn't "counter both".
+        var read3 = new MatchupRead(OffensiveSystem.PostCentric, DefensiveScheme.Man);
+        Assert.DoesNotContain("counters both", read3.PlanPitch(OffensiveSystem.Motion, DefensiveScheme.Zone23));
+        Assert.Contains("holds even on offense", read3.PlanPitch(OffensiveSystem.Motion, DefensiveScheme.Zone23));
 
         // The board note: a disadvantage on a side the assistant picked explains it; on a side he didn't, names his pick.
         foreach (var (us, them) in Pairs(31))
