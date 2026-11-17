@@ -11,7 +11,12 @@ public partial class TransactionsView : UserControl
         InitializeComponent();
         DataContextChanged += (_, _) => Watch(DataContext as TransactionsViewModel);
         // A narrower or shorter table (a resize, a bigger text size, the panel moving under it) keeps the pick in view.
-        MarketGrid.SizeChanged += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(KeepPickInView, Avalonia.Threading.DispatcherPriority.Loaded);
+        // Only when it gets narrower or shorter, so a table you've scrolled away from doesn't snap back (code review, PR #162).
+        MarketGrid.SizeChanged += (_, e) =>
+        {
+            if (e.NewSize.Width < e.PreviousSize.Width - 0.5 || e.NewSize.Height < e.PreviousSize.Height - 0.5)
+                Avalonia.Threading.Dispatcher.UIThread.Post(KeepPickInView, Avalonia.Threading.DispatcherPriority.Loaded);
+        };
         MarketLayout.SizeChanged += (_, e) => { if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 0.5) StackDealPanel(e.NewSize.Width < StackBelow); };
     }
 

@@ -101,12 +101,17 @@ public class Run100BidPanelTests
             Assert.True(picker.FitHidden.Count < aside.Count, string.Join(",", picker.FitHidden));
             Assert.True(grid.Columns.Single(c => c.Header as string == "Club").IsVisible);
 
-            // January: the window opens, and Bid works for a player who'd come.
-            while (s.Today.Month != 1) s.AdvanceDay();
-            vm.AfterTick(); vm.Navigate("Transactions"); Settle();
-            tx = Assert.IsType<TransactionsViewModel>(vm.CurrentPage);
+            // January: the window opens while he's picked (on the cards, which keep the pick across refreshes); the text,
+            // the tip and Bid all follow (code review, PR #162).
+            tx.MarketView = "Cards"; Settle();
             var yes = tx.Market.First(r => r.WontCome == null && !r.Agreed);
-            tx.SelectedMarket = yes; Settle();
+            tx.PickMarket(yes); Settle();
+            Assert.StartsWith(s.WindowText, tx.DealText);
+            while (s.Today.Month != 1) s.AdvanceDay();
+            vm.AfterTick(); Settle();
+            tx = Assert.IsType<TransactionsViewModel>(vm.CurrentPage);
+            if (tx.SelectedMarket?.Player != yes.Player) { yes = tx.Market.First(r => r.Player == yes.Player); tx.PickMarket(yes); Settle(); }
+            else yes = tx.SelectedMarket;
             Assert.True(s.WindowOpen);
             Assert.True(tx.CanBid);
             Assert.Equal($"Bid for {yes.Name}", tx.BidTip);

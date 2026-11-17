@@ -183,9 +183,9 @@ public sealed partial class TransactionsViewModel
         UpdateBidState(row);
         if (row == null) { DealText = "Select a player to see what his club wants."; return; }
         var p = row.Player;
-        if (s.AgreedFees.TryGetValue(p.Id, out var fee))
+        if (s.AgreedFees.ContainsKey(p.Id))
         {
-            DealText = $"Fee agreed with {row.ClubName}: ${fee / 1e6:F2}M. Agree personal terms with {p.Name} below.";
+            DealText = DealTextFor(row);
             Talk.Show(p);
             return;
         }
@@ -199,11 +199,22 @@ public sealed partial class TransactionsViewModel
         DealChips.Add(new Chip("Will he come?", row.WontCome == null ? "Yes" : "No", row.WontCome == null ? "he'll talk terms" : row.Interest.ToLowerInvariant(), row.WontCome == null ? "good" : "bad"));
         if (p.Contract is { Buyout: > 0 } c) DealChips.Add(new Chip("Release clause", $"${c.Buyout / 1e6:F2}M", "can't be refused", "info"));
         DealChips.Add(new Chip("Your budget", $"${budget / 1e6:F2}M", "transfer budget", budget >= likely.High ? "good" : budget >= likely.Low ? "warn" : "bad"));
-        DealText = (s.WindowOpen ? "" : $"{s.WindowText} You can scout {p.Name} now and bid once it opens. ")
-            + (row.WontCome is { } why ? why + " A bid would be wasted."
-            : $"{row.ClubName}: {stance?.Why} Your scouts expect them to want {likely.Text}; a bid at the top of that range should be accepted."
-              + (p.Contract is { Buyout: > 0 } cl ? $" His release clause (${cl.Buyout / 1e6:F2}M) can't be refused." : ""));
+        DealText = DealTextFor(row);
         Talk.Show(null);
+    }
+
+    /// <summary>The deal's text for today: rebuilt on every refresh too, so a window that opens or shuts while he's
+    /// picked doesn't leave "the window is shut" beside a live Bid (code review, PR #162).</summary>
+    private string DealTextFor(MarketRow row)
+    {
+        var s = Session;
+        var p = row.Player;
+        if (s.AgreedFees.TryGetValue(p.Id, out var fee))
+            return $"Fee agreed with {row.ClubName}: ${fee / 1e6:F2}M. Agree personal terms with {p.Name} below.";
+        return (s.WindowOpen ? "" : $"{s.WindowText} You can scout {p.Name} now and bid once it opens. ")
+            + (row.WontCome is { } why ? why + " A bid would be wasted."
+            : $"{row.ClubName}: {row.StanceInfo?.Why} Your scouts expect them to want {row.Likely.Text}; a bid at the top of that range should be accepted."
+              + (p.Contract is { Buyout: > 0 } cl ? $" His release clause (${cl.Buyout / 1e6:F2}M) can't be refused." : ""));
     }
 
     /// <summary>The panel's title and whether Bid works, for the picked player on today's date.</summary>
@@ -269,6 +280,7 @@ public sealed partial class TransactionsViewModel
             : $"Transfer budget {M(s.HumanTeam.Money.TransferBudget)} · bank {bank}";
         FillMarket();
         UpdateBidState(SelectedMarket);
+        if (SelectedMarket is { } picked) DealText = DealTextFor(picked);
         Incoming.Clear();
         foreach (var b in s.IncomingBids.ToList())
         {
