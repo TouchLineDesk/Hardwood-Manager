@@ -94,6 +94,8 @@ public sealed class GameSimulator
         public void Finish() { while (Step()) { } }
 
         public void RequestLineup(Team team, IEnumerable<Player> five) => _game.RequestLineup(team == Result.Home.Team, five);
+        /// <summary>True while a requested five waits for the next dead ball (H55, run 86). Reads state only.</summary>
+        public bool LineupPending(Team team) => _game.LineupPending(team == Result.Home.Team);
         public void RefreshTargets(Team team) => _game.RefreshTargets(team == Result.Home.Team);
         /// <summary>
         /// The assistant's halftime read for <paramref name="team"/> (D75 A): the system and scheme that counter what the other
@@ -393,6 +395,8 @@ public sealed class GameSimulator
             var chosen = five.Where(p => side.Dressed.Contains(p) && !side.Line(p).FouledOut).Distinct().Take(5).ToArray();
             if (home) _homeRequest = chosen; else _awayRequest = chosen;
         }
+
+        public bool LineupPending(bool home) => (home ? _homeRequest : _awayRequest) is { Length: > 0 };
 
         /// <summary>Re-read the team's depth chart for minutes targets (tactics are read live every possession).</summary>
         public void RefreshTargets(bool home)
