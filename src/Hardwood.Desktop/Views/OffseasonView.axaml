@@ -279,8 +279,57 @@
           </Grid>
         </TabItem>
       </TabControl>
-      <ScrollViewer Grid.Column="1" Margin="12,0,0,0" IsVisible="{Binding ShowTalk}">
+      <ScrollViewer Grid.Column="1" Margin="12,0,0,0" IsVisible="{Binding ShowTalkPanel}">
         <ContentControl Content="{Binding Talk}"/>
+      </ScrollViewer>
+      <!-- H18 (run 100): on the Draft tab, the picked graduate's scouting card in place of the last contract talk. -->
+      <ScrollViewer x:Name="ProspectPanel" Grid.Column="1" Margin="12,0,0,0" IsVisible="{Binding ShowProspectPanel}">
+        <Border Classes="panel" VerticalAlignment="Top">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Kind="GraduationCap" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="Scouting report" Classes="h2" Margin="0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="Pick a graduate on the board to see your scouts' report." Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasProspect}"/>
+            <ContentControl x:Name="ProspectCard" Content="{Binding SelectedProspect}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ProspectRow">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="56,*,Auto,Auto">
+                <c:Avatar Player="{Binding Player}" Width="52" Height="52" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Margin="8,0,6,0" VerticalAlignment="Center" Spacing="1">
+                  <TextBlock x:Name="ProspectName" Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding BoardLine}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip.Tip="Current ability as your scouts see him">
+                  <TextBlock Text="{Binding CA}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Right"/>
+                  <TextBlock Text="CA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3" VerticalAlignment="Center" ToolTip.Tip="{Binding PaTip}">
+                  <TextBlock Text="{Binding PA}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Right"/>
+                  <TextBlock Text="PA" Classes="muted" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Bars}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SkillBar">
+                    <Grid ColumnDefinitions="28,*,Auto" Height="16" Margin="0,0,8,0" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                      <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"/>
+                      <c:RatingBar Grid.Column="1" Value="{Binding Value}" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="11" Margin="5,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{Binding ScoutLine}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            </StackPanel>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+            <TextBlock x:Name="ProspectHint" Text="{Binding DraftHint}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource HwAccentBrush}" IsVisible="{Binding DraftHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+        </Border>
       </ScrollViewer>
       <!-- H37 (run 79): a college coach's summer in place of contract talks. -->
       <Border x:Name="CollegeSummerPanel" Grid.Column="1" Margin="12,0,0,0" Classes="panel" VerticalAlignment="Top" IsVisible="{Binding CollegeSummer}">

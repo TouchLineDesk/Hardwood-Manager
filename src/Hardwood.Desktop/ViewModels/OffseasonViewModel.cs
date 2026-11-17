@@ -50,6 +50,11 @@ public sealed partial class ProspectRow : ObservableObject
     public string Def => Scouting.GroupAverage(Player, AttrGroup.Defense, Knowledge);
     public string Phy => Scouting.GroupAverage(Player, AttrGroup.Physical, Knowledge);
     public string Need { get; init; } = "";
+    /// <summary>H18 (run 100): the side panel's scouting card on the Draft tab.</summary>
+    public int Of { get; init; }
+    public string BoardLine => $"No. {Rank} of {Of} on your scouts' board · {Pos} · age {Age} · {Height}";
+    public string ScoutLine => Knowledge >= 0.999 ? "Your scouts know him well: these are his true ratings."
+        : $"Your scouts' read ({Knowledge:P0} known): ratings are ranges until they see more of him.";
 }
 
 public sealed class PickRow
@@ -109,18 +114,25 @@ public sealed partial class OffseasonViewModel : PageViewModel
     [ObservableProperty] private bool _showFreeAgency;
     [ObservableProperty] private bool _showBuyouts;
     /// <summary>Danny's college draft (D40, real careers): the pool and the order, from the lottery until free agency.</summary>
-    [ObservableProperty] private bool _showDraft;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private bool _showDraft;
     [ObservableProperty] private bool _onTheClock;
     [ObservableProperty] private string _draftText = "";
     public ObservableCollection<ProspectRow> DraftPool { get; } = new();
-    [ObservableProperty] private ProspectRow? _selectedProspect;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasProspect))] private ProspectRow? _selectedProspect;
+    public bool HasProspect => SelectedProspect != null;
     public ObservableCollection<DraftSlotRow> DraftSlots { get; } = new();
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _capText = "";
-    [ObservableProperty] private int _tab;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private int _tab;
     /// <summary>H37 (run 79): a college coach's summer has no contracts, free agents or talks.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowTalk))] private bool _collegeSummer;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowTalk), nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private bool _collegeSummer;
     public bool ShowTalk => !CollegeSummer;
+    /// <summary>The Draft tab's index in the summer's tabs.</summary>
+    public const int DraftTab = 4;
+    /// <summary>H18 (run 100): on the Draft tab the side panel is the picked graduate's scouting card, not the last
+    /// contract talk ("Sign Luka Garza" while you were on the clock).</summary>
+    public bool ShowProspectPanel => ShowTalk && ShowDraft && Tab == DraftTab;
+    public bool ShowTalkPanel => ShowTalk && !ShowProspectPanel;
     /// <summary>The side panel a college coach sees in place of contract talks.</summary>
     [ObservableProperty] private string _collegeSummerText = "";
     /// <summary>Pros release players to free agency; a college program has no one to release to.</summary>
@@ -287,12 +299,15 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 FreeAgents.Add(row);
             }
             foreach (var r in FreeAgents.Take(SummerCards.FreeAgentCount)) FreeAgentCards.Add(r);
-            // Bid from the table on someone further down: his card goes first so the picked man is on screen.
-            if (Talk.Player is { } tp && !FreeAgentCards.Any(r => r.Player == tp) && FreeAgents.FirstOrDefault(r => r.Player == tp) is { } extra)
-                FreeAgentCards.Insert(0, extra);
+            // Bid from the table on someone further down: his card is added after the best, not ahead of them (H18, run 100:
+            // a CA 118 player you'd talked to sat first, before the 149s), and the note says why he's there.
+            FreeAgentRow? extra = null;
+            if (Talk.Player is { } tp && !FreeAgentCards.Any(r => r.Player == tp) && FreeAgents.FirstOrDefault(r => r.Player == tp) is { } further)
+                FreeAgentCards.Add(extra = further);
             int all = s.League.FreeAgents.Count;
             FreeAgentNote = all == 0 ? "No free agents are left."
-                : $"The best {Math.Min(all, SummerCards.FreeAgentCount)} of {all:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists {Math.Min(all, 250)}.";
+                : $"The best {Math.Min(all, SummerCards.FreeAgentCount)} of {all:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists {Math.Min(all, 250)}."
+                  + (extra != null ? $" {extra.Player.Name}, whom you're talking to, is last." : "");
         }
         foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
         if (ShowBuyouts)
@@ -308,8 +323,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 });
             }
         if (ShowDraft) FillDraft(s, o, team);
-        if (Tab == 0 && !ShowContracts) Tab = ShowDraft ? 4 : 1;
-        if (Tab == 4 && !ShowDraft) Tab = 1;
+        if (Tab == 0 && !ShowContracts) Tab = ShowDraft ? DraftTab : 1;
+        if (Tab == DraftTab && !ShowDraft) Tab = 1;
         if (Talk.Player == null || (!s.MyExpiring.Contains(Talk.Player) && !s.League.FreeAgents.Contains(Talk.Player) && !Talk.Signed))
             Talk.Show(Expiring.FirstOrDefault()?.Player ?? FreeAgents.FirstOrDefault()?.Player);
         // H28 (run 75): a renewal panel left open into free agency read "New deal for …" with Release for a player
@@ -379,7 +394,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         int rank = 1;
         var keep = _boardPick;
         foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
-            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p) });
+            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Of = o.Prospects.Count, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p) });
         foreach (var r in DraftPool.Take(SummerCards.DraftCount)) DraftCards.Add(r);
         if (keep != null && !DraftCards.Any(r => r.Player == keep) && DraftPool.FirstOrDefault(r => r.Player == keep) is { } further) DraftCards.Add(further);
         DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted."

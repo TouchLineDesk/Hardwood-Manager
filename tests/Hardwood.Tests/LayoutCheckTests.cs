@@ -165,7 +165,9 @@ public class LayoutCheckTests
             v.Navigate("Transactions");
             var tx = (TransactionsViewModel)v.CurrentPage!;
             tx.Tab = 0; tx.MarketView = "Full table";   // cards first since run 65; this page checks the table's deal columns
-            tx.SelectedMarket = tx.Market.FirstOrDefault(r => r.Player.Contract is { Buyout: > 0 }) ?? tx.Market.First();
+            // Among the rows on screen without scrolling: since H68 (run 100) a pick further down scrolls the table to him,
+            // which half-hides the top row under the header (the scan reads that as an overlap).
+            tx.SelectedMarket = tx.Market.Take(8).FirstOrDefault(r => r.Player.Contract is { Buyout: > 0 }) ?? tx.Market.First();
         });
         // Run 65 (review #13 rank 4): the market as player cards, the longest names picked.
         yield return ("Transfer cards", v =>
@@ -387,8 +389,9 @@ public class LayoutCheckTests
                         frame?.Save(Path.Combine(shots, $"{width}-{(guide ? "a" : "n")}-{scale * 100:0}-{name.Replace(" & ", "-").Replace(' ', '-').ToLower()}.png"));
                     }
                     // Critic review #6: the market's deal columns must be on screen, not scrolled off the table's edge.
-                    if (name == "Transfer deal" && scale == 1.0)
-                        foreach (var line in DealColumnsOffScreen(window, width >= 1480 ? new[] { "Joins?", "Club stance", "Likely fee", "Club" } : new[] { "Joins?", "Club stance" }))
+                    // H68 (run 100): at every size and text scale, since the least-needed columns now step aside to fit.
+                    if (name == "Transfer deal")
+                        foreach (var line in DealColumnsOffScreen(window, width >= 1480 && scale == 1.0 ? new[] { "Joins?", "Club stance", "Likely fee", "Club" } : new[] { "Joins?", "Club stance", "Likely fee" }))
                             gate.Add($"{width}px {(guide ? "assistant" : "no-assist")} {scale:P0} | {name,-20} | {line}");
                     if (window.TopBarOverlap() is > 1 and var overlap)
                     {
