@@ -116,8 +116,9 @@ public class CharacterizationTests
     }
 
     [Theory]
-    [InlineData(2026UL, "OKC", 296945L)]
-    [InlineData(77UL, "OKC", 296650L)]
+    // Run 101 (H78): the schedule's dates changed (was 296945 / 296650); the champion and the league's scoring didn't move.
+    [InlineData(2026UL, "OKC", 296382L)]
+    [InlineData(77UL, "OKC", 296763L)]
     public void The_bench_season_matches_the_baseline(ulong seed, string champion, long expected)
     {
         var (league, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);
@@ -164,7 +165,9 @@ public class CharacterizationTests
         // Run 95 (C5 part 2, #848): re-pinned (was CF89DF441AA947D3 since run 57). The college world plays on the session's
         // random stream, and scheduled rivals and arena home courts change college scores, so a few quick-sim tie-breaks
         // draw differently and the NBA's days after them move. The NBA's own odds are unchanged (audit on both seeds).
-        Pin("career seed 2026, 30 days, no saves", "F5CA4EEE5084B908", Session(s));
+        // Run 101 (H78): re-pinned (was F5CA4EEE5084B908 since run 95). The schedule's dates changed (no third straight day,
+        // ~14 back-to-backs a team, the season runs to Apr 12), so games fall on different days; no random draw changed.
+        Pin("career seed 2026, 30 days, no saves", "FA6B56667EA0FFAA", Session(s));
     }
 
     [Fact]

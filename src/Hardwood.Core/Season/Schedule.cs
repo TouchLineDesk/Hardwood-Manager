@@ -8,7 +8,8 @@ public sealed record ScheduledGame(int Index, DateOnly Date, Team Home, Team Awa
 /// Builds an 82-game schedule for a two-conference league: 30 teams in six divisions of five (4 games vs each division rival,
 /// 3 or 4 vs the rest of the conference, 2 vs each other-conference team), or 32 in eight divisions of four (#355:
 /// 4 × 3 division rivals, 3 or 4 vs the other 12 in the conference, 2 × 16 against the other conference).
-/// Dates are spread over ~170 days with no team playing twice on one day.
+/// Dates run from opening night to the 174th day (Apr 12) with no team twice on one day, never three days running, and about
+/// 14 back-to-backs a team (H78, <see cref="AssignDates"/>).
 /// </summary>
 public static class ScheduleBuilder
 {
@@ -82,39 +83,114 @@ public static class ScheduleBuilder
         BalanceHomeGames(pairs, teams);
         rng.Shuffle(pairs);
 
-        // Assign dates: greedy, ~7 games per day, no team twice on a day, soft cap of 4 games per 7 days.
+        return AssignDates(pairs, teams, opening);
+    }
+
+    /// <summary>The regular season's length: opening night to the last day (Oct 21 → Apr 12, as in the real NBA).</summary>
+    public const int SeasonDays = 174;
+    /// <summary>Back-to-backs a team may be given while the season has room (the real NBA averages about 14–15).</summary>
+    public const int BackToBackCap = 16;
+    /// <summary>The pace of back-to-backs a team is given without the day needing it (the real NBA's 2024-25 average).</summary>
+    public const double BackToBackPace = 14;
+
+    /// <summary>
+    /// H78: dates for the games, in order. The real NBA never plays a team three days running and gives each about 14
+    /// back-to-backs; the old greedy pass only capped 4 games in 7 days, so teams played ~37 back-to-backs, ~14 three-in-threes
+    /// and ~3–4 four-in-fours a season. Rules here:
+    /// <list type="bullet">
+    /// <item>never on a third straight day, never 4 games in 5 days, and at most 4 in 7 (hard);</item>
+    /// <item>a back-to-back only once rested games are used up for the day, and at most <see cref="BackToBackCap"/> a team
+    /// while the season has room;</item>
+    /// <item>each day's slate is the games left spread over the days left to the season's end (weekends carry more), with the
+    /// teams furthest behind picked first, so the season fills its full length and ends together;</item>
+    /// <item>no games in the All-Star break (Feb 13–17).</item>
+    /// </list>
+    /// No random numbers are drawn here, so the RNG stream is unchanged; only the dates differ. If the days run out, the cap on
+    /// back-to-backs lifts (the hard rules stay) until every game is placed.
+    /// </summary>
+    internal static List<ScheduledGame> AssignDates(List<(Team home, Team away)> pairs, List<Team> teams, DateOnly opening)
+    {
         var schedule = new List<ScheduledGame>();
-        var remaining = new LinkedList<(Team home, Team away)>(pairs);
-        var day = opening;
-        var recent = teams.ToDictionary(t => t.Id, _ => new Queue<DateOnly>());
+        var remaining = new List<(Team home, Team away)>(pairs);
+        var last = opening.AddDays(SeasonDays - 1);
+        var left = teams.ToDictionary(t => t.Id, _ => 0);
+        foreach (var (h, a) in pairs) { left[h.Id]++; left[a.Id]++; }
+        var played = teams.ToDictionary(t => t.Id, _ => new List<int>());   // day numbers, ascending
+        var backToBacks = teams.ToDictionary(t => t.Id, _ => 0);
         int idx = 0;
+        var day = opening;
 
         while (remaining.Count > 0)
         {
+            if (AllStarBreak(day)) { day = day.AddDays(1); continue; }
+            bool overtime = day > last;
+            int target;
+            if (overtime) target = teams.Count / 2;
+            else
+            {
+                double weightLeft = 0;
+                for (var d = day; d <= last; d = d.AddDays(1)) if (!AllStarBreak(d)) weightLeft += Weight(d);
+                target = (int)Math.Ceiling(remaining.Count * Weight(day) / weightLeft);
+            }
+
+            int dn = day.DayNumber;
             var playedToday = new HashSet<int>();
             int gamesToday = 0;
-            int target = day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? 10 : 7;
-            var node = remaining.First;
-            while (node != null && gamesToday < target)
-            {
-                var next = node.Next;
-                var (h, a) = node.Value;
-                if (!playedToday.Contains(h.Id) && !playedToday.Contains(a.Id) && Rested(recent[h.Id], day) && Rested(recent[a.Id], day))
+            // Teams furthest behind first; the stable sort keeps the shuffled order between equals. (Indices, not pairs: the
+            // same home-and-away pairing can appear twice.)
+            var order = Enumerable.Range(0, remaining.Count)
+                .OrderByDescending(i => left[remaining[i].home.Id] + left[remaining[i].away.Id]).ThenBy(i => i).ToList();
+            var placed = new HashSet<int>();
+            for (int pass = 0; pass < 2 && gamesToday < target; pass++)
+                foreach (int i in order)
                 {
+                    if (gamesToday >= target) break;
+                    var (h, a) = remaining[i];
+                    if (placed.Contains(i) || playedToday.Contains(h.Id) || playedToday.Contains(a.Id)) continue;
+                    if (!CanPlay(h.Id, pass) || !CanPlay(a.Id, pass)) continue;
+                    foreach (var id in new[] { h.Id, a.Id })
+                    {
+                        if (Yesterday(id)) backToBacks[id]++;
+                        played[id].Add(dn); left[id]--;
+                        playedToday.Add(id);
+                    }
                     schedule.Add(new ScheduledGame(idx++, day, h, a));
-                    playedToday.Add(h.Id); playedToday.Add(a.Id);
-                    Push(recent[h.Id], day); Push(recent[a.Id], day);
-                    remaining.Remove(node);
+                    placed.Add(i);
                     gamesToday++;
                 }
-                node = next;
+            if (placed.Count > 0)
+            {
+                int k = 0;
+                remaining = remaining.Where(_ => !placed.Contains(k++)).ToList();
             }
             day = day.AddDays(1);
+
+            bool Yesterday(int id) => played[id].Count > 0 && played[id][^1] == dn - 1;
+            bool CanPlay(int id, int pass)
+            {
+                var p = played[id];
+                int n = p.Count;
+                if (n >= 2 && p[^1] == dn - 1 && p[^2] == dn - 2) return false;     // a third straight day
+                if (n >= 3 && dn - p[^3] < 5) return false;                         // 4 games in 5 days
+                if (n >= 4 && dn - p[^4] < 7) return false;                         // 5 games in 7 days
+                if (!Yesterday(id)) return true;
+                if (overtime) return pass == 1;
+                if (backToBacks[id] >= BackToBackCap) return false;
+                // Pass 0 takes a back-to-back while the team is behind the real league's pace (about 14 in 82 games), so
+                // they are spread through the season instead of piling up where the slate is full; pass 1 fills the day.
+                return pass == 1 || backToBacks[id] < BackToBackPace * n / 82.0;
+            }
         }
         return schedule;
 
-        static bool Rested(Queue<DateOnly> q, DateOnly d) => q.Count(x => d.DayNumber - x.DayNumber < 7) < 4;
-        static void Push(Queue<DateOnly> q, DateOnly d) { q.Enqueue(d); while (q.Count > 6) q.Dequeue(); }
+        // The real NBA's week: Wednesday and Friday are the big nights, Thursday is light (TV doubleheaders), and the
+        // weekend is busy. Heavy nights next to each other are where back-to-backs come from (about 14 a team here).
+        static double Weight(DateOnly d) => d.DayOfWeek switch
+        {
+            DayOfWeek.Monday => 0.9, DayOfWeek.Tuesday => 0.9, DayOfWeek.Wednesday => 1.4, DayOfWeek.Thursday => 0.5,
+            DayOfWeek.Friday => 1.4, DayOfWeek.Saturday => 1.2, _ => 1.0,
+        };
+        static bool AllStarBreak(DateOnly d) => d.Month == 2 && d.Day >= 13 && d.Day <= 17;
     }
 
     /// <summary>
