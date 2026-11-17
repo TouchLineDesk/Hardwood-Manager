@@ -266,8 +266,8 @@ public sealed partial class BoardViewModel : PageViewModel
                 Detail = $"{vctx.Name} · owner: {t.Owner.Name} ({t.Owner.Style.ToLower()}) · {vrec.Wins}-{vrec.Losses} · " + (chance >= 0.6 ? "good chance" : chance >= 0.3 ? "worth a try" : "long shot"),
                 Status = v.Status switch
                 {
-                    "applied" => summer && s.Employed ? "Applied · they answer at the next step of the summer" : $"Applied · decision by {v.DecideOn:MMM d}",
-                    "offered" => (v.Approach ? "They came to you! " : "Offer! ") + (summer && s.Employed ? "Answer before the season starts" : $"Answer by {v.DecideOn:MMM d}"),
+                    "applied" => summer ? "Applied · they answer at the next step of the summer" : $"Applied · decision by {v.DecideOn:MMM d}",
+                    "offered" => (v.Approach ? "They came to you! " : "Offer! ") + (summer ? "Answer before the season starts" : $"Answer by {v.DecideOn:MMM d}"),
                     _ => $"Open since {v.Opened:MMM d}",
                 },
                 CanApply = v.Status == "open", HasOffer = v.Status == "offered",

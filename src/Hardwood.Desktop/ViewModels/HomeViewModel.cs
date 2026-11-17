@@ -178,6 +178,13 @@ public sealed partial class HomeViewModel : PageViewModel
             Opponent = null; NextGame = $"{char.ToUpper(over[0])}{over[1..]}"; Scouting = "";
             NextDetail = "The rest of the playoffs go on without you. Continue or Sim week moves on to the summer.";
         }
+        else if (s.Employed && s.InCollege && s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && s.Today.Month is >= 3 and <= 7
+                 && (s.World.College?.Season.ChampionId != null || s.Today.Month >= 5))
+        {
+            // H77 (bug hunt Nov 17, run 97): a college coach's spring has no games; say why, and how to move on.
+            Opponent = null; NextGame = "Season over"; Scouting = "";
+            NextDetail = "Your college season is done. The summer starts when the pro playoffs end, in mid-May: Sim week gets you there faster.";
+        }
         else { Opponent = null; NextGame = "No game scheduled"; NextDetail = s.Phase == SessionPhase.Offseason ? "It's the offseason." : ""; Scouting = ""; }
 
         Table.Clear();
@@ -194,7 +201,7 @@ public sealed partial class HomeViewModel : PageViewModel
         Pulse.Clear();
         foreach (var p in team.Roster.Where(p => p.TradeRequested || p.Morale < 45).OrderBy(p => p.Morale).Take(5))
             Pulse.Add(new HomeRow { Icon = p.Morale < 38 ? "Frown" : "Meh", IconBrush = p.Morale < 38 ? Bad : Warn, Title = p.Name,
-                Detail = p.TradeRequested ? "Wants a trade" : PeopleEngine.Mood(p.Morale) });
+                Detail = p.TradeRequested ? (Session.InCollege ? "Thinking of transferring" : "Wants a trade") : PeopleEngine.Mood(p.Morale) });
         if (Pulse.Count == 0) Pulse.Add(new HomeRow { Icon = "Smile", IconBrush = Good, Title = "Everyone is content", Detail = "" });
 
         Injuries.Clear();
@@ -345,7 +352,7 @@ public sealed partial class HomeViewModel : PageViewModel
                 Detail = v.Status switch
                 {
                     "offered" => "Offer! Answer on the Board page",
-                    "applied" => $"Applied · decision by {v.DecideOn:MMM d}",
+                    "applied" => s.Phase == Hardwood.Core.Season.SessionPhase.Offseason ? "Applied · they answer at the next step of the summer" : $"Applied · decision by {v.DecideOn:MMM d}",
                     _ => chance >= 0.6 ? "Good chance" : chance >= 0.3 ? "Worth a try" : "Long shot",
                 } + $" · {s.ContextOf(t).Name}",
             });

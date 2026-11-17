@@ -222,6 +222,46 @@ public sealed partial class GameSession
         }
     }
 
+    /// <summary>
+    /// H75 (bug hunt Nov 17, run 97): out of work in the summer. The daily market runs only on game days, and the summer
+    /// has none, so applications sent in May waited until October. Now they're answered at each step of the summer, as
+    /// they are in work, on the career path's own random numbers (the session's stream is untouched). Offers stand
+    /// until the new season starts (<see cref="CarrySummerSearch"/>).
+    /// </summary>
+    private void SummerJobMarket()
+    {
+        var rng = CareerRng(8);
+        foreach (var v in Job.Vacancies.Where(v => v.Status == "applied").ToList())
+        {
+            if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
+            if (rng.Chance(Board.HireChance(Coach, ContextOf(t), t)))
+            {
+                v.Status = "offered"; v.DecideOn = Today.AddDays(7);
+                Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of the {t.FullName}. Accept or decline on the Board page before the new season starts.", "Board");
+            }
+            else
+            {
+                v.Status = "rejected";
+                t.CoachName = Successor(v, rng);
+                Post($"{t.Abbreviation} went another way", $"{t.FullName} have hired {t.CoachName} instead.", "Board");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Out of work when the new season starts: the date jumps from the end of the summer to the preseason, so the
+    /// summer's offers get a week from today to answer and the jobs still open stay open a week more (they'd otherwise
+    /// all close on the first day, dated from May).
+    /// </summary>
+    private void CarrySummerSearch()
+    {
+        foreach (var v in LiveVacancies)
+        {
+            if (v.Status == "offered") v.DecideOn = Today.AddDays(7);
+            else if (v.Status == "open" && Today.DayNumber - v.Opened.DayNumber > 14) v.Opened = Today.AddDays(-14);
+        }
+    }
+
     /// <summary>The new season starts: openings from the summer that you didn't take are filled.</summary>
     private void CloseSummerOpenings()
     {

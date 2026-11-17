@@ -28,8 +28,10 @@ public static class Talks
         _ => "Convince him to stay",
     };
 
-    public static IEnumerable<TalkTopic> Available(Player p) => p.TradeRequested
-        ? new[] { TalkTopic.ConvinceToStay, TalkTopic.PromiseTrade, TalkTopic.RefuseTrade, TalkTopic.AskWhatsWrong }
+    /// <param name="college">H76 (run 97): programs don't trade, so a college player who wants out can only be talked round.</param>
+    public static IEnumerable<TalkTopic> Available(Player p, bool college = false) => p.TradeRequested
+        ? college ? new[] { TalkTopic.ConvinceToStay, TalkTopic.AskWhatsWrong }
+                  : new[] { TalkTopic.ConvinceToStay, TalkTopic.PromiseTrade, TalkTopic.RefuseTrade, TalkTopic.AskWhatsWrong }
         : new[] { TalkTopic.AskWhatsWrong, TalkTopic.Praise, TalkTopic.Criticise, TalkTopic.DiscussRole, TalkTopic.PromiseMinutes };
 
     /// <summary>Why the coach can't talk to him right now, or null.</summary>
