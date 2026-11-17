@@ -144,8 +144,10 @@ public sealed partial class MainViewModel : ViewModelBase
     /// Bug hunt H52 (run 84): the pages that change your own club. Out of work they're hidden from the menu, and a link,
     /// a Home button or Back that leads to one opens the Board page (the open jobs) instead, so nothing you touch there
     /// can change the club you left (its rotation, game plan or training).
+    /// H15b (run 93): Squad and Offseason too: out of work Squad's talks only answered "He isn't one of your players" and
+    /// Offseason showed three blank tabs under "You aren't coaching a club".
     /// </summary>
-    public static readonly IReadOnlySet<string> ClosedOutOfWork = new HashSet<string> { "Transactions", "Rotation", "Tactics", "Staff & Training" };
+    public static readonly IReadOnlySet<string> ClosedOutOfWork = new HashSet<string> { "Transactions", "Rotation", "Tactics", "Staff & Training", "Squad", "Offseason" };
 
     /// <summary>True when this page is one of <see cref="ClosedOutOfWork"/> and you have no club.</summary>
     public bool IsClosed(string name) => Session is { Employed: false } && ClosedOutOfWork.Contains(name);
@@ -324,6 +326,8 @@ public sealed partial class MainViewModel : ViewModelBase
         ContinueText = s.Phase == SessionPhase.Offseason
             ? s.Offseason?.Phase switch
             {
+                // H15b (run 93): out of work there's no draft or free agency of yours to continue to.
+                OffseasonPhase.ReSigning or OffseasonPhase.Draft when !s.Employed => "Continue the summer",
                 OffseasonPhase.ReSigning => s.League.Finance.OpenMarket && s.Offseason?.CollegeDraftOn != true ? "Continue to free agency" : "Continue to the draft",
                 OffseasonPhase.Draft => "Continue to free agency",
                 OffseasonPhase.FreeAgency => "Start new season",
@@ -342,7 +346,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // H43 (run 81): out of work there is no roster of yours to sign for, waive from or trade.
         // H52 (run 84): nor a rotation, a game plan or a training programme: those pages wrote to the old club.
         if (!s.Employed) foreach (var item in Nav.Where(n => ClosedOutOfWork.Contains(n.Name))) item.IsVisible = false;
-        else foreach (var item in Nav.Where(n => n.Name is "Rotation" or "Tactics" or "Staff & Training")) item.IsVisible = true;
+        else foreach (var item in Nav.Where(n => n.Name is "Rotation" or "Tactics" or "Staff & Training" or "Squad")) item.IsVisible = true;
         var off = Nav.FirstOrDefault(n => n.Name == "Offseason");
         if (off != null) off.Badge = s.Phase == SessionPhase.Offseason ? "!" : "";
     }
