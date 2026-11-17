@@ -93,10 +93,32 @@ public sealed partial class HomeViewModel : PageViewModel
     private static readonly IBrush Warn = new SolidColorBrush(Color.Parse("#D29922"));
     private static readonly IBrush Muted = new SolidColorBrush(Color.Parse("#8B96A5"));
 
+    // March Madness on a pro career's Home (C4 part 2, the last piece): from Selection Sunday to a few days after the final.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasMadness))] private Hardwood.Core.College.MadnessWatch? _madness;
+    public bool HasMadness => Madness != null;
+    public bool HasMadnessProspects => Madness is { Prospects.Count: > 0 };
+    // Flat, never-null values for the panel, so a career with no tournament on logs no binding errors (bug list #13).
+    public string MadnessTitle => Madness?.Title ?? "";
+    public string MadnessStage => Madness?.Stage ?? "";
+    public string MadnessSummary => Madness?.Summary ?? "";
+    public string MadnessResultsTitle => Madness?.ResultsTitle ?? "";
+    public IReadOnlyList<Hardwood.Core.College.MadnessWatchRow> MadnessResults => Madness?.Results ?? Array.Empty<Hardwood.Core.College.MadnessWatchRow>();
+    public string MadnessProspectsTitle => Madness?.ProspectsTitle ?? "";
+    public IReadOnlyList<Hardwood.Core.College.MadnessWatchRow> MadnessProspects => Madness?.Prospects ?? Array.Empty<Hardwood.Core.College.MadnessWatchRow>();
+    partial void OnMadnessChanged(Hardwood.Core.College.MadnessWatch? value)
+    {
+        foreach (var n in new[] { nameof(HasMadnessProspects), nameof(MadnessTitle), nameof(MadnessStage), nameof(MadnessSummary), nameof(MadnessResultsTitle),
+                     nameof(MadnessResults), nameof(MadnessProspectsTitle), nameof(MadnessProspects) })
+            OnPropertyChanged(n);
+    }
+
     public override void Refresh()
     {
         var s = Session; var team = Team; var rec = s.MyRecord;
+        // H73 (run 92): after a job change the hero crest kept the old club; Team is read from the session, so say it changed.
+        OnPropertyChanged(nameof(Team));
         Coaching = s.Employed;
+        Madness = !s.InCollege && s.World.College is { } college ? college.Watch(s.Today) : null;
         Glow = ThemeService.Accent;
         var conf = s.MyTable;
         int seed = s.MyRank;
@@ -247,6 +269,13 @@ public sealed partial class HomeViewModel : PageViewModel
 
     [RelayCommand] private void Go(string page) => Shell.Navigate(page);
     [RelayCommand] private void Studio() => Shell.ShowStudio();
+    /// <summary>College → March Madness (tab 2).</summary>
+    [RelayCommand]
+    private void OpenBracket()
+    {
+        Shell.Navigate("College");
+        if (Shell.CurrentPage is CollegeViewModel college) college.Tab = 2;
+    }
     public bool HasOpponent => Opponent != null;
 }
 

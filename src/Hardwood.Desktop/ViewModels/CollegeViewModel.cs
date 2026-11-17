@@ -341,7 +341,22 @@ public sealed partial class CollegeViewModel : PageViewModel
     partial void OnListedOnlyChanged(bool value) => FillRecruits();
     [ObservableProperty] private int _tab;
 
-    partial void OnConferenceChanged(string value) => FillConference();
+    // H72 (run 92): the picker used to start on CollegeWorld.Conferences[0], a conference real careers don't have, so the
+    // ComboBox pushed null back and the tab stayed empty. A null or unknown pick now goes back to a real one.
+    partial void OnConferenceChanged(string value)
+    {
+        if (value == null || !ConferenceNames.Contains(value)) { if (ConferenceNames.Count > 0 && value != DefaultConference()) Conference = DefaultConference(); return; }
+        FillConference();
+    }
+
+    /// <summary>Your own program's conference in a college career, otherwise the first one this world has.</summary>
+    private string DefaultConference()
+    {
+        if (Session.World.College is { } c && Session.InCollege && c.ConferenceOf.TryGetValue(Session.HumanTeam.Id, out var key)
+            && CollegeWorld.Conferences.FirstOrDefault(x => x.Key == key) is { } mine && ConferenceNames.Contains(mine.Name))
+            return mine.Name;
+        return ConferenceNames.FirstOrDefault() ?? "";
+    }
     partial void OnAgeChanged(string value) => FillProspects();
     partial void OnPositionChanged(string value) => FillProspects();
     partial void OnHighSchoolClassChanged(string value) => FillHighSchool();
@@ -351,6 +366,7 @@ public sealed partial class CollegeViewModel : PageViewModel
     {
         // Only the conferences this career has (careers from before decision #121 have eight).
         if (Session.World.College is { } c) ConferenceNames = c.Active.Select(x => x.Name).ToList();
+        _conference = DefaultConference();
     }
 
     private static DateOnly LastGameDay(CollegeWorld c) => c.Season.Games.Where(g => g.Played).Max(g => g.Date);
@@ -548,7 +564,7 @@ public sealed partial class CollegeViewModel : PageViewModel
     {
         ConferenceRows.Clear();
         if (Session.World.College is not { } c) return;
-        var conf = CollegeWorld.Conferences.First(x => x.Name == Conference);
+        if (c.Active.FirstOrDefault(x => x.Name == Conference) is not { } conf) return;
         int rank = 1;
         foreach (var (id, w, l) in c.ConferenceTable(conf.Key))
         {
