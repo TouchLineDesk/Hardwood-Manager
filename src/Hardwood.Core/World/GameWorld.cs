@@ -893,6 +893,46 @@ public sealed class GameWorld
                 team.Roster.Add(signing);
             }
         }
+        // H88 (run 104): your own club skips the refill above (you pick your squad), but relegation clauses run after your
+        // sporting director's summer signings, so a relegated club could open the season under the minimum (Charlotte FC,
+        // 10 players on Oct 22). He makes up the numbers to the minimum, and the inbox names who he signed.
+        if (ManagedClubId is int mine && Competitions.FirstOrDefault(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Any(t => t.Id == mine)) is { } myComp)
+        {
+            var team = myComp.Clubs.First(t => t.Id == mine);
+            var club = ClubOf(myComp, team);
+            var made = new List<Player>();
+            while (team.Roster.Count < ManagedMinimum)
+            {
+                int target = ExpectedCa(myComp.Profile, team, team.Roster.Count);
+                var pick = freeAgents.Where(p => p.Age(date) <= 33 && p.Age(date) >= myComp.Profile.MinAge && Math.Abs(p.CurrentAbility - target) <= 10
+                        && LocalsOf(myComp.Profile, club).Contains(p.Nationality) && (p.DraftRightsTeamId == null || p.DraftRightsTeamId == mine))
+                    .OrderBy(p => Math.Abs(p.CurrentAbility - target)).ThenBy(p => p.Id).FirstOrDefault();
+                Player signing;
+                if (pick != null)
+                {
+                    freeAgents.Remove(pick); pick.TeamId = team.Id; pick.DraftRightsTeamId = null;
+                    pick.Contract = NewContract(pick, myComp.Profile, 1, date, newYear);
+                    team.Roster.Add(pick); SignedAbroad.Add((pick, team));
+                    signing = pick;
+                }
+                else
+                {
+                    signing = NewPlayer(team, myComp.Profile, club, team.Roster.Count, 0, date, gen, _rng, foreignSlot: false, ageOverride: _rng.Next(21, 30), caOverride: target);
+                    signing.Contract!.StartSeason = newYear;
+                    signing.Contract.Years = 1;
+                    signing.Contract.Buyout = BuyoutFor(signing, signing.Contract.Salary, 1, date); // priced for the one year (run 104 review)
+                    team.Roster.Add(signing);
+                }
+                made.Add(signing);
+            }
+            if (made.Count > 0)
+            {
+                Budgets.OwnerFunds(team, ContractMarket.Payroll(team));
+                News.Add(($"{team.FullName} make up the numbers",
+                    $"{myComp.Profile.Name} needs at least {ManagedMinimum} players, and the squad was down to {team.Roster.Count - made.Count} after the summer's moves, so your sporting director signed "
+                    + $"{string.Join(", ", made.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year deals."));
+            }
+        }
         Nabl.NextPlayerId = gen.NextId;
         College?.StartSeason(newYear, _rng);
         StartSeason(newYear);

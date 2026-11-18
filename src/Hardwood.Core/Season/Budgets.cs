@@ -142,6 +142,7 @@ public static class Budgets
     public static void Rescale(Team t, double salaryScale, double typicalArena, double oldScale = 0)
     {
         var m = t.Money;
+        long oldBudget = m.Ready ? m.WageBudget : 0;
         long oldRevenue = m.Ready ? m.Revenue : (oldScale > 0 ? Revenue(t, LeagueRevenue(oldScale), typicalArena, 0.5) : 0);
         m.Revenue = Revenue(t, LeagueRevenue(salaryScale), typicalArena, 0.5);
         if (oldScale > salaryScale)
@@ -166,6 +167,12 @@ public static class Budgets
         // Without it a relegated club was "over budget" (and failing the board's wage goal) for deals it couldn't shed.
         if (oldScale > salaryScale && m.Balance >= 0)
             m.WageBudget = Math.Max(m.WageBudget, (long)Math.Ceiling(ContractMarket.Payroll(t) / 100_000.0) * 100_000);
+        // Going up (H86, run 104): a promoted club never has less to spend than it had in the league below. Its old budget
+        // could include a parachute that stops on promotion (and the payroll floor from a relegation), so the new league's
+        // revenue alone gave the Kings $14.5M in the G League after $28.8M in the ABA, $6.5M under the contracts they
+        // carried up. A solvent owner keeps the old budget and funds the contracts the club brings with it.
+        if (oldScale > 0 && oldScale < salaryScale && m.Balance >= 0)
+            m.WageBudget = Math.Max(m.WageBudget, Math.Max(oldBudget, (long)Math.Ceiling(ContractMarket.Payroll(t) / 100_000.0) * 100_000));
         m.TransferBudget = Round(m.Revenue * 0.04 * (0.5 + t.Owner.Ambition / 20.0) + Math.Max(0, m.Balance) * 0.15);
         m.Ready = true;
     }
