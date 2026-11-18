@@ -22,9 +22,9 @@ public class Run93OutOfWorkHomeTests
     [Fact]
     public void Job_history_uses_season_labels()
     {
-        Assert.Equal("Anchorage Steelheads, 2026-27 to 2028-29: sacked (10-52 in the last season)",
+        Assert.Equal("Anchorage Steelheads, 2026-27 to 2028-29: sacked (10-52 in 2028-29)",
             JobRecords.Line(new JobRecord(1, "Anchorage Steelheads", 2026, 2028, 10, 52, "Sacked")));
-        Assert.Equal("Boston Celtics, 2026-27: resigned (3-4 in the last season)",
+        Assert.Equal("Boston Celtics, 2026-27: resigned at 3-4",
             JobRecords.Line(new JobRecord(1, "Boston Celtics", 2026, 2026, 3, 4, "Resigned")));
         Assert.Equal("2099-00", JobRecords.Season(2099));
     }

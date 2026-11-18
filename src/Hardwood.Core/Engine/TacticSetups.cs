@@ -64,6 +64,36 @@ public static class TacticSetups
     }
 
     /// <summary>
+    /// H82 (run 106): no two cards show the same system and scheme (5 of the Celtics' 8 read "Motion · 2-3 zone"). The best
+    /// fit, the game plan and the starting five's card merge when they agree (the game plan, which carries the matchup, takes
+    /// the first one's place). A style card that lands on a pair already shown keeps its sliders and takes the next-best
+    /// scheme for its system (the lockdown, whose pitch names its scheme, takes the next-best system), or is dropped.
+    /// </summary>
+    internal static List<TacticSetup> Distinct(List<TacticSetup> list, IReadOnlyList<Player> rot, Func<OffensiveSystem, DefensiveScheme, double> edge)
+    {
+        var shown = new List<TacticSetup>();
+        bool Taken(OffensiveSystem sy, DefensiveScheme sc) => shown.Any(x => x.System == sy && x.Scheme == sc);
+        foreach (var x in list)
+        {
+            if (!Taken(x.System, x.Scheme)) { shown.Add(x); continue; }
+            if (x.Key is "fit" or "plan" or "five")
+            {
+                if (x.Key == "plan") { int i = shown.FindIndex(y => y.System == x.System && y.Scheme == x.Scheme && y.Key is "fit" or "five"); if (i >= 0) shown[i] = shown[i].Key == "fit" ? x with { Pitch = x.Pitch + " It is also the best fit for your rotation." } : x; }
+                continue;
+            }
+            if (x.Key == "lock")
+            {
+                var sys = Enum.GetValues<OffensiveSystem>().Where(sy => !Taken(sy, x.Scheme)).OrderByDescending(sy => Systems.Fit(sy, rot)).Cast<OffensiveSystem?>().FirstOrDefault();
+                if (sys is { } sy2) shown.Add(x with { System = sy2, SystemFit = Systems.Fit(sy2, rot), Edge = edge(sy2, x.Scheme) });
+                continue;
+            }
+            var sch = Enum.GetValues<DefensiveScheme>().Where(sc => !Taken(x.System, sc)).OrderByDescending(sc => Systems.Fit(sc, rot)).Cast<DefensiveScheme?>().FirstOrDefault();
+            if (sch is { } sc2) shown.Add(x with { Scheme = sc2, SchemeFit = Systems.Fit(sc2, rot), Edge = edge(x.System, sc2) });
+        }
+        return shown;
+    }
+
+    /// <summary>
     /// The suggested setups, assistant's pick first. <paramref name="opp"/> (the next opponent, if any) adds a game-plan
     /// card and each card's matchup edge against what he expects them to run.
     /// </summary>
@@ -94,6 +124,8 @@ public static class TacticSetups
         var go = rot.OrderByDescending(p => p.Attributes[Attr.ShotCreation] + p.Attributes[Attr.MidRange]).FirstOrDefault();
         list.Add(Make("star", go != null ? $"Ride {go.LastName}" : "Ride the star", "Clear out for your best scorer and feed him.", OffensiveSystem.Isolation, bestD, pace: 96, star: 82));
         list.Add(Make("move", "Ball movement", "Cut, screen and share it: more assists and open looks.", OffensiveSystem.Motion, bestD, star: 30));
+
+        list = Distinct(list, rot, Edge);
 
         // On a tie (the best fit is already the counter) the game-plan card carries the pick, so the badge sits on the plan.
         var best = list.OrderByDescending(x => x.Value).ThenByDescending(x => x.Key == "plan").First();

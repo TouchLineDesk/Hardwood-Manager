@@ -369,7 +369,7 @@ public sealed partial class WorldViewModel : PageViewModel
                 };
             }).ToList();
             string c = cat;
-            StatCards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, ShowAll = new RelayCommand(() => ShowFullStat(c)) });
+            StatCards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, Peers = b.Teams, ShowAll = new RelayCommand(() => ShowFullStat(c)) });
         }
     }
 

@@ -41,6 +41,7 @@ public class Run85BigCourtTests
         AppSettings.FilePath = settingsPath;
         AppSettings.Use(new AppSettings { AutoPortraits = false, UiScale = scale });
         string? dir = Environment.GetEnvironmentVariable("HW_SCREENSHOT_DIR") is { Length: > 0 } d ? d : null;
+        if (dir != null) Directory.CreateDirectory(dir);   // T1 (run 106): a missing folder no longer fails the test
         MainWindow? window = null;
         try
         {

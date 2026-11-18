@@ -776,6 +776,28 @@ public sealed partial class GameSession
     }
 
     /// <summary>
+    /// H69 (bug hunt; run 106): where your club plays next season when it is going down, and what its contracts come to once the
+    /// relegation clauses cut them at the end of the summer (to the new league's scale, never below half; Budgets.Rescale).
+    /// A solvent owner funds at least those contracts, so the cut payroll is the floor of next season's budget. Null when you
+    /// aren't going down.
+    /// </summary>
+    public (string League, long PayrollAfter, bool OwnerFunds)? RelegationOutlook()
+    {
+        if (!GoingDown()) return null;
+        string from = InNabl ? "" : HumanLeague?.Key ?? "";
+        string? below = InNabl ? UsaPyramid.Tier2 : from switch
+        {
+            UsaPyramid.Tier2 => UsaPyramid.Tier3, UsaPyramid.Tier3 => UsaPyramid.Tier4, UsaPyramid.Tier4 => UsaPyramid.Tier5, _ => null,
+        };
+        if (below == null) return null;
+        double oldScale = InNabl ? 1 : Competitions.Get(from).SalaryScale, newScale = Competitions.Get(below).SalaryScale;
+        double keep = oldScale > newScale ? Math.Max(0.5, newScale / oldScale) : 1;
+        long after = HumanTeam.Roster.Where(p => !MyExpiring.Contains(p))
+            .Sum(p => p.Contract is { } c ? (long)Math.Round(c.Salary * keep / 1000) * 1000 : 0);
+        return (Competitions.Get(below).Name, after, HumanTeam.Money.Balance >= 0);
+    }
+
+    /// <summary>
     /// H33 (bug hunt, Nov 16; run 82): when your club goes down level on record with others in its division, the tiebreak
     /// that decided it, in words ("Level at 35-27 with … : point difference decided it (… −40, … +12)."). Null when it
     /// wasn't a tie, or you aren't going down.
@@ -1311,13 +1333,16 @@ public sealed partial class GameSession
         }
     }
 
+    /// <summary>Why a club has no draft pick (the lottery's rule; H59 shows it on the Draft tab too).</summary>
+    public const string NoPickReason = "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.";
+
     /// <summary>D40: the lottery's order, posted when the summer opens.</summary>
     private void AnnounceDraftLottery()
     {
         var o = Offseason!;
         string Line(int i) => $"{i + 1}. {o.PickOwners[i].FullName}" + (i == o.PickOwners.Count - 1 && o.Outcome.ThirdPlaceWinner == o.PickOwners[i] ? " (the third-place tournament's extra pick)" : "");
         var ours = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == HumanTeam).Select(i => i + 1).ToList();
-        string mine = !Employed || InCollege ? "" : ours.Count == 0 ? "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.\n\n"
+        string mine = !Employed || InCollege ? "" : ours.Count == 0 ? NoPickReason + "\n\n"
             : $"You pick {string.Join(" and ", ours.Select(Ordinal))}. When the draft reaches you, choose on the Offseason page (Draft), or press Continue and your scouts pick for you.\n\n";
         Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates go in a one-round draft before free agency; everyone else from the class is a free agent. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
     }
@@ -1332,7 +1357,8 @@ public sealed partial class GameSession
         PostWorld($"Draft: {first.Player.Name} goes first to {first.Team.TheFullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
         var ours = picks.Where(d => d.Team == HumanTeam).ToList();
         if (Employed && !InCollege && ours.Count > 0)
-            Post("Your draft", string.Join("\n", ours.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}), ${d.Player.Contract!.Salary / 1e6:F2}M a year for {d.Player.Contract.Years} years (your option on the last).")), "Draft");
+            Post("Your draft", string.Join("\n", ours.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}), ${d.Player.Contract!.Salary / 1e6:F2}M a year for {d.Player.Contract.Years} years (your option on the last)."))
+                + (League.Finance.OpenMarket ? "\n\nA pick is compulsory, so the owner has added each rookie's wage to your wage budget." : ""), "Draft");
     }
 
     /// <summary>Human draft pick; then AI picks run until the human is on the clock again or the draft ends.</summary>

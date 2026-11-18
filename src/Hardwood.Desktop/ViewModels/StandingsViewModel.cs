@@ -157,7 +157,7 @@ public sealed partial class StandingsViewModel : PageViewModel
             // Abroad: your league on the left, the NABL on the right.
             string? cardsLeft = null, cardsRight = null;
             int playoff = hl.Profile.Playoffs.Length > 0 ? hl.Profile.Playoffs[0].Teams : 0;
-            FillRecords(East, s.MyStandings.All(), r => r <= playoff ? "Playoffs" : "");
+            FillRecords(East, s.MyStandings.All(), r => r <= playoff ? "Playoffs" : "", book: Hardwood.Core.Season.LeagueBook.Get(s, hl.Key));
             FillRecords(West, s.Standings.All(), _ => "");
             if (Hardwood.Core.World.UsaPyramid.IsPyramid(hl.Key))
             {
@@ -168,6 +168,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 if (book != null)
                 {
                     var rows = book.Table();
+                    var bookGames = book.Games();
                     East.Clear();
                     foreach (var g in rows.GroupBy(r => r.Group))
                     {
@@ -178,7 +179,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                             East.Add(new StandingRow
                             {
                                 Rank = ++k, Team = r.Team, W = r.W, L = r.L, Div = g.Key, Pct = r.G == 0 ? ".000" : r.Pct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
-                                Diff = r.G == 0 ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"), Zone = divisional || r.Zone != "Promotion" ? r.Zone : "Playoffs", IsHuman = r.Team == s.HumanTeam,
+                                Diff = r.G == 0 ? "-" : r.Diff.ToString("+0.0;-0.0;0.0"), Last10 = Last10Of(r.Team, bookGames), Zone = divisional || r.Zone != "Promotion" ? r.Zone : "Playoffs", IsHuman = r.Team == s.HumanTeam,
                                 ZoneNote = tier2 && divisional && r.Zone == "Promotion" ? StandingRow.PromotionPlayoffKey : null,
                             });
                         }
@@ -272,8 +273,9 @@ public sealed partial class StandingsViewModel : PageViewModel
     }
 
     /// <summary>A plain table (a league abroad, or the whole NABL).</summary>
-    private void FillRecords(ObservableCollection<StandingRow> list, List<TeamRecord> table, Func<int, string> zone, bool school = false)
+    private void FillRecords(ObservableCollection<StandingRow> list, List<TeamRecord> table, Func<int, string> zone, bool school = false, LeagueBook? book = null)
     {
+        var bookGames = book?.Games();
         list.Clear();
         var leader = table.FirstOrDefault();
         int rank = 1;
@@ -285,10 +287,28 @@ public sealed partial class StandingsViewModel : PageViewModel
                 Rank = rank, Team = r.Team, Label = school ? r.Team.City : null, W = r.Wins, L = r.Losses, Zone = zone(rank),
                 Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
+                Last10 = school ? "" : bookGames != null ? Last10Of(r.Team, bookGames) : Last10Of(r.Team),
                 IsHuman = r.Team == Session.HumanTeam,
             });
             rank++;
         }
+    }
+
+    /// <summary>A club's last ten from the played schedule; empty when its league is quick-simmed with no game log
+    /// (the view then hides the column, bug hunt H31).</summary>
+    private string Last10Of(Team team)
+    {
+        var last10 = Session.Schedule.Where(g => (g.Home == team || g.Away == team) && Session.Results.ContainsKey(g.Index))
+            .OrderByDescending(g => g.Index).Take(10).Select(g => Session.Results[g.Index].Winner.Team == team).ToList();
+        return last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "";
+    }
+
+    /// <summary>A club's last ten regular-season games from a league book (a pyramid or overseas league, H31).</summary>
+    public static string Last10Of(Team team, IEnumerable<BookGame> games)
+    {
+        var last10 = games.Where(g => g.Played && g.Involves(team) && g.Stage == Hardwood.Core.World.CompetitionSeason.RegularSeason)
+            .OrderByDescending(g => g.Date).Take(10).Select(g => (g.Home == team) == (g.HomePts > g.AwayPts)).ToList();
+        return last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "";
     }
 
     private void Fill(ObservableCollection<StandingRow> list, Conference conf, bool divisions = false)
@@ -308,14 +328,12 @@ public sealed partial class StandingsViewModel : PageViewModel
             int cr = confRank[r.Team];
             bool lastInDivision = ShowRelegation && table.LastOrDefault(x => x.Team.Division == r.Team.Division) == r && r.Wins + r.Losses > 0;
             double gb = leader == null ? 0 : ((leader.Wins - r.Wins) + (r.Losses - leader.Losses)) / 2.0;
-            var last10 = Session.Schedule.Where(g => (g.Home == r.Team || g.Away == r.Team) && Session.Results.ContainsKey(g.Index))
-                .OrderByDescending(g => g.Index).Take(10).Select(g => Session.Results[g.Index].Winner.Team == r.Team).ToList();
             list.Add(new StandingRow
             {
                 Rank = rank, Zone = lastInDivision ? "Relegation" : divisions ? LeagueBook.DivisionZone(placeInDivision[r.Team]) : cr <= 6 ? "Playoffs" : cr <= 10 ? "Play-in" : "", Team = r.Team, W = r.Wins, L = r.Losses, Div = r.Team.Division,
                 Pct = r.WinPct.ToString(".000"), GB = gb <= 0 ? "-" : gb.ToString("0.#"),
                 Diff = r.PointDiff.ToString("+0.0;-0.0;0.0"), Home = $"{r.HomeWins}-{r.HomeLosses}",
-                Last10 = last10.Count > 0 ? $"{last10.Count(x => x)}-{last10.Count(x => !x)}" : "",
+                Last10 = Last10Of(r.Team),
                 IsHuman = r.Team == Session.HumanTeam,
                 ZoneNote = lastInDivision && Hardwood.Core.World.UsaPyramid.PlaysPromotion(Session.World, Session.League) ? StandingRow.StayUpTip(StandingRow.Tier2Name(Session)) : null,
             });
@@ -468,7 +486,7 @@ public sealed partial class LeadersViewModel : PageViewModel
                     Ours = q.TeamId == s.HumanTeam.Id,
                 }).ToList();
             string c = cat;
-            Cards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, ShowAll = new RelayCommand(() => ShowFull(c)) });
+            Cards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, Peers = s.League.Teams, ShowAll = new RelayCommand(() => ShowFull(c)) });
         }
     }
 

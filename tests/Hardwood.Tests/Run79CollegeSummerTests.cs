@@ -35,7 +35,8 @@ public class Run79CollegeSummerTests
 
         // The last place filled: the limit drops to 0 (code review).
         var none = CollegeViewModel.OffersChip(3, 0);
-        Assert.Equal("no places left", none.Sub);
+        Assert.Equal("no scholarships open", none.Sub);
+        Assert.Equal("3 out", none.Value);   // H83 (run 106): not "3 of 0"
         var noneNote = CollegeViewModel.OverOffersNote(3, 0, 0, 2028);
         Assert.Contains("unless a scholarship opens up", noneNote);
         Assert.DoesNotContain("fewer than 0", noneNote);

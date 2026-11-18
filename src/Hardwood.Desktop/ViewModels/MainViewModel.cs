@@ -292,6 +292,15 @@ public sealed partial class MainViewModel : ViewModelBase
 
     [RelayCommand] private void GoBoard() => Navigate("Board");
 
+    /// <summary>The top bar's phase line during the promotion playoff (H90): "Promotion playoff · v Seattle Highlanders (best of 3, 1-0)".</summary>
+    public static string PromotionLine(Hardwood.Core.World.SeriesState ps, GameSession s)
+    {
+        bool high = ps.HighId == s.HumanTeam.Id;
+        var opp = s.FindTeam(high ? ps.LowId : ps.HighId);
+        int us = high ? ps.HighWins : ps.LowWins, them = high ? ps.LowWins : ps.HighWins;
+        return $"Promotion playoff · v {opp?.FullName ?? "?"} (best of {ps.BestOf}" + (us + them > 0 ? $", {us}-{them})" : ")");
+    }
+
     public void RefreshHeader()
     {
         if (Session == null) return;
@@ -319,6 +328,9 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             SessionPhase.Preseason => $"Preseason · opens {s.OpeningNight:MMM d}",
             SessionPhase.RegularSeason => $"Regular season {s.League.Season}-{(s.League.Season + 1) % 100:00}",
+            // H90 (run 106): a top-league club in the promotion playoff isn't in the playoffs' first round.
+            SessionPhase.Postseason when s.Employed && s.InNabl && Hardwood.Core.World.UsaPyramid.PromotionSeriesOf(s.World, s.HumanTeam.Id) is { Complete: false } ps
+                => PromotionLine(ps, s),
             SessionPhase.Postseason => outText != null ? $"Playoffs · {outText}" : $"Playoffs · {s.Postseason?.Stage}",
             SessionPhase.Offseason => $"Offseason · {s.Offseason?.Phase}",
             _ => "",

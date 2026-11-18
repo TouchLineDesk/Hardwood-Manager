@@ -46,10 +46,10 @@
         </Grid>
           <StackPanel x:Name="ScoreButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
             <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
-            <Button Content="Step" Command="{Binding StepOneCommand}" IsEnabled="{Binding CanStep}" ToolTip.Tip="Paused: play one possession and stop"/>
-            <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsEnabled="{Binding !Complete}"/>
+            <Button Content="Step" Command="{Binding StepOneCommand}" IsEnabled="{Binding CanStep}" IsVisible="{Binding !Complete}" ToolTip.Tip="Paused: play one possession and stop"/>
+            <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsVisible="{Binding !Complete}"/>
             <CheckBox Content="Stop at breaks" IsChecked="{Binding PauseAtBreaks}" VerticalAlignment="Center" ToolTip.Tip="Pause at the end of each period for the break card"/>
-            <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsEnabled="{Binding !Complete}" MinWidth="96">
+            <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="96">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
                 <TextBlock Text="{Binding PlayPauseText}"/>
@@ -61,7 +61,7 @@
         <!-- Stat ticker (match day part 2): one fact at a time, moving on as the game goes; click for the next. -->
         <Button Classes="flat" Command="{Binding NextFactCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="#B0101318" CornerRadius="0" Padding="16,4" ToolTip.Tip="Next fact">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="LIVE" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="#F85149" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding TickerTag}" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="#F85149" VerticalAlignment="Center"/>
             <TextBlock Text="{Binding Ticker}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
           </StackPanel>
         </Button>
@@ -80,7 +80,7 @@
             <Button Content="Break card" Command="{Binding ReopenBreakCommand}" IsVisible="{Binding CanReopenBreak}" Padding="10,3" Margin="0,0,12,0" VerticalAlignment="Center"
                     ToolTip.Tip="Bring back this break's card (the read and the numbers)"/>
             <Border Width="6" IsVisible="{Binding !CanReopenBreak}"/>
-            <Border Background="#26303B" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
+            <Border Background="#26303B" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="{Binding !Complete}">
               <TextBlock FontSize="11.5"><Run Text="Win chance " Foreground="#8B96A5"/><Run Text="{Binding WinChance}" FontWeight="SemiBold"/></TextBlock>
             </Border>
             <Border Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" IsVisible="{Binding HasRunAlert}" VerticalAlignment="Center">
@@ -239,7 +239,8 @@
       <TabItem Header="Lineup">
         <ScrollViewer>
           <StackPanel Spacing="10">
-        <Border Classes="panel">
+        <!-- H71 (run 106): after the final the lineup editor is read-only. -->
+        <Border Classes="panel" IsEnabled="{Binding !Complete}">
           <StackPanel Spacing="6">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="Your five" FontWeight="SemiBold"/>

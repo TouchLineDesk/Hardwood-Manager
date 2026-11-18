@@ -317,7 +317,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
     }
 
     partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(MotionMs)); OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
-    partial void OnCompleteChanged(bool value) { OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(CanStep)); }
+    partial void OnCompleteChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(CanStep)); OnPropertyChanged(nameof(TickerTag));
+        if (value) Refresh();   // H71: the top bar's line turns to the result
+    }
 
     private void Tick() => Advance(_speed == 2 ? 3 : 1);
 
@@ -495,12 +499,23 @@ public sealed partial class LiveGameViewModel : PageViewModel
         UpdateRead();
     }
 
+    /// <summary>H71 (run 106): the top bar talks about the game on screen ("Now: vs GSW · Q2"), not "Next:" about it, and gives
+    /// the result after the final. The real next game comes back when Continue records this one.</summary>
+    public static string TopBarLine(bool home, string opponent, string period, bool final, int us, int them) =>
+        final ? $"Final: {(us > them ? "W" : "L")} {us}-{them} {(home ? "vs" : "at")} {opponent}"
+              : $"Now: {(home ? "vs" : "at")} {opponent} · {period}";
+
+    /// <summary>The ticker's tag: LIVE during the game, FINAL after it (H71).</summary>
+    public string TickerTag => Complete ? "FINAL" : "LIVE";
+
     public override void Refresh()
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
         Clock = $"{_live.PeriodText}  {_live.ClockText}";
         var r = _live.Result;
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";
+        Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, _live.PeriodText, _live.Complete,
+            r.Home.Team == Us ? HomeScore : AwayScore, r.Home.Team == Us ? AwayScore : HomeScore);
 
         var ourBox = r.Home.Team == Us ? r.Home : r.Away;
         var theirBox = ourBox == r.Home ? r.Away : r.Home;
