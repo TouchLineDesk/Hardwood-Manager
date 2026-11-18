@@ -755,8 +755,8 @@ public sealed class GameSimulator
             {
                 // H94 (run 109): most blocks come from the help, not the man guarding the shooter, so any of the five can
                 // block, weighted by his Block rating, size and position (QuickSim's weights), the man on the ball a little
-                // more (much more on a mid-range pull-up). The chance follows the likely blocker's rating. One draw, as
-                // before: the same misses are blocked or not, so nothing but the block line and its play-by-play moves.
+                // more (much more on a mid-range pull-up). The chance follows the likely blocker's rating. One draw, in the
+                // same place as before, so the random stream and every score are unchanged; only blocks (and what reads them) move.
                 var pool = def.OnCourt;
                 Span<double> w = stackalloc double[pool.Length];
                 double sum = 0, rating = 0;

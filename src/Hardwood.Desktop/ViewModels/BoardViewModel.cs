@@ -204,7 +204,7 @@ public sealed partial class BoardViewModel : PageViewModel
             ConfidenceText = $"{label} ({job.Confidence:0}/100)";
             ConfidenceBrush = new SolidColorBrush(Color.Parse(colour));
             var m = t.Money;
-            static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
+            static string M(long v) => Hardwood.Core.Season.Budgets.Money(v);   // H98 (run 109): one money format everywhere
             // Bug hunt H45 (run 84): in the summer the deals that are up (and leave unless renewed) aren't spent, the way
             // Transactions, Offseason and the inbox count them (GameSession.MyBudgetLine); they're named under the chip.
             var expiring = s.MyExpiring;
@@ -308,7 +308,7 @@ public sealed partial class BoardViewModel : PageViewModel
             new("Owner will fund", M(budget), budget > 0 ? $"above a {M(reserve)} reserve" : $"bank under his {M(reserve)} reserve", budget > 0 ? "good" : ""),
             new("Running costs", M(Hardwood.Core.Season.Franchise.Upkeep(f, s.MyLeagueRevenue)), "a season", ""),
             // H99 (run 109): money spent this summer reads "this summer" until the season starts.
-            new("Invested", M(f.LastInvested), s.Phase == Hardwood.Core.Season.SessionPhase.Offseason ? "this summer" : "last summer", ""),
+            new("Invested", M(f.LastInvested), s.Phase is Hardwood.Core.Season.SessionPhase.Offseason or Hardwood.Core.Season.SessionPhase.Preseason ? "this summer" : "last summer", ""),
             new("Arena", $"{t.ArenaCapacity:N0}", $"seats · {f.ArenaYears} years old", f.ArenaYears >= Hardwood.Core.Season.Franchise.ArenaLife ? "warn" : "team"),
         };
         Facilities.Clear();

@@ -75,7 +75,7 @@ public sealed class BracketView : Canvas
                 _boxes.Add((c, i, box));
                 if (NextGameLabel(cols[c].Slots[i]) is { } next)
                 {
-                    // H100 (run 109): a series under way says which game is next ("Game 7 next" at 3-3), as a tab on the box's top edge.
+                    // H100 (run 109): a series under way says which game is next ("Game 7 next" at 3-3), as a tab on the box's bottom edge (clear of the round's heading).
                     var tab = new Border
                     {
                         Background = BoxBrush, BorderBrush = new SolidColorBrush(Color.Parse("#D29922")), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
@@ -83,7 +83,7 @@ public sealed class BracketView : Canvas
                         Child = new TextBlock { Text = next, FontSize = 10.5, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },
                     };
                     tab.Measure(Size.Infinity);
-                    SetLeft(tab, box.Right - tab.DesiredSize.Width - 8); SetTop(tab, box.Y - 8);
+                    SetLeft(tab, box.Right - tab.DesiredSize.Width - 8); SetTop(tab, box.Bottom - 8);
                     Children.Add(tab);
                 }
             }

@@ -1333,10 +1333,10 @@ public sealed partial class GameSession
         }
     }
 
-    /// <summary>Why a club has no draft pick (the lottery's rule; H59 shows it on the Draft tab too).</summary>
     /// <summary>H59 (run 109): the same for a club below the NBA or abroad, which never drafts unless it is promoted into it.</summary>
     public const string NoPickReasonOutsideNba = "You have no pick this year: only NBA clubs draft (the top three in each division, the clubs promoted from the second tier and the third-place tournament's winner).";
 
+    /// <summary>Why a club has no draft pick (the lottery's rule; H59 shows it on the Draft tab too).</summary>
     public const string NoPickReason = "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.";
 
     /// <summary>D40: the lottery's order, posted when the summer opens.</summary>
