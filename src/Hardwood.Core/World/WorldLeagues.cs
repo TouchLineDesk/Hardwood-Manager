@@ -7,6 +7,9 @@ namespace Hardwood.Core.World;
 /// a second European cup and an Americas club cup. One division per country, no promotion or relegation; quick results
 /// unless you choose the full engine at career start. They bring every basketball country's players into the game,
 /// so national teams have real pools to pick from. All clubs are fictional.
+/// H79 (run 107): no league repeats a nickname (Munich Bavarians beside Braunschweig Lions, Busan Egis beside Daegu Pegasus,
+/// Batangas Bossing beside Manila Beermen), and Yokohama is the B-Corsairs, not the city's baseball team. Names only: the
+/// abbreviations, the club count and order stay, so seeded worlds draw the same numbers.
 /// </summary>
 public static class WorldLeagues
 {
@@ -58,7 +61,7 @@ public static class WorldLeagues
                 new("Skopje", "Vardar", "SKP", "North Macedonia"), new("Zadar", "Adriatics", "ZAD", "Croatia"), new("Mega", "Belgrade Youth", "MEG", "Serbia"),
             }, start: (9, 27)),
         League(Germany, "German League", "BBL", "Germany", new[] { "Germany", "Austria" }, -6, 6, 0.08, -14,
-            Clubs("Germany", ("Berlin", "Albatrosses", "BER"), ("Munich", "Lions", "MUN"), ("Bamberg", "Brewers", "BAM"), ("Ulm", "Minster", "ULM"),
+            Clubs("Germany", ("Berlin", "Albatrosses", "BER"), ("Munich", "Bavarians", "MUN"), ("Bamberg", "Brewers", "BAM"), ("Ulm", "Minster", "ULM"),
                 ("Ludwigsburg", "Riesen", "LUD"), ("Oldenburg", "Baskets", "OLD"), ("Bonn", "Telekom", "BON"), ("Hamburg", "Towers", "HAM"),
                 ("Frankfurt", "Skyliners", "FRA"), ("Wurzburg", "Main", "WUR"), ("Chemnitz", "Niners", "CHE"), ("Braunschweig", "Lions", "BRA"),
                 ("Gottingen", "Veilchen", "GOT"), ("Rostock", "Seawolves", "ROS"), ("Heidelberg", "Academics", "HEI"), ("Weissenfels", "Wolves", "WEI"),
@@ -140,18 +143,18 @@ public static class WorldLeagues
         League(Japan, "Japan B.League", "BLG", "Japan", new[] { "Japan" }, -11, 3, 0.08, -18,
             Clubs("Japan", ("Tokyo", "Alvarks", "TKY"), ("Tokyo", "Sunrockers", "TKS"), ("Chiba", "Jets", "CHB"), ("Utsunomiya", "Brex", "UTS"),
                 ("Okinawa", "Kings", "OKI"), ("Nagoya", "Diamonds", "NAG"), ("Osaka", "Evessa", "OSA"), ("Kawasaki", "Thunders", "KAW"),
-                ("Yokohama", "Bay Stars", "YOK"), ("Shimane", "Magic", "SHI"), ("Hiroshima", "Dragonflies", "HIR"), ("Sendai", "Eighty Niners", "SEN"),
+                ("Yokohama", "B-Corsairs", "YOK"), ("Shimane", "Magic", "SHI"), ("Hiroshima", "Dragonflies", "HIR"), ("Sendai", "Eighty Niners", "SEN"),
                 ("Hokkaido", "Levanga", "HOK"), ("Shiga", "Lakes", "SHG"), ("Kyoto", "Hannaryz", "KYO"), ("Niigata", "Albirex", "NII")),
             stars: true, days: new[] { DayOfWeek.Saturday, DayOfWeek.Wednesday }, start: (10, 3)),
         League(Korea, "Korean League", "KBL", "Korea", new[] { "Korea" }, -16, 2, 0.06, -22,
             Clubs("Korea", ("Seoul", "Knights", "SEO"), ("Seoul", "Thunders", "SET"), ("Anyang", "Red Boosters", "ANY"), ("Suwon", "Sonic Boom", "SUW"),
-                ("Ulsan", "Phoebus", "ULS"), ("Wonju", "Promy", "WON"), ("Changwon", "Sakers", "CWN"), ("Busan", "Pegasus", "BUS"),
+                ("Ulsan", "Phoebus", "ULS"), ("Wonju", "Promy", "WON"), ("Changwon", "Sakers", "CWN"), ("Busan", "Egis", "BUS"),
                 ("Goyang", "Sono", "GOY"), ("Daegu", "Pegasus", "DAE")),
             stars: true, robins: 4, days: new[] { DayOfWeek.Saturday, DayOfWeek.Wednesday }, start: (10, 17), playoffs: Four),
         League(Philippines, "Philippine League", "PBA", "Philippines", new[] { "Philippines" }, -20, 1, 0.04, -28,
             Clubs("Philippines", ("Manila", "Beermen", "MNL"), ("Manila", "Gin Kings", "MGK"), ("Quezon City", "Tropang", "QCT"), ("Pasig", "Bolts", "PSG"),
                 ("Makati", "Hotshots", "MKT"), ("Cebu", "Fuel Masters", "CEB"), ("Davao", "Painters", "DVO"), ("Pampanga", "Dyip", "PMP"),
-                ("Taguig", "Road Warriors", "TAG"), ("Laguna", "Elasto", "LAG"), ("Batangas", "Beer Men", "BTG"), ("Iloilo", "Converge", "ILO")),
+                ("Taguig", "Road Warriors", "TAG"), ("Laguna", "Elasto", "LAG"), ("Batangas", "Bossing", "BTG"), ("Iloilo", "Converge", "ILO")),
             stars: true, robins: 3, days: new[] { DayOfWeek.Sunday, DayOfWeek.Wednesday }, start: (10, 4)),
         League(Africa, "Basketball Africa League", "BAL", "", new[]
             {

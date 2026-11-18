@@ -52,7 +52,17 @@ public sealed partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _inLiveGame;
     /// <summary>Progress of the automatic portrait drawing (empty when up to date).</summary>
     [ObservableProperty] private string _portraitStatus = "";
-    public bool ShowSimButtons => InSeason && !InLiveGame;
+    public bool ShowSimButtons => InSeason && !InLiveGame && !InCollegeSpring;
+    /// <summary>H77 (run 107): a college coach's spring with no games left. Sim week and Next game go; Continue becomes
+    /// "Skip to the summer" and plays every day up to the offseason in one press.</summary>
+    [ObservableProperty] private bool _inCollegeSpring;
+    partial void OnInCollegeSpringChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
+    public const string SkipToSummerText = "Skip to the summer";
+
+    /// <summary>H77: a college coach whose season is over (champion crowned, or May) and who has no game left to play.</summary>
+    public static bool CollegeSpring(GameSession s) =>
+        s.Employed && s.InCollege && s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && s.Today.Month is >= 3 and <= 7
+        && (s.World.College?.Season.ChampionId != null || s.Today.Month >= 5) && s.NextMyGame == null;
     /// <summary>Next game needs a club (bug hunt H15): out of work, Sim week and Continue still move time on.</summary>
     [ObservableProperty] private bool _employed = true;
     /// <summary>H20 (run 72): out of the postseason there's no next game to sim to, so Next game goes too.</summary>
@@ -216,7 +226,14 @@ public sealed partial class MainViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            if (Session.Phase == SessionPhase.Offseason)
+            if (InCollegeSpring && Session.Phase != SessionPhase.Offseason)
+            {
+                // H77 (run 107): nothing to coach until the summer, so play the days through in one go.
+                var s = Session;
+                await Task.Run(() => { for (int i = 0; i < 200 && s.Phase != SessionPhase.Offseason && CollegeSpring(s); i++) s.AdvanceDay(); });
+                if (s.Phase == SessionPhase.Offseason) Navigate("Offseason");
+            }
+            else if (Session.Phase == SessionPhase.Offseason)
             {
                 Session.AdvanceOffseason();
                 Navigate(Session.Phase == SessionPhase.Offseason ? "Offseason" : "Inbox");
@@ -320,6 +337,7 @@ public sealed partial class MainViewModel : ViewModelBase
         RecordText = !s.Employed ? "" : rec.Games > 0 ? $"{rec.Wins}-{rec.Losses}" : "0-0";
         var outText = SeasonOverText(s);
         SeasonOver = outText != null;
+        InCollegeSpring = CollegeSpring(s);
         PhaseText = s.InCollege && s.Employed && s.World.College is { } cw && cw.Season.Year == s.League.Season
             ? $"{s.MyConference!.Short} · {(cw.Season.ChampionId != null ? "season over" : cw.StageText.ToLower())}"
             : s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
@@ -345,6 +363,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 OffseasonPhase.FreeAgency => "Start new season",
                 _ => "Continue",
             } ?? "Continue"
+            : InCollegeSpring ? SkipToSummerText
             : "Continue (1 day)";
         var next = s.NextMyGame;
         NextGameText = !s.Employed ? "" : s.InNabl && s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs

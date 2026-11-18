@@ -133,7 +133,8 @@ public sealed class NamePack
         var college = world.College?.Programs ?? new List<Team>();
         var all = league.Teams.Concat(world.Clubs).Concat(college).DistinctBy(t => t.Id).ToList();
         foreach (var t in all)
-            if (Clubs.TryGetValue(t.FullName, out var c)) { Rename(t, c); changed++; }
+            if (Clubs.TryGetValue(t.FullName, out var c)
+                || FormerNames.TryGetValue(t.FullName, out var former) && Clubs.TryGetValue(former, out c)) { Rename(t, c); changed++; }
         foreach (var (key, list) in Tiers)
         {
             IEnumerable<Team> members;
@@ -158,6 +159,13 @@ public sealed class NamePack
         s.NamePackApplied = $"{Name} (applied {s.Today:MMM d, yyyy})";
         return changed;
     }
+
+    /// <summary>H79 (run 107): clubs whose shipped name changed, so a pack written for the old name still finds them.</summary>
+    public static readonly IReadOnlyDictionary<string, string> FormerNames = new Dictionary<string, string>
+    {
+        ["Munich Bavarians"] = "Munich Lions", ["Yokohama B-Corsairs"] = "Yokohama Bay Stars",
+        ["Busan Egis"] = "Busan Pegasus", ["Batangas Bossing"] = "Batangas Beer Men",
+    };
 
     private static void Rename(Team t, PackClub c)
     {
