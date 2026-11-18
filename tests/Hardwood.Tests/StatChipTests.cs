@@ -112,7 +112,7 @@ public class StatChipTests
             Assert.Equal(injured.ToString(), C(rv.Chips, "Injured").Value);
             Assert.Equal(injured > 0 ? "bad" : "good", C(rv.Chips, "Injured").Tone);
             Assert.Equal(team.Roster.Count(p => s.EndsThisSummer(p, team)).ToString(), C(rv.Chips, "Expiring").Value);   // H30: in season, final-year deals (Years 1)
-            Assert.Equal(PlayerViewModel.Money(ContractMarket.Payroll(team)), C(rv.Chips, "Wages").Value);
+            Assert.Equal(Hardwood.Core.Season.Budgets.Money(ContractMarket.Payroll(team)), C(rv.Chips, "Wages").Value);   // H104 (run 112): the budget format, as on Transactions
             Assert.Equal(team.Roster.OrderByDescending(p => p.CurrentAbility).First().Name.Split(' ').Last(), C(rv.Chips, "Best player").Value);
             // "Unhappy" agrees with the Mood column: anyone shown as Unhappy or Very unhappy, or asking out.
             Assert.Equal(team.Roster.Count(p => p.TradeRequested || Hardwood.Core.People.PeopleEngine.Mood(p.Morale) is "Unhappy" or "Very unhappy").ToString(), C(rv.Chips, "Unhappy").Value);

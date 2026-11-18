@@ -53,6 +53,7 @@ public sealed class BracketView : Canvas
         if (cols == null || cols.Count == 0) { Width = 0; Height = 0; InvalidateVisual(); return; }
         int first = cols[0].Slots.Count;
         _peers = cols.SelectMany(c => c.Slots).Where(x => x != null).SelectMany(x => new[] { x!.High, x.Low }).Distinct().ToList();
+        _labels = BracketLabels(_peers);
         for (int c = 0; c < cols.Count; c++)
         {
             double x = c * (BoxWidth + Gap);
@@ -140,6 +141,23 @@ public sealed class BracketView : Canvas
     }
 
     private List<Team> _peers = new();
+    private Dictionary<Team, string> _labels = new();
+
+    /// <summary>H87 (run 112): one name style for a whole bracket. Per-team labels mixed "Houston Mustangs", "Lakers" and
+    /// "Indianapolis" in one G League bracket. Full names when every one fits; otherwise nicknames when they're all
+    /// distinct and none is generic ("United", "FC"); otherwise cities when they're all distinct; otherwise club codes.</summary>
+    public static Dictionary<Team, string> BracketLabels(IReadOnlyList<Team> teams)
+    {
+        // PR #176 review: a word list, not "4 letters or fewer" (Heat, Jazz, Suns and Nets are proper nicknames).
+        static bool Generic(Team t) => t.Name is "FC" or "BC" or "SC" or "KK" or "BK" or "CB" or "AC" or "United" or "City" or "Athletic" or "Club"
+            or "Basket" or "Basketball" || t.Name.EndsWith(" Club") || t.Name.EndsWith(" Basketball");
+        static bool Distinct(IEnumerable<string> xs) { var l = xs.ToList(); return l.Distinct().Count() == l.Count; }
+        if (teams.All(t => t.FullName.Length <= 18)) return teams.ToDictionary(t => t, t => t.FullName);
+        if (!teams.Any(Generic) && Distinct(teams.Select(t => t.Name))) return teams.ToDictionary(t => t, t => t.Name);
+        if (Distinct(teams.Select(t => t.City)) && teams.All(t => t.City.Length > 0)) return teams.ToDictionary(t => t, t => t.City);
+        // Last resort, still one style: the club codes, which are unique.
+        return teams.ToDictionary(t => t, t => t.Abbreviation);
+    }
 
     private Control Line(Team team, int wins, BookSeries s, int row)
     {
@@ -147,7 +165,7 @@ public sealed class BracketView : Canvas
         var g = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*,22"), Opacity = lost ? 0.5 : 1 };
         Grid.SetRow(g, row);
         g.Children.Add(new TeamLogo { Team = team, Width = 18, Height = 18, ShowText = false, VerticalAlignment = VerticalAlignment.Center });
-        var name = new TeamLink { Team = team, Text = Label(team, _peers), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0), Padding = new Thickness(2, 0), MinHeight = 0, FontSize = 13, FontWeight = won ? FontWeight.Bold : FontWeight.Normal };
+        var name = new TeamLink { Team = team, Text = _labels.TryGetValue(team, out var lbl) ? lbl : Label(team, _peers), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0), Padding = new Thickness(2, 0), MinHeight = 0, FontSize = 13, FontWeight = won ? FontWeight.Bold : FontWeight.Normal };
         Grid.SetColumn(name, 1);
         g.Children.Add(name);
         var score = new TextBlock

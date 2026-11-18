@@ -324,7 +324,7 @@ public sealed partial class BoardViewModel : PageViewModel
             {
                 Name = info.Name, Pitch = info.Pitch, Level = fac.Level,
                 LevelText = $"{fac.Level}/5 · {(fac.Edge >= 0.05 ? "+" : "")}{fac.Edge:0.0} on the league",
-                Effect = info.Effect, Status = status, StatusBrush = new SolidColorBrush(Color.Parse(tone)),
+                Effect = $"{Hardwood.Core.Season.Franchise.ClubEffect(k, fac.Edge)}. {info.Effect}", Status = status, StatusBrush = new SolidColorBrush(Color.Parse(tone)), // H102 (run 112)
             });
         }
         HasBuilding = f.Building.Count > 0;

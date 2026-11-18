@@ -123,10 +123,10 @@ public sealed partial class RosterViewModel : PageViewModel
         else if (team.Money.Ready)
         {
             long budget = team.Money.WageBudget;
-            chips.Add(new("Wages", PlayerViewModel.Money(payroll), $"of a {PlayerViewModel.Money(budget)} budget",
+            chips.Add(new("Wages", Hardwood.Core.Season.Budgets.Money(payroll), $"of a {Hardwood.Core.Season.Budgets.Money(budget)} budget",
                 payroll > budget ? "bad" : payroll > budget * 0.95 ? "warn" : "good"));
         }
-        else chips.Add(new("Wages", PlayerViewModel.Money(payroll), "a season"));
+        else chips.Add(new("Wages", Hardwood.Core.Season.Budgets.Money(payroll), "a season"));
         if (college != null)
         {
             var summer = new DateOnly(college.Season.Year + 1, 7, 1);

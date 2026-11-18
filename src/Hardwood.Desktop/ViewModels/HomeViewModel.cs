@@ -169,8 +169,7 @@ public sealed partial class HomeViewModel : PageViewModel
             GameTag = CollegeGameTag(s, team, next);
             CourtLine = CollegeCourtLine(s, team, next);
             StyleLine = s.InCollege && next.StyleConference is { } sk ? Hardwood.Core.College.CollegeWorld.StyleLine(sk) : "";
-            var report = CoachAi.ScoutingReport(team, opp, next.Date);
-            Scouting = report.Split(". ").FirstOrDefault() is { } first ? first.TrimEnd('.') + "." : report;
+            Scouting = CoachAi.ScoutingHeadline(team, opp, next.Date); // H101 (run 112)
         }
         else if (MainViewModel.SeasonOverText(s) is { } over)
         {

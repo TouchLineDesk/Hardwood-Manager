@@ -293,6 +293,11 @@ public sealed partial class GameSession
 
     /// <summary>Play or start today's game for a club abroad. Returns the live game when asked for one.</summary>
     private College.CollegeGame? _liveCollege;
+    /// <summary>H106 (run 112): whether today's live game is still to be recorded and will count in <see cref="MyRecord"/>
+    /// (a league or college game; not a continental cup or a playoff game). False once FinishLiveDay has recorded it.</summary>
+    public bool LiveGameCountsInRecord => _liveCollege != null || _liveScheduled != null
+        || (_liveWorld is { } w && w.comp.Profile.Kind == Hardwood.Core.World.CompetitionKind.Domestic
+            && w.fixture.Stage == Hardwood.Core.World.CompetitionSeason.RegularSeason);
 
     private GameSimulator.LiveGame? BeginAbroadGame(bool live, List<GameResult> played)
     {
