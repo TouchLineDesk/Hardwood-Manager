@@ -306,7 +306,15 @@ public sealed partial class OffseasonViewModel : PageViewModel
             });
         }
         if (Expiring.Count > 1 && Expiring.All(x => x.Fits == "Fits on its own"))
+        {
             foreach (var x in Expiring) x.ShowFit = false;
+            // Review of #181: the hidden chips carried H40's caveat, so the page says it once, with the sum.
+            long room = Math.Max(0, team.Money.WageBudget - s.MyCommittedWages);
+            long all = s.MyExpiring.Where(p => !Offseason.WontReSign(p)).Sum(p => s.PeekDemand(p).Wage);
+            Instructions += all <= room
+                ? $" Every ask fits your wage room ({M(room)}), all of them together too ({M(all)})."
+                : $" Each ask fits your wage room ({M(room)}) on its own, but keeping them all would take {M(all)}.";
+        }
         if (freeAgency)
         {
             long room = s.MyWageRoom;
