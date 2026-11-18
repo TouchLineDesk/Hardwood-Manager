@@ -36,6 +36,10 @@ public sealed class CompetitionProfile
     public string? RealShort { get; init; }
     /// <summary>The name as built, whatever the career (for the made-up world and tests).</summary>
     public string BaseName => _name;
+    public string BaseShort => _short;
+    /// <summary>Back to the built names, as if no pack had renamed it (run 108: a reset used to count as a rename, which hid
+    /// the real-world names, D44).</summary>
+    public void ResetNames(string name, string shortName) { _name = name; _short = shortName; _renamed = _renamedShort = false; }
     public CompetitionKind Kind { get; init; } = CompetitionKind.Domestic;
     /// <summary>Country of a domestic league; players of these nationalities are local.</summary>
     public string Country { get; init; } = "";

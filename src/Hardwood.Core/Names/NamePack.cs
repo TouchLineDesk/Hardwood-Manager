@@ -93,7 +93,9 @@ public sealed class NamePack
 
     private static void Remember()
     {
-        _profileDefaults ??= Profiles.GroupBy(p => p.Key).ToDictionary(g => g.Key, g => (g.First().Name, g.First().Short));
+        // The names as built, not Name/Short: those read the real-world names while a real career is open (run 108), and a
+        // first reset then would make "NBA G League" the fictional default for every later career.
+        _profileDefaults ??= Profiles.GroupBy(p => p.Key).ToDictionary(g => g.Key, g => (g.First().BaseName, g.First().BaseShort));
         _conferenceDefaults ??= CollegeWorld.Conferences.ToArray();
     }
 
@@ -116,7 +118,7 @@ public sealed class NamePack
         Remember();
         Brand.Top = Brand.DefaultTop; Brand.TopShort = Brand.DefaultTop;
         foreach (var p in Profiles)
-            if (_profileDefaults!.TryGetValue(p.Key, out var d)) { p.Name = d.Name; p.Short = d.Short; }
+            if (_profileDefaults!.TryGetValue(p.Key, out var d)) p.ResetNames(d.Name, d.Short);
         _conferenceDefaults!.CopyTo(CollegeWorld.Conferences, 0);
     }
 

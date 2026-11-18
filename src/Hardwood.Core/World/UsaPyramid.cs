@@ -425,8 +425,9 @@ public static class UsaPyramid
 
     /// <summary>The four lower tiers (tiers 2-5), plus the old regional and local leagues kept for older careers (built once,
     /// after the name lists below exist).</summary>
-    public static CompetitionProfile[] Profiles => _profiles ??= Build();
-    private static CompetitionProfile[]? _profiles;
+    public static CompetitionProfile[] Profiles => _built.Value.Profiles;
+    // Lazy (run 108 review): Build also makes the renamed-clubs map, so it must run exactly once even if two threads ask.
+    private static readonly Lazy<(CompetitionProfile[] Profiles, Dictionary<string, string> Former)> _built = new(Build);
 
     // H62 (run 108): no real or former NBA, ABA, WNBA or G League nickname, none of the fictional top league's, and no other
     // major-league club's. Swapped one for one, so the list keeps its 60 names and a seeded world draws the same numbers.
@@ -451,8 +452,7 @@ public static class UsaPyramid
 
     /// <summary>Generated clubs renamed by H62/H87 (run 108): new full name → the name older versions generated. A name pack
     /// written for either name still finds the club (NamePack).</summary>
-    public static IReadOnlyDictionary<string, string> FormerNames { get { _ = Profiles; return _formerNames; } }
-    private static readonly Dictionary<string, string> _formerNames = new();
+    public static IReadOnlyDictionary<string, string> FormerNames => _built.Value.Former;
 
     /// <summary>Names a pyramid club takes instead when its drawn nickname is already used in the four tiers (H87).</summary>
     private static readonly string[] SpareNicknames =
@@ -464,10 +464,13 @@ public static class UsaPyramid
     /// <summary>The nicknames generated clubs may carry (for tests).</summary>
     public static IReadOnlyList<string> AllNicknames => Nicknames.Concat(SpareNicknames).ToArray();
 
-    public static readonly string[] ClubStyles = { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
+    private static readonly string[] Styles = { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
+    /// <summary>The club-style names ("United", "FC"…), read-only so nobody can change what a seeded world draws.</summary>
+    public static IReadOnlyList<string> ClubStyles => Styles;
 
     /// <summary>H62: club-style names that are real clubs in other sports (or read oddly, "Kansas City City"), never generated.</summary>
-    public static readonly HashSet<string> RealStyleNames = new(StringComparer.OrdinalIgnoreCase)
+    public static IReadOnlySet<string> RealStyleNames => RealStyles;
+    private static readonly HashSet<string> RealStyles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Charlotte FC", "Austin FC", "Miami FC", "San Antonio FC", "Dallas FC", "Cincinnati FC", "Tulsa FC", "Reading FC",
         "Orlando City", "New York City", "Detroit City", "St. Louis City", "Birmingham City", "Manchester City", "Lincoln City",
@@ -476,7 +479,7 @@ public static class UsaPyramid
     };
 
     private static bool StyleAllowed(string city, string style) =>
-        !RealStyleNames.Contains($"{city} {style}") && !(style == "City" && city.EndsWith(" City", StringComparison.Ordinal));
+        !RealStyles.Contains($"{city} {style}") && !(style == "City" && city.EndsWith(" City", StringComparison.Ordinal));
 
     /// <summary>
     /// H62 (run 108): a readable code for a club. The city's own code first (initials, or its first three letters), then the
@@ -503,8 +506,9 @@ public static class UsaPyramid
         return a;
     }
 
-    private static CompetitionProfile[] Build()
+    private static (CompetitionProfile[], Dictionary<string, string>) Build()
     {
+        var formerNames = new Dictionary<string, string>();
         var rng = new Rng(0x5059524D4944UL);
         // Every city gets a club; the biggest half of each area also gets a second ("United", "City"...). The draws are made
         // first and the names fixed afterwards (H62), so the random numbers are the same as before.
@@ -515,11 +519,11 @@ public static class UsaPyramid
             {
                 var city = area.Cities[i];
                 bool fcStyle = rng.Chance(0.3);
-                string name = fcStyle ? rng.Pick(ClubStyles) : rng.Pick(Nicknames);
+                string name = fcStyle ? rng.Pick(Styles) : rng.Pick(Nicknames);
                 drawn.Add((city, name, false, area.Key, 16 - i + rng.NextDouble() * 4));
                 if (i < 8)
                 {
-                    string second = rng.Pick(ClubStyles.Where(s => s != name).ToArray());
+                    string second = rng.Pick(Styles.Where(s => s != name).ToArray());
                     drawn.Add((city, second, true, area.Key, 12 - i + rng.NextDouble() * 4));
                 }
             }
@@ -531,8 +535,8 @@ public static class UsaPyramid
             var d = drawn[k];
             if (!ClubStyles.Contains(d.name) || StyleAllowed(d.city, d.name)) continue;
             var others = drawn.Where((x, j) => j != k && x.city == d.city).Select(x => x.name).ToHashSet();
-            int at = Array.IndexOf(ClubStyles, d.name);
-            var pick = Enumerable.Range(1, ClubStyles.Length - 1).Select(o => ClubStyles[(at + o) % ClubStyles.Length])
+            int at = Array.IndexOf(Styles, d.name);
+            var pick = Enumerable.Range(1, Styles.Length - 1).Select(o => Styles[(at + o) % Styles.Length])
                 .FirstOrDefault(s => !others.Contains(s) && StyleAllowed(d.city, s));
             if (pick != null) drawn[k] = d with { name = pick };
         }
@@ -550,7 +554,7 @@ public static class UsaPyramid
             drawn[k] = d with { name = fresh };
         }
         for (int k = 0; k < drawn.Count; k++)
-            if (drawn[k].name != drawnAs[k]) _formerNames.TryAdd($"{drawn[k].city} {drawn[k].name}", $"{drawn[k].city} {drawnAs[k]}");
+            if (drawn[k].name != drawnAs[k]) formerNames.TryAdd($"{drawn[k].city} {drawn[k].name}", $"{drawn[k].city} {drawnAs[k]}");
         // Codes must not clash with the fictional top league's, the real NBA's (and its two expansion clubs') or each other's.
         var used = new HashSet<string>(Generation.NamePool.Franchises.Select(f => f.Abbr)
             .Concat(RealWorld.RealWorldData.Teams.Select(t => t.Abbr)).Concat(RealWorld.RealWorldData.Expansion.Select(t => t.Abbr)));
@@ -582,7 +586,7 @@ public static class UsaPyramid
             profiles.Add(Lower(RegionalKey(rk), name, shortName, -22, 0.02, 2, -26, 2, regional[rk].Select(x => x.seed), legacy: true));
         foreach (var a in Areas)
             profiles.Add(Lower(LocalKey(a.Key), a.Name, a.Short, -34, 0.006, 1, -34, 1, local.TryGetValue(a.Key, out var l) ? l.Select(x => x.seed) : Enumerable.Empty<ClubSeed>(), legacy: true));
-        return profiles.ToArray();
+        return (profiles.ToArray(), formerNames);
     }
 
     // realName/realShort: the names in real-world careers (Danny's D44 pick, #411).

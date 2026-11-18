@@ -15,7 +15,7 @@ namespace Hardwood.Tests;
 /// code ("SEH", never "SE2", "NON" or "LOS"). H87: no two clubs in the four tiers share a nickname. The names were swapped one
 /// for one, so the random numbers, and so the tiers' cities and order, are what they were.
 /// </summary>
-[Collection(SharedUiState.Name)]   // a name pack sets the static names, app-wide state
+[Collection(NamePackCollection.Name)]   // a name pack sets the static names, app-wide state
 public class Run108BugSweepTests
 {
     private readonly ITestOutputHelper _out;
@@ -95,16 +95,17 @@ public class Run108BugSweepTests
     }
 
     [Fact]
-    public void A_real_career_has_no_numbered_code_and_a_pack_finds_renamed_clubs()
+    public void The_expansion_swap_gives_a_readable_code_and_a_pack_finds_renamed_clubs()
     {
-        var league = new WorldGenerator(new Rng(31)).Generate(RealWorldData.LeagueName, 2026, On);
-        var world = GameWorld.Generate(league, 31, Array.Empty<string>(), On);
-        RealWorldData.Apply(league, world, 31);
-        var codes = league.Teams.Concat(world.Clubs.Where(c => world.Competitions.Any(x => UsaPyramid.IsNational(x.Key) && x.Clubs.Contains(c)))).ToList();
-        Assert.DoesNotContain(codes, t => t.Abbreviation.Any(char.IsDigit));
-        Assert.Equal(codes.Count, codes.Select(t => t.Abbreviation).Distinct().Count());
-        Assert.Contains(league.Teams, t => t.Abbreviation == "SEA" && t.Name == "SuperSonics");
+        // RealWorldData.Apply moves a club off SEA/LVA with ReadableCode (it switches the app to the real world, so it isn't
+        // run here alongside other tests): Seattle Highlanders become SEH, never SE2.
+        Assert.Equal("SEH", UsaPyramid.ReadableCode("Seattle", "Highlanders", a => a != "SEA"));
+        Assert.Equal("LVK", UsaPyramid.ReadableCode("Las Vegas", "Keelers", a => a is not ("LVS" or "LVA")));
+        Assert.Equal("NOH", UsaPyramid.ReadableCode("Norman", "Harriers", a => a != "NOR"));
+        Assert.DoesNotContain(UsaPyramid.Profiles.SelectMany(p => p.Clubs), c => c.Abbr is "SEA" or "LVA" || c.Abbr.Any(char.IsDigit));
 
+        var league = new WorldGenerator(new Rng(31)).Generate("NABL", 2026, On);
+        var world = GameWorld.Generate(league, 31, Array.Empty<string>(), On);
         // A pack written for the old name (Charlotte FC) and one for the new name both find the club.
         Assert.Equal("Charlotte FC", UsaPyramid.FormerNames["Charlotte United"]);
         var club = world.Clubs.First(c => c.FullName == "Charlotte United");
