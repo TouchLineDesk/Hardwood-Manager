@@ -392,7 +392,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         }
         string Pct(TeamBox b) => b.FGA == 0 ? "-" : $"{100.0 * b.FGM / b.FGA:0}%";
         chips.Add(new("Shooting", $"{Pct(r.Away)} · {Pct(r.Home)}", $"{r.Away.Team.Abbreviation} · {r.Home.Team.Abbreviation} from the field", "info"));
-        chips.Add(new("Win chance", WinChance, final ? "" : "heading into the next period", "info"));
+        if (!final) chips.Add(new("Win chance", WinChance, "heading into the next period", "info"));   // H71 (review): not on the final card
         bool halftime = !final && period * 2 == r.Periods;
         ReadSuggestion = null;
         if (!final && _live.HalftimeRead(Us) is var (cs, cd))
