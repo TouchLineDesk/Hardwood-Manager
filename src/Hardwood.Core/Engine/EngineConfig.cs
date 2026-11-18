@@ -92,7 +92,7 @@ public sealed class EngineConfig
     /// <summary>Logit per role-suitability star above 3 for the shooter.</summary>
     public double RoleFitLogit { get; set; } = 0.015;
     /// <summary>Doubled star: his shot share is multiplied by this; he faces this much extra contest; his teammates this much less.</summary>
-    public double DoubleStarUsage { get; set; } = 0.85; // H105 (run 113): 0.65 → 0.85; at 0.65 a doubled star (Gilgeous-Alexander, doubled most nights) fell out of the top 10
+    public double DoubleStarUsage { get; set; } = 0.85; // H105 (run 113): 0.65 → 0.85, applied before the shot-share cap, so a capped star loses only a few shots; at 0.65 after the cap, Gilgeous-Alexander (doubled most nights) fell out of the top 10
     public double DoubleStarContest { get; set; } = 2.0;
     public double DoubleStarOpenLook { get; set; } = 1.2;
     /// <summary>Fourth-quarter catch-up: shot logit for a side trailing by 7+ (and 70% of it off a side leading by 7+).</summary>
@@ -101,7 +101,7 @@ public sealed class EngineConfig
     /// relative to teammates, so a thin team's best player gains nothing from being the best of a thin team.</summary>
     public double StarAbilityFloor { get; set; } = 155;
     public double StarAbilityScale { get; set; } = 20;
-    /// <summary>The most the star term adds (x2 at CA 175+): uncapped, ten seasons of development took leaders to 40+ ppg.</summary>
+    /// <summary>The most the star term adds (x2 at CA 175+ with the neutral Star usage; the slider scales it): uncapped, ten seasons of development took leaders to 40+ ppg.</summary>
     public double StarAbilityCap { get; set; } = 1.0;
     /// <summary>H105: the soft cap on one player's share of the five's shots (see GameSimulator.SoftCapShare) and the part
     /// of the share above it that he keeps.</summary>

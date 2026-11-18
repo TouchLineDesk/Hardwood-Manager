@@ -95,10 +95,10 @@ public class CharacterizationTests
     // The baseline's fingerprints (claude/baseline.md, run 56): `hardwood bench` must keep printing these.
 
     [Theory]
-    // Run 112 (H105): stars take more shots (role ties go to the shooting role; a star bonus above CA 155; sharpness 1.65 → 1.4),
+    // Runs 112-113 (H105): stars take more shots (role ties go to the shooting role; a star bonus above CA 155; sharpness 1.65 → 1.4),
     // so every engine pin moved (was 22839796 / 22262109; seasons 296382 / 296763; game 74122B34…, log DE8EF515…, career FA6B5666…).
-    [InlineData(2026UL, 22556314L)]
-    [InlineData(77UL, 22414268L)]
+    [InlineData(2026UL, 22605263L)]
+    [InlineData(77UL, 22482269L)]
     public void The_bench_games_match_the_baseline(ulong seed, long expected)
     {
         // The same loop as `Bench.Run`'s game table: a warm-up game, then 200 pairs rotating through the league.
@@ -120,8 +120,8 @@ public class CharacterizationTests
     [Theory]
     // Run 101 (H78): the schedule's dates changed (was 296945 / 296650, OKC both); scoring moved under 0.2%, and seed 77's
     // title now goes to Detroit (a different playoff draw, not a strength change).
-    [InlineData(2026UL, "OKC", 294295L)]   // run 113 (H105): stars take more shots (scoring -0.8%) and Gilgeous-Alexander's Thunder win both seeds
-    [InlineData(77UL, "OKC", 295207L)]
+    [InlineData(2026UL, "PHI", 295611L)]   // run 113 (H105): stars take more shots (scoring -0.3%); the title goes to Philadelphia
+    [InlineData(77UL, "DET", 295512L)]
     public void The_bench_season_matches_the_baseline(ulong seed, string champion, long expected)
     {
         var (league, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);
@@ -170,7 +170,7 @@ public class CharacterizationTests
         // draw differently and the NBA's days after them move. The NBA's own odds are unchanged (audit on both seeds).
         // Run 101 (H78): re-pinned (was F5CA4EEE5084B908 since run 95). The schedule's dates changed (no third straight day,
         // ~14 back-to-backs a team, the season runs to Apr 12), so games fall on different days; no random draw changed.
-        Pin("career seed 2026, 30 days, no saves", "74C2AB546A01FC09", Session(s));
+        Pin("career seed 2026, 30 days, no saves", "23333733AC432ABA", Session(s));
     }
 
     [Fact]

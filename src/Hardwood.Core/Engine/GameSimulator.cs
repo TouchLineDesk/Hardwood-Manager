@@ -9,19 +9,34 @@ namespace Hardwood.Core.Engine;
 /// </summary>
 public sealed class GameSimulator
 {
-    /// <summary>H105 (run 113): a soft cap on the top player's share of the five's shots. Above his cap
+    /// <summary>H105 (run 113): a soft cap on each player's share of the five's shots, before the system tilt and fatigue
+    /// (which can still move a share a few points either way, so it is not a hard ceiling). Above his cap
     /// (<paramref name="caps"/>), only <paramref name="keep"/> of the excess share stays (the real NBA's highest usage
     /// is about 35-37%). Without it, ten seasons of maxed-out stars took the scoring leader past 40 ppg.</summary>
     public static void SoftCapShare(double[] w, double[] caps, double keep)
     {
-        int top = 0; double sum = 0;
-        for (int i = 0; i < w.Length; i++) { sum += w[i]; if (w[i] > w[top]) top = i; }
-        double rest = sum - w[top];
-        if (rest <= 0 || sum <= 0) return;
-        double share = w[top] / sum, cap = caps[top];
-        if (share <= cap) return;
-        double target = Math.Min(0.95, cap + (share - cap) * keep);
-        w[top] = target / (1 - target) * rest;
+        // Water-fill: trimming the top player raises everyone else's share, so a second star can go over his own cap.
+        // The trimmed players' shares are fixed together; the rest share what is left in their own proportions.
+        var target = new double[w.Length];
+        var trimmed = new bool[w.Length];
+        for (int pass = 0; pass < w.Length; pass++)
+        {
+            double sum = w.Sum();
+            if (sum <= 0) return;
+            bool more = false;
+            for (int i = 0; i < w.Length; i++)
+                if (!trimmed[i] && w[i] / sum > caps[i])
+                {
+                    trimmed[i] = more = true;
+                    target[i] = caps[i] + (w[i] / sum - caps[i]) * keep;
+                }
+            if (!more) return;
+            double fixedShare = 0, rest = 0;
+            for (int i = 0; i < w.Length; i++) { if (trimmed[i]) fixedShare += target[i]; else rest += w[i]; }
+            if (rest <= 0 || fixedShare >= 0.95) return;
+            for (int i = 0; i < w.Length; i++)
+                if (trimmed[i]) w[i] = target[i] / (1 - fixedShare) * rest;
+        }
     }
 
     /// <summary>H94 (run 109): how likely a defender is to be the one who blocks a shot near the basket: his Block rating
@@ -455,7 +470,7 @@ public sealed class GameSimulator
             var off = _offense; var def = _defense;
             off.Possessions++;
             SetTactics(off); SetTactics(def);
-            _offStar = Star(off); _defStar = Star(def);
+            _offStar = Star(off);
             _fitLogit = FitFor(off, def) * (off.Team.Coach?.FitMultiplier ?? 1);
             // Fourth-quarter game flow: a team well ahead eases off (rests starters, runs clock, loses focus) and the
             // team behind presses; leads shrink. Without it overtime came in ~3% of games, half the NBA's rate (critic review #2).
@@ -606,8 +621,8 @@ public sealed class GameSimulator
                 weights[i] = ShotWeight(off, p, transition, star);
                 // A star of the league may take a bigger share than the best player of a thin team.
                 caps[i] = (_cfg.MaxShotShare + _cfg.StarShareBonus * StarTerm(p)) * (0.75 + 0.25 * star);  // the Star usage slider moves the cap too
-                // The double team keys on the go-to man and comes before the cap, so a doubled star loses shots but a
-                // great one still takes the most.
+                // The double team keys on the go-to man and comes before the cap: a doubled role-level scorer loses
+                // shots, a capped star only a few (doubling him works mainly through the contest and the open looks).
                 if (p == _offStar && _defense.Tac.DoubleStar) weights[i] *= _cfg.DoubleStarUsage;
             }
             SoftCapShare(weights, caps, _cfg.ShotShareOverCap);
@@ -649,7 +664,7 @@ public sealed class GameSimulator
         /// <summary>H105: how far above the league's star line a player is (0 below it, at most StarAbilityCap).</summary>
         private double StarTerm(Player p) =>
             Math.Min(_cfg.StarAbilityCap, Math.Max(0, p.CurrentAbility - _cfg.StarAbilityFloor) / _cfg.StarAbilityScale);
-        private Player? _offStar, _defStar;
+        private Player? _offStar;
         private readonly Dictionary<(long, long, int), double> _fitCache = new();
 
         /// <summary>Tactics fit for these two fives and their tactics, cached (lineups repeat all game).</summary>
