@@ -9,6 +9,15 @@ public sealed class Team
     public required string City { get; set; }
     public required string Name { get; set; }
     public string FullName => $"{City} {Name}";
+    /// <summary>
+    /// H80 (run 105): the name in a sentence. "the Boston Celtics", but "Providence City" and "Charlotte FC": club-style names
+    /// (the pyramid's United, City, BC, Athletic, Basketball Club, FC) take no article.
+    /// </summary>
+    public string TheFullName => TakesArticle(Name) ? "the " + FullName : FullName;
+    /// <summary>The same at the start of a sentence: "The Boston Celtics", "Providence City".</summary>
+    public string TheFullNameCap => TakesArticle(Name) ? "The " + FullName : FullName;
+    private static readonly HashSet<string> ClubStyleNames = new(World.UsaPyramid.ClubStyles, StringComparer.OrdinalIgnoreCase) { "Basket" };
+    public static bool TakesArticle(string nickname) => !ClubStyleNames.Contains(nickname.Trim());
     public required string Abbreviation { get; set; }
     public Conference Conference { get; set; }
     public required string Division { get; set; }

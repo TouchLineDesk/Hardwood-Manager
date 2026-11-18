@@ -128,7 +128,7 @@ public sealed partial class GameSession
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
         var first = session.NextMyGame;
-        session.Post("Welcome to the job", $"You are the new head coach and general manager of the {session.HumanTeam.FullName} ({session.HumanLeagueName}). "
+        session.Post("Welcome to the job", $"You are the new head coach and general manager of {session.HumanTeam.TheFullName} ({session.HumanLeagueName}). "
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
             + (Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
                 ? $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page."
@@ -704,6 +704,8 @@ public sealed partial class GameSession
     {
         if (Abroad) PlayWorld(DateOnly.MaxValue); // every overseas season ends with the NABL's
         bool overachieved = false;
+        // H80 (run 105): hired after your club's season ended, you aren't judged on it; the board reviews your own season.
+        bool hiredForNext = Employed && Job.Current is { } cur && cur.Season > League.Season;
         if (Employed)
         {
             var rec = MyRecord;
@@ -712,15 +714,19 @@ public sealed partial class GameSession
             // A division winner in tiers 2-3 goes up (#319): the board counts that as a top-three finish at least.
             bool wonDivision = HumanLeague is { } hc && UsaPyramid.WonDivision(hc, HumanTeam);
             if (wonDivision && achieved < Jobs.SeasonGoal.SecondRound) achieved = Jobs.SeasonGoal.SecondRound;
-            var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
-                relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1);
-            Post(Boss(title), Boss(body), "Board");
+            bool sacked = false;
+            if (!hiredForNext)
+            {
+                (string title, string body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
+                    relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1);
+                Post(Boss(title), Boss(body), "Board");
+            }
             if (RelegationTiebreak() is { } tie)
                 Post("Relegated on a tiebreak", tie + " The last club in each division goes down at the end of the summer; clubs level on record are split by point difference.", "Board");
             if (InNabl && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { Complete: true } ps && ps.LoserId == HumanTeam.Id && FindTeam(ps.WinnerId!.Value) is { } beat)
                 Post("Relegated", $"{beat.FullName} beat you {ps.Score} in the promotion playoff. You go down to {World[UsaPyramid.Tier2].Profile.Name} at the end of the summer.", "Board");
             if (sacked) Fire();
-            else overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
+            else if (!hiredForNext) overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
         WorldCoachingChanges();
@@ -834,12 +840,11 @@ public sealed partial class GameSession
     public void Fire()
     {
         if (!Employed) return;
-        var rec = MyRecord;
-        Coach.History.Add(new Jobs.JobRecord(HumanTeam.Id, HumanTeam.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, "Sacked"));
+        Coach.History.Add(JobRecordFor(HumanTeam, "Sacked"));
         Coach.Reputation = Math.Max(0, Coach.Reputation - 5);
         foreach (var v in LiveVacancies) v.WhileEmployed = false; // jobs you'd opened in work stay open to you
         ReleaseClub(Jobs.Board.NewCoachName(new Rng(_rng.NextULong())));
-        Post("Out of work", $"You are no longer coach of the {HumanTeam.FullName}; {HumanTeam.CoachName} takes over. Clubs that change coach will post their openings on the Board page, where you can apply. Your reputation: {Coach.Reputation:0}/100.", "Board");
+        Post("Out of work", $"You are no longer coach of {HumanTeam.TheFullName}; {HumanTeam.CoachName} takes over. Clubs that change coach will post their openings on the Board page, where you can apply. Your reputation: {Coach.Reputation:0}/100.", "Board");
     }
 
     /// <summary>Apply for an open job. Returns null on success, else why not.</summary>
@@ -854,7 +859,7 @@ public sealed partial class GameSession
         v.DecideOn = Today.AddDays(3 + (Employed ? CareerRng(7).Next(0, 5) : _rng.Next(0, 5)));
         bool summer = Phase == SessionPhase.Offseason;
         Post($"Application sent: {FindTeam(teamId)!.FullName}", (summer ? "They'll answer at the next step of the summer." : $"They'll decide by {v.DecideOn:MMM d}.")
-            + (Employed ? $" You stay with the {HumanTeam.FullName} unless you accept an offer." : ""), "Board");
+            + (Employed ? $" You stay with {HumanTeam.TheFullName} unless you accept an offer." : ""), "Board");
         SaveNow();
         return null;
     }
@@ -890,6 +895,17 @@ public sealed partial class GameSession
         SaveNow();
     }
 
+    /// <summary>
+    /// Your spell at a club for the job history. H80 (run 105): a summer hire who leaves before his first season coached no
+    /// games there; the club's record of the season before isn't his.
+    /// </summary>
+    private Jobs.JobRecord JobRecordFor(Team club, string ended)
+    {
+        if (Job.HiredSeason > League.Season) return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, Job.HiredSeason, 0, 0, ended);
+        var rec = MyRecord;
+        return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, ended);
+    }
+
     private void TakeJob(Team team)
     {
         HumanTeam = team;
@@ -898,10 +914,13 @@ public sealed partial class GameSession
         Job.Employed = true;
         Job.Confidence = 70;
         Job.WarningLevel = 0;
+        // H80 (run 105): a coach hired after the club's last game is hired for the coming season, not the one just finished
+        // ("Expectations for 2027-28" on May 4 2028). His first season, for the board's patience, is that one too.
+        int forSeason = ClubSeasonOver(team) ? League.Season + 1 : League.Season;
         Job.HiredOn = Today;
-        Job.HiredSeason = League.Season;
+        Job.HiredSeason = forSeason;
         Job.History.Clear();
-        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, League.Season, null, MyLeagueKey, 0, 0);
+        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0);
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
         SyncManagedIds();
@@ -911,7 +930,7 @@ public sealed partial class GameSession
         MoodHistory.Clear();
         // H56 (run 87): the contracts you inherit were signed before you came, so an owner who isn't in debt funds them.
         long funded = Budgets.OwnerFunds(team, MyCommittedWages);
-        Post($"Welcome to the {team.FullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game."
+        Post($"Welcome to {team.TheFullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game."
             + (funded > 0 ? $" The contracts you inherit come to ${MyCommittedWages / 1e6:F1}M, so the owner has raised the wage budget by ${funded / 1e6:F1}M to cover them." : ""), "Board");
         PostExpectations();
     }
@@ -927,7 +946,7 @@ public sealed partial class GameSession
                 if (_rng.Chance(Jobs.Board.HireChance(Coach, ContextOf(t), t)))
                 {
                     v.Status = "offered"; v.DecideOn = Today.AddDays(7);
-                    Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of the {t.FullName}. Accept or decline on the Board page within a week.", "Board");
+                    Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of {t.TheFullName}. Accept or decline on the Board page within a week.", "Board");
                 }
                 else
                 {
@@ -1236,8 +1255,8 @@ public sealed partial class GameSession
                     // A relegated club's first season down is a rebuild: no mid-season sacking (critic review #5).
                     if (!up) { Job.ProtectedSeason = League.Season; Job.ProtectedReason = "rebuild"; }
                     Post(up ? $"Promoted to {HumanLeagueName}!" : $"Relegated to {HumanLeagueName}",
-                        up ? $"The {HumanTeam.FullName} go up from {leagueBefore} to {HumanLeagueName}. The owner has set new budgets and expectations for life at the higher level."
-                           : $"The {HumanTeam.FullName} drop from {leagueBefore} to {HumanLeagueName}. Wages already agreed don't fall with you; the owner expects you to bounce back.", "Board");
+                        up ? $"{HumanTeam.TheFullNameCap} go up from {leagueBefore} to {HumanLeagueName}. The owner has set new budgets and expectations for life at the higher level."
+                           : $"{HumanTeam.TheFullNameCap} drop from {leagueBefore} to {HumanLeagueName}. Wages already agreed don't fall with you; the owner expects you to bounce back.", "Board");
                 }
                 break;
         }
@@ -1310,7 +1329,7 @@ public sealed partial class GameSession
         if (picks.Count == 0) return;
         string Row(DraftPick d) => $"{d.Pick}. {d.Team.Abbreviation}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility})";
         var first = picks[0];
-        PostWorld($"Draft: {first.Player.Name} goes first to the {first.Team.FullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
+        PostWorld($"Draft: {first.Player.Name} goes first to {first.Team.TheFullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
         var ours = picks.Where(d => d.Team == HumanTeam).ToList();
         if (Employed && !InCollege && ours.Count > 0)
             Post("Your draft", string.Join("\n", ours.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}), ${d.Player.Contract!.Salary / 1e6:F2}M a year for {d.Player.Contract.Years} years (your option on the last).")), "Draft");
@@ -1353,10 +1372,16 @@ public sealed partial class GameSession
         if (Employed)
         {
             if (Abroad && !InCollege) SummerReport();
-            Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
-                MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
+            // H80 (run 105): a coach hired this summer already has this season's goal (posted when he took the job); it stands
+            // unless the club has since moved league.
+            bool setThisSummer = Job.Current is { } cur && cur.Season == League.Season && cur.TeamId == HumanTeam.Id && cur.League == MyLeagueKey;
+            if (!setThisSummer)
+            {
+                Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
+                    MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
+                PostExpectations();
+            }
             Job.WarningLevel = 0;
-            PostExpectations();
         }
         Today = CareerYearStart();
         PlayWorld(Today.AddDays(-1));

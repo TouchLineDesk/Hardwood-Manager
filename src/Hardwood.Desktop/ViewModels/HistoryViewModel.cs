@@ -264,7 +264,7 @@ public sealed partial class HistoryViewModel : PageViewModel
             cards.Add(new SeasonCard
             {
                 Season = SeasonText(h.Season), Champion = champ, ChampionName = champ?.FullName ?? "-",
-                Beat = runner != null ? $"beat the {runner.FullName}" : "",
+                Beat = runner != null ? $"beat {runner.TheFullName}" : "",
                 Mvp = Name(h.MvpPlayerId), FinalsMvp = Name(h.FinalsMvpPlayerId),
                 Extra = h.ScoringLeaderPlayerId != null ? $"Scoring leader {Name(h.ScoringLeaderPlayerId)}" : "",
                 OurRecord = ourRecord.Length > 0 ? $"You: {ourRecord}" : "",
