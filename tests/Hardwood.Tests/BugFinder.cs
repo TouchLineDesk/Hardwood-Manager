@@ -85,13 +85,56 @@ internal sealed class BugFinder
     /// <summary>Every visible sidebar page, each of its tabs, and every distinct button on it.</summary>
     public void SweepAll(string when, bool press = true)
     {
+        // Bug-hunt Nov 18: Wembanyama wasn't dressed for the contender's live game and finished a season at 5.6 pts in the
+        // finder, while a headless season gave him 35 min. The cause was the sweep itself: Rotation's "−" presses took his
+        // target 36 → 20 → 0 over two sweeps. Log the best player's minutes target, name the page whose presses changed it,
+        // and put the rotation back after the Rotation page's presses so the season and the live game are played with a
+        // real rotation (the presses are still made and checked for feedback).
+        var star = BestPlayer();
+        string Mins() => star == null || _vm.Session == null ? "" : StarLine(star);
+        string before = Mins();
+        if (star != null) Log?.Invoke($"{when}: best player {star.Name}: {before}");
         foreach (var nav in _vm.Nav.Where(n => n.IsVisible).ToList())
+        {
+            var team = _vm.Session is { Employed: true } s0 ? s0.HumanTeam : null;
+            var keep = nav.Name == "Rotation" && team != null ? CopyOf(team.DepthChart) : null;
             SweepPage(nav.Name, when, press && !_pressed.Contains($"{Career}|{nav.Name}|{_vm.Session?.Phase}"));
+            if (nav.Name == "Rotation" && team != null && _vm.Session?.HumanTeam == team)
+            {
+                var pressed = Mins();
+                team.DepthChart = keep;
+                if (star != null && pressed != Mins()) Log?.Invoke($"{when}: Rotation's presses took {star.Name} to {pressed}; the rotation is put back ({Mins()})");
+            }
+            var after = Mins();
+            if (star != null && after != before)
+            {
+                Log?.Invoke($"{when}: {nav.Name}'s presses changed {star.Name}: {before} → {after}");
+                before = after;
+            }
+        }
         foreach (var nav in _vm.Nav) _pressed.Add($"{Career}|{nav.Name}|{_vm.Session?.Phase}");
         // Linked pages: a player, another club and a box score, each with a way back.
         Linked(when);
         _vm.Navigate("Home");
         Settle();
+    }
+
+    private static DepthChart? CopyOf(DepthChart? dc) =>
+        dc == null ? null : new DepthChart { Starters = new List<int>(dc.Starters), MinutesTargets = new Dictionary<int, double>(dc.MinutesTargets) };
+
+    /// <summary>The human club's best player by current ability (null out of work or with an empty roster).</summary>
+    private Player? BestPlayer() =>
+        _vm.Session is { Employed: true } s ? s.HumanTeam.Roster.OrderByDescending(p => p.CurrentAbility).FirstOrDefault() : null;
+
+    /// <summary>"32 min target, starter" for a player on the human club's depth chart ("no depth chart" when it's automatic).</summary>
+    private string StarLine(Player p)
+    {
+        var team = S.HumanTeam;
+        if (!team.Roster.Contains(p)) return "left the club";
+        var dc = team.DepthChart;
+        if (dc == null) return "no depth chart (automatic)";
+        double m = dc.MinutesTargets.TryGetValue(p.Id, out var v) ? v : 0;
+        return $"{m:F0} min target, {(dc.Starters.Contains(p.Id) ? "starter" : "bench")}";
     }
 
     private void Linked(string when)
