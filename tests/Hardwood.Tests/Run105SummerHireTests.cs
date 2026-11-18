@@ -17,8 +17,8 @@ public class Run105SummerHireTests
 
     private static string SeasonLabel(int y) => $"{y}-{(y + 1) % 100:00}";
 
-    [Fact]
-    public void A_summer_hire_gets_the_coming_seasons_goal_and_it_is_posted_once()
+    /// <summary>Fired in the summer (seed 9), applies, and holds an offer while the summer goes on.</summary>
+    private static (GameSession s, int finished, int teamId) SummerOffer()
     {
         var probe = GameSession.NewGame(9, 1, null);
         var weakest = probe.League.Teams.OrderBy(t => probe.JobPrestige(t)).First().Id;
@@ -36,8 +36,16 @@ public class Run105SummerHireTests
         Assert.Equal(SessionPhase.Offseason, s.Phase);
         var offer = s.Job.Vacancies.First(v => v.Status == "offered");
         Assert.True(s.ClubSeasonOver(s.FindTeam(offer.TeamId)!));
+        return (s, finished, offer.TeamId);
+    }
+
+    [Fact]
+    public void A_summer_hire_gets_the_coming_seasons_goal_and_it_is_posted_once()
+    {
+        var (s, finished, teamId) = SummerOffer();
+        int guard = 0;
         int before = s.Inbox.Count;
-        Assert.Null(s.AcceptOffer(offer.TeamId));
+        Assert.Null(s.AcceptOffer(teamId));
         var hired = s.Inbox.Take(s.Inbox.Count - before).ToList(); // newest first
         foreach (var m in hired) _out.WriteLine($"{m.Title}: {m.Body}");
 
@@ -61,6 +69,17 @@ public class Run105SummerHireTests
         Assert.Equal(s.League.Season, s.Job.Current!.Season);
         Assert.Equal(goal, (s.Job.Current.Goal, s.Job.Current.TargetWins));
         Assert.Single(s.Inbox, m => m.Title == $"Expectations for {SeasonLabel(s.League.Season)}");
+    }
+
+    [Fact]
+    public void A_summer_hire_who_resigns_before_a_game_has_no_record_at_the_club()
+    {
+        var (s, finished, teamId) = SummerOffer();
+        Assert.Null(s.AcceptOffer(teamId));
+        Assert.Null(s.Resign());
+        var spell = s.Coach.History.Last();
+        Assert.Equal(teamId, spell.TeamId);
+        Assert.Equal((finished + 1, finished + 1, 0, 0), (spell.FromSeason, spell.ToSeason, spell.Wins, spell.Losses));
     }
 
     [Fact]

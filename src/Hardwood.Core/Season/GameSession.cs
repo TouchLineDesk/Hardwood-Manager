@@ -706,7 +706,7 @@ public sealed partial class GameSession
         bool overachieved = false;
         // H80 (run 105): hired after your club's season ended, you aren't judged on it; the board reviews your own season.
         bool hiredForNext = Employed && Job.Current is { } cur && cur.Season > League.Season;
-        if (Employed && !hiredForNext)
+        if (Employed)
         {
             var rec = MyRecord;
             var achieved = InCollege ? Jobs.Board.Achieved(World.College!, HumanTeam.Id)
@@ -714,15 +714,19 @@ public sealed partial class GameSession
             // A division winner in tiers 2-3 goes up (#319): the board counts that as a top-three finish at least.
             bool wonDivision = HumanLeague is { } hc && UsaPyramid.WonDivision(hc, HumanTeam);
             if (wonDivision && achieved < Jobs.SeasonGoal.SecondRound) achieved = Jobs.SeasonGoal.SecondRound;
-            var (title, body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
-                relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1);
-            Post(Boss(title), Boss(body), "Board");
+            bool sacked = false;
+            if (!hiredForNext)
+            {
+                (string title, string body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
+                    relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1);
+                Post(Boss(title), Boss(body), "Board");
+            }
             if (RelegationTiebreak() is { } tie)
                 Post("Relegated on a tiebreak", tie + " The last club in each division goes down at the end of the summer; clubs level on record are split by point difference.", "Board");
             if (InNabl && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { Complete: true } ps && ps.LoserId == HumanTeam.Id && FindTeam(ps.WinnerId!.Value) is { } beat)
                 Post("Relegated", $"{beat.FullName} beat you {ps.Score} in the promotion playoff. You go down to {World[UsaPyramid.Tier2].Profile.Name} at the end of the summer.", "Board");
             if (sacked) Fire();
-            else overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
+            else if (!hiredForNext) overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
         WorldCoachingChanges();
@@ -836,8 +840,7 @@ public sealed partial class GameSession
     public void Fire()
     {
         if (!Employed) return;
-        var rec = MyRecord;
-        Coach.History.Add(new Jobs.JobRecord(HumanTeam.Id, HumanTeam.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, "Sacked"));
+        Coach.History.Add(JobRecordFor(HumanTeam, "Sacked"));
         Coach.Reputation = Math.Max(0, Coach.Reputation - 5);
         foreach (var v in LiveVacancies) v.WhileEmployed = false; // jobs you'd opened in work stay open to you
         ReleaseClub(Jobs.Board.NewCoachName(new Rng(_rng.NextULong())));
@@ -890,6 +893,17 @@ public sealed partial class GameSession
             t.CoachName = v.NextCoach is { Length: > 0 } n ? n : Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
         }
         SaveNow();
+    }
+
+    /// <summary>
+    /// Your spell at a club for the job history. H80 (run 105): a summer hire who leaves before his first season coached no
+    /// games there; the club's record of the season before isn't his.
+    /// </summary>
+    private Jobs.JobRecord JobRecordFor(Team club, string ended)
+    {
+        if (Job.HiredSeason > League.Season) return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, Job.HiredSeason, 0, 0, ended);
+        var rec = MyRecord;
+        return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, ended);
     }
 
     private void TakeJob(Team team)

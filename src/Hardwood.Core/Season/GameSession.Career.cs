@@ -71,8 +71,7 @@ public sealed partial class GameSession
     {
         if (!Employed) return "You don't have a job to resign from.";
         var club = HumanTeam;
-        var rec = MyRecord;
-        Coach.History.Add(new JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, "Resigned"));
+        Coach.History.Add(JobRecordFor(club, "Resigned"));
         // Walking out costs a little standing (a sacking costs 5).
         Coach.Reputation = Math.Max(0, Coach.Reputation - 2);
         // The jobs you'd opened while in work stay open to you; offers stand until they lapse.
@@ -183,8 +182,8 @@ public sealed partial class GameSession
         if (offers.Count > 0)
             Post(offers.Count == 1 ? $"Job offer: {offers[0].FullName}" : $"{offers.Count} job offers",
                 string.Join("\n", offers.Select(t => $"• {t.Owner.Name} wants you as head coach of {t.TheFullName} ({ContextOf(t).Name}).")) + "\n\n"
-                + "Your season has been noticed. Accept or decline on the Board page before the new season starts; if you accept, you leave the "
-                + $"{HumanTeam.FullName} straight away." + (rest.Count > 0 ? $" {Count(rest.Count, "other job")} that would be a step up {(rest.Count == 1 ? "is" : "are")} open: apply there too." : ""), "Board");
+                + "Your season has been noticed. Accept or decline on the Board page before the new season starts; if you accept, you leave "
+                + $"{HumanTeam.TheFullName} straight away." + (rest.Count > 0 ? $" {Count(rest.Count, "other job")} that would be a step up {(rest.Count == 1 ? "is" : "are")} open: apply there too." : ""), "Board");
         else if (rest.Count > 0)
             Post(rest.Count == 1 ? "A bigger job is open" : $"{rest.Count} bigger jobs are open",
                 string.Join("\n", rest.Take(6).Select(t => $"• {t.FullName} ({ContextOf(t).Name})")) + (rest.Count > 6 ? $"\n• and {rest.Count - 6} more" : "") + "\n\n"
@@ -290,8 +289,7 @@ public sealed partial class GameSession
     private void MoveTo(Team team)
     {
         var club = HumanTeam;
-        var rec = MyRecord;
-        Coach.History.Add(new JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, $"Left for {team.FullName}"));
+        Coach.History.Add(JobRecordFor(club, $"Left for {team.FullName}"));
         string successor = Board.NewCoachName(CareerRng(6));
         ReleaseClub(successor);
         PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left {club.TheFullName} for {team.TheFullName}; {successor} takes over.");

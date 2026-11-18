@@ -172,7 +172,9 @@ public sealed partial class BoardViewModel : PageViewModel
     private static bool HiredAfterSeason(Hardwood.Core.Season.GameSession s)
     {
         var job = s.Job; var t = s.HumanTeam;
-        if (job.HiredSeason != s.League.Season || job.HiredOn == default) return false;
+        if (job.HiredOn == default) return false;
+        if (job.HiredSeason > s.League.Season) return true;   // H80 (run 105): a summer hire is hired for next season
+        if (job.HiredSeason != s.League.Season) return false;
         var mine = s.Schedule.Where(g => g.Home == t || g.Away == t).Select(g => g.Date).ToList();
         if (mine.Count > 0) return job.HiredOn > mine.Max();
         return job.HiredOn.Month is >= 5 and <= 9;   // a league whose games aren't on your schedule: after the spring

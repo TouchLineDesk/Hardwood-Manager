@@ -436,7 +436,7 @@ public static class UsaPyramid
         "Rattlers", "Miners", "Voyagers", "Barons", "Gators", "Bulldogs", "Raptors", "Tritons", "Condors", "Mavericks", "Spartans", "Colonels",
         "Rebels", "Clippers", "Navigators", "Highlanders", "Rangers", "Huskies", "Shockers", "Rockets", "Toros", "Bobcats", "Wolves", "Dragons",
     };
-    private static readonly string[] ClubStyles = { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
+    internal static readonly string[] ClubStyles = { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
 
     private static CompetitionProfile[] Build()
     {

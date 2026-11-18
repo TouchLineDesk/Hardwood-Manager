@@ -16,7 +16,7 @@ public sealed class Team
     public string TheFullName => TakesArticle(Name) ? "the " + FullName : FullName;
     /// <summary>The same at the start of a sentence: "The Boston Celtics", "Providence City".</summary>
     public string TheFullNameCap => TakesArticle(Name) ? "The " + FullName : FullName;
-    private static readonly HashSet<string> ClubStyleNames = new(StringComparer.OrdinalIgnoreCase) { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
+    private static readonly HashSet<string> ClubStyleNames = new(World.UsaPyramid.ClubStyles, StringComparer.OrdinalIgnoreCase) { "Basket" };
     public static bool TakesArticle(string nickname) => !ClubStyleNames.Contains(nickname.Trim());
     public required string Abbreviation { get; set; }
     public Conference Conference { get; set; }
