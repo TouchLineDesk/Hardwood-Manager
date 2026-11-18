@@ -1333,6 +1333,9 @@ public sealed partial class GameSession
         }
     }
 
+    /// <summary>H59 (run 109): the same for a club below the NBA or abroad, which never drafts unless it is promoted into it.</summary>
+    public const string NoPickReasonOutsideNba = "You have no pick this year: only NBA clubs draft (the top three in each division, the clubs promoted from the second tier and the third-place tournament's winner).";
+
     /// <summary>Why a club has no draft pick (the lottery's rule; H59 shows it on the Draft tab too).</summary>
     public const string NoPickReason = "You have no pick this year: picks go to the top three in each NBA division, the clubs promoted from the second tier, and the third-place tournament's winner.";
 
@@ -1342,7 +1345,7 @@ public sealed partial class GameSession
         var o = Offseason!;
         string Line(int i) => $"{i + 1}. {o.PickOwners[i].FullName}" + (i == o.PickOwners.Count - 1 && o.Outcome.ThirdPlaceWinner == o.PickOwners[i] ? " (the third-place tournament's extra pick)" : "");
         var ours = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == HumanTeam).Select(i => i + 1).ToList();
-        string mine = !Employed || InCollege ? "" : ours.Count == 0 ? NoPickReason + "\n\n"
+        string mine = !Employed || InCollege ? "" : ours.Count == 0 ? (InNabl ? NoPickReason : NoPickReasonOutsideNba) + "\n\n"
             : $"You pick {string.Join(" and ", ours.Select(Ordinal))}. When the draft reaches you, choose on the Offseason page (Draft), or press Continue and your scouts pick for you.\n\n";
         Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates go in a one-round draft before free agency; everyone else from the class is a free agent. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
     }

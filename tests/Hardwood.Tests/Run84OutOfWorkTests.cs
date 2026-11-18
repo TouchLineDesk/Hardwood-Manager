@@ -118,7 +118,7 @@ public class Run84OutOfWorkTests
             vm.AttachSession(s);
             var w = window;
             void Settle() { for (int i = 0; i < 6; i++) { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); w.UpdateLayout(); } }
-            static string M(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
+            static string M(long v) => Hardwood.Core.Season.Budgets.Money(v);
 
             // In season: payroll, as before.
             vm.Navigate("Board"); Settle();

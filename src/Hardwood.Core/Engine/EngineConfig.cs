@@ -69,9 +69,12 @@ public sealed class EngineConfig
     /// <summary>Share of misses that become a team rebound or go out of bounds (no individual credit, possession flips).</summary>
     public double TeamReboundShare { get; set; } = 0.08;
     public double ReboundSkillBeta { get; set; } = 0.012;
-    public double BlockRateRim { get; set; } = 0.30;
-    public double BlockRateMid { get; set; } = 0.07;
+    public double BlockRateRim { get; set; } = 0.26;
+    public double BlockRateMid { get; set; } = 0.06;
     public double BlockSkillBeta { get; set; } = 0.012;
+    /// <summary>H94 (run 109): how much likelier the man on the ball is than a helper to be the blocker (rim, mid-range).</summary>
+    public double BlockOnBallRim { get; set; } = 1.5;
+    public double BlockOnBallMid { get; set; } = 3.0;
 
     /// <summary>How strongly shots go to the players best at creating them (exponent on usage). Higher = stars take more shots.</summary>
     // Players as people (decision #64): a delighted player (morale 100) shoots this much better (logit) than a

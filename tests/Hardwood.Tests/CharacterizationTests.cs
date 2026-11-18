@@ -46,7 +46,7 @@ public class CharacterizationTests
     public void A_seeded_game_gives_the_pinned_box_score()
     {
         var r = OneGame(keepLog: false);
-        Pin("box score, seed 12345", "63D64B467316CCB2", Box(r));
+        Pin("box score, seed 12345", "74122B34BB0B1C32", Box(r));
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class CharacterizationTests
     {
         var r = OneGame(keepLog: true);
         Assert.NotEmpty(r.PlayLog);
-        Pin("play-by-play, seed 12345", "966A8FF70012AA04", r.PlayLog);
+        Pin("play-by-play, seed 12345", "DE8EF5153DF16001", r.PlayLog);
         // The game flow (the chart's points) is part of what the live screen shows.
         Pin("game flow, seed 12345", "60AC57C311B1E778", r.Flow.Select(f => $"{f.Elapsed:F1} {f.Period} {f.Home}-{f.Away} {f.Scorer?.Id}").ToList());
     }

@@ -26,7 +26,7 @@ public class Run103BudgetAndLegendTests
         // No reserves: the header's figure, nothing else.
         Assert.Equal(" You have $20M of wage budget to spend.", TalkViewModel.BudgetLine(166_000_000, 146_000_000, 0, 0));
         // Reserves: the header's figure first, then what's left for this deal.
-        Assert.Equal(" You have $20M of wage budget to spend, $18M of it for this deal after keeping $2.3M for the minimum deals the roster still needs.",
+        Assert.Equal(" You have $20M of wage budget to spend, $17.7M of it for this deal after keeping $2.3M for the minimum deals the roster still needs.",
             TalkViewModel.BudgetLine(166_000_000, 146_000_000, 0, 2_300_000));
         Assert.Equal(" You have $1.5M of wage budget to spend, $0.5M of it for this deal after keeping $0.4M for your committed college seniors and $0.6M for the minimum deals the roster still needs.",
             TalkViewModel.BudgetLine(10_000_000, 8_500_000, 400_000, 600_000));
@@ -34,7 +34,7 @@ public class Run103BudgetAndLegendTests
         Assert.Equal(" You have $1.0M of wage budget to spend, but keeping $1.5M for the minimum deals the roster still needs leaves nothing for this deal ($0.5M short).",
             TalkViewModel.BudgetLine(10_000_000, 9_000_000, 0, 1_500_000));
         // Once he has signed, the room left is for another deal (review).
-        Assert.EndsWith("$18M of it for another deal after keeping $2.3M for the minimum deals the roster still needs.",
+        Assert.EndsWith("$17.7M of it for another deal after keeping $2.3M for the minimum deals the roster still needs.",
             TalkViewModel.BudgetLine(166_000_000, 146_000_000, 0, 2_300_000, signed: true));
         // Over: never "$-1.1M to spend".
         Assert.Equal(" You are $1.1M over your wage budget.", TalkViewModel.BudgetLine(10_000_000, 11_100_000, 0, 500_000));

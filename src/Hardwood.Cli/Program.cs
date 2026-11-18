@@ -179,6 +179,23 @@ public static class Program
             Console.WriteLine($"{p.Name,-24} {teamOf[p].Abbreviation,-4} {p.PrimaryPosition,-3} {p.CurrentAbility,3} {t.g,3} {t.min / t.g,5:F1} {(double)t.pts / t.g,5:F1} {(double)t.reb / t.g,5:F1} {(double)t.ast / t.g,5:F1} {(t.fga > 0 ? 100.0 * t.fgm / t.fga : 0),5:F1} {(t.tpa > 0 ? 100.0 * t.tpm / t.tpa : 0),5:F1}");
         }
         Console.WriteLine();
+        // H94 (run 109): the block leaders, so the shot blocker's choice can be checked against real ones.
+        var blk = new Dictionary<Player, (int g, int b)>();
+        int teamGames = 0, teamBlocks = 0;
+        foreach (var g in games)
+        foreach (var box in new[] { g.Home, g.Away })
+        {
+            teamGames++; teamBlocks += box.Lines.Sum(l => l.Blocks);
+            foreach (var l in box.Lines.Where(l => l.Seconds > 0))
+            {
+                var t = blk.GetValueOrDefault(l.Player);
+                blk[l.Player] = (t.g + 1, t.b + l.Blocks);
+            }
+        }
+        Console.WriteLine($"=== Block leaders (min 50 games; {(double)teamBlocks / Math.Max(1, teamGames):F2} blocks a team a game) ===");
+        foreach (var (p, t) in blk.Where(kv => kv.Value.g >= 50).OrderByDescending(kv => (double)kv.Value.b / kv.Value.g).Take(10))
+            Console.WriteLine($"{p.Name,-24} {teamOf[p].Abbreviation,-4} {p.PrimaryPosition,-3} {p.HeightCm,4}cm blk {p.Attributes[Attr.Block],2} {(double)t.b / t.g,5:F2}");
+        Console.WriteLine();
     }
 
     private static int RunGame(League league, ulong seed, bool log)
