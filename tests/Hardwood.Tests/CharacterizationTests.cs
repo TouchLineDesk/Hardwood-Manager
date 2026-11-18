@@ -46,7 +46,7 @@ public class CharacterizationTests
     public void A_seeded_game_gives_the_pinned_box_score()
     {
         var r = OneGame(keepLog: false);
-        Pin("box score, seed 12345", "74122B34BB0B1C32", Box(r));
+        Pin("box score, seed 12345", "5AB24971D4208E0E", Box(r));
     }
 
     [Fact]
@@ -62,9 +62,9 @@ public class CharacterizationTests
     {
         var r = OneGame(keepLog: true);
         Assert.NotEmpty(r.PlayLog);
-        Pin("play-by-play, seed 12345", "DE8EF5153DF16001", r.PlayLog);
+        Pin("play-by-play, seed 12345", "24A8AB7F5DDB6A23", r.PlayLog);
         // The game flow (the chart's points) is part of what the live screen shows.
-        Pin("game flow, seed 12345", "60AC57C311B1E778", r.Flow.Select(f => $"{f.Elapsed:F1} {f.Period} {f.Home}-{f.Away} {f.Scorer?.Id}").ToList());
+        Pin("game flow, seed 12345", "BE3E5A40A8DE59C1", r.Flow.Select(f => $"{f.Elapsed:F1} {f.Period} {f.Home}-{f.Away} {f.Scorer?.Id}").ToList());
     }
 
     [Fact]
@@ -95,8 +95,10 @@ public class CharacterizationTests
     // The baseline's fingerprints (claude/baseline.md, run 56): `hardwood bench` must keep printing these.
 
     [Theory]
-    [InlineData(2026UL, 22839796L)]
-    [InlineData(77UL, 22262109L)]
+    // Runs 112-113 (H105): stars take more shots (role ties go to the shooting role; a star bonus above CA 155; sharpness 1.65 → 1.4),
+    // so every engine pin moved (was 22839796 / 22262109; seasons 296382 / 296763; game 74122B34…, log DE8EF515…, career FA6B5666…).
+    [InlineData(2026UL, 22605263L)]
+    [InlineData(77UL, 22482269L)]
     public void The_bench_games_match_the_baseline(ulong seed, long expected)
     {
         // The same loop as `Bench.Run`'s game table: a warm-up game, then 200 pairs rotating through the league.
@@ -118,8 +120,8 @@ public class CharacterizationTests
     [Theory]
     // Run 101 (H78): the schedule's dates changed (was 296945 / 296650, OKC both); scoring moved under 0.2%, and seed 77's
     // title now goes to Detroit (a different playoff draw, not a strength change).
-    [InlineData(2026UL, "OKC", 296382L)]
-    [InlineData(77UL, "DET", 296763L)]
+    [InlineData(2026UL, "PHI", 295611L)]   // run 113 (H105): stars take more shots (scoring -0.3%); the title goes to Philadelphia
+    [InlineData(77UL, "DET", 295512L)]
     public void The_bench_season_matches_the_baseline(ulong seed, string champion, long expected)
     {
         var (league, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);
@@ -168,7 +170,7 @@ public class CharacterizationTests
         // draw differently and the NBA's days after them move. The NBA's own odds are unchanged (audit on both seeds).
         // Run 101 (H78): re-pinned (was F5CA4EEE5084B908 since run 95). The schedule's dates changed (no third straight day,
         // ~14 back-to-backs a team, the season runs to Apr 12), so games fall on different days; no random draw changed.
-        Pin("career seed 2026, 30 days, no saves", "FA6B56667EA0FFAA", Session(s));
+        Pin("career seed 2026, 30 days, no saves", "23333733AC432ABA", Session(s));
     }
 
     [Fact]

@@ -92,12 +92,24 @@ public sealed class EngineConfig
     /// <summary>Logit per role-suitability star above 3 for the shooter.</summary>
     public double RoleFitLogit { get; set; } = 0.015;
     /// <summary>Doubled star: his shot share is multiplied by this; he faces this much extra contest; his teammates this much less.</summary>
-    public double DoubleStarUsage { get; set; } = 0.65;
+    public double DoubleStarUsage { get; set; } = 0.85; // H105 (run 113): 0.65 → 0.85, applied before the shot-share cap, so a capped star loses only a few shots; at 0.65 after the cap, Gilgeous-Alexander (doubled most nights) fell out of the top 10
     public double DoubleStarContest { get; set; } = 2.0;
     public double DoubleStarOpenLook { get; set; } = 1.2;
     /// <summary>Fourth-quarter catch-up: shot logit for a side trailing by 7+ (and 70% of it off a side leading by 7+).</summary>
     public double CatchUpLogit { get; set; } = 0.40;
-    public double UsageSharpness { get; set; } = 1.65; // 1.75 still gave 36-37 ppg leaders on some seeds (Nov 10, fixed PA); 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
+    /// <summary>H105: a star's shot weight is 1 + (CA - floor) / scale above the floor, at most +cap. Absolute, not
+    /// relative to teammates, so a thin team's best player gains nothing from being the best of a thin team.</summary>
+    public double StarAbilityFloor { get; set; } = 155;
+    public double StarAbilityScale { get; set; } = 20;
+    /// <summary>The most the star term adds (x2 at CA 175+ with the neutral Star usage; the slider scales it): uncapped, ten seasons of development took leaders to 40+ ppg.</summary>
+    public double StarAbilityCap { get; set; } = 1.0;
+    /// <summary>H105: the soft cap on one player's share of the five's shots (see GameSimulator.SoftCapShare) and the part
+    /// of the share above it that he keeps.</summary>
+    public double MaxShotShare { get; set; } = 0.28;
+    public double ShotShareOverCap { get; set; } = 0.25;
+    /// <summary>H105: a star's cap is higher by this much per unit of his star term (so up to +StarAbilityCap times it).</summary>
+    public double StarShareBonus { get; set; } = 0.05;
+    public double UsageSharpness { get; set; } = 1.4; // H105 (run 112): 1.65 → 1.4 with the star term; earlier: 1.75 still gave 36-37 ppg leaders on some seeds (Nov 10, fixed PA); 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
     public double[] AssistedShareByZone { get; set; } = { 0.57, 0.46, 0.49, 0.92, 0.80 };

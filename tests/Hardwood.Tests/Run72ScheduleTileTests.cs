@@ -59,7 +59,7 @@ public class Run72ScheduleTileTests
     public void A_G_League_season_on_tiles_through_to_being_knocked_out()
     {
         var (_, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(31);
-        int teamId = world[UsaPyramid.Tier2].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(15).Id;
+        int teamId = world[UsaPyramid.Tier2].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(12).Id;   // run 113: the 16th won the title once stars shot more
         var path = Path.Combine(Path.GetTempPath(), $"hw-run72-{Guid.NewGuid():N}.hwsave");
         var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
         AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
@@ -146,7 +146,7 @@ public class Run72ScheduleTileTests
                 if (over != null) break;
                 if (guard % 10 == 0) { vm.AfterTick(); page.Refresh(); }
             }
-            Assert.NotNull(over);
+            Assert.True(over != null, $"still in it: guard {guard}, {s.Phase}, stage {hl.Season.Stage}, complete {hl.Season.IsComplete}, record {s.MyRecord.Wins}-{s.MyRecord.Losses}");
             vm.AfterTick();
             Assert.True(vm.SeasonOver);
             Assert.False(vm.ShowNextGameButton);
