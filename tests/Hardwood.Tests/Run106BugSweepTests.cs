@@ -187,4 +187,37 @@ public class Run106BugSweepTests
             if (File.Exists(path)) File.Delete(path);
         }
     }
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public void The_court_cards_keep_their_spots_and_an_empty_slot_binds_nothing()
+    {
+        var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
+        AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
+        AppSettings.Use(new AppSettings { AutoPortraits = false });
+        MainWindow? window = null;
+        try
+        {
+            var (probe, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(2026);
+            var s = GameSession.NewGame(2026, probe.Teams.First(t => t.Abbreviation == "SAS").Id, null);
+            var vm = new MainViewModel();
+            window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
+            window.Show();
+            vm.AttachSession(s);
+            vm.Navigate("Rotation");
+            var rot = Assert.IsType<RotationViewModel>(vm.CurrentPage);
+            rot.Starters[2].Row = null;   // an empty slot (H27)
+            for (int i = 0; i < 3; i++) { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); }
+            var slots = window.GetVisualDescendants().OfType<ItemsControl>().First(c => c.Name == "CourtSlots" && c.IsEffectivelyVisible);
+            var lefts = slots.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Where(p => p.DataContext is StarterSlot && p.GetVisualParent() is Canvas)
+                .Select(p => (Canvas.GetLeft(p), Canvas.GetTop(p))).ToList();
+            Assert.Equal(5, lefts.Count);
+            Assert.All(lefts, x => Assert.False(double.IsNaN(x.Item1) || double.IsNaN(x.Item2)));
+            Assert.Equal(5, lefts.Distinct().Count());
+        }
+        finally
+        {
+            window?.Close();
+            AppSettings.Use(oldSettings); AppSettings.FilePath = oldPath;
+        }
+    }
 }

@@ -36,7 +36,8 @@
                 <ItemsControl x:Name="CourtSlots" ItemsSource="{Binding Starters}">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.Styles>
-                    <Style Selector="ContentPresenter" x:DataType="vm:StarterSlot">
+                    <!-- Only the slots' own containers (run 106: the card's inner ContentControl has a presenter too). -->
+                    <Style Selector="ItemsControl#CourtSlots > ContentPresenter" x:DataType="vm:StarterSlot">
                       <Setter Property="Canvas.Left" Value="{Binding Left}"/>
                       <Setter Property="Canvas.Top" Value="{Binding Top}"/>
                     </Style>
