@@ -667,14 +667,6 @@ public static class UsaPyramid
     // Promotion and relegation (each summer, before the next season's fixtures are made).
 
     /// <summary>
-    /// Move clubs between levels using the finished tables (Danny's D33 design, #344, #355, and D39 A, #385): the 4th-placed
-    /// (last) team in each top-league division ↔ the eight tier-2 division winners, and the same between tiers 2 and 3, 3 and 4,
-    /// 4 and 5 (tier 5 is the bottom). Then every tier is brought to 32 (an older save's 30-team top league grows at its first
-    /// summer on this version). An older career still on the regional and local leagues moves clubs the old way once more and
-    /// then converts them into tiers 4 and 5 (<see cref="ConvertToFiveTiers"/>).
-    /// Returns headlines. Does nothing if the world has no pyramid (an older career).
-    /// </summary>
-    /// <summary>
     /// The top league's clubs going down this summer: a finished promotion playoff decides its pairing, and the last in each
     /// other division goes down (level records by the table's order). Also the tier-2 clubs that won a playoff, and the
     /// playoffs. K1 (run 111): taken out of <see cref="Promote"/> so the release clauses can use it at the start of free
@@ -718,6 +710,14 @@ public static class UsaPyramid
         return (down, winners, promotionPlayoffs);
     }
 
+    /// <summary>
+    /// Move clubs between levels using the finished tables (Danny's D33 design, #344, #355, and D39 A, #385): the 4th-placed
+    /// (last) team in each top-league division ↔ the eight tier-2 division winners, and the same between tiers 2 and 3, 3 and 4,
+    /// 4 and 5 (tier 5 is the bottom). Then every tier is brought to 32 (an older save's 30-team top league grows at its first
+    /// summer on this version). An older career still on the regional and local leagues moves clubs the old way once more and
+    /// then converts them into tiers 4 and 5 (<see cref="ConvertToFiveTiers"/>).
+    /// Returns headlines. Does nothing if the world has no pyramid (an older career).
+    /// </summary>
     public static List<(string Title, string Body)> Promote(GameWorld world, League nabl, Generation.StaffGenerator staffGen, DateOnly on)
     {
         var news = new List<(string, string)>();
@@ -1197,7 +1197,9 @@ public static class UsaPyramid
             {
                 var (leaves, why) = ReleaseChoice(p, bar, date);
                 if (t.Id == managedId) mine.Add((p, leaves, why));
-                if (!leaves) continue;
+                // Review (run 111): he has made his choice. Staying spends the clause, so the end-of-summer step (a lower
+                // rotation bar, a later date, a summer's morale) can't release him after the top league's free agency.
+                if (!leaves) { p.Contract!.RelegationRelease = false; continue; }
                 Release(nabl, t, p);
                 gone.Add(p);
             }

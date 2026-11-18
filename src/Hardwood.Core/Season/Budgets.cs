@@ -33,7 +33,6 @@ public static class Budgets
             st.Salary = Math.Max(1_000, (long)Math.Round(Generation.StaffGenerator.SalaryFor(st) * StaffScale(salaryScale) / 1000) * 1000);
     }
 
-    /// <summary>Base revenue of a league's average club: the NABL, or an overseas league by its wage scale.</summary>
     /// <summary>K1 (run 111): a league's media money per club, the part of its revenue a parachute is a share of (about 40%, as
     /// the NBA's national TV money is of a club's revenue).</summary>
     public static long MediaMoney(double salaryScale) => Round(LeagueRevenue(salaryScale) * MediaShare);
@@ -43,6 +42,7 @@ public static class Budgets
     /// <summary>A club that spent only one season up gets the first two years (as in the EPL).</summary>
     public const int ShortParachuteYears = 2;
 
+    /// <summary>Base revenue of a league's average club: the NABL, or an overseas league by its wage scale.</summary>
     public static long LeagueRevenue(double salaryScale) => salaryScale >= 0.999 ? NablRevenue : (long)(NablRevenue * salaryScale * OverseasFactor);
 
     /// <summary>A season's revenue: league market × (fan base, arena size against the league's typical arena, last season's record).</summary>

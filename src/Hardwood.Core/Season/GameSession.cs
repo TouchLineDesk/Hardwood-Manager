@@ -790,7 +790,7 @@ public sealed partial class GameSession
         Post(left.Count > 0 ? $"Relegation release: {string.Join(", ", left.Select(x => x.Player.Name))} {(left.Count == 1 ? "leaves" : "leave")}" : "Relegation release: everyone stays",
             "Going down, the players with a relegation release clause in their contracts chose whether to use it."
             + (left.Count > 0 ? $"\n\nLeaving on a free (their wages are off the books):\n{string.Join("\n", left.Select(Line))}" : "")
-            + (stayed.Count > 0 ? $"\n\nStaying:\n{string.Join("\n", stayed.Select(Line))}" : ""), "Roster");
+            + (stayed.Count > 0 ? $"\n\nStaying (the clause is used up for this relegation):\n{string.Join("\n", stayed.Select(Line))}" : ""), "Roster");
     }
 
     /// <summary>
@@ -1447,9 +1447,13 @@ public sealed partial class GameSession
             Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
         }
         if (Employed && m.Parachute > 0)
-            Post("Parachute payment", ParachuteNote(m) + (m.ParachuteYear <= 1 && m.ParachuteCarried == 0 ? " Every contract's relegation clause has cut wages by half." : "")
+            Post("Parachute payment", ParachuteNote(m) + (FirstParachuteYear(m) ? " Every contract's relegation clause has cut wages by half." : "")
                 + " Use the time to bring the payroll down to what this league pays.", "Board");
     }
+
+    /// <summary>The first season of a parachute (an older save's halving one, with no base, by its seasons left).</summary>
+    private static bool FirstParachuteYear(ClubFinance m) =>
+        m.ParachuteCarried == 0 && (m.ParachuteBase > 0 ? m.ParachuteYear <= 1 : m.ParachuteYears > 1);
 
     /// <summary>K1 (run 111): this season's parachute in words, with the schedule ahead.</summary>
     public static string ParachuteNote(ClubFinance m)
