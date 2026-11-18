@@ -587,13 +587,23 @@ public sealed class GameSimulator
             for (int i = 0; i < 5; i++)
             {
                 var p = off.OnCourt[i];
-                double usage = BaseUsage(p, transition);
-                // Star usage sharpens or flattens the distribution; roles and the system tilt it.
-                weights[i] = Math.Pow(Math.Max(1, usage), _cfg.UsageSharpness * star) * (0.75 + 0.25 * off.Energy[p])
-                             * Roles.Info(off.Tac.RoleOf(p)).Usage * Tactics.SystemUsage(off.Tac.System, p);
-                if (p == _offStar && _defense.Tac.DoubleStar) weights[i] *= _cfg.DoubleStarUsage;
+                weights[i] = ShotWeight(off, p, transition, star) * (0.75 + 0.25 * off.Energy[p]);
             }
+            CapShare(weights, _cfg.MaxShotShare * (0.75 + 0.25 * star));   // the Star usage slider moves the cap too
+            // The double team comes after the cap, so doubling a capped star still cuts his share.
+            for (int i = 0; i < 5; i++)
+                if (off.OnCourt[i] == _offStar && _defense.Tac.DoubleStar) weights[i] *= _cfg.DoubleStarUsage;
             return off.OnCourt[_rng.WeightedIndex(weights)];
+        }
+
+        /// <summary>H105 (run 112): no one takes more than this share of the five's shots (the real NBA's highest usage
+        /// is about 35-37%). Without it, ten seasons of maxed-out stars took the scoring leader past 40 ppg.</summary>
+        internal static void CapShare(double[] w, double cap)
+        {
+            int top = 0; double sum = 0;
+            for (int i = 0; i < w.Length; i++) { sum += w[i]; if (w[i] > w[top]) top = i; }
+            double rest = sum - w[top];
+            if (rest > 0 && w[top] / sum > cap) w[top] = cap / (1 - cap) * rest;
         }
 
         private static double BaseUsage(Player p, bool transition = false)
@@ -606,7 +616,22 @@ public sealed class GameSimulator
         }
 
         /// <summary>The scorer the other team keys on: the highest-usage player on the floor.</summary>
-        private static Player Star(Side s) => s.OnCourt.MaxBy(p => BaseUsage(p))!;
+        /// <summary>H105 (run 112): the go-to man is whoever the shot weights favour (role and the star term included),
+        /// so the double team goes to the player who actually takes the shots.</summary>
+        private Player Star(Side s)
+        {
+            double star = s.Tac.StarUsage / 50.0 * Tactics.SharpnessFactor(s.Tac.System);
+            return s.OnCourt.MaxBy(p => ShotWeight(s, p, false, star))!;
+        }
+
+        /// <summary>A player's shot weight before fatigue. Star usage sharpens or flattens the distribution; roles and the
+        /// system tilt it. H105 (run 112): the shot attributes top out at 20, so SGA (all 20s) shared shots evenly with good
+        /// teammates while role players on thin teams led the league. A star of the league (CA above the floor) is the go-to
+        /// man wherever he plays; it isn't relative to his teammates, so a thin team's best player gains nothing.</summary>
+        private double ShotWeight(Side off, Player p, bool transition, double star) =>
+            Math.Pow(Math.Max(1, BaseUsage(p, transition)), _cfg.UsageSharpness * star)
+            * Roles.Info(off.Tac.RoleOf(p)).Usage * Tactics.SystemUsage(off.Tac.System, p)
+            * (1 + Math.Min(_cfg.StarAbilityCap, Math.Max(0, p.CurrentAbility - _cfg.StarAbilityFloor) / _cfg.StarAbilityScale) * star);
         private Player? _offStar, _defStar;
         private readonly Dictionary<(long, long, int), double> _fitCache = new();
 

@@ -97,7 +97,15 @@ public sealed class EngineConfig
     public double DoubleStarOpenLook { get; set; } = 1.2;
     /// <summary>Fourth-quarter catch-up: shot logit for a side trailing by 7+ (and 70% of it off a side leading by 7+).</summary>
     public double CatchUpLogit { get; set; } = 0.40;
-    public double UsageSharpness { get; set; } = 1.65; // 1.75 still gave 36-37 ppg leaders on some seeds (Nov 10, fixed PA); 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
+    /// <summary>H105 (run 112): a star's shot weight is 1 + (CA - floor) / scale above the floor (SGA at 181: about x2;
+    /// a CA 146 player: x1). Absolute, not relative to teammates.</summary>
+    /// <summary>H105 (run 112): the most of the five's shots one player takes (see GameSimulator.CapShare).</summary>
+    public double MaxShotShare { get; set; } = 0.34;
+    public double StarAbilityFloor { get; set; } = 155;
+    public double StarAbilityScale { get; set; } = 25;
+    /// <summary>The most the star term adds (so x1.8 at most): uncapped, ten seasons of development took leaders to 40+ ppg.</summary>
+    public double StarAbilityCap { get; set; } = 0.8;
+    public double UsageSharpness { get; set; } = 1.4; // H105 (run 112): 1.65 → 1.4 with the star term, which keeps leaders near 36 ppg; earlier: // 1.75 still gave 36-37 ppg leaders on some seeds (Nov 10, fixed PA); 2.0 gave 36-37 ppg leaders once the world kept its stars (critic review #2, Nov 10); // 1.6 left the best player near 24 ppg; 2.2 gave 37 ppg with the soft cap; audit Nov 9
 
     // --- Assists: share of made shots that are assisted, by zone
     public double[] AssistedShareByZone { get; set; } = { 0.57, 0.46, 0.49, 0.92, 0.80 };
