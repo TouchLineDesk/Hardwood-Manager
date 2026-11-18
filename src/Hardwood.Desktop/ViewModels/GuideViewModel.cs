@@ -70,7 +70,20 @@ public sealed partial class GuideViewModel : ObservableObject
     // market hid its CA, age and price columns behind the panel).
     private static readonly HashSet<string> WidePages = new() { "Transactions", "Roster", "Leagues", "League Leaders", "Tactics", "Offseason" };
     private bool _wide, _openedHere;
-    public bool Expanded => On && !Collapsed && (!_wide || _openedHere);
+    /// <summary>H97 (run 116): at big text (120%+) the live court and the pre-game show need the room, so the panel folds
+    /// to its strip for the live game (one click opens it, as on the wide pages). At normal text it stays open.</summary>
+    public static bool FoldsInLiveGame(double scale) => UiScale.Clamp(scale) >= Views.MainWindow.BigTextScale;
+    private bool _liveFold;
+    /// <summary>The shell's live game started (true) or ended (false).</summary>
+    public void LiveGame(bool live, double scale)
+    {
+        bool fold = live && FoldsInLiveGame(scale);
+        if (fold == _liveFold) return;
+        _liveFold = fold;
+        if (fold) _openedHere = false;
+        Notify();
+    }
+    public bool Expanded => On && !Collapsed && (!(_wide || _liveFold) || _openedHere);
     public bool ShowStrip => On && !Expanded;
 
     public static readonly List<string> Levels = new() { "Grows with me", "Beginner", "Experienced", "Strategy only" };
@@ -90,13 +103,13 @@ public sealed partial class GuideViewModel : ObservableObject
     [RelayCommand]
     private void Collapse()
     {
-        if (_wide && _openedHere) { _openedHere = false; Notify(); return; }
+        if ((_wide || _liveFold) && _openedHere) { _openedHere = false; Notify(); return; }
         Collapsed = true;
     }
     [RelayCommand]
     private void Expand()
     {
-        if (_wide) _openedHere = true;
+        if (_wide || _liveFold) _openedHere = true;
         Collapsed = false;
         Notify();
     }

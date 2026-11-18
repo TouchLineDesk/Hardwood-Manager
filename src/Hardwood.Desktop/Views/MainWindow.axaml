@@ -17,11 +17,13 @@
     <Grid IsVisible="{Binding HasSession}" RowDefinitions="Auto,*" ColumnDefinitions="210,*,Auto">
       <!-- Top bar -->
       <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
-        <!-- When the two halves don't fit side by side (a big text size, a narrow window), the buttons drop to a
+        <!-- H97 (run 116): at big text (120%+) the bar compacts first (MainWindow.ApplyScale: icon-only Assistant, "Watch", no ball mark,
+             tighter spacing), so a 1480 px window at 130% keeps it on one row.
+             When the two halves still don't fit side by side (a big text size, a narrow window), the buttons drop to a
              second row instead of covering the team name or running off the edge (roadmap 1). -->
         <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
           <StackPanel x:Name="TopLeft" Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
-            <c:BallMark Width="34" Height="34" Fill="{DynamicResource HwAccentBrush}"/>
+            <c:BallMark x:Name="TopMark" Width="34" Height="34" Fill="{DynamicResource HwAccentBrush}"/>
             <c:TeamLogo Team="{Binding HeaderTeam}" Width="40" Height="40"/>
             <StackPanel>
               <TextBlock Text="{Binding TeamText}" FontWeight="SemiBold" FontSize="14"/>
@@ -33,7 +35,12 @@
             </StackPanel>
           </StackPanel>
           <StackPanel x:Name="TopRight" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <CheckBox Content="Watch games" ToolTip.Tip="Watch your own games live" IsChecked="{Binding LiveGames}" IsVisible="{Binding InSeason}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <CheckBox ToolTip.Tip="Watch your own games live" IsChecked="{Binding LiveGames}" IsVisible="{Binding InSeason}" VerticalAlignment="Center" Margin="0,0,6,0">
+              <Panel>
+                <TextBlock x:Name="WatchLong" Text="Watch games"/>
+                <TextBlock x:Name="WatchShort" Text="Watch" IsVisible="False"/>
+              </Panel>
+            </CheckBox>
             <Button Classes="nav" Command="{Binding GoBoardCommand}" Padding="8,3" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip.Tip="Board confidence: open the Board page">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <c:Icon Kind="Shield" Width="15" Height="15" Foreground="{Binding JobBrush}"/>
@@ -43,7 +50,7 @@
             <ToggleButton Classes="nav" IsChecked="{Binding Guide.On}" Padding="8,3" Margin="0,0,6,0" VerticalAlignment="Center" ToolTip.Tip="Turn your assistant on or off">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <c:Icon Kind="Lightbulb" Width="15" Height="15" Foreground="{DynamicResource HwAccentBrush}"/>
-                <TextBlock Text="Assistant" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock x:Name="AssistantLabel" Text="Assistant" FontSize="12" FontWeight="SemiBold"/>
               </StackPanel>
             </ToggleButton>
             <TextBlock Text="{Binding PortraitStatus}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,14,0"/>
@@ -53,7 +60,7 @@
             </StackPanel>
             <Button Content="Sim week" Command="{Binding SimWeekCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowSimButtons}"/>
             <Button Content="Next game" ToolTip.Tip="Sim to your next game" Command="{Binding SimToNextGameCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding ShowNextGameButton}"/>
-            <Button Classes="primary" Content="{Binding ContinueText}" Command="{Binding ContinueCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding !InLiveGame}" MinWidth="150"/>
+            <Button x:Name="ContinueButton" Classes="primary" MinWidth="150" Content="{Binding ContinueText}" Command="{Binding ContinueCommand}" IsEnabled="{Binding !IsBusy}" IsVisible="{Binding !InLiveGame}"/>
           </StackPanel>
         </Grid>
       </Border>
