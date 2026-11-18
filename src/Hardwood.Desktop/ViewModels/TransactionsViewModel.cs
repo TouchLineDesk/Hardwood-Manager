@@ -136,7 +136,8 @@ public sealed partial class TransactionsViewModel : PageViewModel
         // H18 (run 100): the man you're talking to from further down goes after the best, not ahead of them.
         bool extra = keep != null && !FreeAgentCards.Any(c => c.Player == keep) && s.League.FreeAgents.Contains(keep);
         if (extra) FreeAgentCards.Add(SummerCards.FreeAgent(s, keep!, s.Today, false, room));
-        FaCardsNote = (FreeAgents.Count == 0 ? "There are no free agents right now."
+        // H103 (run 112): say when players reach the pool, not just that it is empty.
+        FaCardsNote = (FreeAgents.Count == 0 ? FreeAgentsEmptyNote
             : FreeAgents.Count <= SummerCards.FreeAgentCount ? $"All {FreeAgents.Count} free agent{(FreeAgents.Count == 1 ? "" : "s")}, best first, with what each asks of your club. Pick a card to talk to him."
             : $"The best {SummerCards.FreeAgentCount} of {FreeAgents.Count:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists them all.")
             + (extra ? $" {keep!.Name}, whom you're talking to, is last." : "");
@@ -233,6 +234,9 @@ public sealed partial class TransactionsViewModel : PageViewModel
         WaiveStatus = $"Waived {piece.Player.Name}.";
         Shell.AfterTick();
     }
+
+    /// <summary>H103 (run 112): the empty pool says when players arrive.</summary>
+    public const string FreeAgentsEmptyNote = "No free agents yet. Players reach the pool when clubs release them during the season, and when contracts end in the summer; they'll be listed here.";
 
     private void RebuildTrade()
     {

@@ -186,7 +186,7 @@ public class PyramidTests
         world.EndSummer(2027, new GameSimulator(), nabl.FreeAgents);
 
         Assert.Contains(mine, world[UsaPyramid.Tier3].Clubs);
-        Assert.Contains(world.News, n => n.Item1.Contains("relegation clauses") && n.Item1.StartsWith(mine.FullName));
+        Assert.Contains(world.News, n => n.Item1.Contains("relegation release clauses") && n.Item1.StartsWith(mine.FullName));
         Assert.True(mine.Roster.Count >= GameWorld.ManagedMinimum, $"{mine.Roster.Count} players, minimum {GameWorld.ManagedMinimum}");
         var fill = world.News.First(n => n.Item1 == $"{mine.FullName} make up the numbers");
         Assert.Contains("your sporting director signed", fill.Item2);

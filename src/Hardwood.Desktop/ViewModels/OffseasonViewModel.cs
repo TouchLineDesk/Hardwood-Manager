@@ -265,7 +265,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         // H69 (run 106): a club going down is told so, with next season's league and what its contracts come to there; the
         // budget above is still this league's until the summer ends.
         RelegationText = s.RelegationOutlook() is { } down
-            ? $"Going down: next season you play in {(down.League.StartsWith("The ") ? down.League : "the " + down.League)}. When the summer ends, relegation clauses cut your contracts to about {M(down.PayrollAfter)}"
+            ? $"Going down: next season you play in {(down.League.StartsWith("The ") ? down.League : "the " + down.League)}. When the summer ends, the relegation wage cut takes your contracts to about {M(down.PayrollAfter)}"
               + (down.OwnerFunds ? " and the owner sets a smaller budget that covers at least them." : "; the owner, in debt, sets a smaller budget.")
               + " Deals you sign now are cut the same way."
             : "";

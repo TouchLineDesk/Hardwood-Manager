@@ -1119,7 +1119,9 @@ public sealed partial class GameSession
         var recruiting = World.College?.Season.Recruiting;
         World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);
         Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
-        var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre).OrderByDescending(x => x.player.CurrentAbility).Take(8).ToList();
+        // H108 (run 112): "overseas" means clubs abroad; players leaving G League or pyramid clubs aren't listed here.
+        var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre
+                && World.LeagueOf(x.from) is { } lc && !Hardwood.Core.World.UsaPyramid.IsPyramid(lc.Key)).OrderByDescending(x => x.player.CurrentAbility).Take(8).ToList();
         if (abroad.Count > 0 && !InCollege)
             SummerNote("Overseas free agents", "These players' overseas contracts have ended and they're free to sign anywhere:\n"
                 + string.Join("\n", abroad.Select(x => $"{x.player.Name} ({x.player.PrimaryPosition}, {x.player.Age(Offseason.Date)}, {x.player.CurrentAbility} CA), last with {x.from.FullName}")), "World");
@@ -1447,7 +1449,7 @@ public sealed partial class GameSession
             Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
         }
         if (Employed && m.Parachute > 0)
-            Post("Parachute payment", ParachuteNote(m) + (FirstParachuteYear(m) ? " Every contract's relegation clause has cut wages by half." : "")
+            Post("Parachute payment", ParachuteNote(m) + (FirstParachuteYear(m) ? " The relegation wage cut has halved every contract." : "")
                 + " Use the time to bring the payroll down to what this league pays.", "Board");
     }
 

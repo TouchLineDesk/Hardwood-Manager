@@ -130,11 +130,17 @@ public static class CoachAi
     }
 
     /// <summary>A short scouting report on the next opponent, with what the assistant coach would do about it.</summary>
-    public static string ScoutingReport(Team us, Team opp, DateOnly? on)
+    public static string ScoutingReport(Team us, Team opp, DateOnly? on) => string.Join(" ", ScoutingLines(us, opp, on));
+
+    /// <summary>H101 (run 112): the report's first sentence, for Home's next-game card. Splitting the joined report on
+    /// ". " cut "St. Louis FC" to "St."; the headline is the first line as built.</summary>
+    public static string ScoutingHeadline(Team us, Team opp, DateOnly? on) => ScoutingLines(us, opp, on).FirstOrDefault() ?? "";
+
+    static List<string> ScoutingLines(Team us, Team opp, DateOnly? on)
     {
         var oppRot = Rotation(opp, on);
         var ourRot = Rotation(us, on);
-        if (oppRot.Count == 0) return "";
+        if (oppRot.Count == 0) return new();
         var (theirSystem, theirScheme) = TheirPlan(opp, us, on);
         var (star, dbl) = TheirStar(opp, on);
         var ourScheme = BestScheme(ourRot, theirSystem);
@@ -156,6 +162,6 @@ public static class CoachAi
         // Being predictable has a cost (#267): after three games of the same thing, the other bench has it on film.
         if (!us.Tactic.Auto && (OnFilm(us.Tactic.RecentSystems) || OnFilm(us.Tactic.RecentSchemes)))
             lines.Add($"They've seen us run {Systems.Name(us.Tactic.RecentSystems[^1]).ToLower()} and {Systems.Name(us.Tactic.RecentSchemes[^1]).ToLower()} defense {FilmReadGames} games running and will plan for it; a change would catch them out.");
-        return string.Join(" ", lines);
+        return lines;
     }
 }

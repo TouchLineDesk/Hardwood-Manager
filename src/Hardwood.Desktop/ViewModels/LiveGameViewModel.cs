@@ -505,6 +505,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
         final ? $"Final: {(us > them ? "W" : "L")} {us}-{them} {(home ? "vs" : "at")} {opponent}"
               : $"Now: {(home ? "vs" : "at")} {opponent} · {period}";
 
+    /// <summary>H106 (run 112): the top bar's record once the final is on screen, before Continue records the game.</summary>
+    public static string RecordAfter(int wins, int losses, bool won) => won ? $"{wins + 1}-{losses}" : $"{wins}-{losses + 1}";
+
     /// <summary>The ticker's tag: LIVE during the game, FINAL after it (H71).</summary>
     public string TickerTag => Complete ? "FINAL" : "LIVE";
 
@@ -516,6 +519,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";
         Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, _live.PeriodText, _live.Complete,
             r.Home.Team == Us ? HomeScore : AwayScore, r.Home.Team == Us ? AwayScore : HomeScore);
+        // H106 (run 112): with FINAL on screen the bar said "1-0 · Final: L 123-129"; the record counts this game already.
+        if (_live.Complete && Session.Employed && Session.LiveGameCountsInRecord)
+            Shell.RecordText = RecordAfter(Session.MyRecord.Wins, Session.MyRecord.Losses, (r.Home.Team == Us ? HomeScore : AwayScore) > (r.Home.Team == Us ? AwayScore : HomeScore));
 
         var ourBox = r.Home.Team == Us ? r.Home : r.Away;
         var theirBox = ourBox == r.Home ? r.Away : r.Home;

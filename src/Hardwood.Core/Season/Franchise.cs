@@ -40,6 +40,22 @@ public static class Franchise
 
     public static FacilityInfo Info(FacilityKind k) => Array.Find(All, i => i.Kind == k) ?? All[0];
 
+    /// <summary>H102 (run 112): the facility's effect on this club, from its edge on the league (the coefficients the
+    /// engine uses: Staff.FacilityTraining, the injury model, scouting, Budgets' premium and fan base). The Board page
+    /// showed only the rate per level, in green, beside a facility below the league's average.</summary>
+    public static string ClubEffect(FacilityKind k, double edge)
+    {
+        string S(double v, string f) => (v >= 0 ? "+" : "") + v.ToString(f, System.Globalization.CultureInfo.InvariantCulture);
+        if (Math.Abs(edge) < 0.05) return "Level with the league's average: no edge either way";
+        return k switch
+        {
+            FacilityKind.Practice => $"For you: training quality {S(0.4 * edge, "0.0")}",
+            FacilityKind.Medical => $"For you: about {Math.Abs(5 * edge):0}% {(edge > 0 ? "fewer" : "more")} injuries, {Math.Abs(6 * edge):0}% {(edge > 0 ? "shorter" : "longer")}",
+            FacilityKind.Analytics => $"For you: scouting knowledge {S(3 * edge, "0")} points",
+            _ => $"For you: revenue {S(2 * edge, "0.#")}% and the fan base {S(0.6 * edge, "0.0")} a season",
+        };
+    }
+
     /// <summary>Running costs a season, as a share of the league's revenue, times the level squared: the best costs most to run
     /// (all four at 3: about 5%, $11M in the NBA; all at 5: about 13%, $32M).</summary>
     public const double UpkeepPerLevel = 0.0013;

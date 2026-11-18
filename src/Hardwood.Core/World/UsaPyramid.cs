@@ -1227,6 +1227,6 @@ public static class UsaPyramid
         foreach (var p in t.Roster.Where(p => p.Contract is { RelegationRelease: true }).ToList())
             if (ReleaseChoice(p, bar, date).Leaves) { Release(nabl, t, p); gone.Add(p); }
         if (gone.Count > 0)
-            yield return ($"{t.FullName}: relegation clauses", $"{string.Join(", ", gone.Select(p => p.Name))} used the relegation release in {(gone.Count == 1 ? "his contract" : "their contracts")} and left on a free. {(gone.Count == 1 ? "His wage is" : "Their wages are")} off the books.");
+            yield return ($"{t.FullName}: relegation release clauses", $"{string.Join(", ", gone.Select(p => p.Name))} used the relegation release in {(gone.Count == 1 ? "his contract" : "their contracts")} and left on a free. {(gone.Count == 1 ? "His wage is" : "Their wages are")} off the books.");
     }
 }
