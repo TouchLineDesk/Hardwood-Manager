@@ -206,7 +206,9 @@ public sealed partial class CollegeViewModel
     public static Chip OffersChip(int offersOut, int limit)
     {
         if (offersOut <= limit) return new("Offers out", $"{offersOut} of {limit}", "uncommitted prospects", "");
-        return new("Offers out", $"{offersOut} of {limit}", limit == 0 ? "no places left" : "over: no new offers yet", "warn");
+        // H83 (run 106): "3 of 0" read as nonsense; with no scholarship open it's "3 out · no scholarships open".
+        if (limit == 0) return new("Offers out", $"{offersOut} out", "no scholarships open", "warn");
+        return new("Offers out", $"{offersOut} of {limit}", "over: no new offers yet", "warn");
     }
 
     /// <summary>H22: why the offers out can pass the limit, in the trail's note.</summary>

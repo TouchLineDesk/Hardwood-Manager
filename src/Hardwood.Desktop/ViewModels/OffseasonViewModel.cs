@@ -123,6 +123,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
     public ObservableCollection<DraftSlotRow> DraftSlots { get; } = new();
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _capText = "";
+    /// <summary>H69: the going-down line under the budget (empty otherwise).</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasRelegationText))] private string _relegationText = "";
+    public bool HasRelegationText => RelegationText.Length > 0;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private int _tab;
     /// <summary>H37 (run 79): a college coach's summer has no contracts, free agents or talks.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowTalk), nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private bool _collegeSummer;
@@ -245,11 +248,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
                                                       : "Play the season out. In the summer you will renew or release players whose deals are up and sign free agents here.")
                 : "You aren't coaching a club. Press Continue to move through the summer.";
             ShowContracts = ShowFreeAgency = ShowBuyouts = false;
-            CapText = "";
+            CapText = ""; RelegationText = "";
             return;
         }
         var team = s.HumanTeam; var fin = s.League.Finance;
-        if (s.InCollege) { RefreshCollegeSummer(s, o!, team); return; }
+        if (s.InCollege) { RelegationText = ""; RefreshCollegeSummer(s, o!, team); return; }
         bool renewing = s.InNabl ? o!.Phase == OffseasonPhase.ReSigning : true;
         bool freeAgency = s.Abroad || o!.Phase == OffseasonPhase.FreeAgency;
         ShowContracts = s.MyExpiring.Count > 0 || (s.InNabl && renewing);
@@ -259,6 +262,13 @@ public sealed partial class OffseasonViewModel : PageViewModel
         static string M(long v) => TalkViewModel.M(v);   // H84: the talk panel writes money the same way
         CapText = $"Wages committed {M(committed)} of a {M(budget)} budget · {(budget >= committed ? $"{M(budget - committed)} to spend" : $"{M(committed - budget)} over")}"
                   + (s.InCollege ? "" : $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {s.MyRosterMin}-{s.MyRosterMax})");
+        // H69 (run 106): a club going down is told so, with next season's league and what its contracts come to there; the
+        // budget above is still this league's until the summer ends.
+        RelegationText = s.RelegationOutlook() is { } down
+            ? $"Going down: next season you play in {(down.League.StartsWith("The ") ? down.League : "the " + down.League)}. When the summer ends, relegation clauses cut your contracts to about {M(down.PayrollAfter)}"
+              + (down.OwnerFunds ? " and the owner sets a smaller budget that covers at least them." : "; the owner, in debt, sets a smaller budget.")
+              + " Deals you sign now are cut the same way."
+            : "";
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
         Instructions = o.Phase == OffseasonPhase.Draft && o.CollegeDraftOn
             ? "The college draft: one round, in the lottery's order. When you're on the clock, pick a graduate on the Draft tab; press Continue and your scouts pick for you. Free agency opens when the draft ends."
@@ -390,8 +400,10 @@ public sealed partial class OffseasonViewModel : PageViewModel
         OnTheClock = o.Phase == OffseasonPhase.Draft && o.OnTheClock == team;
         var mine = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == team).Select(i => i + 1).ToList();
         DraftText = OnTheClock ? $"You're on the clock with pick {o.NextPickIndex + 1}. Choose a graduate and press Draft, or press Continue and your scouts pick."
-            : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : "You have no pick this year. The draft follows contract decisions.")
+            : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : (s.InNabl ? GameSession.NoPickReason : "You have no pick this year.") + " The draft follows contract decisions.")
             : "The draft is under way.";
+        // H74 (run 106): every graduate is 23 by the rule; say so, so a page of 23-year-olds doesn't look like a bug.
+        DraftText += " College players turn pro at 23 in this game, so every prospect is 23.";
         int rank = 1;
         var keep = _boardPick;
         foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
@@ -424,7 +436,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
         var p = SelectedProspect?.Player;
         if (p == null || !OnTheClock) return;
         var pick = Session.MakePick(p);
-        Status = $"You drafted {p.Name} with pick {pick.Pick}: ${p.Contract!.Salary / 1e6:F2}M a year for {p.Contract.Years} years.";
+        Status = $"You drafted {p.Name} with pick {pick.Pick}: ${p.Contract!.Salary / 1e6:F2}M a year for {p.Contract.Years} years."
+            + (Session.League.Finance.OpenMarket ? " A pick is compulsory, so the owner adds his wage to your budget." : "");   // H89 (run 106)
         _boardPick = null;
         SelectedProspect = null;
         Shell.AfterTick();

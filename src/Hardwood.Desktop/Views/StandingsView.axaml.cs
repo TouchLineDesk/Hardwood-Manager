@@ -36,8 +36,12 @@ public partial class StandingsView : UserControl
     /// <summary>The Div column shows only when some row in the table has a division (public for the tests).</summary>
     public static void ShowDivIfAny(DataGrid grid)
     {
-        if (grid.Columns.FirstOrDefault(c => c.Header as string == "Div") is not { } col) return;
-        col.IsVisible = grid.ItemsSource is IEnumerable<ViewModels.StandingRow> rows && rows.Any(r => r.Div.Length > 0);
+        var rows = grid.ItemsSource as IEnumerable<ViewModels.StandingRow>;
+        if (grid.Columns.FirstOrDefault(c => c.Header as string == "Div") is { } col)
+            col.IsVisible = rows != null && rows.Any(r => r.Div.Length > 0);
+        // H31 (run 106): a quick-simmed league keeps no game log, so its L10 was blank on every row. Hide the column then.
+        if (grid.Columns.FirstOrDefault(c => c.Header as string == "L10") is { } l10)
+            l10.IsVisible = rows != null && rows.Any(r => r.Last10.Length > 0);
     }
 
     private void ArrangeCards(double width)

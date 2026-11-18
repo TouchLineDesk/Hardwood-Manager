@@ -48,14 +48,23 @@
                         <Border BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,4,0,0" CornerRadius="3" Padding="7,5">
                           <StackPanel Spacing="3">
                             <TextBlock Text="{Binding Label}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource HwAccentBrush}"/>
-                            <Grid ColumnDefinitions="44,*" IsVisible="{Binding Filled}">
-                              <c:Avatar Player="{Binding Row.Player}" Team="{Binding Row.Team}" Width="42" Height="42" VerticalAlignment="Top"/>
-                              <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Row.ShortName}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding Row.CardLine}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
-                              </StackPanel>
-                            </Grid>
-                            <c:RatingBar Value="{Binding Row.Minutes}" Maximum="40" Fill="{Binding Row.BarBrush}" IsVisible="{Binding Filled}" ToolTip.Tip="Minutes a game, out of 40"/>
+                            <!-- H27 (run 106): the filled card is a template over Row, so an empty slot binds nothing (no null-path binding errors). -->
+                            <ContentControl Content="{Binding Row}" IsVisible="{Binding Filled}">
+                              <ContentControl.ContentTemplate>
+                                <DataTemplate x:DataType="vm:RotationRow">
+                                  <StackPanel Spacing="3">
+                                    <Grid ColumnDefinitions="44,*">
+                                      <c:Avatar Player="{Binding Player}" Team="{Binding Team}" Width="42" Height="42" VerticalAlignment="Top"/>
+                                      <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ShortName}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                                      </StackPanel>
+                                    </Grid>
+                                    <c:RatingBar Value="{Binding Minutes}" Maximum="40" Fill="{Binding BarBrush}" ToolTip.Tip="Minutes a game, out of 40"/>
+                                  </StackPanel>
+                                </DataTemplate>
+                              </ContentControl.ContentTemplate>
+                            </ContentControl>
                             <TextBlock Text="Empty: pick a bench player" Classes="bad" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding Empty}"/>
                           </StackPanel>
                         </Border>

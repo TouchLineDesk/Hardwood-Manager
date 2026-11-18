@@ -33,8 +33,11 @@ public sealed class LeaderCard
     public Player? TopPlayer => Top?.Player;
     public string TopName => Top?.Name ?? "";
     public Team? TopTeam => Top?.Team;
-    /// <summary>The nickname ("Lakers"): short enough to sit beside the number; the full name is on the club page.</summary>
-    public string TopClub => Top?.Team?.Name ?? "";
+    /// <summary>A short club name ("Lakers"): short enough to sit beside the number; the full name is on the club page.
+    /// H87 (run 106): never a bare "FC" or "United", and never a nickname two clubs share (the bracket's rule).</summary>
+    public string TopClub => Top?.Team is { } t ? Hardwood.Desktop.Controls.BracketView.Label(t, Peers) : "";
+    /// <summary>The league's clubs, to tell clubs with the same nickname apart (H87).</summary>
+    public IReadOnlyList<Team>? Peers { get; init; }
     public string TopValue => Top?.Value ?? "";
     public IReadOnlyList<LeaderEntry> Rest => Entries.Skip(1).ToList();
     public string EmptyText { get; init; } = "Fills in after the first games.";

@@ -720,7 +720,7 @@ public static class UsaPyramid
                 news.AddRange(TopNews(t2, up, down, fillTop, promotionPlayoffs, Names));
             }
             void UpAndDown(WorldCompetition upper, WorldCompetition lower, List<Team> wentUp, List<Team> wentDown, List<Team> filled) =>
-                news.Add(($"{upper.Profile.Name}: up and down", $"Division winners promoted from {lower.Profile.Name}: {Names(wentUp)}. Last in their divisions, relegated to {lower.Profile.Name}: {Names(wentDown)}."
+                news.Add(($"{upper.Profile.Name}: up and down", $"Division winners promoted from {lower.Profile.Name}: {Names(wentUp)}. Last in their divisions, relegated to {lower.Profile.Name}: {Names(wentDown)}." + LevelRecordsNote
                     + (filled.Count > 0 ? $" {upper.Profile.Name} grows to {NationalSize} clubs: {Names(filled)} also come up." : "")));
             UpAndDown(t2, t3, t3Up, t2Down, fill2);
             UpAndDown(t3, t4, t4Up, t3Down, fill3);
@@ -766,10 +766,10 @@ public static class UsaPyramid
                 if (!Season.Postseason.UsesDivisions(nabl) || !nabl.Teams.All(Labeled) || RealLabels(nabl.Teams) != RealWorld.RealWorldData.IsReal(nabl)) RealignTop(nabl, up);
                 news.AddRange(TopNews(t2, up, down, fillTop, promotionPlayoffs, Names));
             }
-            news.Add(($"{t2.Profile.Name}: up and down", $"Division winners promoted from {t3.Profile.Name}: {Names(t3Up)}. Last in their divisions, relegated to {t3.Profile.Name}: {Names(t2Down)}."
+            news.Add(($"{t2.Profile.Name}: up and down", $"Division winners promoted from {t3.Profile.Name}: {Names(t3Up)}. Last in their divisions, relegated to {t3.Profile.Name}: {Names(t2Down)}." + LevelRecordsNote
                 + (fill2.Count > 0 ? $" {t2.Profile.Name} grows to {NationalSize} clubs: {Names(fill2)} also come up." : "")));
             news.Add(($"{t3.Profile.Name}: up and down", $"Promoted: the regional champions {Names(regionalChamps)}" + (otherWinners.Count > 0 ? $", and the best other division winners, {Names(otherWinners)}" : "")
-                + $". Last in their divisions, relegated to their regions: {Names(t3Down)}."
+                + $". Last in their divisions, relegated to their regions: {Names(t3Down)}." + LevelRecordsNote
                 + (fill3.Count > 0 ? $" {t3.Profile.Name} grows to {NationalSize} clubs: {Names(fill3)} also come up." : "")));
             var t3Gone = regionalUp.Concat(fill3).ToHashSet();
             // Regional ↔ local leagues: a regional league's divisions are its local areas. The last in each goes down to its local
@@ -837,6 +837,9 @@ public static class UsaPyramid
         return news;
     }
 
+    /// <summary>H54 (run 106): the summer's up-and-down news says how level records were split, as Standings' legend does.</summary>
+    public const string LevelRecordsNote = " Level records were split by point difference.";
+
     /// <summary>The summer's headlines for the top league's ups and downs, with the promotion playoffs' results (run 102).</summary>
     private static List<(string, string)> TopNews(WorldCompetition t2, List<Team> up, List<Team> down, List<Team> fillTop,
         List<(Team Top, Team Challenger, bool ChallengerWon, string Score)> playoffs, Func<IEnumerable<Team>, string> names)
@@ -854,7 +857,7 @@ public static class UsaPyramid
         var autoDown = down.Except(lost).ToList();
         var downParts = new List<string>();
         if (lost.Count > 0) downParts.Add($"{names(lost)} finished last in their divisions, lost the promotion playoff and drop into {t2.Profile.Name}.");
-        if (autoDown.Count > 0) downParts.Add($"{names(autoDown)} finished last in their divisions and drop into {t2.Profile.Name}.");
+        if (autoDown.Count > 0) downParts.Add($"{names(autoDown)} finished last in their divisions and drop into {t2.Profile.Name}." + LevelRecordsNote);
         if (down.Count > 0) news.Add(($"Relegated from the {top}: {names(down)}", string.Join(" ", downParts)));
         var saved = playoffs.Where(x => !x.ChallengerWon).ToList();
         if (saved.Count > 0)

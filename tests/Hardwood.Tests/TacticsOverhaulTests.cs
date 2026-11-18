@@ -56,7 +56,11 @@ public class TacticsOverhaulTests
         var us = lg.Teams.First(t => t.Abbreviation == "BOS"); var them = lg.Teams.First(t => t.Abbreviation == "LAL");
         var setups = TacticSetups.Suggest(us, them, null);
         var keys = setups.Select(s => s.Key).ToList();
-        foreach (var k in new[] { "fit", "plan", "five", "threes", "inside", "lock", "star", "move" }) Assert.Contains(k, keys);
+        foreach (var k in new[] { "plan", "threes", "inside", "lock", "star", "move" }) Assert.Contains(k, keys);
+        // H82 (run 106): no two cards show the same system and scheme; the best fit and the five's card merge into one that agrees.
+        Assert.Equal(setups.Count, setups.Select(s => (s.System, s.Scheme)).Distinct().Count());
+        var plan0 = setups.Single(s => s.Key == "plan");
+        if (!keys.Contains("fit")) Assert.Contains("also the best fit", plan0.Pitch);
         Assert.Single(setups, s => s.Recommended);
         Assert.Equal(setups.Max(s => s.Score), setups.Single(s => s.Recommended).Score);
         Assert.All(setups, s => Assert.InRange(s.Score, 0, 1));

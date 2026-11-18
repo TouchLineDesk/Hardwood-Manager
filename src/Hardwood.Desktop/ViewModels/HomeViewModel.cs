@@ -189,6 +189,13 @@ public sealed partial class HomeViewModel : PageViewModel
 
         Table.Clear();
         int i = 0;
+        // H81 (run 106): before conference play every conference record is 0-0, so the table read alphabetically. Until
+        // then it's ordered (and shown) by overall record, and the title says so.
+        if (s.InCollege && conf.Count > 0 && conf.All(r => r.Games == 0))
+        {
+            conf = conf.Select(r => s.CollegeRecord(r.Team)).OrderByDescending(r => r.WinPct).ThenByDescending(r => r.Wins).ThenByDescending(r => r.PointDiff).ToList();
+            TableTitle += " · overall records until conference play";
+        }
         foreach (var r in conf)
         {
             i++;

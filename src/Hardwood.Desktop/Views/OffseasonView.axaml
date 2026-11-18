@@ -9,6 +9,7 @@
       <TextBlock Text="{Binding Headline}" Classes="h1" Margin="0"/>
       <TextBlock Text="{Binding Instructions}" Classes="muted" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding CapText}" IsVisible="{Binding InOffseason}" FontWeight="SemiBold"/>
+      <TextBlock Text="{Binding RelegationText}" IsVisible="{Binding HasRelegationText}" Classes="bad" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding Status}" Classes="accent"/>
       <!-- Run 67 (review #13 rank 6, Danny's #464): the summer boards as player cards; the full tables one click away. -->
       <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" Margin="0,4,0,0" IsVisible="{Binding InOffseason}" ToolTip.Tip="Player cards, or the full tables with every rating"/>
@@ -188,7 +189,7 @@
                 </StackPanel>
               </Grid>
             </Border>
-            <DataGrid Grid.Row="2" ItemsSource="{Binding Roster}" SelectedItem="{Binding SelectedRosterPlayer}">
+            <DataGrid x:Name="SummerRosterGrid" Grid.Row="2" ItemsSource="{Binding Roster}" SelectedItem="{Binding SelectedRosterPlayer}">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
                 <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64"/>

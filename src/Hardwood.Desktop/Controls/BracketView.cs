@@ -52,6 +52,7 @@ public sealed class BracketView : Canvas
         var cols = Columns;
         if (cols == null || cols.Count == 0) { Width = 0; Height = 0; InvalidateVisual(); return; }
         int first = cols[0].Slots.Count;
+        _peers = cols.SelectMany(c => c.Slots).Where(x => x != null).SelectMany(x => new[] { x!.High, x.Low }).Distinct().ToList();
         for (int c = 0; c < cols.Count; c++)
         {
             double x = c * (BoxWidth + Gap);
@@ -108,20 +109,28 @@ public sealed class BracketView : Canvas
 
     /// <summary>The name in a box: the full name when it's short ("Austin FC"), else the nickname ("Trail Blazers"), unless the
     /// nickname says little on its own ("United", "City", "FC"), when it's the city.</summary>
-    public static string Label(Team t)
+    /// <para>H87 (run 106): a nickname another club in the same bracket or league also uses ("Mustangs" for Houston and
+    /// Indianapolis) is never shown alone: the city is, or the code and nickname when the city is shared too.</para>
+    public static string Label(Team t, IEnumerable<Team>? peers = null)
     {
         if (t.FullName.Length <= 18) return t.FullName;
-        bool generic = t.Name.Length <= 4 || t.Name is "United" or "City" or "Athletic" or "Club" or "Basket" or "Basketball";
-        return generic ? t.City : t.Name;
+        bool generic = t.Name.Length <= 4 || t.Name is "United" or "City" or "Athletic" or "Club" or "Basket" or "Basketball" || t.Name.EndsWith(" Club");
+        var others = peers?.Where(p => p != t && p.Id != t.Id).ToList();
+        bool sharedName = others?.Any(p => p.Name == t.Name) == true;
+        if (!generic && !sharedName) return t.Name;
+        bool sharedCity = others?.Any(p => p.City == t.City) == true;
+        return sharedCity ? $"{t.Abbreviation} {t.Name}" : t.City;
     }
 
-    private static Control Line(Team team, int wins, BookSeries s, int row)
+    private List<Team> _peers = new();
+
+    private Control Line(Team team, int wins, BookSeries s, int row)
     {
         bool won = s.Winner == team, lost = s.Winner != null && !won;
         var g = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*,22"), Opacity = lost ? 0.5 : 1 };
         Grid.SetRow(g, row);
         g.Children.Add(new TeamLogo { Team = team, Width = 18, Height = 18, ShowText = false, VerticalAlignment = VerticalAlignment.Center });
-        var name = new TeamLink { Team = team, Text = Label(team), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0), Padding = new Thickness(2, 0), MinHeight = 0, FontSize = 13, FontWeight = won ? FontWeight.Bold : FontWeight.Normal };
+        var name = new TeamLink { Team = team, Text = Label(team, _peers), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0), Padding = new Thickness(2, 0), MinHeight = 0, FontSize = 13, FontWeight = won ? FontWeight.Bold : FontWeight.Normal };
         Grid.SetColumn(name, 1);
         g.Children.Add(name);
         var score = new TextBlock

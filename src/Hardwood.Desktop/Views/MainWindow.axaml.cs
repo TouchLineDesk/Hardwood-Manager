@@ -28,7 +28,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The text and interface size from Settings, applied to everything in the window.</summary>
-    public void ApplyScale(double scale) => ScaleRoot.LayoutTransform = UiScale.Transform(scale);
+    public void ApplyScale(double scale)
+    {
+        ScaleRoot.LayoutTransform = UiScale.Transform(scale);
+        ScaleRoot.Classes.Set("bigText", UiScale.Clamp(scale) >= BigTextScale);   // H60: smaller tab headers at big text
+    }
+
+    /// <summary>From this text size the tab headers shrink so they stay on one row (H60).</summary>
+    public const double BigTextScale = 1.15;
 
     /// <summary>Layout check: how many pixels the two halves of the top bar overlap (0 when they don't).</summary>
     public double TopBarOverlap()

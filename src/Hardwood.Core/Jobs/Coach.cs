@@ -80,6 +80,12 @@ public static class JobRecords
 {
     public static string Season(int year) => $"{year}-{(year + 1) % 100:00}";
     public static string Seasons(JobRecord h) => h.FromSeason >= h.ToSeason ? Season(h.ToSeason) : $"{Season(h.FromSeason)} to {Season(h.ToSeason)}";
-    /// <summary>"Anchorage Steelheads, 2026-27 to 2028-29: sacked (10-52 in the last season)".</summary>
-    public static string Line(JobRecord h) => $"{h.TeamName}, {Seasons(h)}: {h.Ended.ToLower()} ({h.Wins}-{h.Losses} in the last season)";
+    /// <summary>"Anchorage Steelheads, 2026-27 to 2028-29: sacked (10-52 in 2028-29)". H92 (run 106): the season is named,
+    /// since "in the last season" read as the season before when he was sacked mid-season ("sacked at 6-20 in 2026-27").</summary>
+    public static string Line(JobRecord h) => h.FromSeason >= h.ToSeason
+        ? $"{h.TeamName}, {Season(h.ToSeason)}: {Lower(h.Ended)} at {h.Wins}-{h.Losses}"
+        : $"{h.TeamName}, {Seasons(h)}: {Lower(h.Ended)} ({h.Wins}-{h.Losses} in {Season(h.ToSeason)})";
+
+    /// <summary>"Left for Boston Celtics" → "left for Boston Celtics" (the club's name keeps its capitals).</summary>
+    private static string Lower(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s[1..];
 }

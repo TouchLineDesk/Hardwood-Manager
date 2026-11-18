@@ -67,7 +67,8 @@
               <TextBlock Text="Main menu"/>
             </StackPanel>
           </Button>
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <!-- H91 (run 106): at big text the list runs under Main menu; the scrollbar stays visible so the rest can be found. -->
+          <ScrollViewer x:Name="NavScroll" HorizontalScrollBarVisibility="Disabled" AllowAutoHide="False">
           <ItemsControl ItemsSource="{Binding Nav}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:NavItem">
