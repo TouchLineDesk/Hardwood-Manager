@@ -57,6 +57,11 @@ public class Run110ContractsEconomyTests
         _out.WriteLine($"ask in tier 4: {Budgets.Money(plain.Wage)} without the floor, {Budgets.Money(floored.Wage)} with it");
         Assert.True(plain.Wage < 2_000_000);
         Assert.True(floored.Wage >= floor);
+        // A loyal player renewing at a club near his level still asks at least the floor.
+        star.Hidden.Loyalty = 20;
+        var strong = new Team { Id = 10, City = "E", Name = "F", Abbreviation = "EF", Division = "X" };
+        for (int i = 0; i < 8; i++) strong.Roster.Add(Make(145, 28));
+        Assert.True(ContractTalks.Demand(star, strong, On, 0.03, Finance.HardCapDefault, renewal: true, floor: floor).Wage >= floor);
     }
 
     [Fact]
