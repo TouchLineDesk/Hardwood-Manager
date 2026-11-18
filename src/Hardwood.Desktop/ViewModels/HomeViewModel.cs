@@ -178,12 +178,12 @@ public sealed partial class HomeViewModel : PageViewModel
             Opponent = null; NextGame = $"{char.ToUpper(over[0])}{over[1..]}"; Scouting = "";
             NextDetail = "The rest of the playoffs go on without you. Continue or Sim week moves on to the summer.";
         }
-        else if (s.Employed && s.InCollege && s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && s.Today.Month is >= 3 and <= 7
-                 && (s.World.College?.Season.ChampionId != null || s.Today.Month >= 5))
+        else if (MainViewModel.CollegeSpring(s))
         {
             // H77 (bug hunt Nov 17, run 97): a college coach's spring has no games; say why, and how to move on.
+            // Run 107: one button for the whole wait (the top bar's "Skip to the summer").
             Opponent = null; NextGame = "Season over"; Scouting = "";
-            NextDetail = "Your college season is done. The summer starts when the pro playoffs end, in mid-May: Sim week gets you there faster.";
+            NextDetail = $"Your college season is done. The summer starts when the pro playoffs end, in mid-May: {MainViewModel.SkipToSummerText} takes you there.";
         }
         else { Opponent = null; NextGame = "No game scheduled"; NextDetail = s.Phase == SessionPhase.Offseason ? "It's the offseason." : ""; Scouting = ""; }
 

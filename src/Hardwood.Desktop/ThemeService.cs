@@ -28,10 +28,17 @@ public static class ThemeService
         var a = Color.Parse(team.PrimaryColor); var b = Color.Parse(team.SecondaryColor);
         // Prefer a colourful, visible colour: skip near-white and near-grey; then lighten until readable.
         double Sat(Color c) { double mx = Math.Max(c.R, Math.Max(c.G, c.B)), mn = Math.Min(c.R, Math.Min(c.G, c.B)); return mx == 0 ? 0 : (mx - mn) / mx; }
+        // H57 (run 107): a club in greys only (the Spurs' silver and black, the Nets' black and white) gave a grey accent,
+        // and the selected tab, the active nav item and Continue looked like everything else. Such a club keeps the
+        // Hardwood orange, so "selected" always has a colour.
+        if (Sat(a) <= Monochrome && Sat(b) <= Monochrome) return DefaultAccent;
         var pick = new[] { a, b }.OrderByDescending(c => (Sat(c) > 0.25 ? 1 : 0) + Math.Min(Luminance(c), 0.5)).First();
         for (int i = 0; i < 10 && Luminance(pick) < 0.18; i++) pick = Lighten(pick, 0.15);
         return pick;
     }
+
+    /// <summary>Saturation at or below which a team colour counts as grey (silver #C4CED4 is 0.08).</summary>
+    public const double Monochrome = 0.15;
 
     public static void Apply(Team? team) => Set(team == null ? DefaultAccent : AccentFor(team));
 
