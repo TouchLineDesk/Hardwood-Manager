@@ -755,20 +755,20 @@ public sealed partial class GameSession
     }
 
     /// <summary>
-    /// Your club finished last in its division and goes down at the summer (review #14 bug #16): the top league's last in each
-    /// division and the last in each division of tiers 2-4 (UsaPyramid.Promote's rule; nobody goes down from the bottom tier).
-    /// </summary>
-    /// <summary>
     /// H70 (run 114): your club goes up this summer. In tier 2 a division winner must also win its promotion playoff (run 102);
     /// in tiers 3-5 winning the division is enough (#319, D39 A). Never in the top league, college or abroad.
     /// </summary>
     public bool GoingUp()
     {
         if (InCollege || InNabl || HumanLeague is not { } c || !UsaPyramid.IsNational(c.Key) || !UsaPyramid.WonDivision(c, HumanTeam)) return false;
-        if (c.Key == UsaPyramid.Tier2 && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { } ps) return ps.Complete && ps.WinnerId == HumanTeam.Id;
+        if (c.Key == UsaPyramid.Tier2 && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { } ps) return !ps.Complete || ps.WinnerId == HumanTeam.Id; // unfinished: the automatic swap, as TopLeagueDown
         return true;
     }
 
+    /// <summary>
+    /// Your club finished last in its division and goes down at the summer (review #14 bug #16): the top league's last in each
+    /// division and the last in each division of tiers 2-4 (UsaPyramid.Promote's rule; nobody goes down from the bottom tier).
+    /// </summary>
     public bool GoingDown()
     {
         if (InCollege) return false;

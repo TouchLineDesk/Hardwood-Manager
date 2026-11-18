@@ -119,13 +119,16 @@ public class H70BoardTests
         foreach (int wins in new[] { 20, 31, 37, 45, 55 })
         foreach (bool up in new[] { false, true })
         {
-            var e = new Expectations { Season = 2026, Goal = goal, TargetWins = 37 };
+            // An unmet owner's demand (no young player minutes) on every case: the verdict's floors come after it.
+            var e = new Expectations { Season = 2026, Goal = goal, TargetWins = 37, Demands = { Demand.PlayYoungsters } };
             var job = new JobState { Current = e, Confidence = 60, HiredSeason = 2024 };
             var (_, body, sacked) = Board.SeasonReview(job, new Coach(), ctx, team, got, wins, 62 - wins, None, new DateOnly(2027, 6, 1), 2026,
                 wonDivision: up, goingUp: up);
             var j = Board.Judge(new Expectations { Goal = goal, TargetWins = 37 }, ctx, got, wins, 62 - wins, false, up);
             if (j.GoalMet || j.BeatTarget || up) Assert.DoesNotContain("expected more", body);
-            if (body.Contains("delighted") || body.Contains("satisfied")) Assert.True(job.Confidence >= 60, $"{goal}/{got}/{wins}/{up}: {job.Confidence}");
+            if (j.GoalMet || j.BeatTarget) Assert.DoesNotContain("playoff exit", body);
+            if (got < SeasonGoal.Playoffs) Assert.DoesNotContain("playoff exit", body);
+            if (body.Contains("delighted") || body.Contains("satisfied") || body.Contains("pleased")) Assert.True(job.Confidence >= 60, $"{goal}/{got}/{wins}/{up}: {job.Confidence}");
             if (up) Assert.False(sacked);
             checkedCount++;
         }

@@ -296,7 +296,8 @@ public static class Board
         // ...and a goal that was met isn't cut far below what the club just did (a 64-18 team was set "make the play-in").
         else if (previous.Achieved is { } done && !previous.Survive && Idx(done) > 0)
         {
-            var floor = steps[Math.Max(0, Idx(done) - 1)];
+            // A result off the ladder already maps to the step below it, which is the floor.
+            var floor = steps[Math.Max(0, steps.Contains(done) ? Idx(done) - 1 : Idx(done))];
             if ((int)e.Goal < (int)floor) e.Goal = floor;
         }
         // Symmetry (critic review #6, decision #152): a goal falls at most one step a season, as it rises at most one.
@@ -309,7 +310,7 @@ public static class Board
         // H70: after a goal met or a target beaten, the target falls by at most 3 (of 82). The Spurs' fell after a title, and
         // a patient owner's went 58 → 50 → 42 while the team won 64 and 61.
         int metDrop = (int)Math.Round(3 * ctx.SeasonGames / 82.0);
-        bool goalMet = previous.Achieved is { } met && (int)met >= (int)previous.Goal;
+        bool goalMet = previous.Achieved is { } met && (ctx.IsCollege ? CollegeStep(met) >= CollegeStep(previous.Goal) : (int)met >= (int)previous.Goal);
         bool beatTarget = previous.Wins is { } won && won >= previous.TargetWins;
         if (previous.TargetWins > 0 && !previous.Survive && (goalMet || beatTarget)
             && e.TargetWins < previous.TargetWins - metDrop)
@@ -607,20 +608,23 @@ public static class Board
         delta += Math.Clamp(winsVsTarget * 0.6, -10, 12);
         // A strong season with a playoff upset is a disappointment, not a crisis; a near miss on the win target is a warning.
         // (Replayed careers, Nov 10: a 54-28 team set "conference finals" was sacked after a first-round exit.)
-        // H70: a regular season that clearly beat the target never lowers confidence, whatever the playoffs did.
-        if (diff < 0 && j.BeatTarget && !relegated) delta = Math.Max(delta, 2);
-        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
-        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
-        string goalText = e.Survive ? "stay up" : LowerFirst(Describe(e.Goal, ctx));
-        string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound, up);
-        if (e.Survive && !relegated) result = "stayed up, " + result;
-        var lines = new List<string> { $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins)." };
+        var lines = new List<string>();
         foreach (var d in e.Demands)
         {
             bool met = Meeting(d, ctx, team, stats, today, wins, wins + losses);
             delta += met ? 4 : -8 * impatience;
             lines.Add($"{Describe(d)}: {(met ? "done" : "not done")}.");
         }
+        // H70: the floors come after the owner's demands, so a "delighted", "satisfied" or "pleased" verdict never comes with a
+        // fall in confidence; a regular season that clearly beat the target never lowers it, whatever the playoffs did.
+        if (diff >= 0) delta = Math.Max(delta, 0);
+        else if (diff < 0 && j.BeatTarget && !relegated) delta = Math.Max(delta, 2);
+        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
+        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
+        string goalText = e.Survive ? "stay up" : LowerFirst(Describe(e.Goal, ctx));
+        string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound, up);
+        if (e.Survive && !relegated) result = "stayed up, " + result;
+        lines.Insert(0, $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins).");
         job.Confidence = Math.Clamp(job.Confidence + delta, 0, 100);
         // Success in a smaller league counts for less with clubs elsewhere.
         double weight = ctx.IsNabl ? 1 : Math.Clamp(1 + ctx.PrestigeOffset / 40, 0.4, 1);
@@ -644,6 +648,9 @@ public static class Board
         if (!sacked && earned) { job.ProtectedSeason = season + 1; job.ProtectedReason = "credit"; }
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         string owner = team.Owner.Name;
+        // An exit needs a postseason the club was in (review of #178: a club that missed the playoffs read "playoff exit").
+        bool reachedPost = ctx.IsCollege ? achieved >= SeasonGoal.Playoffs || madnessRound >= 0
+            : (ctx.IsNabl || ctx.PlayoffTeams > 1) && achieved >= SeasonGoal.Playoffs;
         int ahead = (int)Math.Round(winsVsTarget * Math.Max(1.0, ctx.SeasonGames) / 82);
         string verdict = sacked ? $"{owner} has decided to make a change. You have been sacked."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{owner} is giving you another season, but expects much better. Consider this a final warning."
@@ -656,7 +663,9 @@ public static class Board
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
             : relegated && wins > losses ? $"{owner} is disappointed: a winning record wasn't enough to stay up, last in the division. Board confidence: {job.Confidence:0}/100."
             : !relegated && j.BeatTarget ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), but hoped to go further. Board confidence: {job.Confidence:0}/100."
-            : !relegated && winsVsTarget >= 0 ? $"{owner} is disappointed with the {(ctx.IsCollege ? "tournament" : "playoff")} exit; the regular season was on target. Board confidence: {job.Confidence:0}/100."
+            : !relegated && winsVsTarget >= 0 ? (reachedPost
+                ? $"{owner} is disappointed with the {(ctx.IsCollege ? "tournament" : "playoff")} exit; the regular season was on target. Board confidence: {job.Confidence:0}/100."
+                : $"{owner} is disappointed to fall short of the goal, though the record was on target. Board confidence: {job.Confidence:0}/100.")
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
