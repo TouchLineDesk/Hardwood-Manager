@@ -190,7 +190,7 @@ public sealed partial class BoardViewModel : PageViewModel
             var t = s.HumanTeam; var o = t.Owner; var rec = s.MyRecord; var ctx = s.ContextOf(t);
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
             var e = job.Current;
-            Goal = e == null ? "" : $"{(e.Survive ? "Stay up (newly promoted)" : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
+            Goal = e == null ? "" : $"{(e.Survive ? (e.SurviveNote is { } note ? $"Stay up: {note}" : "Stay up (newly promoted)") : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
             bool over = s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason;
             Pace = HiredAfterSeason(s) && (over || rec.Games >= ctx.SeasonGames)
                 ? $"Last season, before you came: {rec.Wins}-{rec.Losses}"
