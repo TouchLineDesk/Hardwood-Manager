@@ -25,6 +25,8 @@ public sealed partial class ExpiringRow : ObservableObject
     public string AskChip { get; init; } = "";
     public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits on its own" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
     public string FitTip { get; init; } = "";
+    /// <summary>H111 (run 117): the fit chip shows only when the cards differ (every card read "Fits on its own").</summary>
+    [ObservableProperty] private bool _showFit = true;
     public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, 1);
 }
 
@@ -303,6 +305,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 Picked = Talk.Player == p,
             });
         }
+        if (Expiring.Count > 1 && Expiring.All(x => x.Fits == "Fits on its own"))
+            foreach (var x in Expiring) x.ShowFit = false;
         if (freeAgency)
         {
             long room = s.MyWageRoom;

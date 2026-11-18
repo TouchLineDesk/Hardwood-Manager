@@ -30,7 +30,7 @@ public sealed class PlayerRow
     public string Def => Scouting.GroupAverage(Player, AttrGroup.Defense, Knowledge);
     public string Men => Scouting.GroupAverage(Player, AttrGroup.Mental, Knowledge);
     public string Phy => Scouting.GroupAverage(Player, AttrGroup.Physical, Knowledge);
-    public string Salary => Player.Contract is { } c ? $"${c.Salary / 1e6:F1}M" : "-";
+    public string Salary => Player.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)}" : "-";
     public long SalaryValue => Player.Contract?.Salary ?? 0;
     /// <summary>H30: set when the club's contracts haven't counted down yet this summer (in season, Years 1 is the final year).</summary>
     public bool BeforeCountdown { get; init; }
@@ -68,7 +68,7 @@ public sealed class PlayerRow
             Team = team ?? (p.TeamId is { } id ? s.FindTeam(id)!.Abbreviation : "FA"),
             TeamObj = p.TeamId is { } tid ? s.FindTeam(tid)! : null,
             CardFooter = st is { Games: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min"
-                       : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {YearsText(c, before).ToLowerInvariant()}" : $"Age {p.Age(s.Today)}",
+                       : p.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)} · {YearsText(c, before).ToLowerInvariant()}" : $"Age {p.Age(s.Today)}",
         };
     }
 }

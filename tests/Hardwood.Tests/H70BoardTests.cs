@@ -147,7 +147,8 @@ public class H70BoardTests
         Assert.True(squad.TargetWins < 50, $"squad target {squad.TargetWins}");
         var prev = new Expectations { Season = 2026, Goal = SeasonGoal.Finals, TargetWins = 58, TeamId = team.Id, League = "nabl", Achieved = SeasonGoal.ConferenceFinals, Wins = 64 };
         var next = Board.NextExpectations(ctx, team, 2027, prev, "nabl", 1, 1);
-        Assert.Equal(55, next.TargetWins);
+        // Run 117: 64 wins is a contender's pace, so the target holds (it was 55 under run 114's three-win rule).
+        Assert.Equal(58, next.TargetWins);
         // Missed both: the target may fall further (by up to 8).
         var missed = new Expectations { Season = 2026, Goal = SeasonGoal.Finals, TargetWins = 58, TeamId = team.Id, League = "nabl", Achieved = SeasonGoal.Playoffs, Wins = 44 };
         Assert.True(Board.NextExpectations(ctx, team, 2027, missed, "nabl", 1, 1).TargetWins <= 50);

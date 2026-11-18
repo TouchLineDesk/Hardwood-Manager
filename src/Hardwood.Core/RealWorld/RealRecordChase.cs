@@ -151,7 +151,8 @@ public static class RealRecordChase
 
         // The all-time scoring list: passing a legend is news of its own.
         if (career.TryGetValue("pts", out var pts))
-            foreach (var (legend, total) in RealCareers.ScoringLadder)
+            // H113 (run 117): passed in the order he passed them (Havlicek's 26,395 before Pierce's 26,397 on the same night).
+            foreach (var (legend, total) in RealCareers.ScoringLadder.OrderBy(x => x.Points))
                 if (pts.Before <= total && pts.After > total && legend != p.Name)
                     news.Add(new ChaseNews($"{p.Name} passes {legend} on the all-time scoring list",
                         $"{who} passed {legend} ({total:N0} points) against {opponent} on {date:MMM d}. He now has {pts.After:N0} career points.", false));

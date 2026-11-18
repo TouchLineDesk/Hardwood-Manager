@@ -174,7 +174,7 @@ public sealed partial class TeamViewModel : PageViewModel
     /// <summary>The card's foot (no minutes: they ran under the Flip mark at 180 px): his line this season in this club's league, else his contract, else his age.</summary>
     public static string CardLine(BookStat? st, Player p, DateOnly today)
         => st is { G: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast"
-         : p.Contract is { } c ? $"${c.Salary / 1e6:F1}M · {(c.Years <= 0 ? "expiring" : c.Years + " yr")}" : $"Age {p.Age(today)}";
+         : p.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)} · {(c.Years <= 0 ? "expiring" : c.Years + " yr")}" : $"Age {p.Age(today)}";
 
     private static string F(double? v) => v is { } x ? x.ToString("0.0") : "-";
     private static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });

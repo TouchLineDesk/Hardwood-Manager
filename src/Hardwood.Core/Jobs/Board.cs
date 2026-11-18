@@ -370,11 +370,28 @@ public static class Board
         if (previous.TargetWins > 0 && !previous.Survive && (goalMet || beatTarget)
             && e.TargetWins < previous.TargetWins - metDrop)
             e.TargetWins = previous.TargetWins - metDrop;
+        // H70 (run 117): a contender that keeps winning 60 (of 82) isn't asked for less as its squad ages. The Spurs won 69, 64
+        // and 61, reached the conference finals each year, and were set Finals → conference finals → win a round.
+        // A goal it met at that pace rises a step; the target never falls.
+        if (previous.Wins is { } bigWins && !previous.Survive && bigWins >= ContenderShare * ctx.SeasonGames && previous.Goal > SeasonGoal.Develop)
+        {
+            int pi = Idx(previous.Goal);
+            bool met60 = previous.Achieved is { } a60 && (ctx.IsCollege ? CollegeStep(a60) >= CollegeStep(previous.Goal) : (int)a60 >= (int)previous.Goal);
+            var floorGoal = pi >= 0 && met60 ? steps[Math.Min(pi + 1, steps.Count - 1)] : previous.Goal;
+            if ((int)e.Goal < (int)floorGoal) e.Goal = floorGoal;
+            if (e.TargetWins < previous.TargetWins) e.TargetWins = previous.TargetWins;
+        }
         return e;
     }
 
     /// <summary>K7 (run 115): the least a relegation costs in board confidence, and in a season the board had protected.</summary>
     public const double RelegationCost = 20, RelegationProtectedCost = 30;
+
+    /// <summary>H70 (run 117): the win share (60 of 82) at which a club is a contender whose goal doesn't fall.</summary>
+    public const double ContenderShare = 60 / 82.0;
+
+    /// <summary>H70 (run 117): below this board confidence the verdict never says "delighted" or "satisfied".</summary>
+    public const double ContentLine = 40;
 
     /// <summary>Owner patience at or above which the goal is set a step lower (H70).</summary>
     public const int PatientOwner = 15;
@@ -513,6 +530,13 @@ public static class Board
             drivers.Add(new BoardDriver("Owner's demand", $"{Describe(d)}: {(met ? "being done" : "not being done")}", met ? 0 : -5));
         }
         double level = Math.Clamp(BaseLevel + drivers.Sum(x => x.Points), 0, 100);
+        // H70 (run 117): a team on or ahead of its target with every demand met keeps the board's goodwill. The weekly drift
+        // pulled the Suns from 88 to about 70 while they went 53-29 against a target of 49.
+        if (pace >= 0 && drivers.All(x => x.Points >= 0) && job.Confidence > level)
+        {
+            drivers.Add(new BoardDriver("On target", "On target with every demand met: the board's mood holds", job.Confidence - level));
+            level = job.Confidence;
+        }
         double rate = Math.Clamp(games / full, 0.1, 1) * 0.18 * impatience;
         return new BoardOutlook(level, rate, drivers);
     }
@@ -726,6 +750,10 @@ public static class Board
             : relegated && rebuildYear ? $"{owner} gave you a season to rebuild after the last relegation, and the club has gone down again. Board confidence: {job.Confidence:0}/100."
             : relegated && e.Survive ? $"{owner} set one job, to stay up, and the club is going down. Board confidence: {job.Confidence:0}/100."
             : up && !relegated ? $"{owner} is delighted: the club goes up."
+            // H70 (run 117): the word follows the confidence. Cincinnati went 14-14 against a 21-win target and read "satisfied" at 32.
+            : diff >= 0 && job.Confidence < ContentLine ? (winsVsTarget < 0
+                ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
+                : $"{owner} accepts the result, but there is ground to make up. Board confidence: {job.Confidence:0}/100.")
             : diff >= 1 ? $"{owner} is delighted."
             : diff == 0 ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
