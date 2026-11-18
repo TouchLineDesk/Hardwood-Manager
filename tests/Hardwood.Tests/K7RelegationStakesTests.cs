@@ -46,6 +46,9 @@ public class K7RelegationStakesTests
         Assert.True(e.Survive);
         Assert.Equal(SeasonGoal.Develop, e.Goal);
         Assert.DoesNotContain(Demand.MakePlayoffs, e.Demands);
+        Assert.True(e.TargetWins <= 33, $"target {e.TargetWins}");   // not the ambitious owner's 43
+        // A top league with no tier below it drops nobody, so nobody is told to stay up.
+        Assert.False(Board.NextExpectations(ctx, team, 2026, null, "nabl", 1, 0, promotionPlayoff: false, topLeagueDrops: false).Survive);
         Assert.Equal($"finish above last in the {team.Division} division, or win the promotion playoff to keep your place", Board.SurviveText(e));
 
         // Without the promotion playoff (an older layout) it's the straight drop.

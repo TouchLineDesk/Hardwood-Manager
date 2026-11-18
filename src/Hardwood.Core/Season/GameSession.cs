@@ -103,7 +103,7 @@ public sealed partial class GameSession
         if (World.College != null) Jobs.Board.EnsureOwnersAndCoaches(World.College.Programs, seed);
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
-        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0, PromotionPlayoffFor(HumanTeam));
+        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
         BuildSeason();
     }
 
@@ -690,6 +690,9 @@ public sealed partial class GameSession
     }
 
     /// <summary>K7 (run 115): a top-league club's last place is decided by the promotion playoff (run 102), not straight relegation.</summary>
+    /// <summary>The top league sends clubs down only when the world has a tier 2 (as <see cref="GoingDown"/>).</summary>
+    private bool TopLeagueDrops() => World.Competitions.Any(c => c.Key == UsaPyramid.Tier2);
+
     private bool PromotionPlayoffFor(Team team) => League.Teams.Contains(team) && UsaPyramid.PlaysPromotion(World, League);
 
     /// <summary>A college program's boss is its athletic director (C2): the board's wording, translated.</summary>
@@ -979,7 +982,7 @@ public sealed partial class GameSession
         Job.HiredSeason = forSeason;
         Job.History.Clear();
         Job.RebuildUsed = false;
-        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0, PromotionPlayoffFor(team));
+        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0, PromotionPlayoffFor(team), TopLeagueDrops());
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
         SyncManagedIds();
@@ -1448,7 +1451,7 @@ public sealed partial class GameSession
             if (!setThisSummer)
             {
                 Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
-                    MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0, PromotionPlayoffFor(HumanTeam));
+                    MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
                 PostExpectations();
             }
             Job.WarningLevel = 0;

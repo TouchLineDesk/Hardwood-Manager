@@ -264,18 +264,22 @@ public static class Board
     /// A 3rd-place finish no longer turns "reach the final" into "win the title" overnight.
     /// </summary>
     public static Expectations NextExpectations(LeagueContext ctx, Team team, int season, Expectations? previous, string leagueKey, int level, int previousLevel,
-        bool promotionPlayoff = false)
+        bool promotionPlayoff = false, bool topLeagueDrops = true)
     {
         var e = NextExpectationsCore(ctx, team, season, previous, leagueKey, level, previousLevel);
         // K7 (run 115): a club the board expects to finish last in a division that sends its last club down is set to stay up,
         // and told what that takes. The Kings (12-70) were set "develop the squad, around 22 wins" and went down without the
         // stake ever being named.
-        if (AtRisk(ctx, team))
+        // The stake replaces the ladder's one-step rules on purpose: a club that sold its squad is told the truth this summer,
+        // and next summer's goal starts again from "develop" (review of #179). A top league with no tier below drops nobody.
+        if ((!ctx.IsNabl || topLeagueDrops) && AtRisk(ctx, team))
         {
             bool promoted = e.Survive;
             e.Survive = true;
             e.Goal = SeasonGoal.Develop;
             e.Demands.Remove(Demand.MakePlayoffs);
+            // Review of #179: an ambitious owner's playoff-level target (43 of 82) doesn't belong to a survival goal.
+            e.TargetWins = Math.Min(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.4));
             string div = $"the {team.Division} division";
             e.SurviveNote = (promoted ? "newly promoted: " : "")
                 + (ctx.IsNabl && promotionPlayoff ? $"finish above last in {div}, or win the promotion playoff to keep your place" : $"finish above last in {div}");
