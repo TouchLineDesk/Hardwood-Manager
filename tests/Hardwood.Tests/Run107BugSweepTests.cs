@@ -50,6 +50,23 @@ public class Run107BugSweepTests
             Assert.Contains(now, seeds);
             Assert.DoesNotContain(before, seeds);
         }
+        // Applied: a pack keyed by the old name renames the new club, and one keyed by the new name renames a club an
+        // older career still calls by the old name.
+        var (league, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(2026, players: false);
+        var yok = world.Clubs.Single(t => t.Abbreviation == "YOK");
+        var bus = world.Clubs.Single(t => t.Abbreviation == "BUS");
+        Assert.Equal("Yokohama B-Corsairs", yok.FullName);
+        bus.Name = "Pegasus";   // as a save from before run 107 stores it
+        var pack = new NamePack();
+        pack.Clubs["Yokohama Bay Stars"] = new PackClub { City = "Yokohama", Name = "Pack One" };
+        pack.Clubs["Busan Egis"] = new PackClub { City = "Busan", Name = "Pack Two" };
+        try
+        {
+            Assert.True(pack.ApplyToClubs(league, world) >= 2);
+            Assert.Equal("Yokohama Pack One", yok.FullName);
+            Assert.Equal("Busan Pack Two", bus.FullName);
+        }
+        finally { NamePack.ResetStatic(); }
     }
 
     [AvaloniaFact]

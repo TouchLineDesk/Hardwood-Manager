@@ -134,7 +134,8 @@ public sealed class NamePack
         var all = league.Teams.Concat(world.Clubs).Concat(college).DistinctBy(t => t.Id).ToList();
         foreach (var t in all)
             if (Clubs.TryGetValue(t.FullName, out var c)
-                || FormerNames.TryGetValue(t.FullName, out var former) && Clubs.TryGetValue(former, out c)) { Rename(t, c); changed++; }
+                || FormerNames.TryGetValue(t.FullName, out var former) && Clubs.TryGetValue(former, out c)
+                || NewNames.TryGetValue(t.FullName, out var renamed) && Clubs.TryGetValue(renamed, out c)) { Rename(t, c); changed++; }
         foreach (var (key, list) in Tiers)
         {
             IEnumerable<Team> members;
@@ -166,6 +167,9 @@ public sealed class NamePack
         ["Munich Bavarians"] = "Munich Lions", ["Yokohama B-Corsairs"] = "Yokohama Bay Stars",
         ["Busan Egis"] = "Busan Pegasus", ["Batangas Bossing"] = "Batangas Beer Men",
     };
+
+    /// <summary>The reverse: a career saved before the rename still finds a pack written for the new name.</summary>
+    private static readonly IReadOnlyDictionary<string, string> NewNames = FormerNames.ToDictionary(kv => kv.Value, kv => kv.Key);
 
     private static void Rename(Team t, PackClub c)
     {
