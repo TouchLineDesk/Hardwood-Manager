@@ -38,16 +38,6 @@
     <Setter Property="MinHeight" Value="34"/>
     <Setter Property="Padding" Value="8,0"/>
   </Style>
-  <!-- H97 (run 116): the top bar compacts at big text before it wraps to a second row (MainWindow.axaml). -->
-  <Style Selector="StackPanel.topLeft"><Setter Property="Spacing" Value="18"/></Style>
-  <Style Selector="StackPanel.topRight"><Setter Property="Spacing" Value="8"/></Style>
-  <Style Selector="Button.topContinue"><Setter Property="MinWidth" Value="150"/></Style>
-  <Style Selector=":is(Control).topCompact"><Setter Property="IsVisible" Value="False"/></Style>
-  <Style Selector="LayoutTransformControl.bigText StackPanel.topLeft"><Setter Property="Spacing" Value="12"/></Style>
-  <Style Selector="LayoutTransformControl.bigText StackPanel.topRight"><Setter Property="Spacing" Value="6"/></Style>
-  <Style Selector="LayoutTransformControl.bigText Button.topContinue"><Setter Property="MinWidth" Value="110"/></Style>
-  <Style Selector="LayoutTransformControl.bigText :is(Control).topWide"><Setter Property="IsVisible" Value="False"/></Style>
-  <Style Selector="LayoutTransformControl.bigText :is(Control).topCompact"><Setter Property="IsVisible" Value="True"/></Style>
   <Style Selector="TextBlock.h1">
     <Setter Property="FontSize" Value="22"/>
     <Setter Property="FontWeight" Value="SemiBold"/>

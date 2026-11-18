@@ -37,7 +37,20 @@ public partial class MainWindow : Window
     public void ApplyScale(double scale)
     {
         ScaleRoot.LayoutTransform = UiScale.Transform(scale);
-        ScaleRoot.Classes.Set("bigText", UiScale.Clamp(scale) >= BigTextScale);   // H60: smaller tab headers at big text
+        bool big = UiScale.Clamp(scale) >= BigTextScale;
+        ScaleRoot.Classes.Set("bigText", big);   // H60: smaller tab headers at big text
+        // H97 (run 116): the top bar compacts at big text before it wraps to a second row: an icon-only Assistant toggle
+        // (its tooltip stays), "Watch", no ball mark and tighter spacing. Set here rather than by descendant styles, which
+        // would attach a class watcher to every control in the window.
+        TopMark.IsVisible = !big;
+        WatchLong.IsVisible = !big; WatchShort.IsVisible = big;
+        AssistantLabel.IsVisible = !big;
+        TopLeft.Spacing = big ? 12 : 18;
+        TopRight.Spacing = big ? 6 : 8;
+        ContinueButton.MinWidth = big ? 110 : 150;
+        // H97 (run 116): a text size changed during a live game folds or opens the assistant then. (Hooked here, not in the
+        // view model, so the static event never keeps a closed career's world alive.)
+        if (DataContext is ViewModels.MainViewModel vm) vm.Guide.LiveGame(vm.InLiveGame, scale);
     }
 
     /// <summary>From this text size the tab headers shrink so they stay on one row (H60).</summary>
