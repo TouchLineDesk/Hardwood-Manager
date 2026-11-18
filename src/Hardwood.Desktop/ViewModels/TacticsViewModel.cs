@@ -426,7 +426,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         string before = PlanKey(false);
         Tac.System = CoachAi.BestSystem(rot, theirScheme);
         Tac.Scheme = CoachAi.BestScheme(rot, theirSystem);
-        var (star, dbl) = CoachAi.TheirStar(opp, next.Date);
+        var (star, dbl) = CoachAi.TheirStar(opp, next.Date, team);
         Tac.StarStopperId = star != null ? CoachAi.Stopper(rot)?.Id : null;
         Tac.DoubleStar = dbl;
         bool same = PlanKey(false) == before;

@@ -83,6 +83,8 @@ public sealed partial class MainViewModel : ViewModelBase
         Guide = new GuideViewModel(this);
         CurrentPage = new StartViewModel(this);
         Portraits.PortraitService.Instance.StatusChanged += () => PortraitStatus = Portraits.PortraitService.Instance.Status;
+        // H97 (run 116): a text size changed in Settings during a live game folds or opens the assistant then.
+        UiScale.Changed += scale => Guide.LiveGame(InLiveGame, scale);
     }
 
     /// <summary>Bring player card portraits up to date (cheap when nothing changed). Skipped while a sim runs on another thread.</summary>

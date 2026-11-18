@@ -28,12 +28,17 @@ public static class CoachAi
     /// player the engine's shot weights favour (<see cref="GameSimulator.GoToWeight"/>: role, star term, Star usage and
     /// system), the same man the defence keys on in the game, not simply the highest-rated player. He is worth doubling
     /// when he is a star (CA 150+) at least 22 points better than anyone else in the rotation.</summary>
-    public static (Player? star, bool worthDoubling) TheirStar(Team opp, DateOnly? on)
+    /// <param name="us">The team they play. Given, an AI opponent is judged in the system it will pick against us
+    /// (<see cref="PlanFor"/>, the same choice its own <see cref="Prepare"/> makes, whichever bench is prepared first);
+    /// a human-run team in the system it has set.</param>
+    public static (Player? star, bool worthDoubling) TheirStar(Team opp, DateOnly? on, Team? us = null)
     {
         var rot = Rotation(opp, on);
         if (rot.Count == 0) return (null, false);
         var tac = opp.Tactic;
-        var star = rot.OrderByDescending(p => GameSimulator.GoToWeight(p, tac)).ThenByDescending(p => p.CurrentAbility).First();
+        OffensiveSystem system = us != null && (tac.Auto || tac.AssistantPlans) ? PlanFor(opp, us, on).system : tac.System;
+        // Highest weight first; a tie goes to the better player.
+        var star = rot.OrderByDescending(p => GameSimulator.GoToWeight(p, tac, system)).ThenByDescending(p => p.CurrentAbility).First();
         if (rot.Count < 2) return (star, false);
         int nextBest = rot.Where(p => p != star).Max(p => p.CurrentAbility);
         return (star, star.CurrentAbility >= 150 && star.CurrentAbility - nextBest >= 22);
@@ -105,7 +110,7 @@ public static class CoachAi
         if (rot.Count == 0) return;
         (t.System, t.Scheme) = PlanFor(team, opp, on);
         if (t.Auto) t.Roles.Clear();
-        var (star, dbl) = TheirStar(opp, on);
+        var (star, dbl) = TheirStar(opp, on, team);
         t.StarStopperId = star != null ? Stopper(rot)?.Id : null;
         t.DoubleStar = dbl;
     }
@@ -149,7 +154,7 @@ public static class CoachAi
         var ourRot = Rotation(us, on);
         if (oppRot.Count == 0) return new();
         var (theirSystem, theirScheme) = TheirPlan(opp, us, on);
-        var (star, dbl) = TheirStar(opp, on);
+        var (star, dbl) = TheirStar(opp, on, us);
         var ourScheme = BestScheme(ourRot, theirSystem);
         var ourSystem = BestSystem(ourRot, theirScheme);
         var stopper = Stopper(ourRot);

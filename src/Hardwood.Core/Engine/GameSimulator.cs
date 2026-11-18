@@ -75,9 +75,11 @@ public sealed class GameSimulator
     /// <summary>Run 116: the go-to man's ranking, the same shot weight the engine uses to pick whom a defence keys on
     /// (role, star term and the team's Star usage and system, in the half court). <see cref="CoachAi.TheirStar"/> ranks by it, so
     /// the scouting report, the stopper and the double team name the player who actually takes the shots.</summary>
-    public static double GoToWeight(Player p, Tactic tac, EngineConfig? cfg = null)
+    /// <param name="system">The system the team will run tonight, when it isn't the one set yet (an AI club picks its own in
+    /// <see cref="CoachAi.Prepare"/>, which may run after the other bench's).</param>
+    public static double GoToWeight(Player p, Tactic tac, OffensiveSystem? system = null, EngineConfig? cfg = null)
     {
-        double star = tac.StarUsage / 50.0 * Tactics.SharpnessFactor(tac.System);
+        double star = tac.StarUsage / 50.0 * Tactics.SharpnessFactor(system ?? tac.System);
         return ShotWeightOf(cfg ?? DefaultConfig, tac.RoleOf(p), p, false, star);
     }
 

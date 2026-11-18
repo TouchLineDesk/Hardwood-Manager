@@ -68,7 +68,7 @@ public class Run116TopBarTests
                 f?.Save(Path.Combine(dir, "run116-live-1480-130.png"));
             }
             vm.Guide.ExpandCommand.Execute(null);
-            Assert.True(vm.Guide.Expanded);              // opened by hand: stays open for this game
+            Assert.True(vm.Guide.Expanded);              // opened by hand: stays open (until you change page, as on the wide pages)
             vm.InLiveGame = false;
             Assert.True(vm.Guide.Expanded);
             AppSettings.Current.UiScale = 1.0;
