@@ -135,7 +135,9 @@ public sealed class NamePack
         foreach (var t in all)
             if (Clubs.TryGetValue(t.FullName, out var c)
                 || FormerNames.TryGetValue(t.FullName, out var former) && Clubs.TryGetValue(former, out c)
-                || NewNames.TryGetValue(t.FullName, out var renamed) && Clubs.TryGetValue(renamed, out c)) { Rename(t, c); changed++; }
+                || NewNames.TryGetValue(t.FullName, out var renamed) && Clubs.TryGetValue(renamed, out c)
+                || UsaPyramid.FormerNames.TryGetValue(t.FullName, out var was) && Clubs.TryGetValue(was, out c)
+                || PyramidNewNames.Value.TryGetValue(t.FullName, out var now) && Clubs.TryGetValue(now, out c)) { Rename(t, c); changed++; }
         foreach (var (key, list) in Tiers)
         {
             IEnumerable<Team> members;
@@ -170,6 +172,10 @@ public sealed class NamePack
 
     /// <summary>The reverse: a career saved before the rename still finds a pack written for the new name.</summary>
     private static readonly IReadOnlyDictionary<string, string> NewNames = FormerNames.ToDictionary(kv => kv.Value, kv => kv.Key);
+
+    /// <summary>H62 (run 108): the pyramid's renamed clubs, old name → new, for a career saved before the rename.</summary>
+    private static readonly Lazy<Dictionary<string, string>> PyramidNewNames = new(() =>
+        UsaPyramid.FormerNames.GroupBy(kv => kv.Value).ToDictionary(g => g.Key, g => g.First().Key));
 
     private static void Rename(Team t, PackClub c)
     {

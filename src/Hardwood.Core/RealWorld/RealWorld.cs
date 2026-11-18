@@ -120,7 +120,8 @@ public static class RealWorldData
         {
             Name(team, real);
             foreach (var other in world.Clubs.Where(c => c != team && c.Abbreviation == real.Abbr))
-                other.Abbreviation = Enumerable.Range(2, 8).Select(i => real.Abbr[..2] + i).First(a => world.Clubs.All(c => c.Abbreviation != a) && league.Teams.All(c => c.Abbreviation != a));
+                other.Abbreviation = Hardwood.Core.World.UsaPyramid.ReadableCode(other.City, other.Name,
+                    a => world.Clubs.All(c => c.Abbreviation != a) && league.Teams.All(c => c.Abbreviation != a)); // "SEH", not "SE2" (H62)
         }
         // Danny's eight divisions (#432); anyone left over is placed by RealignTop.
         Hardwood.Core.World.UsaPyramid.RealignTop(league, league.Teams.Skip(Teams.Count + Expansion.Count));

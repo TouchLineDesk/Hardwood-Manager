@@ -428,7 +428,19 @@ public static class UsaPyramid
     public static CompetitionProfile[] Profiles => _profiles ??= Build();
     private static CompetitionProfile[]? _profiles;
 
+    // H62 (run 108): no real or former NBA, ABA, WNBA or G League nickname, none of the fictional top league's, and no other
+    // major-league club's. Swapped one for one, so the list keeps its 60 names and a seeded world draws the same numbers.
     private static readonly string[] Nicknames =
+    {
+        "Roughnecks", "Pines", "Foundry", "Mustangs", "Herons", "Rivermen", "Ospreys", "Kestrels", "Harriers", "Quarrymen", "Riveters", "Lumberjacks",
+        "Stallions", "Express", "Anchors", "Marauders", "Bison", "Bandits", "Copperheads", "Admirals", "Blaze", "Ridgebacks", "Sentinels", "Outlaws",
+        "Lancers", "Redwoods", "Cyclones", "Wardens", "Pathfinders", "Stingrays", "Wranglers", "Steelheads", "Owls", "Drifters", "Knights", "Ironclads",
+        "Rattlers", "Miners", "Voyagers", "Sandpipers", "Gators", "Bulldogs", "Millers", "Tritons", "Skippers", "Prospectors", "Spartans", "Foxes",
+        "Elks", "Hammers", "Navigators", "Highlanders", "Riggers", "Shoremen", "Shockers", "Keelers", "Stormbirds", "Canyoneers", "Archers", "Dragons",
+    };
+
+    /// <summary>The list before H62, index for index, so a club renamed by run 108 can be matched to its old name.</summary>
+    private static readonly string[] FormerNicknames =
     {
         "Roughnecks", "Pines", "Foundry", "Mustangs", "Pioneers", "Rivermen", "Comets", "Thunder", "Mariners", "Ironmen", "Hawks", "Lumberjacks",
         "Stallions", "Express", "Monarchs", "Rapids", "Bison", "Coyotes", "Generals", "Admirals", "Blaze", "Vipers", "Sentinels", "Outlaws",
@@ -436,28 +448,67 @@ public static class UsaPyramid
         "Rattlers", "Miners", "Voyagers", "Barons", "Gators", "Bulldogs", "Raptors", "Tritons", "Condors", "Mavericks", "Spartans", "Colonels",
         "Rebels", "Clippers", "Navigators", "Highlanders", "Rangers", "Huskies", "Shockers", "Rockets", "Toros", "Bobcats", "Wolves", "Dragons",
     };
-    internal static readonly string[] ClubStyles = { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
+
+    /// <summary>Generated clubs renamed by H62/H87 (run 108): new full name → the name older versions generated. A name pack
+    /// written for either name still finds the club (NamePack).</summary>
+    public static IReadOnlyDictionary<string, string> FormerNames { get { _ = Profiles; return _formerNames; } }
+    private static readonly Dictionary<string, string> _formerNames = new();
+
+    /// <summary>Names a pyramid club takes instead when its drawn nickname is already used in the four tiers (H87).</summary>
+    private static readonly string[] SpareNicknames =
+    {
+        "Cormorants", "Lamplighters", "Ferrymen", "Stonecutters", "Signalmen", "Wayfarers", "Harvesters", "Sawyers", "Kingfishers", "Peregrines",
+        "Ridgerunners", "Coasters", "Sunbirds", "Trailmen", "Iron Horses", "Mapmakers",
+    };
+
+    /// <summary>The nicknames generated clubs may carry (for tests).</summary>
+    public static IReadOnlyList<string> AllNicknames => Nicknames.Concat(SpareNicknames).ToArray();
+
+    public static readonly string[] ClubStyles = { "United", "City", "BC", "Athletic", "Basketball Club", "FC" };
+
+    /// <summary>H62: club-style names that are real clubs in other sports (or read oddly, "Kansas City City"), never generated.</summary>
+    public static readonly HashSet<string> RealStyleNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Charlotte FC", "Austin FC", "Miami FC", "San Antonio FC", "Dallas FC", "Cincinnati FC", "Tulsa FC", "Reading FC",
+        "Orlando City", "New York City", "Detroit City", "St. Louis City", "Birmingham City", "Manchester City", "Lincoln City",
+        "Atlanta United", "Minnesota United", "Manchester United", "Boston United", "New Mexico United",
+        "Hartford Athletic", "Oakland Athletic", "Philadelphia Athletic", "Kansas City Athletic", "Sacramento Athletic",
+    };
+
+    private static bool StyleAllowed(string city, string style) =>
+        !RealStyleNames.Contains($"{city} {style}") && !(style == "City" && city.EndsWith(" City", StringComparison.Ordinal));
+
+    /// <summary>
+    /// H62 (run 108): a readable code for a club. The city's own code first (initials, or its first three letters), then the
+    /// city's first two letters (or initials) plus a letter of the club's name ("SEH" for Seattle Highlanders, never "SE2"),
+    /// then other letters of the city. <paramref name="take"/> claims a code and says whether it was free.
+    /// </summary>
+    public static string ReadableCode(string city, string name, Func<string, bool> take)
+    {
+        var letters = new string(city.Where(char.IsLetter).ToArray()).ToUpperInvariant();
+        var words = city.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries);
+        string a = words.Length >= 2 ? $"{words[0][0]}{words[1][0]}{(words.Length > 2 ? words[2][0] : letters[^1])}".ToUpperInvariant() : letters[..Math.Min(3, letters.Length)];
+        if (take(a)) return a;
+        string two = words.Length >= 2 ? $"{words[0][0]}{words[1][0]}".ToUpperInvariant() : letters[..2];
+        var nameLetters = new string(name.Where(char.IsLetter).ToArray()).ToUpperInvariant();
+        // The name's initial, then its consonants, then its vowels: "RIT" for Richmond City reads better than "RII".
+        foreach (var ch in nameLetters.Take(1).Concat(nameLetters.Skip(1).Where(c => !"AEIOU".Contains(c))).Concat(nameLetters.Skip(1)).Distinct())
+            if (take(two + ch)) return two + ch;
+        var l = letters;
+        foreach (var b in new[] { $"{l[0]}{l[1]}{l[^1]}", $"{l[0]}{l[2 % l.Length]}{l[^1]}", $"{l[0]}{l[^2]}{l[^1]}", $"{l[0]}{l[1]}{l[3 % l.Length]}", $"{l[0]}{l[3 % l.Length]}{l[^1]}" })
+            if (take(b)) return b;
+        foreach (var ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            if (take(two + ch)) return two + ch;
+        for (int i = 2; i < 10; i++) { var b = a[..2] + i; if (take(b)) return b; }
+        return a;
+    }
 
     private static CompetitionProfile[] Build()
     {
         var rng = new Rng(0x5059524D4944UL);
-        // Every city gets a club; the biggest half of each area also gets a second ("United", "City"...).
-        var clubs = new List<(ClubSeed seed, string area, double market)>();
-        // Abbreviations must not clash with the NABL's (or each other's).
-        var used = new HashSet<string>(Generation.NamePool.Franchises.Select(f => f.Abbr));
-        string Abbr(string city)
-        {
-            var letters = new string(city.Where(char.IsLetter).ToArray()).ToUpperInvariant();
-            var words = city.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            string a = words.Length >= 2 ? $"{words[0][0]}{words[1][0]}{(words.Length > 2 ? words[2][0] : letters[^1])}".ToUpperInvariant() : letters[..Math.Min(3, letters.Length)];
-            if (used.Add(a)) return a;
-            // Other letters of the name before resorting to a number.
-            var l = letters;
-            foreach (var b in new[] { $"{l[0]}{l[1]}{l[^1]}", $"{l[0]}{l[2 % l.Length]}{l[^1]}", $"{l[0]}{l[^2]}{l[^1]}", $"{l[0]}{l[1]}{l[3 % l.Length]}", $"{l[0]}{l[3 % l.Length]}{l[^1]}" })
-                if (used.Add(b)) return b;
-            for (int i = 2; i < 10; i++) { var b = a[..2] + i; if (used.Add(b)) return b; }
-            return a;
-        }
+        // Every city gets a club; the biggest half of each area also gets a second ("United", "City"...). The draws are made
+        // first and the names fixed afterwards (H62), so the random numbers are the same as before.
+        var drawn = new List<(string city, string name, bool second, string area, double market)>();
         foreach (var area in Areas)
         {
             for (int i = 0; i < area.Cities.Length; i++)
@@ -465,14 +516,45 @@ public static class UsaPyramid
                 var city = area.Cities[i];
                 bool fcStyle = rng.Chance(0.3);
                 string name = fcStyle ? rng.Pick(ClubStyles) : rng.Pick(Nicknames);
-                clubs.Add((new ClubSeed(city, name, Abbr(city), "USA"), area.Key, 16 - i + rng.NextDouble() * 4));
+                drawn.Add((city, name, false, area.Key, 16 - i + rng.NextDouble() * 4));
                 if (i < 8)
                 {
                     string second = rng.Pick(ClubStyles.Where(s => s != name).ToArray());
-                    clubs.Add((new ClubSeed(city, second, Abbr(city + " " + second), "USA"), area.Key, 12 - i + rng.NextDouble() * 4));
+                    drawn.Add((city, second, true, area.Key, 12 - i + rng.NextDouble() * 4));
                 }
             }
         }
+        var drawnAs = drawn.Select(d => ClubStyles.Contains(d.name) ? d.name : FormerNicknames[Array.IndexOf(Nicknames, d.name)]).ToList();
+        // H62: a club-style name that is a real club elsewhere (Charlotte FC) takes the next style its city doesn't use.
+        for (int k = 0; k < drawn.Count; k++)
+        {
+            var d = drawn[k];
+            if (!ClubStyles.Contains(d.name) || StyleAllowed(d.city, d.name)) continue;
+            var others = drawn.Where((x, j) => j != k && x.city == d.city).Select(x => x.name).ToHashSet();
+            int at = Array.IndexOf(ClubStyles, d.name);
+            var pick = Enumerable.Range(1, ClubStyles.Length - 1).Select(o => ClubStyles[(at + o) % ClubStyles.Length])
+                .FirstOrDefault(s => !others.Contains(s) && StyleAllowed(d.city, s));
+            if (pick != null) drawn[k] = d with { name = pick };
+        }
+        // H87: no two clubs in the four tiers share a nickname. The tiers are the biggest markets (below); the bigger club keeps
+        // its name and the other takes the first nickname nobody in the tiers uses.
+        var inTiers = drawn.Select((d, k) => (d, k)).OrderByDescending(x => x.d.market).Take(NationalSize * 4 + 2).ToList();
+        var nickUsed = new HashSet<string>();
+        var spare = Nicknames.Concat(SpareNicknames).ToList();
+        foreach (var (d, k) in inTiers)
+        {
+            if (ClubStyles.Contains(d.name)) continue;
+            if (nickUsed.Add(d.name)) continue;
+            var fresh = spare.First(n => !nickUsed.Contains(n) && inTiers.All(x => x.d.name != n));
+            nickUsed.Add(fresh);
+            drawn[k] = d with { name = fresh };
+        }
+        for (int k = 0; k < drawn.Count; k++)
+            if (drawn[k].name != drawnAs[k]) _formerNames.TryAdd($"{drawn[k].city} {drawn[k].name}", $"{drawn[k].city} {drawnAs[k]}");
+        // Codes must not clash with the fictional top league's, the real NBA's (and its two expansion clubs') or each other's.
+        var used = new HashSet<string>(Generation.NamePool.Franchises.Select(f => f.Abbr)
+            .Concat(RealWorld.RealWorldData.Teams.Select(t => t.Abbr)).Concat(RealWorld.RealWorldData.Expansion.Select(t => t.Abbr)));
+        var clubs = drawn.Select(d => (seed: new ClubSeed(d.city, d.name, ReadableCode(d.city, d.name, used.Add), "USA"), area: d.area, market: d.market)).ToList();
         // Biggest markets start highest: tier 2, tier 3, then each region's next 18, the rest local.
         var byMarket = clubs.OrderByDescending(c => c.market).ToList();
         var tier2 = byMarket.Take(NationalSize).ToList();
