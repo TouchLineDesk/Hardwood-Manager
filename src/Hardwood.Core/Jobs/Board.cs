@@ -39,6 +39,8 @@ public sealed class Expectations
     public bool Survive { get; set; }
     /// <summary>What the club actually achieved (set at the season review), so next season's goal can follow it.</summary>
     public SeasonGoal? Achieved { get; set; }
+    /// <summary>H70 (run 114): the season's wins, set at the review with <see cref="Achieved"/> (null in older saves).</summary>
+    public int? Wins { get; set; }
 }
 
 /// <summary>A job you could apply for while out of work (decision #74).</summary>
@@ -159,7 +161,7 @@ public static class Board
     /// What a season came to, in the past tense (review #14 bug #16: the review printed the goal's wording for the result,
     /// so a club that missed the playoffs "resulted" in "develop the squad and show progress").
     /// </summary>
-    public static string DescribeResult(SeasonGoal achieved, LeagueContext ctx, bool relegated = false, bool wonDivision = false, int madnessRound = -1)
+    public static string DescribeResult(SeasonGoal achieved, LeagueContext ctx, bool relegated = false, bool wonDivision = false, int madnessRound = -1, bool? goingUp = null)
     {
         if (relegated) return "relegated, last in your division";
         // H65: the round reached, when it's known (a team out in the Round of 32 won a game; one out in the First Four was in the field).
@@ -175,7 +177,8 @@ public static class Board
             SeasonGoal.Playoffs or SeasonGoal.PlayIn => "made March Madness",
             _ => "missed March Madness",
         };
-        string won = wonDivision ? "won your division and go up; " : "";
+        // H70: a tier-2 division winner goes up only by winning the promotion playoff (run 102).
+        string won = !wonDivision ? "" : goingUp ?? true ? "won your division and go up; " : "won your division but lost the promotion playoff; ";
         if (ctx.IsNabl || ctx.PlayoffTeams > 1) return won + achieved switch
         {
             SeasonGoal.Title => "won the championship",
@@ -274,33 +277,63 @@ public static class Board
             return e;
         }
         if (previous.League != leagueKey) return e;
-        var steps = ctx.IsNabl ? Enum.GetValues<SeasonGoal>().ToList()
-            : new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.Finals, SeasonGoal.Title };
-        int prevIdx = steps.IndexOf(previous.Survive ? SeasonGoal.Develop : previous.Goal), idx = steps.IndexOf(e.Goal);
+        // H70 (run 114): the league's own ladder. College's Elite Eight and the division format's third place were off the old
+        // list, so a goal on them skipped the one-step rules.
+        var steps = Ladder(ctx);
+        // A result off the ladder (an overseas conference final) counts as the step below it.
+        int Idx(SeasonGoal g) { int i = steps.IndexOf(g); return i >= 0 ? i : steps.FindLastIndex(x => x < g); }
+        int prevIdx = Idx(previous.Survive ? SeasonGoal.Develop : previous.Goal), idx = Idx(e.Goal);
         if (prevIdx >= 0 && idx > prevIdx + 1) e.Goal = steps[prevIdx + 1];
         // A goal that was missed isn't raised (critic review #4: Japan's goal climbed to "reach the Finals" after a 5th-place
         // finish). The board asks for the same again, or one step past what the club really managed.
         if (previous.Achieved is { } got && !previous.Survive && (int)got < (int)previous.Goal)
         {
-            int cap = Math.Max(steps.IndexOf(got) + 1, 0);
+            int cap = Math.Max(Idx(got) + 1, 0);
             var capGoal = steps[Math.Min(Math.Min(cap, prevIdx < 0 ? cap : prevIdx), steps.Count - 1)];
             if ((int)e.Goal > (int)capGoal) e.Goal = capGoal;
             if (previous.TargetWins > 0) e.TargetWins = Math.Min(e.TargetWins, previous.TargetWins);
         }
         // ...and a goal that was met isn't cut far below what the club just did (a 64-18 team was set "make the play-in").
-        else if (previous.Achieved is { } done && !previous.Survive && steps.IndexOf(done) > 0)
+        else if (previous.Achieved is { } done && !previous.Survive && Idx(done) > 0)
         {
-            var floor = steps[Math.Max(0, steps.IndexOf(done) - 1)];
+            var floor = steps[Math.Max(0, Idx(done) - 1)];
             if ((int)e.Goal < (int)floor) e.Goal = floor;
         }
         // Symmetry (critic review #6, decision #152): a goal falls at most one step a season, as it rises at most one.
         // Milwaukee went 48-34 against "make the playoffs, about 49 wins" and was then set "develop, about 31 wins".
-        int nowIdx = steps.IndexOf(e.Goal);
+        int nowIdx = Idx(e.Goal);
         if (prevIdx > 0 && nowIdx >= 0 && nowIdx < prevIdx - 1) e.Goal = steps[prevIdx - 1];
         int maxStep = (int)Math.Round(8 * ctx.SeasonGames / 82.0);
         if (previous.TargetWins > 0 && e.TargetWins > previous.TargetWins + maxStep) e.TargetWins = previous.TargetWins + maxStep;
         if (previous.TargetWins > 0 && e.TargetWins < previous.TargetWins - maxStep) e.TargetWins = previous.TargetWins - maxStep;
+        // H70: after a goal met or a target beaten, the target falls by at most 3 (of 82). The Spurs' fell after a title, and
+        // a patient owner's went 58 → 50 → 42 while the team won 64 and 61.
+        int metDrop = (int)Math.Round(3 * ctx.SeasonGames / 82.0);
+        bool goalMet = previous.Achieved is { } met && (int)met >= (int)previous.Goal;
+        bool beatTarget = previous.Wins is { } won && won >= previous.TargetWins;
+        if (previous.TargetWins > 0 && !previous.Survive && (goalMet || beatTarget)
+            && e.TargetWins < previous.TargetWins - metDrop)
+            e.TargetWins = previous.TargetWins - metDrop;
         return e;
+    }
+
+    /// <summary>Owner patience at or above which the goal is set a step lower (H70).</summary>
+    public const int PatientOwner = 15;
+
+    /// <summary>The goals a league's season can end on, lowest first (the ladder goals move along).</summary>
+    public static List<SeasonGoal> Ladder(LeagueContext ctx) =>
+        ctx.IsNabl ? Enum.GetValues<SeasonGoal>().ToList()
+        : ctx.IsCollege ? new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.ConferenceFinals, SeasonGoal.Finals, SeasonGoal.Title }
+        : ctx.DivisionFormat ? new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.PlayIn, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.Finals, SeasonGoal.Title }
+        : new List<SeasonGoal> { SeasonGoal.Develop, SeasonGoal.Playoffs, SeasonGoal.SecondRound, SeasonGoal.Finals, SeasonGoal.Title };
+
+    /// <summary>One step down the league's ladder (Develop stays Develop).</summary>
+    public static SeasonGoal StepDown(SeasonGoal g, LeagueContext ctx)
+    {
+        var steps = Ladder(ctx);
+        int i = steps.IndexOf(g);
+        if (i < 0) i = steps.FindLastIndex(x => x < g) + 1; // a goal not on this ladder sits just above the step below it
+        return steps[Math.Max(0, i - 1)];
     }
 
     public static Expectations SetExpectations(LeagueContext ctx, Team team, int season)
@@ -339,6 +372,14 @@ public static class Board
             }
         }
         var o = team.Owner;
+        // H70 (run 114): a patient owner asks one step less than the squad suggests, and a few wins fewer; an impatient one asks
+        // for the squad's full worth (ambition, below, can still raise either). A patient tier-5 owner's first goal was "reach the
+        // Finals" (Worcester).
+        if (o.Patience >= PatientOwner && goal > SeasonGoal.Develop)
+        {
+            goal = StepDown(goal, ctx);
+            target -= (int)Math.Round(3 * ctx.SeasonGames / 82.0);
+        }
         var e = new Expectations { Season = season, Goal = goal, TargetWins = target };
         if (ctx.IsCollege)
         {
@@ -520,12 +561,21 @@ public static class Board
         int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today) =>
         SeasonReview(job, coach, LeagueContext.Nabl(league), team, achieved, wins, losses, stats, today, league.Season);
 
-    public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, LeagueContext ctx, Team team, SeasonGoal achieved,
-        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season, bool relegated = false, bool wonDivision = false, int madnessRound = -1)
+    /// <summary>
+    /// H70 (run 114): how a season measures up, the one judgement the review, its verdict, the confidence change and the
+    /// career path's "overachieved" all read. <paramref name="Steps"/> is the result against the goal in ladder steps (college's
+    /// shorter ladder; staying up for a promoted club; going up always meets the goal; going down never does);
+    /// <paramref name="WinsVsTarget"/> is wins against the target, per 82 games and pro-rated to the games played.
+    /// </summary>
+    public readonly record struct SeasonJudgement(double Steps, double WinsVsTarget)
     {
-        var e = job.Current ?? SetExpectations(ctx, team, season);
-        e.Achieved = achieved;
-        double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
+        public bool GoalMet => Steps >= 0;
+        /// <summary>The regular season clearly beat the target (the credit line for next season's protection).</summary>
+        public bool BeatTarget => WinsVsTarget >= CreditWins;
+    }
+
+    public static SeasonJudgement Judge(Expectations e, LeagueContext ctx, SeasonGoal achieved, int wins, int losses, bool relegated = false, bool goingUp = false)
+    {
         // College goals sit on a shorter ladder (in the field, Sweet 16, Final Four, title): a 1-seed set "win it all" who
         // goes out in the round of 32 is three steps short, not four (the college-strong critic career, C2).
         double diff = ctx.IsCollege ? CollegeStep(achieved) - CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
@@ -533,16 +583,36 @@ public static class Board
         // never a goal met (a 25-57 relegated season read "the owner is satisfied").
         if (e.Survive) diff = relegated ? -1 : achieved >= SeasonGoal.Playoffs ? 1 : 0;
         else if (relegated) diff = Math.Min(diff, -1);
+        // H70: going up is the season a lower-tier owner wants most, so it beats any goal (the Kings went up at 50-12 and read
+        // "expected more").
+        if (goingUp && !relegated) diff = Math.Max(diff, 1);
+        double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
+        return new SeasonJudgement(diff, winsVsTarget);
+    }
+
+    public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, LeagueContext ctx, Team team, SeasonGoal achieved,
+        int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season, bool relegated = false, bool wonDivision = false, int madnessRound = -1,
+        bool? goingUp = null)
+    {
+        var e = job.Current ?? SetExpectations(ctx, team, season);
+        e.Achieved = achieved;
+        e.Wins = wins;
+        // Older callers pass only wonDivision: a division winner went up before the promotion playoffs (run 102).
+        bool up = goingUp ?? wonDivision;
+        double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
+        var j = Judge(e, ctx, achieved, wins, losses, relegated, up);
+        double diff = j.Steps, winsVsTarget = j.WinsVsTarget;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
-        double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
         delta += Math.Clamp(winsVsTarget * 0.6, -10, 12);
         // A strong season with a playoff upset is a disappointment, not a crisis; a near miss on the win target is a warning.
         // (Replayed careers, Nov 10: a 54-28 team set "conference finals" was sacked after a first-round exit.)
-        if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
+        // H70: a regular season that clearly beat the target never lowers confidence, whatever the playoffs did.
+        if (diff < 0 && j.BeatTarget && !relegated) delta = Math.Max(delta, 2);
+        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
         else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
         string goalText = e.Survive ? "stay up" : LowerFirst(Describe(e.Goal, ctx));
-        string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound);
+        string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound, up);
         if (e.Survive && !relegated) result = "stayed up, " + result;
         var lines = new List<string> { $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins)." };
         foreach (var d in e.Demands)
@@ -570,15 +640,24 @@ public static class Board
         if (shielded && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
         // the title at 59-23 was sacked the next May at 41-41).
-        bool earned = winsVsTarget >= CreditWins || (diff >= 0 && winsVsTarget >= -CreditWins);
+        bool earned = j.BeatTarget || (diff >= 0 && winsVsTarget >= -CreditWins);
         if (!sacked && earned) { job.ProtectedSeason = season + 1; job.ProtectedReason = "credit"; }
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
-        string verdict = sacked ? $"{team.Owner.Name} has decided to make a change. You have been sacked."
-            : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{team.Owner.Name} is giving you another season, but expects much better. Consider this a final warning."
+        string owner = team.Owner.Name;
+        int ahead = (int)Math.Round(winsVsTarget * Math.Max(1.0, ctx.SeasonGames) / 82);
+        string verdict = sacked ? $"{owner} has decided to make a change. You have been sacked."
+            : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{owner} is giving you another season, but expects much better. Consider this a final warning."
             : shielded && diff < 0 && job.Confidence <= 25 ? (job.ProtectedReason == "rebuild"
-                ? $"{team.Owner.Name} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
-                : $"{team.Owner.Name} hasn't forgotten last season, and that bought you time. It won't happen twice.")
-            : diff >= 1 ? $"{team.Owner.Name} is delighted." : diff == 0 ? $"{team.Owner.Name} is satisfied." : $"{team.Owner.Name} expected more. Board confidence: {job.Confidence:0}/100.";
+                ? $"{owner} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
+                : $"{owner} hasn't forgotten last season, and that bought you time. It won't happen twice.")
+            : up && !relegated ? $"{owner} is delighted: the club goes up."
+            : diff >= 1 ? $"{owner} is delighted."
+            : diff == 0 ? $"{owner} is satisfied."
+            // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
+            : relegated && wins > losses ? $"{owner} is disappointed: a winning record wasn't enough to stay up, last in the division. Board confidence: {job.Confidence:0}/100."
+            : !relegated && j.BeatTarget ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), but hoped to go further. Board confidence: {job.Confidence:0}/100."
+            : !relegated && winsVsTarget >= 0 ? $"{owner} is disappointed with the {(ctx.IsCollege ? "tournament" : "playoff")} exit; the regular season was on target. Board confidence: {job.Confidence:0}/100."
+            : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
     }

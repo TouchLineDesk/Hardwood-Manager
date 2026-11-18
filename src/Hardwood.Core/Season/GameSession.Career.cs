@@ -277,12 +277,12 @@ public sealed partial class GameSession
     private static string Successor(Vacancy v, Rng rng) => v.NextCoach is { Length: > 0 } n ? n : Board.NewCoachName(rng);
 
     /// <summary>Whether the last season beat the board's expectations (the goal, or the win target by four or more over 82 games).</summary>
-    private bool Overachieved(Expectations e, SeasonGoal achieved, int wins, int losses, LeagueContext ctx)
+    private bool Overachieved(Expectations e, SeasonGoal achieved, int wins, int losses, LeagueContext ctx, bool relegated = false, bool goingUp = false)
     {
-        double diff = ctx.IsCollege ? Board.CollegeStep(achieved) - Board.CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
-        if (e.Survive) diff = achieved >= SeasonGoal.Playoffs ? 1 : -1;
-        double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
-        return diff >= 1 || winsVsTarget >= 4 || (diff >= 0 && winsVsTarget >= 0);
+        // H70 (run 114): the board's own judgement of the season (Board.Judge), so an offer never follows a review that read
+        // "expected more" for the same reasons, and going up counts.
+        var j = Board.Judge(e, ctx, achieved, wins, losses, relegated, goingUp);
+        return j.Steps >= 1 || j.WinsVsTarget >= 4 || (j.GoalMet && j.WinsVsTarget >= 0);
     }
 
     /// <summary>Leave your club for a new one (an accepted offer while in work).</summary>
