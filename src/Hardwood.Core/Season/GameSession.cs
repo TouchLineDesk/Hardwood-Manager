@@ -721,7 +721,8 @@ public sealed partial class GameSession
             if (!hiredForNext)
             {
                 (string title, string body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
-                    relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1);
+                    relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1,
+                    goingUp: GoingUp());
                 Post(Boss(title), Boss(body), "Board");
             }
             if (RelegationTiebreak() is { } tie)
@@ -729,7 +730,7 @@ public sealed partial class GameSession
             if (InNabl && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { Complete: true } ps && ps.LoserId == HumanTeam.Id && FindTeam(ps.WinnerId!.Value) is { } beat)
                 Post("Relegated", $"{beat.FullName} beat you {ps.Score} in the promotion playoff. You go down to {World[UsaPyramid.Tier2].Profile.Name} at the end of the summer.", "Board");
             if (sacked) Fire();
-            else if (!hiredForNext) overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam));
+            else if (!hiredForNext) overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam), GoingDown(), GoingUp());
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
         WorldCoachingChanges();
@@ -751,6 +752,17 @@ public sealed partial class GameSession
             Post("Promotion playoff", $"You won the {HumanTeam.Division} and play {ours.Top.FullName} for a place in the {Hardwood.Core.Names.Brand.Top}: best of three, Games 1 and 3 at home. Win it and you go up at the end of the summer.\n\n{body}", "League");
         else if (pairs.Any(x => x.Top == HumanTeam)) Post("Promotion playoffs begin", body, "League");
         else PostWorld("Promotion playoffs begin", body);
+    }
+
+    /// <summary>
+    /// H70 (run 114): your club goes up this summer. In tier 2 a division winner must also win its promotion playoff (run 102);
+    /// in tiers 3-5 winning the division is enough (#319, D39 A). Never in the top league, college or abroad.
+    /// </summary>
+    public bool GoingUp()
+    {
+        if (InCollege || InNabl || HumanLeague is not { } c || !UsaPyramid.IsNational(c.Key) || !UsaPyramid.WonDivision(c, HumanTeam)) return false;
+        if (c.Key == UsaPyramid.Tier2 && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { } ps) return !ps.Complete || ps.WinnerId == HumanTeam.Id; // unfinished: the automatic swap, as TopLeagueDown
+        return true;
     }
 
     /// <summary>

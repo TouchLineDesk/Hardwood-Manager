@@ -206,7 +206,8 @@ public class BoardSanityTests
         var champs = new Expectations { TeamId = worst.Id, League = "nabl", Goal = SeasonGoal.Title, TargetWins = 60, Achieved = SeasonGoal.Title };
         var after = Board.NextExpectations(ctx, worst, 2027, champs, "nabl", 1, 1);
         Assert.Equal(SeasonGoal.Finals, after.Goal);
-        Assert.Equal(52, after.TargetWins);
+        // H70 (run 114): after a goal met, the target falls by at most 3 of 82 (was 8: 52).
+        Assert.Equal(57, after.TargetWins);
 
         // Promotion and relegation still reset the bar (handled before the symmetry rule).
         var relegated = Board.NextExpectations(ctx, worst, 2027, new Expectations { TeamId = worst.Id, League = "nabl", Goal = SeasonGoal.Title, TargetWins = 60 }, "chp", 2, 1);
