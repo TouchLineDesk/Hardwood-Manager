@@ -114,9 +114,16 @@ public static class Roles
         _ => r is Role.RimProtector or Role.RimRunner or Role.PostScorer or Role.StretchBig or Role.GlueGuy,
     };
 
-    /// <summary>The best natural role for a player's primary position.</summary>
-    public static Role Best(Player p) =>
-        Ranked(p).Where(x => Natural(p.PrimaryPosition, x.role)).Select(x => x.role).DefaultIfEmpty(Role.GlueGuy).First();
+    /// <summary>The best natural role for a player's primary position. H105 (run 112): on a tie, the role that gives him
+    /// more shots. Gilgeous-Alexander's attributes are all near 20, so every role tied at 5 stars and the first in the
+    /// list (Floor General, 0.85 usage) won: 19 ppg while role players on thin teams led the league.</summary>
+    public static Role Best(Player p)
+    {
+        var natural = Ranked(p).Where(x => Natural(p.PrimaryPosition, x.role)).ToList();
+        if (natural.Count == 0) return Role.GlueGuy;
+        double top = natural[0].stars;
+        return natural.Where(x => x.stars >= top).OrderByDescending(x => Info(x.role).Usage).First().role;
+    }
 }
 
 public static class Systems

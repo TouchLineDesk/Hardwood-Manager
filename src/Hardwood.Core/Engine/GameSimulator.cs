@@ -9,6 +9,21 @@ namespace Hardwood.Core.Engine;
 /// </summary>
 public sealed class GameSimulator
 {
+    /// <summary>H105 (run 113): a soft cap on the top player's share of the five's shots. Above his cap
+    /// (<paramref name="caps"/>), only <paramref name="keep"/> of the excess share stays (the real NBA's highest usage
+    /// is about 35-37%). Without it, ten seasons of maxed-out stars took the scoring leader past 40 ppg.</summary>
+    public static void SoftCapShare(double[] w, double[] caps, double keep)
+    {
+        int top = 0; double sum = 0;
+        for (int i = 0; i < w.Length; i++) { sum += w[i]; if (w[i] > w[top]) top = i; }
+        double rest = sum - w[top];
+        if (rest <= 0 || sum <= 0) return;
+        double share = w[top] / sum, cap = caps[top];
+        if (share <= cap) return;
+        double target = Math.Min(0.95, cap + (share - cap) * keep);
+        w[top] = target / (1 - target) * rest;
+    }
+
     /// <summary>H94 (run 109): how likely a defender is to be the one who blocks a shot near the basket: his Block rating
     /// (curved, so a 20 stands out), his position (QuickSim's C 2.6, PF 1.8, SF 0.9, guards 0.5) and his height.</summary>
     public static double BlockWeight(Player p) =>
@@ -584,14 +599,23 @@ public sealed class GameSimulator
         {
             double star = off.Tac.StarUsage / 50.0 * Tactics.SharpnessFactor(off.Tac.System); // 1.0 = neutral
             var weights = new double[5];
+            var caps = new double[5];
             for (int i = 0; i < 5; i++)
             {
                 var p = off.OnCourt[i];
-                double usage = BaseUsage(p, transition);
-                // Star usage sharpens or flattens the distribution; roles and the system tilt it.
-                weights[i] = Math.Pow(Math.Max(1, usage), _cfg.UsageSharpness * star) * (0.75 + 0.25 * off.Energy[p])
-                             * Roles.Info(off.Tac.RoleOf(p)).Usage * Tactics.SystemUsage(off.Tac.System, p);
+                weights[i] = ShotWeight(off, p, transition, star);
+                // A star of the league may take a bigger share than the best player of a thin team.
+                caps[i] = (_cfg.MaxShotShare + _cfg.StarShareBonus * StarTerm(p)) * (0.75 + 0.25 * star);  // the Star usage slider moves the cap too
+                // The double team keys on the go-to man and comes before the cap, so a doubled star loses shots but a
+                // great one still takes the most.
                 if (p == _offStar && _defense.Tac.DoubleStar) weights[i] *= _cfg.DoubleStarUsage;
+            }
+            SoftCapShare(weights, caps, _cfg.ShotShareOverCap);
+            // The system tilt and fatigue come after the cap, so Pace-and-space still feeds its shooters and Post its bigs.
+            for (int i = 0; i < 5; i++)
+            {
+                var p = off.OnCourt[i];
+                weights[i] *= Tactics.SystemUsage(off.Tac.System, p) * (0.75 + 0.25 * off.Energy[p]);
             }
             return off.OnCourt[_rng.WeightedIndex(weights)];
         }
@@ -605,8 +629,26 @@ public sealed class GameSimulator
             return usage;
         }
 
-        /// <summary>The scorer the other team keys on: the highest-usage player on the floor.</summary>
-        private static Player Star(Side s) => s.OnCourt.MaxBy(p => BaseUsage(p))!;
+        /// <summary>The scorer the other team keys on. H105 (run 112): the go-to man is whoever the shot weights favour (role and the star term included, before the system tilt),
+        /// so the double team goes to the player who actually takes the shots.</summary>
+        private Player Star(Side s)
+        {
+            double star = s.Tac.StarUsage / 50.0 * Tactics.SharpnessFactor(s.Tac.System);
+            return s.OnCourt.MaxBy(p => ShotWeight(s, p, false, star))!;
+        }
+
+        /// <summary>A player's shot weight before the system tilt and fatigue. Star usage sharpens or flattens the
+        /// distribution; his role tilts it. H105 (run 112): the shot attributes top out at 20, so SGA (all 20s) shared shots evenly with good
+        /// teammates while role players on thin teams led the league. A star of the league (CA above the floor) is the go-to
+        /// man wherever he plays; it isn't relative to his teammates, so a thin team's best player gains nothing.</summary>
+        private double ShotWeight(Side off, Player p, bool transition, double star) =>
+            Math.Pow(Math.Max(1, BaseUsage(p, transition)), _cfg.UsageSharpness * star)
+            * Roles.Info(off.Tac.RoleOf(p)).Usage
+            * (1 + StarTerm(p) * star);
+
+        /// <summary>H105: how far above the league's star line a player is (0 below it, at most StarAbilityCap).</summary>
+        private double StarTerm(Player p) =>
+            Math.Min(_cfg.StarAbilityCap, Math.Max(0, p.CurrentAbility - _cfg.StarAbilityFloor) / _cfg.StarAbilityScale);
         private Player? _offStar, _defStar;
         private readonly Dictionary<(long, long, int), double> _fitCache = new();
 
