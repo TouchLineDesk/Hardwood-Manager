@@ -776,6 +776,24 @@ public sealed partial class GameSession
     }
 
     /// <summary>
+    /// K1 (run 111): the clubs going down from the top league lose the players who use their relegation release clauses, at the
+    /// start of free agency. Your club's players' choices are an inbox item with names and reasons.
+    /// </summary>
+    private void UseReleaseClauses()
+    {
+        if (InCollege) return;
+        var (news, mine) = Hardwood.Core.World.UsaPyramid.UseReleaseClauses(World, League, Offseason!.Date, ControlledTeamId);
+        foreach (var (title, body) in news) World.News.Add((title, body));
+        if (mine.Count == 0) return;
+        var left = mine.Where(x => x.Left).ToList(); var stayed = mine.Where(x => !x.Left).ToList();
+        string Line((Player Player, bool Left, string Why) x) => $"{x.Player.Name} ({x.Player.PrimaryPosition}, {x.Player.CurrentAbility}): {x.Why}.";
+        Post(left.Count > 0 ? $"Relegation release: {string.Join(", ", left.Select(x => x.Player.Name))} {(left.Count == 1 ? "leaves" : "leave")}" : "Relegation release: everyone stays",
+            "Going down, the players with a relegation release clause in their contracts chose whether to use it."
+            + (left.Count > 0 ? $"\n\nLeaving on a free (their wages are off the books):\n{string.Join("\n", left.Select(Line))}" : "")
+            + (stayed.Count > 0 ? $"\n\nStaying:\n{string.Join("\n", stayed.Select(Line))}" : ""), "Roster");
+    }
+
+    /// <summary>
     /// H69 (bug hunt; run 106): where your club plays next season when it is going down, and what its contracts come to once the
     /// relegation clauses cut them at the end of the summer (to the new league's scale, never below half; Budgets.Rescale).
     /// A solvent owner funds at least those contracts, so the cut payroll is the floor of next season's budget. Null when you
@@ -1257,6 +1275,7 @@ public sealed partial class GameSession
                 break;
             case OffseasonPhase.Draft:
                 Offseason.AdvanceToFreeAgency();
+                UseReleaseClauses();   // K1 (run 111): before anyone signs, so released stars are in the top league's pool
                 Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
                 Offseason.AiFreeAgency(ControlledTeamId);
                 foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(); // run 42: the summer's headlines wait (one digest a summer, at the new season)
@@ -1428,10 +1447,25 @@ public sealed partial class GameSession
             Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
         }
         if (Employed && m.Parachute > 0)
-            Post("Parachute payment", $"After relegation the league pays a parachute of ${m.Parachute / 1e6:F1}M this season ({(m.ParachuteYears > 1 ? "it halves next season, then stops" : "the last one")})."
-                + (m.ParachuteCarried > 0 ? $" ${m.ParachuteCarried / 1e6:F1}M of it is what was left of the last relegation's parachute, carried over after this second drop." : "")
-                + (m.ParachuteYears > 1 ? " Every contract's relegation clause has cut wages by half." : "")
+            Post("Parachute payment", ParachuteNote(m) + (m.ParachuteYear <= 1 && m.ParachuteCarried == 0 ? " Every contract's relegation clause has cut wages by half." : "")
                 + " Use the time to bring the payroll down to what this league pays.", "Board");
+    }
+
+    /// <summary>K1 (run 111): this season's parachute in words, with the schedule ahead.</summary>
+    public static string ParachuteNote(ClubFinance m)
+    {
+        if (m.Parachute <= 0) return "";
+        string ahead;
+        if (m.ParachuteBase <= 0) ahead = m.ParachuteYears > 1 ? "it halves next season, then stops" : "the last one";
+        else
+        {
+            var next = Enumerable.Range(m.ParachuteYear, Math.Max(0, m.ParachuteYears - 1))
+                .Select(y => Budgets.Money((long)Math.Round(m.ParachuteBase * Budgets.ParachuteShares[Math.Min(y, Budgets.ParachuteShares.Length - 1)] / 100_000) * 100_000)).ToList();
+            ahead = next.Count == 0 ? "the last one" : $"then {string.Join(", then ", next)}, then it stops";
+        }
+        return $"After relegation the league pays a parachute of {Budgets.Money(m.Parachute)} this season ({ahead}), a share of the media money of the league the club left."
+            + (m.ParachuteCarried > 0 ? " It is still the parachute from the first relegation: a second drop doesn't add one." : "")
+            + " It stops if the club goes straight back up.";
     }
 
     // ------------------------------------------------------------------------------------------

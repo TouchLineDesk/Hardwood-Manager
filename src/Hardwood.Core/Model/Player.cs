@@ -122,4 +122,8 @@ public sealed class Contract
     public bool PlayerOption { get; set; }
     /// <summary>Overseas contracts: the buyout an NABL team (plus the player) must pay to sign him before it ends. 0 = none.</summary>
     public long Buyout { get; set; }
+    /// <summary>K1 (run 111, Danny's Nov 17 decision): a relegation release clause. If his club goes down he may leave on a
+    /// free at the start of the summer's free agency (<see cref="World.UsaPyramid.UseReleaseClauses"/>). Mostly the very best
+    /// players ask for one (<see cref="Season.ContractMarket.AsksForReleaseClause"/>). Saved from format 13.</summary>
+    public bool RelegationRelease { get; set; }
 }

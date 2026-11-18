@@ -217,7 +217,7 @@ public sealed partial class GameSession
     private void CompleteTransfer(Player p, Team from, Team to, long fee, long wage, int years)
     {
         from.Roster.Remove(p);
-        p.Contract = League.Teams.Contains(to) ? new Contract { Years = years, Salary = wage, StartSeason = ContractStart }
+        p.Contract = League.Teams.Contains(to) ? new Contract { Years = years, Salary = wage, StartSeason = ContractStart, RelegationRelease = ContractMarket.AsksForReleaseClause(p) }
                                                  : GameWorld.ContractAt(p, wage, years, Today, ContractStart);
         p.TeamId = to.Id;
         p.DraftRightsTeamId = null;

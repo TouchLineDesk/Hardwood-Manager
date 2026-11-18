@@ -60,7 +60,8 @@ public sealed partial class TalkViewModel : ViewModelBase
         _lead = why;
         _withContext = why == null;
         if (why == null) _lead = $"His agent asks ${d.Wage / 1e6:F2}M a year for {d.Years} year{(d.Years == 1 ? "" : "s")}."
-            + (s.AskingFloorNote(p) is { } floor ? " " + floor : "");   // H61 (run 110): why a star asks more than your league pays
+            + (s.AskingFloorNote(p) is { } floor ? " " + floor : "")   // H61 (run 110): why a star asks more than your league pays
+            + (s.ReleaseClauseNote(p) is { } clause ? " " + clause : "");   // K1 (run 111)
         RefreshBudget();
         Wage = Math.Round((decimal)(d.Wage / 1e6), 2);
         Years = d.Years;

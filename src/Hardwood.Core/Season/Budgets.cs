@@ -34,6 +34,15 @@ public static class Budgets
     }
 
     /// <summary>Base revenue of a league's average club: the NABL, or an overseas league by its wage scale.</summary>
+    /// <summary>K1 (run 111): a league's media money per club, the part of its revenue a parachute is a share of (about 40%, as
+    /// the NBA's national TV money is of a club's revenue).</summary>
+    public static long MediaMoney(double salaryScale) => Round(LeagueRevenue(salaryScale) * MediaShare);
+    public const double MediaShare = 0.4;
+    /// <summary>K1 (run 111): the EPL's parachute schedule, as shares of the media money of the league the club left.</summary>
+    public static readonly double[] ParachuteShares = { 0.55, 0.45, 0.20 };
+    /// <summary>A club that spent only one season up gets the first two years (as in the EPL).</summary>
+    public const int ShortParachuteYears = 2;
+
     public static long LeagueRevenue(double salaryScale) => salaryScale >= 0.999 ? NablRevenue : (long)(NablRevenue * salaryScale * OverseasFactor);
 
     /// <summary>A season's revenue: league market × (fan base, arena size against the league's typical arena, last season's record).</summary>
@@ -98,9 +107,17 @@ public static class Budgets
             Franchise.Summer(t, lr, typical, endedSeason + 1);
             m.FanBase = Math.Clamp(m.FanBase + (wp - 0.5) * 10 + (champion(t) ? 3 : 0) + (50 - m.FanBase) * 0.06 + 0.6 * m.Facilities.Arena.Edge, 5, 100);
             m.Revenue = Revenue(t, lr, typical, wp);
-            // The parachute halves each year and stops after two.
-            if (m.ParachuteYears > 0) { m.ParachuteYears--; m.Parachute = m.ParachuteYears > 0 ? m.Parachute / 2 : 0; }
+            // K1 (run 111): an EPL-style parachute pays the next share of its schedule; an older save's (no base) halves as before.
+            if (m.ParachuteYears > 0)
+            {
+                m.ParachuteYears--; m.ParachuteYear++;
+                m.Parachute = m.ParachuteYears <= 0 ? 0
+                    : m.ParachuteBase > 0 ? Round(m.ParachuteBase * ParachuteShares[Math.Min(m.ParachuteYear, ParachuteShares.Length) - 1])
+                    : m.Parachute / 2;
+            }
+            if (m.ParachuteYears <= 0) { m.Parachute = 0; m.ParachuteBase = 0; m.ParachuteYear = 0; }
             m.ParachuteCarried = 0;
+            m.SeasonsAtLevel++;
             double share = WageShare(t.Owner);
             if (m.Balance < -m.Revenue * 0.25) share -= 0.06;       // in debt: the owner cuts back
             else if (m.Balance > m.Revenue * 0.5) share += 0.02;    // flush: a little more to spend
@@ -151,15 +168,22 @@ public static class Budgets
             foreach (var p in t.Roster)
                 if (p.Contract is { } c)
                     c.Salary = (long)Math.Round(Math.Max(c.Salary * 0.5, c.Salary * ratio) / 1000) * 1000;
-            // A second drop while a parachute is still being paid (#363, run 31): the unpaid part carries into the new
-            // league on top of the new parachute. Overwriting it left a club that fell NBA → tier 2 → tier 3 in two
-            // summers with tier-3 money and half-cut NBA contracts (nabl-weak: 30 weeks over budget).
-            long carried = m.ParachuteYears > 0 ? m.Parachute : 0;
-            m.Parachute = Round(Math.Max(0, oldRevenue - m.Revenue) * 0.5) + carried;
-            m.ParachuteYears = m.Parachute > 0 ? 2 : 0;
-            m.ParachuteCarried = carried;
+            // K1 (run 111, Danny's Nov 17 decision): EPL-style parachutes, shares of the media money of the league the club left
+            // (55%, 45%, 20% over three seasons; a club that spent only one season up gets the first two). A second drop while a
+            // parachute is still being paid (#363) keeps the old one, from a richer league, on its schedule (a club that fell
+            // NBA → tier 2 → tier 3 in two summers otherwise had tier-3 money and half-cut NBA contracts).
+            if (m.ParachuteYears > 0) m.ParachuteCarried = m.Parachute;
+            else
+            {
+                m.ParachuteBase = MediaMoney(oldScale);
+                m.ParachuteYear = 1;
+                m.ParachuteYears = m.SeasonsAtLevel <= 1 ? ShortParachuteYears : ParachuteShares.Length;
+                m.Parachute = Round(m.ParachuteBase * ParachuteShares[0]);
+                m.ParachuteCarried = 0;
+            }
         }
-        else if (oldScale > 0 && oldScale < salaryScale) { m.Parachute = 0; m.ParachuteYears = 0; m.ParachuteCarried = 0; }
+        else if (oldScale > 0 && oldScale < salaryScale) { m.Parachute = 0; m.ParachuteYears = 0; m.ParachuteCarried = 0; m.ParachuteBase = 0; m.ParachuteYear = 0; }
+        if (oldScale > 0 && Math.Abs(oldScale - salaryScale) > 1e-9) m.SeasonsAtLevel = 0;
         if (oldScale > 0 && Math.Abs(oldScale - salaryScale) > 1e-9 && t.Staff.Count > 0) ScaleStaff(t, salaryScale);
         m.WageBudget = Round(m.Income * WageShare(t.Owner));
         // Going down (#363, run 31): the contracts the club carries were signed within its old budget and already cut by

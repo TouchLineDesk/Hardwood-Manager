@@ -284,7 +284,8 @@ public sealed class Offseason
         long ask = wage ?? Ask(p);
         if (!CanAfford(team, ask)) return false;
         if (WontReSign(p)) return false;
-        p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = ask, StartSeason = Season + 1 };
+        p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = ask, StartSeason = Season + 1,
+            RelegationRelease = ContractMarket.AsksForReleaseClause(p) };   // K1 (run 111)
         list.Remove(p);
         Report.ReSigned.Add((p, team));
         return true;
@@ -515,7 +516,8 @@ public sealed class Offseason
         if (route == SigningRoute.None) return false;
         if (route == SigningRoute.MidLevel) MidLevelUsed.Add(team.Id);
 
-        p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = salary, StartSeason = Season + 1 };
+        p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = salary, StartSeason = Season + 1,
+            RelegationRelease = ContractMarket.AsksForReleaseClause(p) };   // K1 (run 111)
         p.TeamId = team.Id;
         p.DraftRightsTeamId = null;
         team.Roster.Add(p);

@@ -674,6 +674,50 @@ public static class UsaPyramid
     /// then converts them into tiers 4 and 5 (<see cref="ConvertToFiveTiers"/>).
     /// Returns headlines. Does nothing if the world has no pyramid (an older career).
     /// </summary>
+    /// <summary>
+    /// The top league's clubs going down this summer: a finished promotion playoff decides its pairing, and the last in each
+    /// other division goes down (level records by the table's order). Also the tier-2 clubs that won a playoff, and the
+    /// playoffs. K1 (run 111): taken out of <see cref="Promote"/> so the release clauses can use it at the start of free
+    /// agency, before anyone moves. Empty when the top league hasn't played a season.
+    /// </summary>
+    public static (List<Team> Down, List<Team> Winners, List<(Team Top, Team Challenger, bool ChallengerWon, string Score)> Playoffs) TopLeagueDown(League nabl, WorldCompetition t2)
+    {
+        var down = new List<Team>();
+        var promotionPlayoffs = new List<(Team Top, Team Challenger, bool ChallengerWon, string Score)>();
+        var winners = new List<Team>();
+        var last = nabl.History.LastOrDefault();
+        if (last == null || last.Records.Count == 0) return (down, winners, promotionPlayoffs);
+        {
+            var wins = last!.Records.ToDictionary(r => r.teamId, r => (r.wins, r.losses));
+            int W(Team t) => wins.TryGetValue(t.Id, out var w) ? w.wins : 41;
+            int L(Team t) => wins.TryGetValue(t.Id, out var w) ? w.losses : 41;
+            // H33 (run 82): level records go by the table's order (point difference; seasons from v0.97.2 store it), as Standings shows.
+            // A season stored before v0.97.2 is in team order: its ties keep the old rule (the lowest id goes down).
+            static double RecPct((int teamId, int wins, int losses) r) => r.wins + r.losses == 0 ? 0 : (double)r.wins / (r.wins + r.losses);
+            bool tableOrder = last.Records.Zip(last.Records.Skip(1)).All(x => RecPct(x.First) >= RecPct(x.Second));
+            var place = tableOrder ? last.Records.Select((r, i) => (r.teamId, i)).ToDictionary(x => x.teamId, x => x.i) : new Dictionary<int, int>();
+            int P(Team t) => place.TryGetValue(t.Id, out var i) ? i : -1;
+            // The promotion playoffs (run 102): a finished series decides its pairing; a division without one (an older save, a
+            // season before the playoffs existed) keeps the automatic swap.
+            var series = t2.Season.Series.Where(x => IsPromotion(x.Round) && x.Complete).ToList();
+            var stayUp = new HashSet<int>(); var stayDown = new HashSet<int>();
+            foreach (var x in series)
+            {
+                var nbaClub = nabl.Teams.FirstOrDefault(t => t.Id == x.LowId);
+                var challenger = t2.Clubs.FirstOrDefault(t => t.Id == x.HighId);
+                if (nbaClub == null || challenger == null) continue;
+                if (x.WinnerId == nbaClub.Id) { stayUp.Add(nbaClub.Id); stayDown.Add(challenger.Id); }
+                else { down.Add(nbaClub); winners.Add(challenger); }
+                promotionPlayoffs.Add((nbaClub, challenger, x.WinnerId == challenger.Id, x.Score));
+            }
+            var decided = promotionPlayoffs.Select(x => (x.Top.Conference, x.Top.Division)).ToHashSet();
+            foreach (var div in nabl.Teams.GroupBy(t => (t.Conference, t.Division)).OrderBy(g => g.Key.Conference).ThenBy(g => g.Key.Division).ToList())
+                if (!decided.Contains(div.Key))
+                    down.Add(div.OrderBy(W).ThenByDescending(L).ThenByDescending(P).ThenBy(t => t.Id).First());
+        }
+        return (down, winners, promotionPlayoffs);
+    }
+
     public static List<(string Title, string Body)> Promote(GameWorld world, League nabl, Generation.StaffGenerator staffGen, DateOnly on)
     {
         var news = new List<(string, string)>();
@@ -726,32 +770,9 @@ public static class UsaPyramid
         bool topPlayed = last != null && last.Records.Count > 0;
         if (topPlayed)
         {
-            var wins = last!.Records.ToDictionary(r => r.teamId, r => (r.wins, r.losses));
-            int W(Team t) => wins.TryGetValue(t.Id, out var w) ? w.wins : 41;
-            int L(Team t) => wins.TryGetValue(t.Id, out var w) ? w.losses : 41;
-            // H33 (run 82): level records go by the table's order (point difference; seasons from v0.97.2 store it), as Standings shows.
-            // A season stored before v0.97.2 is in team order: its ties keep the old rule (the lowest id goes down).
-            static double RecPct((int teamId, int wins, int losses) r) => r.wins + r.losses == 0 ? 0 : (double)r.wins / (r.wins + r.losses);
-            bool tableOrder = last.Records.Zip(last.Records.Skip(1)).All(x => RecPct(x.First) >= RecPct(x.Second));
-            var place = tableOrder ? last.Records.Select((r, i) => (r.teamId, i)).ToDictionary(x => x.teamId, x => x.i) : new Dictionary<int, int>();
-            int P(Team t) => place.TryGetValue(t.Id, out var i) ? i : -1;
-            // The promotion playoffs (run 102): a finished series decides its pairing; a division without one (an older save, a
-            // season before the playoffs existed) keeps the automatic swap.
-            var series = t2.Season.Series.Where(x => IsPromotion(x.Round) && x.Complete).ToList();
-            var stayUp = new HashSet<int>(); var stayDown = new HashSet<int>(); var winners = new List<Team>();
-            foreach (var x in series)
-            {
-                var nbaClub = nabl.Teams.FirstOrDefault(t => t.Id == x.LowId);
-                var challenger = t2.Clubs.FirstOrDefault(t => t.Id == x.HighId);
-                if (nbaClub == null || challenger == null) continue;
-                if (x.WinnerId == nbaClub.Id) { stayUp.Add(nbaClub.Id); stayDown.Add(challenger.Id); }
-                else { down.Add(nbaClub); winners.Add(challenger); }
-                promotionPlayoffs.Add((nbaClub, challenger, x.WinnerId == challenger.Id, x.Score));
-            }
+            var (topDown, winners, playoffs) = TopLeagueDown(nabl, t2);
+            down.AddRange(topDown); promotionPlayoffs.AddRange(playoffs);
             var decided = promotionPlayoffs.Select(x => (x.Top.Conference, x.Top.Division)).ToHashSet();
-            foreach (var div in nabl.Teams.GroupBy(t => (t.Conference, t.Division)).OrderBy(g => g.Key.Conference).ThenBy(g => g.Key.Division).ToList())
-                if (!decided.Contains(div.Key))
-                    down.Add(div.OrderBy(W).ThenByDescending(L).ThenByDescending(P).ThenBy(t => t.Id).First());
             // Paired divisions (#424): a club keeps its division's name going down, and a tier-2 winner keeps its own going up.
             foreach (var r in down) { nabl.Teams.Remove(r); t2.Clubs.Add(r); }
             foreach (var w in winners) JoinTop(w, t2);
@@ -905,6 +926,9 @@ public static class UsaPyramid
                 foreach (var p in t.Roster)
                     if (p.Contract is { } c) c.Salary = (long)Math.Round(c.Salary * Math.Min(2.0, 1 / Math.Max(0.01, ScaleOf(before[t]))) / 1000) * 1000;
         }
+        // K1 (run 111): each league's rotation bar as it stood before the moves, for the release clauses' choice.
+        var bars = tables.ToDictionary(kv => kv.Key, kv => RotationBar(kv.Value));
+        double topBar = RotationBar(down.Concat(nabl.Teams.Except(up)));
         foreach (var c in world.Competitions.Where(c => IsPyramid(c.Key)))
         {
             double arena = c.Clubs.Average(t => (double)t.ArenaCapacity);
@@ -915,7 +939,7 @@ public static class UsaPyramid
                 bool fell = false;
                 if (!before.TryGetValue(t, out var was)) { Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, 1); fell = true; } // down from the NABL
                 else if (was != c.Key) { Season.Budgets.Rescale(t, c.Profile.SalaryScale, arena, ScaleOf(was)); fell = Level(c.Key) > Level(was); }
-                if (fell) news.AddRange(RelegationReleases(world, nabl, t, c, on));
+                if (fell) news.AddRange(RelegationReleases(world, nabl, t, bars.TryGetValue(was ?? "", out var b) ? b : topBar, on));
             }
         }
         news.AddRange(RebuildPromoted(world, nabl, up, on));
@@ -1126,20 +1150,81 @@ public static class UsaPyramid
     }
 
     /// <summary>
-    /// Relegation release clauses (critic review #2: a relegated club's long contracts outlived its parachute): young
-    /// players far too good for the new level may walk away free, which also takes their wages off the books.
+    /// K1 (run 111, Danny's Nov 17 decision): relegation release clauses. A player whose deal carries one
+    /// (<see cref="Contract.RelegationRelease"/>) chooses when his club goes down. He leaves on a free if he is good enough for
+    /// the league he's leaving (within <see cref="ReleaseMargin"/> CA of its rotation bar) and under <see cref="ReleaseMaxAge"/>,
+    /// or if he is unhappy (morale under <see cref="ReleaseMorale"/>); otherwise he stays on his (cut) wage. The choice is
+    /// rule-based, with no dice, so asking twice gives the same answer. (It replaced a hidden 60% roll for every young player
+    /// 22+ CA above the new level, which wasn't a contract term.)
     /// </summary>
-    private static IEnumerable<(string, string)> RelegationReleases(GameWorld world, League nabl, Team t, WorldCompetition c, DateOnly date)
+    public static (bool Leaves, string Why) ReleaseChoice(Player p, double bar, DateOnly date)
     {
-        if (!world.Levels.TryGetValue(c.Key, out var level)) level = c.Clubs.SelectMany(x => x.Roster).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(80).Average();
-        var rng = new Rng((ulong)(t.Id * 7919 + date.Year));
-        var gone = t.Roster.Where(p => p.CurrentAbility > level + 22 && p.Age(date) < 31 && rng.Chance(0.6)).ToList();
-        foreach (var p in gone)
+        int age = p.Age(date);
+        if (p.Morale < ReleaseMorale) return (true, "unhappy, he won't go down with the club");
+        if (p.CurrentAbility >= bar - ReleaseMargin && age < ReleaseMaxAge) return (true, "good enough to stay at this level");
+        return (false, age >= ReleaseMaxAge ? $"at {age} he stays" : "not sure of a place at this level, he stays");
+    }
+
+    public const double ReleaseMargin = 10;
+    public const int ReleaseMaxAge = 33;
+    public const double ReleaseMorale = 30;
+
+    /// <summary>A league's rotation bar: the median of its clubs' 8th-best ability (K1, run 111).</summary>
+    public static double RotationBar(IEnumerable<Team> clubs)
+    {
+        var eighth = clubs.Select(t => t.Roster.Select(p => p.CurrentAbility).OrderByDescending(x => x).Skip(7).DefaultIfEmpty(0).First())
+            .Where(x => x > 0).OrderBy(x => x).ToList();
+        return eighth.Count == 0 ? 0 : eighth[eighth.Count / 2];
+    }
+
+    /// <summary>
+    /// K1 (run 111): at the start of the top league's free agency, the players of the clubs going down from it decide on their
+    /// release clauses, so a star who leaves is in the free-agent pool while the top league's clubs are signing (before, the
+    /// releases came at the end of the summer, when only lower leagues were still signing). Returns the headlines and your
+    /// club's players' choices (who, whether he left, why).
+    /// </summary>
+    public static (List<(string Title, string Body)> News, List<(Player Player, bool Left, string Why)> Mine) UseReleaseClauses(GameWorld world, League nabl, DateOnly date, int? managedId)
+    {
+        var news = new List<(string, string)>();
+        var mine = new List<(Player, bool, string)>();
+        var t2 = world.Competitions.FirstOrDefault(c => c.Key == Tier2);
+        if (t2 == null) return (news, mine);
+        double bar = RotationBar(nabl.Teams);
+        foreach (var t in TopLeagueDown(nabl, t2).Down)
         {
-            t.Roster.Remove(p); p.TeamId = null; p.Contract = null;
-            nabl.FreeAgents.Add(p);
+            var gone = new List<Player>();
+            foreach (var p in t.Roster.Where(p => p.Contract is { RelegationRelease: true }).ToList())
+            {
+                var (leaves, why) = ReleaseChoice(p, bar, date);
+                if (t.Id == managedId) mine.Add((p, leaves, why));
+                if (!leaves) continue;
+                Release(nabl, t, p);
+                gone.Add(p);
+            }
+            if (gone.Count > 0)
+                news.Add(($"{t.FullName}: relegation release clauses", $"{string.Join(", ", gone.Select(p => p.Name))} used the relegation release in {(gone.Count == 1 ? "his contract" : "their contracts")} and {(gone.Count == 1 ? "is a free agent" : "are free agents")} for the {Names.Brand.Top}'s free agency. {(gone.Count == 1 ? "His wage is" : "Their wages are")} off the books."));
         }
+        return (news, mine);
+    }
+
+    private static void Release(League nabl, Team t, Player p)
+    {
+        t.Roster.Remove(p); p.TeamId = null; p.Contract = null;
+        t.DepthChart = null; t.Tactic.Roles.Remove(p.Id);
+        if (!nabl.FreeAgents.Contains(p)) nabl.FreeAgents.Add(p);
+    }
+
+    /// <summary>
+    /// At the end of the summer, for every club that went down: its players with a release clause choose (K1, run 111; the
+    /// same rule as <see cref="UseReleaseClauses"/>, against the rotation bar of the league the club left). Players of a club
+    /// that dropped from the top league already chose at the start of free agency, and the rule gives the same answer.
+    /// </summary>
+    private static IEnumerable<(string, string)> RelegationReleases(GameWorld world, League nabl, Team t, double bar, DateOnly date)
+    {
+        var gone = new List<Player>();
+        foreach (var p in t.Roster.Where(p => p.Contract is { RelegationRelease: true }).ToList())
+            if (ReleaseChoice(p, bar, date).Leaves) { Release(nabl, t, p); gone.Add(p); }
         if (gone.Count > 0)
-            yield return ($"{t.FullName}: relegation clauses", $"{string.Join(", ", gone.Select(p => p.Name))} used the relegation release in {(gone.Count == 1 ? "his contract" : "their contracts")} and left on a free. Their wages are off the books.");
+            yield return ($"{t.FullName}: relegation clauses", $"{string.Join(", ", gone.Select(p => p.Name))} used the relegation release in {(gone.Count == 1 ? "his contract" : "their contracts")} and left on a free. {(gone.Count == 1 ? "His wage is" : "Their wages are")} off the books.");
     }
 }

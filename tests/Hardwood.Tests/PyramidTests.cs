@@ -89,6 +89,8 @@ public class PyramidTests
         var t4 = world[UsaPyramid.Tier4];
         var t4Last = UsaPyramid.Divisions(t4.Key, t4.Clubs).Select(d => t4.Season.Table().Select(r => world.TeamById(r.TeamId)!).Last(d.Teams.Contains)).ToList();
         int total = world.Competitions.Where(c => UsaPyramid.IsPyramid(c.Key)).Sum(c => c.Clubs.Count);
+        // K1 (run 111): release clauses are a contract term; the top league's biggest deals carry one, as in a real career.
+        ContractMarket.GrantReleaseClauses(nabl);
 
         var news = UsaPyramid.Promote(world, nabl, new StaffGenerator(new Rng(1)), new DateOnly(2027, 8, 15));
 
@@ -100,10 +102,10 @@ public class PyramidTests
         Assert.All(up, t => Assert.InRange(t.Roster.Count, 13, 15));
         Assert.All(up, t => Assert.True(t.Money.WageBudget > 100_000_000, $"{t.FullName}: {t.Money.WageBudget:N0}")); // NABL money now
         Assert.All(down, t => Assert.True(t.Money.Revenue < 50_000_000)); // tier-2 money
-        // Relegation clauses halve the wages; a parachute (half the lost revenue, for two seasons) covers the rest.
+        // Relegation clauses halve the wages; a parachute (K1, run 111: 55/45/20% of the top league's media money) covers the rest.
         Assert.All(down.SelectMany(t => t.Roster).Where(p => p.Contract != null && wagesBefore.ContainsKey(p.Id)),
             p => Assert.InRange(p.Contract!.Salary, wagesBefore[p.Id] * 0.49, wagesBefore[p.Id] * 0.51));
-        Assert.All(down, t => { Assert.True(t.Money.Parachute > 50_000_000); Assert.Equal(2, t.Money.ParachuteYears); });
+        Assert.All(down, t => { Assert.True(t.Money.Parachute > 50_000_000); Assert.Equal(3, t.Money.ParachuteYears); });
         Assert.All(down, t => Assert.True(t.Money.Income > ContractMarket.Payroll(t), $"{t.FullName}: income {t.Money.Income:N0} vs payroll {ContractMarket.Payroll(t):N0}"));
         Assert.All(up, t => Assert.Equal(0, t.Money.Parachute));
         Assert.All(t3Up, t => Assert.Contains(t, t2.Clubs));
@@ -177,7 +179,8 @@ public class PyramidTests
         world.ManagedClubId = mine.Id;
         // Far too good for tier 3 and young: the relegation release is on the table for each of them.
         var date = new DateOnly(2027, 8, 15);
-        foreach (var p in mine.Roster.Where(p => p.Age(date) < 31)) { p.PotentialAbility = 195; p.CurrentAbility = 190; }
+        // K1 (run 111): the release is a contract term now, so they carry the clause.
+        foreach (var p in mine.Roster.Where(p => p.Age(date) < 31)) { p.PotentialAbility = 195; p.CurrentAbility = 190; if (p.Contract != null) p.Contract.RelegationRelease = true; }
         Assert.True(mine.Roster.Count(p => p.Age(date) < 31) >= 4, "the case needs young players to release");
 
         world.EndSummer(2027, new GameSimulator(), nabl.FreeAgents);
@@ -226,25 +229,27 @@ public class PyramidTests
         Budgets.Rescale(t, t2Scale, arena, 1);
         long first = t.Money.Parachute;
         Assert.True(first > 50_000_000);
-        Assert.Equal(2, t.Money.ParachuteYears);
+        // K1 (run 111): EPL-style, 55% then 45% then 20% of the top league's media money.
+        Assert.Equal(3, t.Money.ParachuteYears);
         Assert.Equal(0, t.Money.ParachuteCarried); // a first drop carries nothing
-        // A season in tier 2, then the summer's books: the parachute halves.
+        // A season in tier 2, then the summer's books: the second year's share.
         Budgets.Summer(new[] { t }, t2Scale, _ => 0.2, _ => false);
         long left = t.Money.Parachute;
-        Assert.Equal(first / 2, left);
-        Assert.Equal(1, t.Money.ParachuteYears);
+        Assert.Equal((long)Math.Round(Budgets.MediaMoney(1) * 0.45 / 100_000) * 100_000, left);
+        Assert.Equal(2, t.Money.ParachuteYears);
         long payrollBefore = ContractMarket.Payroll(t);
-        // Down again: the new parachute comes on top of what was left, for two more seasons.
+        // Down again: the first (richer) parachute keeps paying on its schedule; the second drop adds none.
         Budgets.Rescale(t, t3Scale, arena, t2Scale);
         Assert.Equal(left, t.Money.ParachuteCarried);
-        Assert.True(t.Money.Parachute > left, $"{t.Money.Parachute:N0} vs {left:N0}");
+        Assert.Equal(left, t.Money.Parachute);
         Assert.Equal(2, t.Money.ParachuteYears);
         Assert.True(ContractMarket.Payroll(t) <= payrollBefore);
         Assert.True(t.Money.WageBudget >= ContractMarket.Payroll(t), $"budget {t.Money.WageBudget:N0} vs payroll {ContractMarket.Payroll(t):N0}");
-        // The next summer halves it again and the carried part is spent.
+        // The next summer pays the last share, and the carried note clears.
         Budgets.Summer(new[] { t }, t3Scale, _ => 0.4, _ => false);
         Assert.Equal(0, t.Money.ParachuteCarried);
         Assert.Equal(1, t.Money.ParachuteYears);
+        Assert.Equal((long)Math.Round(Budgets.MediaMoney(1) * 0.20 / 100_000) * 100_000, t.Money.Parachute);
         // Promotion stops it.
         Budgets.Rescale(t, t2Scale, arena, t3Scale);
         Assert.Equal(0, t.Money.Parachute);
