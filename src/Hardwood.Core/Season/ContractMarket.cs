@@ -15,6 +15,31 @@ public static class ContractMarket
         return Math.Max(salary, finance.MinSalary);
     }
 
+    /// <summary>
+    /// H61 (run 110, the contracts-economy pass): the least a player takes to play in a league, from what he could earn in
+    /// the best league that would have him. Wages below the top league are its market times the league's scale, so a
+    /// star's ask fell with the league (Jarrett Allen, CA 145, for $1.05M in tier 4; Giannis renewing in the G League for
+    /// $2.35M). Each of <paramref name="options"/> is a league open to him (the top league, and the leagues where he counts
+    /// as a local) by its level (mean CA) and wage scale; he qualifies for one when he is <see cref="StarMargin"/> CA above
+    /// its level, as its own stars are. He asks <see cref="OptionShare"/> of what the best of those pays him, so he never
+    /// prices himself out of the league that sets his floor, only out of leagues that pay well below it.
+    /// </summary>
+    public static long AskingFloor(Player p, DateOnly on, IEnumerable<(double Level, double Scale)> options)
+    {
+        double best = 0;
+        foreach (var (level, scale) in options)
+            if (level > 0 && p.CurrentAbility >= level + StarMargin && scale > best) best = scale;
+        if (best <= 0) return 0;
+        long top = MarketSalary(p.CurrentAbility, p.Age(on), Finance.HardCapDefault);
+        return (long)Math.Round(top * best * OptionShare / 10_000) * 10_000;
+    }
+
+    /// <summary>How far above a league's level (CA) a player is among its very best (the best in Spain, Japan or the G League are
+    /// 40-45 above their league's mean), so a club there would pay its top wage for him.</summary>
+    public const double StarMargin = 40;
+    /// <summary>The share of his best option's wage a player asks of any other league.</summary>
+    public const double OptionShare = 0.75;
+
     /// <summary>How a front office values a player: today's ability plus upside, discounted for age.</summary>
     public static double Value(Player p, DateOnly on)
     {

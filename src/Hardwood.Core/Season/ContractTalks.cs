@@ -33,11 +33,12 @@ public static class ContractTalks
 
     /// <summary>
     /// What the player asks of this club. <paramref name="salaryScale"/> is the league's wage level (1 for the NABL).
-    /// <paramref name="renewal"/>: he's already at the club.
+    /// <paramref name="renewal"/>: he's already at the club. <paramref name="floor"/>: the least he takes in this league
+    /// (<see cref="ContractMarket.AskingFloor"/>; 0 in the top league).
     /// </summary>
-    public static ContractDemand Demand(Player p, Team club, DateOnly on, double salaryScale, Finance fin, bool renewal)
+    public static ContractDemand Demand(Player p, Team club, DateOnly on, double salaryScale, Finance fin, bool renewal, long floor = 0)
     {
-        double wage = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin) * salaryScale;
+        double wage = Math.Max(ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin) * salaryScale, floor);
         var h = p.Hidden;
         if (renewal)
         {

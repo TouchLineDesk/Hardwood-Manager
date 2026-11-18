@@ -270,7 +270,7 @@ public sealed partial class GameSession
                                        && x.t.Roster.Count > (League.Teams.Contains(x.t) ? League.Finance.RosterMin : GameWorld.RosterMinimum))
                 .OrderByDescending(x => x.p.CurrentAbility + _rng.NextDouble() * 8).Take(6)
                 .Select(x => (x.p, x.t, fee: TransferMarket.Ask(x.p, x.t, Today, ScaleOf(x.t), League.Finance),
-                              wage: ContractTalks.Demand(x.p, buyer, Today, scale, League.Finance, false)))
+                              wage: ContractTalks.Demand(x.p, buyer, Today, scale, League.Finance, false, floor: FloorAt(x.p, buyer))))
                 .FirstOrDefault(x => x.fee <= buyer.Money.TransferBudget && x.wage.Wage <= Budgets.Room(buyer)
                                      && TransferMarket.WontJoin(x.p, ScaleOf(x.t), scale, Today) == null);
             if (pick.p == null) continue;
@@ -279,6 +279,12 @@ public sealed partial class GameSession
             deals++;
         }
     }
+
+    /// <summary>
+    /// H61 (run 110): the least <paramref name="p"/> takes to play for <paramref name="club"/>
+    /// (<see cref="GameWorld.AskingFloor"/>); 0 for a top-league club.
+    /// </summary>
+    private long FloorAt(Player p, Team club) => League.Teams.Contains(club) ? 0 : World.AskingFloor(p, Today);
 
     /// <summary>
     /// Each day of a window: bids for your players now and then; the computer's January deals; expired bids lapse.

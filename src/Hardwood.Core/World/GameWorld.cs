@@ -751,7 +751,10 @@ public sealed class GameWorld
                 bool testsMarket = (p.CurrentAbility >= NablCalibre && p.Age(date) <= 31 && _rng.Chance(0.12))
                                    || (stars.Contains(p) && p.Age(date) <= 31 && _rng.Chance(0.45));
                 bool clubWants = p.CurrentAbility >= clubLevel - 18 || p.Age(date) <= 23;
-                if (!testsMarket && clubWants && _rng.Chance(0.95))
+                // H61 (run 110): a player far too good for the league won't renew at its scale (Giannis re-signed in the
+                // G League for $2.35M); he goes to the pool, where the top league's free agency comes first.
+                // Checked after the club's draw, so the world reads the same random numbers as before.
+                if (!testsMarket && clubWants && _rng.Chance(0.95) && !PricedOut(p, comp, date))
                     p.Contract = NewContract(p, comp.Profile, _rng.Next(1, 4), date, summerYear);
                 else
                 {
@@ -764,6 +767,39 @@ public sealed class GameWorld
         }
         SummerStarted = summerYear;
     }
+
+    /// <summary>
+    /// H61 (run 110): the leagues open to a player for his asking floor (<see cref="ContractMarket.AskingFloor"/>): the top
+    /// league at its mean ability, and every domestic league where he counts as a local (the USA pyramid for Americans).
+    /// </summary>
+    /// Worked out once per nationality and kept until the season or the summer moves on (the summer's refill asks it for
+    /// every player in the pool at every pick).
+    public IReadOnlyList<(double Level, double Scale)> Options(Player p)
+    {
+        var stamp = (Nabl.Season, SummerStarted, SummerEnded, Competitions.Count, Levels.Count);
+        if (stamp != _optionsStamp) { _options.Clear(); _optionsStamp = stamp; }
+        if (_options.TryGetValue(p.Nationality, out var list)) return list;
+        list = new List<(double, double)>();
+        var top = Nabl.Teams.SelectMany(t => t.Roster).Select(x => (double)x.CurrentAbility).DefaultIfEmpty(0).Average();
+        list.Add((top, 1.0));
+        foreach (var c in Competitions)
+            if (c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Count > 0 && Levels.TryGetValue(c.Key, out var level)
+                && (c.Profile.LocalNationalities.Length > 0 ? c.Profile.LocalNationalities.Contains(p.Nationality) : c.Profile.Country == p.Nationality))
+                list.Add((level, c.Profile.SalaryScale));
+        return _options[p.Nationality] = list;
+    }
+    private readonly Dictionary<string, List<(double Level, double Scale)>> _options = new();
+    private (int, int, int, int, int) _optionsStamp;
+
+    /// <summary>H61 (run 110): the least this player takes to play below the top league.</summary>
+    public long AskingFloor(Player p, DateOnly on) => ContractMarket.AskingFloor(p, on, Options(p));
+
+    /// <summary>
+    /// H61 (run 110): would this player turn down a deal in <paramref name="comp"/>? Yes when his asking floor (from the
+    /// best league open to him) is more than <paramref name="comp"/> pays a player of his level.
+    /// </summary>
+    public bool PricedOut(Player p, WorldCompetition comp, DateOnly on) =>
+        comp.Profile.Kind == CompetitionKind.Domestic && AskingFloor(p, on) > Salary(p, comp.Profile, on);
 
     /// <summary>A player a club lost this summer: his level and whether he filled an import slot. Clubs replace like for like.</summary>
     public sealed record Departure(int Ca, bool Import);
@@ -845,6 +881,7 @@ public sealed class GameWorld
                     .Where(p => p.Age(date) <= 33 && p.CurrentAbility >= need.Ca - window && p.CurrentAbility <= need.Ca + window)
                     .Where(p => p.Age(date) >= comp.Profile.MinAge)
                     .Where(p => locals.Contains(p.Nationality) || (importRoom && need.Import))
+                    .Where(p => !PricedOut(p, comp, date)) // H61 (run 110): a star won't sign for the league's scale
                     .OrderBy(p => Math.Abs(p.CurrentAbility - need.Ca) + _rng.NextDouble() * 6)
                     .FirstOrDefault();
                 if (pick != null && _rng.Chance(comp.Profile.MinAge > 0 ? 0.95 : 0.7))
@@ -880,7 +917,7 @@ public sealed class GameWorld
             {
                 int target = ExpectedCa(comp.Profile, team, team.Roster.Count);
                 var pick = freeAgents.Where(p => p.Age(date) <= 33 && p.Age(date) >= comp.Profile.MinAge && Math.Abs(p.CurrentAbility - target) <= 10
-                        && LocalsOf(comp.Profile, club).Contains(p.Nationality)).OrderBy(p => Math.Abs(p.CurrentAbility - target)).FirstOrDefault();
+                        && LocalsOf(comp.Profile, club).Contains(p.Nationality) && !PricedOut(p, comp, date)).OrderBy(p => Math.Abs(p.CurrentAbility - target)).FirstOrDefault();
                 if (pick != null)
                 {
                     freeAgents.Remove(pick); pick.TeamId = team.Id;
@@ -905,7 +942,8 @@ public sealed class GameWorld
             {
                 int target = ExpectedCa(myComp.Profile, team, team.Roster.Count);
                 var pick = freeAgents.Where(p => p.Age(date) <= 33 && p.Age(date) >= myComp.Profile.MinAge && Math.Abs(p.CurrentAbility - target) <= 10
-                        && LocalsOf(myComp.Profile, club).Contains(p.Nationality) && (p.DraftRightsTeamId == null || p.DraftRightsTeamId == mine))
+                        && LocalsOf(myComp.Profile, club).Contains(p.Nationality) && (p.DraftRightsTeamId == null || p.DraftRightsTeamId == mine)
+                        && !PricedOut(p, myComp, date))
                     .OrderBy(p => Math.Abs(p.CurrentAbility - target)).ThenBy(p => p.Id).FirstOrDefault();
                 Player signing;
                 if (pick != null)
