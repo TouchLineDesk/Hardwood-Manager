@@ -182,7 +182,7 @@ public sealed partial class PlayerViewModel : PageViewModel
             new("Potential", Scouting.Potential(p, k).ToString(), Scouting.Potential(p, k).ToString() == Scouting.Ability(p, k).ToString() ? "at his peak" : "", "team"),
         };
         if (p.Contract is { } c)
-            chips.Add(new("Salary", Money(c.Salary), c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} left{(c.TeamOption ? ", team option" : "")}", c.Years <= 0 ? "warn" : ""));
+            chips.Add(new("Salary", Money(c.Salary), c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} left{(c.TeamOption ? ", team option" : "")}{(c.RelegationRelease ? ", relegation release" : "")}", c.Years <= 0 ? "warn" : ""));   // K1 (run 111)
         else chips.Add(new("Contract", "None", "free agent", "warn"));
         if (p.Injury is { } inj && inj.IsOut(s.Today))
             chips.Add(new("Status", $"Out {inj.DaysOut(s.Today)}d", $"{inj.Name}, back {inj.ReturnDate:MMM d}", "bad"));

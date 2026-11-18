@@ -23,6 +23,14 @@ public sealed class ClubFinance
     public int ParachuteYears { get; set; }
     /// <summary>The part of this season's parachute carried over from an earlier relegation that hadn't finished paying (#363): a club that drops twice keeps it.</summary>
     public long ParachuteCarried { get; set; }
+    /// <summary>K1 (run 111): EPL-style parachutes are shares of the media money of the league the club left
+    /// (<see cref="Season.Budgets.ParachuteShares"/>). The base it was set from (0 = an older save's half-the-lost-revenue
+    /// parachute, which keeps halving until it runs out) and which year of the schedule is being paid (1-based).</summary>
+    public long ParachuteBase { get; set; }
+    public int ParachuteYear { get; set; }
+    /// <summary>K1 (run 111): seasons the club has played at its current level (set to 0 when it moves, +1 each summer), so a
+    /// club that goes straight back down after one season up gets the short parachute. Older saves start at 5.</summary>
+    public int SeasonsAtLevel { get; set; } = 5;
     /// <summary>Deep in debt (balance below half a season's revenue): no transfer fees until it recovers.</summary>
     public bool Embargo { get; set; }
 

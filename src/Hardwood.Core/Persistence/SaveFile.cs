@@ -25,10 +25,12 @@ public sealed class SaveFile
     /// 11: college basketball (programs, season and history in world_meta; players with status 'college') ·
     /// 12: college recruiting (decision #162): high-school prospects (status 'college', no team) with their recruiting
     /// profiles, walk-ons and 15-man rosters in the college world_meta row. Format-11 careers keep the old college model.
+    /// 13: relegation release clauses on contracts (K1, run 111); older saves give one to the top league's 60 biggest deals
+    /// and to every player who would ask for one today.
     /// Bump it whenever the format changes, add a sample save of the old format to tests/Hardwood.Tests/SaveFixtures,
     /// and make sure Load upgrades it (SaveCompatibilityTests loads every sample).
     /// </summary>
-    public const int SchemaVersion = 12;
+    public const int SchemaVersion = 13;
     private readonly string _path;
     /// <summary>Draft prospects found in the last Load (an offseason in progress).</summary>
     public List<Player> LoadedProspects { get; } = new();
@@ -247,8 +249,9 @@ public sealed class SaveFile
                 ("$loss", inj.AttributeLoss), ("$cur", ReferenceEquals(inj, p.Injury) ? 1 : 0));
 
         if (p.Contract is { } c)
-            Exec(conn, "INSERT INTO contract(player_id, years, salary, start_season, team_option, player_option, buyout) VALUES($pid, $y, $s, $ss, $to, $po, $bo)",
-                ("$pid", p.Id), ("$y", c.Years), ("$s", c.Salary), ("$ss", c.StartSeason), ("$to", c.TeamOption ? 1 : 0), ("$po", c.PlayerOption ? 1 : 0), ("$bo", c.Buyout));
+            Exec(conn, "INSERT INTO contract(player_id, years, salary, start_season, team_option, player_option, buyout, relegation_release) VALUES($pid, $y, $s, $ss, $to, $po, $bo, $rr)",
+                ("$pid", p.Id), ("$y", c.Years), ("$s", c.Salary), ("$ss", c.StartSeason), ("$to", c.TeamOption ? 1 : 0), ("$po", c.PlayerOption ? 1 : 0), ("$bo", c.Buyout),
+                ("$rr", c.RelegationRelease ? 1 : 0));
     }
 
     // ------------------------------------------------------------------------------------------
@@ -322,13 +325,14 @@ public sealed class SaveFile
         var contracts = new Dictionary<int, Contract>();
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT player_id, years, salary, start_season, team_option, player_option, buyout FROM contract";
+            cmd.CommandText = "SELECT player_id, years, salary, start_season, team_option, player_option, buyout, relegation_release FROM contract";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 contracts[r.GetInt32(0)] = new Contract
                 {
                     Years = r.GetInt32(1), Salary = r.GetInt64(2), StartSeason = r.GetInt32(3), TeamOption = r.GetInt32(4) == 1, PlayerOption = r.GetInt32(5) == 1,
                     Buyout = r.IsDBNull(6) ? 0 : r.GetInt64(6),
+                    RelegationRelease = !r.IsDBNull(7) && r.GetInt32(7) == 1,
                 };
         }
 
@@ -476,6 +480,8 @@ public sealed class SaveFile
             while (r.Read())
                 league.History.First(h => h.Season == r.GetInt32(0)).Records.Add((r.GetInt32(1), r.GetInt32(2), r.GetInt32(3)));
         }
+        // K1 (run 111): a save from before format 13 has no release clauses; the top league's biggest deals get them.
+        if (UpgradedFrom is < 13) ContractMarket.GrantReleaseClauses(league);
         return league;
     }
 
@@ -530,7 +536,7 @@ public sealed class SaveFile
             CREATE INDEX IF NOT EXISTS ix_player_team ON player(team_id);
             CREATE TABLE IF NOT EXISTS injury(player_id INTEGER, name TEXT, severity INTEGER, occurred TEXT, return_date TEXT, attr_loss INTEGER, current INTEGER);
             CREATE INDEX IF NOT EXISTS ix_injury_player ON injury(player_id);
-            CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER, buyout INTEGER);
+            CREATE TABLE IF NOT EXISTS contract(player_id INTEGER PRIMARY KEY, years INTEGER, salary INTEGER, start_season INTEGER, team_option INTEGER, player_option INTEGER, buyout INTEGER, relegation_release INTEGER);
             CREATE TABLE IF NOT EXISTS season_history(season INTEGER PRIMARY KEY, champion_team_id INTEGER, runner_up_team_id INTEGER, mvp_player_id INTEGER, scoring_leader_player_id INTEGER, finals_mvp_player_id INTEGER, awards_json TEXT);
             CREATE TABLE IF NOT EXISTS career(player_id INTEGER PRIMARY KEY, json TEXT);
             CREATE TABLE IF NOT EXISTS staff(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, birth_date TEXT, role INTEGER, coaching INTEGER, development INTEGER, fitness INTEGER, medical INTEGER, scouting INTEGER, reputation INTEGER, team_id INTEGER, salary INTEGER, years INTEGER);
@@ -569,6 +575,8 @@ public sealed class SaveFile
             while (r.Read()) contractCols.Add(r.GetString(1));
         }
         if (contractCols.Count > 0 && !contractCols.Contains("buyout")) Exec(conn, "ALTER TABLE contract ADD COLUMN buyout INTEGER");
+        // v13: relegation release clauses (K1, run 111); Load grants them to an older save's biggest deals.
+        if (contractCols.Count > 0 && !contractCols.Contains("relegation_release")) Exec(conn, "ALTER TABLE contract ADD COLUMN relegation_release INTEGER");
         // v7: full tactics as JSON on each team.
         var teamCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var cmd = conn.CreateCommand())

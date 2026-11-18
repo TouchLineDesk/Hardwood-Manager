@@ -6,6 +6,7 @@ plays a few days and saves again, so a real-world career can never silently stop
 | File | Format | Made by |
 |---|---|---|
 | real-v12.hwsave | 12 | v0.73.0 code (run 46): a real-world career, `GameSession.NewGame(seed 2026, team 5)` (the Toronto Raptors) advanced 12 days |
+| real-v13.hwsave | 13 | v0.108.0 code (run 111): the same career (seed 2026, team 5, 12 days), with relegation release clauses on contracts |
 | madeup-v2.hwsave | 2 | commit 35a844e (phase 5, v0.5.0): a made-up (NABL) career, kept only to check that it is refused |
 
 **The made-up world was removed in v0.74.0** (Danny's D61 B, #478). Made-up saves (formats 2–12, the NABL) no longer

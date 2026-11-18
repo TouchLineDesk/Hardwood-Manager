@@ -162,6 +162,8 @@ public static class RealPlayers
         }
         // The real record book, with LeBron's id on his career points (#225).
         RealRecordChase.Seed(league.Records, ids);
+        // K1 (run 111): the biggest real deals carry a relegation release clause.
+        Hardwood.Core.Season.ContractMarket.GrantReleaseClauses(league);
     }
 
     /// <summary>His real deal (#217): this season's salary, for every season the contracts page lists. Null if the

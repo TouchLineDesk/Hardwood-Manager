@@ -96,6 +96,12 @@ public sealed partial class GameSession
         return $"{p.Name} could earn far more in a bigger league, so he won't play in the {HumanLeague!.Profile.Name} for its usual wage: he wants at least {Budgets.Money(floor)} a year.";
     }
 
+    /// <summary>K1 (run 111): in the top league, a star's deal includes a relegation release clause; the talks say so.</summary>
+    public string? ReleaseClauseNote(Player p) =>
+        InNabl && ContractMarket.AsksForReleaseClause(p)
+            ? $"His deal will include a relegation release clause: if {HumanTeam.TheFullName} go down, he can leave on a free."
+            : null;
+
     /// <summary>A player's demand of your club (fixed for the length of the talks).</summary>
     public ContractDemand DemandOf(Player p)
     {
@@ -257,7 +263,7 @@ public sealed partial class GameSession
             return;
         }
         League.FreeAgents.RemoveAll(x => x.Id == p.Id);   // H28: every entry, never one of two
-        p.Contract = InNabl ? new Contract { Years = years, Salary = wage, StartSeason = ContractStart }
+        p.Contract = InNabl ? new Contract { Years = years, Salary = wage, StartSeason = ContractStart, RelegationRelease = ContractMarket.AsksForReleaseClause(p) }
                             : GameWorld.ContractAt(p, wage, years, ContractDate, ContractStart);
         p.TeamId = team.Id;
         p.DraftRightsTeamId = null;

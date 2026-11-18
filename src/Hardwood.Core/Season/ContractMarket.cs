@@ -40,6 +40,35 @@ public static class ContractMarket
     /// <summary>The share of his best option's wage a player asks of any other league.</summary>
     public const double OptionShare = 0.75;
 
+    /// <summary>
+    /// K1 (run 111, Danny's Nov 17 decision): a relegation release clause is a contract term the very best players ask for in
+    /// the top league (about its top 15%: CA <see cref="ReleaseClauseCa"/>+), and a few ambitious near-stars too. The clause
+    /// lets him leave on a free if his club goes down.
+    /// </summary>
+    public static bool AsksForReleaseClause(Player p) =>
+        p.CurrentAbility >= ReleaseClauseCa || (p.Hidden.Ambition >= 17 && p.CurrentAbility >= ReleaseClauseCa - 10);
+
+    /// <summary>
+    /// K1 (run 111): deals already running when the clause arrives (a new real-world career, or a save from before format 13):
+    /// the top <see cref="ReleaseClauseTopDeals"/> deals in the top league by salary carry it, and so does anyone who would
+    /// ask for it today. Nobody else.
+    /// </summary>
+    public static int GrantReleaseClauses(League top)
+    {
+        var signed = top.Teams.SelectMany(t => t.Roster).Where(p => p.Contract != null).ToList();
+        var topDeals = signed.OrderByDescending(p => p.Contract!.Salary).ThenBy(p => p.Id).Take(ReleaseClauseTopDeals).ToHashSet();
+        int n = 0;
+        foreach (var p in signed)
+            if (topDeals.Contains(p) || AsksForReleaseClause(p)) { p.Contract!.RelegationRelease = true; n++; }
+        return n;
+    }
+
+    /// <summary>How many of the top league's biggest running deals carry a release clause at the start (K1 design, part 2).</summary>
+    public const int ReleaseClauseTopDeals = 60;
+
+    /// <summary>The ability from which every top-league player asks for a relegation release clause.</summary>
+    public const int ReleaseClauseCa = 148;
+
     /// <summary>How a front office values a player: today's ability plus upside, discounted for age.</summary>
     public static double Value(Player p, DateOnly on)
     {

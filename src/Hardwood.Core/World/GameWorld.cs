@@ -770,7 +770,8 @@ public sealed class GameWorld
 
     /// <summary>
     /// H61 (run 110): the leagues open to a player for his asking floor (<see cref="ContractMarket.AskingFloor"/>): the top
-    /// league at its mean ability, and every domestic league where he counts as a local (the USA pyramid for Americans).
+    /// league at its mean ability, every domestic league where he counts as a local (the USA pyramid for Americans), and the
+    /// best-paying import league abroad (run 111).
     /// </summary>
     /// Worked out once per nationality and kept until the season or the summer moves on (the summer's refill asks it for
     /// every player in the pool at every pick).
@@ -786,6 +787,12 @@ public sealed class GameWorld
             if (c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Count > 0 && Levels.TryGetValue(c.Key, out var level)
                 && (c.Profile.LocalNationalities.Length > 0 ? c.Profile.LocalNationalities.Contains(p.Nationality) : c.Profile.Country == p.Nationality))
                 list.Add((level, c.Profile.SalaryScale));
+        // K1 part 2 (run 111): the best-paying league abroad that takes imports, so a foreign star (a Belgian CA 143) doesn't ask
+        // only his home league's wage of a small club. Leagues outside the USA pyramid only: an import there is a real option.
+        var abroad = Competitions.Where(c => c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Count > 0 && c.Profile.ForeignLimit > 0
+                && !UsaPyramid.IsPyramid(c.Key) && c.Profile.Country != p.Nationality && Levels.ContainsKey(c.Key))
+            .OrderByDescending(c => c.Profile.SalaryScale).ThenBy(c => c.Key).FirstOrDefault();
+        if (abroad != null) list.Add((Levels[abroad.Key], abroad.Profile.SalaryScale));
         return _options[p.Nationality] = list;
     }
     private readonly Dictionary<string, List<(double Level, double Scale)>> _options = new();
