@@ -79,7 +79,7 @@ public sealed partial class GameSession
         foreach (var v in LiveVacancies) v.WhileEmployed = false;
         string successor = Board.NewCoachName(CareerRng(1));
         ReleaseClub(successor);
-        Post("You resigned", $"You have resigned as head coach of the {club.FullName}; {successor} takes over. "
+        Post("You resigned", $"You have resigned as head coach of {club.TheFullName}; {successor} takes over. "
             + "Clubs that change coach post their openings on the Board page, where you can apply. "
             + $"Your reputation: {Coach.Reputation:0}/100.", "Board");
         SaveNow();
@@ -182,13 +182,13 @@ public sealed partial class GameSession
         var rest = openings.Where(x => x.v.Status == "open").Select(x => x.team!).ToList();
         if (offers.Count > 0)
             Post(offers.Count == 1 ? $"Job offer: {offers[0].FullName}" : $"{offers.Count} job offers",
-                string.Join("\n", offers.Select(t => $"• {t.Owner.Name} wants you as head coach of the {t.FullName} ({ContextOf(t).Name}).")) + "\n\n"
+                string.Join("\n", offers.Select(t => $"• {t.Owner.Name} wants you as head coach of {t.TheFullName} ({ContextOf(t).Name}).")) + "\n\n"
                 + "Your season has been noticed. Accept or decline on the Board page before the new season starts; if you accept, you leave the "
                 + $"{HumanTeam.FullName} straight away." + (rest.Count > 0 ? $" {Count(rest.Count, "other job")} that would be a step up {(rest.Count == 1 ? "is" : "are")} open: apply there too." : ""), "Board");
         else if (rest.Count > 0)
             Post(rest.Count == 1 ? "A bigger job is open" : $"{rest.Count} bigger jobs are open",
                 string.Join("\n", rest.Take(6).Select(t => $"• {t.FullName} ({ContextOf(t).Name})")) + (rest.Count > 6 ? $"\n• and {rest.Count - 6} more" : "") + "\n\n"
-                + $"These clubs changed coach this summer and would be a step up from the {HumanTeam.FullName}. Apply on the Board page without leaving your job; they answer during the summer.", "Board");
+                + $"These clubs changed coach this summer and would be a step up from {HumanTeam.TheFullName}. Apply on the Board page without leaving your job; they answer during the summer.", "Board");
     }
 
     /// <summary>
@@ -209,14 +209,14 @@ public sealed partial class GameSession
                 if (rng.Chance(Board.HireChance(Coach, ContextOf(t), t)))
                 {
                     v.Status = "offered"; v.DecideOn = Today.AddDays(7);
-                    Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of the {t.FullName}. Accept or decline on the Board page"
-                        + (summer ? " before the new season starts." : " within a week.") + $" If you accept, you leave the {HumanTeam.FullName} straight away.", "Board");
+                    Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of {t.TheFullName}. Accept or decline on the Board page"
+                        + (summer ? " before the new season starts." : " within a week.") + $" If you accept, you leave {HumanTeam.TheFullName} straight away.", "Board");
                 }
                 else
                 {
                     v.Status = "rejected";
                     t.CoachName = Successor(v, rng);
-                    Post($"{t.Abbreviation} went another way", $"{t.FullName} have hired {t.CoachName} instead. You stay with the {HumanTeam.FullName}.", "Board");
+                    Post($"{t.Abbreviation} went another way", $"{t.FullName} have hired {t.CoachName} instead. You stay with {HumanTeam.TheFullName}.", "Board");
                 }
             }
             else if (v.Status == "offered" && !summer && v.DecideOn <= Today) DeclineOffer(v.TeamId);
@@ -239,7 +239,7 @@ public sealed partial class GameSession
             if (rng.Chance(Board.HireChance(Coach, ContextOf(t), t)))
             {
                 v.Status = "offered"; v.DecideOn = Today.AddDays(7);
-                Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of the {t.FullName}. Accept or decline on the Board page before the new season starts.", "Board");
+                Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of {t.TheFullName}. Accept or decline on the Board page before the new season starts.", "Board");
             }
             else
             {
@@ -294,6 +294,6 @@ public sealed partial class GameSession
         Coach.History.Add(new JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, $"Left for {team.FullName}"));
         string successor = Board.NewCoachName(CareerRng(6));
         ReleaseClub(successor);
-        PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left the {club.FullName} for the {team.FullName}; {successor} takes over.");
+        PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left {club.TheFullName} for {team.TheFullName}; {successor} takes over.");
     }
 }

@@ -249,7 +249,7 @@ public sealed partial class GameSession
         team.DepthChart = null;
         People.PeopleEngine.Joined(p);
         if (InNabl && Offseason != null) Offseason.Report.FreeAgentSignings.Add((p, team, wage, years));
-        if (!quiet) Post($"{p.Name} signs", $"{p.Name} ({p.PrimaryPosition}, {p.Age(ContractDate)}) joins the {team.FullName}: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
+        if (!quiet) Post($"{p.Name} signs", $"{p.Name} ({p.PrimaryPosition}, {p.Age(ContractDate)}) joins {team.TheFullName}: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
     }
 
     /// <summary>Let an expiring player go: he joins the free-agent pool.</summary>

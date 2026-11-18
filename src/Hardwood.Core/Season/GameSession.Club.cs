@@ -253,6 +253,22 @@ public sealed partial class GameSession
               && !AwaitingPromotionPlayoff);
 
     /// <summary>
+    /// H80 (run 105): has this club played its last game of the season? A coach hired after that is hired for next season:
+    /// his goal, his first season and the board's review all start with the coming one. Conservative in the top league's
+    /// playoffs: only a club that missed them (and has no promotion playoff to play) counts as finished.
+    /// </summary>
+    public bool ClubSeasonOver(Team t)
+    {
+        if (Phase == SessionPhase.Offseason) return true;
+        if (Phase != SessionPhase.Postseason) return false;
+        if (World.College?.Program(t.Id) != null) return World.College.Season.ChampionId != null;
+        if (UsaPyramid.PromotionSeriesOf(World, t.Id) is { Complete: false }) return false;
+        if (League.Teams.Contains(t)) return !Postseason.Series.Any(s => s.Higher == t || s.Lower == t);
+        return World.FixturesOf(t.Id).All(x => x.fixture.Played)
+            && !World.Playing.Any(c => c.Season.Series.Any(s => !s.Complete && (s.HighId == t.Id || s.LowId == t.Id)));
+    }
+
+    /// <summary>
     /// Run 102: your tier-2 club won its division and waits for the top league's regular season to end, when its promotion
     /// playoff starts. Its season isn't over.
     /// </summary>

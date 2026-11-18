@@ -280,16 +280,16 @@ public sealed partial class BoardViewModel : PageViewModel
         ShowJobs = !s.Employed || HasVacancies;
         JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
         JobsNote = s.Employed
-            ? $"These clubs changed coach and would be a step up from the {s.HumanTeam.FullName}. Apply without leaving your job; if an offer comes and you accept it, you move at once and your history goes with you. Openings close when the new season starts."
+            ? $"These clubs changed coach and would be a step up from {s.HumanTeam.TheFullName}. Apply without leaving your job; if an offer comes and you accept it, you move at once and your history goes with you. Openings close when the new season starts."
             : "Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team."
               + (s.World.College != null ? " College programs post theirs at the end of the season." : "");
         ResignNote = !s.Employed ? "" : ConfirmingResign
-            ? $"Resign as head coach of the {s.HumanTeam.FullName}? You'll be out of work (reputation −2) and can apply for open jobs."
+            ? $"Resign as head coach of {s.HumanTeam.TheFullName}? You'll be out of work (reputation −2) and can apply for open jobs."
             : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work.";
     }
 
     partial void OnConfirmingResignChanged(bool value) { if (Session.Employed) ResignNote = value
-        ? $"Resign as head coach of the {Session.HumanTeam.FullName}? You'll be out of work (reputation −2) and can apply for open jobs."
+        ? $"Resign as head coach of {Session.HumanTeam.TheFullName}? You'll be out of work (reputation −2) and can apply for open jobs."
         : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work."; }
 
     private void RefreshFacilities()
@@ -302,7 +302,8 @@ public sealed partial class BoardViewModel : PageViewModel
         long reserve = Hardwood.Core.Season.Franchise.Reserve(t), budget = s.FacilityBudget;
         FacilityChips = new List<Hardwood.Desktop.Controls.Chip>
         {
-            new("Owner will fund", M(budget), $"keeps {M(reserve)} in the bank", budget > 0 ? "good" : ""),
+            // H67 (run 105): the reserve is a floor he won't spend below, not money he holds ("keeps $72M in the bank" beside "Bank $34M").
+            new("Owner will fund", M(budget), budget > 0 ? $"above a {M(reserve)} reserve" : $"bank under his {M(reserve)} reserve", budget > 0 ? "good" : ""),
             new("Running costs", M(Hardwood.Core.Season.Franchise.Upkeep(f, s.MyLeagueRevenue)), "a season", ""),
             new("Invested", M(f.LastInvested), "last summer", ""),
             new("Arena", $"{t.ArenaCapacity:N0}", $"seats · {f.ArenaYears} years old", f.ArenaYears >= Hardwood.Core.Season.Franchise.ArenaLife ? "warn" : "team"),

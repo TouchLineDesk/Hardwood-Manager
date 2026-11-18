@@ -187,7 +187,7 @@ public sealed partial class GameSession
         long ask = RecruitDemand(p).Wage;
         if (st.OfferWage < (long)(ask * (i.Total >= i.Need + 15 ? 0.9 : 1.0))) return null;
         st.CommittedTeamId = HumanTeam.Id; st.CommittedOn = Today;
-        string text = $"{p.Name} ({p.PrimaryPosition}, {World.College!.Program(p.TeamId ?? 0)?.FullName}) commits to the {HumanTeam.FullName}. He signs for you when the season ends: ${st.OfferWage / 1e6:F2}M a year for {st.OfferYears} year{(st.OfferYears == 1 ? "" : "s")}.";
+        string text = $"{p.Name} ({p.PrimaryPosition}, {World.College!.Program(p.TeamId ?? 0)?.FullName}) commits to {HumanTeam.TheFullName}. He signs for you when the season ends: ${st.OfferWage / 1e6:F2}M a year for {st.OfferYears} year{(st.OfferYears == 1 ? "" : "s")}.";
         // When you make the offer you see his answer on the spot; the inbox only hears about commitments that come later.
         if (announce) Post($"{p.Name} commits to you", text, "Roster");
         return text;
@@ -230,7 +230,7 @@ public sealed partial class GameSession
             st ??= board.For(p.Id);
             st.CommittedTeamId = team.Id; st.CommittedOn = Today;
             if (st.TeamId == HumanTeam.Id && (st.Visits > 0 || st.OfferWage > 0))
-                Post($"{p.Name} commits to {team.Abbreviation}", $"{p.Name} ({p.PrimaryPosition}, {c.Program(p.TeamId ?? 0)?.FullName}), whom you've been courting, has committed to the {team.FullName}. He'll sign for them when he graduates.", "Roster");
+                Post($"{p.Name} commits to {team.Abbreviation}", $"{p.Name} ({p.PrimaryPosition}, {c.Program(p.TeamId ?? 0)?.FullName}), whom you've been courting, has committed to {team.TheFullName}. He'll sign for them when he graduates.", "Roster");
         }
     }
 

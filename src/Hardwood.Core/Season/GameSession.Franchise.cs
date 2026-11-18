@@ -43,7 +43,9 @@ public sealed partial class GameSession
         var p = f.Proposals[index];
         if (f.IsBuilding(p.Kind)) return $"{Franchise.Info(p.Kind).Name} is already being built.";
         if (p.Instalment > FacilityBudget)
-            return $"The owner won't fund it now: it needs {Franchise.Money(p.Instalment)} and he'll spend {Franchise.Money(FacilityBudget)} above the {Franchise.Money(Franchise.Reserve(HumanTeam))} he keeps in the bank.";
+            return FacilityBudget > 0
+                ? $"The owner won't fund it now: it needs {Franchise.Money(p.Instalment)}, and he only spends what's above his {Franchise.Money(Franchise.Reserve(HumanTeam))} reserve ({Franchise.Money(FacilityBudget)} this summer)."
+                : $"The owner won't fund it now: it needs {Franchise.Money(p.Instalment)}, and he funds nothing until the bank ({Franchise.Money(HumanTeam.Money.Balance)}) is above his {Franchise.Money(Franchise.Reserve(HumanTeam))} reserve.";
         f.Proposals.RemoveAt(index);
         Franchise.Start(HumanTeam, p);
         f.LastNews.RemoveAt(f.LastNews.Count - 1); // the summer's news is the summer's; this one is yours
