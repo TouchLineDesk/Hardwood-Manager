@@ -344,7 +344,8 @@ public sealed partial class MainViewModel : ViewModelBase
             ? $"{hl.Profile.Name} · {(hl.Season.IsComplete ? "season over" : outText ?? hl.Season.Stage.ToLower())}"
             : s.Phase switch
         {
-            SessionPhase.Preseason => $"Preseason · opens {s.OpeningNight:MMM d}",
+                        // H96 (run 109): on opening night itself the season isn't still to open.
+            SessionPhase.Preseason => s.Today >= s.OpeningNight ? $"Opening night · {s.OpeningNight:MMM d}" : $"Preseason · opens {s.OpeningNight:MMM d}",
             SessionPhase.RegularSeason => $"Regular season {s.League.Season}-{(s.League.Season + 1) % 100:00}",
             // H90 (run 106): a top-league club in the promotion playoff isn't in the playoffs' first round.
             SessionPhase.Postseason when s.Employed && s.InNabl && Hardwood.Core.World.UsaPyramid.PromotionSeriesOf(s.World, s.HumanTeam.Id) is { Complete: false } ps

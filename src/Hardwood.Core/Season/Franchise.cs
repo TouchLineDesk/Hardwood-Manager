@@ -308,6 +308,8 @@ public static class Franchise
         return $"{what} ({pay}, {when})";
     }
 
-    public static string Money(long v) => Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:F0}M" : $"${v / 1e6:F1}M";
+    // H98 (run 109): one decimal under $100M ("$12.6M", not "$13M"), so a budget, its wages and what's left add up;
+    // a whole number drops its ".0" from $10M up ("$34M").
+    public static string Money(long v) => Math.Abs(v) >= 100_000_000 ? $"${v / 1e6:F0}M" : Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:0.#}M" : $"${v / 1e6:F1}M";
     private static long Round(double v) => (long)Math.Round(v / 100_000) * 100_000;
 }

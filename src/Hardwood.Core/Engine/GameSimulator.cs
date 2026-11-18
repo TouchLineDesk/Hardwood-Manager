@@ -9,6 +9,14 @@ namespace Hardwood.Core.Engine;
 /// </summary>
 public sealed class GameSimulator
 {
+    /// <summary>H94 (run 109): how likely a defender is to be the one who blocks a shot near the basket: his Block rating
+    /// (curved, so a 20 stands out), his position (QuickSim's C 2.6, PF 1.8, SF 0.9, guards 0.5) and his height.</summary>
+    public static double BlockWeight(Player p) =>
+        Math.Pow(Math.Max(1, p.Attributes[Attr.Block]) / 10.0, 2)
+        * (p.PrimaryPosition switch { Position.C => 2.6, Position.PF => 1.8, Position.SF => 0.9, _ => 0.5 })
+        * Math.Clamp(1 + (p.HeightCm - 203) / 15.0, 0.4, 2.5);
+
+
     private readonly EngineConfig _cfg;
 
     public GameSimulator(EngineConfig? cfg = null) => _cfg = cfg ?? EngineConfig.Default;
@@ -743,15 +751,33 @@ public sealed class GameSimulator
             // Blocks (only on missed shots inside the arc)
             bool made = _rng.Chance(pMake);
             Player? blocker = null;
-            if (!made && !zone.IsThree())
+            if (!made && !zone.IsThree() && !fouled)
             {
-                double blockRate = (zone == ShotZone.Rim ? _cfg.BlockRateRim : _cfg.BlockRateMid)
-                                   * (1 + _cfg.BlockSkillBeta * (defender.Attributes[Attr.Block] - 11) * 5);
-                if (!fouled && _rng.Chance(blockRate))
+                // H94 (run 109): most blocks come from the help, not the man guarding the shooter, so any of the five can
+                // block, weighted by his Block rating, size and position (QuickSim's weights), the man on the ball a little
+                // more (much more on a mid-range pull-up). The chance follows the likely blocker's rating. One draw, as
+                // before: the same misses are blocked or not, so nothing but the block line and its play-by-play moves.
+                var pool = def.OnCourt;
+                Span<double> w = stackalloc double[pool.Length];
+                double sum = 0, rating = 0;
+                for (int i = 0; i < pool.Length; i++)
                 {
-                    def.Line(defender).Blocks++;
-                    blocker = defender;
-                    Log($"{defender.LastName} blocks {shooter.LastName}");
+                    var p = pool[i];
+                    w[i] = BlockWeight(p) * (p == defender ? (zone == ShotZone.Rim ? _cfg.BlockOnBallRim : _cfg.BlockOnBallMid) : 1);
+                    sum += w[i]; rating += w[i] * p.Attributes[Attr.Block];
+                }
+                rating = sum > 0 ? rating / sum : defender.Attributes[Attr.Block];
+                double blockRate = (zone == ShotZone.Rim ? _cfg.BlockRateRim : _cfg.BlockRateMid)
+                                   * (1 + _cfg.BlockSkillBeta * (rating - 11) * 5);
+                double u = _rng.NextDouble();
+                if (u < blockRate)
+                {
+                    // The same draw, scaled back to 0-1, picks who.
+                    double pick = u / blockRate * sum;
+                    blocker = pool[^1];
+                    for (int i = 0; i < pool.Length; i++) { pick -= w[i]; if (pick < 0) { blocker = pool[i]; break; } }
+                    def.Line(blocker).Blocks++;
+                    Log($"{blocker.LastName} blocks {shooter.LastName}");
                 }
             }
 

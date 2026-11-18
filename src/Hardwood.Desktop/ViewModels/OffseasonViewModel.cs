@@ -272,6 +272,10 @@ public sealed partial class OffseasonViewModel : PageViewModel
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
         Instructions = o.Phase == OffseasonPhase.Draft && o.CollegeDraftOn
             ? "The college draft: one round, in the lottery's order. When you're on the clock, pick a graduate on the Draft tab; press Continue and your scouts pick for you. Free agency opens when the draft ends."
+            // H95 (run 109): by phase, not by league: a club outside the NBA (a lower tier or abroad) renews and signs free agents at
+            // once, so while its contracts are up in the re-signing step it reads both, the contract decisions first.
+            : !s.InNabl && o.Phase == OffseasonPhase.ReSigning && s.MyExpiring.Count > 0
+                ? "Contract decisions and free agency: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), and make offers to free agents, including this year's college graduates (age 23). The owner won't let you go over the wage budget. Anyone you haven't renewed by the end of the summer leaves."
             : (s.InNabl && renewing
                 ? "Contract decisions: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), or release him. Then continue to free agency."
                 : "Free agency: make offers to free agents, including this year's college graduates (age 23). Players ask more to join a weaker team, and the owner won't let you go over the wage budget.")
@@ -400,7 +404,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         OnTheClock = o.Phase == OffseasonPhase.Draft && o.OnTheClock == team;
         var mine = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == team).Select(i => i + 1).ToList();
         DraftText = OnTheClock ? $"You're on the clock with pick {o.NextPickIndex + 1}. Choose a graduate and press Draft, or press Continue and your scouts pick."
-            : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : (s.InNabl ? GameSession.NoPickReason : "You have no pick this year.") + " The draft follows contract decisions.")
+            : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : (s.InNabl ? GameSession.NoPickReason : GameSession.NoPickReasonOutsideNba) + " The draft follows contract decisions.")
             : "The draft is under way.";
         // H74 (run 106): every graduate is 23 by the rule; say so, so a page of 23-year-olds doesn't look like a bug.
         DraftText += " College players turn pro at 23 in this game, so every prospect is 23.";

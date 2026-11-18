@@ -73,6 +73,19 @@ public sealed class BracketView : Canvas
                 SetLeft(el, box.X); SetTop(el, box.Y);
                 Children.Add(el);
                 _boxes.Add((c, i, box));
+                if (NextGameLabel(cols[c].Slots[i]) is { } next)
+                {
+                    // H100 (run 109): a series under way says which game is next ("Game 7 next" at 3-3), as a tab on the box's top edge.
+                    var tab = new Border
+                    {
+                        Background = BoxBrush, BorderBrush = new SolidColorBrush(Color.Parse("#D29922")), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
+                        Padding = new Thickness(5, 0), Height = 16,
+                        Child = new TextBlock { Text = next, FontSize = 10.5, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },
+                    };
+                    tab.Measure(Size.Infinity);
+                    SetLeft(tab, box.Right - tab.DesiredSize.Width - 8); SetTop(tab, box.Y - 8);
+                    Children.Add(tab);
+                }
             }
         }
         Width = cols.Count * (BoxWidth + Gap) - Gap;
@@ -80,6 +93,10 @@ public sealed class BracketView : Canvas
         var lines = new Lines { Owner = this, Width = Width, Height = Height, IsHitTestVisible = false };
         Children.Insert(0, lines);
     }
+
+    /// <summary>H100 (run 109): "Game 7 next" for a series that has started and isn't over; null otherwise.</summary>
+    public static string? NextGameLabel(BookSeries? s) =>
+        s == null || s.Complete || s.HighWins + s.LowWins == 0 ? null : $"Game {s.HighWins + s.LowWins + 1} next";
 
     private Control Box(BookSeries? s)
     {

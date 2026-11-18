@@ -307,7 +307,8 @@ public sealed partial class BoardViewModel : PageViewModel
             // H67 (run 105): the reserve is a floor he won't spend below, not money he holds ("keeps $72M in the bank" beside "Bank $34M").
             new("Owner will fund", M(budget), budget > 0 ? $"above a {M(reserve)} reserve" : $"bank under his {M(reserve)} reserve", budget > 0 ? "good" : ""),
             new("Running costs", M(Hardwood.Core.Season.Franchise.Upkeep(f, s.MyLeagueRevenue)), "a season", ""),
-            new("Invested", M(f.LastInvested), "last summer", ""),
+            // H99 (run 109): money spent this summer reads "this summer" until the season starts.
+            new("Invested", M(f.LastInvested), s.Phase == Hardwood.Core.Season.SessionPhase.Offseason ? "this summer" : "last summer", ""),
             new("Arena", $"{t.ArenaCapacity:N0}", $"seats · {f.ArenaYears} years old", f.ArenaYears >= Hardwood.Core.Season.Franchise.ArenaLife ? "warn" : "team"),
         };
         Facilities.Clear();
