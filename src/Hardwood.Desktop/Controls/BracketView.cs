@@ -145,15 +145,18 @@ public sealed class BracketView : Canvas
 
     /// <summary>H87 (run 112): one name style for a whole bracket. Per-team labels mixed "Houston Mustangs", "Lakers" and
     /// "Indianapolis" in one G League bracket. Full names when every one fits; otherwise nicknames when they're all
-    /// distinct and none is generic ("United", "FC"); otherwise cities when they're all distinct; otherwise each team's own label.</summary>
+    /// distinct and none is generic ("United", "FC"); otherwise cities when they're all distinct; otherwise club codes.</summary>
     public static Dictionary<Team, string> BracketLabels(IReadOnlyList<Team> teams)
     {
-        static bool Generic(Team t) => t.Name.Length <= 4 || t.Name is "United" or "City" or "Athletic" or "Club" or "Basket" or "Basketball" || t.Name.EndsWith(" Club");
+        // PR #176 review: a word list, not "4 letters or fewer" (Heat, Jazz, Suns and Nets are proper nicknames).
+        static bool Generic(Team t) => t.Name is "FC" or "BC" or "SC" or "KK" or "BK" or "CB" or "AC" or "United" or "City" or "Athletic" or "Club"
+            or "Basket" or "Basketball" || t.Name.EndsWith(" Club") || t.Name.EndsWith(" Basketball");
         static bool Distinct(IEnumerable<string> xs) { var l = xs.ToList(); return l.Distinct().Count() == l.Count; }
         if (teams.All(t => t.FullName.Length <= 18)) return teams.ToDictionary(t => t, t => t.FullName);
         if (!teams.Any(Generic) && Distinct(teams.Select(t => t.Name))) return teams.ToDictionary(t => t, t => t.Name);
         if (Distinct(teams.Select(t => t.City)) && teams.All(t => t.City.Length > 0)) return teams.ToDictionary(t => t, t => t.City);
-        return teams.ToDictionary(t => t, t => Label(t, teams));
+        // Last resort, still one style: the club codes, which are unique.
+        return teams.ToDictionary(t => t, t => t.Abbreviation);
     }
 
     private Control Line(Team team, int wins, BookSeries s, int row)

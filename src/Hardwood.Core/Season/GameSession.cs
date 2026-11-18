@@ -382,6 +382,9 @@ public sealed partial class GameSession
                 ReportGame(live.Result, _liveSeries);
             }
             played.Add(live.Result);
+            // PR #176 review: the game is recorded, so it no longer "counts" as pending (LiveGameCountsInRecord); the
+            // FINAL screen reached again with Back showed 1-2 for a 1-0 team that lost.
+            _liveScheduled = null; _liveSeries = null; _liveWorld = null; _liveCollege = null;
         }
         if (Phase == SessionPhase.Postseason && Postseason != null) Postseason.AfterDay();
         return EndDay(played);
@@ -1449,7 +1452,7 @@ public sealed partial class GameSession
             Post("Transfer embargo", $"The club's debt (${-m.Balance / 1e6:F1}M) is more than half a season's revenue. The owner has frozen transfer fees until the books recover: free agents only, within the wage budget. The board is watching.", "Board");
         }
         if (Employed && m.Parachute > 0)
-            Post("Parachute payment", ParachuteNote(m) + (FirstParachuteYear(m) ? " The relegation wage cut has halved every contract." : "")
+            Post("Parachute payment", ParachuteNote(m) + (FirstParachuteYear(m) ? " The relegation wage cut has brought every contract down to the new league's scale (never below half)." : "")
                 + " Use the time to bring the payroll down to what this league pays.", "Board");
     }
 

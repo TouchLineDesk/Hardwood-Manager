@@ -36,6 +36,16 @@ public class Run112PolishTests
         var por = new Team { Id = 7, City = "Portland", Name = "Trail Blazers", Abbreviation = "POR", Division = "" };
         var nick = BracketView.BracketLabels(new[] { sas, gsw, por });
         Assert.Equal(new[] { "Spurs", "Warriors", "Trail Blazers" }, new[] { nick[sas], nick[gsw], nick[por] });
+        // PR #176 review: "Heat" and "Jazz" are proper nicknames, and two Los Angeles clubs: nicknames, not a mix.
+        var mia = new Team { Id = 8, City = "Miami", Name = "Heat", Abbreviation = "MIA", Division = "" };
+        var lac = new Team { Id = 9, City = "Los Angeles", Name = "Clippers", Abbreviation = "LAC", Division = "" };
+        var cal = new Team { Id = 10, City = "Sacramento-Valley", Name = "Kings", Abbreviation = "SAC", Division = "" };
+        var la = BracketView.BracketLabels(new[] { mia, lal, lac, cal });
+        Assert.Equal(new[] { "Heat", "Lakers", "Clippers", "Kings" }, new[] { la[mia], la[lal], la[lac], la[cal] });
+        // Nothing distinct but the codes: codes for everyone.
+        var hou2 = new Team { Id = 11, City = "Houston", Name = "Basketball Club", Abbreviation = "HBC", Division = "" };
+        var codes = BracketView.BracketLabels(new[] { hou, hou2, ind });
+        Assert.Equal(new[] { "HOU", "HBC", "IND" }, new[] { codes[hou], codes[hou2], codes[ind] });
         // All short: full names.
         var full = BracketView.BracketLabels(new[] { sas, lal });
         Assert.Equal("San Antonio Spurs", full[sas]);
@@ -61,6 +71,27 @@ public class Run112PolishTests
         Assert.Equal("For you: training quality +0.4", Franchise.ClubEffect(FacilityKind.Practice, 1.0));
         Assert.Contains("more injuries", Franchise.ClubEffect(FacilityKind.Medical, -1));
         Assert.StartsWith("Level with the league", Franchise.ClubEffect(FacilityKind.Analytics, 0.02));
+        Assert.StartsWith("Level with the league", Franchise.ClubEffect(FacilityKind.Medical, 1 / 15.0));   // never "about 0%"
+    }
+
+    [Fact]
+    public void A_league_game_counts_until_it_is_recorded_and_not_after()
+    {
+        // H106 and PR #176's review: the top bar adds the game on the FINAL screen only while it isn't yet recorded,
+        // so going Back to it after Continue doesn't count it twice.
+        var s = GameSession.NewGame(2026, 3, savePath: null);
+        Assert.False(s.LiveGameCountsInRecord);
+        for (int d = 0; d < 30 && !s.HumanPlaysToday; d++) s.AdvanceDay();
+        Assert.True(s.HumanPlaysToday, "the club plays within a month");
+        var before = s.MyRecord.Games;
+        var (live, played) = s.BeginLiveDay();
+        Assert.NotNull(live);
+        while (live!.Step()) { }
+        Assert.True(s.LiveGameCountsInRecord, "a regular-season game on the FINAL screen counts");
+        Assert.Equal(before, s.MyRecord.Games);
+        s.FinishLiveDay(live, played);
+        Assert.False(s.LiveGameCountsInRecord, "once recorded, it isn't added again");
+        Assert.Equal(before + 1, s.MyRecord.Games);
     }
 
     [Fact]

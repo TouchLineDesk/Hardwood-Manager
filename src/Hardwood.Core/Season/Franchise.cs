@@ -46,7 +46,8 @@ public static class Franchise
     public static string ClubEffect(FacilityKind k, double edge)
     {
         string S(double v, string f) => (v >= 0 ? "+" : "") + v.ToString(f, System.Globalization.CultureInfo.InvariantCulture);
-        if (Math.Abs(edge) < 0.05) return "Level with the league's average: no edge either way";
+        // PR #176 review: an edge of 1/15 rounded to "+0.0"; anything under a fifth of a level reads as level.
+        if (Math.Abs(edge) < 0.2) return "Level with the league's average: no edge either way";
         return k switch
         {
             FacilityKind.Practice => $"For you: training quality {S(0.4 * edge, "0.0")}",
