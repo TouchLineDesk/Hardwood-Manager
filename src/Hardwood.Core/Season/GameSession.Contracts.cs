@@ -79,11 +79,28 @@ public sealed partial class GameSession
     private readonly Dictionary<int, (ContractDemand opening, int round)> _talks = new();
     private readonly HashSet<int> _talksOver = new();
 
+    /// <summary>
+    /// H61 (run 110): the least this player takes to play in your league (<see cref="GameWorld.AskingFloor"/>, from the
+    /// best league open to him); 0 in the top league and at college.
+    /// </summary>
+    public long MyAskingFloor(Player p) => InNabl || InCollege ? 0 : World.AskingFloor(p, ContractDate);
+
+    /// <summary>
+    /// Why his ask is above your league's usual wage for his level, for the talks screen; null when it isn't.
+    /// </summary>
+    public string? AskingFloorNote(Player p)
+    {
+        long floor = MyAskingFloor(p);
+        long scaled = (long)(ContractMarket.MarketSalary(p.CurrentAbility, p.Age(ContractDate), League.Finance) * MySalaryScale);
+        if (floor <= scaled) return null;
+        return $"{p.Name} could earn far more in a bigger league, so he won't play in the {HumanLeague!.Profile.Name} for its usual wage: he wants at least {Budgets.Money(floor)} a year.";
+    }
+
     /// <summary>A player's demand of your club (fixed for the length of the talks).</summary>
     public ContractDemand DemandOf(Player p)
     {
         if (_talks.TryGetValue(p.Id, out var t)) return t.opening;
-        var d = ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id);
+        var d = ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id, floor: MyAskingFloor(p));
         _talks[p.Id] = (d, 0);
         return d;
     }
@@ -91,7 +108,7 @@ public sealed partial class GameSession
     /// <summary>A player's current ask of your club, without opening talks (for lists).</summary>
     public ContractDemand PeekDemand(Player p) =>
         _talks.TryGetValue(p.Id, out var t) ? t.opening
-        : ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id);
+        : ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id, floor: MyAskingFloor(p));
 
     /// <summary>
     /// Bug hunt H43/H44 (run 81): why waiving, trading or accepting bids is closed to you, or null. Out of work, the

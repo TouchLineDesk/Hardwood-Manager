@@ -121,7 +121,7 @@ public sealed partial class GameSession
 
     /// <summary>What he'd ask of your club as a first contract.</summary>
     public ContractDemand RecruitDemand(Player p) =>
-        ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: false);
+        ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: false, floor: MyAskingFloor(p));
 
     /// <summary>
     /// Offer terms for when he graduates. He commits now if his interest is high enough and the money is right (his ask,

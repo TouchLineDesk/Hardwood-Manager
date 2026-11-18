@@ -33,11 +33,12 @@ public static class ContractTalks
 
     /// <summary>
     /// What the player asks of this club. <paramref name="salaryScale"/> is the league's wage level (1 for the NABL).
-    /// <paramref name="renewal"/>: he's already at the club.
+    /// <paramref name="renewal"/>: he's already at the club. <paramref name="floor"/>: the least he takes in this league
+    /// (<see cref="ContractMarket.AskingFloor"/>; 0 in the top league).
     /// </summary>
-    public static ContractDemand Demand(Player p, Team club, DateOnly on, double salaryScale, Finance fin, bool renewal)
+    public static ContractDemand Demand(Player p, Team club, DateOnly on, double salaryScale, Finance fin, bool renewal, long floor = 0)
     {
-        double wage = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin) * salaryScale;
+        double wage = Math.Max(ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), fin) * salaryScale, floor);
         var h = p.Hidden;
         if (renewal)
         {
@@ -48,7 +49,9 @@ public static class ContractTalks
         if (gap > 8) wage *= 1 + Math.Min(0.2, (gap - 8) / 100.0);       // too good for this team
         wage *= 1 + Math.Max(0, h.Ambition - 12) * 0.01;                 // ambitious: wants top money
         long min = (long)(fin.MinSalary * salaryScale);
-        return new ContractDemand(Math.Max(min, Round(wage)), PreferredYears(p, on));
+        // Review (run 110): the floor holds after a loyal player's renewal discount too, so the ask never reads under the
+        // "at least $X" the talks panel shows.
+        return new ContractDemand(Math.Max(Math.Max(min, Round(wage)), floor), PreferredYears(p, on));
     }
 
     /// <summary>

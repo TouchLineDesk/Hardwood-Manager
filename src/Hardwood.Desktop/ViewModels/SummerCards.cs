@@ -73,6 +73,7 @@ public static class SummerCards
         var know = Scouting.Knowledge(s.HumanTeam, p);
         var why = s.CannotTalk(p);
         var fit = why != null ? (Blocked(why), Grey, why) : Fit(d.Wage, room);
+        if (why == null && s.AskingFloorNote(p) is { } floor) fit = (fit.Item1, fit.Item2, floor + " " + fit.Item3);   // H61 (run 110)
         return new FreeAgentRow
         {
             Player = p, Age = p.Age(date), Knowledge = know, Ask = d, Graduate = graduate,
