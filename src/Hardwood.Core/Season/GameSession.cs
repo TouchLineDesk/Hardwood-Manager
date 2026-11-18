@@ -103,7 +103,7 @@ public sealed partial class GameSession
         if (World.College != null) Jobs.Board.EnsureOwnersAndCoaches(World.College.Programs, seed);
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
-        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0);
+        Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
         BuildSeason();
     }
 
@@ -685,9 +685,15 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: newly promoted, avoid the relegation places" : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} wins)."
+            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
+
+    /// <summary>K7 (run 115): a top-league club's last place is decided by the promotion playoff (run 102), not straight relegation.</summary>
+    /// <summary>The top league sends clubs down only when the world has a tier 2 (as <see cref="GoingDown"/>).</summary>
+    private bool TopLeagueDrops() => World.Competitions.Any(c => c.Key == UsaPyramid.Tier2);
+
+    private bool PromotionPlayoffFor(Team team) => League.Teams.Contains(team) && UsaPyramid.PlaysPromotion(World, League);
 
     /// <summary>A college program's boss is its athletic director (C2): the board's wording, translated.</summary>
     private string Boss(string text) => !InCollege ? text
@@ -975,7 +981,8 @@ public sealed partial class GameSession
         Job.HiredOn = Today;
         Job.HiredSeason = forSeason;
         Job.History.Clear();
-        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0);
+        Job.RebuildUsed = false;
+        Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0, PromotionPlayoffFor(team), TopLeagueDrops());
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
         SyncManagedIds();
@@ -1311,7 +1318,8 @@ public sealed partial class GameSession
                 {
                     bool up = MyLevel > 0 && MyLevel < levelBefore;
                     // A relegated club's first season down is a rebuild: no mid-season sacking (critic review #5).
-                    if (!up) { Job.ProtectedSeason = League.Season; Job.ProtectedReason = "rebuild"; }
+                    // K7 (run 115): once per job; a second relegation is no free season.
+                    if (!up && !Job.RebuildUsed) { Job.ProtectedSeason = League.Season; Job.ProtectedReason = "rebuild"; Job.RebuildUsed = true; }
                     Post(up ? $"Promoted to {HumanLeagueName}!" : $"Relegated to {HumanLeagueName}",
                         up ? $"{HumanTeam.TheFullNameCap} go up from {leagueBefore} to {HumanLeagueName}. The owner has set new budgets and expectations for life at the higher level."
                            : $"{HumanTeam.TheFullNameCap} drop from {leagueBefore} to {HumanLeagueName}. Wages already agreed don't fall with you; the owner expects you to bounce back.", "Board");
@@ -1443,7 +1451,7 @@ public sealed partial class GameSession
             if (!setThisSummer)
             {
                 Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
-                    MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0);
+                    MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
                 PostExpectations();
             }
             Job.WarningLevel = 0;

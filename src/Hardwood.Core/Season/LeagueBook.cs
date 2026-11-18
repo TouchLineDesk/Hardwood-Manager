@@ -219,7 +219,7 @@ public sealed class LeagueBook
             Rules = new List<(string, string)>
             {
                 ("Level", lg.Teams.Count == UsaPyramid.ProSize
-                    ? $"The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops into the same division of {The(Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name)}, and that division's winner takes its place. Divisions keep their clubs from season to season."
+                    ? NablLevel(UsaPyramid.PlaysPromotion(s.World, lg), Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name)
                     : $"The top league in the USA, in six divisions. The last team in each division drops to {Hardwood.Core.World.Competitions.Get(Hardwood.Core.World.UsaPyramid.Tier2).Name}; its division winners come up."),
                 ("Game", RulesText(lg.Rules)),
                 ("Season", $"{lg.Teams.Count} teams in two conferences of {lg.Teams.Select(t => t.Division).Distinct().Count() / 2} divisions; 82 games from late October to mid-April."),
@@ -325,6 +325,14 @@ public sealed class LeagueBook
         if (level == 4 && divisionSize > 1 && rankInDivision == divisionSize) return "Relegation";
         return null;
     }
+
+    /// <summary>
+    /// K6 (run 115): the top league's Level line. Since run 102 its 4th-placed clubs play the tier-2 division winners for their
+    /// place (best of three, the tier-2 club at home in Games 1 and 3); an older layout keeps the straight swap.
+    /// </summary>
+    public static string NablLevel(bool promotionPlayoff, string tier2) => promotionPlayoff
+        ? $"The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division plays the winner of the same division of {The(tier2)} in a promotion playoff, best of three with the {tier2} club at home in Games 1 and 3. The winner plays in this league next season; the loser in {The(tier2)}. Divisions keep their clubs from season to season."
+        : $"The top league in the USA: two conferences of four regional divisions of four. The 4th-placed team in each division drops into the same division of {The(tier2)}, and that division's winner takes its place. Divisions keep their clubs from season to season.";
 
     /// <summary>"the NBA G League", but "The Championship" as it is.</summary>
     private static string The(string name) => name.StartsWith("The ") ? name : "the " + name;

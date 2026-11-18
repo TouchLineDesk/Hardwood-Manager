@@ -164,7 +164,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Green: playoffs · gold: third-place tournament · red: relegation · blue: promotion" Classes="muted" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding HasTables}"/>
+              <TextBlock Text="Green: playoffs · gold: third-place tournament · red: relegation (the top league: promotion playoff) · blue: promotion" Classes="muted" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding HasTables}"/>
               <ItemsControl ItemsSource="{Binding ImpactLines}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:StudioSay">

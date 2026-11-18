@@ -35,8 +35,13 @@ public sealed class Expectations
     /// <summary>The club and league the goal was set for (to tell a promotion from a normal summer).</summary>
     public int TeamId { get; set; }
     public string League { get; set; } = "";
-    /// <summary>Newly promoted: the aim is to stay up.</summary>
+    /// <summary>Newly promoted, or (K7, run 115) projected last in a division that sends its last club down: the aim is to stay up.</summary>
     public bool Survive { get; set; }
+    /// <summary>
+    /// K7 (run 115): what "stay up" means for this club ("finish above last in the Mojave division, or win the promotion playoff
+    /// to keep your place"). Null in older saves and for a promoted club that isn't projected last (<see cref="Board.SurviveText"/>).
+    /// </summary>
+    public string? SurviveNote { get; set; }
     /// <summary>What the club actually achieved (set at the season review), so next season's goal can follow it.</summary>
     public SeasonGoal? Achieved { get; set; }
     /// <summary>H70 (run 114): the season's wins, set at the review with <see cref="Achieved"/> (null in older saves).</summary>
@@ -82,6 +87,11 @@ public sealed class JobState
     public int ProtectedSeason { get; set; }
     /// <summary>Why <see cref="ProtectedSeason"/> was granted: "credit" (beat the target) or "rebuild" (relegated).</summary>
     public string ProtectedReason { get; set; } = "";
+    /// <summary>
+    /// K7 (run 115): the protected rebuild after a relegation is granted once per job. A second relegation is not another free
+    /// season. Reset on a new job; older saves load without it (false).
+    /// </summary>
+    public bool RebuildUsed { get; set; }
 }
 
 public sealed record ConfidencePoint(DateOnly Date, double Confidence);
@@ -253,7 +263,52 @@ public static class Board
     /// goal from the squad moves at most one step from last season's, up or down, and the win target at most 8 (of 82) either way.
     /// A 3rd-place finish no longer turns "reach the final" into "win the title" overnight.
     /// </summary>
-    public static Expectations NextExpectations(LeagueContext ctx, Team team, int season, Expectations? previous, string leagueKey, int level, int previousLevel)
+    public static Expectations NextExpectations(LeagueContext ctx, Team team, int season, Expectations? previous, string leagueKey, int level, int previousLevel,
+        bool promotionPlayoff = false, bool topLeagueDrops = true)
+    {
+        var e = NextExpectationsCore(ctx, team, season, previous, leagueKey, level, previousLevel);
+        // K7 (run 115): a club the board expects to finish last in a division that sends its last club down is set to stay up,
+        // and told what that takes. The Kings (12-70) were set "develop the squad, around 22 wins" and went down without the
+        // stake ever being named.
+        // The stake replaces the ladder's one-step rules on purpose: a club that sold its squad is told the truth this summer,
+        // and next summer's goal starts again from "develop" (review of #179). A top league with no tier below drops nobody.
+        if ((!ctx.IsNabl || topLeagueDrops) && AtRisk(ctx, team))
+        {
+            bool promoted = e.Survive;
+            e.Survive = true;
+            e.Goal = SeasonGoal.Develop;
+            e.Demands.Remove(Demand.MakePlayoffs);
+            // Review of #179: an ambitious owner's playoff-level target (43 of 82) doesn't belong to a survival goal.
+            e.TargetWins = Math.Min(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.4));
+            string div = $"the {team.Division} division";
+            e.SurviveNote = (promoted ? "newly promoted: " : "")
+                + (ctx.IsNabl && promotionPlayoff ? $"finish above last in {div}, or win the promotion playoff to keep your place" : $"finish above last in {div}");
+        }
+        return e;
+    }
+
+    /// <summary>What "stay up" means for a club set to survive (K7): its own note, or the promoted club's general aim.</summary>
+    public static string SurviveText(Expectations e) => e.SurviveNote ?? "newly promoted, avoid the relegation places";
+
+    /// <summary>
+    /// K7 (run 115): does this league send the last club in each division down? The top league in the division format (to tier 2,
+    /// directly or through the promotion playoff) and the national tiers 2-4; nobody goes down from tier 5, college or abroad.
+    /// </summary>
+    public static bool Relegates(LeagueContext ctx) => ctx.DivisionFormat && (ctx.IsNabl || ctx.PyramidLevel is >= 2 and <= 4);
+
+    /// <summary>
+    /// K7 (run 115): projected last in its division (squad and payroll, <see cref="ProjectedRank(LeagueContext, Team)"/>) in a
+    /// league that relegates the last club in each division.
+    /// </summary>
+    public static bool AtRisk(LeagueContext ctx, Team team)
+    {
+        if (!Relegates(ctx)) return false;
+        var div = ctx.Teams.Where(t => t.Conference == team.Conference && t.Division == team.Division).ToList();
+        if (div.Count < 2 || !div.Contains(team)) return false;
+        return div.OrderBy(t => ProjectedRank(ctx, t)).Last() == team;
+    }
+
+    private static Expectations NextExpectationsCore(LeagueContext ctx, Team team, int season, Expectations? previous, string leagueKey, int level, int previousLevel)
     {
         var e = SetExpectations(ctx, team, season);
         e.TeamId = team.Id; e.League = leagueKey;
@@ -317,6 +372,9 @@ public static class Board
             e.TargetWins = previous.TargetWins - metDrop;
         return e;
     }
+
+    /// <summary>K7 (run 115): the least a relegation costs in board confidence, and in a season the board had protected.</summary>
+    public const double RelegationCost = 20, RelegationProtectedCost = 30;
 
     /// <summary>Owner patience at or above which the goal is set a step lower (H70).</summary>
     public const int PatientOwner = 15;
@@ -617,11 +675,16 @@ public static class Board
         }
         // H70: the floors come after the owner's demands, so a "delighted", "satisfied" or "pleased" verdict never comes with a
         // fall in confidence; a regular season that clearly beat the target never lowers it, whatever the playoffs did.
+        bool protectedNow = job.ProtectedSeason == season && season != 0;
+        bool rebuildYear = protectedNow && job.ProtectedReason == "rebuild";
         if (diff >= 0) delta = Math.Max(delta, 0);
-        else if (diff < 0 && j.BeatTarget && !relegated) delta = Math.Max(delta, 2);
+        // K7 (run 115): going down is never softened by the record. It costs at least 20, and at least 30 in a season the board
+        // had protected (a second relegation two years after the first left the Kings' owner at 71/100).
+        else if (relegated) delta = Math.Min(delta, protectedNow ? -RelegationProtectedCost : -RelegationCost);
+        else if (diff < 0 && j.BeatTarget) delta = Math.Max(delta, 2);
         else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
         else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
-        string goalText = e.Survive ? "stay up" : LowerFirst(Describe(e.Goal, ctx));
+        string goalText = e.Survive ? (e.SurviveNote is { } note ? $"stay up ({note})" : "stay up") : LowerFirst(Describe(e.Goal, ctx));
         string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound, up);
         if (e.Survive && !relegated) result = "stayed up, " + result;
         lines.Insert(0, $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins).");
@@ -634,17 +697,20 @@ public static class Board
         bool firstSeason = job.HiredSeason == season;
         // A clearly winning season is never a sacking: the owner is disappointed, not done (critic review #3: 51-31 a year
         // after 72-10, and 24-22 the season after relegation, were both sacked).
-        bool winning = wins / Math.Max(1.0, wins + losses) >= WinningRecord;
+        // K7 (run 115): ...but a relegation is, if the owner's patience has run out (the division rule, not the record, decides it).
+        bool winning = !relegated && wins / Math.Max(1.0, wins + losses) >= WinningRecord;
         if (winning) job.Confidence = Math.Max(job.Confidence, 25);
         // Protected seasons (critic review #5: 59-23 then 41-41 was sacked; so was a relegated club 46 games into life
         // in the tier below): the board keeps you unless you fell below the floor.
-        bool shielded = job.ProtectedSeason == season && season != 0
+        // K7 (run 115): the protection covers a poor record, not a relegation.
+        bool shielded = protectedNow && !relegated
             && wins / Math.Max(1.0, wins + losses) >= ProtectedFloor;
         bool sacked = !firstSeason && !winning && !shielded && job.Confidence < 25 - (team.Owner.Patience - 10);
         if (shielded && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
         // the title at 59-23 was sacked the next May at 41-41).
-        bool earned = j.BeatTarget || (diff >= 0 && winsVsTarget >= -CreditWins);
+        // K7 (run 115): a relegated season earns no protection, whatever the record.
+        bool earned = !relegated && (j.BeatTarget || (diff >= 0 && winsVsTarget >= -CreditWins));
         if (!sacked && earned) { job.ProtectedSeason = season + 1; job.ProtectedReason = "credit"; }
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         string owner = team.Owner.Name;
@@ -657,6 +723,8 @@ public static class Board
             : shielded && diff < 0 && job.Confidence <= 25 ? (job.ProtectedReason == "rebuild"
                 ? $"{owner} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
                 : $"{owner} hasn't forgotten last season, and that bought you time. It won't happen twice.")
+            : relegated && rebuildYear ? $"{owner} gave you a season to rebuild after the last relegation, and the club has gone down again. Board confidence: {job.Confidence:0}/100."
+            : relegated && e.Survive ? $"{owner} set one job, to stay up, and the club is going down. Board confidence: {job.Confidence:0}/100."
             : up && !relegated ? $"{owner} is delighted: the club goes up."
             : diff >= 1 ? $"{owner} is delighted."
             : diff == 0 ? $"{owner} is satisfied."
