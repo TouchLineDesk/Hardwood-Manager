@@ -24,12 +24,19 @@ public static class CoachAi
             .OrderByDescending(d => (Systems.Fit(d, rot) - 0.5) * 5 - (against is { } s ? Tactics.Matchup(s, d) * 25 : 0) - (d == DefensiveScheme.Man ? 0.25 : 0))
             .First();
 
-    /// <summary>The opponent's go-to scorer, and whether he dominates enough to double.</summary>
+    /// <summary>The opponent's go-to scorer, and whether he dominates enough to double. Run 116: the go-to man is the
+    /// player the engine's shot weights favour (<see cref="GameSimulator.GoToWeight"/>: role, star term, Star usage and
+    /// system), the same man the defence keys on in the game, not simply the highest-rated player. He is worth doubling
+    /// when he is a star (CA 150+) at least 22 points better than anyone else in the rotation.</summary>
     public static (Player? star, bool worthDoubling) TheirStar(Team opp, DateOnly? on)
     {
-        var rot = Rotation(opp, on).OrderByDescending(p => p.CurrentAbility).ToList();
-        if (rot.Count < 2) return (rot.FirstOrDefault(), false);
-        return (rot[0], rot[0].CurrentAbility >= 150 && rot[0].CurrentAbility - rot[1].CurrentAbility >= 22);
+        var rot = Rotation(opp, on);
+        if (rot.Count == 0) return (null, false);
+        var tac = opp.Tactic;
+        var star = rot.OrderByDescending(p => GameSimulator.GoToWeight(p, tac)).ThenByDescending(p => p.CurrentAbility).First();
+        if (rot.Count < 2) return (star, false);
+        int nextBest = rot.Where(p => p != star).Max(p => p.CurrentAbility);
+        return (star, star.CurrentAbility >= 150 && star.CurrentAbility - nextBest >= 22);
     }
 
     /// <summary>Best defender to put on a scorer.</summary>

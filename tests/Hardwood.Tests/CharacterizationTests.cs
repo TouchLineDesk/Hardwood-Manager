@@ -120,8 +120,10 @@ public class CharacterizationTests
     [Theory]
     // Run 101 (H78): the schedule's dates changed (was 296945 / 296650, OKC both); scoring moved under 0.2%, and seed 77's
     // title now goes to Detroit (a different playoff draw, not a strength change).
-    [InlineData(2026UL, "PHI", 295611L)]   // run 113 (H105): stars take more shots (scoring -0.3%); the title goes to Philadelphia
-    [InlineData(77UL, "DET", 295512L)]
+    // run 113 (H105): stars take more shots (scoring -0.3%); the title goes to Philadelphia (was 295611 / 295512).
+    // Run 116: the AI doubles and shadows the go-to man the engine feeds (not simply the best-rated player): points -0.25% / -0.003%; seed 2026's title goes to Detroit (a different playoff draw).
+    [InlineData(2026UL, "DET", 294868L)]
+    [InlineData(77UL, "DET", 295503L)]
     public void The_bench_season_matches_the_baseline(ulong seed, string champion, long expected)
     {
         var (league, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);

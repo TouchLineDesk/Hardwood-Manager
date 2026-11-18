@@ -11,12 +11,18 @@ public partial class MainWindow : Window
         ApplyScale(UiScale.Current);
         UiScale.Changed += ApplyScale;
         // The top bar's buttons drop to a second row when they'd otherwise cover the team name (roadmap 1).
-        Controls.Reflow.Watch(TopBar, TopLeft, TopRight);
+        _topReflow = Controls.Reflow.Watch(TopBar, TopLeft, TopRight);
         PageScroll.PropertyChanged += (_, e) =>
         {
             if (e.Property == BoundsProperty) FitPage();
         };
     }
+
+    private readonly Controls.Reflow _topReflow;
+    /// <summary>Layout check (H97): whether the top bar's buttons have dropped to a second row.</summary>
+    public bool TopBarStacked => _topReflow.Stacked;
+    /// <summary>Layout check (H97): the widths the top bar's two halves ask for, and the bar's own width.</summary>
+    public (double left, double right, double bar) TopBarWidths => (TopLeft.DesiredSize.Width, TopRight.DesiredSize.Width, TopBar.Bounds.Width);
 
     /// <summary>The shortest a page gets (in layout units, before the text-size scale); below this it scrolls.</summary>
     public const double MinPageHeight = 760;

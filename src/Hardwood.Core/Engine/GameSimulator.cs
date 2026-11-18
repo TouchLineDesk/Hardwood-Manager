@@ -47,6 +47,40 @@ public sealed class GameSimulator
         * Math.Clamp(1 + (p.HeightCm - 203) / 15.0, 0.4, 2.5);
 
 
+    /// <summary>How readily a player shoots before the system tilt and fatigue (his attributes and tendencies).</summary>
+    private static double BaseUsage(Player p, bool transition = false)
+    {
+        var a = p.Attributes;
+        double usage = a[Attr.ShotCreation] * 1.2 + a[Attr.ThreePoint] * 0.5 + a[Attr.CloseShot] * 0.5 + a[Attr.BallHandling] * 0.4
+                       + (100 - p.Tendencies.PassFirst) * 0.08;
+        if (transition) usage += a[Attr.Speed] * 0.5;
+        return usage;
+    }
+
+    /// <summary>A player's shot weight before the system tilt and fatigue. Star usage sharpens or flattens the
+    /// distribution; his role tilts it. H105 (run 112): the shot attributes top out at 20, so SGA (all 20s) shared shots evenly with good
+    /// teammates while role players on thin teams led the league. A star of the league (CA above the floor) is the go-to
+    /// man wherever he plays; it isn't relative to his teammates, so a thin team's best player gains nothing.</summary>
+    internal static double ShotWeightOf(EngineConfig cfg, Role role, Player p, bool transition, double star) =>
+        Math.Pow(Math.Max(1, BaseUsage(p, transition)), cfg.UsageSharpness * star)
+        * Roles.Info(role).Usage
+        * (1 + StarTermOf(cfg, p) * star);
+
+    /// <summary>H105: how far above the league's star line a player is (0 below it, at most StarAbilityCap).</summary>
+    internal static double StarTermOf(EngineConfig cfg, Player p) =>
+        Math.Min(cfg.StarAbilityCap, Math.Max(0, p.CurrentAbility - cfg.StarAbilityFloor) / cfg.StarAbilityScale);
+
+    private static readonly EngineConfig DefaultConfig = EngineConfig.Default;
+
+    /// <summary>Run 116: the go-to man's ranking, the same shot weight the engine uses to pick whom a defence keys on
+    /// (role, star term and the team's Star usage and system, in the half court). <see cref="CoachAi.TheirStar"/> ranks by it, so
+    /// the scouting report, the stopper and the double team name the player who actually takes the shots.</summary>
+    public static double GoToWeight(Player p, Tactic tac, EngineConfig? cfg = null)
+    {
+        double star = tac.StarUsage / 50.0 * Tactics.SharpnessFactor(tac.System);
+        return ShotWeightOf(cfg ?? DefaultConfig, tac.RoleOf(p), p, false, star);
+    }
+
     private readonly EngineConfig _cfg;
 
     public GameSimulator(EngineConfig? cfg = null) => _cfg = cfg ?? EngineConfig.Default;
@@ -635,15 +669,6 @@ public sealed class GameSimulator
             return off.OnCourt[_rng.WeightedIndex(weights)];
         }
 
-        private static double BaseUsage(Player p, bool transition = false)
-        {
-            var a = p.Attributes;
-            double usage = a[Attr.ShotCreation] * 1.2 + a[Attr.ThreePoint] * 0.5 + a[Attr.CloseShot] * 0.5 + a[Attr.BallHandling] * 0.4
-                           + (100 - p.Tendencies.PassFirst) * 0.08;
-            if (transition) usage += a[Attr.Speed] * 0.5;
-            return usage;
-        }
-
         /// <summary>The scorer the other team keys on. H105 (run 112): the go-to man is whoever the shot weights favour (role and the star term included, before the system tilt),
         /// so the double team goes to the player who actually takes the shots.</summary>
         private Player Star(Side s)
@@ -657,13 +682,10 @@ public sealed class GameSimulator
         /// teammates while role players on thin teams led the league. A star of the league (CA above the floor) is the go-to
         /// man wherever he plays; it isn't relative to his teammates, so a thin team's best player gains nothing.</summary>
         private double ShotWeight(Side off, Player p, bool transition, double star) =>
-            Math.Pow(Math.Max(1, BaseUsage(p, transition)), _cfg.UsageSharpness * star)
-            * Roles.Info(off.Tac.RoleOf(p)).Usage
-            * (1 + StarTerm(p) * star);
+            ShotWeightOf(_cfg, off.Tac.RoleOf(p), p, transition, star);
 
         /// <summary>H105: how far above the league's star line a player is (0 below it, at most StarAbilityCap).</summary>
-        private double StarTerm(Player p) =>
-            Math.Min(_cfg.StarAbilityCap, Math.Max(0, p.CurrentAbility - _cfg.StarAbilityFloor) / _cfg.StarAbilityScale);
+        private double StarTerm(Player p) => StarTermOf(_cfg, p);
         private Player? _offStar;
         private readonly Dictionary<(long, long, int), double> _fitCache = new();
 

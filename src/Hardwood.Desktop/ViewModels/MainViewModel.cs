@@ -71,7 +71,7 @@ public sealed partial class MainViewModel : ViewModelBase
     partial void OnEmployedChanged(bool value) => OnPropertyChanged(nameof(ShowNextGameButton));
     partial void OnSeasonOverChanged(bool value) => OnPropertyChanged(nameof(ShowNextGameButton));
     partial void OnInSeasonChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
-    partial void OnInLiveGameChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); }
+    partial void OnInLiveGameChanged(bool value) { OnPropertyChanged(nameof(ShowSimButtons)); OnPropertyChanged(nameof(ShowNextGameButton)); Guide?.LiveGame(value, UiScale.Current); }
 
     public ObservableCollection<NavItem> Nav { get; } = new();
     /// <summary>The assistant panel (decisions #115-118).</summary>
