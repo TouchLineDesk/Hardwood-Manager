@@ -7,11 +7,17 @@ using Hardwood.Core.World;
 
 namespace Hardwood.Desktop.ViewModels;
 
+/// <summary>H114 (run 118): a player's positions as the roster writes them ("SG/SF"), so a summer card and its row agree.</summary>
+public static class PosText
+{
+    public static string Of(Player p) => p.PrimaryPosition + (p.SecondaryPosition is { } s && s != p.PrimaryPosition ? "/" + s : "");
+}
+
 public sealed partial class ExpiringRow : ObservableObject
 {
     public required Player Player { get; init; }
     public string Name => Player.Name;
-    public string Pos => Player.PrimaryPosition.ToString();
+    public string Pos => PosText.Of(Player);
     public int Age { get; init; }
     public int CA => Player.CurrentAbility;
     public int PA => Player.PotentialAbility;
@@ -41,7 +47,7 @@ public sealed partial class ProspectRow : ObservableObject
     public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, Knowledge);
     public string PaTip => Knowledge >= 0.999 ? "Potential: how good he can become" : "Potential as your scouts see him (a range until they know him well)";
     public string Name => Player.Name;
-    public string Pos => Player.PrimaryPosition.ToString();
+    public string Pos => PosText.Of(Player);
     public int Age { get; init; }
     public string Height => PlayerRow.FormatHeight(Player.HeightCm);
     public double Knowledge { get; init; } = 1.0;
@@ -65,7 +71,7 @@ public sealed class PickRow
     public string Where => $"R{Pick.Round} #{Pick.Pick}";
     public string Team => Pick.Team.Abbreviation + (Pick.OriginalTeam != null && Pick.OriginalTeam != Pick.Team ? $" (via {Pick.OriginalTeam.Abbreviation})" : "");
     public string Player => Pick.Player.Name;
-    public string Pos => Pick.Player.PrimaryPosition.ToString();
+    public string Pos => PosText.Of(Pick.Player);
     public string Ability => $"{Pick.Player.CurrentAbility}/{Pick.Player.PotentialAbility}";
     public bool Ours { get; init; }
 }
@@ -75,7 +81,7 @@ public sealed class OverseasRow
 {
     public required Player Player { get; init; }
     public string Name => Player.Name;
-    public string Pos => Player.PrimaryPosition.ToString();
+    public string Pos => PosText.Of(Player);
     public int Age { get; init; }
     public double Knowledge { get; init; }
     public string CA => Scouting.Ability(Player, Knowledge).ToString();
@@ -91,7 +97,7 @@ public sealed class RightsRow
 {
     public required Player Player { get; init; }
     public string Name => Player.Name;
-    public string Pos => Player.PrimaryPosition.ToString();
+    public string Pos => PosText.Of(Player);
     public int Age { get; init; }
     public string Ability => $"{Player.CurrentAbility}/{Player.PotentialAbility}";
     public string Where { get; init; } = "";
@@ -128,6 +134,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
     /// <summary>H69: the going-down line under the budget (empty otherwise).</summary>
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasRelegationText))] private string _relegationText = "";
     public bool HasRelegationText => RelegationText.Length > 0;
+    /// <summary>H112: the relegation cut in full, behind the banner's "How it works".</summary>
+    [ObservableProperty] private string _relegationDetail = "";
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private int _tab;
     /// <summary>H37 (run 79): a college coach's summer has no contracts, free agents or talks.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowTalk), nameof(ShowProspectPanel), nameof(ShowTalkPanel))] private bool _collegeSummer;
@@ -250,11 +258,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
                                                       : "Play the season out. In the summer you will renew or release players whose deals are up and sign free agents here.")
                 : "You aren't coaching a club. Press Continue to move through the summer.";
             ShowContracts = ShowFreeAgency = ShowBuyouts = false;
-            CapText = ""; RelegationText = "";
+            CapText = ""; RelegationText = ""; RelegationDetail = "";
             return;
         }
         var team = s.HumanTeam; var fin = s.League.Finance;
-        if (s.InCollege) { RelegationText = ""; RefreshCollegeSummer(s, o!, team); return; }
+        if (s.InCollege) { RelegationText = ""; RelegationDetail = ""; RefreshCollegeSummer(s, o!, team); return; }
         bool renewing = s.InNabl ? o!.Phase == OffseasonPhase.ReSigning : true;
         bool freeAgency = s.Abroad || o!.Phase == OffseasonPhase.FreeAgency;
         ShowContracts = s.MyExpiring.Count > 0 || (s.InNabl && renewing);
@@ -266,11 +274,16 @@ public sealed partial class OffseasonViewModel : PageViewModel
                   + (s.InCollege ? "" : $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {s.MyRosterMin}-{s.MyRosterMax})");
         // H69 (run 106): a club going down is told so, with next season's league and what its contracts come to there; the
         // budget above is still this league's until the summer ends.
-        RelegationText = s.RelegationOutlook() is { } down
-            ? $"Going down: next season you play in {(down.League.StartsWith("The ") ? down.League : "the " + down.League)}. When the summer ends, the relegation wage cut takes your contracts to about {M(down.PayrollAfter)}"
-              + (down.OwnerFunds ? " and the owner sets a smaller budget that covers at least them." : "; the owner, in debt, sets a smaller budget.")
-              + " Deals you sign now are cut the same way."
-            : "";
+        // H112 (run 118): one line, with how the cut works behind "How it works" rather than two lines of red text.
+        if (s.RelegationOutlook() is { } down)
+        {
+            string league = down.League.StartsWith("The ") ? down.League : "the " + down.League;
+            RelegationText = $"Going down to {league}: contracts cut to about {M(down.PayrollAfter)} when the summer ends.";
+            RelegationDetail = $"Relegation wage cut: when the summer ends you play in {league}, and every contract is cut to that league's level, about {M(down.PayrollAfter)} in all."
+                + (down.OwnerFunds ? " The owner sets a smaller budget that covers at least them." : " The owner, in debt, sets a smaller budget.")
+                + " Deals you sign now are cut the same way. The budget shown above is this league's until then.";
+        }
+        else { RelegationText = ""; RelegationDetail = ""; }
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
         Instructions = o.Phase == OffseasonPhase.Draft && o.CollegeDraftOn
             ? "The college draft: one round, in the lottery's order. When you're on the clock, pick a graduate on the Draft tab; press Continue and your scouts pick for you. Free agency opens when the draft ends."
@@ -541,7 +554,7 @@ public sealed partial class FreeAgentRow : ObservableObject
     public string FitTip { get; init; } = "";
     public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, Knowledge);
     public string Name => Player.Name + (Graduate ? "  (graduate)" : "");
-    public string Pos => Player.PrimaryPosition.ToString();
+    public string Pos => PosText.Of(Player);
     public int Age { get; init; }
     public double Knowledge { get; init; } = 1;
     public bool Graduate { get; init; }
