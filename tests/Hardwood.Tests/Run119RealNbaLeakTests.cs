@@ -53,6 +53,9 @@ public class Run119RealNbaLeakTests
         // Stars under contract don't retire in summer one (8 of CA 130+ did on v0.110.3: Leonard, Curry, George...).
         var ret = lines.Single(l => l.TrimStart().StartsWith("retired or left the game:"));
         Assert.InRange(Count(ret, @"CA 130\+"), 0, 4);
-        Assert.DoesNotContain(lines, l => (l.Contains("Kawhi Leonard") || l.Contains("Stephen Curry")) && l.Contains("retired"));
+        // Run 128 (D80 A): the world is drawn differently, and Curry (39, CA 156, one season left) now retires on seed 31. At 39
+        // under contract his chance is about 15% by design (`ShouldRetire`; the rates are checked above), so only Leonard (36,
+        // about 4%) is named here; the CA 130+ count above still holds (3: Durant 39, Curry 39, LeBron 42).
+        Assert.DoesNotContain(lines, l => l.Contains("Kawhi Leonard") && l.Contains("retired"));
     }
 }
