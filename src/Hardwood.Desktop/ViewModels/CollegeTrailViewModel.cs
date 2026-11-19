@@ -174,7 +174,7 @@ public sealed partial class CollegeViewModel
             new("Your interest", $"{interest:0}", ours ? $"{r.Calls} call{(r.Calls == 1 ? "" : "s")}{(r.HomeVisit ? " · home visit" : "")}{(r.OfficialVisit ? " · official visit" : "")}" : "not recruited yet", interest >= 50 ? "good" : interest > 0 ? "" : "warn"),
             new("Leaning", lean == null ? "-" : lean == me ? "You" : lean.City, r.CommittedTo != null ? "committed" : "if he chose today", lean == me ? "good" : "warn"),
             new("Cares most about", ours && r.Scouted ? CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p)) : "?", ours && r.Scouted ? "it weighs extra with him" : "scout him to find out", "info"),
-            new("Your staff project", ours && r.Scouted ? $"{c.StaffProjection(p, r)}" : "?", ours && r.Scouted ? "ability at 23" : $"services: {r.Projection}", ""),
+            new("Your staff project", ours && r.Scouted ? $"{c.StaffProjection(p, r)}" : "?", ours && r.Scouted ? "ability at 22" : $"services: {r.Projection}", ""),
             new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? "he can commit to you" : "needed before he commits", ours && r.Offered ? "good" : ""),
         };
         var list = c.Considering(p, r, board).Take(4).ToList();

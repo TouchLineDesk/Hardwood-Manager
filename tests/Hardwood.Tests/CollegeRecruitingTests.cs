@@ -10,7 +10,7 @@ using Xunit;
 namespace Hardwood.Tests;
 
 /// <summary>The classic-era roster model (Danny, Nov 11, decisions #159-#167): high-school prospects in a recruiting
-/// pool, 13 scholarships and 2 walk-ons, commitments and signing day, enrolment at 18, everyone pro at 23.</summary>
+/// pool, 13 scholarships and 2 walk-ons, commitments and signing day, enrolment at 18, everyone pro at 22 after four years (D80 A).</summary>
 public class CollegeRecruitingTests
 {
     private static (League nabl, GameWorld world) NewWorld(ulong seed = 9)
@@ -55,7 +55,7 @@ public class CollegeRecruitingTests
         Assert.All(cls.Where(r => r.Stars >= 4), r => Assert.NotNull(r.CommittedTo));
         var board = c.BoardFor(2027);
         Assert.All(c.Programs, t => Assert.True(board.Open[t.Id] >= 0, $"{t.FullName} over by {-board.Open[t.Id]}"));
-        int scholarships = c.Programs.Sum(t => CollegeWorld.Scholarships) - c.Programs.Sum(t => t.Roster.Count(p => p.Age(new DateOnly(2027, 7, 1)) < 23 && !c.WalkOnIds.Contains(p.Id)));
+        int scholarships = c.Programs.Sum(t => CollegeWorld.Scholarships) - c.Programs.Sum(t => t.Roster.Count(p => p.Age(new DateOnly(2027, 7, 1)) < CollegeWorld.GraduateAge && !c.WalkOnIds.Contains(p.Id)));
         Assert.Equal(scholarships, cls.Count(r => r.CommittedTo != null));
         // Commitments were spread through the season, not all on signing day.
         Assert.True(cls.Count(r => r.CommittedOn < new DateOnly(2027, 1, 1)) > 50, $"{cls.Count(r => r.CommittedOn < new DateOnly(2027, 1, 1))} of {cls.Count(r => r.CommittedTo != null)}; {string.Join(",", cls.Where(r => r.CommittedOn != null).GroupBy(r => r.CommittedOn!.Value.Month).OrderBy(g => g.Key).Select(g => $"{g.Key}:{g.Count()}"))}");
@@ -93,8 +93,8 @@ public class CollegeRecruitingTests
         Assert.Empty(c.ClassOf(2027));
         Assert.Equal(CollegeWorld.ClassTracked, c.ClassOf(2031).Count());
         Assert.All(c.ClassOf(2031), p => Assert.Equal(14, p.Age(new DateOnly(2027, 7, 1))));
-        // Graduates are still 23 and still feed the pros.
-        Assert.All(pool.Where(p => p.RookieSeason == 2027), p => Assert.Equal(23, p.Age(new DateOnly(2027, 7, 1))));
+        // Graduates are 22 (four years, D80 A) and still feed the pros.
+        Assert.All(pool.Where(p => p.RookieSeason == 2027), p => Assert.Equal(CollegeWorld.GraduateAge, p.Age(new DateOnly(2027, 7, 1))));
         Assert.Contains(pool, p => p.RookieSeason == 2027 && p.CurrentAbility >= 100);
     }
 

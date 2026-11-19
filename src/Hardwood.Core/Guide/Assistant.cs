@@ -379,11 +379,11 @@ public static class Assistant
         "Scouts' ranges narrow as they watch a player more. Don't pay for potential you can't see yet.",
     };
 
-    /// <summary>College coaching in a sentence each (C2): no money, five-year players, March Madness.</summary>
+    /// <summary>College coaching in a sentence each (C2): no money, four-year players, March Madness.</summary>
     private static readonly string[] CollegePrinciples =
     {
         "In college nobody is paid: the roster you have is the roster you coach. Develop it.",
-        "Players stay up to five seasons. A freshman's minutes now are next year's senior leader.",
+        "Players stay four seasons. A freshman's minutes now are next year's senior leader.",
         "The AD judges the season in March. A good conference record gets you seeded; the tournament gets you paid in prestige.",
         "Home court is worth more in college. Win your home games and you're on the bubble's right side.",
         "Fit beats raw talent: a system that suits your best two players is worth more than a slightly better bench.",
@@ -408,7 +408,7 @@ public static class Assistant
                        "Look at Leaning before you spend hours: a prospect who prefers three schools to you needs an official visit, not a call."),
         ["Home"] = ("Your program at a glance: the overall record, the conference race (from January), the next game and news. Press Continue to move a day forward.",
                     "Non-conference games set your rating; conference games decide the conference tournament's seeds."),
-        ["Roster"] = ("Your scholarship players (13, plus up to 2 walk-ons). Nobody is paid. Players stay until they turn 23, then graduate into the pros.",
+        ["Roster"] = ("Your scholarship players (13, plus up to 2 walk-ons). Nobody is paid. Players stay four years, until they turn 22, then graduate into the pros.",
                       "Watch who graduates next summer (the chip at the top) and who grows into their minutes."),
         ["Board"] = ("Your athletic director: the season goal (judged by March Madness), how confident the AD is in you, and the program's prestige and national rank. ADs fire coaches.",
                      "Track the target wins and the tournament goal; the rank says where the selection committee sees you."),
@@ -442,8 +442,8 @@ public static class Assistant
                          "Watch the teams around you and the playoff line."),
         ["Leagues"] = ("Every league in the game, ours included: standings, schedule and results, stat leaders, the rules and format, and past champions. Pick a region, then a league. Click any team or player name to open their page.",
                      "Scout other clubs' rosters from here: a team's page shows its players as your scouts see them."),
-        ["College"] = ("College basketball: the Top 25, conferences, March Madness, prospects and the high-school recruiting classes. Seniors sign by mid-April, enroll at 18 and turn pro at 23.",
-                       "Track the best 22-year-olds in Prospects; they're free agents next summer."),
+        ["College"] = ("College basketball: the Top 25, conferences, March Madness, prospects and the high-school recruiting classes. Seniors sign by mid-April, enroll at 18 and turn pro at 22, after four years.",
+                       "Track the best 21-year-olds in Prospects; they're free agents next summer at 22."),
         ["League Leaders"] = ("The best players in the league by points, rebounds, assists and more.", "Spot breakout players before their value rises."),
         ["Transactions"] = ("Sign free agents, bid for players at other clubs, answer bids for yours, and propose trades. Free agents need contract talks: offer wage and years, and they accept, counter or walk.",
                             "Bid when the window is open; players with a year left are cheaper. Mind the wage budget."),

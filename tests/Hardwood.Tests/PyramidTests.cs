@@ -49,9 +49,9 @@ public class PyramidTests
         var abbrs = nabl.Teams.Concat(pyramid.SelectMany(c => c.Clubs)).Select(t => t.Abbreviation).ToList();
         Assert.Equal(abbrs.Count, abbrs.Distinct().Count());
 
-        // Every US pro is at least 23 (decision #75); each level is weaker than the one above.
+        // Every US pro is at least 22 (decision #75; D80 A); each level is weaker than the one above.
         var on = new DateOnly(2026, 10, 1);
-        Assert.All(pyramid.SelectMany(c => c.Clubs).SelectMany(t => t.Roster), p => Assert.True(p.Age(on) >= 23, $"{p.Name} is {p.Age(on)}"));
+        Assert.All(pyramid.SelectMany(c => c.Clubs).SelectMany(t => t.Roster), p => Assert.True(p.Age(on) >= 22, $"{p.Name} is {p.Age(on)}"));
         double Level(int l) => pyramid.Where(c => UsaPyramid.Level(c.Key) == l).SelectMany(c => c.Clubs).SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
         double nablCa = nabl.Teams.SelectMany(t => t.Roster).Average(p => p.CurrentAbility);
         Assert.True(nablCa > Level(2) && Level(2) > Level(3) && Level(3) > Level(4) && Level(4) > Level(5),

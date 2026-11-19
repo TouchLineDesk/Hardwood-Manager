@@ -291,10 +291,10 @@ public sealed partial class OffseasonViewModel : PageViewModel
             // H95 (run 109): by phase, not by league: a club outside the NBA (a lower tier or abroad) renews and signs free agents at
             // once, so while its contracts are up in the re-signing step it reads both, the contract decisions first.
             : !s.InNabl && o.Phase == OffseasonPhase.ReSigning && s.MyExpiring.Count > 0
-                ? "Contract decisions and free agency: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), and make offers to free agents, including this year's college graduates (age 23). The owner won't let you go over the wage budget. Anyone you haven't renewed by the end of the summer leaves."
+                ? "Contract decisions and free agency: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), and make offers to free agents, including this year's college graduates (age 22). The owner won't let you go over the wage budget. Anyone you haven't renewed by the end of the summer leaves."
             : (s.InNabl && renewing
                 ? "Contract decisions: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), or release him. Then continue to free agency."
-                : "Free agency: make offers to free agents, including this year's college graduates (age 23). Players ask more to join a weaker team, and the owner won't let you go over the wage budget.")
+                : "Free agency: make offers to free agents, including this year's college graduates (age 22). Players ask more to join a weaker team, and the owner won't let you go over the wage budget.")
             + (s.Abroad ? " Anyone you haven't renewed by the end of the summer leaves." : "");
 
         foreach (var p in s.MyExpiring)
@@ -428,7 +428,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
     }
 
     /// <summary>H50 (bug hunt, Nov 16; run 82): the draft board gives a graduate's age on July 1, the day classes graduate
-    /// and the rules count "turn pro at 23" from, so a May graduate reads 23, not 22. Other Offseason lists keep today's age (H38).</summary>
+    /// and the rules count "turn pro at 22" from, so a May graduate reads 22, not 21 (D80 A). Other Offseason lists keep today's age (H38).</summary>
     public static DateOnly DraftAgeDay(DateOnly today) => today.Month < 7 ? new DateOnly(today.Year, 7, 1) : today;
 
     private void FillDraft(GameSession s, Offseason o, Hardwood.Core.Model.Team team)
@@ -438,8 +438,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
         DraftText = OnTheClock ? $"You're on the clock with pick {o.NextPickIndex + 1}. Choose a graduate and press Draft, or press Continue and your scouts pick."
             : o.Phase == OffseasonPhase.ReSigning ? (mine.Count > 0 ? $"You pick {string.Join(" and ", mine.Select(i => "#" + i))}. The draft follows contract decisions." : (s.InNabl ? GameSession.NoPickReason : GameSession.NoPickReasonOutsideNba) + " The draft follows contract decisions.")
             : "The draft is under way.";
-        // H74 (run 106): every graduate is 23 by the rule; say so, so a page of 23-year-olds doesn't look like a bug.
-        DraftText += " College players turn pro at 23 in this game, so every prospect is 23.";
+        // H74 (run 106): every graduate is the same age by the rule; say so, so a page of 22-year-olds doesn't look like a bug.
+        // D80 A (run 128): four years, so 22 (a career from before it also has 23-year-olds in its first summer after).
+        DraftText += " College players turn pro after four years, at 22, so the prospects are 22" + (o.Prospects.Any(p => p.Age(DraftAgeDay(s.Today)) > Hardwood.Core.College.CollegeWorld.GraduateAge) ? " (this summer also the last class from five-year college, at 23)." : ".");
         int rank = 1;
         var keep = _boardPick;
         foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))

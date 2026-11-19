@@ -78,14 +78,18 @@ public sealed record CollegeChampion(int Year, int ChampionId, string Champion, 
 
 /// <summary>
 /// College basketball (decisions #76, #82-85, #95-98): about 120 computer-run programs whose rosters hold every
-/// American player from 14 to 23. Programs recruit 14-year-olds by prestige; players grow toward the ability they'll
-/// have at 23; at 23 they graduate into free agency and the whole pyramid can sign them. The season runs from
+/// American player from 14 to 22. Programs recruit 14-year-olds by prestige; players grow toward the ability they'll
+/// have at 22; at 22 they graduate into free agency and the whole pyramid can sign them (D80 A, run 128: four college
+/// years, Fr/So/Jr/Sr; it was 23 and five seasons before). The season runs from
 /// November invitationals and December showcases through conference play and tournaments to a 68-team March Madness,
 /// whose games use the full match engine.
 /// </summary>
 public sealed partial class CollegeWorld
 {
-    public const int RosterSize = 30, FirstId = 90_001, YoungestAge = 14, GraduateAge = 23;
+    public const int RosterSize = 30, FirstId = 90_001, YoungestAge = 14, GraduateAge = 22;
+    /// <summary>The age groups the class calibration was tuned on (the old 14-22 model, #121): each class's top end is drawn
+    /// as if the world still had nine groups, so four college years don't add stars (D80 A, run 128).</summary>
+    public const int CalibrationGroups = 9;
     public const string Madness = "March Madness";
 
     public static readonly ConferenceInfo[] Conferences = new ConferenceInfo[]
@@ -117,7 +121,7 @@ public sealed partial class CollegeWorld
     public double Baseline(Team t, ConferenceInfo conf) => Tradition.TryGetValue(t.Id, out var b) ? b : conf.Power ? 68 : 42;
     /// <summary>A real world's programs (R3).</summary>
     public bool IsReal => Active.Any(c => c.Real);
-    /// <summary>The ability each player is heading for at 23 (his development path).</summary>
+    /// <summary>The ability each player is heading for at 22 (his development path).</summary>
     public Dictionary<int, int> Destined { get; } = new();
     public CollegeSeason Season { get; set; } = new();
     public List<CollegeChampion> History { get; } = new();
@@ -129,13 +133,16 @@ public sealed partial class CollegeWorld
     public IEnumerable<Team> InConference(string key) => Programs.Where(t => ConferenceOf[t.Id] == key);
 
     // ------------------------------------------------------------------------------------------
-    // Players: ability at each age on the way to 23.
+    // Players: ability at each age on the way to 22.
 
-    private static readonly double[] Path = { 0.45, 0.52, 0.58, 0.64, 0.70, 0.76, 0.82, 0.88, 0.94, 1.0 }; // ages 14..23
+    // D80 A (run 128): college is four years, so the path runs 14..22. Freshmen (18) are where they were (0.70) and seniors
+    // (21) where the old fifth-year seniors were (0.94), so the college game and each graduate's ability are unchanged;
+    // he just turns pro a year younger.
+    private static readonly double[] Path = { 0.45, 0.52, 0.58, 0.64, 0.70, 0.78, 0.86, 0.94, 1.0 }; // ages 14..22
     public static double Share(int age) => Path[Math.Clamp(age, YoungestAge, GraduateAge) - YoungestAge];
 
     /// <summary>
-    /// How good a recruit will be at 23. Calibrated so each year's graduates look like the old draft classes at the top
+    /// How good a recruit will be at 22. Calibrated so each year's graduates look like the old draft classes at the top
     /// (a handful ready for the NABL, a few dozen for the tiers below) with most heading for the lower leagues or out.
     /// </summary>
     private static int DestinedAbility(Rng rng, double eliteScale = 1, double goodScale = 1)
@@ -231,8 +238,8 @@ public sealed partial class CollegeWorld
             return c;
         }
         // Rosters: each age group recruited in turn, so the best of every year go to the biggest programs.
-        // Ages 14-22 today: everyone who turns 23 before next summer graduates then, so every graduate is 23
-        // (a 23-year-old cohort here would graduate at 24 and double the first class). The spare places go to the oldest.
+        // Ages 14-21 today: everyone who turns 22 before next summer graduates then, so every graduate is 22
+        // (a 22-year-old cohort here would graduate at 23 and double the first class). The spare places go to the oldest.
         int groups = GraduateAge - YoungestAge, perAge = RosterSize / groups, spare = RosterSize - perAge * groups;
         for (int age = GraduateAge - 1; age >= YoungestAge; age--)
         {
@@ -278,7 +285,7 @@ public sealed partial class CollegeWorld
     // The summer: graduation, growth, recruiting, prestige.
 
     /// <summary>
-    /// Players who are 23 graduate into free agency (decision #98); everyone else grows along his path; programs
+    /// Players who are 22 graduate into free agency (decision #98; D80 A); everyone else grows along his path; programs
     /// recruit 14-year-olds to refill their rosters; prestige follows results. Returns the graduates.
     /// </summary>
     public List<Player> Summer(DateOnly on, List<Player> freeAgents, PlayerGenerator gen, DevelopmentEngine dev, Rng rng)

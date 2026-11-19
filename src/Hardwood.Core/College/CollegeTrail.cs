@@ -116,7 +116,7 @@ public sealed partial class CollegeWorld
         if (r.Scouted) return $"You've already scouted {p.Name}.";
         if (Spend(ScoutHours, today) is { } no) return no;
         r.Scouted = true; r.OnBoard = true;
-        return $"Scouted {p.Name}: your staff project him at {StaffProjection(p, r)} by 23. He cares most about {PriorityText(PriorityOf(p))}.";
+        return $"Scouted {p.Name}: your staff project him at {StaffProjection(p, r)} by 22. He cares most about {PriorityText(PriorityOf(p))}.";
     }
 
     /// <summary>Your staff's projection once scouted: closer to the truth than the services' (a third of their blind spot).</summary>

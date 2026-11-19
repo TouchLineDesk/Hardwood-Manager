@@ -6,20 +6,20 @@ namespace Hardwood.Core.College;
 public sealed record ClassYear(int Year, string Short, string Long, bool Final);
 
 /// <summary>
-/// CS3 (run 127, the college plan): the years a fan can see. Players enroll at 18 and turn pro at 23 (#162), so a program
-/// carries five age groups. With no redshirts (Danny, #938) the oldest group is shown as fifth-year seniors, in their final
-/// season; whether college should be four years instead is D80 (`claude/for-danny.md`).
+/// CS3 (run 127, the college plan): the years a fan can see. Players enroll at 18 and turn pro at 22 (D80 A, run 128), so a
+/// program carries four classes, Fr/So/Jr/Sr, and the seniors play their final season. No redshirts (Danny, #938).
+/// A career from before four-year college has two classes in their final season until its next summer; both read Sr.
 /// </summary>
 public sealed partial class CollegeWorld
 {
-    public static readonly string[] ClassShort = { "Fr", "So", "Jr", "Sr", "5th" };
-    public static readonly string[] ClassLong = { "Freshman", "Sophomore", "Junior", "Senior", "Fifth-year senior" };
+    public static readonly string[] ClassShort = { "Fr", "So", "Jr", "Sr" };
+    public static readonly string[] ClassLong = { "Freshman", "Sophomore", "Junior", "Senior" };
 
     /// <summary>The summer the season of <paramref name="seasonYear"/> ends on: graduation and enrollment (July 1).</summary>
     public static DateOnly SummerAfter(int seasonYear) => new(seasonYear + 1, 7, 1);
 
     /// <summary>A player's class year in the season that began in <paramref name="seasonYear"/>, from his age the next summer
-    /// (19 = freshman ... 23 = his final season). Null for anyone outside college age.</summary>
+    /// (19 = freshman ... 22 = senior, his final season; older reads senior too). Null for anyone outside college age.</summary>
     public static ClassYear? ClassYearOf(Player p, int seasonYear)
     {
         int ageNext = p.Age(SummerAfter(seasonYear));
