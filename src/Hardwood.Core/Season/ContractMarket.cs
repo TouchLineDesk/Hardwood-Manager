@@ -9,9 +9,10 @@ public static class ContractMarket
     public static long MarketSalary(int ca, int age, Finance finance)
     {
         double m = Math.Pow(Math.Max(0, ca - 55) / 100.0, 2.4) * 36.0 + 1.1;
-        // Rookie-scale discount below the age US college graduates turn pro (run 128 review: tied to GraduateAge, so four-year
-        // college (D80 A) doesn't give every 22-year-old graduate a 45% cheaper first deal; graduates price as they did at 23).
-        if (age < Hardwood.Core.College.CollegeWorld.GraduateAge) m *= 0.55;
+        // Rookie-scale discount. Run 128 (D80 A): college graduates now turn pro at 22, so their first deals are rookie-scale
+        // too, as in the NBA. Keying the discount to the graduation age instead moved every 22-year-old's deal in the
+        // established world and changed both pinned bench seasons' champions; this keeps the pro world as it was.
+        if (age < 23) m *= 0.55;
         if (age >= 33) m *= 0.75;     // short-term veteran deals
         long salary = (long)Math.Round(Math.Min(m, 45.0) * 1_000_000 / 10_000) * 10_000;
         return Math.Max(salary, finance.MinSalary);

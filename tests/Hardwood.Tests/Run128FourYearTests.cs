@@ -103,11 +103,12 @@ public class Run128FourYearTests
     }
 
     [Fact]
-    public void A_graduate_at_22_prices_as_a_graduate_did_at_23()
+    public void A_graduate_at_22_signs_a_rookie_scale_first_deal()
     {
-        // Review of PR #192: the rookie-scale discount is keyed to the graduation age, so a 22-year-old graduate isn't 45% cheaper.
+        // Review of PR #192: graduates now turn pro inside the rookie-scale age, as NBA rookies do; the established pros' prices
+        // (22-year-olds already in the league) are unchanged, so the pinned bench seasons are too.
         var fin = Hardwood.Core.Model.Finance.HardCapDefault;
-        Assert.Equal(ContractMarket.MarketSalary(110, 23, fin), ContractMarket.MarketSalary(110, 22, fin));
-        Assert.True(ContractMarket.MarketSalary(110, 21, fin) < ContractMarket.MarketSalary(110, 22, fin));
+        Assert.True(ContractMarket.MarketSalary(110, CollegeWorld.GraduateAge, fin) < ContractMarket.MarketSalary(110, 23, fin));
+        Assert.Equal(ContractMarket.MarketSalary(110, 21, fin), ContractMarket.MarketSalary(110, 22, fin));
     }
 }
