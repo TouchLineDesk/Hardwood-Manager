@@ -142,7 +142,10 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.Color FloorColor => Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor);
     public Avalonia.Media.Color FloorTrim => Avalonia.Media.Color.Parse(HomeTeam.SecondaryColor);
     public string FloorName => HomeTeam.Name;
-    public string CourtLegend => $"{AwayName} attack left, {HomeName} attack right · gold ring: the player in the play · dotted line: the pass · faint dots: the game's shots · player spots and movement are drawn for show; every result comes from the game engine";
+    // Run 118: the key in two short lines at 130% (it was four, and a two-line play caption then took the play by play
+    // under its 180 px); how the court is drawn is in the tooltip.
+    public string CourtLegend => $"{AwayName} attack left, {HomeName} right · gold ring: the play · dotted: the pass · faint dots: shots";
+    public string CourtLegendTip => "Player spots and movement are drawn for show; every result comes from the game engine.";
 
     // The 2D tracker (D67 B, run 80): the latest play drawn on the court, with the ten players and the ball.
     [ObservableProperty] private Hardwood.Desktop.Controls.TrackerFrame? _frame;

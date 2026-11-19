@@ -33,9 +33,10 @@ public class RealCareersTests
             var butler = On("GSW", "Jimmy Butler");
             Assert.Equal(new DateOnly(1989, 9, 14), butler.BirthDate);
             Assert.Equal(56_830_000L, butler.Contract!.Salary);
-            // Every team is still a full, real 15.
+            // Every team is still all real: 15, less the one player each lost to the expansion draft (run 118, H110).
             var names = RealPlayers.Lines.Select(l => l.Name).ToHashSet();
-            Assert.All(s.League.Teams.Take(30), t => Assert.Equal(15, t.Roster.Count(p => names.Contains(p.Name))));
+            Assert.All(s.League.Teams.Take(30), t => Assert.Equal(14, t.Roster.Count(p => names.Contains(p.Name))));
+            Assert.All(s.League.Teams.Skip(30), t => Assert.Equal(15, t.Roster.Count(p => names.Contains(p.Name))));
             // A player with no NBA line at all (a 2026 rookie) is rated at bench level.
             var rookie = RealPlayers.Rate(RealPlayers.Lines.Single(l => l.Name == "Jayden Quaintance"));
             Assert.Equal(RealPlayers.PriorPer36, rookie.Per36, 3);

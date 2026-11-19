@@ -47,12 +47,13 @@ public class RealPlayersTests
             Hardwood.Core.World.GameWorld.Generate(ladder, 2026, GameSession.DefaultFullSim, new DateOnly(2026, 10, 1));
             var real = GameSession.NewGame(2026, 16, null);
             var names = RealPlayers.Lines.Select(l => l.Name).ToHashSet();
-            // The 30 real franchises; the two tier-2 clubs that joined to make 32 (#355) keep their own made-up rosters.
-            Assert.All(real.League.Teams.Skip(30), t => Assert.DoesNotContain(t.Roster, p => names.Contains(p.Name)));
+            // The 30 real franchises; the two clubs that joined to make 32 (#355) are stocked by an expansion draft of real
+            // players (run 118, H110; D51 B), so every real club has lost one.
+            Assert.All(real.League.Teams.Skip(30), t => Assert.All(t.Roster, p => Assert.Contains(p.Name, names)));
             Assert.All(real.League.Teams.Take(30), t =>
             {
-                Assert.Equal(15, t.Roster.Count);
-                Assert.InRange(t.Roster.Count(p => names.Contains(p.Name)), 13, 15);
+                Assert.Equal(14, t.Roster.Count);
+                Assert.InRange(t.Roster.Count(p => names.Contains(p.Name)), 12, 14);
             });
             var den = real.League.Teams.First(t => t.Abbreviation == "DEN");
             Assert.Same(den, real.HumanTeam);

@@ -136,7 +136,7 @@
             <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
                         HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
           </Grid>
-          <TextBlock Text="{Binding CourtLegend}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
+          <TextBlock Text="{Binding CourtLegend}" ToolTip.Tip="{Binding CourtLegendTip}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
           <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding FlowShown}">
           <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
           <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
