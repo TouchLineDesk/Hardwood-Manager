@@ -408,8 +408,11 @@ public sealed class LeagueBook
                     : $"{col.Programs.Count} programs in {col.Active.Count()} conferences. Every American from 14 to 22 plays here; at 23 they turn pro."),
                 ("Game", RulesText(Model.Rules.College)),
                 ("Season", "Non-conference games from November, Thanksgiving invitationals, December showcases, then a conference round robin from January and conference tournaments in March."),
-                ("March Madness", "68 teams: the 8 conference tournament winners plus 60 at-large. First Four, then six rounds to the national title. Played on the full match engine."),
-                ("Recruiting", "Programs recruit 14-year-olds by prestige; winning raises prestige."),
+                // H117 (run 121): one automatic bid per conference (32 in the real world), not 8.
+                ("March Madness", $"68 teams: the {col.Active.Count()} conference tournament winners plus {68 - col.Active.Count()} at-large. First Four, then six rounds to the national title. Played on the full match engine."),
+                ("Recruiting", col.Recruiting
+                    ? "Programs scout high-school players from 14 and sign them as seniors, by prestige; winning raises prestige."
+                    : "Programs recruit 14-year-olds by prestige; winning raises prestige."),
             },
             Champions = col.History.AsEnumerable().Reverse().Select(h => $"{h.Year}-{(h.Year + 1) % 100:00}  {h.Champion} (beat {h.RunnerUp})").ToList(),
             ChampionRows = () => col.History.AsEnumerable().Reverse().Select(h => new BookChampion($"{h.Year}-{(h.Year + 1) % 100:00}", h.Champion, col.Program(h.ChampionId),

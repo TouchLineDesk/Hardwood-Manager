@@ -21,6 +21,13 @@ public class K1LeakProbe
         if (string.IsNullOrEmpty(spec)) return;
         var parts = spec.Split(':');
         ulong seed = ulong.Parse(parts[0]); int team = int.Parse(parts[1]), seasons = parts.Length > 2 ? int.Parse(parts[2]) : 1;
+        if (team < 0)
+        {
+            // -1: the strongest real club (CriticBot's nba-real-strong), -2: the weakest (nba-real-weak).
+            var (probe, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed);
+            var order = probe.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t)).ToList();
+            team = team == -1 ? order.First().Id : order.Last().Id;
+        }
         var s = GameSession.NewGame(seed, team, null);
         foreach (var line in Probe(s, seasons)) _out.WriteLine(line);
     }

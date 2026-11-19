@@ -788,7 +788,7 @@ public sealed partial class CollegeWorld
         if (name.EndsWith("tournament")) News.Add(($"{w.FullName} win the {name}", $"{w.FullName} take the {name} and the automatic bid to March Madness."));
     }
 
-    /// <summary>Selection: eight automatic bids (conference tournament champions) and 60 at-large by rating; the bottom eight play the First Four.</summary>
+    /// <summary>Selection: one automatic bid per conference (its tournament champion) and the rest of the 68 at-large by rating; the bottom eight play the First Four.</summary>
     private void Select(Rng rng)
     {
         var s = Season;

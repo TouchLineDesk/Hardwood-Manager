@@ -25,6 +25,8 @@ public sealed class OffseasonReport
     public List<(Player player, Team team, long salary, int years)> FreeAgentSignings { get; } = new();
     public List<(Player player, Team team)> Waived { get; } = new();
     public List<Player> LeftUnsigned { get; } = new();
+    /// <summary>K1 part 2 (run 121): NBA veterans who took what a club could pay rather than leave.</summary>
+    public List<(Player player, Team team, long salary)> Settled { get; } = new();
     public List<Player> HallOfFame { get; } = new();
     public List<(Player player, Team team)> RetiredNumbers { get; } = new();
     public List<(Staff staff, Team team)> StaffReleased { get; } = new();
@@ -582,6 +584,73 @@ public sealed class Offseason
         }
     }
 
+    /// <summary>The least share of his ask an unsigned NBA veteran takes to stay (K1 part 2).</summary>
+    public const double SettleShare = 0.4;
+
+    /// <summary>
+    /// K1 part 2 (run 121): at the end of free agency, real players of NBA calibre who are still unsigned (mostly NBA
+    /// players whose deals ran out) take what a club can still pay (its wage room, at least <see cref="SettleShare"/> of the ask) on a one- or
+    /// two-year deal, rather than leave for scraps abroad (Miles Bridges, CA 135, signed in Korea for $1.33M; run 119).
+    /// Open market only. A club over its budget doesn't sign him, so no star stays for the minimum.
+    /// </summary>
+    public void AiSettle(int? humanTeamId)
+    {
+        var fin = _league.Finance;
+        if (!fin.OpenMarket) return;
+        // Real players only: they are the ones K1 counts, and they are finite, so the league can't pile up talent over a long
+        // career (letting every made-up free agent settle too lifted the audit's NBA top-13 from 114.4 to 118.3 over ten
+        // seasons; the world's leagues are where the rest go). Every unsigned one of NBA calibre, not only this summer's:
+        // the report isn't saved, so a reload mid-summer would otherwise change who stays.
+        var leaving = _league.FreeAgents.Where(p => p.CurrentAbility >= SettleCalibre && p.Age(Date) <= 34 && p.DraftRightsTeamId == null
+                                                   && RealWorld.RealNames.IsReal(p.Name))
+            .OrderByDescending(p => ContractMarket.Value(p, Date)).ThenBy(p => p.Id).ToList();
+        foreach (var p in leaving)
+        {
+            long ask = ContractMarket.MarketSalary(p.CurrentAbility, p.Age(Date), fin);
+            long floor = Math.Max(fin.MinSalary, (long)Math.Round(ask * SettleShare / 10_000) * 10_000);
+            var offers = _league.Teams
+                .Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax)
+                .Select(t => (t, wage: Math.Min(ask, Math.Min(Room(t), AiPayrollLimit(t, star: false) - ContractMarket.Payroll(t)))))
+                .Where(x => x.wage >= floor)
+                .ToList();
+            // A rotation player (not a star) takes a veteran's minimum for one season from a club with a spot, if it keeps
+            // the club within 3% of its budget. Stars (above SettleMinimumCap) don't play for the minimum.
+            bool minimum = false;
+            if (offers.Count == 0 && p.CurrentAbility <= SettleMinimumCap)
+            {
+                offers = _league.Teams
+                    .Where(t => t.Id != humanTeamId && t.Roster.Count < fin.RosterMax
+                                && ContractMarket.Payroll(t) + fin.MinSalary <= AiPayrollLimit(t, star: false) * 1.03)
+                    .Select(t => (t, wage: fin.MinSalary)).ToList();
+                minimum = true;
+            }
+            if (offers.Count == 0) continue;
+            var (team, wage) = offers.OrderByDescending(x => LastWinPct(x.t) + _rng.NextDouble() * 0.35 + PositionNeed(x.t, p) * 0.05).First();
+            wage = Math.Max(fin.MinSalary, wage / 10_000 * 10_000);
+            if (minimum ? SignAtMinimum(team, p) : SignFreeAgent(team, p, p.Age(Date) >= 30 ? 1 : 2, wage)) Report.Settled.Add((p, team, wage));
+        }
+    }
+
+    /// <summary>The best player who takes a veteran's minimum to stay (K1 part 2): rotation players, not stars.</summary>
+    public const int SettleMinimumCap = 135;
+
+    /// <summary>A one-year minimum deal outside the usual routes (the club is over its budget by at most 3%).</summary>
+    private bool SignAtMinimum(Team team, Player p)
+    {
+        if (!_league.FreeAgents.Contains(p) || team.Roster.Count >= _league.Finance.RosterMax) return false;
+        long salary = _league.Finance.MinSalary;
+        p.Contract = new Contract { Years = 1, Salary = salary, StartSeason = Season + 1, RelegationRelease = ContractMarket.AsksForReleaseClause(p) };
+        p.TeamId = team.Id;
+        p.DraftRightsTeamId = null;
+        team.Roster.Add(p);
+        _league.FreeAgents.Remove(p);
+        Report.FreeAgentSignings.Add((p, team, salary, 1));
+        return true;
+    }
+
+    /// <summary>Who settles: NBA rotation players and up (the audit's NBA top-13 average is about 110).</summary>
+    public const int SettleCalibre = 115;
+
     // ------------------------------------------------------------------------------------------
     // Phase 4: compliance and roll the calendar
     // ------------------------------------------------------------------------------------------
@@ -623,6 +692,7 @@ public sealed class Offseason
             }
         }
         AiFreeAgency(null);
+        AiSettle(HumanTeamId);
         // Every club reaches the roster minimum before opening night (review #10: a promoted club opened with 10; #358): the
         // best players still unsigned take a one-year minimum deal.
         foreach (var team in _league.Teams.Where(t => t.Roster.Count < fin.RosterMin))
