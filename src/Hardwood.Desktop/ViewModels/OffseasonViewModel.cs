@@ -29,7 +29,7 @@ public sealed partial class ExpiringRow : ObservableObject
     [ObservableProperty] private bool _picked;
     public string CardLine => $"{Pos} · {Age} · PA {PA}";
     public string AskChip { get; init; } = "";
-    public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits on its own" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
+    public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits on its own" or "Owner stretches" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
     public string FitTip { get; init; } = "";
     /// <summary>H111 (run 117): the fit chip shows only when the cards differ (every card read "Fits on its own").</summary>
     [ObservableProperty] private bool _showFit = true;
@@ -302,7 +302,10 @@ public sealed partial class OffseasonViewModel : PageViewModel
             s.MyStats.TryGetValue(p.Id, out var st);
             var d = s.PeekDemand(p);
             // H40 (run 79): each ask is checked on its own against the room left, so say so: five asks can each fit and not all together.
-            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits on its own" : "Over budget";
+            // H122 (run 122): the owner stretches the budget for your own young star; the card says so.
+            long stretch = s.MyStretchFor(p);
+            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits on its own"
+                     : stretch > 0 && s.CanKeep(p, d.Wage) ? "Owner stretches" : "Over budget";
             Expiring.Add(new ExpiringRow
             {
                 Player = p, Age = p.Age(s.Today), Team = team,   // H38: today's age, as on every other page
@@ -313,8 +316,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 FitTip = fits switch
                 {
                     "Won't stay" => $"{p.Name} is too unhappy here to sign a new deal",
+                    "Owner stretches" => $"His ask is over your wage budget, but he's your own young star (CA {ContractRules.YoungStarAbility}+, under {ContractRules.YoungStarMaxAge + 1}): the owner will go up to {M(stretch)} over the budget to keep him, and raises the budget to cover it.",
                     "Fits on its own" => $"His ask fits your wage budget with the deals you have now ({M(Math.Max(0, team.Money.WageBudget - s.MyCommittedWages))} to spend). Each card is checked on its own: keeping several takes the room of all of them.",
-                    _ => "His ask would take you over the wage budget; the owner won't allow it",
+                    _ => stretch > 0
+                        ? $"His ask would take you over the wage budget even with the {M(stretch)} the owner adds to keep his own young star"
+                        : "His ask would take you over the wage budget; the owner won't allow it",
                 },
                 Picked = Talk.Player == p,
             });
