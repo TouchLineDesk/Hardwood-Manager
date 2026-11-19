@@ -200,6 +200,7 @@ public sealed partial class GameSession
     {
         // CS4 (run 129): a top recruit's national headline about your own program repeats the trail's "commits to you".
         bool ownCommit = Employed && InCollege && TrailOpen && title.EndsWith($"commits to {HumanTeam.FullName}");
+        if (ownCommit) return;
         if (!ownCommit && Employed && (title.Contains(HumanTeam.FullName) || body.Contains(HumanTeam.FullName))) { Post(title, body, "World"); return; }
         // March Madness is a college coach's own event (C4 part 2, #306): its round-by-round stories come straight to the
         // inbox. Pro careers read them in the world digest.

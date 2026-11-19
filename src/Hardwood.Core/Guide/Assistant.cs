@@ -78,9 +78,10 @@ public static class Assistant
     /// <summary>The reminder's slot for this phase, or null for a task that isn't a standing reminder.</summary>
     public static string? ReminderSlot(GameSession s, GuideTask t)
     {
-        string phase = $"{s.League.Season}-{s.Phase}";
-        if (t.Key.StartsWith("board-")) return $"remind:board{(s.Job.Confidence < 20 ? "-low" : "")}:{phase}";
-        if (t.Key.StartsWith("staffdeal-")) return $"remind:staffdeal:{s.League.Season}";
+        // The progress is app-wide, so the slot names the career (seed and club) as well as the season and phase (review).
+        string career = $"{s.Seed}-{s.HumanTeam.Id}-{s.League.Season}";
+        if (t.Key.StartsWith("board-")) return $"remind:board{(s.Job.Confidence < 20 ? "-low" : "")}:{career}-{s.Phase}";
+        if (t.Key.StartsWith("staffdeal-")) return $"remind:staffdeal:{career}"; // one decision a summer: once a season
         return null;
     }
 
