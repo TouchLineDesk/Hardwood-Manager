@@ -264,6 +264,7 @@
           <StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6"><c:Icon Kind="{Binding PayrollIcon}" Width="16" Height="16" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding PayrollTitle}" Classes="h2" Margin="0"/></StackPanel>
             <c:BarChart Bars="{Binding Payroll}" Lines="{Binding PayrollLines}" Height="180"/>
+            <TextBlock Text="{Binding PayrollCaption}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" IsVisible="{Binding PayrollCaption, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
         </Border>
       </Grid>

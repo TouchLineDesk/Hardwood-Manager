@@ -51,6 +51,10 @@ public sealed class PlayerRow
     public string MoodIcon => Player.Morale >= 60 ? "Smile" : Player.Morale >= 45 ? "Meh" : "Frown";
     public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Player.Morale >= 60 ? "#3FB950" : Player.Morale >= 45 ? "#D29922" : "#F85149"));
     public string CardFooter { get; init; } = "";
+    /// <summary>CS3 (run 127): a college player's class year ("Fr" … "5th"); empty for the pros.</summary>
+    public string ClassYear { get; init; } = "";
+    /// <summary>Sorts the class column youngest first.</summary>
+    public int ClassOrder { get; init; }
     /// <summary>Set by the hosting page so a card click opens the player.</summary>
     public IRelayCommand? Open { get; set; }
 
@@ -60,15 +64,19 @@ public sealed class PlayerRow
         string status = p.IsAvailable(s.Today) ? "" : $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)";
         var club = p.TeamId is { } cid ? s.FindTeam(cid) : null;
         bool before = club != null && !s.ContractsCounted(club);
+        var cls = s.ClassYearOf(p);
         return new PlayerRow
         {
+            ClassYear = cls?.Short ?? "", ClassOrder = cls?.Year ?? 0,
             Player = p, Age = p.Age(s.Today), BeforeCountdown = before, Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",
             Team = team ?? (p.TeamId is { } id ? s.FindTeam(id)!.Abbreviation : "FA"),
             TeamObj = p.TeamId is { } tid ? s.FindTeam(tid)! : null,
             CardFooter = st is { Games: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min"
-                       : p.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)} · {YearsText(c, before).ToLowerInvariant()}" : $"Age {p.Age(s.Today)}",
+                       : p.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)} · {YearsText(c, before).ToLowerInvariant()}"
+                       // CS3 (run 127): a college player's card foot names his class, not his age again.
+                       : cls is { } cy ? (cy.Final ? $"{cy.Long} · final season" : cy.Long) : $"Age {p.Age(s.Today)}",
         };
     }
 }
@@ -86,6 +94,8 @@ public sealed partial class RosterViewModel : PageViewModel
     public Avalonia.Media.Color Accent => ThemeService.AccentFor(Team ?? Session.HumanTeam);
     [ObservableProperty] private bool _cardView = true;
     public bool TableView => !CardView;
+    /// <summary>CS3: the class-year column shows for a college program.</summary>
+    public bool ShowClassYear => Session.World.College is { } cw && cw.Programs.Contains(Team ?? Session.HumanTeam);
     partial void OnCardViewChanged(bool value) => OnPropertyChanged(nameof(TableView));
 
     public RosterViewModel(MainViewModel shell) : base(shell)
@@ -100,7 +110,7 @@ public sealed partial class RosterViewModel : PageViewModel
         _team = Session.HumanTeam;
     }
 
-    partial void OnTeamChanged(Team? value) => Refresh();
+    partial void OnTeamChanged(Team? value) { OnPropertyChanged(nameof(ShowClassYear)); Refresh(); }
 
     public List<Hardwood.Desktop.Controls.Chip> BuildChips(Team team, long payroll)
     {
@@ -129,9 +139,9 @@ public sealed partial class RosterViewModel : PageViewModel
         else chips.Add(new("Wages", Hardwood.Core.Season.Budgets.Money(payroll), "a season"));
         if (college != null)
         {
-            var summer = new DateOnly(college.Season.Year + 1, 7, 1);
+            var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today)); // as the cards count it
             int grads = roster.Count(p => p.Age(summer) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
-            chips.Add(new("Graduating", grads.ToString(), "turn pro next summer", grads > 0 ? "info" : ""));
+            chips.Add(new("Final season", grads.ToString(), grads == 1 ? "turns pro next summer" : "turn pro next summer", grads > 0 ? "info" : ""));
         }
         var injured = roster.Where(p => p.Injury is { } i && i.IsOut(s.Today)).ToList();
         chips.Add(injured.Count == 0
