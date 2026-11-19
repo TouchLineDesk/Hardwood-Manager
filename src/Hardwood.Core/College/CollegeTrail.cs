@@ -181,7 +181,7 @@ public sealed partial class CollegeWorld
         board ??= BoardFor(r.ClassOf);
         var ranks = PrestigeRanks();
         return Programs.Where(t => CouldTake(t, r, board, ranks))
-                       .Select(t => (t, Appeal(t, p, r, board)))
+                       .Select(t => (t, Appeal(t, p, r, board, null, ranks)))
                        .OrderByDescending(x => x.Item2).ToList();
     }
 
@@ -203,7 +203,7 @@ public sealed partial class CollegeWorld
         foreach (var t in Programs)
         {
             if (!CouldTake(t, r, board, ranks)) continue;
-            double a = Appeal(t, p, r, board);
+            double a = Appeal(t, p, r, board, null, ranks);
             if (a > top) { top = a; best = t; }
         }
         return best;
@@ -283,7 +283,7 @@ public sealed partial class CollegeWorld
             var r = Recruits[p.Id];
             if (r.CommittedTo != null) continue;
             double mine = InterestIn(r, t);
-            double ours = Appeal(t, p, r, board) - CourtingEdge(r, t.Id, mine) + CourtingEdge(r, t.Id, Math.Max(60, mine));
+            double ours = Appeal(t, p, r, board, null, ranks) - CourtingEdge(r, t.Id, mine) + CourtingEdge(r, t.Id, Math.Max(60, mine));
             // Only the schools recruiting him are rivals (#184: a blue blood isn't chasing the No. 400 prospect in the autumn).
             var chasing = rivals.Where(o => InReach(o, r, ranks, scale)).ToList();
             double rival = chasing.Count == 0 ? double.MinValue : chasing.Max(o => Appeal(o, p, r, board));
@@ -291,6 +291,42 @@ public sealed partial class CollegeWorld
             if (targets.Count >= want) break;
         }
         return targets;
+    }
+
+    /// <summary>Interest a handed-back commitment keeps with you: he had picked your program, so he still leans your way.</summary>
+    public const double HandedBackInterest = 40;
+
+    /// <summary>
+    /// CS1 (run 125): when you take over a program (a new career or a new college job), the commitments the computer
+    /// made in its name for the class you're recruiting are handed back to the pool, so your first season has scholarships
+    /// to chase. Before, Clemson's Recruiting tab read "0 scholarships open" from the first day until April 15. Each
+    /// prospect keeps his liking for the program (interest <see cref="HandedBackInterest"/>, on your board, no offer yet):
+    /// offer him and he'll usually come back. Commitments you won yourself (offered by you) are kept. Returns how many.
+    /// </summary>
+    public int HandBackCommitments(Team t, DateOnly today)
+    {
+        int cls = RecruitingClass(today);
+        if (today >= SigningDay(cls)) return 0;
+        var back = new List<(Player p, Recruit r)>();
+        foreach (var p in ClassOf(cls))
+        {
+            var r = Recruits[p.Id];
+            if (r.CommittedTo != t.Id || (r.CourtedBy == t.Id && r.Offered)) continue;
+            r.CommittedTo = null; r.CommittedOn = null;
+            Courting(r, t);
+            r.Interest = Math.Max(r.Interest, HandedBackInterest);
+            r.OnBoard = true;
+            back.Add((p, r));
+        }
+        if (back.Count > 0)
+        {
+            var names = back.OrderBy(x => x.r.Rank).Select(x => $"{StarText(x.r.Stars)} {x.p.Name} (No. {x.r.Rank})").ToList();
+            CoachNews.Add(($"{back.Count} recruit{(back.Count == 1 ? " has" : "s have")} reopened {(back.Count == 1 ? "his" : "their")} recruitment",
+                $"With a new head coach, {string.Join(", ", names)} {(back.Count == 1 ? "is" : "are")} no longer committed to {t.FullName}. "
+                + $"{(back.Count == 1 ? "He still likes" : "They still like")} the program and {(back.Count == 1 ? "is" : "are")} on your board: offer a scholarship on the Recruiting tab to win {(back.Count == 1 ? "him" : "them")} back before other schools do. "
+                + $"You have {OpenScholarships(t, cls)} scholarships open in the Class of {cls}; signing day is {SigningDay(cls):MMMM d}."));
+        }
+        return back.Count;
     }
 
     /// <summary>Tell the coached program about a commitment it cares about: to it, or a prospect it was courting going elsewhere.</summary>

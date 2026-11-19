@@ -44,6 +44,14 @@ public sealed partial class GameSession
         if (TrailWorld!.NewTrailWeek(HumanTeam, Today, Delegated.Recruiting) is { } did) Delegated.LastRecruiting = did;
     }
 
+    /// <summary>CS1 (run 125): a new college coach starts with the class's computer-made commitments back in the pool.</summary>
+    internal void HandBackOnHire()
+    {
+        if (!TrailOpen) return;
+        TrailWorld!.HandBackCommitments(HumanTeam, Today);
+        PostCoachNews();
+    }
+
     /// <summary>Commitments the coached program cares about become messages (to you, or a target going elsewhere).</summary>
     private void PostCoachNews()
     {
