@@ -301,10 +301,11 @@ public sealed partial class GameSession
             () =>
             {
                 if (MyStreak() < 3) return null;
+                // CS4 (run 129): a college program has no money to spend; the dinner is the coach's call, not a bill.
                 return Locker("dinner", "A team dinner?",
-                    "The players want to celebrate the run with a team dinner, on the club.", 0, new()
+                    InCollege ? "The players want to celebrate the run with a team dinner together." : "The players want to celebrate the run with a team dinner, on the club.", 0, new()
                     {
-                        O($"Pay for it (${DinnerCost / 1000}K)", "Spirit up for four weeks"),
+                        InCollege ? O("Set it up", "Spirit up for four weeks") : O($"Pay for it (${DinnerCost / 1000}K)", "Spirit up for four weeks"),
                         O("Not this time", "Spirit dips a little for two weeks"),
                     });
             },
@@ -398,7 +399,7 @@ public sealed partial class GameSession
                 notes.Add($"{P(0)?.LastName} has taken the young players under his wing."); break;
             case ("mentor", 1): Morale(P(0), -4); notes.Add("He understood, but he was disappointed."); break;
 
-            case ("dinner", 0): team.Money.Balance -= DinnerCost; Spirit(4, 28, "A team dinner"); notes.Add("A good night out."); break;
+            case ("dinner", 0): if (!InCollege) team.Money.Balance -= DinnerCost; Spirit(4, 28, "A team dinner"); notes.Add("A good night out."); break;
             case ("dinner", 1): Spirit(-1, 14, "No team dinner"); notes.Add("A few long faces."); break;
         }
         if (repeated) notes.Add("They've heard that one before, so it counted for less.");

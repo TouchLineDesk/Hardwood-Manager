@@ -101,6 +101,7 @@ public sealed partial class GameSession
         // H109 (run 117): the old club's unposted results and knocks go with the job (the sacking message closes that chapter).
         WeekResults.Clear();
         WeekKnocks.Clear();
+        WeekRecruiting.Clear();
         _resultsSince = null;
         SyncManagedIds();
     }

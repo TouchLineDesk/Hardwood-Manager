@@ -52,10 +52,10 @@ public static class Assistant
     public static GuideAdvice Advise(GameSession s, string page, GuideLevel level, GuideProgress progress)
     {
         var stage = StageFor(level, progress);
-        var tasks = Tasks(s, stage, progress).Where(t => !progress.Dismissed.Contains(t.Key)).OrderBy(t => t.Priority).ToList();
+        int day = s.Today.DayNumber;
+        var tasks = Tasks(s, stage, progress).Where(t => !progress.Dismissed.Contains(t.Key) && ReminderDue(s, t, progress, day)).OrderBy(t => t.Priority).ToList();
         var (title, tip) = PageTip(page, stage, s.Employed && s.InCollege);
         var notes = new List<string>();
-        int day = s.Today.DayNumber;
         foreach (var n in StrategyNotes(s, stage))
         {
             int shown = progress.NoteDays.GetValueOrDefault(n.Key);
@@ -65,6 +65,33 @@ public static class Assistant
         }
         var (gameTitle, why) = LastGame(s);
         return new GuideAdvice(stage, Headline(s, tasks), tasks, title, tip, notes, gameTitle, why);
+    }
+
+    /// <summary>
+    /// CS4 (run 129): standing reminders (the board's patience, staff contracts ending) are shown on at most
+    /// <see cref="MaxReminderDays"/> days per season phase, then go quiet until the phase changes ("The AD is losing
+    /// patience" sat on the panel 22-43 days and "N staff contracts end this summer" 42 days per three seasons). The board's
+    /// reminder comes back once if confidence falls below 20.
+    /// </summary>
+    public const int MaxReminderDays = 2;
+
+    /// <summary>The reminder's slot for this phase, or null for a task that isn't a standing reminder.</summary>
+    public static string? ReminderSlot(GameSession s, GuideTask t)
+    {
+        string phase = $"{s.League.Season}-{s.Phase}";
+        if (t.Key.StartsWith("board-")) return $"remind:board{(s.Job.Confidence < 20 ? "-low" : "")}:{phase}";
+        if (t.Key.StartsWith("staffdeal-")) return $"remind:staffdeal:{s.League.Season}";
+        return null;
+    }
+
+    private static bool ReminderDue(GameSession s, GuideTask t, GuideProgress progress, int day)
+    {
+        if (ReminderSlot(s, t) is not { } slot) return true;
+        int shown = progress.NoteDays.GetValueOrDefault(slot);
+        if (progress.NoteLastDay.GetValueOrDefault(slot) == day) return true;
+        if (shown >= MaxReminderDays) return false;
+        progress.NoteDays[slot] = shown + 1; progress.NoteLastDay[slot] = day;
+        return true;
     }
 
     /// <summary>A strategy note is shown on at most this many days (its key changes when the situation does).</summary>
@@ -197,7 +224,7 @@ public static class Assistant
         // ---- staff
         var missing = Enum.GetValues<StaffRole>().Where(r => team.Staff.All(st => st.Role != r)).ToList();
         if (missing.Count > 0)
-            yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire a {Staff.RoleName(missing[0]).ToLowerInvariant()}",
+            yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire {Article(Staff.RoleName(missing[0]).ToLowerInvariant())}",
                 $"{string.Join(", ", missing.Select(Staff.RoleName))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
 
         // Staff part 2: contracts you have to extend yourself, raised from February so there's time.
@@ -233,9 +260,20 @@ public static class Assistant
             int order = 50;
             foreach (var (pg, why) in FirstSteps)
                 if (!progress.PagesSeen.Contains(pg) && !(s.InCollege && pg is "Transactions" or "Offseason")) // hidden for a college coach (C2)
-                    yield return new($"visit-{pg}", order++, $"Look at {pg}", why, pg);
+                    yield return new($"visit-{pg}", order++, $"Look at {pg}", s.InCollege && CollegeFirstSteps.TryGetValue(pg, out var cw) ? cw : why, pg);
         }
     }
+
+    /// <summary>"an assistant coach", "a physio" (K10: "Hire a assistant coach").</summary>
+    public static string Article(string noun) => (noun.Length > 0 && "aeiou".Contains(noun[0]) ? "an " : "a ") + noun;
+
+    /// <summary>CS4 (run 129): the first steps a college coach reads where the pros' wording (the owner, the club's money) is wrong.</summary>
+    private static readonly Dictionary<string, string> CollegeFirstSteps = new()
+    {
+        ["Roster"] = "Who we have: ability, potential (as your scouts see it), class year and health. Nobody is paid.",
+        ["Board"] = "What the athletic director expects this season, how confident the AD is in you, and the program's prestige.",
+        ["Staff & Training"] = "Your assistants, physio and scouts, and the training plan.",
+    };
 
     private static readonly (string Page, string Why)[] FirstSteps =
     {
