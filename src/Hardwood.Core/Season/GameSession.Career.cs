@@ -141,7 +141,8 @@ public sealed partial class GameSession
         if (World.College is not { } cw || cw.Programs.Count == 0) return;
         var rng = CareerRng(2);
         var ctx = LeagueContext.College(cw, cw.Programs[0]);
-        var wins = cw.Programs.ToDictionary(p => p.Id, p => CollegeRecord(p).Wins);
+        // CS2 (run 126): the regular season, as the target covers (review of PR #190).
+        var wins = cw.Programs.ToDictionary(p => p.Id, p => cw.RegularSeasonRecord(p.Id).wins);
         foreach (var t in Board.AiSeasonChanges(ctx, t => wins[t.Id], rng, ControlledTeamId, League.Season))
         {
             string old = t.CoachName;
@@ -285,7 +286,9 @@ public sealed partial class GameSession
     {
         // H70 (run 114): the board's own judgement of the season (Board.Judge), so an offer never follows a review that read
         // "expected more" for the same reasons, and going up counts.
-        var j = Board.Judge(e, ctx, achieved, wins, losses, relegated, goingUp);
+        // CS2 (run 126): the seed counts in college, as in the review.
+        var j = InCollege ? Board.Judge(e, ctx, achieved, wins, losses, relegated, goingUp, World.College!.SeedOf(HumanTeam.Id), World.College!.MadnessReached(HumanTeam.Id))
+            : Board.Judge(e, ctx, achieved, wins, losses, relegated, goingUp);
         return j.Steps >= 1 || j.WinsVsTarget >= 4 || (j.GoalMet && j.WinsVsTarget >= 0);
     }
 

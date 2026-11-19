@@ -11,7 +11,7 @@
         <!-- Employed: owner, goals, confidence -->
         <Border Classes="panel" IsVisible="{Binding Employed}">
           <StackPanel Spacing="6">
-            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="DollarSign" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding FinanceTitle}" Classes="h2" Margin="0"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="{Binding FinanceIcon}" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding FinanceTitle}" Classes="h2" Margin="0"/></StackPanel>
             <c:StatStrip ItemsSource="{Binding FinanceChips}" Accent="{Binding Accent}"/>
             <TextBlock Text="{Binding FinanceNote}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
           </StackPanel>
@@ -107,7 +107,7 @@
             <TextBlock Text="{Binding ConfidenceHeading}" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding ConfidenceRecent}" Classes="muted" TextWrapping="Wrap"/>
             <c:StatStrip ItemsSource="{Binding ConfidenceDrivers}" Accent="{Binding Accent}"/>
-            <TextBlock Text="Confidence follows your pace against the target each week (faster with impatient owners), and the owner's demands. After the playoffs the board reviews the season against the goal." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ConfidenceNote}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
 

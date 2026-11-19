@@ -690,7 +690,7 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} wins)."
+            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} {(InCollege ? "regular-season " : "")}wins)."
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
     }
 
@@ -707,7 +707,7 @@ public sealed partial class GameSession
     private void WeeklyBoard()
     {
         if (!Employed) return;
-        var rec = MyRecord;
+        var rec = MyBoardRecord;
         var (title, body, sacked) = Jobs.Board.Weekly(Job, ContextOf(HumanTeam), HumanTeam, rec.Wins, rec.Losses, MyStats, Today, League.Season);
         if (title != null) Post(Boss(title), Boss(body!), "Board");
         if (sacked) Fire();
@@ -722,7 +722,7 @@ public sealed partial class GameSession
         bool hiredForNext = Employed && Job.Current is { } cur && cur.Season > League.Season;
         if (Employed)
         {
-            var rec = MyRecord;
+            var rec = MyBoardRecord; var all = MyRecord;
             var achieved = InCollege ? Jobs.Board.Achieved(World.College!, HumanTeam.Id)
                 : HumanLeague is { } c ? Jobs.Board.Achieved(HumanTeam.Id, c.Season, c.Profile) : Jobs.Board.Achieved(HumanTeam, Postseason);
             // A division winner in tiers 2-3 goes up (#319): the board counts that as a top-three finish at least.
@@ -733,7 +733,7 @@ public sealed partial class GameSession
             {
                 (string title, string body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
                     relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1,
-                    goingUp: GoingUp());
+                    goingUp: GoingUp(), seed: InCollege ? World.College!.SeedOf(HumanTeam.Id) : 0, overall: (all.Wins, all.Losses));
                 Post(Boss(title), Boss(body), "Board");
             }
             if (RelegationTiebreak() is { } tie)

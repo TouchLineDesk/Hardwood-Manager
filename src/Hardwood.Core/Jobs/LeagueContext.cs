@@ -9,7 +9,8 @@ namespace Hardwood.Core.Jobs;
 /// and how prestigious the league's jobs are compared with the NABL.
 /// </summary>
 public sealed record LeagueContext(string Name, IReadOnlyList<Team> Teams, int SeasonGames, int PlayoffTeams, bool IsNabl,
-                                   Finance? Finance, double PrestigeOffset, int PyramidLevel = 0, bool IsCollege = false)
+                                   Finance? Finance, double PrestigeOffset, int PyramidLevel = 0, bool IsCollege = false,
+                                   IReadOnlyDictionary<int, double>? ProgramPrestige = null)
 {
     /// <summary>The semi-pro and amateur levels of the USA pyramid (4 regional, 5 local): owners there are patient and modest.</summary>
     public bool Grassroots => PyramidLevel >= 4;
@@ -39,7 +40,9 @@ public sealed record LeagueContext(string Name, IReadOnlyList<Team> Teams, int S
     public static LeagueContext College(College.CollegeWorld cw, Team program)
     {
         int confSize = cw.ConferenceOf.TryGetValue(program.Id, out var key) ? cw.InConference(key).Count() : 14;
-        return new("College basketball", cw.Programs, 10 + confSize - 1 + 3, 68, false, null, -10, 0, true);
+        // CS2 (run 126): the programs' prestige, so the athletic director's goal follows the program's standing as well as this
+        // year's squad (Clemson's goal flipped between "build" and "make March Madness" each year).
+        return new("College basketball", cw.Programs, 10 + confSize - 1 + 3, 68, false, null, -10, 0, true, cw.Prestige);
     }
 
     /// <summary>Where a team sits on a 0 (best) to 1 (worst) scale given its projected rank.</summary>

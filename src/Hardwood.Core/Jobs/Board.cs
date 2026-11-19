@@ -186,6 +186,8 @@ public static class Board
         if (ctx.IsCollege && madnessRound == 0) return "made the First Four, out before the Round of 64";
         if (ctx.IsCollege && achieved == SeasonGoal.Playoffs && madnessRound == 2) return "won a game in March Madness, out in the Round of 32";
         if (ctx.IsCollege && achieved == SeasonGoal.Playoffs && madnessRound == 1) return "made March Madness, out in the Round of 64";
+        // CS2 (run 126): the runner-up reached the final, not just the Final Four.
+        if (ctx.IsCollege && achieved == SeasonGoal.Finals && madnessRound == 6) return "reached the national final";
         if (ctx.IsCollege) return achieved switch
         {
             SeasonGoal.Title => "won the national championship",
@@ -428,6 +430,24 @@ public static class Board
         return steps[Math.Max(0, i - 1)];
     }
 
+    /// <summary>
+    /// CS2 (run 126): where the athletic director ranks a program: this year's squad and the program's prestige (its standing over
+    /// years) count equally, and the programs are ranked on the sum, so the country still has one favourite. The squad alone
+    /// churns with every class, so Clemson's goal flipped between "build the program" and "make March Madness" each spring.
+    /// Without prestige (older contexts) it is the squad's rank.
+    /// </summary>
+    public static int CollegeRank(LeagueContext ctx, Team team, int squadRank)
+    {
+        if (ctx.ProgramPrestige is not { } pr || !pr.ContainsKey(team.Id)) return squadRank;
+        double Squad(Team t) => t.Roster.OrderByDescending(p => p.CurrentAbility).Take(9).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(0).Average();
+        var squadOrder = ctx.Teams.OrderByDescending(Squad).ThenBy(t => t.Id).Select((t, i) => (t.Id, i)).ToDictionary(x => x.Id, x => x.i + 1);
+        var prestigeOrder = ctx.Teams.OrderByDescending(t => pr.GetValueOrDefault(t.Id, 0)).ThenBy(t => t.Id).Select((t, i) => (t.Id, i)).ToDictionary(x => x.Id, x => x.i + 1);
+        int Sum(Team t) => squadOrder[t.Id] + prestigeOrder[t.Id];
+        int mine = Sum(team);
+        // Ties go to the better squad.
+        return 1 + ctx.Teams.Count(t => t.Id != team.Id && (Sum(t) < mine || (Sum(t) == mine && squadOrder[t.Id] < squadOrder[team.Id])));
+    }
+
     public static Expectations SetExpectations(LeagueContext ctx, Team team, int season)
     {
         int r = ProjectedRank(ctx, team);
@@ -435,11 +455,15 @@ public static class Board
         int target;
         if (ctx.IsCollege)
         {
+            r = CollegeRank(ctx, team, r);
             // About 148 programs: the favourite is asked for the title, the top four the Final Four, the top 16 the Sweet 16,
             // roughly the top 45 a tournament bid (the at-large line sits around 45th once the automatic bids are in).
             goal = r == 1 ? SeasonGoal.Title : r <= 4 ? SeasonGoal.Finals : r <= 8 ? SeasonGoal.ConferenceFinals : r <= 16 ? SeasonGoal.SecondRound
                  : r <= 45 ? SeasonGoal.Playoffs : SeasonGoal.Develop;
-            target = (int)Math.Round(ctx.SeasonGames * (0.80 - ctx.Fraction(r) * 0.52));
+            // CS2 (run 126): the target follows the rank on a curve, as college records do: the favourite about 88% of its
+            // regular season (25 of 28), the 50th program about two in three, the middle of the country about half. The straight
+            // line asked a title favourite and a "build the program" side for the same 22 wins.
+            target = (int)Math.Round(ctx.SeasonGames * (0.88 - Math.Sqrt(ctx.Fraction(r)) * 0.6));
         }
         else if (ctx.IsNabl)
         {
@@ -718,11 +742,48 @@ public static class Board
         public bool BeatTarget => WinsVsTarget >= CreditWins;
     }
 
-    public static SeasonJudgement Judge(Expectations e, LeagueContext ctx, SeasonGoal achieved, int wins, int losses, bool relegated = false, bool goingUp = false)
+    /// <summary>
+    /// CS2 (run 126): the round a seed is expected to reach in March Madness (<see cref="College.CollegeWorld.MadnessReached"/>'s
+    /// scale: 1 = Round of 64, 2 = Round of 32, 3 = Sweet 16, 4 = Elite Eight), roughly what each seed line has done historically.
+    /// An 8- or 9-seed is a coin flip in its first game (1.5).
+    /// </summary>
+    public static double SeedExpectedRound(int seed) => seed switch
+    {
+        <= 0 => 0,
+        1 => 4,
+        2 => 3.5,
+        <= 4 => 3,
+        <= 6 => 2,
+        <= 10 => 1.5,
+        _ => 1,
+    };
+
+    /// <summary>CS2: rounds past what the seed was expected to reach (0 when not in the field or not college).</summary>
+    public static double SeedOverachievement(int seed, int madnessRound) =>
+        seed <= 0 || madnessRound < 0 ? 0 : Math.Max(madnessRound, 1) - SeedExpectedRound(seed);
+
+    /// <summary>CS2: for a "build the program" goal, the regular season (wins per 82 below the target, about 2 of a 28-game season) that still shows progress.</summary>
+    public const double CollegeProgressSlack = 6;
+
+    public static SeasonJudgement Judge(Expectations e, LeagueContext ctx, SeasonGoal achieved, int wins, int losses, bool relegated = false, bool goingUp = false,
+        int seed = 0, int madnessRound = -1)
     {
         // College goals sit on a shorter ladder (in the field, Sweet 16, Final Four, title): a 1-seed set "win it all" who
         // goes out in the round of 32 is three steps short, not four (the college-strong critic career, C2).
         double diff = ctx.IsCollege ? CollegeStep(achieved) - CollegeStep(e.Goal) : (int)achieved - (int)e.Goal;
+        double winsVsTargetNow = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
+        if (ctx.IsCollege && !e.Survive)
+        {
+            // CS2 (run 126): March is judged against the seed as well as the goal. An 8-seed in the Sweet 16 has overachieved
+            // (Cincinnati, 16-15, read "the record fell short" at confidence 36); a 12-seed that wins a game has done well.
+            double over = SeedOverachievement(seed, madnessRound);
+            if (over >= 1) diff = Math.Max(diff, 1);
+            else if (over >= 0.5) diff = Math.Max(diff, 0);
+            // A "build the program" goal is met by progress: a regular season near the target. A program that missed the
+            // tournament well short of it hasn't shown any (Clemson, 4-11 in the ACC, read "satisfied" and rose 39 → 45).
+            if (e.Goal == SeasonGoal.Develop && achieved == SeasonGoal.Develop && winsVsTargetNow < -CollegeProgressSlack)
+                diff = Math.Min(diff, -0.5);
+        }
         // Review #14 bug #16: "stay up" is judged on staying up (met; more than met with a playoff place), and a relegation is
         // never a goal met (a 25-57 relegated season read "the owner is satisfied").
         if (e.Survive) diff = relegated ? -1 : achieved >= SeasonGoal.Playoffs ? 1 : 0;
@@ -730,13 +791,12 @@ public static class Board
         // H70: going up is the season a lower-tier owner wants most, so it beats any goal (the Kings went up at 50-12 and read
         // "expected more").
         if (goingUp && !relegated) diff = Math.Max(diff, 1);
-        double winsVsTarget = (wins - e.TargetWins * (wins + losses) / Math.Max(1.0, ctx.SeasonGames)) * 82 / Math.Max(1.0, ctx.SeasonGames);
-        return new SeasonJudgement(diff, winsVsTarget);
+        return new SeasonJudgement(diff, winsVsTargetNow);
     }
 
     public static (string title, string body, bool sacked) SeasonReview(JobState job, Coach coach, LeagueContext ctx, Team team, SeasonGoal achieved,
         int wins, int losses, IReadOnlyDictionary<int, PlayerSeasonStats> stats, DateOnly today, int season, bool relegated = false, bool wonDivision = false, int madnessRound = -1,
-        bool? goingUp = null)
+        bool? goingUp = null, int seed = 0, (int Wins, int Losses)? overall = null)
     {
         var e = job.Current ?? SetExpectations(ctx, team, season);
         e.Achieved = achieved;
@@ -744,8 +804,10 @@ public static class Board
         // Older callers pass only wonDivision: a division winner went up before the promotion playoffs (run 102).
         bool up = goingUp ?? wonDivision;
         double impatience = (1.3 - team.Owner.Patience / 40.0) * (ctx.Grassroots ? 0.6 : 1);
-        var j = Judge(e, ctx, achieved, wins, losses, relegated, up);
+        var j = Judge(e, ctx, achieved, wins, losses, relegated, up, seed, madnessRound);
         double diff = j.Steps, winsVsTarget = j.WinsVsTarget;
+        // CS2 (run 126): rounds past the seed's expectation in March (college only; 0 otherwise).
+        double seedOver = ctx.IsCollege ? SeedOverachievement(seed, madnessRound) : 0;
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
         delta += Math.Clamp(winsVsTarget * 0.6, -10, 12);
@@ -769,10 +831,19 @@ public static class Board
         else if (diff < 0 && j.BeatTarget) delta = Math.Max(delta, 2);
         else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
         else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
+        // CS2 (run 126): a "build the program" season with no progress is a warning, not a second punishment on top of the
+        // weekly drift that already followed the record (the review's share is at most 8).
+        if (ctx.IsCollege && e.Goal == SeasonGoal.Develop && !e.Survive && diff < 0) delta = Math.Max(delta, -8);
         string goalText = e.Survive ? (e.SurviveNote is { } note ? $"stay up ({note})" : "stay up") : LowerFirst(Describe(e.Goal, ctx));
         string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound, up);
         if (e.Survive && !relegated) result = "stayed up, " + result;
-        lines.Insert(0, $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins).");
+        // CS2 (run 126): in college the target is the regular season's, and the line says so; the overall record (with the
+        // conference tournament and March) sits beside it. The seed says what the March run was worth.
+        if (ctx.IsCollege && seed > 0) result += $" as {SeedPhrase(seed)}";
+        string record = ctx.IsCollege
+            ? $"regular season {wins}-{losses}{(overall is { } all && all.Wins + all.Losses > wins + losses ? $", {all.Wins}-{all.Losses} overall" : "")}; target {e.TargetWins} wins"
+            : $"{wins}-{losses}, target {e.TargetWins} wins";
+        lines.Insert(0, $"Goal: {goalText}. Result: {result} ({record}).");
         double beforeReview = job.Confidence;
         job.Confidence = Math.Clamp(job.Confidence + delta, 0, 100);
         // H70 (run 123): a team that made the playoffs within a few wins of its target loses at most the season's cap from
@@ -783,6 +854,9 @@ public static class Board
             double start = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } sc ? sc : beforeReview;
             job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner)));
         }
+        // CS2 (run 126): a March run well past the seed (an 8-seed in the Sweet 16) leaves the AD content, whatever the regular
+        // season's drift did (Cincinnati ended such a run at 36).
+        if (seedOver >= 1) job.Confidence = Math.Max(job.Confidence, ContentLine + 5);
         // A .500 record isn't a losing one, the same rule as the mood label in season.
         job.LastSeasonWinning = !relegated && wins >= losses;
         // Success in a smaller league counts for less with clubs elsewhere.
@@ -806,7 +880,10 @@ public static class Board
         // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
         // the title at 59-23 was sacked the next May at 41-41).
         // K7 (run 115): a relegated season earns no protection, whatever the record.
-        bool earned = !relegated && (j.BeatTarget || (diff >= 0 && winsVsTarget >= -CreditWins));
+        bool earned = !relegated && (j.BeatTarget || (diff >= 0 && winsVsTarget >= -CreditWins)
+            // CS2 (run 126): in college, a regular season on target and a March run at least as far as the seed earns it too
+            // (Kentucky went 25-2 and reached the Elite Eight as a 1-seed, then was sacked at 15-12 the next spring).
+            || (ctx.IsCollege && seed > 0 && seedOver >= 0 && winsVsTarget >= 0));
         if (!sacked && earned) { job.ProtectedSeason = season + 1; job.ProtectedReason = "credit"; }
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         string owner = team.Owner.Name;
@@ -822,6 +899,10 @@ public static class Board
             : relegated && rebuildYear ? $"{owner} gave you a season to rebuild after the last relegation, and the club has gone down again. Board confidence: {job.Confidence:0}/100."
             : relegated && e.Survive ? $"{owner} set one job, to stay up, and the club is going down. Board confidence: {job.Confidence:0}/100."
             : up && !relegated ? $"{owner} is delighted: the club goes up."
+            : seedOver >= 1 ? $"{owner} is delighted with the March run: {SeedPhrase(seed)} {MarchPhrase(madnessRound)}. AD confidence: {job.Confidence:0}/100."
+            // CS2: a "build the program" season that missed the tournament well short of the target showed no progress.
+            : ctx.IsCollege && e.Goal == SeasonGoal.Develop && diff < 0 && !reachedPost
+                ? $"{owner} wanted to see progress, and {wins}-{losses} is well short of the {e.TargetWins}-win target. AD confidence: {job.Confidence:0}/100."
             // H70 (run 117): the word follows the confidence. Cincinnati went 14-14 against a 21-win target and read "satisfied" at 32.
             : diff >= 0 && job.Confidence < ContentLine ? (winsVsTarget < 0
                 ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
@@ -836,11 +917,26 @@ public static class Board
                 : $"{owner} is disappointed to fall short of the goal, though the record was on target. Board confidence: {job.Confidence:0}/100.")
             // H70 (run 123): a playoff team close to its target keeps the board's backing, and the verdict says so.
             : !relegated && madePost && winsVsTarget >= -CloseWins && job.Confidence >= 50
-                ? $"{owner} hoped for more, but the team {(ctx.IsCollege ? "made the tournament" : reachedPost ? "made the playoffs" : "finished in the top half")} close to the {e.TargetWins}-win target and still has the board's backing. Board confidence: {job.Confidence:0}/100."
+                ? $"{owner} hoped for more, but the team {(ctx.IsCollege ? "made the tournament" : reachedPost ? "made the playoffs" : "finished in the top half")} close to the {e.TargetWins}-win target and still has the {(ctx.IsCollege ? "AD's" : "board's")} backing. Board confidence: {job.Confidence:0}/100."
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
     }
+
+    /// <summary>CS2: "an 8-seed", "an 11-seed", "a 1-seed".</summary>
+    public static string SeedPhrase(int seed) => (seed is 8 or 11 or 18 ? "an " : "a ") + $"{seed}-seed";
+
+    /// <summary>CS2: where a March run ended, after the seed ("an 8-seed in the Sweet 16").</summary>
+    public static string MarchPhrase(int madnessRound) => madnessRound switch
+    {
+        7 => "winning the national championship",
+        6 => "in the national final",
+        5 => "in the Final Four",
+        4 => "in the Elite Eight",
+        3 => "in the Sweet 16",
+        2 => "winning a game",
+        _ => "in the field",
+    };
 
     /// <summary>A club's standing when hiring: the better the squad and the bigger the spending, the higher the bar; overseas leagues are easier to get into.</summary>
     public static double Prestige(League league, Team team) => Prestige(LeagueContext.Nabl(league), team);

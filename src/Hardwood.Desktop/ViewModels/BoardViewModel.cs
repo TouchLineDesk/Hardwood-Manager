@@ -76,6 +76,12 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private string _confidenceTitle = "Board confidence";
     [ObservableProperty] private string _financeNote = "Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin.";
     [ObservableProperty] private string _ownerStyle = "";
+    /// <summary>CS2 (run 126): the money icon for a club, a graduation cap for a college program (no money lines in college).</summary>
+    [ObservableProperty] private string _financeIcon = "DollarSign";
+    /// <summary>CS2 (run 126): how confidence moves, in the boss's words (the athletic director and March in college).</summary>
+    [ObservableProperty] private string _confidenceNote = ProConfidenceNote;
+    public const string ProConfidenceNote = "Confidence follows your pace against the target each week (faster with impatient owners), and the owner's demands. After the playoffs the board reviews the season against the goal.";
+    public const string CollegeConfidenceNote = "Confidence follows your regular-season pace against the target each week (faster with an impatient athletic director). After March Madness the AD reviews the season against the goal and your seed: a run past your seed counts for a lot; conference tournament and March games don't count toward the win target.";
     [ObservableProperty] private int _patience;
     [ObservableProperty] private int _ambition;
     [ObservableProperty] private string _goal = "";
@@ -151,6 +157,12 @@ public sealed partial class BoardViewModel : PageViewModel
     public static bool WinningForMood(Hardwood.Core.Season.GameSession s) =>
         s.MyRecord is { Games: > 0 } r ? r.Wins >= r.Losses : s.Job.LastSeasonWinning ?? false;
 
+    /// <summary>CS2: the college regular season is over once the conference tournaments have begun.</summary>
+    private static bool RegularSeasonOver(Hardwood.Core.Season.GameSession s) =>
+        s.World.College!.Season.Games.Any(g => !Hardwood.Core.College.CollegeWorld.IsRegularSeason(g));
+
+    private static string LowerFirst(string x) => x.Length == 0 ? x : char.ToLowerInvariant(x[0]) + x[1..];
+
     /// <summary>
     /// H23: the season's line. In season, the pace over the regular season; once the regular season is over (or the record
     /// passes its length, as college tournament games do) the finished record against the target.
@@ -185,14 +197,17 @@ public sealed partial class BoardViewModel : PageViewModel
         Team = s.Employed ? s.HumanTeam : null;
         if (s.Employed)
         {
-            var t = s.HumanTeam; var o = t.Owner; var rec = s.MyRecord; var ctx = s.ContextOf(t);
+            var t = s.HumanTeam; var o = t.Owner; var rec = s.MyBoardRecord; var ctx = s.ContextOf(t);
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
             var e = job.Current;
             Goal = e == null ? "" : $"{(e.Survive ? (e.SurviveNote is { } note ? $"Stay up: {note}" : "Stay up (newly promoted)") : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
             bool over = s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason;
-            Pace = HiredAfterSeason(s) && (over || rec.Games >= ctx.SeasonGames)
+            bool hiredAfter = HiredAfterSeason(s) && (over || rec.Games >= ctx.SeasonGames);
+            Pace = hiredAfter
                 ? $"Last season, before you came: {rec.Wins}-{rec.Losses}"
-                : PaceLine(rec.Wins, rec.Losses, ctx.SeasonGames, e?.TargetWins, over);
+                : PaceLine(rec.Wins, rec.Losses, ctx.SeasonGames, e?.TargetWins, over || (s.InCollege && RegularSeasonOver(s)));
+            // CS2 (run 126): the target covers the regular season; say so in college.
+            if (s.InCollege && rec.Games > 0 && !hiredAfter) Pace = "Regular season " + LowerFirst(Pace);
             Demands.Clear();
             if (e != null)
                 foreach (var d in e.Demands)
@@ -224,7 +239,9 @@ public sealed partial class BoardViewModel : PageViewModel
             };
             OwnerTitle = s.InCollege ? "Athletic director" : "The owner";
             FinanceTitle = s.InCollege ? "The program" : "Club finances";
+            FinanceIcon = s.InCollege ? "GraduationCap" : "DollarSign";
             ConfidenceTitle = s.InCollege ? "AD confidence" : "Board confidence";
+            ConfidenceNote = s.InCollege ? CollegeConfidenceNote : ProConfidenceNote;
             FinanceNote = s.InCollege
                 ? "College players are paid nothing (the classic era): the program's pull is its prestige, its conference and its winning. The athletic director judges the season by March Madness."
                 : "Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin.";
@@ -232,13 +249,13 @@ public sealed partial class BoardViewModel : PageViewModel
             var outlook = Board.Outlook(job, ctx, t, rec.Wins, rec.Losses, s.MyStats, s.Today);
             ConfidenceDrivers = outlook == null ? new() : DriverChips(outlook);
             ConfidenceHeading = outlook == null
-                ? "The board starts judging the season after five games."
+                ? $"The {(s.InCollege ? "athletic director" : "board")} starts judging the season after five games."
                 : $"Heading toward {outlook.Level:0} (now {job.Confidence:0}): each week it closes {outlook.Rate * 100:0}% of the gap. "
                   + (o.Patience <= 7 ? $"An impatient {s.BossTitle}: it moves fast." : o.Patience >= 14 ? $"A patient {s.BossTitle}: it moves slowly." : "");
             ConfidenceRecent = Recent(job);
             RefreshFacilities();
             HasTrend = job.History.Count >= 2;
-            ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
+            ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = s.InCollege ? "AD confidence" : "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }
 
         else HasFacilities = false;
@@ -361,7 +378,8 @@ public sealed partial class BoardViewModel : PageViewModel
         int seniors = t.Roster.Count(p => p.Age(new DateOnly(cw.Season.Year + 1, 7, 1)) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
         return new List<Hardwood.Desktop.Controls.Chip>
         {
-            new("Prestige", $"{prestige:0}", prestige >= 75 ? "a blue blood" : prestige >= 55 ? "a known name" : "building a name", prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
+            // CS2 (run 126, #166): prestige as a letter, the number beside it.
+            new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + (prestige >= 75 ? "a blue blood" : prestige >= 55 ? "a known name" : "building a name"), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
             new("National rank", $"#{rank}", $"of {cw.Programs.Count} programs", rank <= 25 ? "good" : ""),
             new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
             new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
