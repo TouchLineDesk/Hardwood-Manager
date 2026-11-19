@@ -762,8 +762,8 @@ public static class Board
     public static double SeedOverachievement(int seed, int madnessRound) =>
         seed <= 0 || madnessRound < 0 ? 0 : Math.Max(madnessRound, 1) - SeedExpectedRound(seed);
 
-    /// <summary>CS2: for a "build the program" goal, the regular season (wins per 82 below the target) that still shows progress.</summary>
-    public const double CollegeProgressSlack = 3;
+    /// <summary>CS2: for a "build the program" goal, the regular season (wins per 82 below the target, about 2 of a 28-game season) that still shows progress.</summary>
+    public const double CollegeProgressSlack = 6;
 
     public static SeasonJudgement Judge(Expectations e, LeagueContext ctx, SeasonGoal achieved, int wins, int losses, bool relegated = false, bool goingUp = false,
         int seed = 0, int madnessRound = -1)

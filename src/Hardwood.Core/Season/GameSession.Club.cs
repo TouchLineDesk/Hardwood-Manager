@@ -140,7 +140,6 @@ public sealed partial class GameSession
 
     /// <summary>Your league's standings (the NABL's, or your overseas league's).</summary>
     public Standings MyStandings => InCollege ? CollegeTable(MyConference!.Key) : HumanLeague is { } c ? TableOf(c) : Standings;
-    /// <summary>Your record: in college, every game (the conference table is <see cref="MyTable"/>).</summary>
     /// <summary>
     /// CS2 (run 126): the record the board's win target is judged on. In college that's the regular season only (no conference
     /// tournament, no March Madness: those are judged by how far the program went); elsewhere it's <see cref="MyRecord"/>.
@@ -154,6 +153,7 @@ public sealed partial class GameSession
         return new TeamRecord { Team = program, Wins = w, Losses = l };
     }
 
+    /// <summary>Your record: in college, every game (the conference table is <see cref="MyTable"/>).</summary>
     public TeamRecord MyRecord => InCollege ? CollegeRecord(HumanTeam) : MyStandings.Has(HumanTeam) ? MyStandings[HumanTeam] : new TeamRecord { Team = HumanTeam };
     /// <summary>The table you're ranked in: your NABL conference, or your whole overseas league.</summary>
     public List<TeamRecord> MyTable => InNabl ? Standings.Conference(HumanTeam.Conference) : MyStandings.All();

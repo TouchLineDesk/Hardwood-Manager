@@ -157,16 +157,16 @@ public sealed partial class BoardViewModel : PageViewModel
     public static bool WinningForMood(Hardwood.Core.Season.GameSession s) =>
         s.MyRecord is { Games: > 0 } r ? r.Wins >= r.Losses : s.Job.LastSeasonWinning ?? false;
 
-    /// <summary>
-    /// H23: the season's line. In season, the pace over the regular season; once the regular season is over (or the record
-    /// passes its length, as college tournament games do) the finished record against the target.
-    /// </summary>
     /// <summary>CS2: the college regular season is over once the conference tournaments have begun.</summary>
     private static bool RegularSeasonOver(Hardwood.Core.Season.GameSession s) =>
         s.World.College!.Season.Games.Any(g => !Hardwood.Core.College.CollegeWorld.IsRegularSeason(g));
 
     private static string LowerFirst(string x) => x.Length == 0 ? x : char.ToLowerInvariant(x[0]) + x[1..];
 
+    /// <summary>
+    /// H23: the season's line. In season, the pace over the regular season; once the regular season is over (or the record
+    /// passes its length, as college tournament games do) the finished record against the target.
+    /// </summary>
     public static string PaceLine(int wins, int losses, int seasonGames, int? target, bool seasonOver)
     {
         int games = wins + losses;
@@ -202,11 +202,12 @@ public sealed partial class BoardViewModel : PageViewModel
             var e = job.Current;
             Goal = e == null ? "" : $"{(e.Survive ? (e.SurviveNote is { } note ? $"Stay up: {note}" : "Stay up (newly promoted)") : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
             bool over = s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason;
-            Pace = HiredAfterSeason(s) && (over || rec.Games >= ctx.SeasonGames)
+            bool hiredAfter = HiredAfterSeason(s) && (over || rec.Games >= ctx.SeasonGames);
+            Pace = hiredAfter
                 ? $"Last season, before you came: {rec.Wins}-{rec.Losses}"
                 : PaceLine(rec.Wins, rec.Losses, ctx.SeasonGames, e?.TargetWins, over || (s.InCollege && RegularSeasonOver(s)));
             // CS2 (run 126): the target covers the regular season; say so in college.
-            if (s.InCollege && rec.Games > 0) Pace = "Regular season " + LowerFirst(Pace);
+            if (s.InCollege && rec.Games > 0 && !hiredAfter) Pace = "Regular season " + LowerFirst(Pace);
             Demands.Clear();
             if (e != null)
                 foreach (var d in e.Demands)
