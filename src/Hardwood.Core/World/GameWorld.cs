@@ -733,7 +733,7 @@ public sealed class GameWorld
                 if (p.Contract != null && !expiring) p.Contract.Buyout = BuyoutFor(p, p.Contract.Salary, p.Contract.Years, date);
                 var locals = LocalsOf(comp.Profile, ClubOf(comp, team));
                 var departure = new Departure(p.CurrentAbility, !locals.Contains(p.Nationality));
-                if (dev.ShouldRetire(p, date, mpg) || (expiring && p.Age(date) >= 33 && _rng.Chance(0.5)))
+                if (dev.ShouldRetire(p, date, mpg, seasonsLeft: !expiring) || (expiring && p.Age(date) >= 33 && _rng.Chance(0.5)))
                 {
                     DepartedFrom(team).Add(departure);
                     team.Roster.Remove(p); p.TeamId = null; p.Contract = null; Nabl.Retired.Add(p);
