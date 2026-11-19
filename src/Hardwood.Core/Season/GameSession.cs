@@ -135,6 +135,7 @@ public sealed partial class GameSession
                 + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players on real rosters who hadn't played yet this season are rated from last season (everyone starts healthy). Careers before this season are real for the league's leading veterans (checked {Hardwood.Core.RealWorld.RealCareers.Checked}), so the records book and the NBA's records to beat start from the real past."
                 + (session.World.College?.IsReal == true ? $" College basketball has every Division I program in its 2026-27 conference, with its real name, colours and tournament history (checked {Hardwood.Core.RealWorld.RealColleges.Checked}); the college players and coaches are made up." : "") : "")
             + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
+        session.HandBackOnHire();
         session.SaveNow();
         return session;
     }
@@ -995,6 +996,7 @@ public sealed partial class GameSession
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
         SyncManagedIds();
+        HandBackOnHire();
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
         Promises.Clear();

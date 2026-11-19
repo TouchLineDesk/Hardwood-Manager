@@ -136,7 +136,9 @@ public sealed partial class CollegeViewModel
         };
         bool closed = !c.Recruitable(new Recruit { ClassOf = year }, Session.Today);
         string full = closed ? $"Signing day has passed for the Class of {year}: the rising seniors are the class to recruit now. "
-            : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). " : "";
+            : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). "
+            // CS1 (run 125): the calendar for the class you're chasing.
+            : $"{open} scholarship{(open == 1 ? "" : "s")} open in the Class of {year}: seniors commit through the season, many in the November early period, and the rest sign on signing day ({CollegeWorld.SigningDay(year):MMM d}). ";
         TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + (Session.Delegated.Recruiting
             ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits. A prospect can only commit to you once you've offered."
             : "You recruit high-school seniors only, and you have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");

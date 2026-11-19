@@ -252,7 +252,7 @@ public sealed partial class CollegeWorld
     /// the program is winning, with the one he cares about most weighing extra (C3, #174: prestige +50% above average, home +50%, minutes and winning double); plus the coached program's
     /// courting (<see cref="Recruit.Interest"/>). Noise stands for everything else (a cousin on the team, a coach he liked).
     /// </summary>
-    public double Appeal(Team t, Player p, Recruit r, ClassBoard board, Rng? rng = null)
+    public double Appeal(Team t, Player p, Recruit r, ClassBoard board, Rng? rng = null, Dictionary<int, int>? ranks = null)
     {
         var (prestige, near, minutes, winning) = AppealParts(t, p, r, board);
         double a = prestige + near + minutes + winning;
@@ -263,8 +263,24 @@ public sealed partial class CollegeWorld
             RecruitPriority.PlayingTime => minutes,
             _ => winning,
         };
-        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t));
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks);
         return a + (rng?.NextGaussian(0, 14) ?? 0);
+    }
+
+    /// <summary>
+    /// CS1 (run 125): the coached program's staff does the everyday courting a computer school of its prestige does, so a
+    /// prospect inside that school's reach gives it the computer schools' baseline for free; your calls and visits are then
+    /// an edge on top, not a debt to pay off first. Before, a blue blood that courted a 5-star all year (about 40 interest
+    /// against a baseline of 60) was still behind an equal rival that never called, and the blue bloods signed 1 five-star
+    /// in 6 classes. The credit fades from full at the edge of the reach to nothing at twice the reach (a mid-major chasing
+    /// a 5-star still has to earn it).
+    /// </summary>
+    public double ReachCredit(Team t, Recruit r, Dictionary<int, int>? ranks = null)
+    {
+        ranks ??= PrestigeRanks();
+        int reach = Reach(ranks.GetValueOrDefault(t.Id, Programs.Count), ReachScale);
+        double f = r.Rank <= reach ? 1 : Math.Max(0, 1 - (r.Rank - reach) / (double)reach);
+        return Baseline(r) * WeightOf(r) * f;
     }
 
     /// <summary>
@@ -339,7 +355,7 @@ public sealed partial class CollegeWorld
         foreach (var t in Programs)
         {
             if (board.Open[t.Id] <= 0 || !CanTake(t, r) || !InReach(t, r, ranks, scale)) continue;
-            double a = Appeal(t, p, r, board, rng);
+            double a = Appeal(t, p, r, board, rng, ranks);
             if (a > top) { top = a; best = t; }
         }
         return best;
