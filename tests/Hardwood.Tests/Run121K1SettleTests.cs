@@ -85,3 +85,19 @@ public class Run121K1SettleTests
         Assert.True(left.Count <= 2, string.Join(", ", left.Select(p => $"{p.Name} {p.CurrentAbility}")));
     }
 }
+
+public class Run121CollegeRulesTests
+{
+    [Fact]
+    public void H117_college_rules_name_one_automatic_bid_per_conference()
+    {
+        var s = GameSession.NewGame(2026, 1, null);
+        var rules = LeagueBook.Get(s, LeagueBook.CollegeKey)!.Rules;
+        int conferences = s.World.College!.Active.Count();
+        var madness = rules.First(r => r.Label == "March Madness").Value;
+        Assert.Contains($"the {conferences} conference tournament winners plus {68 - conferences} at-large", madness);
+        Assert.DoesNotContain("the 8 conference", madness);
+        var recruiting = rules.First(r => r.Label == "Recruiting").Value;
+        if (s.World.College.Recruiting) Assert.Contains("sign them as seniors", recruiting);
+    }
+}
