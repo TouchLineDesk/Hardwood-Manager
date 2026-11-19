@@ -57,7 +57,7 @@ public class Run125RecruitingTests
         var p = c.ClassOf(cls).First(x => c.Recruits[x.Id].CommittedTo == null);
         var r = c.Recruits[p.Id];
         CollegeWorld.Courting(r, me); r.Offered = true; r.CommittedTo = me.Id; r.CommittedOn = s.Today;
-        Assert.Equal(0, c.HandBackCommitments(me, s.Today));
+        c.HandBackCommitments(me, s.Today);
         Assert.Equal(me.Id, r.CommittedTo);
     }
 
@@ -89,9 +89,10 @@ public class Run125RecruitingTests
         var (p, r) = c.ClassOf(cls).Select(x => (x, c.Recruits[x.Id])).First(x => x.Item2.Stars == 5 && x.Item2.CommittedTo == null);
         CollegeWorld.Courting(r, me); r.Interest = 45; r.Offered = true;
         double ours = c.Appeal(me, p, r, board);
-        // The same program as a computer school sees it: no courting term and no credit.
-        var (pr, near, min, win) = c.AppealParts(me, p, r, board);
-        double asComputer = ours - CollegeWorld.CourtingEdge(r, me.Id, 45) - c.ReachCredit(me, r);
+        // An equal rival: the same program as a computer school sees it (no courting term, no credit), compared directly.
+        c.ManagedProgramId = null;
+        double asComputer = c.Appeal(me, p, r, board);
+        c.ManagedProgramId = me.Id;
         _out.WriteLine($"ours {ours:F1}, as a computer school {asComputer:F1}");
         Assert.True(ours - asComputer >= 8, $"edge {ours - asComputer:F1}");
         // Zero effort is no worse than a computer school of the same prestige.

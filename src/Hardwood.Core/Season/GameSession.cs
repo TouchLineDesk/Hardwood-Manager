@@ -996,7 +996,6 @@ public sealed partial class GameSession
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
         SyncManagedIds();
-        HandBackOnHire();
         CoachAi.AssistantSetup(team);
         team.DepthChart = null;
         Promises.Clear();
@@ -1006,6 +1005,7 @@ public sealed partial class GameSession
         Post($"Welcome to {team.TheFullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game."
             + (funded > 0 ? $" The contracts you inherit come to ${MyCommittedWages / 1e6:F1}M, so the owner has raised the wage budget by ${funded / 1e6:F1}M to cover them." : ""), "Board");
         PostExpectations();
+        HandBackOnHire(); // after the welcome, so the inbox reads in order (review of #189)
     }
 
     /// <summary>While you're out of work: clubs answer applications, unanswered jobs get filled, and new jobs open now and then.</summary>

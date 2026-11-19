@@ -252,7 +252,7 @@ public sealed partial class CollegeWorld
     /// the program is winning, with the one he cares about most weighing extra (C3, #174: prestige +50% above average, home +50%, minutes and winning double); plus the coached program's
     /// courting (<see cref="Recruit.Interest"/>). Noise stands for everything else (a cousin on the team, a coach he liked).
     /// </summary>
-    public double Appeal(Team t, Player p, Recruit r, ClassBoard board, Rng? rng = null, Dictionary<int, int>? ranks = null)
+    public double Appeal(Team t, Player p, Recruit r, ClassBoard board, Rng? rng = null, Dictionary<int, int>? ranks = null, double? scale = null)
     {
         var (prestige, near, minutes, winning) = AppealParts(t, p, r, board);
         double a = prestige + near + minutes + winning;
@@ -263,7 +263,7 @@ public sealed partial class CollegeWorld
             RecruitPriority.PlayingTime => minutes,
             _ => winning,
         };
-        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks);
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale);
         return a + (rng?.NextGaussian(0, 14) ?? 0);
     }
 
@@ -275,10 +275,10 @@ public sealed partial class CollegeWorld
     /// in 6 classes. The credit fades from full at the edge of the reach to nothing at twice the reach (a mid-major chasing
     /// a 5-star still has to earn it).
     /// </summary>
-    public double ReachCredit(Team t, Recruit r, Dictionary<int, int>? ranks = null)
+    public double ReachCredit(Team t, Recruit r, Dictionary<int, int>? ranks = null, double? scale = null)
     {
         ranks ??= PrestigeRanks();
-        int reach = Reach(ranks.GetValueOrDefault(t.Id, Programs.Count), ReachScale);
+        int reach = Reach(ranks.GetValueOrDefault(t.Id, Programs.Count), scale ?? ReachScale);
         double f = r.Rank <= reach ? 1 : Math.Max(0, 1 - (r.Rank - reach) / (double)reach);
         return Baseline(r) * WeightOf(r) * f;
     }
@@ -355,7 +355,7 @@ public sealed partial class CollegeWorld
         foreach (var t in Programs)
         {
             if (board.Open[t.Id] <= 0 || !CanTake(t, r) || !InReach(t, r, ranks, scale)) continue;
-            double a = Appeal(t, p, r, board, rng, ranks);
+            double a = Appeal(t, p, r, board, rng, ranks, scale);
             if (a > top) { top = a; best = t; }
         }
         return best;
@@ -412,7 +412,7 @@ public sealed partial class CollegeWorld
         {
             var r = Recruits[p.Id];
             if (r.CommittedTo != null) continue;
-            var pick = Choose(p, r, board, rng);
+            var pick = Choose(p, r, board, rng, null, 2); // no reach for the computer on signing day; your credit at the spring reach
             if (pick == null) break;
             r.CommittedTo = pick.Id; r.CommittedOn = day;
             board.Open[pick.Id]--;
