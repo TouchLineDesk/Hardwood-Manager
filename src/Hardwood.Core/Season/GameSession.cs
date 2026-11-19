@@ -986,6 +986,11 @@ public sealed partial class GameSession
         Job.HiredSeason = forSeason;
         Job.History.Clear();
         Job.RebuildUsed = false;
+        // Review of #187: the season's starting confidence and last season's record belong to the old club; the first weekly
+        // check at the new one takes its own starting point.
+        Job.SeasonStartConfidence = null;
+        Job.SeasonStartSeason = 0;
+        Job.LastSeasonWinning = null;
         Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0, PromotionPlayoffFor(team), TopLeagueDrops());
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career

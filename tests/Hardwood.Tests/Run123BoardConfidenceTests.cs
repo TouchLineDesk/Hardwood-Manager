@@ -134,6 +134,22 @@ public class Run123BoardConfidenceTests
     }
 
     [Fact]
+    public void A_new_job_takes_its_own_season_start()
+    {
+        // Review of #187: club A's season start (95) must not become club B's floor after a same-season move.
+        var (probe, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(2026);
+        var s = GameSession.NewGame(2026, probe.Teams.First().Id, null);
+        s.Job.SeasonStartConfidence = 95; s.Job.SeasonStartSeason = s.League.Season; s.Job.LastSeasonWinning = true;
+        var other = s.League.Teams.First(t => t != s.HumanTeam);
+        typeof(GameSession).GetMethod("TakeJob", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .Invoke(s, new object[] { other });
+        Assert.Null(s.Job.SeasonStartConfidence);
+        Assert.Equal(0, s.Job.SeasonStartSeason);
+        Assert.Null(s.Job.LastSeasonWinning);
+        Assert.Equal(70, s.Job.Confidence);
+    }
+
+    [Fact]
     public void A_job_from_an_older_save_loads_without_the_new_fields()
     {
         const string json = "{\"Employed\":true,\"Confidence\":72.5,\"HiredSeason\":2026,\"Vacancies\":[],\"History\":[],\"WarningLevel\":0,\"ProtectedSeason\":0,\"ProtectedReason\":\"\",\"RebuildUsed\":false}";

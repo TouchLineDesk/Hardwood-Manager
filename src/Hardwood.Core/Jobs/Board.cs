@@ -783,7 +783,8 @@ public static class Board
             double start = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } sc ? sc : beforeReview;
             job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner)));
         }
-        job.LastSeasonWinning = !relegated && wins > losses;
+        // A .500 record isn't a losing one, the same rule as the mood label in season.
+        job.LastSeasonWinning = !relegated && wins >= losses;
         // Success in a smaller league counts for less with clubs elsewhere.
         double weight = ctx.IsNabl ? 1 : Math.Clamp(1 + ctx.PrestigeOffset / 40, 0.4, 1);
         coach.Reputation = Math.Clamp(coach.Reputation + ((wins / Math.Max(1.0, wins + losses) - 0.5) * 10
@@ -835,7 +836,7 @@ public static class Board
                 : $"{owner} is disappointed to fall short of the goal, though the record was on target. Board confidence: {job.Confidence:0}/100.")
             // H70 (run 123): a playoff team close to its target keeps the board's backing, and the verdict says so.
             : !relegated && madePost && winsVsTarget >= -CloseWins && job.Confidence >= 50
-                ? $"{owner} hoped for more, but the team made the playoffs close to the {e.TargetWins}-win target and still has the board's backing. Board confidence: {job.Confidence:0}/100."
+                ? $"{owner} hoped for more, but the team {(ctx.IsCollege ? "made the tournament" : reachedPost ? "made the playoffs" : "finished in the top half")} close to the {e.TargetWins}-win target and still has the board's backing. Board confidence: {job.Confidence:0}/100."
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
