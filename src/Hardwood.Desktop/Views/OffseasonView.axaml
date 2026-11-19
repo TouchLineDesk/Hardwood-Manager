@@ -56,7 +56,7 @@
                           <Border Background="#2A3440" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="What his agent asks: wage a season × years">
                             <TextBlock Text="{Binding AskChip}" FontWeight="SemiBold" FontSize="11"/>
                           </Border>
-                          <Border Background="{Binding FitBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding FitTip}">
+                          <Border Background="{Binding FitBrush}" CornerRadius="4" Padding="7,1" Margin="0,0,5,3" ToolTip.Tip="{Binding FitTip}" IsVisible="{Binding ShowFit}">
                             <TextBlock Text="{Binding Fits}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                           </Border>
                         </WrapPanel>

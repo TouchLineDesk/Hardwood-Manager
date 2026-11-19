@@ -93,7 +93,7 @@ public sealed partial class GameSession
         long floor = MyAskingFloor(p);
         long scaled = (long)(ContractMarket.MarketSalary(p.CurrentAbility, p.Age(ContractDate), League.Finance) * MySalaryScale);
         if (floor <= scaled) return null;
-        return $"{p.Name} could earn far more in a bigger league, so he won't play in the {HumanLeague!.Profile.Name} for its usual wage: he wants at least {Budgets.Money(floor)} a year.";
+        return $"{p.Name} could earn far more in a bigger league, so he asks more than the {HumanLeague!.Profile.Name}'s usual wage for his level: at least {Budgets.Money(floor)} a year.";
     }
 
     /// <summary>K1 (run 111): in the top league, a star's deal includes a relegation release clause; the talks say so.</summary>
@@ -216,7 +216,7 @@ public sealed partial class GameSession
             return new TalkReply(false, false, demand,
                 $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + reserved + fill + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget"
                 + (reserved > 0 ? $", counting ${reserved / 1e6:F1}M for your committed college seniors" : "")
-                + (fill > 0 ? $", counting ${fill / 1e6:F1}M for the minimum deals the roster still needs" : "") + "."
+                + (fill > 0 ? $", counting {Budgets.Money(fill)} for the minimum deals the roster still needs" : "") + "."
                 + (MyExpiring.Contains(p) ? " Free up wages first (sell or release someone), or let him go." : ""));
 
         var (opening, round) = _talks[p.Id];

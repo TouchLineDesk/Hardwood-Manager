@@ -16,7 +16,7 @@ public sealed partial class TradePiece : ObservableObject
     public double Knowledge { get; init; } = 1.0;
     public string CA => Scouting.Ability(Player, Knowledge).ToString();
     public string PA => Scouting.Potential(Player, Knowledge).ToString();
-    public string Salary => Player.Contract is { } c ? $"${c.Salary / 1e6:F1}M × {Math.Max(c.Years, 1)}" : "-";
+    public string Salary => Player.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)} × {Math.Max(c.Years, 1)}" : "-";
     public string Value { get; init; } = "";
     [ObservableProperty] private bool _included;
     partial void OnIncludedChanged(bool value) => Owner.Evaluate();
@@ -189,7 +189,7 @@ public sealed partial class TransactionsViewModel : PageViewModel
         team.Roster.Add(p);
         s.League.FreeAgents.Remove(p);
         team.DepthChart = null;
-        s.Post($"Signed {p.Name}", $"{p.Name} ({p.PrimaryPosition}, age {p.Age(s.Today)}) joins on a {p.Contract.Years}-year deal at ${p.Contract.Salary / 1e6:F1}M per season.", "Transactions");
+        s.Post($"Signed {p.Name}", $"{p.Name} ({p.PrimaryPosition}, age {p.Age(s.Today)}) joins on a {p.Contract.Years}-year deal at {Hardwood.Core.Season.Budgets.Money(p.Contract.Salary)} per season.", "Transactions");
         s.SaveNow();
         FaStatus = $"Signed {p.Name}.";
         Shell.AfterTick();

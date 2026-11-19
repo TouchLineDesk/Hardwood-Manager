@@ -229,7 +229,8 @@ public static class Budgets
     /// <summary>Money as the budget lines show it: "$58M", or "$4.2M" under ten million.</summary>
     // H98 (run 109): one decimal under $100M ("$12.6M", not "$13M"), so a budget, its wages and what's left add up;
     // a whole number drops its ".0" from $10M up ("$34M").
-    public static string Money(long v) => Math.Abs(v) >= 100_000_000 ? $"${v / 1e6:F0}M" : Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:0.#}M" : $"${v / 1e6:F1}M";
+    // H115 (run 117): wages under $100K (tier 5) read in thousands, not "$0.0M".
+    public static string Money(long v) => v != 0 && Math.Abs(v) < 100_000 ? $"${v / 1e3:0}K" : Math.Abs(v) >= 100_000_000 ? $"${v / 1e6:F0}M" : Math.Abs(v) >= 10_000_000 ? $"${v / 1e6:0.#}M" : $"${v / 1e6:F1}M";
 
     /// <summary>The wage line. <paramref name="payroll"/> defaults to every contract on the roster; the summer passes the
     /// committed wages instead (H45, run 81: <see cref="GameSession.MyBudgetLine"/>).</summary>

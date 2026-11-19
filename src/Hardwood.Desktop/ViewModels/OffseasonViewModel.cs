@@ -25,6 +25,8 @@ public sealed partial class ExpiringRow : ObservableObject
     public string AskChip { get; init; } = "";
     public Avalonia.Media.IBrush FitBrush => Fits switch { "Fits on its own" => StandingRow.PlayoffBrush, "Over budget" or "Won't stay" => StandingRow.RelegationBrush, _ => SummerCards.Neutral };
     public string FitTip { get; init; } = "";
+    /// <summary>H111 (run 117): the fit chip shows only when the cards differ (every card read "Fits on its own").</summary>
+    [ObservableProperty] private bool _showFit = true;
     public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, 1);
 }
 
@@ -302,6 +304,16 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 },
                 Picked = Talk.Player == p,
             });
+        }
+        if (Expiring.Count > 1 && Expiring.All(x => x.Fits == "Fits on its own"))
+        {
+            foreach (var x in Expiring) x.ShowFit = false;
+            // Review of #181: the hidden chips carried H40's caveat, so the page says it once, with the sum.
+            long room = Math.Max(0, team.Money.WageBudget - s.MyCommittedWages);
+            long all = s.MyExpiring.Where(p => !Offseason.WontReSign(p)).Sum(p => s.PeekDemand(p).Wage);
+            Instructions += all <= room
+                ? $" Every ask fits your wage room ({M(room)}), all of them together too ({M(all)})."
+                : $" Each ask fits your wage room ({M(room)}) on its own, but keeping them all would take {M(all)}.";
         }
         if (freeAgency)
         {

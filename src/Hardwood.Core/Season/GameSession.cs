@@ -245,6 +245,8 @@ public sealed partial class GameSession
 
     private void MaybePostResults(bool now = false)
     {
+        // H109 (run 117): out of work there is no "this week" of yours (the fired career's inbox got the Pelicans' 0-3 and 0-4).
+        if (!Employed) { WeekResults.Clear(); WeekKnocks.Clear(); _resultsSince = null; return; }
         if (WeekResults.Count == 0) return;
         if (!now && Today.DayOfWeek != DayOfWeek.Monday) return;
         // Every Monday again since v0.56.0 (Danny, #243): the inbox can be cleaned, so volume is his choice. The inbox
@@ -599,6 +601,8 @@ public sealed partial class GameSession
 
     private void ReportGame(GameResult r, Series? series = null)
     {
+        // H109 (run 117): HumanTeam stays the old club while you're out of work; its games aren't yours to report.
+        if (!Employed) return;
         if (r.Home.Team != HumanTeam && r.Away.Team != HumanTeam)
         {
             foreach (var (p, inj) in r.Injuries) { /* league-wide injuries are not inbox-worthy */ }
@@ -1198,7 +1202,7 @@ public sealed partial class GameSession
         var notes = _summerNotes ?? new();
         _summerNotes = null;
         Post("Contract decisions",
-            (expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F1}M)"))}. Talk to each one or release him, then continue to free agency.")
+            (expiring.Count == 0 ? "No contracts expire this summer." : $"{expiring.Count} contracts have expired: {string.Join(", ", expiring.Select(p => $"{p.Name} (asks {Budgets.Money(DemandOf(p).Wage)})"))}. Talk to each one or release him, then continue to free agency.")
             + $"\n\nThe owner has set next season's budget: {MyBudgetLine}."
             + string.Concat(notes.Select(n => $"\n\n{n.title}:\n{n.body}")), "Roster");
     }
@@ -1339,7 +1343,7 @@ public sealed partial class GameSession
         if (!terms.Possible) return terms.Note;
         var club = Hardwood.Core.World.WorldMarket.ClubOf(World, p);
         if (!Hardwood.Core.World.WorldMarket.BuyOut(World, Offseason, HumanTeam, p)) return "The move fell through.";
-        Post($"{p.Name} signs", $"{p.Name} leaves {club?.FullName} and joins you. {terms.Note} He signs for ${terms.NablSalary / 1e6:F1}M a year.", "Roster");
+        Post($"{p.Name} signs", $"{p.Name} leaves {club?.FullName} and joins you. {terms.Note} He signs for {Budgets.Money(terms.NablSalary)} a year.", "Roster");
         SaveNow();
         return null;
     }

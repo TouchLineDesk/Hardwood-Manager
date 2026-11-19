@@ -98,6 +98,10 @@ public sealed partial class GameSession
         Job.Employed = false;
         Job.Current = null;
         Promises.Clear();
+        // H109 (run 117): the old club's unposted results and knocks go with the job (the sacking message closes that chapter).
+        WeekResults.Clear();
+        WeekKnocks.Clear();
+        _resultsSince = null;
         SyncManagedIds();
     }
 
