@@ -36,6 +36,55 @@ public sealed partial class GameSession
         return streak;
     }
 
+    /// <summary>The date of the first game in the current run of wins or losses (null before a game is played).</summary>
+    public DateOnly? MyStreakStart()
+    {
+        DateOnly? start = null;
+        int sign = 0;
+        foreach (var g in MyGames().Where(g => g.Played).OrderByDescending(g => g.Date))
+        {
+            int s = (g.Us ?? 0) > (g.Them ?? 0) ? 1 : -1;
+            if (sign != 0 && s != sign) break;
+            sign = s;
+            start = g.Date;
+        }
+        return start;
+    }
+
+    /// <summary>
+    /// Run 120 (critic #16: losing-streak ×9, winning-streak ×9 in three seasons): the press asks about a run once. A streak that has
+    /// already had its press conference is old news until it ends, and a new run of the same kind waits five weeks
+    /// (<see cref="RepeatDays"/>), so the next question is about something else.
+    /// </summary>
+    private bool StreakIsNews(string topic) =>
+        Fresh(topic) && !(Media.LastTopic.TryGetValue(topic, out var asked) && MyStreakStart() is { } start && asked >= start);
+
+    /// <summary>The question for a run, varied by its length and the club's place, so a season's streak questions don't read alike.</summary>
+    public static string StreakQuestion(int streak, int rank, int teams, int variant)
+    {
+        int n = Math.Abs(streak);
+        bool top = teams > 0 && rank > 0 && rank <= Math.Max(1, teams / 4), bottom = teams > 0 && rank > 0 && rank > teams - Math.Max(1, teams / 4);
+        if (streak < 0)
+        {
+            if (n >= 8) return $"\"{n} straight defeats. When does this stop?\"";
+            if (top) return $"\"{n} losses in a row for a team near the top. Is something wrong in there?\"";
+            return (variant % 3) switch
+            {
+                0 => $"\"That's {n} defeats in a row. Is this group good enough?\"",
+                1 => $"\"{n} losses on the bounce. What are you telling the players?\"",
+                _ => $"\"{n} straight defeats. Are you worried about your job?\"",
+            };
+        }
+        if (n >= 8) return $"\"{n} wins in a row. How long can this run go?\"";
+        if (bottom) return $"\"{n} straight wins from a team nobody tipped. What's changed?\"";
+        return (variant % 3) switch
+        {
+            0 => $"\"{n} straight wins. Are you contenders now?\"",
+            1 => $"\"{n} on the bounce. What's clicking?\"",
+            _ => $"\"{n} wins in a row. Is this the team you wanted?\"",
+        };
+    }
+
     /// <summary>The spirit effects on your team right now, as chemistry factors (the Squad page lists them).</summary>
     public List<(string reason, double effect)> SpiritFactors() =>
         Media.Spirit.Where(s => s.TeamId == HumanTeam.Id && s.Until > Today).Select(s => (s.Reason, s.Amount)).ToList();
@@ -77,7 +126,7 @@ public sealed partial class GameSession
     }
 
     /// <summary>Days before the same situation can come up again.</summary>
-    private static int RepeatDays(string topic) => topic switch { "mentor" => 300, "feud" or "late" or "dinner" => 90, _ => 0 };
+    private static int RepeatDays(string topic) => topic switch { "mentor" => 300, "feud" or "late" or "dinner" => 90, "winning-streak" or "losing-streak" => 35, _ => 0 };
 
     private bool Fresh(string topic) => RepeatDays(topic) == 0 || !Media.LastTopic.TryGetValue(topic, out var last) || Today.DayNumber - last.DayNumber >= RepeatDays(topic);
 
@@ -138,17 +187,19 @@ public sealed partial class GameSession
         int streak = MyStreak();
         var stats = MyStats;
         var table = MyTable;
-        if (streak <= -4)
+        int rank = table.FindIndex(r => r.Team == HumanTeam) + 1;
+        int variant = Media.Decisions.Count(d => d.TeamId == HumanTeam.Id && d.Topic is "winning-streak" or "losing-streak");   // rotates the wording
+        if (streak <= -4 && StreakIsNews("losing-streak"))
             return Press("losing-streak", $"{-streak} straight defeats",
-                $"\"That's {-streak} defeats in a row. Is this group good enough?\"", 0, new()
+                StreakQuestion(streak, rank, table.Count, variant), 0, new()
                 {
                     O("Back the players", "Squad morale up a little; the board would like more urgency"),
                     O("Demand more", "Professionals respond, thin-skinned players sulk; the board approves"),
                     O("Take the blame", "Pressure off the players and spirit up for three weeks; your standing with the board dips"),
                 });
-        if (streak >= 4)
+        if (streak >= 4 && StreakIsNews("winning-streak"))
             return Press("winning-streak", $"{streak} wins in a row",
-                $"\"{streak} straight wins. Are you contenders now?\"", 1, new()
+                StreakQuestion(streak, rank, table.Count, variant), 1, new()
                 {
                     O("\"We can beat anyone\"", "Morale up, the big egos most; the board likes the ambition"),
                     O("\"One game at a time\"", "Spirit up for four weeks"),

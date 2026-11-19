@@ -437,7 +437,8 @@ public sealed partial class GameSession
         foreach (var t in new[] { them, us })
         {
             var core = t.Roster.Where(p => p.IsAvailable(date)).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
-            if (core.FirstOrDefault(p => p.Contract is { } c && c.StartSeason + c.Years - 1 == League.Season && p.Age(date) <= 34) is { } walk && rng.Chance(0.6))
+            // Run 120: Contract.Years counts down each summer, so in season Years 1 (or 0) is the final year, as GameSession.EndsThisSummer reads it (StartSeason + Years - 1 was right only in a deal's first season).
+            if (core.FirstOrDefault(p => p.Contract is { Years: <= 1 } && p.Age(date) <= 34) is { } walk && rng.Chance(0.6))
             {
                 lines.Add(new(guard, $"{walk.Name} is in the last year of his deal. {Pick(rng, "Every night is an audition, and he plays like it.", "Contract years bring out the best in people.", "Somebody's going to pay him this summer.")}"));
                 break;
