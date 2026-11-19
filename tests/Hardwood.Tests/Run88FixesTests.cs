@@ -39,6 +39,11 @@ public class Run88FixesTests
             t.Money.Balance = 50_000_000;
         }
         long lalBudget = lal.Money.WageBudget;
+        // Run 118 (H110): every real club opens at 14 after the expansion draft, so the computer clubs take 30 more of this
+        // bare league's pool (a career shares the world's) before the minimum fill; top it up so the test still reaches it.
+        int next = league.Teams.SelectMany(t => t.Roster).Concat(league.FreeAgents).Max(p => p.Id) + 1;
+        var gen = new Hardwood.Core.Generation.PlayerGenerator(new Rng(118), next);
+        for (int i = 0; i < 60; i++) league.FreeAgents.Add(gen.Generate((Position)(i % 5), 95, 27, new DateOnly(2027, 7, 1)));
         off.Complete();
 
         Assert.True(sas.Roster.Count >= league.Finance.RosterMin);

@@ -160,10 +160,68 @@ public static class RealPlayers
             // back down as deals run out, as real teams over the cap do.
             if (CoachesByTeam.TryGetValue(team.Abbreviation, out var coach)) team.CoachName = coach;
         }
+        // H110 / D51 B (#449): the SuperSonics and Aces are stocked by an expansion draft from the 30 real clubs.
+        ExpansionDraft(league);
         // The real record book, with LeBron's id on his career points (#225).
         RealRecordChase.Seed(league.Records, ids);
         // K1 (run 111): the biggest real deals carry a relegation release clause.
         Hardwood.Core.Season.ContractMarket.GrantReleaseClauses(league);
+    }
+
+    /// <summary>How many players each real club protects in the expansion draft (the NBA's rule).</summary>
+    public const int ExpansionProtected = 8;
+
+    /// <summary>
+    /// The expansion draft (H110; Danny's D51 B, #449). The clubs that make the NBA 32 (the Seattle SuperSonics and the
+    /// Las Vegas Aces) came up with generated rosters rated like a contender's, so made-up players led the NBA's assist and
+    /// steal tables. Instead, every real club protects its best <see cref="ExpansionProtected"/> and loses at most one
+    /// player; the expansion clubs pick in turn (Seattle first), each taking the best player left with a little weight on
+    /// the positions it still needs, until each has a full roster or no club has a player left to lose. The generated
+    /// players they came up with leave the league, as the generated fillers did when the real players arrived. Deterministic
+    /// (no RNG), so nothing else in the world moves. Returns the picks, in order.
+    /// </summary>
+    internal static List<(Team To, Team From, Player Player)> ExpansionDraft(League league)
+    {
+        var picks = new List<(Team, Team, Player)>();
+        var real = league.Teams.Take(RealWorldData.Teams.Count).ToList();
+        var expansion = league.Teams.Skip(RealWorldData.Teams.Count).Take(RealWorldData.Expansion.Count).ToList();
+        if (expansion.Count == 0 || real.Count < RealWorldData.Teams.Count) return picks;
+        // Once only: expansion clubs whose rosters are already real players have been drafted.
+        var realNames = Lines.Select(l => l.Name).ToHashSet();
+        if (expansion.All(t => t.Roster.Count > 0 && t.Roster.All(p => realNames.Contains(p.Name)))) return picks;
+        int size = Math.Min(RosterMax, league.Finance.RosterMax);
+        var available = real.Where(t => t.Roster.Count > ExpansionProtected)
+            .ToDictionary(t => t, t => t.Roster.OrderByDescending(p => p.CurrentAbility).ThenBy(p => p.Id).Skip(ExpansionProtected).ToList());
+        if (available.Count == 0) return picks;
+        var drafted = expansion.ToDictionary(t => t, _ => new List<Player>());
+        for (int round = 0; round < size && available.Count > 0; round++)
+            foreach (var club in expansion)
+            {
+                if (available.Count == 0) break;
+                var mine = drafted[club];
+                int Need(Player p) => Math.Max(0, mine.Count(x => x.PrimaryPosition == p.PrimaryPosition) - 2);
+                var (from, pick) = available.SelectMany(kv => kv.Value.Select(p => (kv.Key, p)))
+                    .OrderByDescending(x => x.p.CurrentAbility - 6 * Need(x.p)).ThenBy(x => x.p.Id).First();
+                mine.Add(pick);
+                available.Remove(from);
+                picks.Add((club, from, pick));
+            }
+        foreach (var club in expansion)
+        {
+            if (drafted[club].Count == 0) continue;
+            foreach (var old in club.Roster) club.Tactic.Roles.Remove(old.Id);
+            club.Roster.Clear();
+            club.DepthChart = null;
+        }
+        foreach (var (to, from, p) in picks)
+        {
+            from.Roster.Remove(p);
+            from.Tactic.Roles.Remove(p.Id);
+            from.DepthChart = null;
+            p.TeamId = to.Id;
+            to.Roster.Add(p);
+        }
+        return picks;
     }
 
     /// <summary>His real deal (#217): this season's salary, for every season the contracts page lists. Null if the
