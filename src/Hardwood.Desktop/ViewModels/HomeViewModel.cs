@@ -100,6 +100,9 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] private string[]? _moodLabels;
     [ObservableProperty] private bool _hasMood;
     [ObservableProperty] private string _tableTitle = "Conference";
+    /// <summary>H120 (run 124): a muted line under the standings title ("Overall records until conference play"), so a long
+    /// conference name and the note don't share one line and get cut off.</summary>
+    [ObservableProperty] private string _tableNote = "";
     /// <summary>C5 part 1 (run 94): "Crosstown Shootout · You lead the series 2-1 since 2026-27" or "Ranked matchup: #5 vs #9"; empty otherwise.</summary>
     [ObservableProperty] private string _gameTag = "";
     /// <summary>C5 part 2 (run 95): a college game's home court, e.g. "Cameron Indoor Stadium: one of the loudest in the country (+4.4 points to the home side)"; empty on a neutral court or in the pros.</summary>
@@ -145,6 +148,7 @@ public sealed partial class HomeViewModel : PageViewModel
         var conf = s.MyTable;
         int seed = s.MyRank;
         TableTitle = s.InNabl ? $"{team.Conference} Conference" : s.HumanLeagueName;
+        TableNote = "";
         Headline = team.FullName;
         if (s.InCollege && rec.Games > 0)
         {
@@ -193,7 +197,7 @@ public sealed partial class HomeViewModel : PageViewModel
         if (s.InCollege && conf.Count > 0 && conf.All(r => r.Games == 0))
         {
             conf = conf.Select(r => s.CollegeRecord(r.Team)).OrderByDescending(r => r.WinPct).ThenByDescending(r => r.Wins).ThenByDescending(r => r.PointDiff).ToList();
-            TableTitle += " · overall records until conference play";
+            TableNote = "Overall records until conference play";
         }
         foreach (var r in conf)
         {
