@@ -176,7 +176,10 @@ public class CharacterizationTests
         // draw differently and the NBA's days after them move. The NBA's own odds are unchanged (audit on both seeds).
         // Run 101 (H78): re-pinned (was F5CA4EEE5084B908 since run 95). The schedule's dates changed (no third straight day,
         // ~14 back-to-backs a team, the season runs to Apr 12), so games fall on different days; no random draw changed.
-        Pin("career seed 2026, 30 days, no saves", "4AA117BC5C5D7490", Session(s));
+        // Run 121 (H123): re-pinned (was 4AA117BC5C5D7490 since run 101). The made-up pros abroad are generated against a
+        // per-league ceiling, so the world's clubs and their quick-sim games differ, and the session's stream moves with them.
+        // The NBA's rosters on day one are unchanged; the audit's NBA metrics stay in band on both seeds.
+        Pin("career seed 2026, 30 days, no saves", "73DBDEB0B8B1D8C0", Session(s));
     }
 
     [Fact]

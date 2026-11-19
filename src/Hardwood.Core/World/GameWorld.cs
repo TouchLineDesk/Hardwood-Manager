@@ -178,6 +178,10 @@ public sealed class GameWorld
         // The best players outside the NABL are NABL starters, not NABL stars: compress the top end (a 165 became a 150
         // and, once free to move, walked into the NABL as a star; movement audit, Nov 9).
         if (ca > 140) ca = 140 + (int)Math.Round((ca - 140) * 0.4);
+        // H123 (run 121): abroad, rate made-up pros against the real NBA. Each league has a ceiling (Spain's best are NBA
+        // rotation players, the Philippines' are not), and the best of them sit just above it.
+        int? ceiling = UsaPyramid.IsPyramid(profile.Key) ? null : Ceiling(profile, foreignSlot);
+        if (ceiling is int cap && ca > cap) ca = Math.Min(cap + CeilingReach, cap + (int)Math.Round((ca - cap) * 0.35));
         ca = Math.Clamp(ca, 45, 160);
         int age = ageOverride ?? (int)Math.Round(Math.Clamp(rng.NextGaussian(slot < 9 ? 27 : 23.5, 3.5), 18, 36));
         if (age < profile.MinAge) age = profile.MinAge; // pro at 23+ in the USA (decision #75)
@@ -198,10 +202,26 @@ public sealed class GameWorld
         // Same for potential: players who'll become NABL stars arrive through the NABL draft, not as overseas free
         // agents. (Overseas players grew to 175-184 and then walked in as free agents; issue #9.)
         if (p.PotentialAbility > 150) p.PotentialAbility = Math.Max(p.CurrentAbility, 150 + (int)Math.Round((p.PotentialAbility - 150) * 0.4));
+        // H123: and they don't grow past the league's reach either (a 19-year-old at 154 / 161 in the summer pool).
+        if (ceiling is int top && p.PotentialAbility > top + PotentialReach)
+            p.PotentialAbility = Math.Max(p.CurrentAbility, Math.Min(top + PotentialReach + 4, top + PotentialReach + (int)Math.Round((p.PotentialAbility - top - PotentialReach) * 0.3)));
         p.TeamId = team.Id;
         p.Contract = NewContract(p, profile, rng.Next(1, 5), today, today.Year);
         return p;
     }
+
+    /// <summary>How far above its league's ceiling a made-up pro abroad can be rated (H123).</summary>
+    public const int CeilingReach = 6;
+    /// <summary>How far above the ceiling his potential may reach before it is compressed (H123).</summary>
+    public const int PotentialReach = 8;
+
+    /// <summary>
+    /// H123 (run 121): the rating a made-up pro abroad is compressed above: 138 plus half the league's strength offset
+    /// (Spain 138, Greece 136, Lithuania 134, the Philippines 128), plus 4 for an import in a league whose imports are its stars.
+    /// The real NBA's top-13 average is about 110 and its stars 160+, so the best of these are NBA rotation players.
+    /// </summary>
+    public static int Ceiling(CompetitionProfile profile, bool import) =>
+        (int)Math.Round(138 + profile.StrengthOffset / 2.0) + (import && profile.ImportsAreStars ? 4 : 0);
 
     /// <summary>Swap some local players for imports, up to the league's limit (imports take the top slots in China and Australia).</summary>
     private static void ApplyForeignMix(Team team, CompetitionProfile profile, ClubSeed club, double quality, DateOnly today, PlayerGenerator gen, Rng rng)
