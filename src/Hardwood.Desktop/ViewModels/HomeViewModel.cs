@@ -263,7 +263,7 @@ public sealed partial class HomeViewModel : PageViewModel
         if (s.InCollege)
         {
             // No wages in college: the roster by class instead, so the coach sees who graduates when (C2).
-            var summer = new DateOnly(s.World.College!.Season.Year + 1, 7, 1);
+            var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today)); // the same school year as the cards
             // By age next summer: 19 = freshmen ... 22 = seniors; 23 = fifth-year seniors, who turn pro then (#162; CS3, H132).
             string[] names = Hardwood.Core.College.CollegeWorld.ClassShort.Select(n => n == "5th" ? "5th yr" : n).ToArray();
             Payroll = names.Select((n, k) =>

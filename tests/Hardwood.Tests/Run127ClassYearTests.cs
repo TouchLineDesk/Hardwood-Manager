@@ -61,8 +61,14 @@ public class Run127ClassYearTests
         var lastHome = c.LastHomeGame(s.HumanTeam.Id)!;
         var finals = c.FinalYear(s.HumanTeam).Select(p => p.Name).ToList();
         int guard = 0;
-        while (s.Today <= lastHome.Date && guard++ < 250) s.AdvanceDay();
-        var pre = s.Inbox.Where(m => m.Title.StartsWith("Preseason")).ToList();
+        var pre = new List<InboxMessage>();
+        while (s.Today <= lastHome.Date && guard++ < 250)
+        {
+            s.AdvanceDay();
+            // Deleting it (as "Delete all read" would) never brings it back (review of PR #191).
+            pre.AddRange(s.Inbox.Where(m => m.Title.StartsWith("Preseason")));
+            s.Inbox.RemoveAll(m => m.Title.StartsWith("Preseason"));
+        }
         var pm = Assert.Single(pre);
         _out.WriteLine($"{pm.Date}: {pm.Title}\n{pm.Body}\n");
         Assert.InRange(pm.Date, first.AddDays(-GameSession.PreseasonLeadDays), first.AddDays(-1));

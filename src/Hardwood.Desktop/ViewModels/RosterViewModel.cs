@@ -64,9 +64,10 @@ public sealed class PlayerRow
         string status = p.IsAvailable(s.Today) ? "" : $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)";
         var club = p.TeamId is { } cid ? s.FindTeam(cid) : null;
         bool before = club != null && !s.ContractsCounted(club);
+        var cls = s.ClassYearOf(p);
         return new PlayerRow
         {
-            ClassYear = s.ClassYearOf(p)?.Short ?? "", ClassOrder = s.ClassYearOf(p)?.Year ?? 0,
+            ClassYear = cls?.Short ?? "", ClassOrder = cls?.Year ?? 0,
             Player = p, Age = p.Age(s.Today), BeforeCountdown = before, Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",
@@ -75,7 +76,7 @@ public sealed class PlayerRow
             CardFooter = st is { Games: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast · {st.Mpg:F0} min"
                        : p.Contract is { } c ? $"{Hardwood.Core.Season.Budgets.Money(c.Salary)} · {YearsText(c, before).ToLowerInvariant()}"
                        // CS3 (run 127): a college player's card foot names his class, not his age again.
-                       : s.ClassYearOf(p) is { } cy ? (cy.Final ? $"{cy.Long} · final season" : cy.Long) : $"Age {p.Age(s.Today)}",
+                       : cls is { } cy ? (cy.Final ? $"{cy.Long} · final season" : cy.Long) : $"Age {p.Age(s.Today)}",
         };
     }
 }
@@ -138,7 +139,7 @@ public sealed partial class RosterViewModel : PageViewModel
         else chips.Add(new("Wages", Hardwood.Core.Season.Budgets.Money(payroll), "a season"));
         if (college != null)
         {
-            var summer = new DateOnly(college.Season.Year + 1, 7, 1);
+            var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today)); // as the cards count it
             int grads = roster.Count(p => p.Age(summer) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
             chips.Add(new("Final season", grads.ToString(), grads == 1 ? "turns pro next summer" : "turn pro next summer", grads > 0 ? "info" : ""));
         }

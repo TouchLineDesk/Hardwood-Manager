@@ -26,7 +26,8 @@ public sealed partial class GameSession
 
     private void PreseasonPolls(CollegeWorld c)
     {
-        if (c.FirstGameDay is not { } first || Today >= first || Today < first.AddDays(-PreseasonLeadDays)) return;
+        // One exact day (review of PR #191): a check on the inbox would post it again after "Delete all read".
+        if (c.FirstGameDay is not { } first || Today != first.AddDays(-PreseasonLeadDays)) return;
         if (c.Season.Year != CollegeWorld.SchoolYear(Today) || PostedThisSchoolYear("Preseason")) return;
         Post(PreseasonTitle(c), PreseasonBody(c, first), "League");
     }

@@ -13,11 +13,22 @@ public partial class RosterView : UserControl
         // CS3 (run 127): the class-year column shows for a college program. Columns aren't in the visual tree, so it's set here.
         DataContextChanged += (_, _) =>
         {
-            if (DataContext is not RosterViewModel vm) return;
-            void Show() { if (RosterGrid.Columns.FirstOrDefault(c => c.Header as string == "Yr") is { } col) col.IsVisible = vm.ShowClassYear; }
-            Show();
-            vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(RosterViewModel.ShowClassYear)) Show(); };
+            if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
+            _vm = DataContext as RosterViewModel;
+            if (_vm == null) return;
+            _vm.PropertyChanged += OnVmChanged;
+            ShowClassColumn();
         };
+    }
+
+    private RosterViewModel? _vm;
+    private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(RosterViewModel.ShowClassYear)) ShowClassColumn();
+    }
+    private void ShowClassColumn()
+    {
+        if (_vm != null && RosterGrid.Columns.FirstOrDefault(c => c.Header as string == "Yr") is { } col) col.IsVisible = _vm.ShowClassYear;
     }
 
     private void OnRowDoubleTapped(object? sender, TappedEventArgs e)
