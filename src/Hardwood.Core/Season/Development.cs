@@ -174,7 +174,7 @@ public sealed class DevelopmentEngine
     public const int StarPlaysOn = 140;
 
     /// <summary>Rule-based retirement decision, evaluated once per offseason.</summary>
-    public bool ShouldRetire(Player p, DateOnly offseasonDate, double mpg)
+    public bool ShouldRetire(Player p, DateOnly offseasonDate, double mpg, bool seasonsLeft = false)
     {
         int age = p.Age(offseasonDate);
         int ca = p.CurrentAbility;
@@ -190,7 +190,8 @@ public sealed class DevelopmentEngine
         // away from a deal with seasons left while he's still good. Summer one on seed 31 retired Kawhi Leonard (CA 160, 36,
         // signed to 2028) and Curry (156, signed to 2028). The dice are still rolled, so the stream doesn't move.
         if (age < 40 && ca >= StarPlaysOn) prob *= age >= 38 ? 0.5 : 0.25;
-        if (age < 40 && ca >= 110 && p.Contract is { } c && c.StartSeason + c.Years - 1 >= offseasonDate.Year) prob *= 0.5;
+        // seasonsLeft comes from the caller: Contract.Years counts down each summer, so it can't be read from StartSeason here.
+        if (age < 40 && ca >= 110 && seasonsLeft) prob *= 0.5;
         if (mpg < 8 && age >= 30) prob += 0.15;      // nobody is playing him
         prob *= 1.1 - p.Hidden.Ambition / 20.0 * 0.4; // ambitious players hang on
         return _rng.Chance(Math.Clamp(prob, 0, 0.98));

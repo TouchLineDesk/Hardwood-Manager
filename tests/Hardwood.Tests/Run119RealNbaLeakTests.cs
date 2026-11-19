@@ -23,24 +23,24 @@ public class Run119RealNbaLeakTests
         new() { Id = 1, FirstName = "A", LastName = "B", CurrentAbility = ca, PotentialAbility = ca, BirthDate = Summer.AddYears(-age).AddDays(-30),
                 Hidden = new HiddenTraits { Ambition = 10 }, Contract = c };
 
-    private static double RetireRate(Player p, int rolls = 4000)
+    private static double RetireRate(Player p, bool seasonsLeft = false, int rolls = 4000)
     {
         var dev = new DevelopmentEngine(new Rng(119));
         int n = 0;
-        for (int i = 0; i < rolls; i++) if (dev.ShouldRetire(p, Summer, 30)) n++;
+        for (int i = 0; i < rolls; i++) if (dev.ShouldRetire(p, Summer, 30, seasonsLeft)) n++;
         return n / (double)rolls;
     }
 
     [Fact]
     public void A_star_with_seasons_left_on_his_deal_plays_on()
     {
-        var deal = new Contract { StartSeason = 2025, Years = 4, Salary = 50_000_000 };   // runs to 2028
-        double star = RetireRate(Make(160, 36, deal)), starFree = RetireRate(Make(160, 36)), role = RetireRate(Make(100, 36));
+        double star = RetireRate(Make(160, 36), seasonsLeft: true), starFree = RetireRate(Make(160, 36)), role = RetireRate(Make(100, 36));
         _out.WriteLine($"at 36: CA 160 under contract {star:P1}, CA 160 out of contract {starFree:P1}, CA 100 {role:P1}");
         Assert.InRange(star, 0.0, 0.06);           // was about 30%
         Assert.InRange(starFree, 0.04, 0.12);
         Assert.InRange(role, 0.5, 0.75);           // ordinary players retire as before
-        Assert.InRange(RetireRate(Make(160, 40, deal)), 0.85, 1.0);   // 40 is still the end
+        Assert.InRange(RetireRate(Make(120, 35), seasonsLeft: true), 0.03, 0.12);   // a role player with years left: half of 20%
+        Assert.InRange(RetireRate(Make(160, 40), seasonsLeft: true), 0.85, 1.0);   // 40 is still the end
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class Run119RealNbaLeakTests
         foreach (var l in lines) _out.WriteLine(l);
         int Count(string line, string band) => int.Parse(System.Text.RegularExpressions.Regex.Match(line, band + @": (\d+)").Groups[1].Value);
         // Stars under contract don't retire in summer one (8 of CA 130+ did on v0.110.3: Leonard, Curry, George...).
-        var ret = lines.Single(l => l.TrimStart().StartsWith("retired:"));
+        var ret = lines.Single(l => l.TrimStart().StartsWith("retired or left the game:"));
         Assert.InRange(Count(ret, @"CA 130\+"), 0, 4);
         Assert.DoesNotContain(lines, l => (l.Contains("Kawhi Leonard") || l.Contains("Stephen Curry")) && l.Contains("retired"));
     }

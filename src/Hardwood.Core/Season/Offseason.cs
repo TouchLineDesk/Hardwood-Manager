@@ -167,7 +167,7 @@ public sealed class Offseason
         foreach (var p in team.Roster.ToList())
         {
             double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
-            if (_dev.ShouldRetire(p, Date, mpg)) Retire(team, p);
+            if (_dev.ShouldRetire(p, Date, mpg, seasonsLeft: p.Contract is { Years: > 1 })) Retire(team, p);   // Years ticks down just below
         }
         foreach (var p in _league.FreeAgents.ToList())
         {
