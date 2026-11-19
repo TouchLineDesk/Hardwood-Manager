@@ -108,14 +108,20 @@ public class Run118SweepTests
         MainWindow? window = null;
         try
         {
-            // The weakest club on seed 77 (an expansion club since H110), to the summer.
-            var (probe, _) = RealWorldData.NewWorld(77);
-            var teamId = probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id;
-            var s = GameSession.NewGame(77, teamId, null);
-            int guard = 0;
-            while (s.Phase != SessionPhase.Offseason && guard++ < 700) s.AdvanceDay();
-            _out.WriteLine($"{s.HumanTeam.FullName}: going down {s.GoingDown()}");
-            Assert.True(s.GoingDown(), "the weakest club finishes last in its division");
+            // The weakest club (an expansion club since H110), to the summer. Run 120: whether it finishes last depends on the
+            // season's results, so the next seed is tried if it survives; the banner is what's tested.
+            GameSession? s = null;
+            foreach (var seed in new ulong[] { 77, 31, 55 })
+            {
+                var (probe, _) = RealWorldData.NewWorld(seed);
+                var teamId = probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id;
+                s = GameSession.NewGame(seed, teamId, null);
+                int guard = 0;
+                while (s.Phase != SessionPhase.Offseason && guard++ < 700) s.AdvanceDay();
+                _out.WriteLine($"seed {seed}, {s.HumanTeam.FullName}: going down {s.GoingDown()}");
+                if (s.GoingDown()) break;
+            }
+            Assert.True(s!.GoingDown(), "the weakest club finishes last in its division on one of three seeds");
             var vm = new MainViewModel();
             window = new MainWindow { DataContext = vm, Width = 1480, Height = 900 };
             window.Show();
