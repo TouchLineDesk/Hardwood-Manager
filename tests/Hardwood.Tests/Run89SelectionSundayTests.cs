@@ -155,7 +155,7 @@ public class Run89SelectionSundayTests
             new Dictionary<int, Hardwood.Core.Season.PlayerSeasonStats>(), new DateOnly(2027, 4, 7), 2026, madnessRound: round).body;
         Assert.Contains("Goal: reach the Final Four. Result: won a game in March Madness, out in the Round of 32", Review(2));
         Assert.Contains("Result: made March Madness, out in the Round of 64", Review(1));
-        Assert.Contains("Result: made March Madness (24-8", Review(-1));
+        Assert.Contains("Result: made March Madness (regular season 24-8", Review(-1)); // CS2 (run 126): the target covers the regular season
         Assert.Equal("made the First Four, out before the Round of 64",
             Hardwood.Core.Jobs.Board.DescribeResult(Hardwood.Core.Jobs.SeasonGoal.Develop, ctx, madnessRound: 0));
         Assert.Equal("reach the Sweet 16", Hardwood.Core.Jobs.Board.LowerFirst(Hardwood.Core.Jobs.Board.Describe(Hardwood.Core.Jobs.SeasonGoal.SecondRound, ctx)));

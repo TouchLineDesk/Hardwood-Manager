@@ -157,9 +157,11 @@ public class CollegeCareerTests
         Assert.Equal("Reach the Elite Eight", Board.Describe(SeasonGoal.ConferenceFinals, ctx));
         Assert.True(Board.CollegeStep(SeasonGoal.ConferenceFinals) > Board.CollegeStep(SeasonGoal.SecondRound));
         // The favourite's goal is the title, the field's tail is asked to build; no pro demands.
-        var best = cw.Programs.OrderBy(t => Board.ProjectedRank(ctx, t)).First();
+        // CS2 (run 126): the AD ranks a program on its squad and its prestige together (Board.CollegeRank).
+        int Rank(Hardwood.Core.Model.Team t) => Board.CollegeRank(ctx, t, Board.ProjectedRank(ctx, t));
+        var best = cw.Programs.OrderBy(Rank).ThenBy(t => Board.ProjectedRank(ctx, t)).First();
         Assert.Equal(SeasonGoal.Title, Board.SetExpectations(LeagueContext.College(cw, best), best, 2026).Goal);
-        var worst = cw.Programs.OrderBy(t => Board.ProjectedRank(ctx, t)).Last();
+        var worst = cw.Programs.OrderBy(Rank).Last();
         worst.Owner.Ambition = 10;
         var low = Board.SetExpectations(LeagueContext.College(cw, worst), worst, 2026);
         Assert.Equal(SeasonGoal.Develop, low.Goal);

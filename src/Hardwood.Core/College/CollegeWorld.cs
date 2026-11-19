@@ -341,6 +341,41 @@ public sealed partial class CollegeWorld
         return grads;
     }
 
+    /// <summary>
+    /// CS2 (run 126): the regular season, the part the athletic director's win target covers: non-conference games, the
+    /// November invitationals, the showcases and the conference schedule. Conference tournaments and March Madness are the
+    /// postseason, judged by how far the program went (a 33-5 record with five tournament wins isn't "3 wins past" a 24-win target).
+    /// </summary>
+    public static bool IsRegularSeason(CollegeGame g) => g.Stage is not ("Conference tournament" or Madness);
+
+    /// <summary>CS2: a program's regular-season record (<see cref="IsRegularSeason"/>).</summary>
+    public (int wins, int losses) RegularSeasonRecord(int id)
+    {
+        int w = 0, l = 0;
+        foreach (var g in Season.Games)
+        {
+            if (!g.Played || (g.HomeId != id && g.AwayId != id) || !IsRegularSeason(g)) continue;
+            if (g.WinnerId == id) w++; else l++;
+        }
+        return (w, l);
+    }
+
+    /// <summary>CS2: a program's March Madness seed this season (0 = not in the field).</summary>
+    public int SeedOf(int id) => Season.Seeds.GetValueOrDefault(id);
+
+    /// <summary>
+    /// CS2 (#166): prestige as a letter, A+ to F, the way the program is talked about. Blue bloods (75+) are A grades, the known
+    /// names (55+) Bs, then C for a solid program, D for a small one, F for the bottom.
+    /// </summary>
+    public static string PrestigeLetter(double p) => p switch
+    {
+        >= 88 => "A+", >= 80 => "A", >= 75 => "A-",
+        >= 70 => "B+", >= 62 => "B", >= 55 => "B-",
+        >= 50 => "C+", >= 44 => "C", >= 38 => "C-",
+        >= 33 => "D+", >= 27 => "D", >= 22 => "D-",
+        _ => "F",
+    };
+
     public (int wins, int losses) Record(int id)
     {
         int w = 0, l = 0;
