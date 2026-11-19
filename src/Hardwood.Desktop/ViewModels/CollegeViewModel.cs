@@ -891,7 +891,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         if (Session.World.College is not { } c) return;
         var today = Session.Today;
         var team = Session.HumanTeam;
-        // He turns pro the summer he is 23; "next summer" is the coming July.
+        // He turns pro the summer he is 22 (D80 A); "next summer" is the coming July.
         var nextSummer = new DateOnly(today.Month >= 7 ? today.Year + 1 : today.Year, 7, 1);
         int YearsLeft(Player p) => Math.Max(1, CollegeWorld.GraduateAge - p.Age(nextSummer) + 1);
         string Where(Player p, Team? t) => t != null ? t.FullName

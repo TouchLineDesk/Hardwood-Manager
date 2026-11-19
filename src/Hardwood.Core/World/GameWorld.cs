@@ -184,7 +184,7 @@ public sealed class GameWorld
         if (ceiling is int cap && ca > cap) ca = Math.Min(cap + CeilingReach, cap + (int)Math.Round((ca - cap) * 0.35));
         ca = Math.Clamp(ca, 45, 160);
         int age = ageOverride ?? (int)Math.Round(Math.Clamp(rng.NextGaussian(slot < 9 ? 27 : 23.5, 3.5), 18, 36));
-        if (age < profile.MinAge) age = profile.MinAge; // pro at 23+ in the USA (decision #75)
+        if (age < profile.MinAge) age = profile.MinAge; // pro at 22+ in the USA (decision #75; D80 A, run 128)
         string country = club.Country ?? profile.Country;
         Player p;
         if (foreignSlot)

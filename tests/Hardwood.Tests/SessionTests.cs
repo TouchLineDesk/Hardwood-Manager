@@ -91,7 +91,7 @@ public class SessionTests
             Assert.Empty(loaded.League.Picks);
             var grads = loaded.League.FreeAgents.Where(p => p.RookieSeason == 2027).ToList();
             Assert.NotEmpty(grads);
-            Assert.All(grads, p => Assert.Equal(23, p.Age(loaded.Offseason.Date))); // pro at 23 (decision #75)
+            Assert.All(grads, p => Assert.Equal(Hardwood.Core.College.CollegeWorld.GraduateAge, p.Age(loaded.Offseason.Date))); // pro at 22 (decision #75; D80 A)
 
             // Sign free agents through talks until the roster is full or the budget runs out.
             foreach (var fa in loaded.League.FreeAgents.OrderByDescending(p => p.CurrentAbility).Take(40).ToList())

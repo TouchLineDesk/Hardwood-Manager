@@ -12,7 +12,7 @@ public sealed record RecruitInterest(double Appeal, double Minutes, double Effor
 /// <summary>Senior recruiting (decision #157): court college seniors so they sign for you when they graduate.</summary>
 public sealed partial class GameSession
 {
-    /// <summary>The date that decides who's a senior: players 23 by July 1 graduate this summer (they turn pro when the NABL season ends).</summary>
+    /// <summary>The date that decides who's a senior: players 22 by July 1 graduate this summer (they turn pro when the NABL season ends).</summary>
     public DateOnly GraduationDay => new(World.College?.Season.Year + 1 ?? Today.Year, 7, 1);
 
     /// <summary>Recruiting runs from the college season's start in November until the NABL season ends, while you have a club.</summary>

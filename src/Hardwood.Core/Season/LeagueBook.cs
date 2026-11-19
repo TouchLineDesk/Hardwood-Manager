@@ -226,7 +226,7 @@ public sealed class LeagueBook
                 ("Playoffs", Postseason.UsesDivisions(lg)
                     ? $"The top two in each division (16 teams), seeded 1-8 by record within their conference. Four rounds, best of seven. The eight third-placed teams play the {Postseason.ThirdPlaceName} (best of three) for a trophy and {Franchise.Money(Postseason.ThirdPlacePrizeFor(true))} in prize money."
                     : "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
-                ("Rosters", $"{fin.RosterMin}-{fin.RosterMax} players. Americans turn pro at 23 (college before that)."),
+                ("Rosters", $"{fin.RosterMin}-{fin.RosterMax} players. Americans turn pro at 22, after four years of college."),
                 ("Money", fin.OpenMarket
                     ? (Hardwood.Core.RealWorld.RealWorldData.IsReal(lg) ? "Open market: no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January. A one-round college draft each summer, before free agency: the top three in each division and the clubs coming up, in an equal-odds lottery." : "Open market: no draft and no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January.")
                     : $"Salary cap ${fin.HardCap / 1e6:F0}M."),
@@ -404,8 +404,8 @@ public sealed class LeagueBook
             Rules = new List<(string, string)>
             {
                 ("Format", col.Recruiting
-                    ? $"{col.Programs.Count} programs in {col.Active.Count()} conferences, each with {Hardwood.Core.College.CollegeWorld.Scholarships} scholarships and {Hardwood.Core.College.CollegeWorld.WalkOns} walk-ons. Americans play high school from 14 to 17, sign with a college as seniors, enroll at 18 and turn pro at 23."
-                    : $"{col.Programs.Count} programs in {col.Active.Count()} conferences. Every American from 14 to 22 plays here; at 23 they turn pro."),
+                    ? $"{col.Programs.Count} programs in {col.Active.Count()} conferences, each with {Hardwood.Core.College.CollegeWorld.Scholarships} scholarships and {Hardwood.Core.College.CollegeWorld.WalkOns} walk-ons. Americans play high school from 14 to 17, sign with a college as seniors, enroll at 18 and turn pro at 22, after four years."
+                    : $"{col.Programs.Count} programs in {col.Active.Count()} conferences. Every American from 14 to 21 plays here; at 22 they turn pro."),
                 ("Game", RulesText(Model.Rules.College)),
                 ("Season", "Non-conference games from November, Thanksgiving invitationals, December showcases, then a conference round robin from January and conference tournaments in March."),
                 // H117 (run 121): one automatic bid per conference (32 in the real world), not 8.

@@ -9,8 +9,8 @@ namespace Hardwood.Tests;
 
 /// <summary>
 /// Run 127, CS3 (college plan): the years you can see.
-/// - Every rostered college player has a class year (Fr, So, Jr, Sr; players enroll at 18 and turn pro at 23, so the
-///   oldest group are fifth-year seniors in their final season). No redshirts (#938).
+/// - Every rostered college player has a class year (Fr, So, Jr, Sr; players enroll at 18 and turn pro at 22 after four
+///   years, D80 A in run 128; the seniors are in their final season). No redshirts (#938).
 /// - The preseason: a week before the first game, one message with the Top 25, the conference poll and media day.
 /// - Senior Night: the day before the last regular-season home game, the final-season players are named.
 /// </summary>
@@ -37,14 +37,14 @@ public class Run127ClassYearTests
             var cy = s.ClassYearOf(p);
             Assert.NotNull(cy);
             int ageThen = p.Age(summer);
-            // 18 when the school year began = freshman ... 21 = senior, 22 = fifth-year senior (his final season).
-            Assert.Equal(Math.Clamp(ageThen - 17, 1, 5), cy!.Year);
-            Assert.Equal(ageThen >= 22, cy.Final);
+            // 18 when the school year began = freshman ... 21 = senior (his final season; D80 A).
+            Assert.Equal(Math.Clamp(ageThen - 17, 1, 4), cy!.Year);
+            Assert.Equal(ageThen >= 21, cy.Final);
             if (ageThen == 18) Assert.Equal("Fr", cy.Short);
             if (ageThen == 21) Assert.Equal("Sr", cy.Short);
         }
         var years = s.HumanTeam.Roster.Select(p => s.ClassYearOf(p)!.Year).Distinct().OrderBy(y => y).ToList();
-        Assert.Equal(new[] { 1, 2, 3, 4, 5 }, years);
+        Assert.Equal(new[] { 1, 2, 3, 4 }, years);
         Assert.Equal(c.FinalYear(s.HumanTeam).Count, s.HumanTeam.Roster.Count(p => s.ClassYearOf(p)!.Final));
         // A high-school prospect and a pro have no class year.
         Assert.Null(s.ClassYearOf(c.Prospects.First()));
@@ -107,7 +107,7 @@ public class Run127ClassYearTests
             }
             vm.Navigate("Home");
             var home = Assert.IsType<Hardwood.Desktop.ViewModels.HomeViewModel>(vm.CurrentPage);
-            Assert.Equal(new[] { "Fr", "So", "Jr", "Sr", "5th yr" }, home.Payroll!.Select(b => b.Label).ToArray());
+            Assert.Equal(new[] { "Fr", "So", "Jr", "Sr" }, home.Payroll!.Select(b => b.Label).ToArray());
             Assert.Contains("final season", home.PayrollCaption);
             Shot("run127-college-home.png");
             vm.Navigate("Roster");
@@ -115,7 +115,7 @@ public class Run127ClassYearTests
             Assert.True(roster.ShowClassYear);
             Assert.All(roster.Rows, r => Assert.Contains(r.ClassYear, CollegeWorld.ClassShort));
             Assert.Contains(roster.Chips, ch => ch.Label == "Final season");
-            Assert.Contains(roster.Rows, r => r.CardFooter == "Fifth-year senior · final season");
+            Assert.Contains(roster.Rows, r => r.CardFooter == "Senior · final season");
             Shot("run127-college-roster-cards.png");
             roster.CardView = false;
             Shot("run127-college-roster-table.png");
@@ -124,7 +124,7 @@ public class Run127ClassYearTests
             var senior = s.HumanTeam.Roster.First(p => s.ClassYearOf(p)!.Final);
             vm.ShowPlayer(senior);
             var page = Assert.IsType<Hardwood.Desktop.ViewModels.PlayerViewModel>(vm.CurrentPage);
-            Assert.StartsWith("Fifth-year senior (final season", page.Bio);
+            Assert.StartsWith("Senior (final season", page.Bio);
             Assert.Contains(page.Chips, ch => ch.Label == "Roster spot");
             Assert.DoesNotContain(page.Chips, ch => ch.Value == "None");
             Shot("run127-college-player.png");

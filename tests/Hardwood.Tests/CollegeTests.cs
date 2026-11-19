@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Hardwood.Tests;
 
-/// <summary>College basketball (decisions #95-98): programs, the season and March Madness, graduation at 23, saving.</summary>
+/// <summary>College basketball (decisions #95-98): programs, the season and March Madness, graduation at 22, saving.</summary>
 public class CollegeTests
 {
     private static (League nabl, GameWorld world) NewWorld(ulong seed = 9)
@@ -19,8 +19,8 @@ public class CollegeTests
     }
 
     [Fact]
-    public void There_are_148_programs_in_ten_conferences_with_players_from_14_to_22()
-    // Since decision #162: rosters of 15 (ages 18-22) and high-school prospects (14-17) in a recruiting pool.
+    public void There_are_148_programs_in_ten_conferences_with_players_from_14_to_21()
+    // Since decision #162: rosters of 15 (ages 18-21 since D80 A, four years) and high-school prospects (14-17) in a recruiting pool.
     {
         var (nabl, world) = NewWorld();
         var c = world.College!;
@@ -30,8 +30,8 @@ public class CollegeTests
         Assert.True(c.Recruiting);
         Assert.All(c.Programs, t => Assert.Equal(CollegeWorld.Squad, t.Roster.Count));
         var on = new DateOnly(2026, 7, 1); // ages as of the summer the school year began (classes enroll and graduate then)
-        Assert.All(c.Players, p => Assert.InRange(p.Age(on), 14, 22));
-        Assert.All(c.Programs.SelectMany(t => t.Roster), p => Assert.InRange(p.Age(on), 18, 22));
+        Assert.All(c.Players, p => Assert.InRange(p.Age(on), 14, 21));
+        Assert.All(c.Programs.SelectMany(t => t.Roster), p => Assert.InRange(p.Age(on), 18, 21));
         Assert.All(c.Prospects, p => { Assert.InRange(p.Age(on), 14, 17); Assert.Null(p.TeamId); });
         // Ids don't clash with the pros, and every program can be found by id.
         var pros = world.Players.Select(p => p.Id).Concat(nabl.Teams.SelectMany(t => t.Roster).Select(p => p.Id)).ToHashSet();
@@ -39,7 +39,7 @@ public class CollegeTests
         Assert.All(c.Programs, t => Assert.Same(t, world.TeamById(t.Id)));
         // Older players are better; power conferences recruit better.
         double At(int age) => c.Players.Where(p => p.Age(on) == age).Average(p => p.CurrentAbility);
-        Assert.True(At(22) > At(18) && At(18) > At(14), $"{At(14):F0} {At(18):F0} {At(22):F0}");
+        Assert.True(At(21) > At(18) && At(18) > At(14), $"{At(14):F0} {At(18):F0} {At(21):F0}");
         double Conf(bool power) => c.Programs.Where(t => CollegeWorld.Conferences.First(x => x.Key == c.ConferenceOf[t.Id]).Power == power)
             .SelectMany(t => t.Roster).Average(p => p.PotentialAbility);
         Assert.True(Conf(true) > Conf(false));

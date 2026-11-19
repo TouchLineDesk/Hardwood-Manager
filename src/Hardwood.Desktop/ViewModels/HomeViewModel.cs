@@ -264,16 +264,18 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             // No wages in college: the roster by class instead, so the coach sees who graduates when (C2).
             var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today)); // the same school year as the cards
-            // By age next summer: 19 = freshmen ... 22 = seniors; 23 = fifth-year seniors, who turn pro then (#162; CS3, H132).
-            string[] names = Hardwood.Core.College.CollegeWorld.ClassShort.Select(n => n == "5th" ? "5th yr" : n).ToArray();
+            // By age next summer: 19 = freshmen ... 22 = seniors, who turn pro then (D80 A, run 128; CS3, H132). In a career from
+            // before four-year college, last year's juniors are 23 next summer and graduate with the seniors: they count as seniors.
+            string[] names = Hardwood.Core.College.CollegeWorld.ClassShort;
+            int last = names.Length - 1;
             Payroll = names.Select((n, k) =>
             {
-                int count = team.Roster.Count(p => Math.Clamp(p.Age(summer), 19, 23) == 19 + k);
-                return new Bar { Label = n, Value = count, ValueText = $"{count}", Color = k == 4 ? ThemeService.Accent : Color.Parse("#4A5563") };
+                int count = team.Roster.Count(p => Math.Clamp(p.Age(summer), 19, 19 + last) == 19 + k);
+                return new Bar { Label = n, Value = count, ValueText = $"{count}", Color = k == last ? ThemeService.Accent : Color.Parse("#4A5563") };
             }).ToList();
             PayrollLines = null;
             PayrollTitle = "Roster by class"; PayrollIcon = "GraduationCap";
-            PayrollCaption = "Players enroll at 18 and turn pro at 23, so a program has five classes. The highlighted 5th-year seniors play their final season.";
+            PayrollCaption = "Four years of college: players enroll at 18 and turn pro at 22. The highlighted seniors play their final season.";
         }
         else
         {

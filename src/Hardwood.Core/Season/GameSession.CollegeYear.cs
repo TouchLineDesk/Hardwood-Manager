@@ -91,7 +91,7 @@ public sealed partial class GameSession
         Post($"Senior Night tomorrow: {opp.FullName} visit for the last home game", body, "Roster");
     }
 
-    /// <summary>"3 Fr, 3 So, 3 Jr, 3 Sr, 3 5th" for your program as the school year after the summer will see it.</summary>
+    /// <summary>"3 Fr, 4 So, 4 Jr, 4 Sr" for your program as the school year after the summer will see it.</summary>
     public string ClassCounts()
     {
         int year = World.College!.Season.Year + 1;

@@ -51,7 +51,7 @@ public sealed class PlayerRow
     public string MoodIcon => Player.Morale >= 60 ? "Smile" : Player.Morale >= 45 ? "Meh" : "Frown";
     public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Player.Morale >= 60 ? "#3FB950" : Player.Morale >= 45 ? "#D29922" : "#F85149"));
     public string CardFooter { get; init; } = "";
-    /// <summary>CS3 (run 127): a college player's class year ("Fr" … "5th"); empty for the pros.</summary>
+    /// <summary>CS3 (run 127): a college player's class year ("Fr" … "Sr"); empty for the pros.</summary>
     public string ClassYear { get; init; } = "";
     /// <summary>Sorts the class column youngest first.</summary>
     public int ClassOrder { get; init; }

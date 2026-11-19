@@ -357,7 +357,7 @@ public sealed class Offseason
     }
 
     /// <summary>
-    /// This summer's college graduates (decision #90): 23-year-olds, mostly American, from a few ready-made players to
+    /// This summer's college graduates (decision #90): 22-year-olds (D80 A), mostly American, from a few ready-made players to
     /// many long shots. Until the college game exists (stage B) they are generated here.
     /// </summary>
     private List<Player> GenerateGraduates()
@@ -369,7 +369,7 @@ public sealed class Offseason
         {
             double u = _rng.NextDouble();
             int ca = u < 0.06 ? _rng.Next(110, 128) : u < 0.32 ? _rng.Next(90, 110) : _rng.Next(60, 92);
-            var p = gen.Generate(positions[_rng.Next(5)], ca, 23, Date);
+            var p = gen.Generate(positions[_rng.Next(5)], ca, Hardwood.Core.College.CollegeWorld.GraduateAge, Date);
             // Same restraint as the old draft classes: a few future stars a year, not a flood (issue #9).
             p.PotentialAbility = Math.Clamp(p.PotentialAbility - _rng.Next(0, 9), p.CurrentAbility, 200);
             p.RookieSeason = Season + 1;

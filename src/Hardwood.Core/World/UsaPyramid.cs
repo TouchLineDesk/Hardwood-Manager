@@ -593,7 +593,7 @@ public static class UsaPyramid
     private static CompetitionProfile National(string key, string name, string shortName, int strength, double wages, int imports, double prestige, IEnumerable<ClubSeed> clubs, string? realName = null, string? realShort = null) => new()
     {
         Key = key, Name = name, Short = shortName, RealName = realName, RealShort = realShort, Country = "USA", LocalNationalities = new[] { "USA" },
-        StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 23,
+        StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 22,
         Start = (10, 21), RoundDays = new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Saturday }, Clubs = clubs.ToArray(), // 62 games in 32-club tiers (#355)
         // The division format's playoffs (D36, #364): 16 teams by conference, then the final; third place plays its own tournament.
         DivisionPlayoffs = true,
@@ -628,7 +628,7 @@ public static class UsaPyramid
     {
         Legacy = legacy,
         Key = key, Name = name, Short = shortName, Country = "USA", LocalNationalities = new[] { "USA" },
-        StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 23,
+        StrengthOffset = strength, ForeignLimit = imports, SalaryScale = wages, JobPrestige = prestige, Rules = Rules.Nba, MinAge = 22,
         Start = (10, 24), RoundDays = roundsPerWeek == 2 ? new[] { DayOfWeek.Tuesday, DayOfWeek.Saturday } : new[] { DayOfWeek.Saturday },
         Clubs = clubs.ToArray(),
     };

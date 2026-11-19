@@ -17,7 +17,7 @@ public sealed class Recruit
     public int Stars { get; set; }
     /// <summary>National rank within his class.</summary>
     public int Rank { get; set; }
-    /// <summary>The services' projection of his ability at 23 (their opinion, not the truth: busts and sleepers happen).</summary>
+    /// <summary>The services' projection of his ability at 22 (their opinion, not the truth: busts and sleepers happen).</summary>
     public int Projection { get; set; }
     /// <summary>How the services misjudge him, fixed for life (they keep the same blind spot as he grows).</summary>
     public int Bias { get; set; }
@@ -43,7 +43,8 @@ public sealed class Recruit
 /// <summary>
 /// The classic-era roster model (Danny, Nov 11, decisions #159-#167): American players spend ages 14-17 in high school,
 /// in a national recruiting pool with star ratings and class rankings; seniors commit to a college during the season and
-/// enroll at 18; each program carries 13 scholarships and 2 walk-ons; everyone turns pro at 23 (no early entry, no portal,
+/// enroll at 18; each program carries 13 scholarships and 2 walk-ons; everyone turns pro at 22 after four years (D80 A,
+/// run 128; it was 23) (no early entry, no portal,
 /// no NIL). Unsigned graduates leave the game world. Careers from before it keep 30-man rosters from 14 (<see cref="Recruiting"/> false).
 /// </summary>
 public sealed partial class CollegeWorld
@@ -51,6 +52,12 @@ public sealed partial class CollegeWorld
     public const int Scholarships = 13, WalkOns = 2, Squad = Scholarships + WalkOns, EnrollAge = 18;
     /// <summary>High-school prospects tracked per class (the services rank about a thousand; the rest aren't followed).</summary>
     public const int ClassTracked = 1000;
+    /// <summary>Four college years (D80 A).</summary>
+    public const int CollegeYears = GraduateAge - EnrollAge;
+    /// <summary>D80 A (run 128): a class is the thousand tracked or, in a world with more programs than that fills, enough
+    /// players for every program's share of a four-year roster (365 programs need about 1,370 a year). The players past the
+    /// thousand are depth below college level, so the top of the class keeps its calibration.</summary>
+    public int ClassSize => Math.Max(ClassTracked, (int)Math.Ceiling(Programs.Count * Squad / (double)CollegeYears) + 60);
     public const int FiveStars = 25, FourStars = 80, ThreeStars = 300;
     /// <summary>The spring signing day: every senior still uncommitted signs where there's room, or doesn't.</summary>
     public static DateOnly SigningDay(int classOf) => new(classOf, 4, 15);
@@ -163,7 +170,7 @@ public sealed partial class CollegeWorld
     /// </summary>
     private List<Player> NewClass(PlayerGenerator gen, Rng rng, int age, DateOnly on, int classOf, int size)
     {
-        int core = Math.Min(size, (int)Math.Round(Programs.Count * RosterSize / (double)(GraduateAge - YoungestAge)));
+        int core = Math.Min(Math.Min(size, ClassTracked), (int)Math.Round(Programs.Count * RosterSize / (double)CalibrationGroups));
         var list = new List<Player>(size);
         for (int i = 0; i < size; i++)
         {
@@ -442,14 +449,18 @@ public sealed partial class CollegeWorld
         Recruiting = true;
         int season = today.Month >= 7 ? today.Year : today.Year - 1;
         // Ages are as of the summer the school year began, the date classes enroll and graduate on, so each age group is
-        // exactly one class (a 22-year-old then graduates next summer at 23; a 17-year-old enrolls next summer at 18).
+        // exactly one class (a 21-year-old then graduates next summer at 22; a 17-year-old enrolls next summer at 18).
         var summer = new DateOnly(season, 7, 1);
-        // College rosters, ages 22 down to 18: three per program per age; each program's weakest 22- and 18-year-olds walk on.
-        int perAge = Squad / (GraduateAge - EnrollAge);
+        // College rosters, ages 21 down to 18 (D80 A: four classes): 15 places over four classes, so the three older classes
+        // have four per program and the freshmen three; each program's weakest senior and freshman walk on.
+        int perAgeBase = Squad / CollegeYears, spare = Squad - perAgeBase * CollegeYears;
         for (int age = GraduateAge - 1; age >= EnrollAge; age--)
         {
-            int core = (int)Math.Round(Programs.Count * RosterSize / (double)(GraduateAge - YoungestAge));
-            var cohort = Enumerable.Range(0, core).Select(_ => NewRecruit(gen, rng, age, summer, null)).ToList();
+            int perAge = perAgeBase + (GraduateAge - 1 - age < spare ? 1 : 0);
+            int core = (int)Math.Round(Programs.Count * RosterSize / (double)CalibrationGroups);
+            // The calibrated core first; any places past it are depth below college level (as in a class past the thousand).
+            var cohort = Enumerable.Range(0, Math.Max(core, Programs.Count * perAge))
+                .Select(i => NewRecruit(gen, rng, age, summer, i < core ? null : rng.Next(35, 60))).ToList();
             var taken = cohort.OrderByDescending(p => Destined[p.Id] + rng.NextGaussian(0, 5)).Take(Programs.Count * perAge).ToList();
             foreach (var p in cohort.Except(taken)) Destined.Remove(p.Id);
             foreach (var p in taken.OrderByDescending(p => Destined[p.Id]))
@@ -466,7 +477,7 @@ public sealed partial class CollegeWorld
         for (int age = 17; age >= YoungestAge; age--)
         {
             int classOf = season + 1 + (17 - age);
-            Prospects.AddRange(NewClass(gen, rng, age, summer, classOf, ClassTracked));
+            Prospects.AddRange(NewClass(gen, rng, age, summer, classOf, ClassSize));
             Rerank(classOf, summer, rng);
         }
         // The seniors have been committing since September.
@@ -474,6 +485,28 @@ public sealed partial class CollegeWorld
         RecruitingDay = CommitmentsOpen(season + 1).AddDays(-1);
         RecruitingThrough(today, rng);
         News.Clear();
+    }
+
+    /// <summary>
+    /// D80 A (run 128): if the class ran out before every program had 13 scholarship players and 2 walk-ons, the places left
+    /// go to late signings from prep schools and junior colleges (18-year-olds below college level). It happens in a career
+    /// from before four-year college (two classes graduate in its first summer, and its high-school classes were made for
+    /// five years) and in a big world whose old classes were a thousand; a new career's classes are big enough.
+    /// </summary>
+    private void FillLateSignings(DateOnly on, PlayerGenerator gen, Rng rng)
+    {
+        foreach (var t in Programs.OrderByDescending(t => Prestige[t.Id]))
+            foreach (var walkOn in new[] { false, true })
+            {
+                int room = walkOn ? WalkOns - t.Roster.Count(p => WalkOnIds.Contains(p.Id))
+                                  : Scholarships - t.Roster.Count(p => !WalkOnIds.Contains(p.Id));
+                for (int i = 0; i < room; i++)
+                {
+                    var p = NewRecruit(gen, rng, EnrollAge, on, rng.Next(walkOn ? 35 : 45, walkOn ? 55 : 65));
+                    t.Roster.Add(p); p.TeamId = t.Id;
+                    if (walkOn) WalkOnIds.Add(p.Id);
+                }
+            }
     }
 
     /// <summary>The summer in the recruiting model: the senior class enrolls, programs fill to 13 scholarships and 2
@@ -504,8 +537,9 @@ public sealed partial class CollegeWorld
             }
         foreach (var p in left) Destined.Remove(p.Id); // unsigned: they leave the game world (Danny, #162)
         foreach (var p in seniors) { Prospects.Remove(p); Recruits.Remove(p.Id); }
+        FillLateSignings(on, gen, rng);
         // A new class of 14-year-olds; every class is re-ranked as the services learn more.
-        Prospects.AddRange(NewClass(gen, rng, YoungestAge, on, cls + 4, ClassTracked));
+        Prospects.AddRange(NewClass(gen, rng, YoungestAge, on, cls + 4, ClassSize));
         for (int c = cls + 1; c <= cls + 4; c++) Rerank(c, on, rng);
     }
 }

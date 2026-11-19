@@ -260,7 +260,7 @@ public sealed class PlayerCard : Control
 
     private static string PosLine(Player p) => p.SecondaryPosition is { } s ? $"{p.PrimaryPosition}/{s}" : p.PrimaryPosition.ToString();
     private static string AgeText(Player p) => Today?.Invoke() is { } d ? $"{(ClassYear?.Invoke(p) is { } cy ? $" · {cy}" : "")} · age {p.Age(d)}" : "";
-    /// <summary>CS3 (run 127): a college player's class year ("Fr" … "5th") shown before his age; null outside college.</summary>
+    /// <summary>CS3 (run 127): a college player's class year ("Fr" … "Sr") shown before his age; null outside college.</summary>
     public static Func<Player, string?>? ClassYear { get; set; }
     /// <summary>The date ages are shown on (the session's today; set with <see cref="BackSource"/>).</summary>
     public static Func<DateOnly>? Today { get; set; }
