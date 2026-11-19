@@ -90,6 +90,18 @@ public sealed partial class GameSession
         }
     }
 
+    /// <summary>H122 (run 122): the owner's stretch for keeping your own young star this summer (CA 150+, under 26); 0 for anyone else,
+    /// in season, or when the owner is in debt.</summary>
+    // The human gets it in every league (his renewals are always bound by the budget); NBA AI clubs only on the open market,
+    // since under the soft cap they re-sign up to the apron with Bird rights.
+    public long MyStretchFor(Player p) => MyExpiring.Contains(p) ? ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate, ContractStart) : 0;
+
+    /// <summary>The stretch the owner would allow for a young star of yours (for the summer page and the probe).</summary>
+    public long KeepOwnAllowance() => ContractRules.Allowance(HumanTeam, ContractStart);
+
+    /// <summary>H122: whether this renewal's wage fits the room the owner allows him (the budget, stretched for a young star).</summary>
+    public bool CanKeep(Player p, long wage) => MyCommittedWages + MyReservedWages + MyRosterFillReserve + wage <= HumanTeam.Money.WageBudget + MyStretchFor(p);
+
     /// <summary>What's left for a new deal: the budget less committed wages, the summer's reserved seniors and the minimum deals
     /// the roster will still need.</summary>
     public long MyWageRoom => HumanTeam.Money.WageBudget - MyCommittedWages - MyReservedWages - MyRosterFillReserve;
@@ -224,7 +236,9 @@ public sealed partial class GameSession
         var demand = DemandOf(p);
         if (CannotTalk(p) is { } why) return new TalkReply(false, false, demand, why);
         years = Math.Clamp(years, 1, 5);
-        long budget = HumanTeam.Money.WageBudget;
+        // H122 (run 122): the owner stretches the budget to keep your own young star (CA 150+, under 26).
+        long stretch = MyStretchFor(p);
+        long budget = HumanTeam.Money.WageBudget + stretch;
         // Over the budget only for a minimum deal that fills the roster to the league's minimum (critic review #3:
         // renewals and minimum deals let the strong club creep over its budget every summer).
         bool fillsRoster = wage <= (long)(League.Finance.MinSalary * MySalaryScale) && HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) < MyRosterMin;
@@ -233,6 +247,7 @@ public sealed partial class GameSession
         if (MyCommittedWages + reserved + fill + wage > budget && !fillsRoster)
             return new TalkReply(false, false, demand,
                 $"The owner won't sanction it: that would take wages to ${(MyCommittedWages + reserved + fill + wage) / 1e6:F1}M against a ${budget / 1e6:F1}M budget"
+                + (stretch > 0 ? $" (stretched by {Budgets.Money(stretch)} to keep {p.Name})" : "")
                 + (reserved > 0 ? $", counting ${reserved / 1e6:F1}M for your committed college seniors" : "")
                 + (fill > 0 ? $", counting {Budgets.Money(fill)} for the minimum deals the roster still needs" : "") + "."
                 + (MyExpiring.Contains(p) ? " Free up wages first (sell or release someone), or let him go." : ""));
@@ -277,6 +292,8 @@ public sealed partial class GameSession
                 p.Contract = GameWorld.ContractAt(p, wage, years, ContractDate, ContractStart);
                 World.AwaitingDecision[team.Id].Remove(p);
             }
+            // H122: a young star kept over the budget: the owner raises the budget to cover the deals (no-op otherwise).
+            if (ContractRules.IsYoungStar(p, ContractDate)) ContractRules.OwnerCovers(team, MyCommittedWages + MyReservedWages, ContractStart);
             Post($"{p.Name} re-signs", $"{p.Name} agrees a new deal: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
             return;
         }

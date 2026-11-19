@@ -260,10 +260,11 @@ public sealed class Offseason
 
     /// <summary>
     /// Can the team re-sign one of its own players at this salary? With the soft cap (Bird rights) it may go over the
-    /// salary cap, up to the apron; with a hard cap it must stay under the cap.
+    /// salary cap, up to the apron; with a hard cap it must stay under the cap. On the open market the wage budget decides,
+    /// stretched for the club's own young star (H122, <see cref="ContractRules"/>) when <paramref name="p"/> is given.
     /// </summary>
-    public bool CanAfford(Team team, long salary) => _league.Finance.OpenMarket
-        ? CommittedPayroll(team) + salary <= team.Money.WageBudget
+    public bool CanAfford(Team team, long salary, Player? p = null) => _league.Finance.OpenMarket
+        ? CommittedPayroll(team) + salary <= team.Money.WageBudget + (p == null ? 0 : ContractRules.KeepOwnAllowance(team, p, Date, Season + 1))
         : CommittedPayroll(team) + ReservedForDraft(team) + salary <= _league.Finance.Apron;
 
     /// <summary>
@@ -284,10 +285,12 @@ public sealed class Offseason
     {
         if (!Expiring.TryGetValue(team.Id, out var list) || !list.Contains(p)) return false;
         long ask = wage ?? Ask(p);
-        if (!CanAfford(team, ask)) return false;
+        if (!CanAfford(team, ask, p)) return false;
         if (WontReSign(p)) return false;
         p.Contract = new Contract { Years = years ?? ContractMarket.ContractLength(p, Date, _rng), Salary = ask, StartSeason = Season + 1,
             RelegationRelease = ContractMarket.AsksForReleaseClause(p) };   // K1 (run 111)
+        // H122: keeping his own young star over the budget, the owner raises the budget to cover the deals.
+        if (_league.Finance.OpenMarket && ContractRules.IsYoungStar(p, Date)) ContractRules.OwnerCovers(team, CommittedPayroll(team), Season + 1);
         list.Remove(p);
         Report.ReSigned.Add((p, team));
         return true;
@@ -327,8 +330,9 @@ public sealed class Offseason
             double wantToStay = Math.Min(0.98, 0.6 + p.Hidden.Loyalty / 20.0 * 0.35 + (winPct >= 0.55 ? 0.15 : winPct >= 0.45 ? 0.05 : 0))
                                 * Math.Clamp(0.55 + p.Morale / 130.0, 0.4, 1.0); // happy players stay
             long ask = Ask(p);
-            bool withinBudget = CommittedPayroll(team) + ReservedForDraft(team) + ask <= AiPayrollLimit(team, star: value >= 140);
-            if (CanAfford(team, ask) && withinBudget && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
+            bool withinBudget = CommittedPayroll(team) + ReservedForDraft(team) + ask <= AiPayrollLimit(team, star: value >= 140)
+                                + (_league.Finance.OpenMarket ? ContractRules.KeepOwnAllowance(team, p, Date, Season + 1) : 0);   // H122
+            if (CanAfford(team, ask, p) && withinBudget && _rng.Chance(wantToKeep * wantToStay)) ReSign(team, p);
             else Release(team, p);
         }
     }

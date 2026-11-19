@@ -110,6 +110,8 @@ public sealed partial class TalkViewModel : ViewModelBase
         var s = Session;
         // Over budget reads as such, not as "$-1.1M to spend" (review #14, the bug finder).
         return BudgetLine(s.HumanTeam.Money.WageBudget, s.MyCommittedWages, s.MyReservedWages, s.MyRosterFillReserve, Signed)
+            // H122 (run 122): the owner's stretch for his own young star, said where the budget is.
+            + (IsRenewal && !Signed && s.MyStretchFor(p) is > 0 and var stretch ? $" He's your own young star, so the owner will go up to {M(stretch)} over the budget to keep him." : "")
             + (p.Morale < 45 && IsRenewal && !Signed ? " He isn't happy here, which pushes his price up." : "")
             // H18 (run 100): say plainly what happens if you don't act, by name.
             + (IsRenewal && !Signed ? $" {p.Name} leaves as a free agent if he's unsigned {(s.InNabl ? "when contract decisions end" : "at the end of the summer")}." : "");
