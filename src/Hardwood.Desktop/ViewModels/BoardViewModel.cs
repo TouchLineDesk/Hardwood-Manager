@@ -145,13 +145,11 @@ public sealed partial class BoardViewModel : PageViewModel
     [RelayCommand]
     private void CancelResign() => ConfirmingResign = false;
 
-    public static (string label, string colour) Mood(double c) => c switch
-    {
-        >= 70 => ("Secure", "#3FB950"),
-        >= 50 => ("Stable", "#A3D977"),
-        >= 35 => ("Under pressure", "#D29922"),
-        _ => ("Critical", "#F85149"),
-    };
+    public static (string label, string colour) Mood(double c) => Board.Mood(c, false);
+
+    /// <summary>H70 (run 123): "Critical" needs a losing record; before a ball is bounced, last season's record counts.</summary>
+    public static bool WinningForMood(Hardwood.Core.Season.GameSession s) =>
+        s.MyRecord is { Games: > 0 } r ? r.Wins >= r.Losses : s.Job.LastSeasonWinning ?? false;
 
     /// <summary>
     /// H23: the season's line. In season, the pace over the regular season; once the regular season is over (or the record
@@ -200,7 +198,7 @@ public sealed partial class BoardViewModel : PageViewModel
                 foreach (var d in e.Demands)
                     Demands.Add(new DemandRow { Text = Board.Describe(d), Met = Board.Meeting(d, ctx, t, s.MyStats, s.Today, rec.Wins, rec.Games) });
             Confidence = job.Confidence;
-            var (label, colour) = Mood(job.Confidence);
+            var (label, colour) = Board.Mood(job.Confidence, WinningForMood(s));
             ConfidenceText = $"{label} ({job.Confidence:0}/100)";
             ConfidenceBrush = new SolidColorBrush(Color.Parse(colour));
             var m = t.Money;

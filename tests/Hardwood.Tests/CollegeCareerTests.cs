@@ -166,12 +166,18 @@ public class CollegeCareerTests
         Assert.Empty(low.Demands);
 
         // A 1-seed set "win it all" who goes out in the round of 32 at 24-8: judged three steps short, not four.
-        JobState Job() => new() { Confidence = 80, HiredSeason = 2025, Current = new Expectations { Season = 2026, Goal = SeasonGoal.Title, TargetWins = 21 } };
+        // Run 123 (H70): with a 21-win target both reviews hit the season's cap (a tournament team close to its target), so the
+        // ladder is compared with a target 24-8 falls well short of.
+        JobState Job() => new() { Confidence = 80, HiredSeason = 2025, Current = new Expectations { Season = 2026, Goal = SeasonGoal.Title, TargetWins = 30 } };
         var college = Job(); var pro = Job();
         var (_, body, sacked) = Board.SeasonReview(college, new Coach(), ctx, program, SeasonGoal.Playoffs, 24, 8, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2027, 4, 7), 2026);
         Board.SeasonReview(pro, new Coach(), ctx with { IsCollege = false }, program, SeasonGoal.Playoffs, 24, 8, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2027, 4, 7), 2026);
         Assert.False(sacked);
         Assert.True(college.Confidence > pro.Confidence, $"{college.Confidence} vs {pro.Confidence}");
         Assert.Contains("Goal: win the national championship. Result: made March Madness", body);
+        // Close to the target, the cap holds: the season costs at most SeasonDropCap from where it began.
+        var capped = new JobState { Confidence = 80, HiredSeason = 2025, Current = new Expectations { Season = 2026, Goal = SeasonGoal.Title, TargetWins = 21 } };
+        Board.SeasonReview(capped, new Coach(), ctx, program, SeasonGoal.Playoffs, 24, 8, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2027, 4, 7), 2026);
+        Assert.True(capped.Confidence >= 80 - Board.SeasonDropCap(program.Owner) - 0.01, $"capped {capped.Confidence}");
     }
 }
