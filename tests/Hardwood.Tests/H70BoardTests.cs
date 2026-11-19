@@ -68,7 +68,12 @@ public class H70BoardTests
         // Short of both: still "expected more".
         var bad = new JobState { Current = new Expectations { Season = 2026, Goal = SeasonGoal.SecondRound, TargetWins = 55 }, Confidence = 80, HiredSeason = 2025 };
         var (_, body3, _) = Board.SeasonReview(bad, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Playoffs, 48, 34, None, new DateOnly(2027, 6, 1), 2026);
-        Assert.True(body3.Contains("expected more"), body3);
+        // Run 123: 7 short with a playoff place keeps the board's backing (the season costs at most the cap); further short is
+        // still "expected more".
+        Assert.True(body3.Contains("hoped for more") && body3.Contains("still has the board's backing"), body3);
+        var worse = new JobState { Current = new Expectations { Season = 2026, Goal = SeasonGoal.SecondRound, TargetWins = 55 }, Confidence = 80, HiredSeason = 2025 };
+        var (_, body4, _) = Board.SeasonReview(worse, new Coach(), LeagueContext.Nabl(league), team, SeasonGoal.Playoffs, 46, 36, None, new DateOnly(2027, 6, 1), 2026);
+        Assert.True(body4.Contains("expected more"), body4);
     }
 
     [Fact]

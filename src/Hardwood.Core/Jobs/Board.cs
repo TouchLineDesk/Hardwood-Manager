@@ -92,6 +92,14 @@ public sealed class JobState
     /// season. Reset on a new job; older saves load without it (false).
     /// </summary>
     public bool RebuildUsed { get; set; }
+    /// <summary>
+    /// H70 (run 123): board confidence when this season's judging began (<see cref="SeasonStartSeason"/>), the base for
+    /// <see cref="Board.SeasonDropCap"/>. Null in older saves until the next weekly check.
+    /// </summary>
+    public double? SeasonStartConfidence { get; set; }
+    public int SeasonStartSeason { get; set; }
+    /// <summary>H70 (run 123): whether the last reviewed season was a winning one (for the mood label before a ball is bounced).</summary>
+    public bool? LastSeasonWinning { get; set; }
 }
 
 public sealed record ConfidencePoint(DateOnly Date, double Confidence);
@@ -370,6 +378,14 @@ public static class Board
         if (previous.TargetWins > 0 && !previous.Survive && (goalMet || beatTarget)
             && e.TargetWins < previous.TargetWins - metDrop)
             e.TargetWins = previous.TargetWins - metDrop;
+        // H70 (run 123): next season's target is set at the review, before the summer's moves, so the club still has the core
+        // that won. It doesn't fall more than 3 (of 82) below the wins it just managed, nor rises past the old target this way
+        // (a patient owner asked a 56-26 team for "around 49 wins").
+        if (previous.Wins is { } lastWins && previous.TargetWins > 0 && !previous.Survive)
+        {
+            int floorWins = Math.Min(previous.TargetWins, lastWins - metDrop);
+            if (e.TargetWins < floorWins) e.TargetWins = floorWins;
+        }
         // H70 (run 117): a contender that keeps winning 60 (of 82) isn't asked for less as its squad ages. The Spurs won 69, 64
         // and 61, reached the conference finals each year, and were set Finals → conference finals → win a round.
         // A goal it met at that pace rises a step; the target never falls.
@@ -541,6 +557,38 @@ public static class Board
         return new BoardOutlook(level, rate, drivers);
     }
 
+    /// <summary>
+    /// H70 (run 123): wins (per 82) short of the target within which a playoff team's season costs at most
+    /// <see cref="SeasonDropCap"/> of board confidence.
+    /// </summary>
+    public const double CloseWins = 7;
+
+    /// <summary>
+    /// H70 (run 123): extra wins of slack for the in-season pace, which swings more than a finished record (the Spurs were on
+    /// pace for 49 in February and finished 52-30 against 57).
+    /// </summary>
+    public const double InSeasonSlack = 3;
+
+    /// <summary>
+    /// H70 (run 123): the most confidence a season can cost a team that made the playoffs within <see cref="CloseWins"/> of its
+    /// target (and, in season, a team at .500 or better on that pace): about 19 for a patient owner, 23 for an average one and
+    /// 27 for the most impatient. Hunt 13: a patient owner went 85 → 48 after 56-26 and a round won (target 57).
+    /// </summary>
+    public static double SeasonDropCap(Owner o) => 22 * (1.3 - o.Patience / 40.0);
+
+    /// <summary>
+    /// H70 (run 123): the board's mood label. "Critical" needs a losing record (or a relegation): a 54-28 team that went out in
+    /// the first round read "Critical". A winning team below 35 reads "Under pressure".
+    /// </summary>
+    public static (string Label, string Colour) Mood(double c, bool winning) => c switch
+    {
+        >= 70 => ("Secure", "#3FB950"),
+        >= 50 => ("Stable", "#A3D977"),
+        >= 35 => ("Under pressure", "#D29922"),
+        _ when winning => ("Under pressure", "#D29922"),
+        _ => ("Critical", "#F85149"),
+    };
+
     /// <summary>Where confidence settles for a team exactly on its target with every demand met.</summary>
     public const double BaseLevel = 62;
 
@@ -553,10 +601,23 @@ public static class Board
     {
         var e = job.Current;
         int games = wins + losses;
+        // H70 (run 123): the season's starting point for the drop cap, taken at the first weekly check of the season.
+        if (job.SeasonStartSeason != season || job.SeasonStartConfidence == null)
+        {
+            job.SeasonStartConfidence = job.Confidence;
+            job.SeasonStartSeason = season;
+        }
         var outlook = Outlook(job, ctx, team, wins, losses, stats, today);
         if (e == null || outlook == null) return (null, null, false);
         double full = Math.Max(1, ctx.SeasonGames);
+        double before = job.Confidence;
         job.Confidence = Math.Clamp(job.Confidence + (outlook.Level - job.Confidence) * outlook.Rate, 0, 100);
+        // H70 (run 123): a team at .500 or better on pace within a few wins of its target doesn't lose more than a season's cap
+        // from where the season began (a patient owner's 100 drifted to 56 while his champions went 52-30 against 57).
+        double projected = wins / (double)games * full;
+        if (job.SeasonStartConfidence is { } startConf && job.SeasonStartSeason == season
+            && wins >= losses && (e.TargetWins - projected) * 82 / full <= CloseWins + InSeasonSlack)
+            job.Confidence = Math.Max(job.Confidence, Math.Min(before, startConf - SeasonDropCap(team.Owner)));
         job.History.Add(new ConfidencePoint(today, Math.Round(job.Confidence, 1)));
         if (job.History.Count > 200) job.History.RemoveAt(0);
 
@@ -712,7 +773,17 @@ public static class Board
         string result = DescribeResult(achieved, ctx, relegated, wonDivision, madnessRound, up);
         if (e.Survive && !relegated) result = "stayed up, " + result;
         lines.Insert(0, $"Goal: {goalText}. Result: {result} ({wins}-{losses}, target {e.TargetWins} wins).");
+        double beforeReview = job.Confidence;
         job.Confidence = Math.Clamp(job.Confidence + delta, 0, 100);
+        // H70 (run 123): a team that made the playoffs within a few wins of its target loses at most the season's cap from
+        // where the season began, the weekly drift and the review together (85 → 48 after 56-26 and a round won, target 57).
+        bool madePost = achieved >= SeasonGoal.Playoffs;
+        if (!relegated && madePost && winsVsTarget >= -CloseWins)
+        {
+            double start = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } sc ? sc : beforeReview;
+            job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner)));
+        }
+        job.LastSeasonWinning = !relegated && wins > losses;
         // Success in a smaller league counts for less with clubs elsewhere.
         double weight = ctx.IsNabl ? 1 : Math.Clamp(1 + ctx.PrestigeOffset / 40, 0.4, 1);
         coach.Reputation = Math.Clamp(coach.Reputation + ((wins / Math.Max(1.0, wins + losses) - 0.5) * 10
@@ -762,6 +833,9 @@ public static class Board
             : !relegated && winsVsTarget >= 0 ? (reachedPost
                 ? $"{owner} is disappointed with the {(ctx.IsCollege ? "tournament" : "playoff")} exit; the regular season was on target. Board confidence: {job.Confidence:0}/100."
                 : $"{owner} is disappointed to fall short of the goal, though the record was on target. Board confidence: {job.Confidence:0}/100.")
+            // H70 (run 123): a playoff team close to its target keeps the board's backing, and the verdict says so.
+            : !relegated && madePost && winsVsTarget >= -CloseWins && job.Confidence >= 50
+                ? $"{owner} hoped for more, but the team made the playoffs close to the {e.TargetWins}-win target and still has the board's backing. Board confidence: {job.Confidence:0}/100."
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);

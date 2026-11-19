@@ -330,7 +330,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // Bug hunt H15 (run 71): out of work, the top bar shows no club, record or next game.
         HeaderTeam = s.Employed ? s.HumanTeam : null;
         TeamText = s.Employed ? s.HumanTeam.FullName : $"{s.Coach.Name} · out of work";
-        var (jobLabel, jobColour) = s.Employed ? BoardViewModel.Mood(s.Job.Confidence) : ("Looking for work", "#8B96A5");
+        var (jobLabel, jobColour) = s.Employed ? Hardwood.Core.Jobs.Board.Mood(s.Job.Confidence, BoardViewModel.WinningForMood(s)) : ("Looking for work", "#8B96A5");
         JobText = s.Employed ? $"{(s.InCollege ? "AD" : "Board")}: {jobLabel}" : jobLabel;
         JobBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(jobColour));
         var rec = s.MyRecord;
