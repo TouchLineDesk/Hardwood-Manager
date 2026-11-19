@@ -170,6 +170,9 @@ public sealed class DevelopmentEngine
         return whole;
     }
 
+    /// <summary>From this ability a player in his late thirties is far less likely to retire (K1, run 119).</summary>
+    public const int StarPlaysOn = 140;
+
     /// <summary>Rule-based retirement decision, evaluated once per offseason.</summary>
     public bool ShouldRetire(Player p, DateOnly offseasonDate, double mpg)
     {
@@ -183,6 +186,11 @@ public sealed class DevelopmentEngine
         else if (age >= 31) prob = ca < 80 ? 0.35 : ca < 95 ? 0.10 : 0.0;
         else if (age >= 28 && ca < 65) prob = 0.30;
 
+        // K1 (run 119): stars play on (LeBron James at 41, Stephen Curry and Kevin Durant at 37–38 in 2025-26), and nobody walks
+        // away from a deal with seasons left while he's still good. Summer one on seed 31 retired Kawhi Leonard (CA 160, 36,
+        // signed to 2028) and Curry (156, signed to 2028). The dice are still rolled, so the stream doesn't move.
+        if (age < 40 && ca >= StarPlaysOn) prob *= age >= 38 ? 0.5 : 0.25;
+        if (age < 40 && ca >= 110 && p.Contract is { } c && c.StartSeason + c.Years - 1 >= offseasonDate.Year) prob *= 0.5;
         if (mpg < 8 && age >= 30) prob += 0.15;      // nobody is playing him
         prob *= 1.1 - p.Hidden.Ambition / 20.0 * 0.4; // ambitious players hang on
         return _rng.Chance(Math.Clamp(prob, 0, 0.98));
