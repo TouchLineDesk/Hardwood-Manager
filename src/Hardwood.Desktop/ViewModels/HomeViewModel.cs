@@ -96,6 +96,8 @@ public sealed partial class HomeViewModel : PageViewModel
     /// <summary>"Payroll committed", or "Roster by class" at a college program (C2).</summary>
     [ObservableProperty] private string _payrollTitle = "Payroll committed";
     [ObservableProperty] private string _payrollIcon = "DollarSign";
+    /// <summary>CS3 (H132): what the college class bars mean; empty for the pros.</summary>
+    [ObservableProperty] private string _payrollCaption = "";
     [ObservableProperty] private IReadOnlyList<LineSeries>? _mood;
     [ObservableProperty] private string[]? _moodLabels;
     [ObservableProperty] private bool _hasMood;
@@ -262,8 +264,8 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             // No wages in college: the roster by class instead, so the coach sees who graduates when (C2).
             var summer = new DateOnly(s.World.College!.Season.Year + 1, 7, 1);
-            // By age next summer: 19 = freshmen ... 22 = seniors; 23 and over graduate into the pros then (#162).
-            string[] names = { "Fr", "So", "Jr", "Sr", "Final yr" };
+            // By age next summer: 19 = freshmen ... 22 = seniors; 23 = fifth-year seniors, who turn pro then (#162; CS3, H132).
+            string[] names = Hardwood.Core.College.CollegeWorld.ClassShort.Select(n => n == "5th" ? "5th yr" : n).ToArray();
             Payroll = names.Select((n, k) =>
             {
                 int count = team.Roster.Count(p => Math.Clamp(p.Age(summer), 19, 23) == 19 + k);
@@ -271,10 +273,11 @@ public sealed partial class HomeViewModel : PageViewModel
             }).ToList();
             PayrollLines = null;
             PayrollTitle = "Roster by class"; PayrollIcon = "GraduationCap";
+            PayrollCaption = "Players enroll at 18 and turn pro at 23, so a program has five classes. The highlighted 5th-year seniors play their final season.";
         }
         else
         {
-        PayrollTitle = "Payroll committed"; PayrollIcon = "DollarSign";
+        PayrollTitle = "Payroll committed"; PayrollIcon = "DollarSign"; PayrollCaption = "";
         // Payroll committed for this and the next three seasons.
         var fin = s.League.Finance;
         var bars = new List<Bar>();

@@ -98,7 +98,9 @@ public sealed partial class PlayerViewModel : PageViewModel
         // The collector card (D58 B) has no tier label, so the header names his skills instead of a card tier.
         TierLine = string.Join(" · ", CollectorCard.Badges(p, Scouting.Knowledge(s.HumanTeam, p))) + "  ·  click his card to flip it";
         double k = Scouting.Knowledge(s.HumanTeam, p);
-        Bio = $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {Scouting.Potential(p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
+        // CS3 (run 127): a college player's class year leads his line ("Senior · age 21 …").
+        var cy = s.ClassYearOf(p);
+        Bio = (cy is { } y ? $"{y.Long}{(y.Final ? " (final season: turns pro next summer)" : "")} · " : "") + $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {Scouting.Potential(p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
         Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M per year, {(c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} remaining")}{(c.TeamOption ? ", team option" : "")}" : "No contract";
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
@@ -176,13 +178,18 @@ public sealed partial class PlayerViewModel : PageViewModel
         var s = Session;
         var chips = new List<Hardwood.Desktop.Controls.Chip>
         {
-            new("Age", p.Age(s.Today).ToString(), $"born {p.BirthDate:MMM d, yyyy}"),
+            s.ClassYearOf(p) is { } cls
+                ? new("Class", cls.Short, cls.Final ? $"final season · age {p.Age(s.Today)}" : $"{cls.Long.ToLowerInvariant()} · age {p.Age(s.Today)}", cls.Final ? "info" : "")
+                : new("Age", p.Age(s.Today).ToString(), $"born {p.BirthDate:MMM d, yyyy}"),
             new("Height", PlayerRow.FormatHeight(p.HeightCm), $"{p.HeightCm} cm · {p.WingspanCm} span · {p.WeightKg} kg"),
             new("Ability", Scouting.Ability(p, k).ToString(), k >= 0.999 ? $"overall {p.Overall:F1}" : $"scouted {k * 100:F0}%", "team"),
             new("Potential", Scouting.Potential(p, k).ToString(), Scouting.Potential(p, k).ToString() == Scouting.Ability(p, k).ToString() ? "at his peak" : "", "team"),
         };
         if (p.Contract is { } c)
             chips.Add(new("Salary", Money(c.Salary), c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} left{(c.TeamOption ? ", team option" : "")}{(c.RelegationRelease ? ", relegation release" : "")}", c.Years <= 0 ? "warn" : ""));   // K1 (run 111)
+        // CS3 (run 127): a college player isn't a free agent; he's on a scholarship (or walks on) until he turns pro.
+        else if (s.ClassYearOf(p) != null && s.World.College is { } cw)
+            chips.Add(cw.WalkOnIds.Contains(p.Id) ? new("Roster spot", "Walk-on", "no scholarship") : new("Roster spot", "Scholarship", "one of 13"));
         else chips.Add(new("Contract", "None", "free agent", "warn"));
         if (p.Injury is { } inj && inj.IsOut(s.Today))
             chips.Add(new("Status", $"Out {inj.DaysOut(s.Today)}d", $"{inj.Name}, back {inj.ReturnDate:MMM d}", "bad"));

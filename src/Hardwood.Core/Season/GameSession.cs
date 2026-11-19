@@ -474,6 +474,7 @@ public sealed partial class GameSession
     {
         GradeStudioPicks(played);
         PlayWorld(Today);
+        CollegeCalendar(); // CS3 (run 127): the preseason polls and media day, Senior Night
         bool inSeason = Abroad ? Phase != SessionPhase.Offseason : Phase is SessionPhase.RegularSeason or SessionPhase.Postseason;
         if (inSeason && Today.DayOfWeek == DayOfWeek.Monday)
         {
@@ -1179,6 +1180,7 @@ public sealed partial class GameSession
             Post("Graduation and enrollment",
                 (left.Count > 0 ? $"Graduated into the pros: {string.Join(", ", left.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : "Nobody graduated this year.")
                 + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility}/{p.PotentialAbility})"))}." : "No new players enrolled.")
+                + $"\n\nNext season by class: {ClassCounts()}."
                 + $"\n\nRoster: {HumanTeam.Roster.Count} players. The pros' summer runs until the new season; your program has nothing to sign, so press Continue to move it along.", "Roster");
             return;
         }

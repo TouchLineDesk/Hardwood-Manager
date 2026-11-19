@@ -39,6 +39,7 @@
       <DataGrid.Columns>
         <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
         <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="76"/>
+        <DataGridTextColumn Header="Yr" Binding="{Binding ClassYear}" SortMemberPath="ClassOrder" Width="56" IsVisible="False"/>
         <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="66"/>
         <DataGridTextColumn Header="Ht" Binding="{Binding Height}" Width="66"/>
         <DataGridTemplateColumn Header="Mood" Width="130" SortMemberPath="Player.Morale">
