@@ -180,12 +180,15 @@ public static class RealPlayers
     /// players they came up with leave the league, as the generated fillers did when the real players arrived. Deterministic
     /// (no RNG), so nothing else in the world moves. Returns the picks, in order.
     /// </summary>
-    public static List<(Team To, Team From, Player Player)> ExpansionDraft(League league)
+    internal static List<(Team To, Team From, Player Player)> ExpansionDraft(League league)
     {
         var picks = new List<(Team, Team, Player)>();
         var real = league.Teams.Take(RealWorldData.Teams.Count).ToList();
         var expansion = league.Teams.Skip(RealWorldData.Teams.Count).Take(RealWorldData.Expansion.Count).ToList();
         if (expansion.Count == 0 || real.Count < RealWorldData.Teams.Count) return picks;
+        // Once only: expansion clubs whose rosters are already real players have been drafted.
+        var realNames = Lines.Select(l => l.Name).ToHashSet();
+        if (expansion.All(t => t.Roster.Count > 0 && t.Roster.All(p => realNames.Contains(p.Name)))) return picks;
         int size = Math.Min(RosterMax, league.Finance.RosterMax);
         var available = real.Where(t => t.Roster.Count > ExpansionProtected)
             .ToDictionary(t => t, t => t.Roster.OrderByDescending(p => p.CurrentAbility).ThenBy(p => p.Id).Skip(ExpansionProtected).ToList());

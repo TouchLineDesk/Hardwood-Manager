@@ -23,6 +23,11 @@ public class Run118SweepTests
     [Fact]
     public void The_SuperSonics_and_Aces_are_stocked_by_an_expansion_draft_of_real_players()
     {
+        foreach (var seed in new ulong[] { 55, 77 })
+        {
+            var (other, _) = RealWorldData.NewWorld(seed);
+            Assert.All(other.Teams.Skip(RealWorldData.Teams.Count), t => Assert.True(t.Roster.Count(p => p.PrimaryPosition is Position.PF or Position.C) >= 2, $"seed {seed} {t.Abbreviation}"));
+        }
         var (league, _) = RealWorldData.NewWorld(31);
         var real = RealPlayers.Lines.Select(l => l.Name).ToHashSet();
         var clubs = league.Teams.Take(RealWorldData.Teams.Count).ToList();
@@ -124,7 +129,7 @@ public class Run118SweepTests
             Assert.StartsWith("Going down to the ", page.RelegationText);
             Assert.True(page.RelegationText.Length <= 100, page.RelegationText);
             Assert.Contains("Deals you sign now are cut the same way", page.RelegationDetail);
-            var banner = window.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Name == "RelegationBanner");
+            var banner = window.GetVisualDescendants().OfType<Grid>().Single(p => p.Name == "RelegationBanner");
             Assert.True(banner.IsEffectivelyVisible);
             var lines = banner.GetVisualDescendants().OfType<TextBlock>().ToList();
             Assert.All(lines, t => Assert.True(t.Bounds.Height < 30, $"\"{t.Text}\" is {t.Bounds.Height:F0} px tall"));

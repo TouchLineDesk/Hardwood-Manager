@@ -10,10 +10,10 @@
       <TextBlock Text="{Binding Instructions}" Classes="muted" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding CapText}" IsVisible="{Binding InOffseason}" FontWeight="SemiBold"/>
       <!-- H112 (run 118): a one-line banner; how the cut works is behind "How it works". -->
-      <StackPanel x:Name="RelegationBanner" Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasRelegationText}" ToolTip.Tip="{Binding RelegationDetail}" Background="Transparent">
+      <Grid x:Name="RelegationBanner" ColumnDefinitions="Auto,Auto" HorizontalAlignment="Left" IsVisible="{Binding HasRelegationText}" ToolTip.Tip="{Binding RelegationDetail}" Background="Transparent">
         <TextBlock Text="{Binding RelegationText}" Classes="bad" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-        <TextBlock Text="How it works" Classes="muted" TextDecorations="Underline" VerticalAlignment="Center" ToolTip.Tip="{Binding RelegationDetail}"/>
-      </StackPanel>
+        <TextBlock Grid.Column="1" Text="How it works" Classes="muted" TextDecorations="Underline" Margin="10,0,0,0" VerticalAlignment="Center"/>
+      </Grid>
       <TextBlock Text="{Binding Status}" Classes="accent"/>
       <!-- Run 67 (review #13 rank 6, Danny's #464): the summer boards as player cards; the full tables one click away. -->
       <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding View}" Width="120" Margin="0,4,0,0" IsVisible="{Binding InOffseason}" ToolTip.Tip="Player cards, or the full tables with every rating"/>
