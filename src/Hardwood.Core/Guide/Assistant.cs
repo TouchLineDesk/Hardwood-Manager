@@ -379,11 +379,11 @@ public static class Assistant
         "Scouts' ranges narrow as they watch a player more. Don't pay for potential you can't see yet.",
     };
 
-    /// <summary>College coaching in a sentence each (C2): no money, five-year players, March Madness.</summary>
+    /// <summary>College coaching in a sentence each (C2): no money, four-year players, March Madness.</summary>
     private static readonly string[] CollegePrinciples =
     {
         "In college nobody is paid: the roster you have is the roster you coach. Develop it.",
-        "Players stay up to five seasons. A freshman's minutes now are next year's senior leader.",
+        "Players stay four seasons. A freshman's minutes now are next year's senior leader.",
         "The AD judges the season in March. A good conference record gets you seeded; the tournament gets you paid in prestige.",
         "Home court is worth more in college. Win your home games and you're on the bubble's right side.",
         "Fit beats raw talent: a system that suits your best two players is worth more than a slightly better bench.",
@@ -443,7 +443,7 @@ public static class Assistant
         ["Leagues"] = ("Every league in the game, ours included: standings, schedule and results, stat leaders, the rules and format, and past champions. Pick a region, then a league. Click any team or player name to open their page.",
                      "Scout other clubs' rosters from here: a team's page shows its players as your scouts see them."),
         ["College"] = ("College basketball: the Top 25, conferences, March Madness, prospects and the high-school recruiting classes. Seniors sign by mid-April, enroll at 18 and turn pro at 22, after four years.",
-                       "Track the best 22-year-olds in Prospects; they're free agents next summer."),
+                       "Track the best 21-year-olds in Prospects; they're free agents next summer at 22."),
         ["League Leaders"] = ("The best players in the league by points, rebounds, assists and more.", "Spot breakout players before their value rises."),
         ["Transactions"] = ("Sign free agents, bid for players at other clubs, answer bids for yours, and propose trades. Free agents need contract talks: offer wage and years, and they accept, counter or walk.",
                             "Bid when the window is open; players with a year left are cheaper. Mind the wage budget."),

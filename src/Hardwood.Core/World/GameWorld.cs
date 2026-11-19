@@ -140,7 +140,7 @@ public sealed class GameWorld
                 comp.Clubs.Add(team);
             }
         }
-        // College: every American player from 14 to 23 (decisions #82-85).
+        // College: every American player from 14 to 22 (decisions #82-85; D80 A).
         // R3: a real-world career (its top league is the NBA) plays with the real Division I programs.
         world.College = Hardwood.Core.College.CollegeWorld.Generate(gen, new Rng(seed ^ 0x434F4C4C45474555UL), today,
             real: Hardwood.Core.RealWorld.RealWorldData.IsReal(nabl));

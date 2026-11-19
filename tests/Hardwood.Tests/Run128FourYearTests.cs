@@ -101,4 +101,13 @@ public class Run128FourYearTests
         }
         finally { try { File.Delete(path); } catch { } }
     }
+
+    [Fact]
+    public void A_graduate_at_22_prices_as_a_graduate_did_at_23()
+    {
+        // Review of PR #192: the rookie-scale discount is keyed to the graduation age, so a 22-year-old graduate isn't 45% cheaper.
+        var fin = Hardwood.Core.Model.Finance.HardCapDefault;
+        Assert.Equal(ContractMarket.MarketSalary(110, 23, fin), ContractMarket.MarketSalary(110, 22, fin));
+        Assert.True(ContractMarket.MarketSalary(110, 21, fin) < ContractMarket.MarketSalary(110, 22, fin));
+    }
 }

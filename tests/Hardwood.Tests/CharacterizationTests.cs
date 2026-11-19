@@ -179,7 +179,9 @@ public class CharacterizationTests
         // Run 121 (H123): re-pinned (was 4AA117BC5C5D7490 since run 101). The made-up pros abroad are generated against a
         // per-league ceiling, so the world's clubs and their quick-sim games differ, and the session's stream moves with them.
         // The NBA's rosters on day one are unchanged; the audit's NBA metrics stay in band on both seeds.
-        Pin("career seed 2026, 30 days, no saves", "73DBDEB0B8B1D8C0", Session(s));
+        // Run 128 (D80 A, four college years): re-pinned (was 73DBDEB0B8B1D8C0 since run 121). College rosters are four age
+        // groups with bigger classes, so the world is generated from a different number of draws and the session's stream moves.
+        Pin("career seed 2026, 30 days, no saves", "EF04EA9CAF3C66EE", Session(s));
     }
 
     [Fact]

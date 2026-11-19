@@ -54,7 +54,7 @@ public sealed class CompetitionProfile
     public bool ImportsAreStars { get; init; }
     /// <summary>Salaries as a share of the NABL market for the same player.</summary>
     public double SalaryScale { get; init; } = 0.12;
-    /// <summary>Youngest age a player may turn professional here (23 in the USA, decision #75); 0 = no rule.</summary>
+    /// <summary>Youngest age a player may turn professional here (22 in the USA, decision #75; D80 A); 0 = no rule.</summary>
     public int MinAge { get; init; }
     /// <summary>How hard this league's jobs are to get compared with the NABL's (added to a club's prestige).</summary>
     public double JobPrestige { get; init; } = -10;
