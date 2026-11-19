@@ -54,9 +54,9 @@ public sealed partial class GameSession
         var team = HumanTeam;
         var ending = team.Roster.Where(p => EndsThisSummer(p, team)).OrderByDescending(p => p.CurrentAbility).ToList();
         long staying = team.Roster.Where(p => p.Contract != null && !EndsThisSummer(p, team)).Sum(p => p.Contract!.Salary);
-        int kept = team.Roster.Count - ending.Count;
+        int kept = team.Roster.Count(p => p.Contract != null) - ending.Count;   // review: a player without a deal isn't under contract
         if (ending.Count == 0)
-            return $"No deals end this summer: all {kept} players are under contract for next season ({Budgets.Money(staying)}).";
+            return $"No deals end this summer: all {kept} players with deals are under contract for next season ({Budgets.Money(staying)}).";
         string names = string.Join(", ", ending.Take(4).Select(p => p.Name)) + (ending.Count > 4 ? $" and {ending.Count - 4} more" : "");
         return $"Deals ending this summer ({ending.Count}): {names}, {Budgets.Money(ending.Sum(p => p.Contract!.Salary))} between them. "
              + $"The other {kept} are under contract for next season ({Budgets.Money(staying)}).";

@@ -100,10 +100,10 @@ public class Run120PolishTests
         {
             Assert.StartsWith($"Deals ending this summer ({ending.Count}):", preview);
             Assert.Contains(ending.OrderByDescending(p => p.CurrentAbility).First().Name, preview);
-            Assert.Contains($"The other {us.Roster.Count - ending.Count}", preview);
+            Assert.Contains($"The other {us.Roster.Count(p => p.Contract != null) - ending.Count}", preview);
         }
         // Nobody's deals: the page says so plainly.
         foreach (var p in us.Roster.Where(p => p.Contract != null)) p.Contract!.Years = 3;
-        Assert.StartsWith($"No deals end this summer: all {us.Roster.Count} players", s.SummerPreview());
+        Assert.StartsWith($"No deals end this summer: all {us.Roster.Count(p => p.Contract != null)} players with deals", s.SummerPreview());
     }
 }
