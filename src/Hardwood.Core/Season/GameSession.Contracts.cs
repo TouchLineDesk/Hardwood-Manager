@@ -44,6 +44,24 @@ public sealed partial class GameSession
     /// <summary>H30: deals that end this summer: in season, those in their final year (Years 1); once counted, those at 0.</summary>
     public bool EndsThisSummer(Player p, Team team) => p.Contract is { } c && c.Years <= (ContractsCounted(team) ? 0 : 1);
 
+    /// <summary>
+    /// Run 120 (critic #16: "the Offseason page is an empty dead end in season"): before the summer, the page previews it:
+    /// the deals that end, best first, and what the rest of the squad is already owed for next season.
+    /// </summary>
+    public string SummerPreview()
+    {
+        if (!Employed || InCollege) return "";
+        var team = HumanTeam;
+        var ending = team.Roster.Where(p => EndsThisSummer(p, team)).OrderByDescending(p => p.CurrentAbility).ToList();
+        long staying = team.Roster.Where(p => p.Contract != null && !EndsThisSummer(p, team)).Sum(p => p.Contract!.Salary);
+        int kept = team.Roster.Count(p => p.Contract != null) - ending.Count;   // review: a player without a deal isn't under contract
+        if (ending.Count == 0)
+            return $"No deals end this summer: all {kept} players with deals are under contract for next season ({Budgets.Money(staying)}).";
+        string names = string.Join(", ", ending.Take(4).Select(p => p.Name)) + (ending.Count > 4 ? $" and {ending.Count - 4} more" : "");
+        return $"Deals ending this summer ({ending.Count}): {names}, {Budgets.Money(ending.Sum(p => p.Contract!.Salary))} between them. "
+             + $"The other {kept} are under contract for next season ({Budgets.Money(staying)}).";
+    }
+
     /// <summary>Over the wage budget by more than a rounding margin (1%), as the owner sees it.</summary>
     public bool OverWageBudget => HumanTeam.Money.Ready && MyCommittedWages > HumanTeam.Money.WageBudget * 1.01;
 

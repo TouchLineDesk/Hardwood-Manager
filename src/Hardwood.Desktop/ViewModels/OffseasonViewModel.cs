@@ -256,6 +256,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             Instructions = !InOffseason
                 ? (s.Phase == SessionPhase.Postseason ? "The playoffs are under way. Once the season ends, contract talks and free agency happen here."
                                                       : "Play the season out. In the summer you will renew or release players whose deals are up and sign free agents here.")
+                  + (s.SummerPreview() is { Length: > 0 } preview ? "\n" + preview : "")
                 : "You aren't coaching a club. Press Continue to move through the summer.";
             ShowContracts = ShowFreeAgency = ShowBuyouts = false;
             CapText = ""; RelegationText = ""; RelegationDetail = "";

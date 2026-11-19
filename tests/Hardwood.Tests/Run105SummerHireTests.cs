@@ -56,6 +56,7 @@ public class Run105SummerHireTests
         Assert.DoesNotContain(hired, m => m.Title == $"Expectations for {SeasonLabel(finished)}");
         Assert.Contains(hired, m => m.Title == $"Welcome to {s.HumanTeam.TheFullName}");
         var goal = (s.Job.Current.Goal, s.Job.Current.TargetWins);
+        string hiredLeague = s.Job.Current.League;
 
         // Into the new season: the goal stands, and isn't posted a second time.
         while (s.Phase == SessionPhase.Offseason && guard++ < 800)
@@ -67,8 +68,20 @@ public class Run105SummerHireTests
         Assert.Equal(finished + 1, s.League.Season);
         Assert.True(s.Employed);
         Assert.Equal(s.League.Season, s.Job.Current!.Season);
-        Assert.Equal(goal, (s.Job.Current.Goal, s.Job.Current.TargetWins));
-        Assert.Single(s.Inbox, m => m.Title == $"Expectations for {SeasonLabel(s.League.Season)}");
+        // Run 120: the goal stands unless the club moved league when the summer ended (seed 9's Pacers can go down after
+        // the hire, depending on the season's results); then the board sets one goal for the new league, posted once more.
+        int posts = s.Inbox.Count(m => m.Title == $"Expectations for {SeasonLabel(s.League.Season)}");
+        _out.WriteLine($"hired in {hiredLeague}, now in {s.MyLeagueKey}: {s.Job.Current.Goal} ({s.Job.Current.TargetWins})");
+        if (s.MyLeagueKey == hiredLeague)
+        {
+            Assert.Equal(goal, (s.Job.Current.Goal, s.Job.Current.TargetWins));
+            Assert.Equal(1, posts);
+        }
+        else
+        {
+            Assert.Equal(s.MyLeagueKey, s.Job.Current.League);
+            Assert.Equal(2, posts);
+        }
     }
 
     [Fact]

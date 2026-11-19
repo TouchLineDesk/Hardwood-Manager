@@ -1,11 +1,11 @@
-# Play-test guide (v0.110.1)
+# Play-test guide (v0.110.5)
 
 Danny's own play-test is the gate for what gets built next (D76 B, decision #630). This guide is the short version of
 the notebook page at https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r, where the notes are written and where the next
 build run reads them.
 
 ## Before you start
-- Install the newest release zip (`HardwoodManager-v0.110.1-win-x64.zip` when this was written; any later one is better),
+- Install the newest release zip (`HardwoodManager-v0.110.5-win-x64.zip` when this was written; any later one is better),
   unzip it anywhere and run the game.
 - Your graphics packs (`prographics`, `collegegraphics` in `Desktop\FMNEWGANv2`) load at start as before.
 - Every career is a real-world career. Saves go to the game's usual save folder; nothing from an older version is needed.
@@ -34,7 +34,8 @@ page and the game date from the top bar. Say what you expected and what happened
 - The open bug list is `claude/bug-hunt.md` in the project. Fixes shipped since v0.105.3 (some still being re-checked): contradictory tactics advice
   (K2), real franchise names on generated clubs (H62), stars on minimum deals in small leagues (H61, v0.107.0), board
   verdicts that disagree with the record (H70, v0.109.0), role players leading the NBA in scoring (H105, v0.108.2) and
-  relegation that cost nothing (K7, v0.110.0). Still open and likely in a first season: real players drain out of the
+  relegation that cost nothing (K7, v0.110.0), made-up players leading NBA stat tables (H110, v0.110.3) and stars
+  retiring with years left on their deals (K1 part 1, v0.110.4). Still open and likely in a first season: real players drain out of the
   NBA over a few seasons in a relegation world (K1), and leagues abroad score too little (K3).
   Note them anyway if they bother you: your notes decide the order.
 - **Relegation (v0.106.0+):** the last club in each NBA division plays the G League division winner, best of three, for
