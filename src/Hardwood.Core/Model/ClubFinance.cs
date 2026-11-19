@@ -31,6 +31,11 @@ public sealed class ClubFinance
     /// <summary>K1 (run 111): seasons the club has played at its current level (set to 0 when it moves, +1 each summer), so a
     /// club that goes straight back down after one season up gets the short parachute. Older saves start at 5.</summary>
     public int SeasonsAtLevel { get; set; } = 5;
+    /// <summary>H122 (run 122): the wage budget before the owner first stretched it this summer to keep a young star, and the
+    /// season that summer's contracts start in (0 = never). Further young stars that summer share the same 35% over that base,
+    /// so the stretch doesn't compound.</summary>
+    public long StretchBase { get; set; }
+    public int StretchSeason { get; set; }
     /// <summary>Deep in debt (balance below half a season's revenue): no transfer fees until it recovers.</summary>
     public bool Embargo { get; set; }
 

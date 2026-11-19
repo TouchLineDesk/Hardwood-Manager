@@ -92,10 +92,12 @@ public sealed partial class GameSession
 
     /// <summary>H122 (run 122): the owner's stretch for keeping your own young star this summer (CA 150+, under 26); 0 for anyone else,
     /// in season, or when the owner is in debt.</summary>
-    public long MyStretchFor(Player p) => MyExpiring.Contains(p) ? ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate) : 0;
+    // The human gets it in every league (his renewals are always bound by the budget); NBA AI clubs only on the open market,
+    // since under the soft cap they re-sign up to the apron with Bird rights.
+    public long MyStretchFor(Player p) => MyExpiring.Contains(p) ? ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate, ContractStart) : 0;
 
     /// <summary>The stretch the owner would allow for a young star of yours (for the summer page and the probe).</summary>
-    public long KeepOwnAllowance() => ContractRules.Allowance(HumanTeam);
+    public long KeepOwnAllowance() => ContractRules.Allowance(HumanTeam, ContractStart);
 
     /// <summary>H122: whether this renewal's wage fits the room the owner allows him (the budget, stretched for a young star).</summary>
     public bool CanKeep(Player p, long wage) => MyCommittedWages + MyReservedWages + MyRosterFillReserve + wage <= HumanTeam.Money.WageBudget + MyStretchFor(p);
@@ -291,7 +293,7 @@ public sealed partial class GameSession
                 World.AwaitingDecision[team.Id].Remove(p);
             }
             // H122: a young star kept over the budget: the owner raises the budget to cover the deals (no-op otherwise).
-            if (ContractRules.IsYoungStar(p, ContractDate)) Budgets.OwnerFunds(team, MyCommittedWages + MyReservedWages);
+            if (ContractRules.IsYoungStar(p, ContractDate)) ContractRules.OwnerCovers(team, MyCommittedWages + MyReservedWages, ContractStart);
             Post($"{p.Name} re-signs", $"{p.Name} agrees a new deal: ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", "Roster");
             return;
         }

@@ -31,12 +31,20 @@ public class Run122KeepOwnStarTests
         var older = new Player { FirstName = "A", LastName = "B", TeamId = 1, CurrentAbility = 165, BirthDate = new DateOnly(2001, 6, 1) };  // 26
         var weaker = new Player { FirstName = "A", LastName = "B", TeamId = 1, CurrentAbility = 149, BirthDate = new DateOnly(2006, 6, 1) };
         var theirs = new Player { FirstName = "A", LastName = "B", TeamId = 2, CurrentAbility = 170, BirthDate = new DateOnly(2006, 6, 1) };
-        Assert.Equal(35_000_000, ContractRules.KeepOwnAllowance(team, star, on));
-        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, older, on));
-        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, weaker, on));
-        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, theirs, on));   // not his own club
+        Assert.Equal(35_000_000, ContractRules.KeepOwnAllowance(team, star, on, 2028));
+        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, older, on, 2028));
+        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, weaker, on, 2028));
+        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, theirs, on, 2028));   // not his own club
+        // Review of #186: a second young star the same summer shares the same 35%; it doesn't compound on the raised budget.
+        ContractRules.OwnerCovers(team, 120_000_000, 2028);
+        Assert.Equal(120_000_000, team.Money.WageBudget);
+        Assert.Equal(15_000_000, ContractRules.KeepOwnAllowance(team, star, on, 2028));
+        ContractRules.OwnerCovers(team, 135_000_000, 2028);
+        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, star, on, 2028));
+        // Next summer the stretch is worked out from that summer's budget.
+        Assert.Equal(47_250_000, ContractRules.KeepOwnAllowance(team, star, on, 2029));
         team.Money.Balance = -1;
-        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, star, on));     // an owner in debt doesn't stretch
+        Assert.Equal(0, ContractRules.KeepOwnAllowance(team, star, on, 2029));     // an owner in debt doesn't stretch
     }
 
     [Avalonia.Headless.XUnit.AvaloniaFact]
