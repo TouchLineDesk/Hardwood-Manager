@@ -515,6 +515,10 @@ public class LayoutCheckTests
                 }),
                 ("High school table", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 6; col.BoardView = "Full table"; }),
                 ("Class rankings", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 7; col.BoardView = "Cards"; }),
+                // CP2 (run 131): the Staff page's college projection, and a freshman's player page with "This summer".
+                ("Staff", v => v.Navigate("Staff & Training")),
+                ("Player", v => v.ShowPlayer(v.Session!.HumanTeam.Roster.Where(p => v.Session.ClassYearOf(p) is { Final: false })
+                    .OrderByDescending(p => p.Name.Length).First())),
             };
             foreach (var (width, guide, scale) in new[] { (1480, true, 1.0), (1480, false, 1.0), (1280, true, 1.0), (1280, false, 1.0), (1280, true, 1.3) })
             {

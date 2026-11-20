@@ -145,6 +145,10 @@ public sealed partial class GameSession
         var summer = new DateOnly(League.Season + 1, 7, 1);
         int age = p.Age(summer);
         double mpg = MyStats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
+        // CP2 (run 131): a college player grows along his path, tilted by minutes, your staff, the program and his professionalism.
+        // It reads the minutes the summer will (the box scores over the program's games) and the next July 1.
+        if (InCollege && World.College is { } cw)
+            return cw.ExpectedGrowth(HumanTeam, p, Hardwood.Core.College.CollegeWorld.NextSummer(Today));
         double q = StaffEffects.TrainingQualityFor(HumanTeam, p, summer);
         var (g, d) = DevelopmentEngine.Expected(p, age, mpg, q);
         var (g0, d0) = DevelopmentEngine.Expected(p, age, mpg, 10);
