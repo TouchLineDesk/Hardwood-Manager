@@ -9,6 +9,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 55: the bug list's #17 (a college career's balance after a reload), #18 and #19 (box scores of your
 /// college and lower-tier games after a reload), #5 (buttons that did nothing with nothing selected, D71 A), #6 (the Inbox
 /// header after a new job), #7 (talk topics in the week after a talk) and #8 (Settings buttons with no confirmation).</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run55FixTests
 {
     private static GameSession Career(Func<Hardwood.Core.Model.League, GameWorld, int> pick, out string path)

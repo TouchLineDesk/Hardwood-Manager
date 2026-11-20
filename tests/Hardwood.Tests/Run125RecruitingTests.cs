@@ -14,6 +14,7 @@ namespace Hardwood.Tests;
 /// - The coached program gets the computer schools' baseline for prospects inside its reach (<see cref="CollegeWorld.ReachCredit"/>),
 ///   so your calls and visits are an edge, not a debt.
 /// </summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run125RecruitingTests
 {
     private readonly ITestOutputHelper _out;

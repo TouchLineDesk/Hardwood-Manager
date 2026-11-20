@@ -8,6 +8,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 59, the play-test kit (D76 B, #632): the first-season empty states and silent buttons left on
 /// `claude/bug-hunt.md`: #11 (an empty Inbox said nothing), #12 (Home's charts were blank boxes before opening night),
 /// H1 (the contract panel's Release did nothing with no player in talks) and H6 (Mark all read with nothing unread).</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run59FixTests
 {
     [Avalonia.Headless.XUnit.AvaloniaFact]

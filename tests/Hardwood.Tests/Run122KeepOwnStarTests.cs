@@ -16,6 +16,7 @@ namespace Hardwood.Tests;
 /// Spurs (nba-contender, seed 2026) had $2.4M of room on May 11 2028 when Stephon Castle (23, CA 162) asked $48.29M, and he
 /// walked.
 /// </summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run122KeepOwnStarTests
 {
     private readonly ITestOutputHelper _out;

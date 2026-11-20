@@ -14,6 +14,7 @@ namespace Hardwood.Tests;
 /// review together) costs such a team at most <see cref="Board.SeasonDropCap"/>; "Critical" needs a losing record; next season's
 /// target doesn't fall more than 3 below the wins the club just managed.
 /// </summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run123BoardConfidenceTests
 {
     private static readonly Dictionary<int, PlayerSeasonStats> None = new();
@@ -161,6 +162,7 @@ public class Run123BoardConfidenceTests
 }
 
 /// <summary>Run 123, H70: the Board page's mood label for a winning club at low confidence (screenshot `run123-board-mood.png`).</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run123BoardMoodScreenTests
 {
     [AvaloniaFact]
