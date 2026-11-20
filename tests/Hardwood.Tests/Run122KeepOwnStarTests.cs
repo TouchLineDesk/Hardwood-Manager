@@ -76,11 +76,23 @@ public class Run122KeepOwnStarTests
                 if (star != null)
                 {
                     var d = s.PeekDemand(star);
+                    _out.WriteLine($"{s.Today}: {star.Name} ({star.Age(s.Today)}, CA {star.CurrentAbility}) asks {d.Wage:N0} x{d.Years}; room {s.MyWageRoom:N0}, stretch {s.MyStretchFor(star):N0}");
                     Assert.True(d.Wage > s.MyWageRoom);            // he doesn't fit the plain budget
                     Assert.True(s.MyStretchFor(star) > 0);
-                    Assert.True(s.CanKeep(star, d.Wage));
-                    CheckCard(s, star);
-                    var reply = s.Offer(star, d.Wage, d.Years);
+                    // Run 130 (CP1): young players grow faster, so on this seed Castle is 169 and asks $51.74M, $1.2M past the
+                    // owner's 35% stretch (#928; D81 asks Danny whether to raise it). The card says so, and an offer at what
+                    // the stretch allows is turned down as close. Where the ask fits the stretch, the owner covers him.
+                    bool fits = d.Wage <= s.MyWageRoom + s.MyStretchFor(star);
+                    long wage = fits ? d.Wage : s.MyWageRoom + s.MyStretchFor(star);
+                    Assert.True(s.CanKeep(star, wage));
+                    CheckCard(s, star, fits);
+                    var reply = s.Offer(star, wage, d.Years);
+                    if (!fits)
+                    {
+                        Assert.False(reply.Accepted);
+                        Assert.Contains("not there yet", reply.Text);
+                        break;
+                    }
                     Assert.True(reply.Accepted, reply.Text);
                     Assert.Equal(s.HumanTeam.Id, star.TeamId);
                     Assert.True(star.Contract!.Years >= 1);
@@ -97,7 +109,7 @@ public class Run122KeepOwnStarTests
     }
 
     /// <summary>The summer page's card says the owner stretches for him, and the talk panel says how far.</summary>
-    private void CheckCard(GameSession s, Player star)
+    private void CheckCard(GameSession s, Player star, bool askFits = true)
     {
         var oldSettings = AppSettings.Current; var oldPath = AppSettings.FilePath;
         AppSettings.FilePath = Path.Combine(Path.GetTempPath(), $"hw-settings-{Guid.NewGuid():N}.json");
@@ -115,8 +127,17 @@ public class Run122KeepOwnStarTests
             var page = Assert.IsType<OffseasonViewModel>(vm.CurrentPage);
             var row = page.Expiring.Single(r => r.Player == star);
             _out.WriteLine($"{star.Name}: {row.Ask} · {row.Fits} · {row.FitTip}");
-            Assert.Equal("Owner stretches", row.Fits);
-            Assert.Contains("the owner will go up to", row.FitTip);
+            if (askFits)
+            {
+                Assert.Equal("Owner stretches", row.Fits);
+                Assert.Contains("the owner will go up to", row.FitTip);
+            }
+            else
+            {
+                // His full ask is past the stretch: the card says so and names what the owner adds (run 130).
+                Assert.Equal("Over budget", row.Fits);
+                Assert.Contains("even with the", row.FitTip);
+            }
             var dir = Environment.GetEnvironmentVariable("HW_SCREENSHOT_DIR");
             if (!string.IsNullOrEmpty(dir))
             {
