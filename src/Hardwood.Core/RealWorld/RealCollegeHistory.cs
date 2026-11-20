@@ -12,6 +12,14 @@ public sealed record RealTournament(int Year, string Champion, string RunnerUp, 
     public string Season => $"{Year - 1}-{Year % 100:00}";
 }
 
+/// <summary>H161 (run 138): a real alumnus's draft (year and pick; empty when undrafted) and whether he has been an NBA All-Star.</summary>
+public sealed record RealAlumnusFact(List<int> Draft, bool AllStar)
+{
+    public bool Undrafted => Draft.Count < 2;
+    /// <summary>"2012 · pick 1" or "Undrafted".</summary>
+    public string DraftText => Undrafted ? "Undrafted" : $"{Draft[0]} · pick {Draft[1]}";
+}
+
 /// <summary>
 /// K12b (run 137, critic review #18 item 7): a real college career has a past. The NCAA's champions and Final Fours since
 /// 1985 and each program's real NBA alumni (data pack: Data/ncaa_history.json). Program totals (titles, Final Fours,
@@ -19,12 +27,15 @@ public sealed record RealTournament(int Year, string Champion, string RunnerUp, 
 /// </summary>
 public static class RealCollegeHistory
 {
-    private sealed record Pack(string Checked, string Source, string Notes, List<RealTournament> Tournaments, Dictionary<string, List<string>> Alumni);
+    private sealed record Pack(string Checked, string Source, string Notes, List<RealTournament> Tournaments, Dictionary<string, List<string>> Alumni,
+                               Dictionary<string, RealAlumnusFact>? Facts);
     private static readonly Lazy<Pack> _pack = new(Load);
 
     public static IReadOnlyList<RealTournament> Tournaments => _pack.Value.Tournaments;
     /// <summary>School → named NBA alumni (only those the sources name; the game keeps the ones on a real roster).</summary>
     public static IReadOnlyDictionary<string, List<string>> Alumni => _pack.Value.Alumni;
+    /// <summary>H161 (run 138): a named alumnus's real draft and whether he has been an NBA All-Star; null when the pack doesn't say.</summary>
+    public static RealAlumnusFact? FactOf(string name) => _pack.Value.Facts?.GetValueOrDefault(name);
     public static string Checked => _pack.Value.Checked;
     public static string Source => _pack.Value.Source;
     public static int FirstYear => Tournaments.Min(t => t.Year);

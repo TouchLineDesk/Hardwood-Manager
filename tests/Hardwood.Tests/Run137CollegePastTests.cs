@@ -220,7 +220,7 @@ public class Run137CollegePastUiTests
             vm.Navigate("College"); Settle();
             var col = (CollegeViewModel)vm.CurrentPage!;
             col.Tab = 8; Settle();
-            Assert.Contains(col.Alumni, r => r.Name == "Kyshawn George" && r.Class == "Earlier" && r.Draft == "-");
+            Assert.Contains(col.Alumni, r => r.Name == "Kyshawn George" && r.Class == "Earlier" && r.Draft == "2024 · pick 24");
             Assert.Contains("Rows marked Earlier", col.AlumniNote);
             Shot("run137-college-your-pros.png");
         }

@@ -663,7 +663,7 @@
               <DataGridTextColumn Header="League" Binding="{Binding League}" Width="76"/>
               <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="52"/>
               <DataGridTextColumn Header="Drafted" Binding="{Binding Draft}" Width="110"/>
-              <DataGridTextColumn Header="Honours" Binding="{Binding Honours}" Width="120"/>
+              <DataGridTextColumn Header="Honours" Binding="{Binding Honours}" Width="150"/>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>

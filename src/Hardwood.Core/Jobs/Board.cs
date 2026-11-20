@@ -411,6 +411,9 @@ public static class Board
     /// <summary>H70 (run 117): below this board confidence the verdict never says "delighted" or "satisfied".</summary>
     public const double ContentLine = 40;
 
+    /// <summary>H137 (run 138): the most AD confidence a losing college regular season ends on (below "Secure").</summary>
+    public const double LosingCap = 69;
+
     /// <summary>Owner patience at or above which the goal is set a step lower (H70).</summary>
     public const int PatientOwner = 15;
 
@@ -902,7 +905,24 @@ public static class Board
         bool reachedPost = ctx.IsCollege ? achieved >= SeasonGoal.Playoffs || madnessRound >= 0
             : (ctx.IsNabl || ctx.PlayoffTeams > 1) && achieved >= SeasonGoal.Playoffs;
         int ahead = (int)Math.Round(winsVsTarget * Math.Max(1.0, ctx.SeasonGames) / 82);
-        string verdict = sacked ? $"{owner} has decided to make a change. You have been sacked."
+        // H137 (run 138): in college the words and the number agree with where the season began. A losing regular season is
+        // never "Secure" (App State, 12-13, read Secure 95/100); a "delighted" season never ends below its start (Duke won the
+        // title as a 1-seed and went 95 → 80); a "disappointed" one or "expected more" never above it (44 → 57).
+        double seasonStart = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } ss ? ss : beforeReview;
+        if (ctx.IsCollege && !sacked)
+        {
+            if (wins < losses) job.Confidence = Math.Min(job.Confidence, LosingCap);
+            string first = Verdict();
+            if (first.Contains(" is delighted", StringComparison.Ordinal))
+                job.Confidence = Math.Max(job.Confidence, wins < losses ? Math.Min(seasonStart, LosingCap) : seasonStart);
+            else if (first.Contains(" is disappointed", StringComparison.Ordinal) || first.Contains(" expected more", StringComparison.Ordinal))
+                job.Confidence = Math.Min(job.Confidence, Math.Max(seasonStart, winning ? 25 : 0));
+        }
+        string verdict = Verdict();
+        lines.Add(verdict);
+        return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
+
+        string Verdict() => sacked ? $"{owner} has decided to make a change. You have been sacked."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{owner} is giving you another season, but expects much better. Consider this a final warning."
             : shielded && diff < 0 && job.Confidence <= 25 ? (job.ProtectedReason == "rebuild"
                 ? $"{owner} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
@@ -919,6 +939,8 @@ public static class Board
                 ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
                 : $"{owner} accepts the result, but there is ground to make up. Board confidence: {job.Confidence:0}/100.")
             : diff >= 1 ? $"{owner} is delighted."
+            // H137 (run 138): Miami missed its 20-win target and March at 18-11 and read "satisfied" with nothing else.
+            : diff == 0 && ctx.IsCollege && wins < e.TargetWins ? $"{owner} is satisfied with the progress, though {wins}-{losses} is short of the {e.TargetWins}-win target{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
             : diff == 0 ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
             : relegated && wins > losses ? $"{owner} is disappointed: a winning record wasn't enough to stay up, last in the division. Board confidence: {job.Confidence:0}/100."
@@ -934,8 +956,6 @@ public static class Board
             : !relegated && madePost && winsVsTarget >= -CloseWins && job.Confidence >= 50
                 ? $"{owner} hoped for more, but the team {(ctx.IsCollege ? "made the tournament" : reachedPost ? "made the playoffs" : "finished in the top half")} close to the {e.TargetWins}-win target and still has the {(ctx.IsCollege ? "AD's" : "board's")} backing. Board confidence: {job.Confidence:0}/100."
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
-        lines.Add(verdict);
-        return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
     }
 
     /// <summary>CS2: "an 8-seed", "an 11-seed", "a 1-seed".</summary>

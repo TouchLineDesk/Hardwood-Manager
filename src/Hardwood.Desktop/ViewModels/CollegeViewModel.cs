@@ -57,10 +57,11 @@ public sealed class AlumnusRow
     public string League => Line.League;
     public int CA => Line.Player.CurrentAbility;
     public int Age { get; init; }
-    public string Draft => Line.Draft is { } d ? $"{d.Year} · pick {d.Pick}" : Line.Class == 0 ? "-" : "Undrafted";
-    /// <summary>"2 All-Star · 1 award" (or "-").</summary>
-    public string Honours => Line.AllStars == 0 && Line.Awards == 0 ? "-"
-        : string.Join(" · ", new[] { Line.AllStars > 0 ? $"{Line.AllStars} All-Star" : "", Line.Awards > 0 ? $"{Line.Awards} award{(Line.Awards == 1 ? "" : "s")}" : "" }.Where(x => x != ""));
+    /// <summary>H161 (run 138): a real alumnus shows his real draft ("2012 · pick 1"); "-" only when the pack doesn't know it.</summary>
+    public string Draft => Line.Draft is { } d ? $"{d.Year} · pick {d.Pick}" : Line.Real is { } r ? r.DraftText : Line.Class == 0 ? "-" : "Undrafted";
+    /// <summary>"2 All-Star · 1 award" (or "-"); a real alumnus who has been an All-Star reads "All-Star".</summary>
+    public string Honours => !Line.EverAllStar && Line.Awards == 0 ? "-"
+        : string.Join(" · ", new[] { Line.AllStars > 0 ? $"{Line.AllStars} All-Star" : Line.EverAllStar ? "All-Star" : "", Line.Awards > 0 ? $"{Line.Awards} award{(Line.Awards == 1 ? "" : "s")}" : "" }.Where(x => x != ""));
 }
 
 public sealed class ProspectListRow
@@ -933,7 +934,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         {
             new("Pros", rec.Pros.ToString(), rec.Abroad > 0 ? $"on a pro roster · {rec.Abroad} abroad" : "graduates on a pro roster", rec.Pros > 0 ? "good" : ""),
             new($"In the {top}", rec.TopLeague.ToString(), "the top league", rec.TopLeague > 0 ? "good" : ""),
-            new("All-Stars", rec.AllStars.ToString(), "graduates with an All-Star game", rec.AllStars > 0 ? "good" : ""),
+            new("All-Stars", rec.AllStars.ToString(), "graduates who have been All-Stars", rec.AllStars > 0 ? "good" : ""),
             new("Best now", best == null ? "-" : best.Player.CurrentAbility.ToString(), best == null ? "nobody yet" : $"{best.Player.Name} · {best.Club}", "info"),
             new("Recruiting pitch", c.ProPitch > 0 ? $"+{c.ProPitch:0}" : "0", c.ProPitch > 0 ? "appeal with top recruits" : $"until one reaches the {top}", c.ProPitch > 0 ? "good" : ""),
         };
