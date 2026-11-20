@@ -69,6 +69,8 @@ public sealed class HonourChip
     public string Team { get; init; } = "";
     public bool Mine { get; init; }
     public bool Star { get; init; }
+    /// <summary>What the star means: the All-Star Game MVP, or a conference's player of the year (CS5).</summary>
+    public string StarTip { get; init; } = "All-Star Game MVP";
 }
 
 public sealed class HonourLine
@@ -131,12 +133,32 @@ public sealed partial class AwardsViewModel : PageViewModel
 
     public AwardsViewModel(MainViewModel shell) : base(shell) { }
 
+    // CS5 / K14 (run 135): a college coach's Awards page is the college game's: the national awards, the All-America
+    // teams and the all-conference teams, not the NBA's.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(MvpTitle), nameof(RoyTitle), nameof(ShowSixth), nameof(AllLeagueTitle), nameof(AllStarTitle), nameof(ShowHall))]
+    private bool _isCollege;
+    public string MvpTitle => IsCollege ? "National Player of the Year" : "Most Valuable Player";
+    public string RoyTitle => IsCollege ? "Freshman of the Year" : "Rookie of the Year";
+    public bool ShowSixth => !IsCollege;
+    public string AllLeagueTitle => IsCollege ? "All-America teams" : "All-League teams";
+    public string AllStarTitle => IsCollege ? "All-conference first teams" : "All-Star Game";
+    public bool ShowHall => !IsCollege;
+
     partial void OnSeasonChanged(string? value) => Show();
 
     public override void Refresh()
     {
         var current = Season;
         Seasons.Clear();
+        IsCollege = Session.CollegeWords && Session.World.College != null;
+        if (IsCollege)
+        {
+            foreach (var a in Session.World.College!.Awards.OrderByDescending(a => a.Year)) Seasons.Add(Hardwood.Core.College.CollegeAwards.SeasonText(a.Year));
+            Season = Seasons.Contains(current ?? "") ? current : Seasons.FirstOrDefault();
+            Hall.Clear(); HallNote = "";
+            Show();
+            return;
+        }
         foreach (var h in Session.League.History.OrderByDescending(h => h.Season)) Seasons.Add($"{h.Season}-{(h.Season + 1) % 100:00}");
         if (Session.Midseason != null && Session.Phase != SessionPhase.Offseason) Seasons.Insert(0, $"{Session.League.Season}-{(Session.League.Season + 1) % 100:00} (in progress)");
         Season = Seasons.Contains(current ?? "") ? current : Seasons.FirstOrDefault();
@@ -148,6 +170,7 @@ public sealed partial class AwardsViewModel : PageViewModel
     {
         Mvp.Clear(); Roy.Clear(); Dpoy.Clear(); SixthMan.Clear();
         Winners.Clear(); Ladders.Clear(); AllLeagueTeams.Clear(); AllStarTeams.Clear(); AllStarLine = ""; EmptyNote = ""; ExtraCards.Clear();
+        if (IsCollege) { try { ShowCollege(); } finally { BuildCards(); } return; }
         var s = Session;
         var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).ToDictionary(p => p.Id);
         string Name(int? id) => id is { } i && all.TryGetValue(i, out var p) ? p.Name : "-";
@@ -257,8 +280,8 @@ public sealed partial class AwardsViewModel : PageViewModel
     {
         Winners.Clear(); Ladders.Clear();
         var s = Session;
-        foreach (var (award, icon, list) in new[] { ("Most Valuable Player", "Award", Mvp), ("Defensive Player of the Year", "Shield", Dpoy),
-                                                     ("Rookie of the Year", "Star", Roy), ("Sixth Man of the Year", "ArrowLeftRight", SixthMan) })
+        foreach (var (award, icon, list) in new[] { (MvpTitle, "Award", Mvp), ("Defensive Player of the Year", "Shield", Dpoy),
+                                                     (RoyTitle, "Star", Roy), ("Sixth Man of the Year", "ArrowLeftRight", SixthMan) })
         {
             if (list.Count == 0) continue;
             var w = list[0];
@@ -281,6 +304,77 @@ public sealed partial class AwardsViewModel : PageViewModel
         HasEmptyNote = EmptyNote.Length > 0;
         HasAllStarPanel = AllStarLine.Length > 0 || HasAllStars;
         HasSeason = Season != null;
+    }
+
+    /// <summary>CS5 (run 135): one college season's honours, from <see cref="Hardwood.Core.College.CollegeWorld.Awards"/>.</summary>
+    private void ShowCollege()
+    {
+        var s = Session; var cw = s.World.College!;
+        AllLeague = ""; AllStars = "";
+        if (Season == null)
+        {
+            Headline = "No college awards yet";
+            Summary = "The national awards are voted the day the champion is crowned in April.";
+            EmptyNote = "Each season's honours land here when March Madness ends: National Player of the Year, the Final Four's Most Outstanding Player, "
+                      + "Defensive and Freshman of the Year, Coach of the Year, the three All-America teams and every conference's first team.";
+            return;
+        }
+        int year = int.Parse(Season[..4]);
+        var a = cw.Awards.FirstOrDefault(x => x.Year == year);
+        if (a == null) { Headline = Season; Summary = "No award data for this season."; return; }
+        var all = cw.Players.Concat(s.League.AllActivePlayers).Concat(s.League.FreeAgents).Concat(s.League.Retired)
+            .Concat(s.World?.Players ?? Enumerable.Empty<Player>()).GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
+        Player? P(int id) => all.TryGetValue(id, out var p) ? p : null;
+        // The program he played for that season (kept with the award), never where he is today.
+        Team? ClubOf(int id) => a.ProgramOf.TryGetValue(id, out var t) ? cw.Program(t) : null;
+        bool Mine(Team? t) => t != null && t == s.HumanTeam && s.Employed;
+
+        var champ = cw.History.FirstOrDefault(h => h.Year == year);
+        Headline = $"{Season} college awards";
+        string coach = a.CoachProgramId is { } cp && cw.Program(cp) is { } ct ? $"{(a.CoachName.Length > 0 ? a.CoachName + ", " : "")}{ct.FullName}" : "-";
+        Summary = (champ != null ? $"National champions: {champ.Champion} over {champ.RunnerUp}" : "National champions: -")
+                + (a.OutstandingId is { } mo ? $" · Most Outstanding Player {a.NameOf(mo)}" : "")
+                + $" · Coach of the Year: {coach}";
+
+        void Fill(ObservableCollection<VoteRow> list, List<VoteLine> votes)
+        {
+            int rank = 1;
+            foreach (var v in votes)
+                list.Add(new VoteRow { Rank = rank++, Name = v.Name, Team = v.Team, Share = $"{v.Share * 100:F0}%", ShareValue = v.Share, Points = v.Points.ToString("0"),
+                                       StatLine = v.StatLine, Player = P(v.PlayerId), Club = ClubOf(v.PlayerId) });
+        }
+        Fill(Mvp, a.PlayerOfYear); Fill(Dpoy, a.Defensive); Fill(Roy, a.Freshman);
+
+        HonourChip Chip(int id, bool star, string tip = "") => new()
+        {
+            Player = P(id), Club = ClubOf(id), Name = a.NameOf(id), Team = ClubOf(id)?.Abbreviation ?? "", Star = star, StarTip = tip, Mine = Mine(ClubOf(id)),
+        };
+        for (int i = 0; i < a.AllAmerica.Count; i++)
+            AllLeagueTeams.Add(new HonourLine { Title = i switch { 0 => "First team", 1 => "Second team", 2 => "Third team", _ => $"Team {i + 1}" },
+                                                Players = a.AllAmerica[i].Select(id => Chip(id, false)).ToList() });
+        AllLeague = string.Join("\n", a.AllAmerica.Select((t, i) => $"{Hardwood.Core.College.CollegeAwardsText.TeamName(i)}: {string.Join(", ", t.Select(id => $"{a.NameOf(id)} ({ClubOf(id)?.Abbreviation ?? "-"})"))}"));
+
+        // All-conference: your conference first, then the power conferences; the full table lists every conference.
+        string? mine = s.MyConference?.Key;
+        var shown = cw.Active.Where(c => a.AllConference.ContainsKey(c.Key) && (c.Key == mine || c.Power))
+            .OrderByDescending(c => c.Key == mine).ThenBy(c => c.Short).ToList();
+        foreach (var c in shown)
+        {
+            int poy = a.ConferencePlayer.GetValueOrDefault(c.Key);
+            AllStarTeams.Add(new HonourLine { Title = c.Short, Players = a.AllConference[c.Key].Select(id => Chip(id, id == poy, $"{c.Short} Player of the Year")).ToList() });
+        }
+        int rest = a.AllConference.Count - shown.Count;
+        AllStarLine = "The star marks each conference's player of the year." + (rest > 0 ? $" {rest} more conferences are on the Full table view." : "");
+        AllStars = string.Join("\n", cw.Active.Where(c => a.AllConference.ContainsKey(c.Key)).OrderBy(c => c.Short)
+            .Select(c => $"{c.Short}: {string.Join(", ", a.AllConference[c.Key].Select(id => a.NameOf(id) + (a.ConferencePlayer.GetValueOrDefault(c.Key) == id ? " (POY)" : "")))}"));
+
+        if (a.OutstandingId is { } mop)
+        {
+            var club = ClubOf(mop) ?? (champ != null ? cw.Program(champ.ChampionId) : null);
+            ExtraCards.Add(Card("Most Outstanding Player", "Trophy", P(mop), club, a.NameOf(mop), champ != null ? $"Champions: {champ.Champion}" : "", a.OutstandingLine));
+        }
+        if (a.CoachProgramId is { } cid && cw.Program(cid) is { } cprog)
+            ExtraCards.Add(Card("Coach of the Year", "ClipboardList", null, cprog, a.CoachName.Length > 0 ? a.CoachName : cprog.FullName, $"Head coach, {cprog.FullName}", a.CoachNote, coach: true));
     }
 
     /// <summary>In a real career before the first awards: who won them last season, for real.</summary>
