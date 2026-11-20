@@ -184,7 +184,7 @@ public class Run135CollegeAwardsUiTests
             var card = Assert.Single(hist.SeasonCards);
             Assert.Equal(cw.History.Single().Champion, card.ChampionName);
             Assert.Equal("Player of the Year ", card.MvpLabel);
-            Assert.StartsWith("You: ", card.OurRecord);
+            Assert.StartsWith($"{s.HumanTeam.Abbreviation}: ", card.OurRecord);
             Assert.Equal("Player of the Year", hist.MvpHeader);
             Shot("run135-college-history.png");
 

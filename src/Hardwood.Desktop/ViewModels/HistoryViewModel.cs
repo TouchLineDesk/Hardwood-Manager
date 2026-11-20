@@ -269,7 +269,8 @@ public sealed partial class HistoryViewModel : PageViewModel
                 Season = SeasonText(h.Year), Champion = champ, ChampionName = h.Champion, Beat = $"beat {h.RunnerUp} in the final",
                 Mvp = poy, FinalsMvp = mop, MvpLabel = "Player of the Year ", FinalsMvpLabel = "Most Outstanding Player ",
                 Extra = a?.CoachName is { Length: > 0 } cn && cw.Program(a.CoachProgramId ?? 0) is { } ct ? $"Coach of the Year {cn} ({ct.Abbreviation})" : "",
-                OurRecord = ours.Length > 0 ? $"You: {ours}" : "",
+                // Your program's season that year (named, since you may have coached elsewhere then; review, run 135).
+                OurRecord = ours.Length > 0 ? $"{s.HumanTeam.Abbreviation}: {ours}" : "",
                 Mine = champ != null && champ == s.HumanTeam && s.Employed, Stripe = StripeFor(champ),
             });
         }
