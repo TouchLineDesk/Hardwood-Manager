@@ -181,6 +181,8 @@ internal sealed class BugFinder
         Settle();
         Pages++;
         Scan(page, when);
+        // Bug hunt 19: the player page (CP2's "This summer" chip) and the other linked pages are on the tour too.
+        Tour(page, when);
         var opened = _vm.CurrentPage;
         var back = ContentButtons().FirstOrDefault(b => Label(b).StartsWith("Back", StringComparison.OrdinalIgnoreCase) || Label(b).StartsWith("←"));
         if (back == null) { Add("dead end", page, $"no Back button on the {page.ToLower()} (only the sidebar leads away)", true); return; }
