@@ -208,7 +208,7 @@ public sealed partial class PlayerViewModel : PageViewModel
             var cw = s.World.College!;
             double mpg = cw.SeasonMpg(s.HumanTeam, p, Hardwood.Core.College.CollegeWorld.NextSummer(s.Today));
             chips.Add(new("This summer", Math.Abs(change) < 0.5 ? "Steady" : $"{change:+0;-0} CA",
-                $"at {mpg:0} min · program {fromProgram:+0.0;-0.0}", change >= 3 ? "good" : "info"));
+                $"at {mpg:0} min · " + (Math.Abs(fromProgram) < 0.05 ? "program average" : $"program {Math.Round(fromProgram, 1) + 0.0:+0.0;-0.0}"), change >= 3 ? "good" : "info"));
         }
         if (s.Stats.TryGetValue(p.Id, out var cur) && cur.Games > 0)
             chips.Add(new("Points", cur.Ppg.ToString("0.0"), $"{cur.Rpg:0.0} reb · {cur.Apg:0.0} ast · {cur.Games} gp", "info"));
