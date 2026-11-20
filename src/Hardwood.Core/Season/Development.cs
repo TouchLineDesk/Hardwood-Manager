@@ -11,11 +11,14 @@ public sealed class DevelopmentConfig
         <= 19 => 0.26,
         20 => 0.24,
         21 => 0.22,
-        22 => 0.19,
-        23 => 0.16,
-        24 => 0.13,
-        25 => 0.09,
-        26 => 0.06,
+        // CP1 (run 130): ages 22-25 close more of the gap, so a graduate with a big gap reaches most of it by 26-27, as
+        // top NBA picks do. Before (0.19/0.16/0.13/0.09/0.06) about half closed by 28 even with full minutes, and in the
+        // 25-season audit 94% of PA 165+ graduates fell 15+ short.
+        22 => 0.25,
+        23 => 0.23,
+        24 => 0.19,
+        25 => 0.13,
+        26 => 0.07,
         27 => 0.03,
         28 => 0.015,
         _ => 0.0,

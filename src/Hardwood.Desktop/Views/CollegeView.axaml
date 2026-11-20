@@ -386,7 +386,7 @@
                 <CheckBox DockPanel.Dock="Top" Content="Only my list and commitments" IsChecked="{Binding ListedOnly}" Margin="0,0,0,4"/>
                 <DataGrid x:Name="RecruitGrid" ItemsSource="{Binding Recruits}" SelectedItem="{Binding SelectedRecruit}" RowHeight="NaN" Height="500">
                   <DataGrid.Columns>
-                    <DataGridTextColumn Header="Senior" Binding="{Binding Name}" Width="150"/>
+                    <DataGridTextColumn Header="Senior" Binding="{Binding Name}" Width="170"/>
                     <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56"/>
                     <DataGridTemplateColumn Header="Program" Width="*" MinWidth="160">
                       <DataGridTemplateColumn.CellTemplate>

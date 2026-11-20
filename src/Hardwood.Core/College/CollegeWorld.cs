@@ -150,21 +150,66 @@ public sealed partial class CollegeWorld
         double u = rng.NextDouble(), elite = 0.012 * eliteScale;
         // R3: in a world of more than 148 programs the class is capped at the thousand tracked, so the 90-110 band is
         // scaled too (the fictional world's 148 keep exactly the old draw).
-        double good = goodScale >= 1 ? 0.065 : elite + 0.053 * goodScale;
+        // (0.065 with the elite share; written as elite + 0.053 so CP1's draws without the elite share don't move it into 90-110.)
+        double good = elite + 0.053 * Math.Min(1, goodScale);
         return u < elite ? rng.Next(110, 131) : u < good ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
     }
 
     /// <summary>The 90-110 band's share against a 148-program world (1 there and below).</summary>
     private double GoodScale => Math.Min(1, 148.0 / Math.Max(1, Programs.Count));
 
-    private Player NewRecruit(PlayerGenerator gen, Rng rng, int age, DateOnly on, int? destined = null)
+    private Player NewRecruit(PlayerGenerator gen, Rng rng, int age, DateOnly on, int? destined = null, int? potential = null)
     {
         int g = destined ?? DestinedAbility(rng, Math.Min(1, BasePrograms / (double)Math.Max(1, Programs.Count)), GoodScale);
         int ca = Math.Max(20, (int)Math.Round(g * Share(age) + rng.NextGaussian(0, 2)));
         var p = gen.Generate((Position)rng.Next(0, 5), ca, age, on, Heritages.All.First(h => h.Key == "us"), "USA");
-        p.PotentialAbility = Math.Max(ca, g + (int)Math.Round(Math.Max(0, rng.NextGaussian(g >= 100 ? 10 : 5, 6))));
+        p.PotentialAbility = potential is { } pa ? Math.Max(ca, pa)
+            : Math.Max(ca, g + (int)Math.Round(Math.Max(0, rng.NextGaussian(g >= 100 ? 10 : 5, 6))));
         Destined[p.Id] = g;
         return p;
+    }
+
+    /// <summary>
+    /// CP1 (run 130, `claude/college-pipeline-design.md`): the top of every class, drawn per class rather than as a share of
+    /// it, so it doesn't shrink as the world gains programs. One or two franchise prospects (two in
+    /// <see cref="FranchisePairChance"/> of classes) heading for 132-145 at 22 with potential 165-190, and 8-15 five-star-level prospects
+    /// heading for 118-135 with potential 148-170. Before, the best graduate's potential was about 140-150 and no graduate
+    /// could become a star (CA 160+). The gap to potential is closed, or not, in the pros: some of them bust.
+    /// </summary>
+    public static List<(int Destined, int Potential)> TopBand(Rng rng)
+    {
+        var band = new List<(int, int)>();
+        int franchise = rng.Chance(FranchisePairChance) ? 2 : 1, fiveStar = rng.Next(8, 16);
+        for (int i = 0; i < franchise; i++)
+        {
+            int g = rng.Next(132, 146);
+            band.Add((g, Math.Max(g + 25, rng.Next(165, 191))));
+        }
+        for (int i = 0; i < fiveStar; i++)
+        {
+            int g = rng.Next(118, 136);
+            band.Add((g, Math.Max(g + 12, rng.Next(148, 171))));
+        }
+        return band;
+    }
+
+    /// <summary>The chance a class has two franchise prospects rather than one (CP1).</summary>
+    public const double FranchisePairChance = 0.45;
+
+    /// <summary>A class's recruits with the CP1 top band first: the first <paramref name="core"/> are drawn from the class
+    /// calibration (the band takes the first places), the rest are depth at <paramref name="depth"/>.</summary>
+    private List<Player> NewCohort(PlayerGenerator gen, Rng rng, int age, DateOnly on, int count, int core, Func<int>? depth = null)
+    {
+        var band = TopBand(rng);
+        // A small intake (the legacy summer's few vacancies, a test world) keeps the band to a twentieth of it (review).
+        if (band.Count > Math.Max(1, count / 20)) band = band.Take(Math.Max(1, count / 20)).ToList();
+        var list = new List<Player>(count);
+        for (int i = 0; i < count; i++)
+            list.Add(i < band.Count && i < core ? NewRecruit(gen, rng, age, on, band[i].Destined, band[i].Potential)
+                   // The band replaces the old elite share (110-130 at 22, about four a class), so the class's top end is the
+                   // band and the league's depth doesn't inflate (the audit's top-13 row).
+                   : NewRecruit(gen, rng, age, on, i < core || depth == null ? DestinedAbility(rng, 0, GoodScale) : depth()));
+        return list;
     }
 
     /// <summary>Recruits go to programs by prestige (decision #84): the best players to the biggest names, with some luck.</summary>
@@ -244,7 +289,7 @@ public sealed partial class CollegeWorld
         for (int age = GraduateAge - 1; age >= YoungestAge; age--)
         {
             int each = perAge + (GraduateAge - 1 - age < spare ? 1 : 0);
-            var cohort = Enumerable.Range(0, c.Programs.Count * each).Select(_ => c.NewRecruit(gen, rng, age, today)).ToList();
+            var cohort = c.NewCohort(gen, rng, age, today, c.Programs.Count * each, int.MaxValue);
             c.Recruit(cohort, rng);
         }
         c.StartSeason(today.Month >= 7 ? today.Year : today.Year - 1, rng);
@@ -338,7 +383,7 @@ public sealed partial class CollegeWorld
         {
         // Recruit the new class of 14-year-olds.
         int needed = Programs.Sum(t => RosterSize - t.Roster.Count);
-        Recruit(Enumerable.Range(0, needed).Select(_ => NewRecruit(gen, rng, YoungestAge, on)).ToList(), rng);
+        Recruit(NewCohort(gen, rng, YoungestAge, on, needed, int.MaxValue), rng);
         }
         if (grads.Count > 0)
         {

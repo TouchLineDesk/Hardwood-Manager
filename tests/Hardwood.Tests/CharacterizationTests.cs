@@ -181,7 +181,10 @@ public class CharacterizationTests
         // The NBA's rosters on day one are unchanged; the audit's NBA metrics stay in band on both seeds.
         // Run 128 (D80 A, four college years): re-pinned (was 73DBDEB0B8B1D8C0 since run 121). College rosters are four age
         // groups with bigger classes, so the world is generated from a different number of draws and the session's stream moves.
-        Pin("career seed 2026, 30 days, no saves", "EF04EA9CAF3C66EE", Session(s));
+        // Run 130 (CP1, the top band of each class): re-pinned (was EF04EA9CAF3C66EE since run 128). Every college and
+        // high-school class draws its franchise and five-star prospects first, so the world uses different draws. The NBA
+        // bench seasons stay on their pins.
+        Pin("career seed 2026, 30 days, no saves", "3E5F5992C839C968", Session(s));
     }
 
     [Fact]

@@ -112,6 +112,10 @@ public static class BalanceAudit
         var namesShared = new List<double>(); var namesTop = new List<double>();
         var worldPts = new Dictionary<string, List<double>>(); var worldCa = new Dictionary<string, List<double>>();
         var college = new MadnessTally();
+        // CP1 (run 130): the college pipeline. Every player who reaches 21 in college is a college product; follow each one's
+        // best ability through 27 and how many of the NBA's top 10 are college products.
+        var pipe = new Dictionary<int, Pipeline>();
+        var gradsTop10 = new List<double>(); var bestProduct = new List<double>();
 
         for (int s = 0; s < seasons; s++)
         {
@@ -178,6 +182,19 @@ public static class BalanceAudit
                 var levelPlayers = (UsaPyramid.Level(c.Key) is var lv2 and > 0
                     ? world.Competitions.Where(x => UsaPyramid.Level(x.Key) == lv2).SelectMany(x => x.Clubs) : c.Clubs).SelectMany(t => t.Roster).ToList();
                 (worldCa.TryGetValue(label, out var l) ? l : worldCa[label] = new()).Add(levelPlayers.Average(p => p.CurrentAbility));
+            }
+
+            if (world.College != null)
+                // Age groups are set on July 1 (the date classes enroll and graduate on), not the October snapshot (review).
+                foreach (var p in world.College.Players.Where(p => p.Age(new DateOnly(year, 7, 1)) == 21 && p.TeamId != null && !pipe.ContainsKey(p.Id)))
+                    pipe[p.Id] = new Pipeline(year + 1, p.BirthDate, p.PotentialAbility);
+            var all = players.Concat(league.FreeAgents).Concat(world.Players);
+            foreach (var p in all)
+                if (pipe.TryGetValue(p.Id, out var pl) && p.Age(start) <= 27) pl.Best = Math.Max(pl.Best, p.CurrentAbility);
+            if (year > 2026)
+            {
+                gradsTop10.Add(players.OrderByDescending(p => p.CurrentAbility).Take(10).Count(p => pipe.ContainsKey(p.Id)));
+                bestProduct.Add(all.Where(p => pipe.ContainsKey(p.Id)).Select(p => (double)p.CurrentAbility).DefaultIfEmpty(0).Max());
             }
 
             progress?.Invoke($"Season {year}-{(year + 1) % 100:00}");
@@ -282,6 +299,19 @@ public static class BalanceAudit
         var peak = devByAge.Where(kv => kv.Key >= 20 && kv.Value.Count >= 10).OrderBy(kv => kv.Key)
             .FirstOrDefault(kv => kv.Value.Average() <= 0).Key;
         m.Add(new("NABL players", "Age players stop improving", "0", new() { peak }, 26, 30, "NBA aging curves peak ~27"));
+        // CP1 (run 130, `claude/college-pipeline-design.md`): college products become stars. Information rows; the design's
+        // targets are in the source column.
+        m.Add(new("College pipeline", "College products in the NBA's top 10", "0.0", gradsTop10, null, null, "CP1: at least 3 by season 10"));
+        m.Add(new("College pipeline", "Best college product anywhere (CA)", "0", bestProduct, null, null, "CP1: one reaches 170+ within 15 seasons"));
+        int lastSnapshot = league.Season - 1; // the summer after the last season moved league.Season on
+        // A class counts once its players have all been seen at 27 (graduated at 22 → the snapshot 5 seasons later).
+        var measured = pipe.Values.Where(x => x.Class + 5 <= lastSnapshot).ToList();
+        var classes = measured.Select(x => x.Class).Distinct().Count();
+        m.Add(new("College pipeline", "Graduates reaching CA 160+ by 27, per class", "0.00",
+            new() { classes == 0 ? double.NaN : measured.Count(x => x.Best >= 160) / (double)classes }, null, null, $"CP1: 1-3 a class ({classes} classes measured)"));
+        var high = measured.Where(x => x.Potential >= 165).ToList();
+        m.Add(new("College pipeline", "PA 165+ prospects falling 15+ short by 27 (share)", "0.00",
+            new() { high.Count == 0 ? double.NaN : high.Count(x => x.Best <= x.Potential - 15) / (double)high.Count }, null, null, $"CP1: at least 0.25 bust ({high.Count} prospects)"));
         m.Add(new("NABL development", "Yearly ability change, age 22 and under", "+0.0;-0.0", devYoung, 2, 12, "young players improve"));
         m.Add(new("NABL development", "Yearly ability change, age 26-29", "+0.0;-0.0", devPrime, -2, 3, "prime: roughly flat"));
         m.Add(new("NABL development", "Yearly ability change, age 32+", "+0.0;-0.0", devOld, -10, -1, "decline"));
@@ -351,6 +381,15 @@ public static class BalanceAudit
     }
 
     /// <summary>The longest run of titles by one club in a "year: ABC" champions list.</summary>
+    private sealed class Pipeline
+    {
+        public Pipeline(int cls, DateOnly born, int potential) { Class = cls; Born = born; Potential = potential; }
+        public int Class { get; }
+        public DateOnly Born { get; }
+        public int Potential { get; }
+        public int Best { get; set; }
+    }
+
     public static int Streak(IReadOnlyList<string> champions)
     {
         int best = 0, run = 0; string? prev = null;
