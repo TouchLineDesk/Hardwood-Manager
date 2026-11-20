@@ -379,7 +379,8 @@ public sealed class LeagueBook
     }
 
     private static string RulesText(Rules r) =>
-        $"{r.Name} rules: {r.Periods} × {r.MinutesPerPeriod} minutes, {r.ShotClockSeconds}-second shot clock, foul out on {r.FoulsToFoulOut}, three-point line {r.ThreePointDistanceM:0.00} m.";
+        $"{r.Name} rules: {r.Periods} × {r.MinutesPerPeriod} minutes, {r.ShotClockSeconds}-second shot clock, foul out on {r.FoulsToFoulOut}, three-point line {r.ThreePointDistanceM:0.00} m."
+        + (r.OneAndOne ? $" One-and-one from the {r.TeamFoulBonusThreshold}th team foul in a half, two shots from the {r.DoubleBonusFouls}th." : ""); // K11
 
     // ---- college
 

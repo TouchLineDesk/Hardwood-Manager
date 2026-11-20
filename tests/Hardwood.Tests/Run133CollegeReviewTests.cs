@@ -70,9 +70,9 @@ public class Run133CollegeReviewTests
         int guard = 0;
         while (s.Today < new DateOnly(2026, 12, 24) && guard++ < 200) s.AdvanceDay();
         var poll = c.Poll();
+        _out.WriteLine(string.Join(", ", poll.Take(25).Select(e => $"{e.Rank} {e.Team.City} {e.Wins}-{e.Losses}")));
         foreach (var a in poll.Where(e => e.Losses == 0 && e.Wins >= 8))
             Assert.DoesNotContain(poll, b => b.Rank < a.Rank && b.Losses >= 3);
-        _out.WriteLine(string.Join(", ", poll.Take(10).Select(e => $"{e.Rank} {e.Team.City} {e.Wins}-{e.Losses}")));
         Assert.InRange(c.PollPosition(id), 1, c.Programs.Count);
 
         // H130: the field's at-large teams all have winning records.

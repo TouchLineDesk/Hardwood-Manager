@@ -52,7 +52,7 @@ public sealed record ConferenceStyle(double Pace, double Defence, double Physica
 
     /// <summary>The rules a game in this style plays under.</summary>
     public Rules Apply(Rules r) => this == Neutral ? r
-        : r with { PaceScale = r.PaceScale * Pace, ShotLogitShift = ShotLogitShift, FoulScale = FoulScale };
+        : r with { PaceScale = r.PaceScale * Pace, ShotLogitShift = r.ShotLogitShift + ShotLogitShift, FoulScale = r.FoulScale * FoulScale }; // K11: on top of the college profile
 
     // Keys are CollegeWorld's conference keys (the real ones carry RealColleges.KeyPrefix).
     private static readonly Dictionary<string, ConferenceStyle> Table = new()
