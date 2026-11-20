@@ -1216,6 +1216,8 @@ public sealed partial class GameSession
         // Run 42 (review #12, Top fix 1): in the NBA the summer's notes ride in "Contract decisions"; elsewhere they post as before.
         bool fold = Employed && collegeBefore == null && !Abroad;
         if (!fold) FlushSummerNotes();
+        PruneAlumni();
+        RefreshProPitch();
         if (!Employed) return; // out of work: the rest of these messages are about your team
         if (collegeBefore != null)
         {
@@ -1469,19 +1471,24 @@ public sealed partial class GameSession
     {
         var picks = Offseason!.Report.Draft;
         if (picks.Count == 0) return;
+        RefreshProPitch(); // CP3: the drafted graduates are pros now
         string Row(DraftPick d) => $"{d.Pick}. {d.Team.Abbreviation}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility})";
         var first = picks[0];
         PostWorld($"Draft: {first.Player.Name} goes first to {first.Team.TheFullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
         var ours = picks.Where(d => d.Team == HumanTeam).ToList();
-        // CS4 (run 129): a college coach hears where his own graduates went.
-        if (Employed && InCollege && _myGraduates is { Count: > 0 } grads)
+        // CS4 (run 129): a college coach hears where his own graduates went. CP3 (run 132): after a load mid-summer the
+        // graduates come from the alumni record, a class with nobody picked hears so too, and the message ends with the
+        // program's pro record (the alumni tracker on the College page).
+        if (Employed && InCollege && (_myGraduates ?? GraduatesOf(HumanTeam, Offseason.Season + 1)) is { Count: > 0 } grads)
         {
             var mine = picks.Where(d => grads.Contains(d.Player.Id)).ToList();
             var undrafted = grads.Count - mine.Count;
-            if (mine.Count > 0)
-                Post(mine.Count == 1 ? $"Draft: {mine[0].Player.Name} goes {Ordinal(mine[0].Pick)} to {mine[0].Team.TheFullName}" : $"Draft: {mine.Count} of your graduates are picked",
-                    string.Join("\n", mine.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility}) to {d.Team.FullName}."))
-                    + (undrafted > 0 ? $"\n\n{undrafted} more of your graduates went undrafted and are free agents." : ""), "Draft");
+            string record = ProRecordOf(HumanTeam).Summary(Names.Brand.TopShort);
+            Post(mine.Count == 0 ? "Draft: none of your graduates is picked" : mine.Count == 1 ? $"Draft: {mine[0].Player.Name} goes {Ordinal(mine[0].Pick)} to {mine[0].Team.TheFullName}" : $"Draft: {mine.Count} of your graduates are picked",
+                (mine.Count == 0 ? $"The pros passed on all {grads.Count} of this year's graduates. They're free agents, and any club can still sign them."
+                    : string.Join("\n", mine.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility}) to {d.Team.FullName}."))
+                    + (undrafted > 0 ? $"\n\n{undrafted} more of your graduates went undrafted and are free agents." : ""))
+                + $"\n\nYour program in the pros: {record}. Follow them on the College page (Your pros); top recruits hear about it.", "Draft");
             _myGraduates = null;
         }
         if (Employed && !InCollege && ours.Count > 0)
@@ -1504,6 +1511,10 @@ public sealed partial class GameSession
     /// <summary>This summer's graduates of the coached program, for the draft's message (not saved: a load mid-summer skips it).</summary>
     private HashSet<int>? _myGraduates;
 
+    /// <summary>CP3: a program's graduates of one summer, from the alumni record (survives a save and load).</summary>
+    private HashSet<int>? GraduatesOf(Team program, int summer) =>
+        World.College?.Alumni.Where(kv => kv.Value.ProgramId == program.Id && kv.Value.Year == summer).Select(kv => kv.Key).ToHashSet();
+
     /// <summary>Abroad: what the sporting director did over the summer.</summary>
     private void SummerReport()
     {
@@ -1523,6 +1534,7 @@ public sealed partial class GameSession
         AgreedFees.Clear(); IncomingBids.Clear(); BidsWindowShut(); // the summer window shuts
         Phase = SessionPhase.Preseason;
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
+        RefreshProPitch(); // CP3: where the graduates signed this summer
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
         World.News.Clear();
         if (Employed)
@@ -1652,6 +1664,7 @@ public sealed partial class GameSession
         save.LoadCareer(session);
         session.CatchUpWorld();
         session.FixStaffPay();
+        session.RefreshProPitch(); // CP3: the pitch isn't saved; it's read from the alumni
         session.LastSavedAt = File.Exists(path) ? File.GetLastWriteTime(path) : DateTime.Now;
         if (save.UpgradedFrom is { } old)
         {

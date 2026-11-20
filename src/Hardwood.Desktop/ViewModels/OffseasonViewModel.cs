@@ -52,7 +52,9 @@ public sealed partial class ProspectRow : ObservableObject
     public string Height => PlayerRow.FormatHeight(Player.HeightCm);
     public double Knowledge { get; init; } = 1.0;
     public string CA => Scouting.Ability(Player, Knowledge).ToString();
-    public string PA => Scouting.Potential(Player, Knowledge).ToString();
+    /// <summary>CP3 (run 132, H119's college half): in a college career the graduates' potential is a scouting range.</summary>
+    public string? PaText { get; init; }
+    public string PA => PaText ?? Scouting.Potential(Player, Knowledge).ToString();
     public string Sho => Scouting.GroupAverage(Player, AttrGroup.Shooting, Knowledge);
     public string Ply => Scouting.GroupAverage(Player, AttrGroup.Playmaking, Knowledge);
     public string Def => Scouting.GroupAverage(Player, AttrGroup.Defense, Knowledge);
@@ -443,8 +445,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
         DraftText += " College players turn pro after four years, at 22, so the prospects are 22" + (o.Prospects.Any(p => p.Age(DraftAgeDay(s.Today)) > Hardwood.Core.College.CollegeWorld.GraduateAge) ? " (this summer also the last class from five-year college, at 23)." : ".");
         int rank = 1;
         var keep = _boardPick;
-        foreach (var p in o.Prospects.OrderByDescending(p => Scouting.Potential(p, Scouting.Knowledge(team, p)).Mid).ThenByDescending(p => p.CurrentAbility))
-            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Of = o.Prospects.Count, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p) });
+        // CP3 (run 132): a college coach sees the graduates' potential as ranges (H119's college half), ordered by their middle.
+        bool college = s.InCollege;
+        Scouting.Range Pa(Player p) => college ? s.CollegePotentialOf(p) ?? Scouting.CollegePotential(p, Scouting.Knowledge(team, p)) : Scouting.Potential(p, Scouting.Knowledge(team, p));
+        foreach (var p in o.Prospects.OrderByDescending(p => Pa(p).Mid).ThenByDescending(p => p.CurrentAbility))
+            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Of = o.Prospects.Count, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p), PaText = college ? Pa(p).ToString() : null });
         foreach (var r in DraftPool.Take(SummerCards.DraftCount)) DraftCards.Add(r);
         if (keep != null && !DraftCards.Any(r => r.Player == keep) && DraftPool.FirstOrDefault(r => r.Player == keep) is { } further) DraftCards.Add(further);
         DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted."

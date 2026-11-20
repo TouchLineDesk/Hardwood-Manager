@@ -5,6 +5,9 @@ namespace Hardwood.Core.College;
 /// <summary>A college player's class year (CS3, run 127): the short label for cards and tables and the long one for pages.</summary>
 public sealed record ClassYear(int Year, string Short, string Long, bool Final);
 
+/// <summary>CP3 (run 132): a graduate's program and the summer he turned pro.</summary>
+public sealed record Alumnus(int ProgramId, int Year);
+
 /// <summary>
 /// CS3 (run 127, the college plan): the years a fan can see. Players enroll at 18 and turn pro at 22 (D80 A, run 128), so a
 /// program carries four classes, Fr/So/Jr/Sr, and the seniors play their final season. No redshirts (Danny, #938).

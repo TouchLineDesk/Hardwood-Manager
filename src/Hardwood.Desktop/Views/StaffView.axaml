@@ -224,7 +224,7 @@
           <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170" IsReadOnly="True"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="64" IsReadOnly="True"/>
           <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="64" IsReadOnly="True"/>
-          <DataGridTextColumn Header="CA / PA" Binding="{Binding Ability}" Width="90" IsReadOnly="True"/>
+          <DataGridTextColumn Header="CA / PA" Binding="{Binding Ability}" Width="120" IsReadOnly="True"/>
           <DataGridTextColumn Header="Projected" Binding="{Binding Projected}" Width="100" IsReadOnly="True"/>
           <DataGridTextColumn Header="Staff" Binding="{Binding FromStaff}" Width="72" IsReadOnly="True"/>
           <DataGridTemplateColumn Header="Focus" Width="200">

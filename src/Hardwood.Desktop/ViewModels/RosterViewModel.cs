@@ -23,7 +23,9 @@ public sealed class PlayerRow
     public double Knowledge { get; init; } = 1.0;
     public string Ovr => Knowledge >= 0.999 ? Player.Overall.ToString("0.0") : $"{Scouting.Ability(Player, Knowledge).Low / 200.0 * 14 + 4:0.0}-{Scouting.Ability(Player, Knowledge).High / 200.0 * 14 + 4:0.0}";
     public string CA => Scouting.Ability(Player, Knowledge).ToString();
-    public string PA => Scouting.Potential(Player, Knowledge).ToString();
+    /// <summary>CP3 (run 132): a college player's potential range (set for college rosters); pros stay exact.</summary>
+    public string? PaText { get; init; }
+    public string PA => PaText ?? Scouting.Potential(Player, Knowledge).ToString();
     public int CaSort => Player.CurrentAbility;
     public string Sho => Scouting.GroupAverage(Player, AttrGroup.Shooting, Knowledge);
     public string Ply => Scouting.GroupAverage(Player, AttrGroup.Playmaking, Knowledge);
@@ -67,7 +69,7 @@ public sealed class PlayerRow
         var cls = s.ClassYearOf(p);
         return new PlayerRow
         {
-            ClassYear = cls?.Short ?? "", ClassOrder = cls?.Year ?? 0,
+            ClassYear = cls?.Short ?? "", ClassOrder = cls?.Year ?? 0, PaText = cls != null ? s.CollegePotentialOf(p)?.ToString() : null,
             Player = p, Age = p.Age(s.Today), BeforeCountdown = before, Status = status, Knowledge = Scouting.Knowledge(s.HumanTeam, p, prospect),
             Mpg = Math.Round(st?.Mpg ?? 0, 1), Ppg = Math.Round(st?.Ppg ?? 0, 1), Rpg = Math.Round(st?.Rpg ?? 0, 1), Apg = Math.Round(st?.Apg ?? 0, 1),
             FgPct = st is { FGA: > 0 } ? $"{st.FgPct * 100:F1}" : "",

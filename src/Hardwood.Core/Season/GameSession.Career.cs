@@ -112,6 +112,7 @@ public sealed partial class GameSession
         World.ManagedClubId = Employed && Abroad && !InCollege ? HumanTeam.Id : null;
         if (World.College is { } cw) cw.ManagedProgramId = Employed && InCollege ? HumanTeam.Id : null;
         if (Offseason != null) Offseason.HumanTeamId = ControlledTeamId;
+        RefreshProPitch(); // CP3: a new program has its own pro record (none if you left college)
     }
 
     // ------------------------------------------------------------------------------------------

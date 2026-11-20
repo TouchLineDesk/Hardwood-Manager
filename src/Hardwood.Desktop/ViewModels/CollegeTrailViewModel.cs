@@ -177,6 +177,8 @@ public sealed partial class CollegeViewModel
             new("Cares most about", ours && r.Scouted ? CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p)) : "?", ours && r.Scouted ? "it weighs extra with him" : "scout him to find out", "info"),
             new("Your staff project", ours && r.Scouted ? $"{c.StaffProjection(p, r)}" : "?", ours && r.Scouted ? "ability at 22" : $"services: {r.Projection}", ""),
             new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? "he can commit to you" : "needed before he commits", ours && r.Offered ? "good" : ""),
+            // CP3 (run 132): your graduates in the pros sway him a little (see the College page's Your pros tab).
+            new("Your pros", c.PitchFor(r) > 0 ? $"+{c.PitchFor(r):0.#}" : "0", c.ProPitchText == "" ? "no graduates yet" : c.ProPitchText, c.PitchFor(r) > 0 ? "good" : ""),
         };
         var list = c.Considering(p, r, board).Take(4).ToList();
         int open = c.OpenScholarships(me, r.ClassOf), standing = c.StandingOf(me, p, r, board);

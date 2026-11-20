@@ -44,6 +44,24 @@ public sealed class RankRow
     public string Rating { get; init; } = "";
 }
 
+/// <summary>CP3 (run 132): one of your program's graduates in the pros (the College page's Your pros tab).</summary>
+public sealed class AlumnusRow
+{
+    public required AlumnusLine Line { get; init; }
+    public Player Player => Line.Player;
+    public string Name => Line.Player.Name;
+    public string Pos => Line.Player.PrimaryPosition.ToString();
+    public string Class => Line.Class.ToString();
+    public string Club => Line.Club;
+    public string League => Line.League;
+    public int CA => Line.Player.CurrentAbility;
+    public int Age { get; init; }
+    public string Draft => Line.Draft is { } d ? $"{d.Year} · pick {d.Pick}" : "Undrafted";
+    /// <summary>"2 All-Star · 1 award" (or "-").</summary>
+    public string Honours => Line.AllStars == 0 && Line.Awards == 0 ? "-"
+        : string.Join(" · ", new[] { Line.AllStars > 0 ? $"{Line.AllStars} All-Star" : "", Line.Awards > 0 ? $"{Line.Awards} award{(Line.Awards == 1 ? "" : "s")}" : "" }.Where(x => x != ""));
+}
+
 public sealed class ProspectListRow
 {
     public required Player Player { get; init; }
@@ -53,7 +71,9 @@ public sealed class ProspectListRow
     public string Program { get; init; } = "";
     public double Knowledge { get; init; } = 1;
     public string CA => Scouting.Ability(Player, Knowledge).ToString();
-    public string PA => Scouting.Potential(Player, Knowledge).ToString();
+    /// <summary>CP3 (run 132): potential as your scouts' range ("150-168"), never exact for a college player or recruit.</summary>
+    public Scouting.Range PaRange { get; init; }
+    public string PA => PaRange.ToString();
     public string Line { get; init; } = "";
     /// <summary>Summers until he turns pro (he graduates the summer he is 22, D80 A).</summary>
     public int YearsLeft { get; init; }
@@ -288,6 +308,14 @@ public sealed partial class CollegeViewModel : PageViewModel
     public List<string> Positions { get; } = new() { "All", "PG", "SG", "SF", "PF", "C" };
     [ObservableProperty] private string _position = "All";
     public ObservableCollection<ProspectListRow> Prospects { get; } = new();
+    // CP3 (run 132): your graduates in the pros.
+    public ObservableCollection<AlumnusRow> Alumni { get; } = new();
+    [ObservableProperty] private AlumnusRow? _selectedAlumnus;
+    [ObservableProperty] private List<Chip> _alumniChips = new();
+    [ObservableProperty] private string _alumniNote = "";
+    public bool HasAlumni => Alumni.Count > 0;
+    public bool NoAlumni => Alumni.Count == 0;
+    [RelayCommand] private void OpenAlumnus(AlumnusRow? row) { if ((row ?? SelectedAlumnus) is { } r) Shell.ShowPlayer(r.Player); }
     [ObservableProperty] private ProspectListRow? _selectedProspect;
     public bool HasCollege => Session.World.College != null;
     /// <summary>The recruiting tabs exist in careers with the high-school model (decision #162).</summary>
@@ -422,6 +450,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         if (fourSet && _finalFourOpenedFor != s) { _finalFourOpenedFor = s; BracketView = FinalFourView; }
         FillBracket();
         FillProspects();
+        FillAlumni();
         FillRecruits();
         if (c.Recruiting)
         {
@@ -885,6 +914,30 @@ public sealed partial class CollegeViewModel : PageViewModel
         BracketologyChips = chips;
     }
 
+    /// <summary>CP3 (run 132): the alumni tracker, your program's graduates wherever they play now.</summary>
+    private void FillAlumni()
+    {
+        Alumni.Clear();
+        if (!IsCollegeCoach) { AlumniChips = new(); AlumniNote = ""; OnPropertyChanged(nameof(HasAlumni)); OnPropertyChanged(nameof(NoAlumni)); return; }
+        var rec = Session.ProRecordOf(Session.HumanTeam);
+        string top = Hardwood.Core.Names.Brand.TopShort;
+        foreach (var l in rec.Lines) Alumni.Add(new AlumnusRow { Line = l, Age = l.Player.Age(Session.Today) });
+        var best = rec.Lines.Where(l => !l.Retired).OrderByDescending(l => l.Player.CurrentAbility).FirstOrDefault();
+        var c = Session.World.College!;
+        AlumniChips = new()
+        {
+            new("Pros", rec.Pros.ToString(), "graduates on a pro roster", rec.Pros > 0 ? "good" : ""),
+            new($"In the {top}", rec.TopLeague.ToString(), "the top league", rec.TopLeague > 0 ? "good" : ""),
+            new("All-Stars", rec.AllStars.ToString(), "graduates with an All-Star game", rec.AllStars > 0 ? "good" : ""),
+            new("Best now", best == null ? "-" : best.Player.CurrentAbility.ToString(), best == null ? "nobody yet" : $"{best.Player.Name} · {best.Club}", "info"),
+            new("Recruiting pitch", c.ProPitch > 0 ? $"+{c.ProPitch:0}" : "0", c.ProPitch > 0 ? "appeal with top recruits" : $"until one reaches the {top}", c.ProPitch > 0 ? "good" : ""),
+        };
+        AlumniNote = rec.Lines.Count == 0
+            ? $"Nobody has graduated from {Session.HumanTeam.TheFullName} in this career yet. Each summer your seniors turn pro; this tab follows them through the draft and their careers, and every one who reaches the {top} helps you recruit (up to +{CollegeWorld.MaxProPitch:0} appeal with 4- and 5-star prospects, half that with the rest)."
+            : $"{rec.Summary(top)}. Every graduate in the {top} adds 1 to your appeal with 4- and 5-star recruits and each All-Star 2 more, up to +{CollegeWorld.MaxProPitch:0} (half for other recruits). Pick a row and press Open player for his page.";
+        OnPropertyChanged(nameof(HasAlumni)); OnPropertyChanged(nameof(NoAlumni));
+    }
+
     private void FillProspects()
     {
         Prospects.Clear();
@@ -901,13 +954,16 @@ public sealed partial class CollegeViewModel : PageViewModel
             .Where(x => Position == "All" || x.p.PrimaryPosition.ToString() == Position)
             .Select(x => (x.p, x.t, age: x.p.Age(today), left: YearsLeft(x.p)))
             .Where(x => Age switch { "Turning pro next summer" => x.left <= 1, "College (18-22)" => x.t != null && x.age >= 18, "High school (14-17)" => x.t == null || x.age <= 17, _ => true })
-            .OrderByDescending(x => x.p.PotentialAbility * 0.6 + x.p.CurrentAbility * 0.4).Take(200);
-        foreach (var (p, t, age, left) in rows)
+            // CP3 (run 132): ordered as your scouts see them (the middle of each potential range), not by the hidden number.
+            .Select(x => (x.p, x.t, x.age, x.left, pa: Scouting.CollegePotential(x.p, Scouting.CollegeKnowledge(team, x.p,
+                x.t != null ? (c.ClassYearOf(x.p, today)?.Year ?? 1) - 1 : 0, x.t == null && c.RecruitOf(x.p) is { Scouted: true } r && r.CourtedBy == team.Id))))
+            .OrderByDescending(x => x.pa.Mid * 0.6 + x.p.CurrentAbility * 0.4).Take(200);
+        foreach (var (p, t, age, left, pa) in rows)
         {
             c.Season.Stats.TryGetValue(p.Id, out var st);
             Prospects.Add(new ProspectListRow
             {
-                Player = p, Age = age, Program = Where(p, t), Knowledge = Scouting.Knowledge(team, p, prospect: true), YearsLeft = left,
+                Player = p, Age = age, Program = Where(p, t), Knowledge = Scouting.Knowledge(team, p, prospect: true), YearsLeft = left, PaRange = pa,
                 Line = st is { G: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast" : t == null ? "high school" : "-",
             });
         }
