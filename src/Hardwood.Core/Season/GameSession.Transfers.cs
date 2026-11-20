@@ -240,7 +240,12 @@ public sealed partial class GameSession
         if (TransferLog.Count > 150) TransferLog.RemoveAt(0);
         bool ours = from == HumanTeam || to == HumanTeam;
         bool big = fee >= (League.Teams.Contains(to) ? 15_000_000 : 1_500_000);
-        if (ours || big || HumanLeague?.Clubs.Contains(to) == true || HumanLeague?.Clubs.Contains(from) == true)
+        // CS4 (run 129): for a college coach the pros' transfers are world news (the weekly digest).
+        if (!ours && Employed && InCollege)
+        {
+            if (big) PostWorld($"Transfer: {p.Name} to {to.Abbreviation}", $"{p.Name} moves from {from.FullName} to {to.FullName} for ${fee / 1e6:F2}M.");
+        }
+        else if (ours || big || HumanLeague?.Clubs.Contains(to) == true || HumanLeague?.Clubs.Contains(from) == true)
             Post($"Transfer: {p.Name} to {to.Abbreviation}", $"{p.Name} ({p.PrimaryPosition}, {p.Age(Today)}) moves from {from.FullName} to {to.FullName} for ${fee / 1e6:F2}M, "
                 + $"on ${wage / 1e6:F2}M a year for {years} year{(years == 1 ? "" : "s")}.", ours ? "Roster" : InCollege ? "League" : "Transactions");
     }

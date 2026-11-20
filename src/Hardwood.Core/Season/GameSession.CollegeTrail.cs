@@ -57,9 +57,14 @@ public sealed partial class GameSession
     {
         if (World.College is not { } c || c.CoachNews.Count == 0) return;
         // Recruiting news needs the trail; Selection Sunday (C4 part 1) comes to any college coach.
+        // CS4 (run 129): targets who chose another school wait for Monday: they ride in the weekly results message, or
+        // arrive together as one "Recruiting" message when there are no results that week (one message each was 15-20
+        // messages per three seasons).
         foreach (var (title, body) in c.CoachNews)
             if (title.StartsWith("Selection Sunday")) { if (Employed && InCollege) Post(title, body, "League"); }
-            else if (TrailOpen) Post(title, body, "Roster");
+            else if (!TrailOpen) { }
+            else if (title.Contains(" picks ")) WeekRecruiting.Add(body);
+            else Post(title, body, "Roster");
         c.CoachNews.Clear();
     }
 }

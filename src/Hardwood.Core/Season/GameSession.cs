@@ -198,10 +198,24 @@ public sealed partial class GameSession
     /// <summary>World news: anything about your club goes straight to the inbox; the rest waits for the weekly "Around the world".</summary>
     public void PostWorld(string title, string body)
     {
-        if (Employed && (title.Contains(HumanTeam.FullName) || body.Contains(HumanTeam.FullName))) { Post(title, body, "World"); return; }
+        // CS4 (run 129): a top recruit's national headline about your own program repeats the trail's "commits to you".
+        bool ownCommit = Employed && InCollege && TrailOpen && title.EndsWith($"commits to {HumanTeam.FullName}");
+        if (ownCommit) return;
+        if (!ownCommit && Employed && (title.Contains(HumanTeam.FullName) || body.Contains(HumanTeam.FullName))) { Post(title, body, "World"); return; }
         // March Madness is a college coach's own event (C4 part 2, #306): its round-by-round stories come straight to the
         // inbox. Pro careers read them in the world digest.
-        if (Employed && InCollege && Hardwood.Core.College.CollegeWorld.IsMadnessHeadline(title)) { Post(title, body, "World"); return; }
+        if (Employed && InCollege && Hardwood.Core.College.CollegeWorld.IsMadnessHeadline(title))
+        {
+            // CS4 (run 129): a Cinderella story rides in today's March Madness message instead of one of its own
+            // ("Cinderella" was 8-11 messages per three seasons).
+            // Run 129 also folds the champion and an upset into the same day's March Madness message.
+            if (Inbox.FirstOrDefault(m => m.Date == Today && m.Category == "World" && Hardwood.Core.College.CollegeWorld.IsMadnessHeadline(m.Title)) is { } round)
+            {
+                Inbox[Inbox.IndexOf(round)] = new InboxMessage { Id = round.Id, Date = round.Date, Title = round.Title, Body = round.Body + $"\n\n{title}. {body}", Category = round.Category, Read = round.Read };
+                return;
+            }
+            Post(title, body, "World"); return;
+        }
         WorldDigest.Add(new DigestItem(Today, title, FirstSentence(body)));
         if (WorldDigest.Count > 200) WorldDigest.RemoveRange(0, WorldDigest.Count - 200);
     }
@@ -209,27 +223,54 @@ public sealed partial class GameSession
     /// <summary>Once a week (or when it fills up), the world's headlines arrive as one message.</summary>
     private void MaybePostDigest(bool now = false)
     {
-        if (WorldDigest.Count == 0) return;
+        if (WorldDigest.Count == 0 && WeekRecruiting.Count == 0) return;
         // Review #12, Top fix 1 (run 42): during the regular season the headlines ride in the weekly results message
         // instead of a message of their own ("Around the world" was 53 of ~280 messages per three seasons).
         // Run 48: also between a Monday's results and the next game (WeekResults is empty then), so a burst of news early
         // in the week waits for next Monday's message instead of arriving on its own.
-        bool resultsComing = WeekResults.Count > 0 || (Employed && Phase == SessionPhase.RegularSeason);
-        if (!now && resultsComing && WorldDigest.Count < 80) return;
-        if (!now && Today.DayNumber - LastDigest.DayNumber < 14 && WorldDigest.Count < 40) return; // fortnightly (review #4)
+        // CS4 (run 129): a college coach's results come only while his program plays (November to March), not all through the
+        // pros' regular season, so the digest isn't held back for results that won't come.
+        bool resultsComing = WeekResults.Count > 0 || (Employed && (InCollege ? NextMyGame is { } ng && ng.Date.DayNumber - Today.DayNumber <= 7 : Phase == SessionPhase.RegularSeason));
+        if (!now && resultsComing && WorldDigest.Count < 80 && WeekRecruiting.Count < 12) return;
+        if (!now && Today.DayNumber - LastDigest.DayNumber < 14 && WorldDigest.Count < 40 && WeekRecruiting.Count < 12) return; // fortnightly (review #4)
         var lines = WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : ""));
-        Post($"Around the world: {WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}",
-            string.Join("\n", lines) + "\n\nTables, results and leaders are on the Leagues page.", "World");
+        string stories = $"{WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}";
+        // CS4 (run 129): recruits you courted who chose another school lead the digest when no results message is coming.
+        string recruiting = RecruitingLines();
+        Post(WeekRecruiting.Count == 0 ? $"Around the world: {stories}"
+                : $"Recruiting: {Targets(WeekRecruiting.Count)} chose other schools" + (WorldDigest.Count > 0 ? $"; around the world: {stories}" : ""),
+            recruiting + (recruiting.Length > 0 && WorldDigest.Count > 0 ? "\n\nAround the world:\n" : "")
+            + (WorldDigest.Count > 0 ? string.Join("\n", lines) + "\n\nTables, results and leaders are on the Leagues page." : ""), WeekRecruiting.Count > 0 ? "Roster" : "World");
         WorldDigest.Clear();
+        WeekRecruiting.Clear();
         LastDigest = Today;
     }
 
-    private static string FirstSentence(string body)
+    private static string Targets(int n) => n == 1 ? "a target" : $"{n} targets";
+
+    /// <summary>The recruits you courted who chose another school, as a message section ("" when there are none).</summary>
+    private string RecruitingLines() => WeekRecruiting.Count == 0 ? ""
+        : "Recruiting (targets who chose other schools):\n" + string.Join("\n", WeekRecruiting.Select(k => $"• {k}")) + "\nYour board is on the College page's Recruiting tab.";
+
+    public static string FirstSentence(string body)
     {
         var line = body.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
-        int dot = line.IndexOf(". ", StringComparison.Ordinal);
+        int dot = -1;
+        for (int from = 0; (dot = line.IndexOf(". ", from, StringComparison.Ordinal)) > 0; from = dot + 2)
+            if (!EndsWithAbbreviation(line, dot)) break; // K10 (run 129): "The No. 3 player ..." stays whole
         if (dot > 0) line = line[..(dot + 1)];
         return line.Length > 180 ? line[..177] + "..." : line;
+    }
+
+    private static readonly string[] Abbreviations = { "No", "St", "Jr", "Sr", "Mt", "Dr", "vs", "Ft" };
+
+    /// <summary>True when the ". " at <paramref name="dot"/> ends an abbreviation ("No.", "St.", "Jr.") or an initial ("J."), not a sentence.</summary>
+    private static bool EndsWithAbbreviation(string line, int dot)
+    {
+        int start = dot;
+        while (start > 0 && char.IsLetter(line[start - 1])) start--;
+        var word = line[start..dot];
+        return word.Length == 1 && char.IsUpper(word[0]) || Abbreviations.Contains(word);
     }
 
     public void MarkAllRead() { foreach (var m in Inbox) m.Read = true; }
@@ -239,6 +280,9 @@ public sealed partial class GameSession
 
     /// <summary>Short injuries (no lasting loss, back within <see cref="KnockDays"/> days) from regular-season games, carried by the next results message.</summary>
     public List<string> WeekKnocks { get; } = new();
+
+    /// <summary>CS4 (run 129): recruits you courted who chose another school, carried by the next results message in season.</summary>
+    public List<string> WeekRecruiting { get; } = new();
     public const int KnockDays = 14;
 
     /// <summary>A results message's title starts with one of these ("This week: 3-1 …", "Last two weeks: 5-2 …").</summary>
@@ -247,7 +291,7 @@ public sealed partial class GameSession
     private void MaybePostResults(bool now = false)
     {
         // H109 (run 117): out of work there is no "this week" of yours (the fired career's inbox got the Pelicans' 0-3 and 0-4).
-        if (!Employed) { WeekResults.Clear(); WeekKnocks.Clear(); _resultsSince = null; return; }
+        if (!Employed) { WeekResults.Clear(); WeekKnocks.Clear(); WeekRecruiting.Clear(); _resultsSince = null; return; }
         if (WeekResults.Count == 0) return;
         if (!now && Today.DayOfWeek != DayOfWeek.Monday) return;
         // Every Monday again since v0.56.0 (Danny, #243): the inbox can be cleaned, so volume is his choice. The inbox
@@ -261,6 +305,7 @@ public sealed partial class GameSession
         string body = string.Join("\n", WeekResults) + "\n\nBox scores are on the Schedule & Results page.";
         // Review #12, Top fix 1 (run 42): short knocks and the world's headlines ride along instead of arriving one by one.
         if (WeekKnocks.Count > 0) body += "\n\nKnocks (back within two weeks):\n" + string.Join("\n", WeekKnocks.Select(k => $"• {k}"));
+        if (WeekRecruiting.Count > 0) body += "\n\n" + RecruitingLines();
         if (WorldDigest.Count > 0)
         {
             body += $"\n\nAround the world ({WorldDigest.Count} {(WorldDigest.Count == 1 ? "story" : "stories")}):\n" + string.Join("\n", WorldDigest.Select(d => $"• {d.Title}" + (d.Line.Length > 0 ? $": {d.Line}" : "")));
@@ -270,6 +315,7 @@ public sealed partial class GameSession
         Post($"{(twoWeeks ? "Last two weeks" : "This week")}: {w}-{l} ({MyRecord.Wins}-{MyRecord.Losses} overall)", body, "Game");
         WeekResults.Clear();
         WeekKnocks.Clear();
+        WeekRecruiting.Clear();
         _resultsSince = null;
     }
 
@@ -554,9 +600,9 @@ public sealed partial class GameSession
             if (Postseason.DivisionFormat && _stageBefore == "Conference Finals" && Postseason.Stage == "Finals" && Postseason.ThirdPlaceWinner is { } tw)
             {
                 bool ours = tw == HumanTeam || Postseason.ThirdPlaceRunnerUp == HumanTeam;
-                Post($"{tw.FullName} win the {Postseason.ThirdPlaceName}",
+                PostPro($"{tw.FullName} win the {Postseason.ThirdPlaceName}",
                     $"{tw.FullName} beat {Postseason.ThirdPlaceRunnerUp!.FullName} in the {Postseason.ThirdFinal} and take the trophy and {Franchise.Money(Postseason.ThirdPlacePrizeFor(true))} in prize money " +
-                    $"({Franchise.Money(Postseason.ThirdPlacePrizeFor(false))} to the runner-up)." + (tw == HumanTeam ? " Congratulations: silverware for your club." : ours ? " The runner-up's prize is in your accounts." : ""), "League");
+                    $"({Franchise.Money(Postseason.ThirdPlacePrizeFor(false))} to the runner-up)." + (tw == HumanTeam ? " Congratulations: silverware for your club." : ours ? " The runner-up's prize is in your accounts." : ""));
             }
             if (Postseason.Complete)
             {
@@ -564,8 +610,8 @@ public sealed partial class GameSession
                 if (_championPostedSeason != League.Season && !Inbox.Any(m => m.Title == title && m.Date >= OpeningNight))
                 {
                     _championPostedSeason = League.Season;
-                    Post(title, $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
-                        (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""), "League");
+                    PostPro(title, $"{Postseason.Champion.FullName} defeated {Postseason.RunnerUp!.FullName} in the Finals." +
+                        (Postseason.Champion == HumanTeam ? " Congratulations: a title for your franchise." : ""));
                 }
                 // A club abroad may still be playing (overseas playoffs run into June): the summer waits for it.
                 if (!HumanSeasonOver && Today < new DateOnly(League.Season + 1, 7, 20))
@@ -1176,6 +1222,7 @@ public sealed partial class GameSession
             // College (C2): no contracts. Seniors graduate into the pros and the signed class enrolls (#162).
             var now = HumanTeam.Roster.ToHashSet();
             var left = collegeBefore.Where(p => !now.Contains(p)).ToList();
+            _myGraduates = left.Select(p => p.Id).ToHashSet();
             var joined = HumanTeam.Roster.Where(p => !collegeBefore.Contains(p)).OrderByDescending(p => p.CurrentAbility).ToList();
             Post("Graduation and enrollment",
                 (left.Count > 0 ? $"Graduated into the pros: {string.Join(", ", left.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : "Nobody graduated this year.")
@@ -1250,10 +1297,10 @@ public sealed partial class GameSession
         if (summary.FinalsMvpPlayerId is { } fm) parts.Add($"Finals MVP: {Name(fm)} ({League.TeamById(summary.ChampionTeamId).FullName}).");
         var ours = a.AllLeague.SelectMany(t => t).Where(id => all.TryGetValue(id, out var p) && p.TeamId == HumanTeam.Id).Select(id => Name(id)).ToList();
         if (ours.Count > 0) parts.Insert(0, $"Your All-League honourees: {string.Join(", ", ours)}.");
-        Post($"Season awards: {Name(a.Mvp)} is MVP", string.Join("\n\n", parts), "Awards");
+        PostPro($"Season awards: {Name(a.Mvp)} is MVP", string.Join("\n\n", parts), "Awards");
         var honours = Offseason!.Report.HallOfFame.Select(h => HallOfFameLine(h, League.Careers[h.Id]))
             .Concat(Offseason.Report.RetiredNumbers.Select(x => $"{x.Item2.FullName} retire {x.Item1.Name}'s number.")).ToList();
-        if (honours.Count > 0) Post(honours.Count == 1 ? honours[0].Split(',')[0].Split(" retire ")[0] : $"Hall of Fame and retired numbers ({honours.Count})", string.Join("\n", honours), "Awards");
+        if (honours.Count > 0) PostPro(honours.Count == 1 ? honours[0].Split(',')[0].Split(" retire ")[0] : $"Hall of Fame and retired numbers ({honours.Count})", string.Join("\n", honours), "Awards");
     }
 
     /// <summary>
@@ -1404,7 +1451,17 @@ public sealed partial class GameSession
         var ours = Enumerable.Range(0, o.PickOwners.Count).Where(i => o.PickOwners[i] == HumanTeam).Select(i => i + 1).ToList();
         string mine = !Employed || InCollege ? "" : ours.Count == 0 ? (InNabl ? NoPickReason : NoPickReasonOutsideNba) + "\n\n"
             : $"You pick {string.Join(" and ", ours.Select(Ordinal))}. When the draft reaches you, choose on the Offseason page (Draft), or press Continue and your scouts pick for you.\n\n";
-        Post("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates go in a one-round draft before free agency; everyone else from the class is a free agent. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
+        PostPro("The draft lottery", mine + $"The best {o.Prospects.Count} college graduates go in a one-round draft before free agency; everyone else from the class is a free agent. Every eligible club had the same odds.\n\n" + string.Join("\n", Enumerable.Range(0, o.PickOwners.Count).Select(Line)), "Draft");
+    }
+
+    /// <summary>
+    /// CS4 (run 129): pro league news (the champions, the third-place tournament, the awards, the Hall of Fame, the draft
+    /// lottery) is world news for a college coach: it rides in the weekly digest instead of a message of its own.
+    /// </summary>
+    public void PostPro(string title, string body, string category = "League")
+    {
+        if (Employed && InCollege) PostWorld(title, body);
+        else Post(title, body, category);
     }
 
     /// <summary>D40: who went where.</summary>
@@ -1416,6 +1473,17 @@ public sealed partial class GameSession
         var first = picks[0];
         PostWorld($"Draft: {first.Player.Name} goes first to {first.Team.TheFullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
         var ours = picks.Where(d => d.Team == HumanTeam).ToList();
+        // CS4 (run 129): a college coach hears where his own graduates went.
+        if (Employed && InCollege && _myGraduates is { Count: > 0 } grads)
+        {
+            var mine = picks.Where(d => grads.Contains(d.Player.Id)).ToList();
+            var undrafted = grads.Count - mine.Count;
+            if (mine.Count > 0)
+                Post(mine.Count == 1 ? $"Draft: {mine[0].Player.Name} goes {Ordinal(mine[0].Pick)} to {mine[0].Team.TheFullName}" : $"Draft: {mine.Count} of your graduates are picked",
+                    string.Join("\n", mine.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility}) to {d.Team.FullName}."))
+                    + (undrafted > 0 ? $"\n\n{undrafted} more of your graduates went undrafted and are free agents." : ""), "Draft");
+            _myGraduates = null;
+        }
         if (Employed && !InCollege && ours.Count > 0)
             Post("Your draft", string.Join("\n", ours.Select(d => $"Pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}), ${d.Player.Contract!.Salary / 1e6:F2}M a year for {d.Player.Contract.Years} years (your option on the last)."))
                 + (League.Finance.OpenMarket ? "\n\nA pick is compulsory, so the owner has added each rookie's wage to your wage budget." : ""), "Draft");
@@ -1433,6 +1501,8 @@ public sealed partial class GameSession
     }
 
     private List<int>? _summerRoster;
+    /// <summary>This summer's graduates of the coached program, for the draft's message (not saved: a load mid-summer skips it).</summary>
+    private HashSet<int>? _myGraduates;
 
     /// <summary>Abroad: what the sporting director did over the summer.</summary>
     private void SummerReport()
