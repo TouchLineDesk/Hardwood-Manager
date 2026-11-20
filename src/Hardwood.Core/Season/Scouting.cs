@@ -52,6 +52,41 @@ public static class Scouting
     public static Range Ability(Player p, double knowledge) => new(p.CurrentAbility, p.CurrentAbility);
     public static Range Potential(Player p, double knowledge) => new(p.PotentialAbility, p.PotentialAbility);
 
+    /// <summary>
+    /// CP3 (run 132, `claude/college-pipeline-design.md`): a college player's or recruit's potential as a scouting range
+    /// ("150-168"), never an exact number, since nobody knows what a teenager will become. It narrows with what the viewer
+    /// knows (<see cref="CollegeKnowledge"/>): about 20 points wide for a recruit you haven't scouted, 6 for your own
+    /// senior. Decision #119's two complaints are kept out: the range never reads below his current ability, and it is
+    /// stable from screen to screen (a fixed per-player misjudgement, like the attributes' fog). Pros keep exact numbers.
+    /// </summary>
+    public static Range CollegePotential(Player p, double knowledge)
+    {
+        int width = Math.Max(MinCollegeWidth, (int)Math.Round((1 - Math.Clamp(knowledge, 0, 1)) * 40));
+        int pa = p.PotentialAbility;
+        int centre = pa + (int)Math.Round(Bias(p.Id, 97) * width / 3.0);
+        int low = centre - width / 2, high = low + width;
+        if (low > pa) { low = pa; high = low + width; }
+        if (high < pa) { high = pa; low = high - width; }
+        low = Math.Max(low, p.CurrentAbility);
+        high = Math.Clamp(high, low + MinCollegeWidth / 2, 200);
+        low = Math.Min(low, high);
+        return new Range(low, high);
+    }
+
+    /// <summary>The narrowest a college potential range gets (your own senior, scouted every day for four years).</summary>
+    public const int MinCollegeWidth = 4;
+
+    /// <summary>
+    /// What a coach knows of a college player's or recruit's potential: his own players from 0.55 as freshmen to 0.85 as
+    /// seniors (time on your roster); anyone else from the head scout's knowledge, a little less than a pro's, plus 0.1 for
+    /// a recruit your staff has scouted.
+    /// </summary>
+    public static double CollegeKnowledge(Team viewer, Player p, int yearsOnRoster, bool scouted = false)
+    {
+        if (p.TeamId == viewer.Id) return 0.55 + 0.1 * Math.Clamp(yearsOnRoster, 0, 3);
+        return Math.Min(0.8, StaffEffects.ScoutingKnowledge(viewer) * 0.85 + (scouted ? 0.1 : 0));
+    }
+
     public static string GroupAverage(Player p, AttrGroup g, double knowledge)
     {
         var attrs = AttrInfo.All.Where(a => AttrInfo.GroupOf(a) == g).ToList();

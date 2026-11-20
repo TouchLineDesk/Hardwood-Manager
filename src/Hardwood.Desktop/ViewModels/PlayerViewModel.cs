@@ -51,6 +51,8 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string Name => Player.Name;
     public Hardwood.Core.Model.Team? TeamObj => Player.TeamId is { } id ? Session.FindTeam(id)! : null;
     public double Knowledge => Core.Season.Scouting.Knowledge(Session.HumanTeam, Player);
+    /// <summary>CP3 (run 132): the card's foot shows a college player's potential as a range ("POT 75-93"); null keeps the card's own line.</summary>
+    public string? CardFooter => Session.CollegePotentialOf(Player) is { } r ? $"POT {r}" : null;
     public string TierLine { get; private set; } = "";
     public string Headline { get; private set; } = "";
     public string Bio { get; private set; } = "";
@@ -100,7 +102,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         double k = Scouting.Knowledge(s.HumanTeam, p);
         // CS3 (run 127): a college player's class year leads his line ("Senior · age 21 …").
         var cy = s.ClassYearOf(p);
-        Bio = (cy is { } y ? $"{y.Long}{(y.Final ? " (final season: turns pro next summer)" : "")} · " : "") + $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {Scouting.Potential(p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
+        Bio = (cy is { } y ? $"{y.Long}{(y.Final ? " (final season: turns pro next summer)" : "")} · " : "") + $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {PotentialText(s, p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
         Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M per year, {(c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} remaining")}{(c.TeamOption ? ", team option" : "")}" : "No contract";
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
@@ -183,7 +185,9 @@ public sealed partial class PlayerViewModel : PageViewModel
                 : new("Age", p.Age(s.Today).ToString(), $"born {p.BirthDate:MMM d, yyyy}"),
             new("Height", PlayerRow.FormatHeight(p.HeightCm), $"{p.HeightCm} cm · {p.WingspanCm} span · {p.WeightKg} kg"),
             new("Ability", Scouting.Ability(p, k).ToString(), k >= 0.999 ? $"overall {p.Overall:F1}" : $"scouted {k * 100:F0}%", "team"),
-            new("Potential", Scouting.Potential(p, k).ToString(), Scouting.Potential(p, k).ToString() == Scouting.Ability(p, k).ToString() ? "at his peak" : "", "team"),
+            s.CollegePotentialOf(p) is { } range
+                ? new("Potential", range.ToString(), p.TeamId == s.HumanTeam.Id ? "your staff's read: it narrows each year he's with you" : "your scouts' read: a range until he turns pro", "team")
+                : new("Potential", Scouting.Potential(p, k).ToString(), Scouting.Potential(p, k).ToString() == Scouting.Ability(p, k).ToString() ? "at his peak" : "", "team"),
         };
         if (p.Contract is { } c)
             chips.Add(new("Salary", Money(c.Salary), c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} left{(c.TeamOption ? ", team option" : "")}{(c.RelegationRelease ? ", relegation release" : "")}", c.Years <= 0 ? "warn" : ""));   // K1 (run 111)
@@ -219,4 +223,7 @@ public sealed partial class PlayerViewModel : PageViewModel
     public static string Money(long v) => Math.Abs(v) >= 1_000_000 ? $"${v / 1e6:0.0#}M" : $"${v / 1e3:0}K";
 
     private static string Pretty(Attr a) => System.Text.RegularExpressions.Regex.Replace(a.ToString(), "(?<=[a-z])([A-Z])", " $1");
+
+    /// <summary>CP3 (run 132): a college player's or recruit's potential is a range; a pro's stays exact (#119).</summary>
+    internal static string PotentialText(GameSession s, Player p, double k) => s.CollegePotentialOf(p)?.ToString() ?? Scouting.Potential(p, k).ToString();
 }

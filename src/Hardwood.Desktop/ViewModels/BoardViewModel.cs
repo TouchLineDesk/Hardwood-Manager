@@ -379,13 +379,19 @@ public sealed partial class BoardViewModel : PageViewModel
         return new List<Hardwood.Desktop.Controls.Chip>
         {
             // CS2 (run 126, #166): prestige as a letter, the number beside it.
-            new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + (prestige >= 75 ? "a blue blood" : prestige >= 55 ? "a known name" : "building a name"), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
+            new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + PrestigeWords(prestige, cw.PrestigeRanks().GetValueOrDefault(t.Id, cw.Programs.Count)), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
             new("National rank", $"#{rank}", $"of {cw.Programs.Count} programs", rank <= 25 ? "good" : ""),
             new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
             new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
             new("Graduating", $"{seniors}", "turn pro next summer", "info"),
         };
     }
+
+    /// <summary>H136 (run 132): "a blue blood" is the top handful by prestige rank, not every program at 75+ (the No. 50
+    /// program read "a blue blood"); the rest of 75+ are power programs.</summary>
+    public const int BlueBloods = 8;
+    public static string PrestigeWords(double prestige, int prestigeRank) =>
+        prestige >= 75 && prestigeRank <= BlueBloods ? "a blue blood" : prestige >= 75 ? "a power program" : prestige >= 55 ? "a known name" : "building a name";
 
     public static List<Hardwood.Desktop.Controls.Chip> DriverChips(BoardOutlook outlook)
     {

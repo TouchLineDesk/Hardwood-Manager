@@ -272,7 +272,7 @@ public sealed partial class CollegeWorld
             RecruitPriority.PlayingTime => minutes,
             _ => winning,
         };
-        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale);
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r);
         return a + (rng?.NextGaussian(0, 14) ?? 0);
     }
 
@@ -300,6 +300,21 @@ public sealed partial class CollegeWorld
     /// mid-major still can't outbid a blue blood for him); a 3-star's is 30 at 0.45 (100 interest is +31.5).
     /// </summary>
     public static double CourtingEdge(Recruit r, int programId, double interest) => (interest - Baseline(r)) * WeightOf(r);
+
+    /// <summary>
+    /// CP3 (run 132): the coached program's pro record (<see cref="ProPitch"/>) sways the recruits who dream of the pros:
+    /// all of it for a 4- or 5-star, half for anyone else. Small by design (at most <see cref="MaxProPitch"/> appeal points,
+    /// about the gap between two neighbouring programs), and only for the coached program, so the computer schools' results
+    /// (and March Madness) don't compound.
+    /// </summary>
+    public double PitchFor(Recruit r) => ProPitch * (r.Stars >= 4 ? 1 : 0.5);
+
+    /// <summary>The most a program's pro record adds to its appeal.</summary>
+    public const double MaxProPitch = 6;
+
+    /// <summary>Appeal points for a pro record: 1 for each alumnus in the top league, 2 more for each All-Star among them
+    /// (career), capped at <see cref="MaxProPitch"/>.</summary>
+    public static double PitchPoints(int inTopLeague, int allStars) => Math.Min(MaxProPitch, inTopLeague * 1.0 + allStars * 2.0);
 
     /// <summary>How hard the computer schools court him, in interest points.</summary>
     public static double Baseline(Recruit r) => r.Stars switch { >= 5 => 60, 4 => 45, 3 => 30, _ => 20 };

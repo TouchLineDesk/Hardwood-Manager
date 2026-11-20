@@ -465,6 +465,7 @@ public sealed partial class CollegeWorld
                 if (age >= GraduateAge)
                 {
                     t.Roster.Remove(p);
+                    Alumni[p.Id] = new Alumnus(t.Id, on.Year); // CP3: the alumni tracker and the recruiting pitch
                     p.TeamId = null; p.Contract = null; p.RookieSeason = on.Year;
                     Destined.Remove(p.Id); WalkOnIds.Remove(p.Id);
                     freeAgents.Add(p);
@@ -720,6 +721,16 @@ public sealed partial class CollegeWorld
 
     /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
     public int? ManagedProgramId { get; set; }
+
+    /// <summary>CP3 (run 132): every graduate's program and the summer he turned pro (player id → record), kept for the
+    /// alumni tracker and the recruiting pitch. Saved in the college world_meta row; careers from before v0.120.0 start
+    /// with none and gain each class as it graduates.</summary>
+    public Dictionary<int, Alumnus> Alumni { get; } = new();
+
+    /// <summary>CP3: the coached program's pro record as recruits hear it (set by the session, not saved): appeal points
+    /// added for the coached program only, and the words behind them.</summary>
+    public double ProPitch { get; set; }
+    public string ProPitchText { get; set; } = "";
 
     /// <summary>A program's unplayed game on a date (null when it doesn't play).</summary>
     public CollegeGame? GameOn(int teamId, DateOnly date) =>

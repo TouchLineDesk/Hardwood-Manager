@@ -1,3 +1,4 @@
+using Hardwood.Core.College;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -519,6 +520,25 @@ public class LayoutCheckTests
                 ("Staff", v => v.Navigate("Staff & Training")),
                 ("Player", v => v.ShowPlayer(v.Session!.HumanTeam.Roster.Where(p => v.Session.ClassYearOf(p) is { Final: false })
                     .OrderByDescending(p => p.Name.Length).First())),
+                // CP3 (run 132): the alumni tracker. A new career has no graduates yet, so a few NBA players stand in as
+                // alumni (the longest club name among them) to fill the table; the empty state is checked on first open.
+                ("Your pros empty", v => { v.Navigate("College"); ((CollegeViewModel)v.CurrentPage!).Tab = 8; }),
+                ("Your pros", v =>
+                {
+                    var s = v.Session!;
+                    var c = s.World.College!;
+                    if (c.Alumni.Count == 0)
+                    {
+                        int y = 2019;
+                        foreach (var p in s.League.Teams.OrderByDescending(t => t.FullName.Length).Take(4).SelectMany(t => t.Roster.OrderByDescending(p => p.CurrentAbility).Take(2)))
+                            c.Alumni[p.Id] = new Alumnus(s.HumanTeam.Id, y++);
+                        s.RefreshProPitch();
+                    }
+                    v.Navigate("College");
+                    var col = (CollegeViewModel)v.CurrentPage!;
+                    col.Tab = 8;
+                    col.Refresh();
+                }),
             };
             foreach (var (width, guide, scale) in new[] { (1480, true, 1.0), (1480, false, 1.0), (1280, true, 1.0), (1280, false, 1.0), (1280, true, 1.3) })
             {

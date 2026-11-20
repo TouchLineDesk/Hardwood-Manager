@@ -134,7 +134,13 @@ public sealed partial class StandingsViewModel : PageViewModel
         if (s.InCollege && s.World.College is { } cw)
         {
             // College (C2): your conference on the left (its top eight play the conference tournament), the Top 25 on the right.
-            FillRecords(East, s.MyStandings.All(), r => r <= 8 ? "Playoffs" : "", school: true);
+            // H134 (run 132): before conference play every team is 0-0, and the table read in alphabetical order with the top
+            // eight shaded for the tournament. Until the first conference game it's ordered by overall record, as Home does,
+            // with no tournament shading, and the title says so.
+            var conf = s.MyStandings.All();
+            bool before = conf.Count > 0 && conf.All(r => r.Games == 0);
+            if (before) conf = conf.Select(r => s.CollegeRecord(r.Team)).OrderByDescending(r => r.WinPct).ThenByDescending(r => r.Wins).ThenByDescending(r => r.PointDiff).ToList();
+            FillRecords(East, conf, r => !before && r <= 8 ? "Playoffs" : "", school: true);
             var top = cw.Top25().Select(s.CollegeRecord).ToList();
             FillRecords(West, top, _ => "");
             for (int i = 0; i < West.Count; i++) West[i] = new StandingRow
@@ -143,7 +149,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 Home = West[i].Home, Last10 = West[i].Last10, IsHuman = West[i].IsHuman, ShowRank = false,
             };
             PlayoffLabel = "Conference tournament"; ShowPlayIn = false; ShowCards = false;
-            LeftTitle = $"{s.MyConference!.Name} (conference games)"; RightTitle = "Top 25 (by rating, overall records)";
+            LeftTitle = before ? $"{s.MyConference!.Name} (overall records until conference play starts in January)" : $"{s.MyConference!.Name} (conference games)"; RightTitle = "Top 25 (by rating, overall records)";
             Note = "Tournament winners get automatic March Madness bids.";
             Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
             OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));
