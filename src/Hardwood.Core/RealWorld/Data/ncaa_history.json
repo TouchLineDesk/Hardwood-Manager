@@ -1,7 +1,7 @@
 {
  "checked": "2026-11-20",
  "source": "Champions, runners-up, title-game scores and vacated appearances: Wikipedia, 'List of NCAA Division I men's basketball champions' and 'List of NCAA Division I men's basketball tournament Final Four participants' (vacated section), read Nov 20, 2026. The 2026 Final Four (Michigan, Arizona, UConn, Illinois): NCAA.com and theScore, Nov 20, 2026. NBA alumni: Dunkest (Jul 3, 2026), WTOP (Feb 2026), Baylor Proud (Feb 24, 2026), NBA.com (Mar 21, 2025), Sportskeeda (2024), Spotrac college pages and Rivals (2023-24), read Nov 20, 2026.",
- "notes": "The other two Final Four teams for 1985-2025 did not render on the Wikipedia page fetched on Nov 20 and are from general knowledge (well-documented; check against the Final Four page when it can be read). Vacated appearances are listed as the source marks them; program totals (titles, Final Fours) are the ncaa_programs.json counts. Alumni lists name only players the sources name; the game matches them by name against the real NBA rosters at the start of a career, so retired or departed players are skipped.",
+ "notes": "The other two Final Four teams for 1985-2025 did not render on the Wikipedia page fetched on Nov 20 and are from general knowledge (well-documented; check against the Final Four page when it can be read). Vacated appearances are listed as the source marks them; program totals (titles, Final Fours) are the ncaa_programs.json counts. Alumni lists name only players the sources name; the game matches them by name against the real NBA rosters at the start of a career, so retired or departed players are skipped. Kansas's 2018 Final Four is not vacated (the 2023 independent panel vacated no Kansas wins), though the page fetched on Nov 20 marked it.",
  "tournaments": [
   {
    "year": 1985,
@@ -393,9 +393,7 @@
     "Kansas",
     "Loyola Chicago"
    ],
-   "vacated": [
-    "Kansas"
-   ]
+   "vacated": []
   },
   {
    "year": 2019,

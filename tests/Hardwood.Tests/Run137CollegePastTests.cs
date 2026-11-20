@@ -199,7 +199,7 @@ public class Run137CollegePastUiTests
             Assert.Contains("College records tab", hist.RealPastFootnote);
             Shot("run137-college-history-past.png");
 
-            hist.Tab = 2; Settle();
+            hist.Tab = 4; Settle(); // College records, after the hidden pro tabs
             Assert.Equal(41, hist.CollegeChampions.Count);
             Assert.Contains(hist.CollegeChampions, r => r.Season == "2012-13" && r.Note.Contains("Louisville"));
             var titles = hist.CollegeRecords.First();
@@ -211,7 +211,7 @@ public class Run137CollegePastUiTests
             Shot("run137-college-records.png");
             // The tab survives a refresh (only the hidden pro tabs send it back to Seasons).
             hist.Refresh(); Settle();
-            Assert.Equal(2, hist.Tab);
+            Assert.Equal(4, hist.Tab);
 
             // Your pros: Miami's real NBA alumni, marked Earlier.
             vm.Navigate("College"); Settle();

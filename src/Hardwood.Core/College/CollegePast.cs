@@ -9,18 +9,20 @@ namespace Hardwood.Core.College;
 /// this career's seasons. Years are tournament years (the 2026-27 season's tournament is 2027).
 /// </summary>
 public sealed record ProgramPast(Team Program, int Titles, IReadOnlyList<int> TitleYears, int FinalFours, IReadOnlyList<int> FinalFourYears,
-                                 int Appearances, int SaveTitles, int SaveFinalFours)
+                                 int Appearances, int SaveTitles, int SaveFinalFours, bool Real = true)
 {
+    /// <summary>"NCAA tournament(s)" in a real world; a fictional one says "tournament(s)" (review, run 137).</summary>
+    private string Tourneys(int n) => (Real ? "NCAA tournament" : "tournament") + S(n);
     /// <summary>Titles won before the years the game lists (before 1985 in a real world).</summary>
     public int TitlesEarlier => Math.Max(0, Titles - TitleYears.Count);
     public int? LastTitle => TitleYears.Count > 0 ? TitleYears[^1] : null;
 
     /// <summary>The Team page's chip: "8 titles" / "17 Final Fours · 64 NCAA tournaments".</summary>
     public (string Value, string Sub) Chip() =>
-        Titles > 0 ? ($"{Titles} title{S(Titles)}", $"{FinalFours} Final Four{S(FinalFours)} · {Appearances} NCAA tournament{S(Appearances)}")
-        : FinalFours > 0 ? ($"{FinalFours} Final Four{S(FinalFours)}", $"{Appearances} NCAA tournament{S(Appearances)} · no title yet")
-        : Appearances > 0 ? ($"{Appearances} NCAA tournament{S(Appearances)}", "no Final Four yet")
-        : ("None yet", "no NCAA tournament yet");
+        Titles > 0 ? ($"{Titles} title{S(Titles)}", $"{FinalFours} Final Four{S(FinalFours)} · {Appearances} {Tourneys(Appearances)}")
+        : FinalFours > 0 ? ($"{FinalFours} Final Four{S(FinalFours)}", $"{Appearances} {Tourneys(Appearances)} · no title yet")
+        : Appearances > 0 ? ($"{Appearances} {Tourneys(Appearances)}", "no Final Four yet")
+        : ("None yet", Real ? "no NCAA tournament yet" : "no tournament yet");
 
     /// <summary>"National champions 1996, 1998, 2012 (and 5 times before 1985) · Final Fours since 1985: 1993, 1996 … ·
     /// 64 NCAA tournaments." Empty for a program with nothing to hang.</summary>
@@ -37,7 +39,7 @@ public sealed record ProgramPast(Team Program, int Titles, IReadOnlyList<int> Ti
         if (FinalFours > 0)
             parts.Add(FinalFourYears.Count == 0 ? $"{FinalFours} Final Four{S(FinalFours)}, all before {firstListed}"
                 : $"{FinalFours} Final Four{S(FinalFours)} (since {firstListed}: {string.Join(", ", FinalFourYears)})");
-        parts.Add($"{Appearances} NCAA tournament{S(Appearances)}");
+        parts.Add($"{Appearances} {Tourneys(Appearances)}");
         return string.Join(" · ", parts);
     }
 
@@ -91,7 +93,7 @@ public sealed partial class CollegeWorld
         int realTitles = real == null ? 0 : Math.Max(real.Titles, RealCollegeHistory.TitleYears(t.City).Count);
         int realFours = real == null ? 0 : Math.Max(real.FinalFours, RealCollegeHistory.FinalFourYears(t.City).Count);
         return new ProgramPast(t, realTitles + saveTitles.Count, titleYears, realFours + saveFours.Count, fourYears,
-            (real?.Appearances ?? 0) + saveApps, saveTitles.Count, saveFours.Count);
+            (real?.Appearances ?? 0) + saveApps, saveTitles.Count, saveFours.Count, IsReal);
     }
 
     /// <summary>Every program's banners (the records book).</summary>

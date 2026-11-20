@@ -255,7 +255,7 @@ public sealed partial class HistoryViewModel : PageViewModel
     {
         var s = Session; var cw = s.World.College!;
         IsReal = false; RealPastCards = new(); RealPastTitle = "";
-        if (Tab is not (0 or 2)) Tab = 0; // the pro tabs are hidden; Seasons (0) and College records (2) stay
+        if (Tab is not (0 or 4)) Tab = 0; // the pro tabs are hidden; Seasons (0) and College records (4, last) stay
         var cards = new List<SeasonCard>();
         int us = s.HumanTeam.Id;
         foreach (var h in cw.History.OrderByDescending(h => h.Year))
@@ -319,7 +319,7 @@ public sealed partial class HistoryViewModel : PageViewModel
             return new SeasonCard
             {
                 Season = t.Season, Champion = club, ChampionName = club?.FullName ?? t.Champion, Beat = $"beat {t.RunnerUp} {t.Score} in the final",
-                FinalsMvpLabel = "Final Four ", FinalsMvp = string.Join(" · ", t.Semifinalists), MvpLabel = "", Mvp = NthTitle(t),
+                FinalsMvpLabel = "Also in the Final Four ", FinalsMvp = string.Join(" · ", t.Semifinalists), MvpLabel = "", Mvp = NthTitle(t),
                 Extra = t.Vacated.Count > 0 ? $"Vacated by the NCAA: {string.Join(", ", t.Vacated)}" : "",
                 Stripe = StripeFor(club), Mine = club != null && club.Id == us && s.Employed,
             };
@@ -342,7 +342,7 @@ public sealed partial class HistoryViewModel : PageViewModel
         {
             Table("National titles", p => p.Titles, p => p.LastTitle is { } y ? $"last {y}" : $"all before {first}"),
             Table("Final Fours", p => p.FinalFours, p => p.FinalFourYears.Count > 0 ? $"last {p.FinalFourYears[^1]}" : $"all before {first}"),
-            Table("NCAA tournaments", p => p.Appearances, p => p.Titles > 0 ? $"{p.Titles} title{(p.Titles == 1 ? "" : "s")}" : $"{p.FinalFours} Final Four{(p.FinalFours == 1 ? "" : "s")}"),
+            Table(cw.IsReal ? "NCAA tournaments" : "Tournaments", p => p.Appearances, p => p.Titles > 0 ? $"{p.Titles} title{(p.Titles == 1 ? "" : "s")}" : $"{p.FinalFours} Final Four{(p.FinalFours == 1 ? "" : "s")}"),
             Table($"Titles since {first}", p => p.TitleYears.Count, p => string.Join(", ", p.TitleYears)),
         };
         var best = cw.BestSeasons(5);

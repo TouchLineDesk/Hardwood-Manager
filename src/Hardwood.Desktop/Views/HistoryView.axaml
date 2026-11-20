@@ -157,30 +157,6 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <!-- K12b (run 137): the college game's records book and every national champion since 1985 (a real world). -->
-      <TabItem Header="College records" IsVisible="{Binding IsCollege}">
-        <ScrollViewer x:Name="CollegeRecordsView">
-          <StackPanel Spacing="6">
-            <TextBlock Text="{Binding CollegeRecordsNote}" TextWrapping="Wrap"/>
-            <TextBlock Text="Programs" Classes="h2"/>
-            <ItemsControl x:Name="CollegeRecordCards" ItemsSource="{Binding CollegeRecords}" ItemTemplate="{StaticResource RecordCard}">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-            </ItemsControl>
-            <TextBlock Text="Every national champion" Classes="h2" IsVisible="{Binding HasCollegeChampions}"/>
-            <DataGrid x:Name="CollegeChampionsTable" ItemsSource="{Binding CollegeChampions}" Height="520" IsVisible="{Binding HasCollegeChampions}">
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="80"/>
-                <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="150"/>
-                <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="150"/>
-                <DataGridTextColumn Header="Final" Binding="{Binding Score}" Width="100"/>
-                <DataGridTextColumn Header="Final Four" Binding="{Binding FinalFour}" Width="220"/>
-                <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" MinWidth="120"/>
-              </DataGrid.Columns>
-            </DataGrid>
-            <TextBlock Text="{Binding CollegeSource}" Classes="muted" FontSize="10.5" TextWrapping="Wrap"/>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
       <TabItem Header="NBA history" IsVisible="{Binding IsReal}">
         <ScrollViewer>
           <StackPanel Spacing="6">
@@ -242,6 +218,30 @@
             <ItemsControl ItemsSource="{Binding Milestones}">
               <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" Margin="0,3" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
             </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <!-- K12b (run 137): the college game's records book and every national champion since 1985 (a real world). -->
+      <TabItem Header="College records" IsVisible="{Binding IsCollege}">
+        <ScrollViewer x:Name="CollegeRecordsView">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding CollegeRecordsNote}" TextWrapping="Wrap"/>
+            <TextBlock Text="Programs" Classes="h2"/>
+            <ItemsControl x:Name="CollegeRecordCards" ItemsSource="{Binding CollegeRecords}" ItemTemplate="{StaticResource RecordCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Every national champion" Classes="h2" IsVisible="{Binding HasCollegeChampions}"/>
+            <DataGrid x:Name="CollegeChampionsTable" ItemsSource="{Binding CollegeChampions}" Height="520" IsVisible="{Binding HasCollegeChampions}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="80"/>
+                <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="150"/>
+                <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="150"/>
+                <DataGridTextColumn Header="Final" Binding="{Binding Score}" Width="100"/>
+                <DataGridTextColumn Header="Final Four" Binding="{Binding FinalFour}" Width="220"/>
+                <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" MinWidth="120"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="{Binding CollegeSource}" Classes="muted" FontSize="10.5" TextWrapping="Wrap"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
