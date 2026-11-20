@@ -145,7 +145,9 @@ internal sealed class BugFinder
             _vm.Navigate("Roster");
             if (_vm.CurrentPage is not RosterViewModel roster) { Add("dead end", "Roster", "the sidebar's Roster didn't open the roster", true); return; }
             if (roster.Rows.Count == 0) { Add("dead end", "Roster", $"{when}: the roster is empty", true); return; }
-            roster.Open(roster.Rows[0]);
+            // Bug hunt 20: in college, open the best non-senior (a senior's last season has no "This summer" chip, CP2).
+            var row = roster.Rows.FirstOrDefault(r => S.ClassYearOf(r.Player) is { Final: false }) ?? roster.Rows[0];
+            roster.Open(row);
             CheckWayBack("Player page", "Roster", when);
         });
         Try("Team page", () =>
