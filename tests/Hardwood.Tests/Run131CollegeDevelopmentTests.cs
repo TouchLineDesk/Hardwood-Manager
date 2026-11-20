@@ -51,20 +51,33 @@ public class Run131CollegeDevelopmentTests
         t.Coach = new Coach(); t.Coach.Attributes[CoachAttr.Development] = 15;
     }
 
+    /// <summary>Put him back as he was (ability and path), so one world serves every scenario (CI's 30 minutes are tight).</summary>
+    private static Action Snapshot(CollegeWorld c, Player p)
+    {
+        int ca = p.CurrentAbility, g = c.Destined[p.Id];
+        return () => { p.CurrentAbility = ca; c.Destined[p.Id] = g; };
+    }
+
+    private static void WeakStaff(Team t)
+    {
+        t.Staff.Clear();
+        t.Coach = new Coach(); t.Coach.Attributes[CoachAttr.Development] = 6;
+    }
+
     [Fact]
     public void The_same_prospect_ends_six_to_ten_better_at_30_minutes_with_good_staff_than_buried_on_a_weak_program()
     {
+        var (w, c, t, p) = Freshman();
+        var reset = Snapshot(c, p);
         var diffs = new List<int>();
         foreach (ulong seed in new ulong[] { 1, 2, 3, 4, 5 })
         {
-            var a = Freshman(); var b = Freshman();
-            Assert.Equal(a.Player.Name, b.Player.Name);
-            Assert.Equal(a.Player.CurrentAbility, b.Player.CurrentAbility);
-            GoodStaff(a.World, a.Program); a.College.Prestige[a.Program.Id] = 85;
-            b.Program.Coach = new Coach(); b.Program.Coach.Attributes[CoachAttr.Development] = 6; b.College.Prestige[b.Program.Id] = 25;
-            int good = Develop(a.College, a.Program, a.Player, 30, seed);
-            int weak = Develop(b.College, b.Program, b.Player, 5, seed);
-            _out.WriteLine($"seed {seed}: {a.Player.Name}, heading for {b.College.Destined[b.Player.Id]}→ good {good} (q {a.College.ProgramQuality(a.Program, a.Player, new DateOnly(2029, 7, 1)):0.0}), weak {weak} (q {b.College.ProgramQuality(b.Program, b.Player, new DateOnly(2029, 7, 1)):0.0})");
+            reset(); t.Staff.Clear(); GoodStaff(w, t);
+            int good = Develop(c, t, p, 30, seed);
+            double qGood = c.ProgramQuality(t, p, new DateOnly(2029, 7, 1));
+            reset(); WeakStaff(t);
+            int weak = Develop(c, t, p, 5, seed);
+            _out.WriteLine($"seed {seed}: {p.Name} → good {good} (q {qGood:0.0}), weak {weak} (q {c.ProgramQuality(t, p, new DateOnly(2029, 7, 1)):0.0})");
             diffs.Add(good - weak);
         }
         _out.WriteLine($"average gap {diffs.Average():0.0}");
@@ -75,10 +88,13 @@ public class Run131CollegeDevelopmentTests
     [Fact]
     public void Prestige_alone_doesnt_move_a_graduate_so_it_cant_compound()
     {
-        var a = Freshman(); var b = Freshman();
-        a.College.Prestige[a.Program.Id] = 99; b.College.Prestige[b.Program.Id] = 50;
-        a.Program.Coach = null; b.Program.Coach = null; a.Program.Staff.Clear(); b.Program.Staff.Clear();
-        int top = Develop(a.College, a.Program, a.Player, 24, 9), avg = Develop(b.College, b.Program, b.Player, 24, 9);
+        var (_, c, t, p) = Freshman();
+        var reset = Snapshot(c, p);
+        t.Coach = null; t.Staff.Clear();
+        c.Prestige[t.Id] = 99;
+        int top = Develop(c, t, p, 24, 9);
+        reset(); c.Prestige[t.Id] = 50;
+        int avg = Develop(c, t, p, 24, 9);
         _out.WriteLine($"blue blood {top}, average {avg}");
         Assert.Equal(avg, top);
     }
@@ -114,16 +130,16 @@ public class Run131CollegeDevelopmentTests
         Assert.True(change > 3);
         Assert.True(fromProgram > 1, $"good staff adds {fromProgram:0.0}");
         // What the summer actually does, over many seeds, lands on the projection (luck averages out).
+        var reset = Snapshot(c, p);
         var realised = new List<int>();
         for (ulong seed = 1; seed <= 40; seed++)
         {
-            var (_, c2, t2, p2) = Freshman();
-            GoodStaff(w, t2);
-            int before = p2.CurrentAbility;
-            var (m2, pv2) = c2.Minutes(t2, on);
-            c2.Grow(t2, p2, p2.Age(on), on, m2[p2.Id], pv2, new DevelopmentEngine(new Rng(seed + 100)), new Rng(seed));
-            realised.Add(p2.CurrentAbility - before);
+            reset();
+            int before = p.CurrentAbility;
+            c.Grow(t, p, p.Age(on), on, mpg[p.Id], pivot, new DevelopmentEngine(new Rng(seed + 100)), new Rng(seed));
+            realised.Add(p.CurrentAbility - before);
         }
+        reset();
         _out.WriteLine($"realised average {realised.Average():0.0}");
         Assert.InRange(realised.Average(), change - 1.5, change + 1.5);
         // A senior turns pro: no projection.
