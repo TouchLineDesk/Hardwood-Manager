@@ -866,6 +866,7 @@ public sealed partial class CollegeWorld
         {
             var final = s.Games.Where(g => g.Event == Madness).OrderBy(g => g.Round).Last();
             s.ChampionId = champ; s.RunnerUpId = final.HomeId == champ ? final.AwayId : final.HomeId;
+            InvalidatePoll(); // H154: the final poll counts March
             var c = Program(champ)!; var r = Program(s.RunnerUpId.Value)!;
             History.Add(new CollegeChampion(s.Year, champ, c.FullName, r.Id, r.FullName));
             News.Add(ChampionNews(final));

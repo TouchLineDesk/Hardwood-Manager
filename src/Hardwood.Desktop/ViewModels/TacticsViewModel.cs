@@ -347,7 +347,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         if (next != null)
         {
             var opp = next.Opponent;
-            OpponentHeadline = $"Next: {(next.Home ? "vs" : "at")} {opp.FullName}, {next.Date:MMM d}" + (next.Competition != Session.League.Name ? $" ({next.Competition})" : "");
+            OpponentHeadline = $"Next: {next.Versus(opp.FullName)}, {next.Date:MMM d}" + (next.Competition != Session.League.Name ? $" ({next.Competition})" : "");
             ScoutingReport = CoachAi.ScoutingReport(team, opp, next.Date);
         }
         else { OpponentHeadline = "No game scheduled"; ScoutingReport = ""; }

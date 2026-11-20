@@ -109,6 +109,16 @@ public static class Assistant
         var us = r.Home.Team == s.HumanTeam ? r.Home : r.Away;
         var them = us == r.Home ? r.Away : r.Home;
         bool won = us.Points > them.Points;
+        var why = Factors(us, them, won, live: false);
+        string title = $"Last game: {(won ? "W" : "L")} {us.Points}-{them.Points} {(g.Home ? "vs" : "at")} {g.Opponent.Abbreviation}";
+        return (title, why);
+    }
+
+    /// <summary>The three things that decided a game (or, live, are deciding it), from our side: <paramref name="ahead"/> is
+    /// whether we won (or lead), so each edge is weighed by whether it helped the result.</summary>
+    public static List<string> Factors(Engine.TeamBox us, Engine.TeamBox them, bool ahead, bool live)
+    {
+        bool won = ahead;
         var factors = new List<(double weight, string text)>();
         void Add(double edge, string good, string bad) { if (Math.Abs(edge) >= 1) factors.Add((won ? edge : -edge, edge > 0 ? good : bad)); }
         int to = them.Turnovers - us.Turnovers;
@@ -120,15 +130,38 @@ public static class Assistant
         Add((us.FTA - them.FTA) * 0.4, $"We got to the line {us.FTA} times to their {them.FTA}.", $"They got to the line {them.FTA} times to our {us.FTA}.");
         var ourTop = us.Lines.OrderByDescending(l => l.Points).First();
         var theirTop = them.Lines.OrderByDescending(l => l.Points).First();
-        if (theirTop.Points >= 30) factors.Add((won ? -2 : 4, $"{theirTop.Player.Name} hurt us: {theirTop.Points} points." + (won ? " We survived it." : " Put a stopper on him next time.")));
-        if (ourTop.Points >= 28) factors.Add((won ? 4 : 1, $"{ourTop.Player.Name} carried us with {ourTop.Points}."));
+        int hurt = live ? 18 : 30, carried = live ? 18 : 28;
+        if (theirTop.Points >= hurt) factors.Add((won ? -2 : 4, $"{theirTop.Player.Name} {(live ? "is hurting us" : "hurt us")}: {theirTop.Points} points." + (won ? (live ? " Keep a body on him." : " We survived it.") : live ? " Put a stopper on him." : " Put a stopper on him next time.")));
+        if (ourTop.Points >= carried) factors.Add((won ? 4 : 1, $"{ourTop.Player.Name} {(live ? "is carrying us" : "carried us")} with {ourTop.Points}."));
         int bench = us.Lines.Where(l => l.Minutes > 0).OrderByDescending(l => l.Minutes).Skip(5).Sum(l => l.Points);
         int theirBench = them.Lines.Where(l => l.Minutes > 0).OrderByDescending(l => l.Minutes).Skip(5).Sum(l => l.Points);
         Add((bench - theirBench) * 0.25, $"The bench outscored theirs {bench}-{theirBench}.", $"Their bench outscored ours {theirBench}-{bench}.");
-        if (Math.Abs(us.Points - them.Points) <= 4) factors.Add((3, won ? "A coin flip at the end that went our way." : "Lost a coin flip at the end: nothing to panic about."));
-        var why = factors.OrderByDescending(f => f.weight).Take(3).Select(f => f.text).ToList();
-        string title = $"Last game: {(won ? "W" : "L")} {us.Points}-{them.Points} {(g.Home ? "vs" : "at")} {g.Opponent.Abbreviation}";
-        return (title, why);
+        if (!live && Math.Abs(us.Points - them.Points) <= 4) factors.Add((3, won ? "A coin flip at the end that went our way." : "Lost a coin flip at the end: nothing to panic about."));
+        return factors.OrderByDescending(f => f.weight).Take(3).Select(f => f.text).ToList();
+    }
+
+    /// <summary>
+    /// K10 (run 136, critic review #17): during a live game the panel reads this game, not the last one. Before, Boston
+    /// trailing 49-82 in the third quarter saw "Nothing urgent … Last game: W 113-107". Returns the headline ("Live, Q3 6:12:
+    /// we trail 49-82"), the title of the why-list and up to three things deciding it so far (none before the first points).
+    /// </summary>
+    public static (string Headline, string Title, IReadOnlyList<string> Why) LiveRead(Engine.GameResult r, Team me, string period, string clock, bool complete)
+    {
+        var us = r.Home.Team == me ? r.Home : r.Away;
+        var them = us == r.Home ? r.Away : r.Home;
+        int a = us.Points, b = them.Points, gap = a - b;
+        string where = complete ? "Final" : $"Live, {period} {clock}";
+        string state = complete ? (gap > 0 ? $"we won {a}-{b}" : $"we lost {a}-{b}")
+            : a + b == 0 ? "no score yet" : gap > 0 ? $"we lead {a}-{b}" : gap < 0 ? $"we trail {a}-{b}" : $"tied {a}-{a}";
+        string urge = complete || a + b == 0 ? ""
+            : gap <= -15 ? " Something has to change: pause and look at the five and the tactics."
+            : gap <= -8 ? " We need a run."
+            : gap >= 15 ? " In control: think about resting the starters."
+            : "";
+        string headline = $"{where}: {state}." + urge;
+        if (a + b == 0) return (headline, "", Array.Empty<string>());
+        string title = $"{(complete ? "This game" : "So far")} against {them.Team.Abbreviation}";
+        return (headline, title, Factors(us, them, gap >= 0, live: !complete));
     }
 
     // ------------------------------------------------------------------------------------------

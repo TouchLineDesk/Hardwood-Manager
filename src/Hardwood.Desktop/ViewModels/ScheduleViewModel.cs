@@ -33,7 +33,9 @@ public sealed class GameRow
     /// <summary>"vs Boston Celtics" / "at #5 Duke": the opponent alone, without the event.</summary>
     public string TileOpponent { get; init; } = "";
     /// <summary>"Sat, Nov 22 · home", then the event when it isn't a league game.</summary>
-    public string TileWhen => $"{Game.Date:ddd, MMM d} · {(Game.Home ? "home" : "away")}";
+    public string TileWhen => $"{Game.Date:ddd, MMM d} · {Site(Game)}";
+    /// <summary>Run 136: "home", "away" or "neutral site" (invitationals, showcases, tournaments).</summary>
+    public static string Site(MyGame g) => g.Neutral ? "neutral site" : g.Home ? "home" : "away";
     /// <summary>C5 part 1 (run 94): "RIVALRY" / "IN-STATE", else "#5 v #9" for two ranked sides; empty otherwise.</summary>
     public string Tag => Game.Rivalry?.Tag ?? (Game.OurRank is { } a && Game.OpponentRank is { } b ? $"#{a} v #{b}" : "");
     public bool HasTag => Tag.Length > 0;
@@ -171,8 +173,8 @@ public sealed partial class ScheduleViewModel : PageViewModel
             RivalryLine = $"{rv.Title} · " + (cw.SeriesLine(s.HumanTeam.Id, opp.Id) ?? "no meetings yet in this career") + last;
         }
         foreach (var g in _all.Where(g => g.Opponent == opp))
-            RivalMeetings.Add(g.Played ? $"{g.Date:MMM d} · {(g.Home ? "home" : "away")} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}"
-                : $"{g.Date:MMM d} · {(g.Home ? "home" : "away")} · to come{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}");
+            RivalMeetings.Add(g.Played ? $"{g.Date:MMM d} · {GameRow.Site(g)} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}"
+                : $"{g.Date:MMM d} · {GameRow.Site(g)} · to come{(g.Group != ScheduleFilter.Regular && g.Group != ScheduleFilter.NonConference ? $" · {g.Group}" : "")}");
         HasMeetings = RivalMeetings.Count > 0;
     }
 
@@ -230,9 +232,9 @@ public sealed partial class ScheduleViewModel : PageViewModel
             string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
             if (s.InCollege && g.Competition == Hardwood.Core.College.CollegeWorld.Madness) comp = $"Madness: {g.Stage}";
             // The rank at tip-off for a result, the rank now for a game to come (#528).
-            string opponent = s.InCollege ? $"{(g.Home ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City)}"
+            string opponent = s.InCollege ? g.Versus(Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City))
                 : $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}" + (comp.Length > 0 ? $" · {comp}" : "");
-            string tileOpp = s.InCollege ? $"{(g.Home ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City)}"
+            string tileOpp = s.InCollege ? $"{(g.Home || g.Neutral ? "vs" : "at")} {Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City)}" // the tile's header names the site
                 : $"{(g.Home ? "vs" : "at")} {g.Opponent.FullName}";
             string kind = g.Played ? (g.Won ? "W" : "L") : nextGame == g ? "next" : "later";
             Games.Add(new GameRow
@@ -317,7 +319,7 @@ public sealed partial class ScheduleViewModel
         var last = played.OrderBy(g => g.Date).TakeLast(10).ToList();
         if (last.Count == 0) return ("", new());
         var boxes = last.Select(g => new FormBox { Letter = g.Won ? "W" : "L",
-            Tip = $"{g.Date:MMM d} · {(g.Home ? "vs" : "at")} {g.Opponent.FullName} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}" }).ToList();
+            Tip = $"{g.Date:MMM d} · {g.Versus(g.Opponent.FullName)} · {(g.Won ? "W" : "L")} {g.Us}-{g.Them}" }).ToList();
         int lw = last.Count(g => g.Won);
         bool won = last[^1].Won;
         int run = last.AsEnumerable().Reverse().TakeWhile(g => g.Won == won).Count();

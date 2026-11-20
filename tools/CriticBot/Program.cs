@@ -235,13 +235,19 @@ while (s.League.Season < startYear + seasons)
     bool wasEmployed = s.Employed;
     var team = s.HumanTeam;
     s.AdvanceDay();
+    if (Environment.GetEnvironmentVariable("HW_TRACE_RECRUIT") != null && s.TrailOpen && s.World.College is { } tr && s.Today.DayOfWeek == DayOfWeek.Monday && s.Today.Month is >= 2 and <= 4)
+    {
+        int c = tr.RecruitingClass(s.Today);
+        var bd0 = tr.BoardFor(c);
+        L($"  trace {s.Today}: class {c} open {tr.OpenScholarships(team, c)} offers out {tr.OffersOut(team, c)} limit {tr.OfferLimit(team, c)} fits {tr.Fits(team, c, bd0, 99).Count} committed {tr.ClassOf(c).Count(p => tr.Recruits[p.Id].CommittedTo == team.Id)} uncommitted {tr.ClassOf(c).Count(p => tr.Recruits[p.Id].CommittedTo == null)} hours {tr.TrailHours}; offered-uncommitted leaning: " + string.Join(", ", tr.ClassOf(c).Where(p => tr.Recruits[p.Id].CourtedBy == team.Id && tr.Recruits[p.Id].Offered && tr.Recruits[p.Id].CommittedTo == null).Select(p => $"No.{tr.Recruits[p.Id].Rank} i{tr.Recruits[p.Id].Interest:F0}->{tr.LeaningTo(p, tr.Recruits[p.Id], bd0)?.City}")));
+    }
     // The recruiting trail (C3): the day after signing day, how our class turned out.
     if (s.TrailOpen && s.World.College is { } tw && s.Today == Hardwood.Core.College.CollegeWorld.SigningDay(tw.Season.Year + 1).AddDays(1))
     {
         int cls = tw.Season.Year + 1;
         var ours = tw.ClassOf(cls).Select(p => tw.Recruits[p.Id]).Where(r => r.CommittedTo == team.Id).ToList();
         var ranking = tw.ClassRanking(cls);
-        L($"recruiting class of {cls}: {ours.Count} signed ({ours.Count(r => r.Stars == 5)}x5, {ours.Count(r => r.Stars == 4)}x4, {ours.Count(r => r.Stars == 3)}x3, {ours.Count(r => r.Stars <= 2)}x2), best No. {(ours.Count > 0 ? ours.Min(r => r.Rank) : 0)}, class rank {ranking.FindIndex(x => x.Program == team) + 1} of {ranking.Count}; offered {tw.Recruits.Values.Count(r => r.ClassOf == cls && r.CourtedBy == team.Id && r.Offered)}; five-stars in class signed {tw.ClassOf(cls).Count(p => tw.Recruits[p.Id].Stars == 5 && tw.Recruits[p.Id].CommittedTo != null)}; {s.Delegated.LastRecruiting}");
+        L($"recruiting class of {cls}: {ours.Count} signed ({ours.Count(r => r.Stars == 5)}x5, {ours.Count(r => r.Stars == 4)}x4, {ours.Count(r => r.Stars == 3)}x3, {ours.Count(r => r.Stars <= 2)}x2), best No. {(ours.Count > 0 ? ours.Min(r => r.Rank) : 0)}, class rank {(ranking.FindIndex(x => x.Program == team) is var cr and >= 0 ? $"{cr + 1} of {ranking.Count}" : "none (no class)")}; places left unfilled {tw.OpenScholarships(team, cls)}; offered {tw.Recruits.Values.Count(r => r.ClassOf == cls && r.CourtedBy == team.Id && r.Offered)}; five-stars in class signed {tw.ClassOf(cls).Count(p => tw.Recruits[p.Id].Stars == 5 && tw.Recruits[p.Id].CommittedTo != null)}; {s.Delegated.LastRecruiting}");
         var bd = tw.BoardFor(cls);
         foreach (var p in tw.ClassOf(cls).Where(p => tw.Recruits[p.Id].CommittedTo == team.Id).OrderBy(p => tw.Recruits[p.Id].Rank))
         {

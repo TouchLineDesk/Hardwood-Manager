@@ -139,8 +139,8 @@ public sealed partial class CollegeViewModel
             : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). "
             // CS1 (run 125): the calendar for the class you're chasing.
             : $"{open} scholarship{(open == 1 ? "" : "s")} open in the Class of {year}: seniors commit through the season, many in the November early period, and the rest sign on signing day ({CollegeWorld.SigningDay(year):MMM d}). ";
-        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + (Session.Delegated.Recruiting
-            ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits. A prospect can only commit to you once you've offered."
+        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + (closed ? "" : OffersLeaningNote(c, me, year, board)) + (Session.Delegated.Recruiting
+            ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits, and from March he withdraws offers that won't be accepted. A prospect can only commit to you once you've offered."
             : "You recruit high-school seniors only, and you have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");
         foreach (var r in TrailRows.Take(CollegeCards.CardCount)) TrailCards.Add(r);
         if (keep != null && !TrailCards.Any(r => r.Player == keep) && TrailRows.FirstOrDefault(r => r.Player == keep) is { } further) TrailCards.Add(further);
@@ -157,6 +157,22 @@ public sealed partial class CollegeViewModel
             : $"The first {CollegeCards.CardCount} of {TrailRows.Count} in \"{TrailView}\". Pick a card to recruit him; the full table lists them all.";
         SelectedTrail = keep == null ? null : TrailRows.FirstOrDefault(x => x.Player == keep);
         FillTrailPanel();
+    }
+
+    /// <summary>
+    /// H152 (run 136): why the offers out aren't turning into commitments. "2 of your 5 offers are with prospects leaning
+    /// elsewhere: No. 53 Ty Cole (Kentucky), No. 84 Ed Moss (UConn)." Empty when every offer leans your way.
+    /// </summary>
+    public static string OffersLeaningNote(CollegeWorld c, Team me, int year, CollegeWorld.ClassBoard board)
+    {
+        var offered = c.ClassOf(year).Select(p => (p, r: c.RecruitOf(p)!))
+            .Where(x => x.r.CourtedBy == me.Id && x.r.Offered && x.r.CommittedTo == null).OrderBy(x => x.r.Rank).ToList();
+        if (offered.Count == 0) return "";
+        var away = offered.Select(x => (x.p, x.r, lean: c.LeaningTo(x.p, x.r, board))).Where(x => x.lean != null && x.lean != me).ToList();
+        if (away.Count == 0) return offered.Count == 1 ? "Your open offer leans your way today. " : $"All {offered.Count} of your open offers lean your way today. ";
+        return (offered.Count == 1 ? "Your open offer is with a prospect leaning elsewhere: " : $"{away.Count} of your {offered.Count} open offers are with prospects leaning elsewhere: ")
+            + string.Join(", ", away.Take(4).Select(x => $"No. {x.r.Rank} {x.p.Name} ({x.lean!.City})")) + (away.Count > 4 ? $" and {away.Count - 4} more" : "")
+            + ". More calls and visits close the gap; a prospect far behind usually signs elsewhere. ";
     }
 
     private void FillTrailPanel()

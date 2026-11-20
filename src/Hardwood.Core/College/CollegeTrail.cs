@@ -235,15 +235,21 @@ public sealed partial class CollegeWorld
     {
         var day = week.AddDays(6); // spend them as of Sunday of that week
         int senior = RecruitingClass(day);
-        var names = new List<string>();
+        var names = new List<string>(); var courted = new List<string>();
         foreach (int cls in new[] { senior })
         {
             if (day >= SigningDay(cls)) continue;
             var board = BoardFor(cls);
             int open = Math.Max(0, board.Open[t.Id]);
             if (cls == senior && open == 0) continue;
+            // H152 (run 136): in March and April a real staff stops waiting on lost causes. An offer to a prospect who has
+            // leaned elsewhere by a clear margin is withdrawn, so the offer goes to someone who would say yes; and the
+            // targets are those who already lean his way (or nearly), not the best names he can only hope for.
+            bool spring = day.Month is >= 3 and <= 4;
+            var withdrew = spring ? WithdrawLostCauses(t, cls, board) : new List<string>();
+            if (withdrew.Count > 0) names.Add($"withdrew {(withdrew.Count == 1 ? "an offer" : $"{withdrew.Count} offers")} that won't be accepted ({string.Join(", ", withdrew)})");
             // Who he could realistically land: his appeal with a solid effort (60 interest) at least matches the best rival's.
-            var targets = Fits(t, cls, board, cls == senior ? open * 2 + 2 : 4);
+            var targets = Fits(t, cls, board, cls == senior ? open * 2 + 2 : 4, spring ? SpringEdge : -4);
             foreach (var (p, r) in targets)
             {
                 if (TrailHours <= 0) break;
@@ -260,17 +266,60 @@ public sealed partial class CollegeWorld
                     act();
                     any |= TrailHours < before;
                 }
-                if (any) names.Add(p.Name);
+                if (any) courted.Add(p.Name);
             }
         }
-        return names.Count == 0 ? null : $"{week:MMM d}: your assistant courted {string.Join(", ", names.Take(6))}{(names.Count > 6 ? $" and {names.Count - 6} more" : "")}.";
+        if (courted.Count == 0 && names.Count == 0) return null;
+        string text = $"{week:MMM d}: your assistant ";
+        if (courted.Count > 0) text += $"courted {string.Join(", ", courted.Take(6))}{(courted.Count > 6 ? $" and {courted.Count - 6} more" : "")}";
+        if (names.Count > 0) text += (courted.Count > 0 ? "; he " : "") + names[0];
+        return text + ".";
+    }
+
+    /// <summary>How far ahead of the best rival (appeal points, with a solid effort) a spring target must be: he leans our way or nearly.</summary>
+    public const double SpringEdge = -1;
+
+    /// <summary>An offered prospect this far behind the best rival who can take him, in March or April, is a lost cause.</summary>
+    public const double LostCauseGap = 8;
+
+    /// <summary>
+    /// H152 (run 136): the assistant's spring clean-up. Before, his offers went to the best prospects he could hope for in
+    /// the autumn and stayed there: by March every offer the limit allowed sat with prospects leaning to Kentucky or UConn,
+    /// so he could offer no one else, and on signing day they went elsewhere (Miami, seed 2026: 4 places open, 7 offers out
+    /// all spring, 2 signed; hunt 19: Notre Dame 1 of 19, Providence 1 of 27). Now, from March 1, an offer to a prospect
+    /// whose best rival is <see cref="LostCauseGap"/> or more ahead of you is withdrawn (his interest stays). Returns
+    /// "Name, leaning Kentucky" for each, for the Staff page.
+    /// </summary>
+    public List<string> WithdrawLostCauses(Team t, int cls, ClassBoard board)
+    {
+        var said = new List<string>();
+        var ranks = PrestigeRanks();
+        foreach (var p in ClassOf(cls).OrderByDescending(p => Recruits[p.Id].Rank))
+        {
+            var r = Recruits[p.Id];
+            if (r.CommittedTo != null || r.CourtedBy != t.Id || !r.Offered) continue;
+            // With the same solid effort Fits assumes (60 interest, or more if he has it), so a withdrawn prospect is never a target again.
+            double interest = InterestIn(r, t);
+            double mine = Appeal(t, p, r, board, null, ranks) - CourtingEdge(r, t.Id, interest) + CourtingEdge(r, t.Id, Math.Max(60, interest));
+            Team? best = null; double top = double.MinValue;
+            foreach (var o in Programs)
+            {
+                if (o == t || !CouldTake(o, r, board, ranks)) continue;
+                double a = Appeal(o, p, r, board, null, ranks);
+                if (a > top) { top = a; best = o; }
+            }
+            if (best == null || top - mine < LostCauseGap) continue;
+            r.Offered = false;
+            said.Add($"{p.Name}, leaning {best.FullName}");
+        }
+        return said;
     }
 
     /// <summary>
     /// Uncommitted prospects in a class a program could realistically land, best first: with a solid effort (60 interest,
     /// or more if it already has it) its appeal comes within 4 of the best rival's. Assumes it is the coached program.
     /// </summary>
-    public List<(Player p, Recruit r)> Fits(Team t, int cls, ClassBoard? board = null, int want = 40)
+    public List<(Player p, Recruit r)> Fits(Team t, int cls, ClassBoard? board = null, int want = 40, double minEdge = -4)
     {
         board ??= BoardFor(cls);
         var targets = new List<(Player p, Recruit r)>();
@@ -287,7 +336,7 @@ public sealed partial class CollegeWorld
             // Only the schools recruiting him are rivals (#184: a blue blood isn't chasing the No. 400 prospect in the autumn).
             var chasing = rivals.Where(o => InReach(o, r, ranks, scale)).ToList();
             double rival = chasing.Count == 0 ? double.MinValue : chasing.Max(o => Appeal(o, p, r, board));
-            if (ours - rival > -4) targets.Add((p, r));
+            if (ours - rival > minEdge) targets.Add((p, r));
             if (targets.Count >= want) break;
         }
         return targets;
