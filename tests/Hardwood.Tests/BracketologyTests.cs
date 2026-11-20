@@ -44,7 +44,9 @@ public class BracketologyTests
         Assert.Equal(4, p.NextFourOut.Count);
         Assert.All(p.LastFourIn, id => Assert.True(p.In(id) && !p.AutoBids.ContainsKey(id)));
         Assert.All(p.FirstFourOut.Concat(p.NextFourOut), id => Assert.False(p.In(id)));
-        double Elo(int id) => c.Season.Elo[id];
+        // H130 (run 133): a team at .500 or worse can't take an at-large bid, so the bubble is ordered by a winning record
+        // first, then the rating.
+        double Elo(int id) { var (w, l) = c.Record(id); return (w + l == 0 || w > l ? 100_000 : 0) + c.Season.Elo[id]; }
         Assert.True(p.LastFourIn.Min(Elo) >= p.FirstFourOut.Max(Elo));
         Assert.True(p.FirstFourOut.Min(Elo) >= p.NextFourOut.Max(Elo));
         Assert.StartsWith("Last four in", p.StatusOf(p.LastFourIn[0]));

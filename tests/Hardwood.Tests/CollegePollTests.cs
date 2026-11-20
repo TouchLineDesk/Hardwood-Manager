@@ -37,9 +37,8 @@ public class CollegePollTests
             var poll = cw.Poll();
             Assert.Equal(25, poll.Count);
             Assert.Equal(25, poll.Select(e => e.Team.Id).Distinct().Count());
-            // Ranked on the rating, best first, and Rank() agrees with the grid.
-            var elo = cw.Season.Elo;
-            Assert.Equal(poll.Select(e => e.Team.Id), cw.Programs.Select(t => t.Id).OrderByDescending(id => elo[id]).ThenBy(id => id).Take(25));
+            // Ranked on the rating and the record (H148, run 133), best first, and Rank() agrees with the grid.
+            Assert.Equal(poll.Select(e => e.Team.Id), cw.Programs.Select(t => t.Id).OrderByDescending(cw.PollScore).ThenBy(id => id).Take(25));
             Assert.All(poll, e => Assert.Equal(e.Rank, cw.Rank(e.Team.Id)));
             Assert.Null(cw.Rank(cw.Programs.First(t => !poll.Any(e => e.Team == t)).Id));
             Assert.Null(cw.Rank(s.League.Teams[0].Id));
@@ -77,12 +76,12 @@ public class CollegePollTests
             Assert.Equal("#4 Duke", CollegeWorld.WithRank(4, "Duke"));
             Assert.Equal("Duke", CollegeWorld.WithRank(null, "Duke"));
 
-            // One more day of games: the poll moves with the ratings again.
+            // One more day of games: the poll moves with the ratings and records again.
             var before = cw.Season.PollDay;
             int guard = 0;
             while (cw.Season.PollDay == before && guard++ < 10) s.AdvanceDay();
             Assert.NotEqual(before, cw.Season.PollDay);
-            Assert.Equal(cw.Poll().Select(e => e.Team.Id), cw.Programs.Select(t => t.Id).OrderByDescending(id => cw.Season.Elo[id]).ThenBy(id => id).Take(25));
+            Assert.Equal(cw.Poll().Select(e => e.Team.Id), cw.Programs.Select(t => t.Id).OrderByDescending(cw.PollScore).ThenBy(id => id).Take(25));
 
             // It all saves and loads.
             s.SaveNow();

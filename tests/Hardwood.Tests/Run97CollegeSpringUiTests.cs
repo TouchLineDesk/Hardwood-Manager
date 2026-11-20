@@ -55,7 +55,7 @@ public class Run97CollegeSpringUiTests
             var home = (HomeViewModel)vm.CurrentPage!;
             Assert.Equal("Season over", home.NextGame);
             Assert.Contains("mid-May", home.NextDetail);
-            Assert.Contains(home.Pulse, r => r.Title == unhappy.Name && r.Detail == "Thinking of transferring");
+            Assert.Contains(home.Pulse, r => r.Title == unhappy.Name && r.Detail.StartsWith("Thinking of transferring"));
             Settle(window);
             foreach (var p in LayoutCheck.Scan(window)) problems.Add($"1480px Home college spring | {p}");
             Snap(window, "run97-home-college-spring");
