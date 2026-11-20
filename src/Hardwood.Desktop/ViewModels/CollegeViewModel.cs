@@ -429,7 +429,9 @@ public sealed partial class CollegeViewModel : PageViewModel
         bool started = s.Games.Any(g => g.Played);
         // H148 (run 133): the page answers "where are we?" first, and says the poll weighs the record.
         string mine = me != null && Session.Employed ? (c.Rank(me.Id) is { } myRank ? $"{me.City}: No. {myRank}" : $"{me.City}: unranked (No. {c.PollPosition(me.Id)})") + " · " : "";
-        PollNote = mine + (started
+        PollNote = mine + (c.FinalPoll
+            ? "Final poll: the champion first, then the record and the rating with every March Madness win counted"
+            : started
             ? $"Re-ranked after every game, on the rating and the record · arrows: since the last day of games ({LastGameDay(c):MMM d})"
             : "Preseason: ranked on the rating. Re-ranked after every game once the season tips off, on the rating and the record.");
         FillConference();

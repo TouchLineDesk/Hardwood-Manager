@@ -28,7 +28,15 @@ public sealed partial class CollegeWorld
     private void EnsurePoll()
     {
         if (_pollCachedVersion == _pollVersion && ReferenceEquals(_pollCachedSeason, Season) && _pollOrder.Count > 0) return;
-        var all = Programs.Select(t => t.Id).OrderByDescending(PollScore).ThenBy(id => id).ToList();
+        // H154 (run 136): once the title is decided, the final poll counts March, as the real one does: the champion first,
+        // then every round won in the tournament adds weight (the runner-up and the Final Four rise near the top).
+        Func<int, double> score = PollScore;
+        if (Season.ChampionId is { } champ && !_preMarchPoll)
+        {
+            var march = Programs.ToDictionary(t => t.Id, t => MadnessReached(t.Id));
+            score = id => id == champ ? double.MaxValue : PollScore(id) + MarchPollWeight * Math.Max(0, march[id] - 1);
+        }
+        var all = Programs.Select(t => t.Id).OrderByDescending(score).ThenBy(id => id).ToList();
         _fullRanks = all.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
         _pollOrder = all.Take(PollSize).ToList();
         _pollRanks = _pollOrder.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
@@ -54,6 +62,15 @@ public sealed partial class CollegeWorld
         if (l == 0 && g >= 8) score += UnbeatenBonus;
         return score - LossPenalty * Math.Min(l, 4);
     }
+
+    /// <summary>H154 (run 136): the final poll's weight for each March Madness round won past the first game.</summary>
+    public const double MarchPollWeight = 35;
+
+    /// <summary>Whether the poll is the final one (the title decided, March counted).</summary>
+    public bool FinalPoll => Season.ChampionId != null;
+
+    /// <summary>Set while the season's awards are voted: the poll without March (review, run 136).</summary>
+    private bool _preMarchPoll;
 
     /// <summary>Run 134: what an unbeaten record from the 8th game on adds to the poll score.</summary>
     public const double UnbeatenBonus = 60;

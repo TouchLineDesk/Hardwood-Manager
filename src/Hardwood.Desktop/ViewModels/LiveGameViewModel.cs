@@ -315,6 +315,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
             foreach (var row in OurPlayers) slot.Options.Add(row.Player);
             Lineup.Add(slot);
         }
+        // K10 (run 136): the assistant's panel reads this game while it's on.
+        Shell.Guide.SetLive(() => Hardwood.Core.Guide.Assistant.LiveRead(_live.Result, Us, _live.PeriodText, _live.ClockText, _live.Complete));
         Refresh();
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
@@ -518,6 +520,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
         Clock = $"{_live.PeriodText}  {_live.ClockText}";
+        Shell.Guide.LiveTick();
         var r = _live.Result;
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";
         Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, _live.PeriodText, _live.Complete,

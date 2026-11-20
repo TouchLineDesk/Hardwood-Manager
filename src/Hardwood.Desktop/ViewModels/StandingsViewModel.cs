@@ -149,7 +149,7 @@ public sealed partial class StandingsViewModel : PageViewModel
                 Home = West[i].Home, Last10 = West[i].Last10, IsHuman = West[i].IsHuman, ShowRank = false,
             };
             PlayoffLabel = "Conference tournament"; ShowPlayIn = false; ShowCards = false;
-            LeftTitle = before ? $"{s.MyConference!.Name} (overall records until conference play starts in January)" : $"{s.MyConference!.Name} (conference games)"; RightTitle = "Top 25 (by rating, overall records)";
+            LeftTitle = before ? $"{s.MyConference!.Name} (overall records until conference play starts in January)" : $"{s.MyConference!.Name} (conference games)"; RightTitle = cw.FinalPoll ? "Final Top 25 (after March Madness)" : "Top 25 poll (rating and record)";
             Note = "Tournament winners get automatic March Madness bids.";
             Race = Array.Empty<Hardwood.Desktop.Controls.LineSeries>(); RaceLabels = Array.Empty<string>();
             OnPropertyChanged(nameof(Race)); OnPropertyChanged(nameof(RaceLabels)); OnPropertyChanged(nameof(HasRace));

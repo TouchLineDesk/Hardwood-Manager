@@ -18,6 +18,12 @@ public sealed record MyGame(DateOnly Date, Team Opponent, bool Home, string Comp
     public College.Rivalry? Rivalry { get; init; }
     /// <summary>College (C5 part 2): an event on a neutral court (no home edge).</summary>
     public bool Neutral { get; init; }
+    /// <summary>
+    /// Run 136 (critic review #18): how a card names the opponent: "vs Gonzaga" at home, "at Gonzaga" away, and "vs Gonzaga
+    /// (neutral)" at an invitational, a showcase or a tournament. Neutral games used to read "at" or "vs" by which side the
+    /// bracket listed first.
+    /// </summary>
+    public string Versus(string opponent) => Neutral ? $"vs {opponent} (neutral)" : $"{(Home ? "vs" : "at")} {opponent}";
     /// <summary>College (C5, run 96): the conference whose style this game is played in (conference play and its tournament).</summary>
     public string? StyleConference { get; init; }
     /// <summary>Its Schedule &amp; Results filter (#529): the season's part, the tournament's name, or the playoffs (<see cref="ScheduleFilter"/>).</summary>

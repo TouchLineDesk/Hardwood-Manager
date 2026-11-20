@@ -870,7 +870,11 @@ public sealed partial class CollegeWorld
             History.Add(new CollegeChampion(s.Year, champ, c.FullName, r.Id, r.FullName));
             News.Add(ChampionNews(final));
             // CS5 (run 135): the season's honours are voted with the title decided (their own random stream, #972).
+            // Review (run 136): the honours are voted on the poll as the regular season left it, not the final (March) poll,
+            // which Coach of the Year's March term already counts; then the final poll takes over (H154).
+            _preMarchPoll = true; InvalidatePoll();
             var awards = VoteAwards();
+            _preMarchPoll = false; InvalidatePoll();
             Awards.RemoveAll(a => a.Year == s.Year);
             Awards.Add(awards);
             if (awards.PlayerOfYearId != null) News.Add(AwardsNews(awards));

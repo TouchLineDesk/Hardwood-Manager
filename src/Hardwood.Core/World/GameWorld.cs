@@ -917,7 +917,9 @@ public sealed class GameWorld
                 // graduates nobody else signed: a 22-year-old a little below the level it needs, but with the upside to
                 // reach it. Real college starters who miss the NBA play in the lower leagues or abroad; they used to
                 // retire at 22 while the clubs generated strangers.
-                var graduate = pick == null ? freeAgents
+                // Run 136: also when the pool's pick falls through (the 70%/95% chance below), before a stranger is made up.
+                bool takePick = pick != null && _rng.Chance(comp.Profile.MinAge > 0 ? 0.95 : 0.7);
+                var graduate = !takePick ? freeAgents
                     .Where(p => p.RookieSeason == newYear && p.Age(date) <= 24 && p.Age(date) >= comp.Profile.MinAge)
                     .Where(p => p.CurrentAbility >= need.Ca - GraduateReach && p.CurrentAbility <= need.Ca + window && p.PotentialAbility >= need.Ca)
                     .Where(p => locals.Contains(p.Nationality) || (importRoom && need.Import))
@@ -933,7 +935,7 @@ public sealed class GameWorld
                     SignedAbroad.Add((graduate, team));
                     continue;
                 }
-                if (pick != null && _rng.Chance(comp.Profile.MinAge > 0 ? 0.95 : 0.7))
+                if (takePick)
                 {
                     freeAgents.Remove(pick);
                     pick.TeamId = team.Id;

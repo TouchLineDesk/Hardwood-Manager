@@ -374,14 +374,14 @@ public sealed partial class BoardViewModel : PageViewModel
     {
         var cw = s.World.College!; var t = s.HumanTeam;
         double prestige = cw.Prestige.GetValueOrDefault(t.Id, 50);
-        int rank = cw.Programs.OrderByDescending(p => cw.Season.Elo.GetValueOrDefault(p.Id, 1500)).ToList().IndexOf(t) + 1;
+        int rank = cw.PollPosition(t.Id); // H153 (run 136): the poll's rank, as the Top 25 shows it (was the rating alone)
         var rec = s.MyRecord; var conf = s.MyStandings[t];
         int seniors = t.Roster.Count(p => p.Age(new DateOnly(cw.Season.Year + 1, 7, 1)) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
         return new List<Hardwood.Desktop.Controls.Chip>
         {
             // CS2 (run 126, #166): prestige as a letter, the number beside it.
             new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + PrestigeWords(prestige, cw.PrestigeRanks().GetValueOrDefault(t.Id, cw.Programs.Count)), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
-            new("National rank", $"#{rank}", $"of {cw.Programs.Count} programs", rank <= 25 ? "good" : ""),
+            new("National rank", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? $"No. {rank}" : "Unranked", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "in the Top 25 poll" : $"No. {rank} of {cw.Programs.Count} in the poll", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "good" : ""),
             new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
             new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
             new("Graduating", $"{seniors}", "turn pro next summer", "info"),

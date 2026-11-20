@@ -370,7 +370,7 @@ public sealed partial class MainViewModel : ViewModelBase
         var next = s.NextMyGame;
         NextGameText = !s.Employed ? "" : s.InNabl && s.Phase == SessionPhase.Postseason && s.HumanSeries is { Complete: false } hs
             ? $"Series vs {(hs.Higher == s.HumanTeam ? hs.Lower : hs.Higher).Abbreviation}: {hs.Score}"
-            : next != null ? $"Next: {(next.Home ? "vs" : "at")} {next.Opponent.Abbreviation}, {next.Date:MMM d}"
+            : next != null ? $"Next: {next.Versus(next.Opponent.Abbreviation)}, {next.Date:MMM d}"
             : "";
         var inbox = Nav.FirstOrDefault(n => n.Name == "Inbox");
         if (inbox != null) { int unread = s.Inbox.Count(m => !m.Read); inbox.Badge = unread > 0 ? unread.ToString() : ""; }

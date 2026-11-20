@@ -77,6 +77,7 @@ public sealed partial class GuideViewModel : ObservableObject
     /// <summary>The shell's live game started (true) or ended (false).</summary>
     public void LiveGame(bool live, double scale)
     {
+        if (!live && _liveRead != null) SetLive(null);
         bool fold = live && FoldsInLiveGame(scale);
         if (fold == _liveFold) return;
         _liveFold = fold;
@@ -125,8 +126,35 @@ public sealed partial class GuideViewModel : ObservableObject
     }
     [ObservableProperty] private string _resetNote = "";
 
+    private Func<(string Headline, string Title, IReadOnlyList<string> Why)>? _liveRead;
+
+    /// <summary>
+    /// K10 (run 136): while a live game is on, the panel's headline and why-list read this game (the live page hands in
+    /// its read); null puts the panel back on the day's advice and the last game.
+    /// </summary>
+    public void SetLive(Func<(string Headline, string Title, IReadOnlyList<string> Why)>? read)
+    {
+        _liveRead = read;
+        if (read == null) Refresh(); else LiveTick();
+    }
+
+    /// <summary>The live game moved on: refresh only the live lines (cheap; called every few possessions).</summary>
+    public void LiveTick()
+    {
+        if (!On || _liveRead is null) return;
+        var (headline, title, why) = _liveRead();
+        Headline = headline;
+        LastGameTitle = title;
+        if (!LastGameWhy.SequenceEqual(why))
+        {
+            LastGameWhy.Clear();
+            foreach (var w in why) LastGameWhy.Add(w);
+        }
+        HasLastGame = LastGameWhy.Count > 0;
+    }
+
     /// <summary>A career was opened: start counting days from its date.</summary>
-    public void NewSession() { _lastDate = null; _lastPhase = null; }
+    public void NewSession() { _lastDate = null; _lastPhase = null; _liveRead = null; }
 
     /// <summary>The page you're looking at (for its tip and the first-steps checklist).</summary>
     public void OnPage(string page)
@@ -177,6 +205,7 @@ public sealed partial class GuideViewModel : ObservableObject
 
         HasStrategy = Strategy.Count > 0;
         NoTasks = Tasks.Count == 0;
+        if (_liveRead != null) LiveTick();
         OnPropertyChanged(nameof(ShowPageTip)); OnPropertyChanged(nameof(ShowStrategy));
         OnPropertyChanged(nameof(HasTips)); OnPropertyChanged(nameof(TipsButtonText));
     }
