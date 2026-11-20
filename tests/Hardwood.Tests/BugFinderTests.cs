@@ -20,7 +20,7 @@ namespace Hardwood.Tests;
 /// the game's invariants every day and a save and reload along the way. It writes a ranked report rather than
 /// failing on the first problem.
 /// <para>Off by default (it takes a while): set HW_BUGFINDER to a folder for the report and screenshots;
-/// HW_BUGFINDER_CAREERS picks careers (comma-separated: nba-contender, nba-rebuild, gleague, bottom, college, fired);
+/// HW_BUGFINDER_CAREERS picks careers (comma-separated: nba-contender, nba-rebuild, gleague, bottom, college, college-blue, college-low, fired);
 /// HW_BUGFINDER_SEASONS sets how many seasons each plays (default 1);
 /// HW_BUGFINDER_TOUR saves a screenshot of every page and tab at some sweeps ("1": the first day and day 70;
 /// "live game" adds the live court and its box score tab, mid-game and at the final).</para>
@@ -82,7 +82,7 @@ public class BugFinderTests
 
     private static void Play(string career, int seasons, MainViewModel vm, MainWindow window, BugFinder bf, Action<string> L)
     {
-        ulong seed = career switch { "nba-rebuild" => 77, "gleague" => 31, "bottom" => 9, "college" => 2026, "fired" => 55, _ => 2026 };
+        ulong seed = career switch { "nba-rebuild" => 77, "gleague" => 31, "bottom" => 9, "college" => 2026, "college-blue" => 31, "college-low" => 77, "fired" => 55, _ => 2026 };
         var (probe, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed);
         int teamId = career switch
         {
@@ -92,6 +92,9 @@ public class BugFinderTests
             "gleague" => world[UsaPyramid.Tier2].Clubs.OrderBy(t => QuickSim.Strength(t)).ElementAt(15).Id,
             "bottom" => world[UsaPyramid.Tier5].Clubs.OrderBy(t => QuickSim.Strength(t)).First().Id,
             "college" => world.College!.Programs.OrderByDescending(t => QuickSim.Strength(t)).ElementAt(49).Id,
+            // Bug hunt 19 (college focus): a blue blood on seed 31 and a low-major (the 281st strongest) on seed 77.
+            "college-blue" => world.College!.Programs.OrderByDescending(t => QuickSim.Strength(t)).First().Id,
+            "college-low" => world.College!.Programs.OrderByDescending(t => QuickSim.Strength(t)).ElementAt(280).Id,
             _ => throw new ArgumentException(career),
         };
         var path = Path.Combine(Path.GetTempPath(), $"hw-bug-{career}-{Guid.NewGuid():N}.hwsave");
