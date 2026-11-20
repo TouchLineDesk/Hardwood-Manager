@@ -656,15 +656,14 @@
           </StackPanel>
           <DataGrid x:Name="AlumniGrid" ItemsSource="{Binding Alumni}" SelectedItem="{Binding SelectedAlumnus}" IsVisible="{Binding HasAlumni}">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Graduate" Binding="{Binding Name}" Width="180"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="56"/>
-              <DataGridTextColumn Header="Class of" Binding="{Binding Class}" Width="84"/>
-              <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="56"/>
-              <DataGridTextColumn Header="Plays for" Binding="{Binding Club}" Width="*" MinWidth="180"/>
-              <DataGridTextColumn Header="League" Binding="{Binding League}" Width="84"/>
-              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="56"/>
-              <DataGridTextColumn Header="Drafted" Binding="{Binding Draft}" Width="116"/>
-              <DataGridTextColumn Header="Honours" Binding="{Binding Honours}" Width="150"/>
+              <DataGridTextColumn Header="Graduate" Binding="{Binding Name}" Width="214"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="52"/>
+              <DataGridTextColumn Header="Class of" Binding="{Binding Class}" Width="80"/>
+              <DataGridTextColumn Header="Plays for" Binding="{Binding Club}" Width="*" MinWidth="214"/>
+              <DataGridTextColumn Header="League" Binding="{Binding League}" Width="76"/>
+              <DataGridTextColumn Header="CA" Binding="{Binding CA}" Width="52"/>
+              <DataGridTextColumn Header="Drafted" Binding="{Binding Draft}" Width="110"/>
+              <DataGridTextColumn Header="Honours" Binding="{Binding Honours}" Width="120"/>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>

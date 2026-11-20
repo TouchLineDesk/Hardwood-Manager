@@ -67,9 +67,8 @@ public static class Scouting
         int low = centre - width / 2, high = low + width;
         if (low > pa) { low = pa; high = low + width; }
         if (high < pa) { high = pa; low = high - width; }
-        low = Math.Max(low, p.CurrentAbility);
+        low = Math.Min(Math.Max(low, p.CurrentAbility), 200 - MinCollegeWidth / 2);
         high = Math.Clamp(high, low + MinCollegeWidth / 2, 200);
-        low = Math.Min(low, high);
         return new Range(low, high);
     }
 

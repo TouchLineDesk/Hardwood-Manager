@@ -99,6 +99,8 @@ public class Run132PayoffTests
             s.SaveNow();
             var back = GameSession.Load(path);
             Assert.Equal(c.Alumni.Count, back.World.College!.Alumni.Count);
+            // This summer's graduates in the draft still read as college players (a range), as on the draft board.
+            if (back.Offseason!.Prospects.FirstOrDefault() is { } grad) Assert.NotNull(back.CollegePotentialOf(grad));
             while (back.Phase == SessionPhase.Offseason && back.Offseason!.Report.Draft.Count == 0 && guard++ < 800) back.AdvanceOffseason();
             var draft = back.Inbox.LastOrDefault(m => m.Category == "Draft" && m.Title.StartsWith("Draft:"));
             Assert.NotNull(draft);

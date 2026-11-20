@@ -120,7 +120,9 @@ public sealed partial class FocusRow : ObservableObject
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
     public int Age { get; init; }
-    public string Ability => $"{Player.CurrentAbility} / {Player.PotentialAbility}";
+    /// <summary>CP3 (run 132): a college player's potential reads as your staff's range.</summary>
+    public string? PaText { get; init; }
+    public string Ability => $"{Player.CurrentAbility} / {PaText ?? Player.PotentialAbility.ToString()}";
     /// <summary>Where this summer's development is heading at his minutes, and your staff's share of it (roadmap 12).</summary>
     public string Projected { get; init; } = "";
     public string FromStaff { get; init; } = "";
@@ -234,6 +236,7 @@ public sealed partial class StaffViewModel : PageViewModel
             if (riser == null || change > riser.Value.c) riser = (p, change);
             Players.Add(new FocusRow
             {
+                PaText = s.CollegePotentialOf(p)?.ToString(),
                 Player = p, Owner = this, Age = p.Age(s.Today), Focus = team.Training.Focus.TryGetValue(p.Id, out var f) ? f.ToString() : "Balanced",
                 Projected = Math.Abs(change) < 0.5 ? "steady" : $"{change:+0;-0} CA", FromStaff = Math.Abs(fromStaff) < 0.05 ? "-" : $"{fromStaff:+0.0;-0.0}",
             });

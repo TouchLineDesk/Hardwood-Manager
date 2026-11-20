@@ -29,6 +29,10 @@ public sealed partial class GameSession
         if (World.College is not { } c) return null;
         var cy = c.ClassYearOf(p, Today);
         var r = cy == null && p.TeamId == null && c.Recruits.ContainsKey(p.Id) && c.Prospects.Contains(p) ? c.RecruitOf(p) : null;
+        // This summer's graduates in the pros' draft are still read as college players (the review of PR #196): the draft
+        // board and his page agree (college careers only; a pro coach keeps exact numbers). Your own graduate is known as a senior.
+        if (cy == null && r == null && InCollege && p.TeamId == null && Offseason?.Prospects.Contains(p) == true && c.Alumni.TryGetValue(p.Id, out var a))
+            return Scouting.CollegePotential(p, a.ProgramId == HumanTeam.Id ? 0.85 : Scouting.CollegeKnowledge(HumanTeam, p, 0));
         if (cy == null && r == null) return null;
         bool scouted = r is { Scouted: true } && r.CourtedBy == HumanTeam.Id;
         return Scouting.CollegePotential(p, Scouting.CollegeKnowledge(HumanTeam, p, (cy?.Year ?? 1) - 1, scouted));
@@ -75,8 +79,9 @@ public sealed partial class GameSession
         if (!Employed || !InCollege || !IsCollegeProgram(HumanTeam)) { c.ProPitch = 0; c.ProPitchText = ""; return; }
         var rec = ProRecordOf(HumanTeam);
         c.ProPitch = CollegeWorld.PitchPoints(rec.TopLeague, rec.Lines.Count(l => l.TopLeague && l.AllStars > 0));
+        int stars = rec.Lines.Count(l => l.TopLeague && l.AllStars > 0); // what the pitch counts (the review of PR #196)
         c.ProPitchText = rec.TopLeague == 0 ? $"none in the {Names.Brand.TopShort} yet"
-            : $"{rec.TopLeague} in the {Names.Brand.TopShort}" + (rec.AllStars > 0 ? $", {rec.AllStars} All-Star{(rec.AllStars == 1 ? "" : "s")}" : "");
+            : $"{rec.TopLeague} in the {Names.Brand.TopShort}" + (stars > 0 ? $", {stars} All-Star{(stars == 1 ? "" : "s")}" : "");
     }
 
     /// <summary>

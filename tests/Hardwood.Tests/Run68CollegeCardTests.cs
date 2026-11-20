@@ -155,10 +155,10 @@ public class Run68CollegeCardTests
             Assert.True(window.GetVisualDescendants().OfType<DataGrid>().First(g => g.Name == "TrailGrid").IsEffectivelyVisible);
             col.BoardView = "Cards";
 
-            // H18: the seven tabs fit on one line at 1480 px.
+            // H18: the tabs fit on one line at 1480 px (eight since CP3, run 132: Your pros).
             Settle();
             var tabs = window.GetVisualDescendants().OfType<TabItem>().Where(t => t.IsVisible && t.IsEffectivelyVisible).ToList();
-            Assert.Equal(7, tabs.Count);
+            Assert.Equal(8, tabs.Count);
             var tops = tabs.Select(t => t.TranslatePoint(new Avalonia.Point(0, 0), window)!.Value.Y).ToList();
             Assert.True(tops.Max() - tops.Min() < 2, $"the tabs wrap: tops {string.Join(", ", tops.Select(y => y.ToString("0")))}");
         }
