@@ -46,8 +46,9 @@ public class Run128FourYearTests
             Assert.Equal(CollegeWorld.Squad, t.Roster.Count);
             Assert.All(t.Roster, p => Assert.InRange(p.Age(summer), 18, 21));
         });
-        // Four years don't add stars: the class's top end is as tuned (a handful of 100+ graduates a year).
-        Assert.InRange(grads.Count(p => p.CurrentAbility >= 100), 2, 20);
+        // Four years don't add stars by themselves: the class's top end is as tuned.
+        // CP1 (run 130) adds a top band of 9-17 a class (franchise and five-star prospects), so 100+ graduates rose from 6-11.
+        Assert.InRange(grads.Count(p => p.CurrentAbility >= 100), 8, 35);
         _out.WriteLine($"{grads.Count} graduates; 100+ {grads.Count(p => p.CurrentAbility >= 100)}, 90+ {grads.Count(p => p.CurrentAbility >= 90)}");
     }
 

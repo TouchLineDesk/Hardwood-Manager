@@ -167,7 +167,8 @@ public sealed partial class CollegeViewModel
         var board = c.BoardFor(r.ClassOf);
         bool ours = r.CourtedBy == me.Id;
         double interest = CollegeWorld.InterestIn(r, me);
-        TrailHeader = $"No. {r.Rank} · {CollegeWorld.StarText(r.Stars)} {p.PrimaryPosition} · {r.HighSchool}, {CollegeWorld.StateName(r.State)} · Class of {r.ClassOf}";
+        string tag = CollegeWorld.ProspectTag(r);
+        TrailHeader = $"No. {r.Rank} · {CollegeWorld.StarText(r.Stars)} {p.PrimaryPosition}{(tag != "" ? $" · {tag}" : "")} · {r.HighSchool}, {CollegeWorld.StateName(r.State)} · Class of {r.ClassOf}";
         var lean = c.LeaningTo(p, r, board);
         ProspectChips = new()
         {

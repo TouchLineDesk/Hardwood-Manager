@@ -83,6 +83,11 @@ public sealed partial class CollegeWorld
 
     public static string StarText(int stars) => stars <= 0 ? "unrated" : $"{stars}-star";
 
+    /// <summary>CP1 (run 130): the services' word for a recruit they project at 132+ by 22, the class's franchise prospects
+    /// (one or two a class), so the top of the board is visibly special. Empty for everyone else.</summary>
+    public static string ProspectTag(Recruit r) => r.Projection >= FranchiseProjection ? "franchise prospect" : "";
+    public const int FranchiseProjection = 132;
+
     // ------------------------------------------------------------------------------------------
     // Geography: high schools in real states; each program has a home state, so distance from home matters.
 
@@ -171,13 +176,10 @@ public sealed partial class CollegeWorld
     private List<Player> NewClass(PlayerGenerator gen, Rng rng, int age, DateOnly on, int classOf, int size)
     {
         int core = Math.Min(Math.Min(size, ClassTracked), (int)Math.Round(Programs.Count * RosterSize / (double)CalibrationGroups));
-        var list = new List<Player>(size);
-        for (int i = 0; i < size; i++)
-        {
-            var p = NewRecruit(gen, rng, age, on, i < core ? null : rng.Next(35, 60));
+        // CP1 (run 130): the class's top band (franchise and five-star prospects) takes the first places of the core.
+        var list = NewCohort(gen, rng, age, on, size, core, () => rng.Next(35, 60));
+        foreach (var p in list)
             Recruits[p.Id] = new Recruit { HighSchool = HighSchoolName(rng), State = PickState(rng), ClassOf = classOf, Bias = (int)Math.Round(rng.NextGaussian(0, 4)) };
-            list.Add(p);
-        }
         return list;
     }
 
@@ -459,8 +461,7 @@ public sealed partial class CollegeWorld
             int perAge = perAgeBase + (GraduateAge - 1 - age < spare ? 1 : 0);
             int core = (int)Math.Round(Programs.Count * RosterSize / (double)CalibrationGroups);
             // The calibrated core first; any places past it are depth below college level (as in a class past the thousand).
-            var cohort = Enumerable.Range(0, Math.Max(core, Programs.Count * perAge))
-                .Select(i => NewRecruit(gen, rng, age, summer, i < core ? null : rng.Next(35, 60))).ToList();
+            var cohort = NewCohort(gen, rng, age, summer, Math.Max(core, Programs.Count * perAge), core, () => rng.Next(35, 60));
             var taken = cohort.OrderByDescending(p => Destined[p.Id] + rng.NextGaussian(0, 5)).Take(Programs.Count * perAge).ToList();
             foreach (var p in cohort.Except(taken)) Destined.Remove(p.Id);
             foreach (var p in taken.OrderByDescending(p => Destined[p.Id]))
