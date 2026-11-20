@@ -58,7 +58,7 @@ public class Run96ConferenceStyleTests
         var before = cfg.ZoneBaseLogit.ToArray();
         var styled = cfg.For(r);
         Assert.Equal(before[0] - 0.02, styled.ZoneBaseLogit[0], 9);
-        Assert.Equal(cfg.NonShootingFoulRate * 1.10, styled.NonShootingFoulRate, 9);
+        Assert.Equal(cfg.NonShootingFoulRate * Rules.College.CommonFoulScale * Rules.College.FoulScale * 1.10, styled.NonShootingFoulRate, 9);
         Assert.Equal(before, cfg.ZoneBaseLogit);
         Assert.Same(cfg, cfg.For(Rules.Nba));
     }
