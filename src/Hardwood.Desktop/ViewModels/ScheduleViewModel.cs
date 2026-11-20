@@ -34,8 +34,8 @@ public sealed class GameRow
     public string TileOpponent { get; init; } = "";
     /// <summary>"Sat, Nov 22 · home", then the event when it isn't a league game.</summary>
     public string TileWhen => $"{Game.Date:ddd, MMM d} · {Site(Game)}";
-    /// <summary>Run 136: "home", "away" or "neutral site" (invitationals, showcases, tournaments).</summary>
-    public static string Site(MyGame g) => g.Neutral ? "neutral site" : g.Home ? "home" : "away";
+    /// <summary>Run 136: "home", "away" or "neutral" (the layout gate: "neutral site" was cut on Sundays in December) (invitationals, showcases, tournaments).</summary>
+    public static string Site(MyGame g) => g.Neutral ? "neutral" : g.Home ? "home" : "away";
     /// <summary>C5 part 1 (run 94): "RIVALRY" / "IN-STATE", else "#5 v #9" for two ranked sides; empty otherwise.</summary>
     public string Tag => Game.Rivalry?.Tag ?? (Game.OurRank is { } a && Game.OpponentRank is { } b ? $"#{a} v #{b}" : "");
     public bool HasTag => Tag.Length > 0;

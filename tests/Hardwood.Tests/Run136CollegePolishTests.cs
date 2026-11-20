@@ -206,7 +206,7 @@ public class Run136CollegePolishUiTests
             bool invited = s.MyGames().Any(g => g.Neutral);
             vm.Navigate("Schedule & Results"); Settle();
             var sched = (ScheduleViewModel)vm.CurrentPage!;
-            if (invited) Assert.Contains(sched.Games, g => g.Game.Neutral && g.TileWhen.EndsWith("· neutral site") && g.Opponent.EndsWith("(neutral)"));
+            if (invited) Assert.Contains(sched.Games, g => g.Game.Neutral && g.TileWhen.EndsWith("· neutral") && g.Opponent.EndsWith("(neutral)"));
             Assert.DoesNotContain(sched.Games, g => g.Game.Neutral && (g.TileOpponent.StartsWith("at ") || g.TileWhen.EndsWith("away") || g.TileWhen.EndsWith("home")));
             Shot("run136-college-schedule-neutral.png");
 
