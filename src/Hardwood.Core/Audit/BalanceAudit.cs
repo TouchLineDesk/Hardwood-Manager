@@ -185,7 +185,8 @@ public static class BalanceAudit
             }
 
             if (world.College != null)
-                foreach (var p in world.College.Players.Where(p => p.Age(start) == 21 && p.TeamId != null && !pipe.ContainsKey(p.Id)))
+                // Age groups are set on July 1 (the date classes enroll and graduate on), not the October snapshot (review).
+                foreach (var p in world.College.Players.Where(p => p.Age(new DateOnly(year, 7, 1)) == 21 && p.TeamId != null && !pipe.ContainsKey(p.Id)))
                     pipe[p.Id] = new Pipeline(year + 1, p.BirthDate, p.PotentialAbility);
             var all = players.Concat(league.FreeAgents).Concat(world.Players);
             foreach (var p in all)
@@ -302,9 +303,9 @@ public static class BalanceAudit
         // targets are in the source column.
         m.Add(new("College pipeline", "College products in the NBA's top 10", "0.0", gradsTop10, null, null, "CP1: at least 3 by season 10"));
         m.Add(new("College pipeline", "Best college product anywhere (CA)", "0", bestProduct, null, null, "CP1: one reaches 170+ within 15 seasons"));
-        int lastYear = league.Season;
-        // A class counts once its players have all turned 27 inside the audit (graduated at 22 → 5 more seasons measured).
-        var measured = pipe.Values.Where(x => x.Class + 5 <= lastYear).ToList();
+        int lastSnapshot = league.Season - 1; // the summer after the last season moved league.Season on
+        // A class counts once its players have all been seen at 27 (graduated at 22 → the snapshot 5 seasons later).
+        var measured = pipe.Values.Where(x => x.Class + 5 <= lastSnapshot).ToList();
         var classes = measured.Select(x => x.Class).Distinct().Count();
         m.Add(new("College pipeline", "Graduates reaching CA 160+ by 27, per class", "0.00",
             new() { classes == 0 ? double.NaN : measured.Count(x => x.Best >= 160) / (double)classes }, null, null, $"CP1: 1-3 a class ({classes} classes measured)"));

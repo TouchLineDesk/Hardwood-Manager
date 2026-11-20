@@ -150,7 +150,8 @@ public sealed partial class CollegeWorld
         double u = rng.NextDouble(), elite = 0.012 * eliteScale;
         // R3: in a world of more than 148 programs the class is capped at the thousand tracked, so the 90-110 band is
         // scaled too (the fictional world's 148 keep exactly the old draw).
-        double good = goodScale >= 1 ? 0.065 : elite + 0.053 * goodScale;
+        // (0.065 with the elite share; written as elite + 0.053 so CP1's draws without the elite share don't move it into 90-110.)
+        double good = elite + 0.053 * Math.Min(1, goodScale);
         return u < elite ? rng.Next(110, 131) : u < good ? rng.Next(90, 110) : u < 0.35 ? rng.Next(75, 90) : rng.Next(50, 75);
     }
 
@@ -200,6 +201,8 @@ public sealed partial class CollegeWorld
     private List<Player> NewCohort(PlayerGenerator gen, Rng rng, int age, DateOnly on, int count, int core, Func<int>? depth = null)
     {
         var band = TopBand(rng);
+        // A small intake (the legacy summer's few vacancies, a test world) keeps the band to a twentieth of it (review).
+        if (band.Count > Math.Max(1, count / 20)) band = band.Take(Math.Max(1, count / 20)).ToList();
         var list = new List<Player>(count);
         for (int i = 0; i < count; i++)
             list.Add(i < band.Count && i < core ? NewRecruit(gen, rng, age, on, band[i].Destined, band[i].Potential)
