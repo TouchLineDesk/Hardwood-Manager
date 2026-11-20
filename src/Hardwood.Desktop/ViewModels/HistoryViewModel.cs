@@ -352,10 +352,13 @@ public sealed partial class HistoryViewModel : PageViewModel
                 var t = cw.Program(b.TeamId);
                 return new RecordRow(i + 1, $"{b.W}-{b.L}", t?.FullName ?? "-", $"{b.Year - 1}-{b.Year % 100:00}" + (b.Reach >= 1 ? $" · {Hardwood.Core.College.CollegeAwardsText.Reached(b.Reach)}" : ""), b.TeamId == us && s.Employed);
             }).ToList()) { LeaderClub = bestTop, Stripe = StripeFor(bestTop) });
-        CollegeRecords = tables;
+        // An empty table isn't shown (its card would bind a missing leader: the bug finder's binding errors); the note says so.
+        var empty = tables.Where(t => t.Empty).Select(t => t.Title).ToList();
+        CollegeRecords = tables.Where(t => !t.Empty).ToList();
         var mine = pasts.FirstOrDefault(p => p.Program.Id == us);
         CollegeRecordsNote = (cw.IsReal ? $"Program honours are all-time (real history through {RealCollegeHistory.LastYear}, then this career's tournaments). " : "Program honours count this career's tournaments. ")
-            + (mine != null && s.Employed && IsCollege ? $"{s.HumanTeam.FullName}: {mine.Line(first)}." : "");
+            + (mine != null && s.Employed && IsCollege ? $"{s.HumanTeam.FullName}: {mine.Line(first)}." : "")
+            + (empty.Count > 0 ? $" Still to be set: {string.Join(" · ", empty)} (after the first season)." : "");
     }
 
     [ObservableProperty] private string _realPastFootnote = "Every real season since 1946-47 is on the NBA history tab.";

@@ -207,6 +207,9 @@ public class Run137CollegePastUiTests
             Assert.Equal("11", titles.Top!.Value);
             Assert.StartsWith("UCLA", titles.Top.Who);
             Assert.Contains(hist.CollegeRecords, t => t.Title == "Final Fours");
+            // No empty card on day one (it bound a missing leader; the bug finder's binding errors): the note names it.
+            Assert.DoesNotContain(hist.CollegeRecords, t => t.Empty);
+            Assert.Contains("Still to be set: Best record (this career)", hist.CollegeRecordsNote);
             Assert.Contains("Miami (FL)", hist.CollegeRecordsNote);
             Shot("run137-college-records.png");
             // The tab survives a refresh (only the hidden pro tabs send it back to Seasons).
