@@ -32,6 +32,8 @@ public sealed class GameWorld
     public const int FirstTeamId = 1001;
     /// <summary>Roster size for every club outside the NABL.</summary>
     public const int RosterSize = 13;
+    /// <summary>K13 (run 133): how far below a club's need an unsigned college graduate (with the potential to reach it) can be.</summary>
+    public const int GraduateReach = 15;
     /// <summary>H29: the fewest players a club outside the NBA may carry (tiers 2-5 and abroad). One number everywhere: the
     /// sporting director fills your club to it, the assistant warns below it, minimum deals and the roster-fill reserve use it.</summary>
     public const int RosterMinimum = RosterSize - 2;
@@ -911,6 +913,26 @@ public sealed class GameWorld
                     .Where(p => !PricedOut(p, comp, date)) // H61 (run 110): a star won't sign for the league's scale
                     .OrderBy(p => Math.Abs(p.CurrentAbility - need.Ca) + _rng.NextDouble() * 6)
                     .FirstOrDefault();
+                // K13 (run 133, critic review #18): before a club makes up a new player, it looks at this summer's college
+                // graduates nobody else signed: a 22-year-old a little below the level it needs, but with the upside to
+                // reach it. Real college starters who miss the NBA play in the lower leagues or abroad; they used to
+                // retire at 22 while the clubs generated strangers.
+                var graduate = pick == null ? freeAgents
+                    .Where(p => p.RookieSeason == newYear && p.Age(date) <= 24 && p.Age(date) >= comp.Profile.MinAge)
+                    .Where(p => p.CurrentAbility >= need.Ca - GraduateReach && p.CurrentAbility <= need.Ca + window && p.PotentialAbility >= need.Ca)
+                    .Where(p => locals.Contains(p.Nationality) || (importRoom && need.Import))
+                    .Where(p => !PricedOut(p, comp, date))
+                    .OrderByDescending(p => p.PotentialAbility + p.CurrentAbility).ThenBy(p => p.Id)
+                    .FirstOrDefault() : null;
+                if (graduate != null)
+                {
+                    freeAgents.Remove(graduate);
+                    graduate.TeamId = team.Id;
+                    graduate.Contract = NewContract(graduate, comp.Profile, _rng.Next(1, 4), date, newYear);
+                    team.Roster.Add(graduate);
+                    SignedAbroad.Add((graduate, team));
+                    continue;
+                }
                 if (pick != null && _rng.Chance(comp.Profile.MinAge > 0 ? 0.95 : 0.7))
                 {
                     freeAgents.Remove(pick);

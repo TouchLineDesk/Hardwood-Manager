@@ -120,13 +120,22 @@ public sealed class TeamLogo : Control
 
         if (ShowText && size >= 28)
         {
-            var text = new FormattedText(team.Abbreviation, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Inter", FontStyle.Normal, FontWeight.ExtraBold), size * 0.30, Brushes.White);
-            var shadow = new FormattedText(team.Abbreviation, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Inter", FontStyle.Normal, FontWeight.ExtraBold), size * 0.30, new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)));
+            // H149 (run 133): the letters shrink to fit inside the crest (four or five letters were clipped at the edges),
+            // and an outline in the crest's dark shade keeps white text readable over a white stripe.
+            var face = new Typeface("Inter", FontStyle.Normal, FontWeight.ExtraBold);
+            double fs = size * 0.30;
+            var probe = new FormattedText(team.Abbreviation, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, fs, Brushes.White);
+            double room = size * 0.74;
+            if (probe.Width > room) fs *= room / probe.Width;
+            var text = new FormattedText(team.Abbreviation, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, fs, Brushes.White);
             var origin = new Point(cx - text.Width / 2, cy - text.Height / 2 + size * 0.02);
-            ctx.DrawText(shadow, origin + new Vector(size * 0.02, size * 0.02));
-            ctx.DrawText(text, origin);
+            var geo = text.BuildGeometry(origin);
+            if (geo != null)
+            {
+                ctx.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)), Math.Max(1.2, fs * 0.16), lineJoin: PenLineJoin.Round), geo);
+                ctx.DrawGeometry(Brushes.White, null, geo);
+            }
+            else ctx.DrawText(text, origin);
         }
     }
 

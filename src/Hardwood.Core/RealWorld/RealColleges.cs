@@ -61,7 +61,34 @@ public static class RealColleges
     /// <summary>The strongest of the other conferences (multi-bid leagues in recent years).</summary>
     private static readonly HashSet<string> TopMid = new() { "aac", "a10", "mwc", "wcc", "pac", "mvc" };
 
-    /// <summary>Short, unique abbreviations: an acronym kept as is, initials for longer names, else the first four letters.</summary>
+    /// <summary>
+    /// H149 (run 133, critic review #18 item 4): the short names fans use for the best-known programs (school initials and
+    /// common short forms, as on a scoreboard), so the Top 25's crests read "UK" and "UNC", not "KENT" or a clipped "UCON".
+    /// Everyone else keeps the generated form below. New careers only: a saved world keeps its abbreviations.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> Known = new Dictionary<string, string>
+    {
+        ["Kentucky"] = "UK", ["Texas"] = "TEX", ["Houston"] = "HOU", ["UConn"] = "UCONN", ["Miami (FL)"] = "MIA", ["Miami (OH)"] = "M-OH",
+        ["Notre Dame"] = "ND", ["Oklahoma State"] = "OKST", ["Duke"] = "DUKE", ["North Carolina"] = "UNC", ["Kansas"] = "KU",
+        ["Gonzaga"] = "GONZ", ["Purdue"] = "PUR", ["Wisconsin"] = "WIS", ["Arizona"] = "ARIZ", ["UCLA"] = "UCLA", ["Villanova"] = "NOVA",
+        ["Michigan State"] = "MSU", ["Michigan"] = "MICH", ["Ohio State"] = "OSU", ["Indiana"] = "IU", ["Louisville"] = "LOU",
+        ["Syracuse"] = "CUSE", ["Tennessee"] = "TENN", ["Auburn"] = "AUB", ["Alabama"] = "BAMA", ["Florida"] = "UF", ["Baylor"] = "BAY",
+        ["Texas Tech"] = "TTU", ["Arkansas"] = "ARK", ["Iowa State"] = "ISU", ["Marquette"] = "MARQ", ["Creighton"] = "CREI",
+        ["Illinois"] = "ILL", ["Iowa"] = "IOWA", ["Virginia"] = "UVA", ["Virginia Tech"] = "VT", ["Florida State"] = "FSU",
+        ["Georgetown"] = "GTWN", ["St. John's"] = "SJU", ["Xavier"] = "XAV", ["Cincinnati"] = "CIN", ["Memphis"] = "MEM",
+        ["San Diego State"] = "SDSU", ["Saint Mary's"] = "SMC", ["BYU"] = "BYU", ["Oregon"] = "ORE", ["USC"] = "USC", ["Maryland"] = "MD",
+        ["Penn State"] = "PSU", ["Rutgers"] = "RUTG", ["Minnesota"] = "MINN", ["Nebraska"] = "NEB", ["Northwestern"] = "NU",
+        ["Clemson"] = "CLEM", ["NC State"] = "NCST", ["Wake Forest"] = "WAKE", ["Pittsburgh"] = "PITT", ["Boston College"] = "BC",
+        ["Georgia Tech"] = "GT", ["SMU"] = "SMU", ["Stanford"] = "STAN", ["California"] = "CAL", ["LSU"] = "LSU", ["Ole Miss"] = "MISS",
+        ["Mississippi State"] = "MSST", ["Missouri"] = "MIZ", ["South Carolina"] = "SC", ["Georgia"] = "UGA", ["Vanderbilt"] = "VAN",
+        ["Texas A&M"] = "TAMU", ["Oklahoma"] = "OU", ["TCU"] = "TCU", ["West Virginia"] = "WVU", ["Kansas State"] = "KSU",
+        ["Utah"] = "UTAH", ["Colorado"] = "COLO", ["Arizona State"] = "ASU", ["UCF"] = "UCF", ["Butler"] = "BUT", ["Providence"] = "PROV",
+        ["Seton Hall"] = "HALL", ["DePaul"] = "DEP", ["Dayton"] = "DAY", ["VCU"] = "VCU", ["Wichita State"] = "WICH",
+        ["Washington"] = "UW", ["Oregon State"] = "ORST", ["Washington State"] = "WSU", ["Utah State"] = "USU", ["New Mexico"] = "UNM",
+        ["Nevada"] = "NEV", ["UNLV"] = "UNLV",
+    };
+
+    /// <summary>Short, unique abbreviations: a known short name, an acronym kept as is, initials for longer names, else the first four letters.</summary>
     public static Dictionary<string, string> Abbreviations()
     {
         var used = new HashSet<string>();
@@ -71,7 +98,8 @@ public static class RealColleges
             string s = p.School;
             var words = s.Replace("(", "").Replace(")", "").Replace("&", "").Replace("-", " ").Replace(".", "")
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w is not ("of" or "The")).ToList();
-            string abbr = s.Length <= 5 && s == s.ToUpperInvariant() ? s.Replace(" ", "")
+            string abbr = Known.TryGetValue(s, out var known) ? known
+                : s.Length <= 5 && s == s.ToUpperInvariant() ? s.Replace(" ", "")
                 : words.Count >= 2 ? string.Concat(words.Select(w => char.ToUpperInvariant(w[0])))
                 : new string(s.Where(char.IsLetter).Take(4).ToArray()).ToUpperInvariant();
             if (abbr.Length < 2) abbr = s[..Math.Min(3, s.Length)].ToUpperInvariant();

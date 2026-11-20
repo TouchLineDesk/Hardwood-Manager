@@ -80,6 +80,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
     public ObservableCollection<GameRow> Games { get; } = new();
     public ObservableCollection<SeriesRow> Series { get; } = new();
     public ObservableCollection<string> LeagueScores { get; } = new();
+    [ObservableProperty] private string _scoresTitle = "Around the league (yesterday)";
     [ObservableProperty, NotifyPropertyChangedFor(nameof(CanOpenBox)), NotifyPropertyChangedFor(nameof(OpenBoxTip))] private GameRow? _selected;
     /// <summary>The hover line on Open box score: why it's greyed out for the game picked (H8, run 65).</summary>
     public string OpenBoxTip => Selected switch
@@ -273,6 +274,24 @@ public sealed partial class ScheduleViewModel : PageViewModel
 
         LeagueScores.Clear();
         var yesterday = s.Today.AddDays(-1);
+        // K14 (run 133): a college coach's side panel is college basketball, not the NBA: yesterday's games with a ranked
+        // team first (by the better rank), then his conference's, then the rest, up to 30.
+        if (s.Employed && s.InCollege && s.World.College is { } cw)
+        {
+            ScoresTitle = "Around college basketball (yesterday)";
+            string conf = cw.ConferenceOf.GetValueOrDefault(us.Id, "");
+            string Name(int id, int? rank) => Hardwood.Core.College.CollegeWorld.WithRank(rank, cw.Program(id)?.Abbreviation ?? "?");
+            var games = cw.Season.Games.Where(g => g.Date == yesterday && g.Played && g.HomeId != us.Id && g.AwayId != us.Id)
+                .OrderBy(g => Math.Min(g.HomeRank ?? 99, g.AwayRank ?? 99))
+                .ThenByDescending(g => cw.ConferenceOf.GetValueOrDefault(g.HomeId) == conf || cw.ConferenceOf.GetValueOrDefault(g.AwayId) == conf)
+                .Take(30);
+            foreach (var g in games)
+                LeagueScores.Add($"{Name(g.AwayId, g.AwayRank)} {g.AwayPts} @ {Name(g.HomeId, g.HomeRank)} {g.HomePts}");
+            if (LeagueScores.Count == 0) LeagueScores.Add("No other college games yesterday.");
+        }
+        else
+        {
+        ScoresTitle = "Around the league (yesterday)";
         foreach (var g in s.Schedule.Where(g => g.Date == yesterday && s.Results.ContainsKey(g.Index)))
             LeagueScores.Add(s.Results[g.Index].Summary());
         if (s.HumanLeague is { } league)
@@ -281,6 +300,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
         if (s.Postseason != null)
             foreach (var se in s.Postseason.Series)
             foreach (var r in se.Games.Where(r => r.Date == yesterday)) LeagueScores.Add($"{se.Round}: {r.Summary()}");
+        }
 
         var rec = s.MyRecord;
         Summary = $"{s.HumanLeagueName}: {rec.Wins}-{rec.Losses} · home {rec.HomeWins}-{rec.HomeLosses} · {rec.PointsFor / Math.Max(1.0, rec.Games):F1} for, {rec.PointsAgainst / Math.Max(1.0, rec.Games):F1} against";

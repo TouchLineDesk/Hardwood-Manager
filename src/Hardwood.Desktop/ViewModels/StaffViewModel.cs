@@ -136,7 +136,8 @@ public sealed partial class StaffViewModel : PageViewModel
     public ObservableCollection<StaffRow> Ours { get; } = new();
     public ObservableCollection<StaffRow> Market { get; } = new();
     public ObservableCollection<FocusRow> Players { get; } = new();
-    public string[] RoleFilters { get; } = { "All roles", "Assistant coach", "Development coach", "Strength & conditioning", "Physio", "Head scout" };
+    /// <summary>K14 (run 133): the role names follow the career (a college staff has an athletic trainer and a recruiting coordinator).</summary>
+    public string[] RoleFilters => new[] { "All roles" }.Concat(Enum.GetValues<StaffRole>().Select(Staff.RoleName)).ToArray();
     public string[] FocusOptions { get; } = { "Balanced", "Shooting", "Playmaking", "Defense", "Mental", "Physical" };
     [ObservableProperty] private string _roleFilter = "All roles";
     // Run 66 (review #13 rank 5): cards first, the tables one click away; roles as chips with counts.
@@ -336,11 +337,14 @@ public sealed partial class StaffViewModel : PageViewModel
     public void PickOurs(StaffRow row) => SelectedOurs = row;
     public void PickMarket(StaffRow row) => SelectedMarket = row;
 
+    /// <summary>K14 (run 133): a college program has no cap; the athletic department pays its staff.</summary>
+    private string PayrollNote => Session.InCollege ? "paid by the athletic department" : "not counted against the cap";
+
     private void UpdateEffects()
     {
         var t = Session.HumanTeam;
         var missing = Enum.GetValues<StaffRole>().Where(r => t.Staff.All(s => s.Role != r)).Select(Staff.RoleName).ToList();
-        Effects = $"Training quality {StaffEffects.TrainingQuality(t):0.0}/20 · injury risk ×{StaffEffects.InjuryRiskFactor(t):0.00} · recovery time ×{StaffEffects.RecoveryFactor(t):0.00} · scouting knowledge {StaffEffects.ScoutingKnowledge(t) * 100:F0}% · staff payroll ${t.Staff.Sum(s => s.Salary) / 1e6:F2}M (not counted against the cap)"
+        Effects = $"Training quality {StaffEffects.TrainingQuality(t):0.0}/20 · injury risk ×{StaffEffects.InjuryRiskFactor(t):0.00} · recovery time ×{StaffEffects.RecoveryFactor(t):0.00} · scouting knowledge {StaffEffects.ScoutingKnowledge(t) * 100:F0}% · staff payroll ${t.Staff.Sum(s => s.Salary) / 1e6:F2}M ({PayrollNote})"
                   + (missing.Count > 0 ? $"\nVacant: {string.Join(", ", missing)} — empty roles hurt." : "");
         double tq = StaffEffects.TrainingQuality(t), inj = StaffEffects.InjuryRiskFactor(t), rec = StaffEffects.RecoveryFactor(t), sc = StaffEffects.ScoutingKnowledge(t);
         Chips = new List<Hardwood.Desktop.Controls.Chip>
@@ -348,8 +352,8 @@ public sealed partial class StaffViewModel : PageViewModel
             new("Training", $"{tq:0.0}", "quality out of 20", tq >= 14 ? "good" : tq < 9 ? "warn" : ""),
             new("Injury risk", $"×{inj:0.00}", inj <= 1 ? "below normal" : "above normal", inj <= 0.95 ? "good" : inj > 1.05 ? "bad" : ""),
             new("Recovery", $"×{rec:0.00}", rec <= 1 ? "faster than normal" : "slower than normal", rec <= 0.95 ? "good" : rec > 1.05 ? "bad" : ""),
-            new("Scouting", $"{sc * 100:F0}%", "of other players' ratings known", sc >= 0.8 ? "good" : sc < 0.5 ? "warn" : ""),
-            new("Staff payroll", PlayerViewModel.Money(t.Staff.Sum(s => s.Salary)), "not counted against the cap", "team"),
+            new(Session.InCollege ? "Recruit scouting" : "Scouting", $"{sc * 100:F0}%", Session.InCollege ? "of recruits' and rivals' ratings known" : "of other players' ratings known", sc >= 0.8 ? "good" : sc < 0.5 ? "warn" : ""),
+            new(Session.InCollege ? "Staff salaries" : "Staff payroll", PlayerViewModel.Money(t.Staff.Sum(s => s.Salary)), PayrollNote, "team"),
             new("Vacant roles", missing.Count.ToString(), missing.Count == 0 ? "every role filled" : string.Join(", ", missing), missing.Count > 0 ? "bad" : "good"),
         };
     }

@@ -716,11 +716,16 @@ public sealed class Offseason
         // The rest of the world signs from the pool before the leftovers retire (decision #41).
         BeforeFreeAgentCleanup?.Invoke(this);
 
+        // K13 (run 133, critic review #18): this summer's college graduates good enough to have started in college (CA 72+)
+        // don't retire at 22 when no club took them in their first summer. They stay on the market a year (clubs at home and
+        // abroad look at them again next summer); the rest leave pro basketball as before.
+        bool Waiting(Player p) => p.RookieSeason == Season + 1 && p.Age(Date) <= 23 && p.CurrentAbility >= GraduateFloor;
         foreach (var p in _league.FreeAgents.ToList())
         {
+            if (Waiting(p)) continue;
             if (p.CurrentAbility < 80 || p.Age(Date) >= 35) { _league.FreeAgents.Remove(p); _league.Retired.Add(p); Report.LeftUnsigned.Add(p); }
         }
-        foreach (var p in _league.FreeAgents.OrderByDescending(p => ContractMarket.Value(p, Date)).Skip(90).ToList())
+        foreach (var p in _league.FreeAgents.Where(p => !Waiting(p)).OrderByDescending(p => ContractMarket.Value(p, Date)).Skip(90).ToList())
         {
             _league.FreeAgents.Remove(p); _league.Retired.Add(p); Report.LeftUnsigned.Add(p);
         }
@@ -741,6 +746,9 @@ public sealed class Offseason
 
     /// <summary>Runs at the end of free agency, before unsigned players retire: overseas clubs sign from the pool here.</summary>
     public Action<Offseason>? BeforeFreeAgentCleanup { get; set; }
+
+    /// <summary>K13 (run 133): the ability from which an unsigned new graduate waits a year on the market rather than leaving the game.</summary>
+    public const int GraduateFloor = 72;
     public League League => _league;
 
     private void RecordHistory()

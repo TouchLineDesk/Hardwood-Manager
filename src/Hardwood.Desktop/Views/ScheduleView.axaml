@@ -140,7 +140,7 @@
           </StackPanel>
         </WrapPanel>
       </Border>
-      <TextBlock Text="Around the league (yesterday)" Classes="h2" Margin="0"/>
+      <TextBlock Text="{Binding ScoresTitle}" Classes="h2" Margin="0"/>
       <Border Classes="panel" MaxHeight="300" x:Name="Scores">
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding LeagueScores}">

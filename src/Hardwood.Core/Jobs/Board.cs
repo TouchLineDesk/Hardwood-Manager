@@ -762,6 +762,9 @@ public static class Board
     public static double SeedOverachievement(int seed, int madnessRound) =>
         seed <= 0 || madnessRound < 0 ? 0 : Math.Max(madnessRound, 1) - SeedExpectedRound(seed);
 
+    /// <summary>H137 (run 133): confidence for each round short of the seed's expected March (at most two rounds).</summary>
+    public const double MarchWeight = 6;
+
     /// <summary>CS2: for a "build the program" goal, the regular season (wins per 82 below the target, about 2 of a 28-game season) that still shows progress.</summary>
     public const double CollegeProgressSlack = 6;
 
@@ -811,6 +814,12 @@ public static class Board
         double delta = diff >= 0 ? 10 + 5 * diff : -12 * -diff * impatience;
         // The regular season counts too (critic review: a 70-12 team that lost in the playoffs ended at confidence 20).
         delta += Math.Clamp(winsVsTarget * 0.6, -10, 12);
+        // H137 (run 133): in college, March against the seed counts as much as the regular season. Duke's AD read "expected
+        // more" (41) after an Elite Eight as a 1-seed, then "pleased with the regular season" (72) after a worse exit in the
+        // Round of 32. An exit rounds before the seed's expectation costs up to 12; reaching it is no loss.
+        bool earlyExit = ctx.IsCollege && seed > 0 && seedOver <= -1.5;
+        bool onPar = ctx.IsCollege && seed > 0 && seedOver >= 0;
+        if (ctx.IsCollege && seed > 0 && !e.Survive) delta += MarchWeight * Math.Clamp(seedOver, -2, 0);
         // A strong season with a playoff upset is a disappointment, not a crisis; a near miss on the win target is a warning.
         // (Replayed careers, Nov 10: a 54-28 team set "conference finals" was sacked after a first-round exit.)
         var lines = new List<string>();
@@ -828,7 +837,9 @@ public static class Board
         // K7 (run 115): going down is never softened by the record. It costs at least 20, and at least 30 in a season the board
         // had protected (a second relegation two years after the first left the Kings' owner at 71/100).
         else if (relegated) delta = Math.Min(delta, protectedNow ? -RelegationProtectedCost : -RelegationCost);
-        else if (diff < 0 && j.BeatTarget) delta = Math.Max(delta, 2);
+        else if (diff < 0 && j.BeatTarget && !earlyExit) delta = Math.Max(delta, 2);
+        else if (diff < 0 && j.BeatTarget) delta = Math.Max(delta, -10); // H137: a great regular season softens an early March exit
+        else if (diff < 0 && onPar) delta = Math.Max(delta, -6); // H137: March went as far as the seed promised
         else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
         else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
         // CS2 (run 126): a "build the program" season with no progress is a warning, not a second punishment on top of the
@@ -911,6 +922,10 @@ public static class Board
             : diff == 0 ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
             : relegated && wins > losses ? $"{owner} is disappointed: a winning record wasn't enough to stay up, last in the division. Board confidence: {job.Confidence:0}/100."
+            // H137: a college season is told by March as well. An early exit for the seed is a disappointment, however good
+            // the regular season; a run as far as the seed promised is close to par.
+            : earlyExit && !relegated ? $"{owner} is disappointed: {SeedPhrase(seed)} {ExitPhrase(madnessRound)} is well short of what the seed promised{(j.BeatTarget ? ", whatever the regular season did" : "")}. AD confidence: {job.Confidence:0}/100."
+            : onPar && !relegated ? $"{owner} hoped for more, but {SeedPhrase(seed)} {ExitPhrase(madnessRound)} is about what the seed promised. AD confidence: {job.Confidence:0}/100."
             : !relegated && j.BeatTarget ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), but hoped to go further. Board confidence: {job.Confidence:0}/100."
             : !relegated && winsVsTarget >= 0 ? (reachedPost
                 ? $"{owner} is disappointed with the {(ctx.IsCollege ? "tournament" : "playoff")} exit; the regular season was on target. Board confidence: {job.Confidence:0}/100."
@@ -925,6 +940,18 @@ public static class Board
 
     /// <summary>CS2: "an 8-seed", "an 11-seed", "a 1-seed".</summary>
     public static string SeedPhrase(int seed) => (seed is 8 or 11 or 18 ? "an " : "a ") + $"{seed}-seed";
+
+    /// <summary>H137 (run 133): where a March run ended, as an exit ("a 1-seed out in the Round of 32").</summary>
+    public static string ExitPhrase(int madnessRound) => madnessRound switch
+    {
+        >= 7 => "winning the national championship",
+        6 => "beaten in the national final",
+        5 => "out in the Final Four",
+        4 => "out in the Elite Eight",
+        3 => "out in the Sweet 16",
+        2 => "out in the Round of 32",
+        _ => "out in the Round of 64",
+    };
 
     /// <summary>CS2: where a March run ended, after the seed ("an 8-seed in the Sweet 16").</summary>
     public static string MarchPhrase(int madnessRound) => madnessRound switch

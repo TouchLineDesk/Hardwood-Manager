@@ -1,5 +1,6 @@
 using Hardwood.Core.College;
 using Hardwood.Core.Model;
+using Hardwood.Core.World;
 
 namespace Hardwood.Core.Season;
 
@@ -8,11 +9,12 @@ public sealed record AlumnusLine(Player Player, int Class, string Club, string L
                                  int AllStars, int Awards, DraftRecord? Draft);
 
 /// <summary>A program's pro record: its graduates in the pros and what they've won.</summary>
-public sealed record ProRecord(int Pros, int TopLeague, int AllStars, int Awards, IReadOnlyList<AlumnusLine> Lines)
+public sealed record ProRecord(int Pros, int TopLeague, int AllStars, int Awards, IReadOnlyList<AlumnusLine> Lines, int Abroad = 0)
 {
-    /// <summary>"12 pros · 5 in the NBA · 3 All-Stars" (or "No pros yet").</summary>
+    /// <summary>"12 pros · 5 in the NBA · 4 abroad · 3 All-Stars" (or "No pros yet").</summary>
     public string Summary(string top) => Pros == 0 ? "No pros yet"
-        : $"{Pros} pro{(Pros == 1 ? "" : "s")} · {TopLeague} in the {top}" + (AllStars > 0 ? $" · {AllStars} All-Star{(AllStars == 1 ? "" : "s")}" : "");
+        : $"{Pros} pro{(Pros == 1 ? "" : "s")} · {TopLeague} in the {top}" + (Abroad > 0 ? $" · {Abroad} abroad" : "")
+          + (AllStars > 0 ? $" · {AllStars} All-Star{(AllStars == 1 ? "" : "s")}" : "");
 }
 
 /// <summary>
@@ -59,14 +61,17 @@ public sealed partial class GameSession
                     var career = League.Careers.GetValueOrDefault(p.Id);
                     int awards = career == null ? 0 : career.Mvps + career.Dpoys + career.Roys + career.SixthMen + career.FinalsMvps + career.AllLeague;
                     bool gone = retired.ContainsKey(p.Id);
-                    lines.Add(new AlumnusLine(p, a.Year, gone ? "Retired" : club?.FullName ?? (draft.Contains(p) ? "In the draft" : "Free agent"), league, isTop && !gone, gone,
+                    // K13 (run 133): a young graduate who found no club has left pro basketball; he didn't "retire" at 22.
+                    string left = p.Age(Today) < 28 ? "Out of pro basketball" : "Retired";
+                    lines.Add(new AlumnusLine(p, a.Year, gone ? left : club?.FullName ?? (draft.Contains(p) ? "In the draft" : "Free agent"), league, isTop && !gone, gone,
                         career?.AllStars ?? 0, awards, p.Draft));
                 }
             }
         }
         lines = lines.OrderByDescending(l => l.Class).ThenByDescending(l => l.Player.CurrentAbility).ToList();
         int pros = lines.Count(l => !l.Retired && l.Player.TeamId != null);
-        return new ProRecord(pros, lines.Count(l => l.TopLeague), lines.Count(l => l.AllStars > 0), lines.Sum(l => l.Awards), lines);
+        int abroad = lines.Count(l => !l.Retired && l.Player.TeamId is { } tid && FindTeam(tid) is { } t && World.LeagueOf(t) is { } comp && !UsaPyramid.IsNational(comp.Key));
+        return new ProRecord(pros, lines.Count(l => l.TopLeague), lines.Count(l => l.AllStars > 0), lines.Sum(l => l.Awards), lines, abroad);
     }
 
     /// <summary>
@@ -75,6 +80,7 @@ public sealed partial class GameSession
     /// </summary>
     public void RefreshProPitch()
     {
+        Staff.CollegeWords = Employed && InCollege; // K14: staff titles follow the job (called on load, hire and each summer)
         if (World.College is not { } c) return;
         if (!Employed || !InCollege || !IsCollegeProgram(HumanTeam)) { c.ProPitch = 0; c.ProPitchText = ""; return; }
         var rec = ProRecordOf(HumanTeam);

@@ -63,7 +63,11 @@ public sealed partial class CollegeWorld
         double avg = confElo == null ? 1500 : Programs.Average(t => elo.GetValueOrDefault(t.Id, 1500));
         double Rating(int id) => elo.GetValueOrDefault(id, 1500) + (confElo == null ? 0 : ScheduleWeight * (confElo[ConferenceOf[id]] - avg));
         var autoIds = auto.Keys.ToHashSet();
-        var others = Programs.Select(t => t.Id).Where(i => !autoIds.Contains(i)).OrderByDescending(Rating).ToList();
+        // H130 (run 133): the committee doesn't take an at-large team at .500 or worse (Cincinnati went in at 14-14 as an
+        // 8-seed). Before any game, everyone is eligible (the preseason projection).
+        bool Winning(int id) { var (w, l) = Record(id); return w + l == 0 || w > l; }
+        var others = Programs.Select(t => t.Id).Where(i => !autoIds.Contains(i))
+            .OrderByDescending(Winning).ThenByDescending(Rating).ToList();
         int atLargeCount = FieldSize - autoIds.Count;
         var atLarge = others.Take(atLargeCount).ToList();
         var field = autoIds.Concat(atLarge).OrderByDescending(Rating).ToList();

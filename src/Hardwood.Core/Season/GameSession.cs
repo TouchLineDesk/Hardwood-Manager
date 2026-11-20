@@ -125,6 +125,7 @@ public sealed partial class GameSession
         session.Job.HiredOn = session.Today;
         // A college coach starts with his assistant using any recruiting hours he leaves unspent (C3, #176).
         if (session.InCollege) session.Delegated.Recruiting = true;
+        session.RefreshProPitch(); // K14: college staff titles from day one
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
         var first = session.NextMyGame;
@@ -450,7 +451,8 @@ public sealed partial class GameSession
         void Chase(RealWorld.ChaseNews n)
         {
             // A broken NBA record reaches everyone; a record watch or a legend passed is yours, or the digest's.
-            if (n.Broken || ours) Post(n.Title, n.Body, "League"); else PostWorld(n.Title, n.Body);
+            // K14 (run 133): a college coach hears of NBA records only in the world digest (CS4).
+            if ((n.Broken || ours) && !(Employed && InCollege)) Post(n.Title, n.Body, "League"); else PostWorld(n.Title, n.Body);
         }
         foreach (var box in new[] { r.Home, r.Away })
         foreach (var l in box.Lines)

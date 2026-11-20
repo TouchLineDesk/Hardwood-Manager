@@ -50,9 +50,13 @@ public sealed class Staff
         StaffRole.AssistantCoach => "Assistant coach",
         StaffRole.DevelopmentCoach => "Development coach",
         StaffRole.StrengthCoach => "Strength & conditioning",
-        StaffRole.Physio => "Physio",
-        _ => "Head scout",
+        StaffRole.Physio => CollegeWords ? "Athletic trainer" : "Physio",
+        _ => CollegeWords ? "Recruiting coordinator" : "Head scout",
     };
+
+    /// <summary>K14 (run 133, critic review #18): a college coach's staff goes by college titles (the athletic trainer, the
+    /// recruiting coordinator). Set by the session for the career on screen, like <c>Names.Brand.Real</c>.</summary>
+    public static bool CollegeWords { get; set; }
 
     /// <summary>
     /// His way of working (staff depth, roadmap 12): one of two styles per role, fixed for a person. Derived from his id so
