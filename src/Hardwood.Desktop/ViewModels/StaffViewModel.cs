@@ -14,7 +14,8 @@ public sealed record StaffBar(string Label, int Value, bool IsKey, Avalonia.Medi
 public sealed partial class StaffRow : ObservableObject
 {
     public required Staff Staff { get; init; }
-    public string Role => Staff.RoleName(Staff.Role);
+    public bool College { get; init; }
+    public string Role => Staff.RoleName(Staff.Role, College);
     public string Name => Staff.Name;
     public int Age { get; init; }
     public int Key => Staff.KeyAttribute;
@@ -107,9 +108,9 @@ public static class StaffCards
 }
 
 /// <summary>Run 66: a role with nobody in it, as a card that sends you to the market for one.</summary>
-public sealed record VacantRole(StaffRole Role, string Text)
+public sealed record VacantRole(StaffRole Role, string Text, bool College = false)
 {
-    public string Name => Staff.RoleName(Role);
+    public string Name => Staff.RoleName(Role, College);
     public Avalonia.Media.IBrush RoleBrush => StaffCards.RoleBrush(Role);
 }
 
@@ -137,7 +138,7 @@ public sealed partial class StaffViewModel : PageViewModel
     public ObservableCollection<StaffRow> Market { get; } = new();
     public ObservableCollection<FocusRow> Players { get; } = new();
     /// <summary>K14 (run 133): the role names follow the career (a college staff has an athletic trainer and a recruiting coordinator).</summary>
-    public string[] RoleFilters => new[] { "All roles" }.Concat(Enum.GetValues<StaffRole>().Select(Staff.RoleName)).ToArray();
+    public string[] RoleFilters => new[] { "All roles" }.Concat(Enum.GetValues<StaffRole>().Select(r => Staff.RoleName(r, Session.CollegeWords))).ToArray();
     public string[] FocusOptions { get; } = { "Balanced", "Shooting", "Playmaking", "Defense", "Mental", "Physical" };
     [ObservableProperty] private string _roleFilter = "All roles";
     // Run 66 (review #13 rank 5): cards first, the tables one click away; roles as chips with counts.
@@ -222,8 +223,8 @@ public sealed partial class StaffViewModel : PageViewModel
         foreach (var role in Enum.GetValues<StaffRole>())
         {
             var st = team.Staff.FirstOrDefault(x => x.Role == role);
-            if (st != null) Ours.Add(new StaffRow { Staff = st, Age = st.Age(s.Today) });
-            else Vacant.Add(new VacantRole(role, VacancyText(role)));
+            if (st != null) Ours.Add(new StaffRow { Staff = st, Age = st.Age(s.Today), College = s.CollegeWords });
+            else Vacant.Add(new VacantRole(role, VacancyText(role), Session.CollegeWords));
         }
         if (keepOurs != null && Ours.FirstOrDefault(r => r.Staff == keepOurs) is { } again) { again.Picked = true; SelectedOurs = again; }
         else if (SelectedOurs != null) SelectedOurs = null;   // he was released or left: nothing picked, no stale renewal line
@@ -273,10 +274,10 @@ public sealed partial class StaffViewModel : PageViewModel
         var keep = SelectedMarket?.Staff;
         Market.Clear();
         var team = Session.HumanTeam;
-        foreach (var st in Session.League.FreeStaff.Where(st => RoleFilter == "All roles" || Staff.RoleName(st.Role) == RoleFilter).OrderByDescending(st => st.KeyAttribute))
+        foreach (var st in Session.League.FreeStaff.Where(st => RoleFilter == "All roles" || Staff.RoleName(st.Role, Session.CollegeWords) == RoleFilter).OrderByDescending(st => st.KeyAttribute))
         {
-            var (cmp, brush, tip) = CompareWith(team.Staff.FirstOrDefault(x => x.Role == st.Role), st);
-            Market.Add(new StaffRow { Staff = st, Age = st.Age(Session.Today), Pay = Session.StaffPayFor(st), Compare = cmp, CompareBrush = brush, CompareTip = tip });
+            var (cmp, brush, tip) = CompareWith(team.Staff.FirstOrDefault(x => x.Role == st.Role), st, Session.CollegeWords);
+            Market.Add(new StaffRow { Staff = st, College = Session.CollegeWords, Age = st.Age(Session.Today), Pay = Session.StaffPayFor(st), Compare = cmp, CompareBrush = brush, CompareTip = tip });
         }
         MarketCards.Clear();
         foreach (var r in Market.Take(CardCount)) MarketCards.Add(r);
@@ -291,7 +292,7 @@ public sealed partial class StaffViewModel : PageViewModel
         RoleChips = RoleFilters.Select(f => new FilterChip
         {
             Name = f, Selected = f == RoleFilter,
-            Record = (f == "All roles" ? free.Count : free.Count(x => Staff.RoleName(x.Role) == f)).ToString("N0"),
+            Record = (f == "All roles" ? free.Count : free.Count(x => Staff.RoleName(x.Role, Session.CollegeWords) == f)).ToString("N0"),
             Tip = f == "All roles" ? "Every candidate on the staff market" : $"Only {f.ToLowerInvariant()} candidates",
         }).ToList();
         MarketCardsNote = Market.Count == 0 ? (RoleFilter == "All roles" ? "Nobody is on the staff market right now. Candidates appear as clubs change their staff." : $"No {RoleFilter.ToLowerInvariant()} is on the market right now. Pick another role.")
@@ -310,14 +311,14 @@ public sealed partial class StaffViewModel : PageViewModel
     public void FindFor(StaffRole role)
     {
         View = "Cards";
-        RoleFilter = Staff.RoleName(role);
+        RoleFilter = Staff.RoleName(role, Session.CollegeWords);
     }
 
     /// <summary>Run 66: how a candidate compares with the man you have in his role.</summary>
-    public static (string Text, Avalonia.Media.IBrush Brush, string Tip) CompareWith(Staff? yours, Staff him)
+    public static (string Text, Avalonia.Media.IBrush Brush, string Tip) CompareWith(Staff? yours, Staff him, bool college = false)
     {
         string key = StaffCards.KeyName(him.Role).ToLowerInvariant();
-        if (yours == null) return ("Fills a vacancy", StandingRow.PlayoffBrush, $"You have no {Staff.RoleName(him.Role).ToLowerInvariant()}: an empty role hurts");
+        if (yours == null) return ("Fills a vacancy", StandingRow.PlayoffBrush, $"You have no {Staff.RoleName(him.Role, college).ToLowerInvariant()}: an empty role hurts");
         int d = him.KeyAttribute - yours.KeyAttribute;
         if (d == 0) return ($"Level with {yours.LastName}", StaffCards.Neutral, $"Same {key} as {yours.Name} ({yours.KeyAttribute})");
         return ($"{d:+0;-0} on {yours.LastName}", d > 0 ? StandingRow.PlayoffBrush : StandingRow.RelegationBrush,
@@ -343,7 +344,7 @@ public sealed partial class StaffViewModel : PageViewModel
     private void UpdateEffects()
     {
         var t = Session.HumanTeam;
-        var missing = Enum.GetValues<StaffRole>().Where(r => t.Staff.All(s => s.Role != r)).Select(Staff.RoleName).ToList();
+        var missing = Enum.GetValues<StaffRole>().Where(r => t.Staff.All(s => s.Role != r)).Select(r => Staff.RoleName(r, Session.CollegeWords)).ToList();
         Effects = $"Training quality {StaffEffects.TrainingQuality(t):0.0}/20 · injury risk ×{StaffEffects.InjuryRiskFactor(t):0.00} · recovery time ×{StaffEffects.RecoveryFactor(t):0.00} · scouting knowledge {StaffEffects.ScoutingKnowledge(t) * 100:F0}% · staff payroll ${t.Staff.Sum(s => s.Salary) / 1e6:F2}M ({PayrollNote})"
                   + (missing.Count > 0 ? $"\nVacant: {string.Join(", ", missing)} — empty roles hurt." : "");
         double tq = StaffEffects.TrainingQuality(t), inj = StaffEffects.InjuryRiskFactor(t), rec = StaffEffects.RecoveryFactor(t), sc = StaffEffects.ScoutingKnowledge(t);

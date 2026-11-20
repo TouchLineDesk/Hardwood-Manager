@@ -61,8 +61,10 @@ public class Run133CollegeReviewTests
         var s = GameSession.NewGame(2026, id, null);
         var c = s.World.College!;
         // K14: college staff titles.
-        Assert.Equal("Athletic trainer", Staff.RoleName(StaffRole.Physio));
-        Assert.Equal("Recruiting coordinator", Staff.RoleName(StaffRole.Scout));
+        Assert.True(s.CollegeWords);
+        Assert.Equal("Athletic trainer", Staff.RoleName(StaffRole.Physio, s.CollegeWords));
+        Assert.Equal("Recruiting coordinator", Staff.RoleName(StaffRole.Scout, s.CollegeWords));
+        Assert.Equal("Physio", Staff.RoleName(StaffRole.Physio));
 
         // H148: by Christmas, no unbeaten team sits behind a team with three or more losses.
         int guard = 0;

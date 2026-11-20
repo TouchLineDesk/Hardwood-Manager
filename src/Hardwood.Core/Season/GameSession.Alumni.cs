@@ -70,7 +70,7 @@ public sealed partial class GameSession
         }
         lines = lines.OrderByDescending(l => l.Class).ThenByDescending(l => l.Player.CurrentAbility).ToList();
         int pros = lines.Count(l => !l.Retired && l.Player.TeamId != null);
-        int abroad = lines.Count(l => !l.Retired && l.Player.TeamId is { } tid && FindTeam(tid) is { } t && World.LeagueOf(t) is { } comp && !UsaPyramid.IsNational(comp.Key));
+        int abroad = lines.Count(l => !l.Retired && l.Player.TeamId is { } tid && FindTeam(tid) is { } t && World.LeagueOf(t) is { } comp && !UsaPyramid.IsPyramid(comp.Key));
         return new ProRecord(pros, lines.Count(l => l.TopLeague), lines.Count(l => l.AllStars > 0), lines.Sum(l => l.Awards), lines, abroad);
     }
 
@@ -78,9 +78,11 @@ public sealed partial class GameSession
     /// The coached program's pitch to recruits (CP3): its alumni in the top league and its All-Stars, a few appeal points at
     /// most (<see cref="CollegeWorld.PitchFor"/>). Called when a career loads and after each summer and the awards.
     /// </summary>
+    /// <summary>K14 (run 133): staff and other pro words switch to college ones while you coach a program.</summary>
+    public bool CollegeWords => Employed && InCollege;
+
     public void RefreshProPitch()
     {
-        Staff.CollegeWords = Employed && InCollege; // K14: staff titles follow the job (called on load, hire and each summer)
         if (World.College is not { } c) return;
         if (!Employed || !InCollege || !IsCollegeProgram(HumanTeam)) { c.ProPitch = 0; c.ProPitchText = ""; return; }
         var rec = ProRecordOf(HumanTeam);

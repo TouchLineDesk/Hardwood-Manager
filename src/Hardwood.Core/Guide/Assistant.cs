@@ -225,8 +225,8 @@ public static class Assistant
         // ---- staff
         var missing = Enum.GetValues<StaffRole>().Where(r => team.Staff.All(st => st.Role != r)).ToList();
         if (missing.Count > 0)
-            yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire {Article(Staff.RoleName(missing[0]).ToLowerInvariant())}",
-                $"{string.Join(", ", missing.Select(Staff.RoleName))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
+            yield return new($"staff-{string.Join('.', missing)}", 25, $"Hire {Article(Staff.RoleName(missing[0], s.CollegeWords).ToLowerInvariant())}",
+                $"{string.Join(", ", missing.Select(r => Staff.RoleName(r, s.CollegeWords)))} {(missing.Count == 1 ? "is" : "are")} missing. Staff improve training, development, fitness and scouting; hire on the Staff & Training page.", "Staff & Training");
 
         // Staff part 2: contracts you have to extend yourself, raised from February so there's time.
         if (s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && today.Month is >= 2 and <= 6 && s.StaffExpiring is { Count: > 0 } ending)

@@ -950,6 +950,7 @@ public static class Board
         4 => "out in the Elite Eight",
         3 => "out in the Sweet 16",
         2 => "out in the Round of 32",
+        0 => "out in the First Four",
         _ => "out in the Round of 64",
     };
 
