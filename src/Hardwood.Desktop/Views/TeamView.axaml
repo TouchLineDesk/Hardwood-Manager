@@ -28,6 +28,11 @@
       </Grid>
     </Border>
     <c:StatStrip DockPanel.Dock="Top" ItemsSource="{Binding Chips}" Accent="{Binding Accent}" Margin="0,0,0,2"/>
+    <!-- K12b (run 137): a college program's banners, in years. -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="2,2,0,4" IsVisible="{Binding HasBanners}">
+      <c:Icon Kind="Trophy" Width="14" Height="14" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,1,6,0"/>
+      <TextBlock x:Name="BannersLine" Grid.Column="1" Text="{Binding Banners}" FontSize="12" TextWrapping="Wrap"/>
+    </Grid>
     <TabControl>
       <TabItem Header="Roster">
         <DockPanel>

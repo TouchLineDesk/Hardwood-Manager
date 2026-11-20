@@ -1,0 +1,667 @@
+{
+ "checked": "2026-11-20",
+ "source": "Champions, runners-up, title-game scores and vacated appearances: Wikipedia, 'List of NCAA Division I men's basketball champions' and 'List of NCAA Division I men's basketball tournament Final Four participants' (vacated section), read Nov 20, 2026. The 2026 Final Four (Michigan, Arizona, UConn, Illinois): NCAA.com and theScore, Nov 20, 2026. NBA alumni: Dunkest (Jul 3, 2026), WTOP (Feb 2026), Baylor Proud (Feb 24, 2026), NBA.com (Mar 21, 2025), Sportskeeda (2024), Spotrac college pages and Rivals (2023-24), read Nov 20, 2026.",
+ "notes": "The other two Final Four teams for 1985-2025 did not render on the Wikipedia page fetched on Nov 20 and are from general knowledge (well-documented; check against the Final Four page when it can be read). Vacated appearances are listed as the source marks them; program totals (titles, Final Fours) are the ncaa_programs.json counts. Alumni lists name only players the sources name; the game matches them by name against the real NBA rosters at the start of a career, so retired or departed players are skipped.",
+ "tournaments": [
+  {
+   "year": 1985,
+   "champion": "Villanova",
+   "runnerUp": "Georgetown",
+   "score": "66–64",
+   "semifinalists": [
+    "St. John's",
+    "Memphis"
+   ],
+   "vacated": [
+    "Memphis"
+   ]
+  },
+  {
+   "year": 1986,
+   "champion": "Louisville",
+   "runnerUp": "Duke",
+   "score": "72–69",
+   "semifinalists": [
+    "Kansas",
+    "LSU"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1987,
+   "champion": "Indiana",
+   "runnerUp": "Syracuse",
+   "score": "74–73",
+   "semifinalists": [
+    "UNLV",
+    "Providence"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1988,
+   "champion": "Kansas",
+   "runnerUp": "Oklahoma",
+   "score": "83–79",
+   "semifinalists": [
+    "Arizona",
+    "Duke"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1989,
+   "champion": "Michigan",
+   "runnerUp": "Seton Hall",
+   "score": "80–79 (OT)",
+   "semifinalists": [
+    "Duke",
+    "Illinois"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1990,
+   "champion": "UNLV",
+   "runnerUp": "Duke",
+   "score": "103–73",
+   "semifinalists": [
+    "Georgia Tech",
+    "Arkansas"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1991,
+   "champion": "Duke",
+   "runnerUp": "Kansas",
+   "score": "72–65",
+   "semifinalists": [
+    "UNLV",
+    "North Carolina"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1992,
+   "champion": "Duke",
+   "runnerUp": "Michigan",
+   "score": "71–51",
+   "semifinalists": [
+    "Cincinnati",
+    "Indiana"
+   ],
+   "vacated": [
+    "Michigan"
+   ]
+  },
+  {
+   "year": 1993,
+   "champion": "North Carolina",
+   "runnerUp": "Michigan",
+   "score": "77–71",
+   "semifinalists": [
+    "Kansas",
+    "Kentucky"
+   ],
+   "vacated": [
+    "Michigan"
+   ]
+  },
+  {
+   "year": 1994,
+   "champion": "Arkansas",
+   "runnerUp": "Duke",
+   "score": "76–72",
+   "semifinalists": [
+    "Arizona",
+    "Florida"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1995,
+   "champion": "UCLA",
+   "runnerUp": "Arkansas",
+   "score": "89–78",
+   "semifinalists": [
+    "Oklahoma State",
+    "North Carolina"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1996,
+   "champion": "Kentucky",
+   "runnerUp": "Syracuse",
+   "score": "76–67",
+   "semifinalists": [
+    "UMass",
+    "Mississippi State"
+   ],
+   "vacated": [
+    "UMass"
+   ]
+  },
+  {
+   "year": 1997,
+   "champion": "Arizona",
+   "runnerUp": "Kentucky",
+   "score": "84–79 (OT)",
+   "semifinalists": [
+    "Minnesota",
+    "North Carolina"
+   ],
+   "vacated": [
+    "Minnesota"
+   ]
+  },
+  {
+   "year": 1998,
+   "champion": "Kentucky",
+   "runnerUp": "Utah",
+   "score": "78–69",
+   "semifinalists": [
+    "Stanford",
+    "North Carolina"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 1999,
+   "champion": "UConn",
+   "runnerUp": "Duke",
+   "score": "77–74",
+   "semifinalists": [
+    "Ohio State",
+    "Michigan State"
+   ],
+   "vacated": [
+    "Ohio State"
+   ]
+  },
+  {
+   "year": 2000,
+   "champion": "Michigan State",
+   "runnerUp": "Florida",
+   "score": "89–76",
+   "semifinalists": [
+    "Wisconsin",
+    "North Carolina"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2001,
+   "champion": "Duke",
+   "runnerUp": "Arizona",
+   "score": "82–72",
+   "semifinalists": [
+    "Maryland",
+    "Michigan State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2002,
+   "champion": "Maryland",
+   "runnerUp": "Indiana",
+   "score": "64–52",
+   "semifinalists": [
+    "Kansas",
+    "Oklahoma"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2003,
+   "champion": "Syracuse",
+   "runnerUp": "Kansas",
+   "score": "81–78",
+   "semifinalists": [
+    "Texas",
+    "Marquette"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2004,
+   "champion": "UConn",
+   "runnerUp": "Georgia Tech",
+   "score": "82–73",
+   "semifinalists": [
+    "Duke",
+    "Oklahoma State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2005,
+   "champion": "North Carolina",
+   "runnerUp": "Illinois",
+   "score": "75–70",
+   "semifinalists": [
+    "Louisville",
+    "Michigan State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2006,
+   "champion": "Florida",
+   "runnerUp": "UCLA",
+   "score": "73–57",
+   "semifinalists": [
+    "LSU",
+    "George Mason"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2007,
+   "champion": "Florida",
+   "runnerUp": "Ohio State",
+   "score": "84–75",
+   "semifinalists": [
+    "Georgetown",
+    "UCLA"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2008,
+   "champion": "Kansas",
+   "runnerUp": "Memphis",
+   "score": "75–68 (OT)",
+   "semifinalists": [
+    "North Carolina",
+    "UCLA"
+   ],
+   "vacated": [
+    "Memphis"
+   ]
+  },
+  {
+   "year": 2009,
+   "champion": "North Carolina",
+   "runnerUp": "Michigan State",
+   "score": "89–72",
+   "semifinalists": [
+    "UConn",
+    "Villanova"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2010,
+   "champion": "Duke",
+   "runnerUp": "Butler",
+   "score": "61–59",
+   "semifinalists": [
+    "West Virginia",
+    "Michigan State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2011,
+   "champion": "UConn",
+   "runnerUp": "Butler",
+   "score": "53–41",
+   "semifinalists": [
+    "Kentucky",
+    "VCU"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2012,
+   "champion": "Kentucky",
+   "runnerUp": "Kansas",
+   "score": "67–59",
+   "semifinalists": [
+    "Louisville",
+    "Ohio State"
+   ],
+   "vacated": [
+    "Louisville"
+   ]
+  },
+  {
+   "year": 2013,
+   "champion": "Louisville",
+   "runnerUp": "Michigan",
+   "score": "82–76",
+   "semifinalists": [
+    "Syracuse",
+    "Wichita State"
+   ],
+   "vacated": [
+    "Louisville"
+   ]
+  },
+  {
+   "year": 2014,
+   "champion": "UConn",
+   "runnerUp": "Kentucky",
+   "score": "60–54",
+   "semifinalists": [
+    "Florida",
+    "Wisconsin"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2015,
+   "champion": "Duke",
+   "runnerUp": "Wisconsin",
+   "score": "68–63",
+   "semifinalists": [
+    "Kentucky",
+    "Michigan State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2016,
+   "champion": "Villanova",
+   "runnerUp": "North Carolina",
+   "score": "77–74",
+   "semifinalists": [
+    "Oklahoma",
+    "Syracuse"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2017,
+   "champion": "North Carolina",
+   "runnerUp": "Gonzaga",
+   "score": "71–65",
+   "semifinalists": [
+    "Oregon",
+    "South Carolina"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2018,
+   "champion": "Villanova",
+   "runnerUp": "Michigan",
+   "score": "79–62",
+   "semifinalists": [
+    "Kansas",
+    "Loyola Chicago"
+   ],
+   "vacated": [
+    "Kansas"
+   ]
+  },
+  {
+   "year": 2019,
+   "champion": "Virginia",
+   "runnerUp": "Texas Tech",
+   "score": "85–77 (OT)",
+   "semifinalists": [
+    "Auburn",
+    "Michigan State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2021,
+   "champion": "Baylor",
+   "runnerUp": "Gonzaga",
+   "score": "86–70",
+   "semifinalists": [
+    "Houston",
+    "UCLA"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2022,
+   "champion": "Kansas",
+   "runnerUp": "North Carolina",
+   "score": "72–69",
+   "semifinalists": [
+    "Duke",
+    "Villanova"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2023,
+   "champion": "UConn",
+   "runnerUp": "San Diego State",
+   "score": "76–59",
+   "semifinalists": [
+    "Florida Atlantic",
+    "Miami (FL)"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2024,
+   "champion": "UConn",
+   "runnerUp": "Purdue",
+   "score": "75–60",
+   "semifinalists": [
+    "Alabama",
+    "NC State"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2025,
+   "champion": "Florida",
+   "runnerUp": "Houston",
+   "score": "65–63",
+   "semifinalists": [
+    "Duke",
+    "Auburn"
+   ],
+   "vacated": []
+  },
+  {
+   "year": 2026,
+   "champion": "Michigan",
+   "runnerUp": "UConn",
+   "score": "69–63",
+   "semifinalists": [
+    "Arizona",
+    "Illinois"
+   ],
+   "vacated": []
+  }
+ ],
+ "alumni": {
+  "Kentucky": [
+   "Anthony Davis",
+   "Devin Booker",
+   "Shai Gilgeous-Alexander",
+   "De'Aaron Fox",
+   "Jamal Murray",
+   "Karl-Anthony Towns",
+   "Bam Adebayo",
+   "Tyrese Maxey",
+   "Julius Randle"
+  ],
+  "Duke": [
+   "Jayson Tatum",
+   "Kyrie Irving",
+   "Zion Williamson",
+   "Brandon Ingram",
+   "Cooper Flagg",
+   "Paolo Banchero",
+   "Seth Curry"
+  ],
+  "Arizona": [
+   "Deandre Ayton",
+   "Aaron Gordon",
+   "Lauri Markkanen",
+   "T.J. McConnell",
+   "Bennedict Mathurin"
+  ],
+  "UCLA": [
+   "Russell Westbrook",
+   "Kevin Love",
+   "Jrue Holiday",
+   "Zach LaVine",
+   "Lonzo Ball",
+   "Jaime Jaquez Jr.",
+   "Kevon Looney",
+   "Norman Powell",
+   "Amari Bailey"
+  ],
+  "Michigan": [
+   "Jordan Poole",
+   "Duncan Robinson",
+   "Tim Hardaway Jr.",
+   "Caris LeVert",
+   "Danny Wolf",
+   "Moritz Wagner",
+   "Franz Wagner",
+   "Kobe Bufkin",
+   "Colin Castleton",
+   "Jett Howard"
+  ],
+  "Gonzaga": [
+   "Domantas Sabonis",
+   "Kelly Olynyk",
+   "Chet Holmgren",
+   "Andrew Nembhard",
+   "Jalen Suggs"
+  ],
+  "Kansas": [
+   "Joel Embiid",
+   "Andrew Wiggins",
+   "Christian Braun",
+   "Gradey Dick",
+   "Kelly Oubre Jr.",
+   "Ochai Agbaji",
+   "Markieff Morris",
+   "Svi Mykhailiuk",
+   "Jalen Wilson"
+  ],
+  "Arkansas": [
+   "Bobby Portis",
+   "Daniel Gafford",
+   "Moses Moody",
+   "Anthony Black",
+   "Isaiah Joe",
+   "Jaylin Williams",
+   "Nick Smith Jr.",
+   "Jordan Walsh"
+  ],
+  "Baylor": [
+   "RayJ Dennis",
+   "VJ Edgecombe",
+   "Keyonte George",
+   "Davion Mitchell",
+   "Yves Missi",
+   "Norchad Omier",
+   "Royce O'Neale",
+   "Taurean Prince",
+   "Jeremy Sochan",
+   "Ja'Kobe Walter"
+  ],
+  "UConn": [
+   "Andre Drummond",
+   "Stephon Castle",
+   "Donovan Clingan",
+   "Liam McNeeley",
+   "Tristen Newton"
+  ],
+  "USC": [
+   "DeMar DeRozan",
+   "Nikola Vučević",
+   "Evan Mobley",
+   "Onyeka Okongwu",
+   "Bronny James"
+  ],
+  "Auburn": [
+   "Isaac Okoro",
+   "Jabari Smith Jr.",
+   "Walker Kessler",
+   "Johni Broome",
+   "Dylan Cardwell"
+  ],
+  "Florida": [
+   "Bradley Beal",
+   "Al Horford",
+   "Dorian Finney-Smith",
+   "Tre Mann",
+   "Walter Clayton Jr."
+  ],
+  "North Carolina": [
+   "Harrison Barnes",
+   "Cameron Johnson",
+   "Coby White",
+   "Cole Anthony",
+   "Pete Nance"
+  ],
+  "Villanova": [
+   "Jalen Brunson",
+   "Mikal Bridges",
+   "Kyle Lowry",
+   "Donte DiVincenzo",
+   "Josh Hart"
+  ],
+  "Michigan State": [
+   "Draymond Green",
+   "Jaren Jackson Jr.",
+   "Gary Harris",
+   "Miles Bridges",
+   "Jase Richardson"
+  ],
+  "Virginia": [
+   "De'Andre Hunter",
+   "Trey Murphy III",
+   "Ty Jerome",
+   "Ryan Dunn",
+   "Jay Huff"
+  ],
+  "Texas": [
+   "Kevin Durant"
+  ],
+  "Miami (FL)": [
+   "Davon Reed",
+   "Dewan Hernandez",
+   "Kyshawn George",
+   "Bruce Brown",
+   "Isaiah Wong",
+   "Jordan Miller",
+   "Lonnie Walker IV"
+  ],
+  "Memphis": [
+   "Precious Achiuwa",
+   "Jalen Duren",
+   "James Wiseman",
+   "Josh Minott",
+   "Lester Quinones"
+  ],
+  "Illinois": [
+   "Ayo Dosunmu",
+   "Terrence Shannon Jr."
+  ],
+  "Clemson": [
+   "Hunter Tyson",
+   "P.J. Hall"
+  ],
+  "UNLV": [
+   "Christian Wood",
+   "Derrick Jones Jr."
+  ],
+  "Loyola Maryland": [
+   "Santi Aldama"
+  ],
+  "DePaul": [
+   "Max Strus",
+   "Paul Reed"
+  ],
+  "Toledo": [
+   "Ryan Rollins"
+  ]
+ }
+}

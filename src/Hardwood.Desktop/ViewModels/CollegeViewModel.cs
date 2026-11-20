@@ -51,12 +51,13 @@ public sealed class AlumnusRow
     public Player Player => Line.Player;
     public string Name => Line.Player.Name;
     public string Pos => Line.Player.PrimaryPosition.ToString();
-    public string Class => Line.Class.ToString();
+    /// <summary>K12b (run 137): a real alumnus from before this career has no class year here ("Earlier").</summary>
+    public string Class => Line.Class == 0 ? "Earlier" : Line.Class.ToString();
     public string Club => Line.Club;
     public string League => Line.League;
     public int CA => Line.Player.CurrentAbility;
     public int Age { get; init; }
-    public string Draft => Line.Draft is { } d ? $"{d.Year} · pick {d.Pick}" : "Undrafted";
+    public string Draft => Line.Draft is { } d ? $"{d.Year} · pick {d.Pick}" : Line.Class == 0 ? "-" : "Undrafted";
     /// <summary>"2 All-Star · 1 award" (or "-").</summary>
     public string Honours => Line.AllStars == 0 && Line.Awards == 0 ? "-"
         : string.Join(" · ", new[] { Line.AllStars > 0 ? $"{Line.AllStars} All-Star" : "", Line.Awards > 0 ? $"{Line.Awards} award{(Line.Awards == 1 ? "" : "s")}" : "" }.Where(x => x != ""));
@@ -936,9 +937,11 @@ public sealed partial class CollegeViewModel : PageViewModel
             new("Best now", best == null ? "-" : best.Player.CurrentAbility.ToString(), best == null ? "nobody yet" : $"{best.Player.Name} · {best.Club}", "info"),
             new("Recruiting pitch", c.ProPitch > 0 ? $"+{c.ProPitch:0}" : "0", c.ProPitch > 0 ? "appeal with top recruits" : $"until one reaches the {top}", c.ProPitch > 0 ? "good" : ""),
         };
+        int earlier = rec.Lines.Count(l => l.Class == 0);
+        string realNote = earlier > 0 ? $" Rows marked Earlier are real NBA players who played here before this career began." : "";
         AlumniNote = rec.Lines.Count == 0
             ? $"Nobody has graduated from {Session.HumanTeam.TheFullName} in this career yet. Each summer your seniors turn pro; this tab follows them through the draft and their careers, and every one who reaches the {top} helps you recruit (up to +{CollegeWorld.MaxProPitch:0} appeal with 4- and 5-star prospects, half that with the rest)."
-            : $"{rec.Summary(top)}. Every graduate in the {top} adds 1 to your appeal with 4- and 5-star recruits and each All-Star 2 more, up to +{CollegeWorld.MaxProPitch:0} (half for other recruits). Pick a row and press Open player for his page.";
+            : $"{rec.Summary(top)}. Every graduate in the {top} adds 1 to your appeal with 4- and 5-star recruits and each All-Star 2 more, up to +{CollegeWorld.MaxProPitch:0} (half for other recruits)." + realNote + " Pick a row and press Open player for his page.";
         OnPropertyChanged(nameof(HasAlumni)); OnPropertyChanged(nameof(NoAlumni));
     }
 

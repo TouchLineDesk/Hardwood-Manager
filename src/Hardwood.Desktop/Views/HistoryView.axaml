@@ -16,7 +16,7 @@
             <Grid ColumnDefinitions="52,*" IsVisible="{Binding HasTop}" Margin="0,2,0,2">
               <Panel Width="48" Height="48" VerticalAlignment="Top">
                 <c:Avatar Player="{Binding Leader}" Team="{Binding LeaderClub}" Width="48" Height="48" IsVisible="{Binding HasPhoto}"/>
-                <c:TeamLogo Team="{Binding LeaderClub}" ShowText="False" Width="46" Height="46" IsVisible="{Binding HasCrest}"/>
+                <c:TeamLogo Team="{Binding LeaderClub}" ShowText="False" ShowRank="False" Width="46" Height="46" IsVisible="{Binding HasCrest}"/>
               </Panel>
               <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="1" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Top.Value}" FontWeight="Bold" FontSize="22"/>
@@ -74,7 +74,7 @@
             </StackPanel>
             <Grid ColumnDefinitions="56,*">
               <Panel Width="52" Height="52" VerticalAlignment="Top">
-                <c:TeamLogo Team="{Binding Champion}" ShowText="False" Width="52" Height="52" IsVisible="{Binding HasCrest}"/>
+                <c:TeamLogo Team="{Binding Champion}" ShowText="False" ShowRank="False" Width="52" Height="52" IsVisible="{Binding HasCrest}"/>
                 <c:Icon Kind="Trophy" Width="32" Height="32" Foreground="{DynamicResource HwAccentBrush}" IsVisible="{Binding !HasCrest}"/>
               </Panel>
               <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="1" VerticalAlignment="Center">
@@ -116,7 +116,7 @@
                 <ItemsControl x:Name="RealPastCards" ItemsSource="{Binding RealPastCards}" ItemTemplate="{StaticResource SeasonCardTemplate}" IsVisible="{Binding HasRealPast}">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 </ItemsControl>
-                <TextBlock Text="Every real season since 1946-47 is on the NBA history tab." Classes="muted" FontSize="11.5" IsVisible="{Binding HasRealPast}"/>
+                <TextBlock Text="{Binding RealPastFootnote}" Classes="muted" FontSize="11.5" IsVisible="{Binding HasRealPast}"/>
               </StackPanel>
             </ScrollViewer>
             <DataGrid x:Name="SeasonsTable" ItemsSource="{Binding Rows}" IsVisible="{Binding ShowTable}">
@@ -154,6 +154,30 @@
             </ItemsControl>
             <TextBlock Text="{Binding CareerRecordsToSet}" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
                        IsVisible="{Binding CareerRecordsToSet, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <!-- K12b (run 137): the college game's records book and every national champion since 1985 (a real world). -->
+      <TabItem Header="College records" IsVisible="{Binding IsCollege}">
+        <ScrollViewer x:Name="CollegeRecordsView">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding CollegeRecordsNote}" TextWrapping="Wrap"/>
+            <TextBlock Text="Programs" Classes="h2"/>
+            <ItemsControl x:Name="CollegeRecordCards" ItemsSource="{Binding CollegeRecords}" ItemTemplate="{StaticResource RecordCard}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Text="Every national champion" Classes="h2" IsVisible="{Binding HasCollegeChampions}"/>
+            <DataGrid x:Name="CollegeChampionsTable" ItemsSource="{Binding CollegeChampions}" Height="520" IsVisible="{Binding HasCollegeChampions}">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Season" Binding="{Binding Season}" Width="80"/>
+                <DataGridTextColumn Header="Champion" Binding="{Binding Champion}" Width="150"/>
+                <DataGridTextColumn Header="Runner-up" Binding="{Binding RunnerUp}" Width="150"/>
+                <DataGridTextColumn Header="Final" Binding="{Binding Score}" Width="100"/>
+                <DataGridTextColumn Header="Final Four" Binding="{Binding FinalFour}" Width="220"/>
+                <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" MinWidth="120"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="{Binding CollegeSource}" Classes="muted" FontSize="10.5" TextWrapping="Wrap"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

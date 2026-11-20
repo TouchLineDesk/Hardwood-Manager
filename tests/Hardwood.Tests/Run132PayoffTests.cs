@@ -79,10 +79,12 @@ public class Run132PayoffTests
             Assert.Null(s.CollegePotentialOf(s.League.Teams[0].Roster[0]));
             var hs = c.Prospects.First();
             Assert.NotNull(s.CollegePotentialOf(hs));
-            // A fresh career has no alumni and no pitch.
-            Assert.Empty(c.Alumni);
-            Assert.Equal(0, c.ProPitch);
-            Assert.Equal("No pros yet", s.ProRecordOf(s.HumanTeam).Summary("NBA"));
+            // K12b (run 137): a fresh real career has only real NBA alumni (class 0, before this career), and the top program's
+            // pitch counts them from day one.
+            Assert.All(c.Alumni.Values, a => Assert.Equal(0, a.Year));
+            var day1 = s.ProRecordOf(s.HumanTeam);
+            Assert.True(day1.TopLeague > 0, day1.Summary("NBA"));
+            Assert.Equal(CollegeWorld.PitchPoints(day1.TopLeague, day1.Lines.Count(l => l.TopLeague && l.AllStars > 0)), c.ProPitch);
 
             var seniors = c.FinalYear(s.HumanTeam).Select(p => p.Id).ToHashSet();
             int guard = 0;
@@ -91,7 +93,7 @@ public class Run132PayoffTests
             int summer = s.Offseason!.Season + 1;
             // Every program's graduates are on the record, with the summer they turned pro.
             Assert.True(c.Alumni.Count > 300, $"alumni {c.Alumni.Count}");
-            var ours = c.Alumni.Where(kv => kv.Value.ProgramId == s.HumanTeam.Id).ToList();
+            var ours = c.Alumni.Where(kv => kv.Value.ProgramId == s.HumanTeam.Id && kv.Value.Year != 0).ToList();
             Assert.Equal(seniors.OrderBy(x => x), ours.Select(kv => kv.Key).OrderBy(x => x));
             Assert.All(ours, kv => Assert.Equal(summer, kv.Value.Year));
 
@@ -109,8 +111,8 @@ public class Run132PayoffTests
 
             // The tracker lists them, the pros among them on a club.
             var rec = back.ProRecordOf(back.HumanTeam);
-            Assert.Equal(seniors.Count, rec.Lines.Count);
-            Assert.All(rec.Lines, l => Assert.Equal(summer, l.Class));
+            Assert.Equal(seniors.Count, rec.Lines.Count(l => l.Class != 0));
+            Assert.All(rec.Lines.Where(l => l.Class != 0), l => Assert.Equal(summer, l.Class));
             var drafted = back.Offseason!.Report.Draft.Where(d => seniors.Contains(d.Player.Id)).ToList();
             foreach (var d in drafted) Assert.Contains(rec.Lines, l => l.Player == d.Player && l.Draft != null);
             // Into the new season: the pitch reads where they signed this summer.

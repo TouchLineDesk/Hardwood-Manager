@@ -125,7 +125,8 @@ public sealed partial class GameSession
         session.Job.HiredOn = session.Today;
         // A college coach starts with his assistant using any recruiting hours he leaves unspent (C3, #176).
         if (session.InCollege) session.Delegated.Recruiting = true;
-        session.RefreshProPitch(); // CP3: the pitch (none on day one)
+        session.SeedRealAlumni(); // K12b (run 137): a real program's NBA alumni from day one
+        session.RefreshProPitch(); // CP3: the pitch (a real program's alumni count from day one)
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
         var first = session.NextMyGame;
@@ -1666,6 +1667,7 @@ public sealed partial class GameSession
         save.LoadCareer(session);
         session.CatchUpWorld();
         session.FixStaffPay();
+        session.SeedRealAlumni(); // K12b: saves from before v0.125.0 get the real alumni once
         session.RefreshProPitch(); // CP3: the pitch isn't saved; it's read from the alumni
         session.LastSavedAt = File.Exists(path) ? File.GetLastWriteTime(path) : DateTime.Now;
         if (save.UpgradedFrom is { } old)

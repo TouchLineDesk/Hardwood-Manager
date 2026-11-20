@@ -58,6 +58,9 @@ public sealed partial class TeamViewModel : PageViewModel
     [ObservableProperty] private string _money = "";
     /// <summary>Roadmap 1: the club at a glance as stat chips (record, coach, owner, arena, money).</summary>
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _chips = new();
+    /// <summary>K12b (run 137): a college program's banners in words ("National champions 1996, 1998, 2012 …"); empty otherwise.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasBanners))] private string _banners = "";
+    public bool HasBanners => Banners.Length > 0;
     public Avalonia.Media.Color Accent => ThemeService.AccentFor(Team);
 
     /// <summary>From Danny's graphics pack (#350): the club's banner behind the header, and its jerseys (home first).</summary>
@@ -117,6 +120,16 @@ public sealed partial class TeamViewModel : PageViewModel
         chips.Add(new("Coach", coach, t.Coach is { } hc ? $"reputation {hc.Reputation:0}" : ""));
         chips.Add(new(boss, t.Owner.Name.Length > 0 ? t.Owner.Name : "-", t.Owner.Style.ToLowerInvariant()));
         chips.Add(new("Arena", t.ArenaCapacity.ToString("N0"), "seats"));
+        // K12b (run 137): a college program's banners: its titles, Final Fours and NCAA tournaments (real history in a real
+        // world, plus this career's), and the years under the header.
+        Banners = "";
+        if (program && s.World.College is { } cw)
+        {
+            var past = cw.PastOf(t);
+            var (v, sub) = past.Chip();
+            chips.Add(new("Banners", v, sub, past.Titles > 0 ? "good" : ""));
+            Banners = past.Line(cw.FirstListedYear);
+        }
         if (t.Money.Ready)
         {
             long payroll = t.Roster.Sum(p => p.Contract?.Salary ?? 0);
