@@ -123,6 +123,9 @@ public sealed partial class PlayerViewModel : PageViewModel
                 .Where(x => x.Item1 > 0).Select(x => $"{x.Item1}× {x.Item2}").ToList();
             if (h.Count > 0) bits.Add(string.Join(", ", h));
         }
+        // CS5 (run 135): college honours, on a college player's page and on a graduate's for the rest of his career.
+        if (s.World.College?.HonoursOf(p.Id) is { Count: > 0 } college)
+            bits.Add(string.Join(" · ", college));
         if (hall != null) bits.Add($"Hall of Fame ({hall.Year})");
         if (retiredBy.Count > 0) bits.Add($"Number retired by {string.Join(", ", retiredBy)}");
         Honours = bits.Count == 0 ? "" : string.Join(" · ", bits);

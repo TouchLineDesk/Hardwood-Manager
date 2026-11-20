@@ -869,6 +869,11 @@ public sealed partial class CollegeWorld
             var c = Program(champ)!; var r = Program(s.RunnerUpId.Value)!;
             History.Add(new CollegeChampion(s.Year, champ, c.FullName, r.Id, r.FullName));
             News.Add(ChampionNews(final));
+            // CS5 (run 135): the season's honours are voted with the title decided (their own random stream, #972).
+            var awards = VoteAwards();
+            Awards.RemoveAll(a => a.Year == s.Year);
+            Awards.Add(awards);
+            if (awards.PlayerOfYearId != null) News.Add(AwardsNews(awards));
             return true;
         }
         return false;

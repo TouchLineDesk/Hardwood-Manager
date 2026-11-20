@@ -28,6 +28,9 @@ public sealed class SeasonCard
     public string Beat { get; init; } = "";
     public string Mvp { get; init; } = "";
     public string FinalsMvp { get; init; } = "";
+    /// <summary>The two award labels (CS5, run 135: a college season reads "Most Outstanding Player" and "Player of the Year").</summary>
+    public string FinalsMvpLabel { get; init; } = "Finals MVP ";
+    public string MvpLabel { get; init; } = "MVP ";
     public string Extra { get; init; } = "";
     public bool HasExtra => Extra.Length > 0;
     public string OurRecord { get; init; } = "";
@@ -35,7 +38,7 @@ public sealed class SeasonCard
     public bool HasCrest => Champion != null;
     public bool Mine { get; init; }
     public IBrush Stripe { get; init; } = Brushes.Gray;
-    public string Tip => $"{Season}: {ChampionName} {Beat}. Finals MVP {FinalsMvp}. MVP {Mvp}.";
+    public string Tip => $"{Season}: {ChampionName} {Beat}. {FinalsMvpLabel}{FinalsMvp}. {MvpLabel}{Mvp}.";
 }
 
 /// <summary>A real NBA season (R1, #191): the History page's "NBA history" tab.</summary>
@@ -236,10 +239,56 @@ public sealed partial class HistoryViewModel : PageViewModel
             + (ours != null ? $" {s.HumanTeam.FullName}: {(mine == 0 ? "no titles yet" : $"{mine} title{(mine == 1 ? "" : "s")}")}." : "");
     }
 
+    /// <summary>K14 (run 135): a college coach's History is the college game's: national champions, the Final Four's Most
+    /// Outstanding Player, the National Player of the Year and his program's season. The NBA's tabs are hidden.</summary>
+    [ObservableProperty] private bool _isCollege;
+    public string MvpHeader => IsCollege ? "Player of the Year" : "MVP";
+    public string FinalsMvpHeader => IsCollege ? "Most Outstanding" : "Finals MVP";
+    partial void OnIsCollegeChanged(bool value) { OnPropertyChanged(nameof(MvpHeader)); OnPropertyChanged(nameof(FinalsMvpHeader)); OnPropertyChanged(nameof(ShowProTabs)); }
+    public bool ShowProTabs => !IsCollege;
+
+    private void RefreshCollege()
+    {
+        var s = Session; var cw = s.World.College!;
+        IsReal = false; RealPastCards = new(); RealPastTitle = "";
+        if (Tab != 0) Tab = 0;
+        var cards = new List<SeasonCard>();
+        int us = s.HumanTeam.Id;
+        foreach (var h in cw.History.OrderByDescending(h => h.Year))
+        {
+            var a = cw.Awards.FirstOrDefault(x => x.Year == h.Year);
+            var champ = cw.Program(h.ChampionId);
+            string poy = a?.PlayerOfYearId is { } p ? $"{a.NameOf(p)} ({cw.Program(a.ProgramOf.GetValueOrDefault(p))?.Abbreviation ?? "-"})" : "-";
+            string mop = a?.OutstandingId is { } m ? a.NameOf(m) : "-";
+            string ours = a != null && a.Records.TryGetValue(us, out var r) && r.Length >= 3
+                ? $"{r[0]}-{r[1]}" + (r[2] >= 1 ? $" · {Hardwood.Core.College.CollegeAwardsText.Reached(r[2])}" : r[2] == 0 ? " · First Four" : "")
+                : "";
+            Rows.Add(new HistoryRow { Season = SeasonText(h.Year), Champion = h.Champion, RunnerUp = h.RunnerUp, Mvp = poy, FinalsMvp = mop, OurRecord = ours });
+            cards.Add(new SeasonCard
+            {
+                Season = SeasonText(h.Year), Champion = champ, ChampionName = h.Champion, Beat = $"beat {h.RunnerUp} in the final",
+                Mvp = poy, FinalsMvp = mop, MvpLabel = "Player of the Year ", FinalsMvpLabel = "Most Outstanding Player ",
+                Extra = a?.CoachName is { Length: > 0 } cn && cw.Program(a.CoachProgramId ?? 0) is { } ct ? $"Coach of the Year {cn} ({ct.Abbreviation})" : "",
+                // Your program's season that year (named, since you may have coached elsewhere then; review, run 135).
+                OurRecord = ours.Length > 0 ? $"{s.HumanTeam.Abbreviation}: {ours}" : "",
+                Mine = champ != null && champ == s.HumanTeam && s.Employed, Stripe = StripeFor(champ),
+            });
+        }
+        SeasonCards = cards;
+        int titles = cw.History.Count(h => h.ChampionId == us);
+        Summary = cw.History.Count == 0 ? "No college seasons finished yet."
+            : $"{cw.History.Count} college season{(cw.History.Count == 1 ? "" : "s")} played · {titles} national title{(titles == 1 ? "" : "s")} for {s.HumanTeam.FullName}";
+        SeasonsNote = cw.History.Count > 0 ? ""
+            : "No college seasons finished in this career yet. Each one joins the list, with its national awards, when the national championship game is played.";
+        GameRecords = new(); SeasonRecords = new(); CareerRecords = new(); Milestones = new();
+    }
+
     public override void Refresh()
     {
         Rows.Clear();
         var s = Session;
+        IsCollege = s.CollegeWords && s.World.College != null;
+        if (IsCollege) { RefreshCollege(); return; }
         // H64 (run 88): award winners and record holders who moved abroad are still named (they were "-" once they left).
         var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).Concat(s.World?.Players ?? Enumerable.Empty<Player>())
             .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());

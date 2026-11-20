@@ -83,10 +83,10 @@
               </StackPanel>
             </Grid>
             <TextBlock FontSize="12" TextWrapping="Wrap">
-              <Run Text="Finals MVP " Foreground="{DynamicResource HwMutedBrush}"/><Run Text="{Binding FinalsMvp}" FontWeight="SemiBold"/>
+              <Run Text="{Binding FinalsMvpLabel}" Foreground="{DynamicResource HwMutedBrush}"/><Run Text="{Binding FinalsMvp}" FontWeight="SemiBold"/>
             </TextBlock>
             <TextBlock FontSize="12" TextWrapping="Wrap">
-              <Run Text="MVP " Foreground="{DynamicResource HwMutedBrush}"/><Run Text="{Binding Mvp}" FontWeight="SemiBold"/>
+              <Run Text="{Binding MvpLabel}" Foreground="{DynamicResource HwMutedBrush}"/><Run Text="{Binding Mvp}" FontWeight="SemiBold"/>
             </TextBlock>
             <TextBlock Text="{Binding Extra}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding HasExtra}"/>
             <TextBlock Text="{Binding OurRecord}" FontSize="12" FontWeight="SemiBold" Classes="accent" IsVisible="{Binding HasOurRecord}"/>
@@ -133,7 +133,7 @@
           </Panel>
         </DockPanel>
       </TabItem>
-      <TabItem Header="Records book">
+      <TabItem Header="Records book" IsVisible="{Binding ShowProTabs}">
         <ScrollViewer>
           <StackPanel Spacing="6">
             <TextBlock Text="Single game (regular season)" Classes="h2"/>
@@ -210,7 +210,7 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <TabItem Header="Milestones">
+      <TabItem Header="Milestones" IsVisible="{Binding ShowProTabs}">
         <ScrollViewer>
           <StackPanel Spacing="6">
             <TextBlock Text="Career milestones as they happen: 5,000 points and every 5,000 after, rebounds, assists and games played." Classes="muted" TextWrapping="Wrap"/>
