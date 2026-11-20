@@ -168,7 +168,10 @@ public sealed partial class CollegeViewModel
         var offered = c.ClassOf(year).Select(p => (p, r: c.RecruitOf(p)!))
             .Where(x => x.r.CourtedBy == me.Id && x.r.Offered && x.r.CommittedTo == null).OrderBy(x => x.r.Rank).ToList();
         if (offered.Count == 0) return "";
-        var away = offered.Select(x => (x.p, x.r, lean: c.LeaningTo(x.p, x.r, board))).Where(x => x.lean != null && x.lean != me).ToList();
+        var leans = offered.Select(x => (x.p, x.r, lean: c.LeaningTo(x.p, x.r, board))).ToList();
+        var away = leans.Where(x => x.lean != null && x.lean != me).ToList();
+        if (leans.Any(x => x.lean == null)) return away.Count == 0 ? "" : $"{away.Count} of your {offered.Count} open offers are with prospects leaning elsewhere: "
+            + string.Join(", ", away.Take(4).Select(x => $"No. {x.r.Rank} {x.p.Name} ({x.lean!.City})")) + (away.Count > 4 ? $" and {away.Count - 4} more" : "") + ". ";
         if (away.Count == 0) return offered.Count == 1 ? "Your open offer leans your way today. " : $"All {offered.Count} of your open offers lean your way today. ";
         return (offered.Count == 1 ? "Your open offer is with a prospect leaning elsewhere: " : $"{away.Count} of your {offered.Count} open offers are with prospects leaning elsewhere: ")
             + string.Join(", ", away.Take(4).Select(x => $"No. {x.r.Rank} {x.p.Name} ({x.lean!.City})")) + (away.Count > 4 ? $" and {away.Count - 4} more" : "")

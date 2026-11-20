@@ -247,7 +247,7 @@ public sealed partial class CollegeWorld
             // targets are those who already lean his way (or nearly), not the best names he can only hope for.
             bool spring = day.Month is >= 3 and <= 4;
             var withdrew = spring ? WithdrawLostCauses(t, cls, board) : new List<string>();
-            if (withdrew.Count > 0) names.Add($"withdrew {(withdrew.Count == 1 ? "an offer" : $"{withdrew.Count} offers")} that won't be accepted ({string.Join(", ", withdrew)})");
+            if (withdrew.Count > 0) names.Add($"withdrew {(withdrew.Count == 1 ? "an offer" : $"{withdrew.Count} offers")} that won't be accepted ({string.Join("; ", withdrew)})");
             // Who he could realistically land: his appeal with a solid effort (60 interest) at least matches the best rival's.
             var targets = Fits(t, cls, board, cls == senior ? open * 2 + 2 : 4, spring ? SpringEdge : -4);
             foreach (var (p, r) in targets)

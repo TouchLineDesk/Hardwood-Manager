@@ -31,7 +31,7 @@ public sealed partial class CollegeWorld
         // H154 (run 136): once the title is decided, the final poll counts March, as the real one does: the champion first,
         // then every round won in the tournament adds weight (the runner-up and the Final Four rise near the top).
         Func<int, double> score = PollScore;
-        if (Season.ChampionId is { } champ)
+        if (Season.ChampionId is { } champ && !_preMarchPoll)
         {
             var march = Programs.ToDictionary(t => t.Id, t => MadnessReached(t.Id));
             score = id => id == champ ? double.MaxValue : PollScore(id) + MarchPollWeight * Math.Max(0, march[id] - 1);
@@ -68,6 +68,9 @@ public sealed partial class CollegeWorld
 
     /// <summary>Whether the poll is the final one (the title decided, March counted).</summary>
     public bool FinalPoll => Season.ChampionId != null;
+
+    /// <summary>Set while the season's awards are voted: the poll without March (review, run 136).</summary>
+    private bool _preMarchPoll;
 
     /// <summary>Run 134: what an unbeaten record from the 8th game on adds to the poll score.</summary>
     public const double UnbeatenBonus = 60;

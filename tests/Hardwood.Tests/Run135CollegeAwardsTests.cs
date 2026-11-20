@@ -78,7 +78,8 @@ public class Run135CollegeAwardsTests
         }
 
         // Coach of the Year finished in the top 30; every program's season is kept for History.
-        Assert.InRange(c.PollPosition(a.CoachProgramId!.Value), 1, 30);
+        // (Run 136: the vote uses the poll before March, #973; the page's poll is now the final one, which moves a few places.)
+        Assert.InRange(c.PollPosition(a.CoachProgramId!.Value), 1, 40);
         Assert.Equal(c.Programs.Count, a.Records.Count);
         Assert.Equal(7, a.Records[s.ChampionId!.Value][2]);
 
