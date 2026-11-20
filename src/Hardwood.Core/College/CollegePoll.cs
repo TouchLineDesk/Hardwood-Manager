@@ -47,8 +47,18 @@ public sealed partial class CollegeWorld
         double elo = Season.Elo.GetValueOrDefault(id, 1500);
         var (w, l) = Record(id);
         int g = w + l;
-        return g == 0 ? elo : elo + RecordWeight * ((double)w / g - 0.5) * Math.Min(1, g / 10.0);
+        if (g == 0) return elo;
+        double score = elo + RecordWeight * ((double)w / g - 0.5) * Math.Min(1, g / 10.0);
+        // Run 134: voters keep an unbeaten team above the three-loss ones and count each loss (seed 2026's Gonzaga, 10-0,
+        // rating 1568, sat 19th behind Duke 11-3, rating 1718, once K11's college engine made games less predictable).
+        if (l == 0 && g >= 8) score += UnbeatenBonus;
+        return score - LossPenalty * Math.Min(l, 4);
     }
+
+    /// <summary>Run 134: what an unbeaten record from the 8th game on adds to the poll score.</summary>
+    public const double UnbeatenBonus = 60;
+    /// <summary>Run 134: each of a team's first four losses costs this much on top of the win share (voters count losses).</summary>
+    public const double LossPenalty = 20;
 
     /// <summary>Poll points for a record's win share above .500 (×0.5 for a perfect record).</summary>
     public const double RecordWeight = 260;

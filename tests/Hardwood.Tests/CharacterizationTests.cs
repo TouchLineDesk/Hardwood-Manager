@@ -184,7 +184,7 @@ public class CharacterizationTests
         // Run 130 (CP1, the top band of each class): re-pinned (was EF04EA9CAF3C66EE since run 128). Every college and
         // high-school class draws its franchise and five-star prospects first, so the world uses different draws. The NBA
         // bench seasons stay on their pins.
-        Pin("career seed 2026, 30 days, no saves", "3E5F5992C839C968", Session(s));
+        Pin("career seed 2026, 30 days, no saves", "1FC57B04229F63BB", Session(s));
     }
 
     [Fact]

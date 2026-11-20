@@ -389,7 +389,8 @@ public sealed class GameSimulator
             int seconds = _period <= _rules.Periods ? _rules.MinutesPerPeriod * 60 : _cfg.OvertimeMinutes * 60;
             if (_period > _rules.Periods) _result.Overtimes++;
             _clock = seconds;
-            _home.TeamFouls = 0; _away.TeamFouls = 0;
+            // K11: in college, team fouls carry from the second half into overtime.
+            if (!(_period > _rules.Periods && _rules.FoulsCarryIntoOvertime)) { _home.TeamFouls = 0; _away.TeamFouls = 0; }
             _periodHomeStart = Score(_home); _periodAwayStart = Score(_away);
 
             // Alternate opening possession by period (jump ball simplified).
@@ -568,10 +569,25 @@ public sealed class GameSimulator
                 // Foul the best free-throw shooter's teammate if possible: in practice, whoever has the ball. Two shots.
                 var fouler = PickDefender(def, null, ShotZone.ShortMid);
                 CommitFoul(def, fouler);
-                var target = off.OnCourt[_rng.Next(5)];
-                Play(PlayKind.Foul, def, fouler, target);
-                ShootFreeThrows(off, def, target, 2);
-                Log($"{fouler.LastName} fouls {target.LastName} to stop the clock");
+                // K11: under college rules a foul short of the bonus only gives the ball back, so the trailing side keeps
+                // fouling (a second or so each time, credited to the players on court) until the shooter goes to the line.
+                // If the clock runs out first, nobody shoots.
+                bool ranOut = false;
+                while (_rules.OneAndOne && def.TeamFouls < _rules.TeamFoulBonusThreshold && _clock > 0)
+                {
+                    Play(PlayKind.Foul, def, fouler);
+                    BurnClock(0.5 + _rng.NextDouble());
+                    if (_clock <= 0) { ranOut = true; break; }
+                    fouler = PickDefender(def, null, ShotZone.ShortMid);
+                    CommitFoul(def, fouler);
+                }
+                if (!ranOut)
+                {
+                    var target = off.OnCourt[_rng.Next(5)];
+                    Play(PlayKind.Foul, def, fouler, target);
+                    ShootBonus(off, def, target);
+                    Log($"{fouler.LastName} fouls {target.LastName} to stop the clock");
+                }
                 possessionLive = false;
             }
             while (possessionLive)
@@ -588,7 +604,7 @@ public sealed class GameSimulator
                     if (def.TeamFouls >= _rules.TeamFoulBonusThreshold)
                     {
                         var shooter = PickShooter(off, wasTransition);
-                        ShootFreeThrows(off, def, shooter, 2);
+                        ShootBonus(off, def, shooter);
                         possessionLive = false; break;
                     }
                     // Otherwise play on: a little more clock burns.
@@ -625,7 +641,7 @@ public sealed class GameSimulator
                               + (def.Tac.DefensiveAggression - 50) / 25.0;
             double p = _cfg.TurnoverBase - _cfg.TurnoverSkillBeta * (security - pressure)
                        + Tactics.TurnoverShift(off.Tac, def.Tac) + off.ChemTurnover;
-            p = Math.Clamp(p, 0.04, 0.25);
+            p = Math.Clamp(p, 0.04, 0.25 + _rules.TurnoverShift); // K11: the college profile lifts the ceiling with the base
             if (!_rng.Chance(p)) return false;
 
             // Who turned it over: weighted by usage (handlers more often)
@@ -958,6 +974,18 @@ public sealed class GameSimulator
                 if (_rng.Chance(0.18)) _transition = true; // outlet and run
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Free throws for a common foul in the bonus: two shots, or under college rules (K11) a one-and-one from the 7th
+        /// team foul in a half (the second shot only if the first goes in) and two from the 10th.
+        /// </summary>
+        private void ShootBonus(Side off, Side def, Player shooter)
+        {
+            if (_rules.BonusShots(def.TeamFouls) != 1) { ShootFreeThrows(off, def, shooter, 2); return; }
+            int made = off.Line(shooter).FTM;
+            ShootFreeThrows(off, def, shooter, 1);
+            if (off.Line(shooter).FTM > made) ShootFreeThrows(off, def, shooter, 1);
         }
 
         private void ShootFreeThrows(Side off, Side def, Player shooter, int count)

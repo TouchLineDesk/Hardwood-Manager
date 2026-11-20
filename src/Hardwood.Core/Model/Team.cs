@@ -244,8 +244,24 @@ public sealed record Rules(
     bool NeutralSite = false,
     double HomeScale = 1.0,
     double ShotLogitShift = 0,
-    double FoulScale = 1.0)
+    double FoulScale = 1.0,
+    double OffRebShift = 0,
+    double TurnoverShift = 0,
+    double ThreeRateScale = 1.0,
+    double ThreeLogitShift = 0,
+    double CommonFoulScale = 1.0,
+    int DoubleBonusFouls = 0,
+    bool FoulsCarryIntoOvertime = false)
 {
+    /// <summary>K11 (run 134): the bonus is a one-and-one from <see cref="TeamFoulBonusThreshold"/> team fouls in a half and two
+    /// shots from <see cref="DoubleBonusFouls"/> (college). 0 = two shots from the threshold (the pros, FIBA).</summary>
+    public bool OneAndOne => DoubleBonusFouls > TeamFoulBonusThreshold;
+
+    /// <summary>The free throws a common foul gives once the defence has <paramref name="teamFouls"/> team fouls (this one
+    /// counted): 0 before the bonus, 1 for a one-and-one (a second shot only if the first goes in), 2 for two shots.</summary>
+    public int BonusShots(int teamFouls) =>
+        teamFouls < TeamFoulBonusThreshold ? 0 : OneAndOne && teamFouls < DoubleBonusFouls ? 1 : 2;
+
     /// <summary>The home side's edge in points, as the quick sim and the pregame line see it (2.5 in the pros; C5 part 2: a college arena's own).</summary>
     public double HomePoints => NeutralSite ? 0 : 2.5 * HomeScale;
 
@@ -258,7 +274,13 @@ public sealed record Rules(
     /// slows the game to about 68 possessions (pace scale), and talent gaps count for more than in the pros, so the
     /// favourite wins more often (talent scale; see <see cref="EngineConfig.ForTalentScale"/>).
     /// </summary>
-    public static readonly Rules College = new("College", 2, 20, 30, 5, 7, 6.75, PaceScale: 0.9, TalentScale: 1.9);
+    /// K11 (run 134, critic review #18): the college box score, not the NBA's. More offensive rebounds, turnovers and
+    /// whistles, more threes at a lower make rate, the one-and-one from the 7th team foul in a half and two shots from the
+    /// 10th (fouls carry into overtime). Tuned with `hardwood collegebox` against D-I norms: ORB% ≈ 29-30, TOV% ≈ 17-18,
+    /// FTA/FGA ≈ 32, 3PA rate ≈ 39-40, about 72 points a side.
+    public static readonly Rules College = new("College", 2, 20, 30, 5, 7, 6.75, PaceScale: 0.9, TalentScale: 1.9,
+        FoulScale: 1.2, OffRebShift: 0.10, TurnoverShift: 0.035, ThreeRateScale: 1.55, ThreeLogitShift: -0.12,
+        CommonFoulScale: 1.6, DoubleBonusFouls: 10, FoulsCarryIntoOvertime: true);
     /// <summary>College events (invitationals, showcases, conference tournaments, March Madness) are on neutral courts: no home edge.</summary>
     public static readonly Rules CollegeNeutral = College with { NeutralSite = true };
 }

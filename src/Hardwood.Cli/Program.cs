@@ -15,6 +15,7 @@ namespace Hardwood.Cli;
 ///   hardwood roster [--seed N] [--team ABBR]
 ///   hardwood audit [--seed N] [--seasons N] [--out report.md] [--full-sim]
 ///                                        play N seasons (the NBA + world) and check the results against real basketball
+///   hardwood collegebox [--seed N] [--games N]   K11: the college box score under the full engine (ORB%, TOV%, FTA/FGA, 3PA rate)
 ///   hardwood madness [--seed N] [--tournaments N] [--out report.md]
 ///                                        the real Division I alone: March Madness seed results over many tournaments
 ///   hardwood bench [--seeds 2026,77] [--games 200] [--seasons 5] [--repeat 3] [--out baseline.md] [--skip-career]
@@ -86,6 +87,38 @@ public static class Program
             double k = sxy / sxx;
             foreach (var (x, y) in xs) sres += (y - k * x) * (y - k * x);
             Console.WriteLine($"engine college: margin per strength point {k:0.000}, residual sd {Math.Sqrt(sres / xs.Count):0.00}, n {xs.Count}, mean gap sd {Math.Sqrt(xs.Average(t => t.x * t.x)):0.0}");
+            return 0;
+        }
+
+        if (cmd == "collegebox")
+        {
+            // K11 (run 134): the college box score under the full engine, over the season's own scheduled games.
+            var cw = gameWorld.College!;
+            int n = int.Parse(ArgValue(args, "--games") ?? "600");
+            var games = cw.Season.Games.Where(Hardwood.Core.College.CollegeWorld.IsRegularSeason).Take(n).ToList();
+            var sim = new GameSimulator(); var rr = new Rng(seed + 7);
+            double pts = 0, fga = 0, tpa = 0, fta = 0, ftm = 0, orb = 0, drb = 0, tov = 0, pf = 0, fgm = 0, tpm = 0, poss = 0, ast = 0; int teams = 0;
+            int homeWins = 0; double mpp = 0, sxx = 0; var xs = new List<(double x, double y)>();
+            foreach (var g in games)
+            {
+                var h = cw.Program(g.HomeId)!; var a = cw.Program(g.AwayId)!;
+                var r = sim.Simulate(h, a, cw.GameRules(g), rr.NextULong());
+                if (r.Home.Points > r.Away.Points) homeWins++;
+                foreach (var (b, o) in new[] { (r.Home, r.Away), (r.Away, r.Home) })
+                {
+                    teams++; pts += b.Points; fga += b.FGA; fgm += b.FGM; tpa += b.ThreePA; tpm += b.ThreePM; fta += b.FTA; ftm += b.FTM;
+                    tov += b.Turnovers; pf += b.Fouls; ast += b.Assists;
+                    orb += b.OReb; drb += o.DReb; poss += b.FGA - b.OReb + b.Turnovers + 0.44 * b.FTA;
+                }
+                double x = Hardwood.Core.World.QuickSim.Strength(h) - Hardwood.Core.World.QuickSim.Strength(a);
+                xs.Add((x, r.Home.Points - r.Away.Points)); mpp += x * (r.Home.Points - r.Away.Points); sxx += x * x;
+            }
+            double k = mpp / sxx, hp = xs.Average(t => t.y - k * t.x), sres = Math.Sqrt(xs.Average(t => Math.Pow(t.y - k * t.x - hp, 2)));
+            Console.WriteLine($"college full engine, seed {seed}, {games.Count} games ({teams} team-games)");
+            Console.WriteLine($"  points {pts / teams:0.0} a side · possessions {poss / teams:0.0} · ORtg {100 * pts / poss:0.0}");
+            Console.WriteLine($"  ORB% {100 * orb / (orb + drb):0.0} · TOV% {100 * tov / poss:0.0} · FTA/FGA {100 * fta / fga:0.0} · 3PA rate {100 * tpa / fga:0.0}");
+            Console.WriteLine($"  FG% {100 * fgm / fga:0.0} · 3P% {100 * tpm / Math.Max(1, tpa):0.0} · FT% {100 * ftm / Math.Max(1, fta):0.0} · fouls {pf / teams:0.0} · FTA {fta / teams:0.0} · assists {ast / teams:0.0}");
+            Console.WriteLine($"  home wins {100.0 * homeWins / games.Count:0.0}% · margin per strength point {k:0.000} · home edge {hp:0.0} · residual sd {sres:0.00}");
             return 0;
         }
 

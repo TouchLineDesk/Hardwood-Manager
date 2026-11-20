@@ -159,15 +159,22 @@ public sealed class EngineConfig
     /// <summary>The settings a game under these rules plays with: talent scaled, and no home edge on a neutral court.</summary>
     public EngineConfig For(Model.Rules rules)
     {
-        if (rules.TalentScale == 1.0 && !rules.NeutralSite && rules.HomeScale == 1.0 && rules.ShotLogitShift == 0 && rules.FoulScale == 1.0) return this;
+        if (rules.TalentScale == 1.0 && !rules.NeutralSite && rules.HomeScale == 1.0 && rules.ShotLogitShift == 0 && rules.FoulScale == 1.0
+            && rules.OffRebShift == 0 && rules.TurnoverShift == 0 && rules.ThreeRateScale == 1.0 && rules.ThreeLogitShift == 0 && rules.CommonFoulScale == 1.0) return this;
         var c = rules.TalentScale == 1.0 ? (EngineConfig)MemberwiseClone() : ForTalentScale(rules.TalentScale);
         if (rules.NeutralSite) c.HomeLogit = 0;
         else c.HomeLogit *= rules.HomeScale; // C5 part 2: a college arena's home court
         // C5 (run 96): a conference's style. The arrays are copied, never changed in place (the clone shares them).
         if (rules.ShotLogitShift != 0) c.ZoneBaseLogit = ZoneBaseLogit.Select(x => x + rules.ShotLogitShift).ToArray();
+        // K11 (run 134): the college profile. Threes are zones 3 and 4 (corner, above the break).
+        if (rules.ThreeLogitShift != 0) c.ZoneBaseLogit = c.ZoneBaseLogit.Select((x, z) => z >= 3 ? x + rules.ThreeLogitShift : x).ToArray();
+        if (rules.ThreeRateScale != 1.0) c.ZoneBaseWeight = ZoneBaseWeight.Select((x, z) => z >= 3 ? x * rules.ThreeRateScale : x).ToArray();
+        c.OffensiveReboundBase = OffensiveReboundBase + rules.OffRebShift;
+        c.TurnoverBase = TurnoverBase + rules.TurnoverShift;
+        c.NonShootingFoulRate = NonShootingFoulRate * rules.CommonFoulScale; // college: more reach-ins and holds before the bonus
         if (rules.FoulScale != 1.0)
         {
-            c.NonShootingFoulRate = NonShootingFoulRate * rules.FoulScale;
+            c.NonShootingFoulRate = NonShootingFoulRate * rules.CommonFoulScale * rules.FoulScale;
             c.ShootingFoulRateByZone = ShootingFoulRateByZone.Select(x => x * rules.FoulScale).ToArray();
         }
         return c;

@@ -45,7 +45,7 @@ public class Run96ConferenceStyleTests
         var r = cw.GameRules(b1g);
         Assert.Equal(Rules.College.PaceScale * 0.96, r.PaceScale, 9);
         Assert.Equal(-0.02, r.ShotLogitShift, 9);
-        Assert.Equal(1.10, r.FoulScale, 9);
+        Assert.Equal(Rules.College.FoulScale * 1.10, r.FoulScale, 9); // K11 (run 134): the style sits on top of the college profile
         Assert.Equal(cw.HomeCourtPoints(Id("Purdue")), r.HomePoints, 6); // the arena's edge is kept
         // A non-conference game and March Madness play the plain college game.
         var nonConf = cw.Season.Games.First(g => g.Stage == "Non-conference");
@@ -58,7 +58,7 @@ public class Run96ConferenceStyleTests
         var before = cfg.ZoneBaseLogit.ToArray();
         var styled = cfg.For(r);
         Assert.Equal(before[0] - 0.02, styled.ZoneBaseLogit[0], 9);
-        Assert.Equal(cfg.NonShootingFoulRate * 1.10, styled.NonShootingFoulRate, 9);
+        Assert.Equal(cfg.NonShootingFoulRate * Rules.College.CommonFoulScale * Rules.College.FoulScale * 1.10, styled.NonShootingFoulRate, 9);
         Assert.Equal(before, cfg.ZoneBaseLogit);
         Assert.Same(cfg, cfg.For(Rules.Nba));
     }

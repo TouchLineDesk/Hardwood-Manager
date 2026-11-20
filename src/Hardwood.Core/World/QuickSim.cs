@@ -30,18 +30,21 @@ public static class QuickSim
         // College (C4 step 0, #188): matched to the full engine under college rules, so a computer program's record means
         // what yours does (`hardwood calib`: 0.52 points of margin a strength point, 8.9 either side).
         bool college = rules is { TalentScale: > 1 };
-        double perPoint = college ? 0.52 : 0.55 * spread, sd = college ? 9.0 : 11 * spread;
+        // K11 (run 134): the college engine profile (more boards, turnovers and whistles, the one-and-one) widened the full
+        // engine's game-to-game spread from 9.0 to about 9.5 points (`hardwood calib`, seeds 2026 and 31); the margin per
+        // strength point stayed at 0.55.
+        double perPoint = college ? 0.52 : 0.55 * spread, sd = college ? 9.5 : 11 * spread;
         double margin = rng.NextGaussian((Strength(home, date) - Strength(away, date)) * perPoint + (neutral ? 0 : homePoints), sd);
         double total = rng.NextGaussian(level * 2 * totalScale, 12 * spread); // C5 (run 96): a college conference's style
         int hp = (int)Math.Round((total + margin) / 2), ap = (int)Math.Round((total - margin) / 2);
         if (hp == ap) { if (rng.Chance(0.5)) hp += rng.Next(1, 6); else ap += rng.Next(1, 6); }
         int minutes = rules?.GameMinutes ?? 40;
-        Lines(home, date, hp, rng, stats, minutes);
-        Lines(away, date, ap, rng, stats, minutes);
+        Lines(home, date, hp, rng, stats, minutes, college);
+        Lines(away, date, ap, rng, stats, minutes, college);
         return (hp, ap);
     }
 
-    private static void Lines(Team t, DateOnly date, int points, Rng rng, Dictionary<int, StatLine> stats, int gameMinutes = 40)
+    private static void Lines(Team t, DateOnly date, int points, Rng rng, Dictionary<int, StatLine> stats, int gameMinutes = 40, bool college = false)
     {
         var rotation = t.Available(date).OrderByDescending(p => p.CurrentAbility).Take(Minutes.Length).ToList();
         if (rotation.Count == 0) return;
@@ -59,7 +62,7 @@ public static class QuickSim
         bool long48 = gameMinutes >= 48;
         int teamStl = Math.Max(0, (int)Math.Round(side.NextGaussian(long48 ? 7.6 : 6.6, 2.2)));
         int teamBlk = Math.Max(0, (int)Math.Round(side.NextGaussian(long48 ? 4.9 : 3.3, 1.8)));
-        int teamTpa = Math.Max(0, (int)Math.Round(side.NextGaussian(points * (long48 ? 0.36 : 0.34), 4)));
+        int teamTpa = Math.Max(0, (int)Math.Round(side.NextGaussian(points * (long48 ? 0.36 : college ? 0.315 : 0.34), 4))); // K11: college about 22-23 threes tried a game
         var stl = Share(teamStl, rotation.Select((p, i) => mins[i] * (0.5 + p.Attributes[Attr.Steal] / 10.0) * (0.6 + p.Tendencies.GambleSteals / 75.0)).ToArray());
         var blk = Share(teamBlk, rotation.Select((p, i) => mins[i] * Math.Pow(p.Attributes[Attr.Block] / 10.0, 1.3) * (p.PrimaryPosition switch { Position.C => 2.6, Position.PF => 1.8, Position.SF => 0.9, _ => 0.5 })).ToArray());
         var tpa = Share(teamTpa, rotation.Select((p, i) => pts[i] * (0.03 + p.Tendencies.ThreePointRate / 100.0) * (0.4 + p.Attributes[Attr.ThreePoint] / 10.0)).ToArray());
