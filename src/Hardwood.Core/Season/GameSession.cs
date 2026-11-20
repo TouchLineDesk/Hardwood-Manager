@@ -125,6 +125,7 @@ public sealed partial class GameSession
         session.Job.HiredOn = session.Today;
         // A college coach starts with his assistant using any recruiting hours he leaves unspent (C3, #176).
         if (session.InCollege) session.Delegated.Recruiting = true;
+        session.RefreshProPitch(); // CP3: the pitch (none on day one)
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
         var first = session.NextMyGame;
@@ -176,7 +177,7 @@ public sealed partial class GameSession
         st.ContractYears = Math.Max(1, st.ContractYears);
         st.Salary = StaffPayFor(st);
         HumanTeam.Staff.Add(st);
-        Post($"Hired {st.Name}", $"{st.Name} joins as {Staff.RoleName(st.Role).ToLower()} on a {st.ContractYears}-year deal at ${st.Salary / 1e6:F2}M." + (existing != null ? $" {existing.Name} has been let go." : ""), "Staff");
+        Post($"Hired {st.Name}", $"{st.Name} joins as {Staff.RoleName(st.Role, CollegeWords).ToLower()} on a {st.ContractYears}-year deal at ${st.Salary / 1e6:F2}M." + (existing != null ? $" {existing.Name} has been let go." : ""), "Staff");
         SaveNow();
         return true;
     }
@@ -187,7 +188,7 @@ public sealed partial class GameSession
         if (!HumanTeam.Staff.Remove(st)) return;
         st.TeamId = null;
         League.FreeStaff.Add(st);
-        Post($"Released {st.Name}", $"{Staff.RoleName(st.Role)} {st.Name} has left the organisation.", "Staff");
+        Post($"Released {st.Name}", $"{Staff.RoleName(st.Role, CollegeWords)} {st.Name} has left the organisation.", "Staff");
         SaveNow();
     }
 
@@ -450,7 +451,8 @@ public sealed partial class GameSession
         void Chase(RealWorld.ChaseNews n)
         {
             // A broken NBA record reaches everyone; a record watch or a legend passed is yours, or the digest's.
-            if (n.Broken || ours) Post(n.Title, n.Body, "League"); else PostWorld(n.Title, n.Body);
+            // K14 (run 133): a college coach hears of NBA records only in the world digest (CS4).
+            if ((n.Broken || ours) && !(Employed && InCollege)) Post(n.Title, n.Body, "League"); else PostWorld(n.Title, n.Body);
         }
         foreach (var box in new[] { r.Home, r.Away })
         foreach (var l in box.Lines)
@@ -1192,7 +1194,7 @@ public sealed partial class GameSession
         _summerNotes = new();
         if (Employed && Offseason.Report.StaffLeft.Count > 0)
             SummerNote($"{Count(Offseason.Report.StaffLeft.Count, "staff contract")} ran out",
-                string.Join("\n", Offseason.Report.StaffLeft.Select(st => $"{st.Name} ({Staff.RoleName(st.Role).ToLower()}) has left: his contract ended without an extension."))
+                string.Join("\n", Offseason.Report.StaffLeft.Select(st => $"{st.Name} ({Staff.RoleName(st.Role, CollegeWords).ToLower()}) has left: his contract ended without an extension."))
                 + "\n\nHire replacements on the Staff & Training page; interview candidates first.", "Staff");
         CoachGrowth();
         // The world's summer starts too: overseas contracts end and some players enter the shared free-agent pool.
@@ -1252,7 +1254,7 @@ public sealed partial class GameSession
             Post("Draft lottery results",
                 $"You pick {Ordinal(ourPick)} in the first round." + (lottery.Jumps.Count > 0 ? "\n" + string.Join("\n", lottery.Jumps.Select(j => $"{j.team.Abbreviation} moved from {Ordinal(j.preLotterySlot)} to {Ordinal(j.pick)}")) : ""), "League");
         }
-        var staffGone = Offseason.Report.StaffReleased.Where(x => x.team == HumanTeam).Select(x => $"{x.staff.Name} ({Staff.RoleName(x.staff.Role).ToLower()})").ToList();
+        var staffGone = Offseason.Report.StaffReleased.Where(x => x.team == HumanTeam).Select(x => $"{x.staff.Name} ({Staff.RoleName(x.staff.Role, CollegeWords).ToLower()})").ToList();
         if (staffGone.Count > 0) Post("Staff contracts expired", $"{string.Join(", ", staffGone)} left at the end of their deals. Hire replacements from the staff market.", "Staff");
         var expiring = Offseason.Expiring[HumanTeam.Id];
         var dev = Offseason.Report.Development.Where(d => d.Player.TeamId == HumanTeam.Id && Math.Abs(d.NewCa - d.OldCa) >= 6).OrderByDescending(d => d.NewCa - d.OldCa).ToList();

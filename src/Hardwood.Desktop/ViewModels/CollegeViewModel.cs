@@ -427,9 +427,11 @@ public sealed partial class CollegeViewModel : PageViewModel
         var dropped = c.DroppedOut();
         DroppedOut = dropped.Count == 0 ? "" : "Dropped out: " + string.Join(", ", dropped.Select(t => $"{t.City} (was #{s.PollBefore[t.Id]})"));
         bool started = s.Games.Any(g => g.Played);
-        PollNote = started
-            ? $"Re-ranked after every game, on the rating · arrows: since the last day of games ({LastGameDay(c):MMM d})"
-            : "Preseason: ranked on the rating. Re-ranked after every game once the season tips off.";
+        // H148 (run 133): the page answers "where are we?" first, and says the poll weighs the record.
+        string mine = me != null && Session.Employed ? (c.Rank(me.Id) is { } myRank ? $"{me.City}: No. {myRank}" : $"{me.City}: unranked (No. {c.PollPosition(me.Id)})") + " · " : "";
+        PollNote = mine + (started
+            ? $"Re-ranked after every game, on the rating and the record · arrows: since the last day of games ({LastGameDay(c):MMM d})"
+            : "Preseason: ranked on the rating. Re-ranked after every game once the season tips off, on the rating and the record.");
         FillConference();
         // Between Selection Sunday and the first game, March Madness opens on the reveal.
         // (The page is kept while the game is open, so this is decided once per season.) Once the games start, a page
@@ -926,7 +928,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         var c = Session.World.College!;
         AlumniChips = new()
         {
-            new("Pros", rec.Pros.ToString(), "graduates on a pro roster", rec.Pros > 0 ? "good" : ""),
+            new("Pros", rec.Pros.ToString(), rec.Abroad > 0 ? $"on a pro roster · {rec.Abroad} abroad" : "graduates on a pro roster", rec.Pros > 0 ? "good" : ""),
             new($"In the {top}", rec.TopLeague.ToString(), "the top league", rec.TopLeague > 0 ? "good" : ""),
             new("All-Stars", rec.AllStars.ToString(), "graduates with an All-Star game", rec.AllStars > 0 ? "good" : ""),
             new("Best now", best == null ? "-" : best.Player.CurrentAbility.ToString(), best == null ? "nobody yet" : $"{best.Player.Name} · {best.Club}", "info"),

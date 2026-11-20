@@ -44,7 +44,7 @@ public sealed partial class GameSession
         long wage = (long)(baseWage * (1 + Math.Max(0, gap) / 60.0) / 1000) * 1000;
         string style = $"He's a {st.Style.ToLower()}: {st.StyleText}";
         return new StaffAnswer(true, wage, years,
-            $"{st.Name} would join as {Staff.RoleName(st.Role).ToLower()} for ${wage / 1e6:F2}M a year over {years} years. {style}");
+            $"{st.Name} would join as {Staff.RoleName(st.Role, CollegeWords).ToLower()} for ${wage / 1e6:F2}M a year over {years} years. {style}");
     }
 
     /// <summary>Hire on the terms he gave in the interview.</summary>
@@ -84,7 +84,7 @@ public sealed partial class GameSession
         if (!a.Willing) return a.Text;
         st.Salary = a.Wage;
         st.ContractYears += a.Years;
-        Post($"{st.Name} extends", $"{st.Name} ({Staff.RoleName(st.Role).ToLower()}) has signed on until {League.Season + st.ContractYears}: ${a.Wage / 1e6:F2}M a year.", "Staff");
+        Post($"{st.Name} extends", $"{st.Name} ({Staff.RoleName(st.Role, CollegeWords).ToLower()}) has signed on until {League.Season + st.ContractYears}: ${a.Wage / 1e6:F2}M a year.", "Staff");
         SaveNow();
         return $"Done: {st.Name} stays {a.Years} more year{(a.Years == 1 ? "" : "s")} at ${a.Wage / 1e6:F2}M.";
     }

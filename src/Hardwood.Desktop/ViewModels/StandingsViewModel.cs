@@ -423,7 +423,7 @@ public sealed partial class LeadersViewModel : PageViewModel
     private int _minGames = 1;
 
     /// <summary>One player's season in the league on show, in one shape whatever league runs it.</summary>
-    private sealed record Line(Player Player, int TeamId, int Games, double Mpg, double Ppg, double Rpg, double Apg, double Spg, double Bpg,
+    public sealed record Line(Player Player, int TeamId, int Games, double Mpg, double Ppg, double Rpg, double Apg, double Spg, double Bpg,
         double FgPct, double TpPct, int Fga, int Tpa);
     private List<Line> _qualified = new();
 
@@ -435,10 +435,19 @@ public sealed partial class LeadersViewModel : PageViewModel
         _ => x => x.Ppg,
     };
 
-    private static Func<Line, double> LineKey(string category) => category switch
+    private Func<Line, double> LineKey(string category) => LineKey(category, LeagueKey == LeagueBook.CollegeKey);
+
+    /// <summary>
+    /// K-review #18 item 3 (run 133): shooting leaders need volume. The NCAA's minimums are 5 field goals and 2.5 threes
+    /// made a game (a 65% three-point "leader" in December had a handful of attempts); the pros keep attempts-based
+    /// minimums plus one three made a game.
+    /// </summary>
+    public static Func<Line, double> LineKey(string category, bool college) => category switch
     {
         "Rebounds" => x => x.Rpg, "Assists" => x => x.Apg, "Steals" => x => x.Spg, "Blocks" => x => x.Bpg,
-        "Minutes" => x => x.Mpg, "FG%" => x => x.Fga >= x.Games * 5 ? x.FgPct : 0, "3P%" => x => x.Tpa >= x.Games * 2 ? x.TpPct : 0,
+        "Minutes" => x => x.Mpg,
+        "FG%" => x => x.Fga >= x.Games * 5 && (!college || x.FgPct * x.Fga >= x.Games * 5.0) ? x.FgPct : 0,
+        "3P%" => x => x.Tpa >= x.Games * 2 && x.TpPct * x.Tpa >= x.Games * (college ? 2.5 : 1.0) ? x.TpPct : 0,
         _ => x => x.Ppg,
     };
 

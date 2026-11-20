@@ -12,7 +12,7 @@ public sealed record PollEntry(int Rank, Team Team, int Wins, int Losses, int? B
 }
 
 /// <summary>
-/// The college Top 25 (Danny, #528): ranked on the rating, re-ranked after every game, and the rank travels with the
+/// The college Top 25 (Danny, #528): ranked on the rating and the record (H148, run 133), re-ranked after every game, and the rank travels with the
 /// team (its logo, schedules, scoreboards, standings and the live game).
 /// </summary>
 public sealed partial class CollegeWorld
@@ -28,11 +28,33 @@ public sealed partial class CollegeWorld
     private void EnsurePoll()
     {
         if (_pollCachedVersion == _pollVersion && ReferenceEquals(_pollCachedSeason, Season) && _pollOrder.Count > 0) return;
-        var elo = Season.Elo;
-        _pollOrder = Programs.Select(t => t.Id).OrderByDescending(id => elo.GetValueOrDefault(id, 1500)).ThenBy(id => id).Take(PollSize).ToList();
+        var all = Programs.Select(t => t.Id).OrderByDescending(PollScore).ThenBy(id => id).ToList();
+        _fullRanks = all.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
+        _pollOrder = all.Take(PollSize).ToList();
         _pollRanks = _pollOrder.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
         _pollCachedVersion = _pollVersion; _pollCachedSeason = Season;
     }
+
+    private Dictionary<int, int> _fullRanks = new();
+
+    /// <summary>
+    /// H148 (run 133, critic review #18): the poll votes on the rating and the record together, as voters do. Before the
+    /// first game it's the rating alone; from about the tenth game a perfect record is worth +130 and a .500 record nothing,
+    /// so an unbeaten power team no longer sits behind a three-loss one. The rating still breaks ties between similar records.
+    /// </summary>
+    public double PollScore(int id)
+    {
+        double elo = Season.Elo.GetValueOrDefault(id, 1500);
+        var (w, l) = Record(id);
+        int g = w + l;
+        return g == 0 ? elo : elo + RecordWeight * ((double)w / g - 0.5) * Math.Min(1, g / 10.0);
+    }
+
+    /// <summary>Poll points for a record's win share above .500 (×0.5 for a perfect record).</summary>
+    public const double RecordWeight = 260;
+
+    /// <summary>Where a program would stand if the poll went on past 25 (H148: "Your program: No. 31").</summary>
+    public int PollPosition(int teamId) { EnsurePoll(); return _fullRanks.TryGetValue(teamId, out var r) ? r : Programs.Count; }
 
     /// <summary>The Top 25's program ids, best first.</summary>
     public IReadOnlyList<int> PollOrder() { EnsurePoll(); return _pollOrder; }

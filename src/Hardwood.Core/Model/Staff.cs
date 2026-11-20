@@ -45,14 +45,18 @@ public sealed class Staff
         _ => Scouting,
     };
 
-    public static string RoleName(StaffRole r) => r switch
+    public static string RoleName(StaffRole r, bool college = false) => r switch
     {
         StaffRole.AssistantCoach => "Assistant coach",
         StaffRole.DevelopmentCoach => "Development coach",
         StaffRole.StrengthCoach => "Strength & conditioning",
-        StaffRole.Physio => "Physio",
-        _ => "Head scout",
+        StaffRole.Physio => college ? "Athletic trainer" : "Physio",
+        _ => college ? "Recruiting coordinator" : "Head scout",
     };
+
+    // K14 (run 133, critic review #18): with college = true a college coach's staff goes by college titles (the athletic
+    // trainer, the recruiting coordinator). The caller passes it (GameSession.CollegeWords); no global state, so careers and
+    // parallel tests can't see each other's words.
 
     /// <summary>
     /// His way of working (staff depth, roadmap 12): one of two styles per role, fixed for a person. Derived from his id so

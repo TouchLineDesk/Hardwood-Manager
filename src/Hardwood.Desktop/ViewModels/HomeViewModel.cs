@@ -211,9 +211,17 @@ public sealed partial class HomeViewModel : PageViewModel
         string chem = team.Chemistry >= 75 ? "excellent" : team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "average" : "poor";
         ChemistryText = $"Chemistry {chem} ({team.Chemistry:0})";
         Pulse.Clear();
+        // H142 (run 133): each unhappy player's line says why (his biggest worry, as on the Squad page) and where to act.
+        double winPct = rec.Games > 0 ? rec.WinPct : 0.5;
         foreach (var p in team.Roster.Where(p => p.TradeRequested || p.Morale < 45).OrderBy(p => p.Morale).Take(5))
+        {
+            Session.MyStats.TryGetValue(p.Id, out var pst);
+            var worst = PeopleEngine.Factors(p, team, winPct, pst, Session.League.Finance, s.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect).FirstOrDefault();
+            string why = worst.reason != null && worst.effect < 0 ? worst.reason : "";
+            string mood = p.TradeRequested ? (Session.InCollege ? "Thinking of transferring" : "Wants a trade") : PeopleEngine.Mood(p.Morale);
             Pulse.Add(new HomeRow { Icon = p.Morale < 38 ? "Frown" : "Meh", IconBrush = p.Morale < 38 ? Bad : Warn, Title = p.Name,
-                Detail = p.TradeRequested ? (Session.InCollege ? "Thinking of transferring" : "Wants a trade") : PeopleEngine.Mood(p.Morale) });
+                Detail = mood + (why != "" ? $": {char.ToLowerInvariant(why[0])}{why[1..]}" : "") + " · talk to him on Squad" });
+        }
         if (Pulse.Count == 0) Pulse.Add(new HomeRow { Icon = "Smile", IconBrush = Good, Title = "Everyone is content", Detail = "" });
 
         Injuries.Clear();
@@ -253,7 +261,7 @@ public sealed partial class HomeViewModel : PageViewModel
             Comparison = new[]
             {
                 new Bar { Label = "We score", Value = (double)rec.PointsFor / rec.Games, Color = accent },
-                new Bar { Label = played != null ? "College avg" : "League avg", Value = lg, Color = grey },
+                new Bar { Label = played != null ? "D-I avg" : "League avg", Value = lg, Color = grey },
                 new Bar { Label = "We allow", Value = (double)rec.PointsAgainst / rec.Games, Color = Color.Parse("#F85149") },
             };
         }
@@ -275,7 +283,7 @@ public sealed partial class HomeViewModel : PageViewModel
             }).ToList();
             PayrollLines = null;
             PayrollTitle = "Roster by class"; PayrollIcon = "GraduationCap";
-            PayrollCaption = "Four years of college: players enroll at 18 and turn pro at 22. The highlighted seniors play their final season.";
+            PayrollCaption = "Enroll at 18, turn pro at 22. Seniors: final season."; // H138 (run 133): one line, so it isn't cut at 1480×900
         }
         else
         {

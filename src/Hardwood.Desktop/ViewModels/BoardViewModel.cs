@@ -260,7 +260,8 @@ public sealed partial class BoardViewModel : PageViewModel
 
         else HasFacilities = false;
         CoachName = coach.Name;
-        CoachBio = $"Age {coach.Age(s.Today)} · {coach.Nationality} · {Bio(coach.Background)} · licence {coach.Licence}";
+        // K14 (run 133): a coaching licence is a pro thing; a college head coach's line leaves it out.
+        CoachBio = $"Age {coach.Age(s.Today)} · {coach.Nationality} · {Bio(coach.Background)}" + (s.InCollege ? "" : $" · licence {coach.Licence}");
         Reputation = coach.Reputation;
         CoachAttrs.Clear();
         foreach (var a in Enum.GetValues<CoachAttr>()) CoachAttrs.Add(new CoachAttrView { Label = Coach.Label(a), Value = coach[a] });
