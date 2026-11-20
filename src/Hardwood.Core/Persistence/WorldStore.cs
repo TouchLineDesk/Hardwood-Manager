@@ -30,7 +30,7 @@ public static class WorldStore
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college', $v)", ("$v", SaveFile.ToJson(new CollegeState(
                 col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
                     col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic), col.Tradition.GetValueOrDefault(t.Id))).ToList(),
-                col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards))));
+                col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards, col.RealAlumniSeeded))));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
             ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));
         int order = 0;
@@ -60,7 +60,8 @@ public static class WorldStore
                                        int TrailHours = 0, DateOnly? TrailWeek = null,
                                        Dictionary<string, Hardwood.Core.College.RivalrySeries>? Series = null,
                                        Dictionary<int, Hardwood.Core.College.Alumnus>? Alumni = null,
-                                       List<Hardwood.Core.College.CollegeAwards>? Awards = null);
+                                       List<Hardwood.Core.College.CollegeAwards>? Awards = null,
+                                       bool RealAlumniSeeded = false);
 
     public static GameWorld? LoadWorld(this SaveFile file, League nabl, IEnumerable<Player> overseasPlayers, IEnumerable<Player>? collegePlayers = null)
     {
@@ -165,6 +166,7 @@ public static class WorldStore
                 col.Series = cs.Series ?? new(); // C5 part 1 (run 94); missing before v0.103.0
                 foreach (var (k, v) in cs.Alumni ?? new()) col.Alumni[k] = v; // CP3 (run 132); missing before v0.120.0
                 col.Awards.AddRange(cs.Awards ?? new()); // CS5 (run 135); missing before v0.123.0
+                col.RealAlumniSeeded = cs.RealAlumniSeeded; // K12b (run 137); false before v0.125.0, so the session seeds them once
                 var byId = col.Programs.ToDictionary(t => t.Id);
                 foreach (var p in collegePlayers ?? Enumerable.Empty<Player>())
                 {

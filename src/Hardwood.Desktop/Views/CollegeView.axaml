@@ -597,7 +597,7 @@
           </ScrollViewer>
           <DataGrid ItemsSource="{Binding HighSchoolers}" SelectedItem="{Binding SelectedHighSchool}" IsVisible="{Binding ShowBoardTable}">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="56"/>
+              <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="48"/>
               <DataGridTemplateColumn Header="Stars" Width="92">
                     <DataGridTemplateColumn.CellTemplate>
                       <DataTemplate x:DataType="vm:HighSchoolRow">
@@ -609,7 +609,7 @@
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="48"/>
               <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="50"/>
               <DataGridTextColumn Header="Committed to" Binding="{Binding Committed}" Width="230"/>
-              <DataGridTextColumn Header="High school" Binding="{Binding HighSchool}" Width="190"/>
+              <DataGridTextColumn Header="High school" Binding="{Binding HighSchool}" Width="206"/>
               <DataGridTextColumn Header="State" Binding="{Binding State}" Width="*" MinWidth="56"/>
             </DataGrid.Columns>
           </DataGrid>

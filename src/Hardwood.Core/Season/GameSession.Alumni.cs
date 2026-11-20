@@ -93,6 +93,32 @@ public sealed partial class GameSession
     }
 
     /// <summary>
+    /// K12b (run 137): a real college career starts with each program's real NBA alumni in Your pros (and in the recruiting
+    /// pitch), matched by name against the real NBA players in this world (ncaa_history.json names only players its sources
+    /// name). Done once per career; saves from before v0.125.0 get them at their next load. A name shared by two players, or
+    /// one that isn't a real NBA player's, is skipped, so a generated namesake is never claimed. Class year 0: before this career.
+    /// </summary>
+    public int SeedRealAlumni()
+    {
+        if (World.College is not { } c || !c.IsReal || c.RealAlumniSeeded) return 0;
+        c.RealAlumniSeeded = true;
+        var programs = c.Programs.GroupBy(t => t.City).ToDictionary(g => g.Key, g => g.First());
+        var college = c.Players.Select(p => p.Id).ToHashSet();
+        var realNames = Hardwood.Core.RealWorld.RealPlayers.Bios.Keys.Concat(Hardwood.Core.RealWorld.RealPlayers.Lines.Select(l => l.Name)).ToHashSet();
+        var byName = League.AllActivePlayers.Concat(League.FreeAgents).Concat(World.Players)
+            .Where(p => !college.Contains(p.Id)).DistinctBy(p => p.Id)
+            .GroupBy(p => p.Name).Where(g => g.Count() == 1).ToDictionary(g => g.Key, g => g.First());
+        int added = 0;
+        foreach (var (school, names) in Hardwood.Core.RealWorld.RealCollegeHistory.Alumni)
+        {
+            if (!programs.TryGetValue(school, out var prog)) continue;
+            foreach (var name in names)
+                if (realNames.Contains(name) && byName.TryGetValue(name, out var p) && c.Alumni.TryAdd(p.Id, new Alumnus(prog.Id, 0))) added++;
+        }
+        return added;
+    }
+
+    /// <summary>
     /// The college world keeps alumni only while they matter (CP3): every graduate of the program you coach, and anyone
     /// else until he retires. Retired graduates of other programs are dropped each summer, so the save doesn't grow forever.
     /// </summary>

@@ -57,6 +57,9 @@ public sealed record RealRecordCard(string Label, string Value, string Holder, s
     public bool Broken => Holder.EndsWith("· new record", StringComparison.Ordinal);
 }
 
+/// <summary>K12b (run 137): one real NCAA tournament on the History page's College records tab.</summary>
+public sealed record RealCollegeRow(string Season, string Champion, string RunnerUp, string Score, string FinalFour, string Note, bool Ours);
+
 /// <summary>A franchise's real titles, with its crest and colour (run 76).</summary>
 public sealed record RealTitlesRow(string Team, int Titles, string Last, bool Ours)
 {
@@ -194,6 +197,7 @@ public sealed partial class HistoryViewModel : PageViewModel
                 };
             }).ToList();
         if (RealPastCards.Count > 0) RealPastTitle = "Before this career: the real NBA's last ten champions";
+        RealPastFootnote = "Every real season since 1946-47 is on the NBA history tab.";
 
         var byName = players.Values.GroupBy(p => p.Name).ToDictionary(g => g.Key, g => g.First());
         Player? Named(string name) => byName.TryGetValue(name, out var p) ? p : null;
@@ -251,7 +255,7 @@ public sealed partial class HistoryViewModel : PageViewModel
     {
         var s = Session; var cw = s.World.College!;
         IsReal = false; RealPastCards = new(); RealPastTitle = "";
-        if (Tab != 0) Tab = 0;
+        if (Tab is not (0 or 4)) Tab = 0; // the pro tabs are hidden; Seasons (0) and College records (4, last) stay
         var cards = new List<SeasonCard>();
         int us = s.HumanTeam.Id;
         foreach (var h in cw.History.OrderByDescending(h => h.Year))
@@ -279,9 +283,85 @@ public sealed partial class HistoryViewModel : PageViewModel
         Summary = cw.History.Count == 0 ? "No college seasons finished yet."
             : $"{cw.History.Count} college season{(cw.History.Count == 1 ? "" : "s")} played · {titles} national title{(titles == 1 ? "" : "s")} for {s.HumanTeam.FullName}";
         SeasonsNote = cw.History.Count > 0 ? ""
-            : "No college seasons finished in this career yet. Each one joins the list, with its national awards, when the national championship game is played.";
+            : "No college seasons finished in this career yet. Each one joins the list, with its national awards, when the national championship game is played."
+              + (cw.IsReal ? " Until then, here is the real college game's recent past." : "");
         GameRecords = new(); SeasonRecords = new(); CareerRecords = new(); Milestones = new();
+        BuildCollegePast(cw);
     }
+
+    // K12b (run 137, critic review #18 item 7): the college game's past and its records book.
+    [ObservableProperty] private List<RecordTable> _collegeRecords = new();
+    [ObservableProperty] private List<RealCollegeRow> _collegeChampions = new();
+    [ObservableProperty] private string _collegeRecordsNote = "";
+    [ObservableProperty] private string _collegeSource = "";
+    public bool HasCollegeChampions => CollegeChampions.Count > 0;
+    partial void OnCollegeChampionsChanged(List<RealCollegeRow> value) => OnPropertyChanged(nameof(HasCollegeChampions));
+
+    private void BuildCollegePast(Hardwood.Core.College.CollegeWorld cw)
+    {
+        var s = Session; int us = s.HumanTeam.Id;
+        var bySchool = cw.Programs.GroupBy(t => t.City).ToDictionary(g => g.Key, g => g.First());
+        Team? P(string school) => bySchool.GetValueOrDefault(school);
+        var pasts = cw.Pasts();
+        var titlesBy = pasts.ToDictionary(p => p.Program.City, p => p);
+        // The real champions since 1985 (a real world), newest first; this career's own seasons are the cards above.
+        var real = cw.IsReal ? RealCollegeHistory.Tournaments.OrderByDescending(t => t.Year).ToList() : new List<RealTournament>();
+        string NthTitle(RealTournament t)
+        {
+            // Which title this was for the program: its titles today, less those it won after (this career's included).
+            if (!titlesBy.TryGetValue(t.Champion, out var past)) return "";
+            int n = past.Titles - past.TitleYears.Count(y => y > t.Year);
+            return n <= 0 ? "" : $"{t.Champion}'s {Ordinal(n)} national title";
+        }
+        RealPastCards = real.Take(10).Select(t =>
+        {
+            var club = P(t.Champion);
+            return new SeasonCard
+            {
+                Season = t.Season, Champion = club, ChampionName = club?.FullName ?? t.Champion, Beat = $"beat {t.RunnerUp} {t.Score} in the final",
+                FinalsMvpLabel = "Also in the Final Four ", FinalsMvp = string.Join(" · ", t.Semifinalists), MvpLabel = "", Mvp = NthTitle(t),
+                Extra = t.Vacated.Count > 0 ? $"Vacated by the NCAA: {string.Join(", ", t.Vacated)}" : "",
+                Stripe = StripeFor(club), Mine = club != null && club.Id == us && s.Employed,
+            };
+        }).ToList();
+        RealPastTitle = RealPastCards.Count > 0 ? "Before this career: the last ten national champions" : "";
+        RealPastFootnote = RealPastCards.Count > 0 ? $"Every champion since {RealCollegeHistory.FirstYear} is on the College records tab." : "";
+        CollegeChampions = real.Select(t => new RealCollegeRow(t.Season, t.Champion, t.RunnerUp, t.Score, string.Join(", ", t.Semifinalists),
+            t.Vacated.Count > 0 ? "vacated: " + string.Join(", ", t.Vacated) : "", P(t.Champion)?.Id == us && s.Employed)).ToList();
+        CollegeSource = cw.IsReal ? $"Checked {RealCollegeHistory.Checked}. {RealCollegeHistory.Source}" : "";
+
+        // The records book: program honours (all time, this career's added) and this career's best seasons.
+        RecordTable Table(string title, Func<Hardwood.Core.College.ProgramPast, int> of, Func<Hardwood.Core.College.ProgramPast, string> when)
+        {
+            var top = pasts.Where(p => of(p) > 0).OrderByDescending(of).ThenBy(p => p.Program.City).Take(5).ToList();
+            return new RecordTable(title, top.Select((p, i) => new RecordRow(i + 1, of(p).ToString(), p.Program.FullName, when(p), p.Program.Id == us && s.Employed)).ToList())
+            { LeaderClub = top.FirstOrDefault()?.Program, Stripe = StripeFor(top.FirstOrDefault()?.Program) };
+        }
+        int first = cw.FirstListedYear;
+        var tables = new List<RecordTable>
+        {
+            Table("National titles", p => p.Titles, p => p.LastTitle is { } y ? $"last {y}" : $"all before {first}"),
+            Table("Final Fours", p => p.FinalFours, p => p.FinalFourYears.Count > 0 ? $"last {p.FinalFourYears[^1]}" : $"all before {first}"),
+            Table(cw.IsReal ? "NCAA tournaments" : "Tournaments", p => p.Appearances, p => p.Titles > 0 ? $"{p.Titles} title{(p.Titles == 1 ? "" : "s")}" : $"{p.FinalFours} Final Four{(p.FinalFours == 1 ? "" : "s")}"),
+            Table($"Titles since {first}", p => p.TitleYears.Count, p => string.Join(", ", p.TitleYears)),
+        };
+        var best = cw.BestSeasons(5);
+        var bestTop = best.Count > 0 ? cw.Program(best[0].TeamId) : null;
+        tables.Add(new RecordTable("Best record (this career)", best.Select((b, i) =>
+            {
+                var t = cw.Program(b.TeamId);
+                return new RecordRow(i + 1, $"{b.W}-{b.L}", t?.FullName ?? "-", $"{b.Year - 1}-{b.Year % 100:00}" + (b.Reach >= 1 ? $" · {Hardwood.Core.College.CollegeAwardsText.Reached(b.Reach)}" : ""), b.TeamId == us && s.Employed);
+            }).ToList()) { LeaderClub = bestTop, Stripe = StripeFor(bestTop) });
+        // An empty table isn't shown (its card would bind a missing leader: the bug finder's binding errors); the note says so.
+        var empty = tables.Where(t => t.Empty).Select(t => t.Title).ToList();
+        CollegeRecords = tables.Where(t => !t.Empty).ToList();
+        var mine = pasts.FirstOrDefault(p => p.Program.Id == us);
+        CollegeRecordsNote = (cw.IsReal ? $"Program honours are all-time (real history through {RealCollegeHistory.LastYear}, then this career's tournaments). " : "Program honours count this career's tournaments. ")
+            + (mine != null && s.Employed && IsCollege ? $"{s.HumanTeam.FullName}: {mine.Line(first)}." : "")
+            + (empty.Count > 0 ? $" Still to be set: {string.Join(" · ", empty)} (after the first season)." : "");
+    }
+
+    [ObservableProperty] private string _realPastFootnote = "Every real season since 1946-47 is on the NBA history tab.";
 
     public override void Refresh()
     {
@@ -330,6 +410,7 @@ public sealed partial class HistoryViewModel : PageViewModel
             : "No seasons finished in this career yet. Each one joins the list when its Finals end.";
     }
 
+    private static string Ordinal(int n) => n + ((n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
     private static string SeasonText(int season) => $"{season}-{(season + 1) % 100:00}";
 
     /// <summary>The records book: single-game records as kept, single-season bests from the stored stats, and career leaders including this season.</summary>

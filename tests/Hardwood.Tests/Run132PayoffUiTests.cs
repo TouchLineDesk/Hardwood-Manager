@@ -58,10 +58,11 @@ public class Run132PayoffUiTests
             col.Age = "All"; Settle();
             Assert.NotEmpty(col.Prospects);
             Assert.All(col.Prospects, r => Assert.Contains("-", r.PA));
-            // The alumni tracker explains itself before anyone has graduated.
+            // The alumni tracker: before anyone has graduated, only Miami's real NBA alumni (K12b, run 137), marked Earlier.
             col.Tab = 8; Settle();
-            Assert.False(col.HasAlumni);
-            Assert.StartsWith("Nobody has graduated from", col.AlumniNote);
+            Assert.True(col.HasAlumni);
+            Assert.All(col.Alumni, r => Assert.Equal("Earlier", r.Class));
+            Assert.Contains("Rows marked Earlier are real NBA players", col.AlumniNote);
 
             // The player page's chip and card foot show the range.
             var mine = s.HumanTeam.Roster[0];
