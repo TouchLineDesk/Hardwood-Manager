@@ -16,6 +16,7 @@ namespace Hardwood.Tests;
 /// H95: a pyramid club re-signing reads the contract text. H59: a club outside the NBA is told why it has no pick. H96: opening
 /// night isn't "Preseason · opens". H98: money under $100M keeps a decimal. H100: a series under way says which game is next.
 /// </summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run109BugSweepTests
 {
     private readonly ITestOutputHelper _out;

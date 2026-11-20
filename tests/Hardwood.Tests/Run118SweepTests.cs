@@ -15,6 +15,7 @@ using Xunit.Abstractions;
 namespace Hardwood.Tests;
 
 /// <summary>Run 118's bug sweep: H110 (the expansion draft), H112 (the relegation banner), H114 (positions on summer cards).</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run118SweepTests
 {
     private readonly ITestOutputHelper _out;

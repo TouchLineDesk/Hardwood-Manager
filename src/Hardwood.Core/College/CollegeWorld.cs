@@ -141,6 +141,106 @@ public sealed partial class CollegeWorld
     private static readonly double[] Path = { 0.45, 0.52, 0.58, 0.64, 0.70, 0.78, 0.86, 0.94, 1.0 }; // ages 14..22
     public static double Share(int age) => Path[Math.Clamp(age, YoungestAge, GraduateAge) - YoungestAge];
 
+    // ------------------------------------------------------------------------------------------
+    // CP2 (run 131, `claude/college-pipeline-design.md`; Danny, Nov 19: "a real 'development' pipeline"): college growth
+    // responds to the coach. Destined is the expected ability at 22 at an average program; each summer the season's minutes,
+    // the program's coaching, staff and practice facility and the player's professionalism tilt that summer's step,
+    // so a prospect who plays 30 minutes for a good staff graduates several points better than one buried on a weak bench.
+    // Prestige isn't an input, so it doesn't compound: top programs already recruit the best.
+
+    /// <summary>How much playing time swings growth (the share of 30 minutes, against the program's own growing players).</summary>
+    public const double MinutesSwing = 0.14;
+    /// <summary>Each training-quality point (1-20) and professionalism point (1-20) moves growth this much.</summary>
+    public const double QualityStep = 0.012, ProfessionalismStep = 0.008;
+    /// <summary>An average program's development quality: what a program without a staff model trains at, and about what a
+    /// program you take over trains at with the staff it comes with (quality 9 on average, `EnsureStaff`).</summary>
+    public const double AverageQuality = 9;
+    /// <summary>A program's typical minutes by depth (best player first), for a season with no box scores.</summary>
+    private static readonly double[] DepthMinutes = { 32, 30, 28, 26, 24, 20, 16, 12, 7, 4 };
+
+    /// <summary>The playing-time term: the share of 30 minutes he played, against <paramref name="pivot"/> (the program's
+    /// growing players' average share, so minutes move growth between teammates without shrinking the whole class).</summary>
+    public static double MinutesFactor(double mpg, double pivot) => 1 + MinutesSwing * (Math.Clamp(mpg / 30.0, 0, 1) - pivot);
+
+    /// <summary>How much faster (above 1) or slower than an average program's this summer's growth runs.</summary>
+    public static double GrowthFactor(double mpg, double quality, int professionalism, double pivot = 0.5) =>
+        MinutesFactor(mpg, pivot)
+        * (1 + QualityStep * (Math.Clamp(quality, 1, 20) - AverageQuality))
+        * (1 + ProfessionalismStep * (Math.Clamp(professionalism, 1, 20) - 10));
+
+    /// <summary>
+    /// A program's development quality (1-20, 9 average): its staff, practice facility and head coach's Development rating
+    /// where it has them (your program), <see cref="AverageQuality"/> otherwise. Prestige adds nothing here: the big programs
+    /// already recruit the best, and a prestige lift made March Madness chalkier (run 131: 5v12 77.7% with it, 72.7% without).
+    /// </summary>
+    public double ProgramQuality(Team t, Player p, DateOnly on) =>
+        Math.Clamp(t.Staff.Count > 0 || t.Coach != null ? StaffEffects.TrainingQualityFor(t, p, on) : AverageQuality, 1, 20);
+
+    /// <summary>Players growing this summer: in college last season (19-21 on July 1) with a path.</summary>
+    private bool Growing(Player p, DateOnly summer) => p.Age(summer) is > YoungestAge + 4 and < GraduateAge && Destined.ContainsKey(p.Id);
+
+    /// <summary>
+    /// His minutes a game last season, counted over the program's games (a starter hurt in November played few): from the box
+    /// scores once the program has played 8 games, otherwise his place in its depth by ability among its college players.
+    /// </summary>
+    public double SeasonMpg(Team t, Player p, DateOnly summer)
+    {
+        int teamGames = Season.Games.Count(g => g.Played && (g.HomeId == t.Id || g.AwayId == t.Id));
+        if (teamGames >= 8)
+            return Season.Stats.TryGetValue(p.Id, out var st) && st.TeamId == t.Id ? st.Min / Math.Max(teamGames, st.G) : 0;
+        var depth = t.Roster.Where(x => x.Age(summer) > YoungestAge + 4).OrderByDescending(x => x.CurrentAbility).ThenBy(x => x.Id).ToList();
+        int i = depth.IndexOf(p);
+        return i < 0 ? 0 : i < DepthMinutes.Length ? DepthMinutes[i] : 2;
+    }
+
+    /// <summary>The program's growing players' average share of 30 minutes, weighted by their step (the minutes pivot).</summary>
+    public double MinutesPivot(Team t, DateOnly summer, IReadOnlyDictionary<int, double> mpg)
+    {
+        double w = 0, sum = 0;
+        foreach (var p in t.Roster.Where(p => Growing(p, summer)))
+        {
+            double step = Math.Max(1, PathStep(p, p.Age(summer)));
+            w += step; sum += step * Math.Clamp(mpg.GetValueOrDefault(p.Id) / 30.0, 0, 1);
+        }
+        return w > 0 ? sum / w : 0.5;
+    }
+
+    /// <summary>Every roster player's minutes and the program's pivot, read before the seniors leave.</summary>
+    public (Dictionary<int, double> Mpg, double Pivot) Minutes(Team t, DateOnly summer)
+    {
+        var mpg = t.Roster.ToDictionary(p => p.Id, p => SeasonMpg(t, p, summer));
+        return (mpg, MinutesPivot(t, summer, mpg));
+    }
+
+    /// <summary>This summer's step along his path at an average program (CA points).</summary>
+    public int PathStep(Player p, int age) => Destined.TryGetValue(p.Id, out var g) ? (int)Math.Round(g * (Share(age) - Share(age - 1))) : 0;
+
+    /// <summary>The CA points this summer's growth gains (or loses) against an average program, at these minutes.</summary>
+    public double ProgramEdge(Team t, Player p, DateOnly summer, double mpg, double pivot)
+    {
+        if (!Growing(p, summer)) return 0;
+        return PathStep(p, p.Age(summer)) * (GrowthFactor(mpg, ProgramQuality(t, p, summer), p.Hidden.Professionalism, pivot) - 1);
+    }
+
+    /// <summary>
+    /// The Staff page's and player page's projection for one of your college players (before luck), read exactly as the summer
+    /// will: the CA change at his minutes so far, and how much of it the program adds against average coaching and staff.
+    /// Zero for a player who turns pro this summer.
+    /// </summary>
+    public (double Change, double FromProgram) ExpectedGrowth(Team t, Player p, DateOnly summer)
+    {
+        if (!Growing(p, summer)) return (0, 0);
+        var (mpg, pivot) = Minutes(t, summer);
+        int g = Destined[p.Id], age = p.Age(summer);
+        double edge = ProgramEdge(t, p, summer, mpg[p.Id], pivot);
+        double change = Math.Max(0, Math.Min(g * Share(age) + edge, p.PotentialAbility) - p.CurrentAbility);
+        double average = PathStep(p, age) * (GrowthFactor(mpg[p.Id], AverageQuality, p.Hidden.Professionalism, pivot) - 1);
+        return (change, edge - average);
+    }
+
+    /// <summary>The summer your college players' growth is heading for: the next July 1.</summary>
+    public static DateOnly NextSummer(DateOnly today) => new(SchoolYear(today) + 1, 7, 1);
+
     /// <summary>
     /// How good a recruit will be at 22. Calibrated so each year's graduates look like the old draft classes at the top
     /// (a handful ready for the NABL, a few dozen for the tiers below) with most heading for the lower leagues or out.
@@ -330,6 +430,25 @@ public sealed partial class CollegeWorld
     // The summer: graduation, growth, recruiting, prestige.
 
     /// <summary>
+    /// One college player's summer: CP2 (run 131) moves where he's heading by the season just played (minutes, the program's
+    /// coaching, staff and facility, and his professionalism), then he grows toward that path, with a little luck.
+    /// </summary>
+    public void Grow(Team t, Player p, int age, DateOnly on, double mpg, double pivot, DevelopmentEngine dev, Rng rng)
+    {
+        int g = Destined.TryGetValue(p.Id, out var d) ? d : p.CurrentAbility;
+        if (d > 0 && age > YoungestAge + 4)
+        {
+            double shift = ProgramEdge(t, p, on, mpg, pivot) / Share(age);
+            int whole = (int)Math.Floor(shift);
+            int moved = whole + (rng.NextDouble() < shift - whole ? 1 : 0);
+            if (moved != 0) Destined[p.Id] = g = Math.Clamp(g + moved, 20, Math.Max(20, Math.Max(g, p.PotentialAbility)));
+        }
+        int target = (int)Math.Round(g * Share(age));
+        int delta = target - p.CurrentAbility + (int)Math.Round(rng.NextGaussian(0, 2));
+        if (delta > 0) dev.Nudge(p, delta, age);
+    }
+
+    /// <summary>
     /// Players who are 22 graduate into free agency (decision #98; D80 A); everyone else grows along his path; programs
     /// recruit 14-year-olds to refill their rosters; prestige follows results. Returns the graduates.
     /// </summary>
@@ -337,6 +456,9 @@ public sealed partial class CollegeWorld
     {
         var grads = new List<Player>();
         foreach (var t in Programs)
+        {
+            // CP2: last season's minutes, read before the seniors leave (they were part of the depth chart).
+            var (minutes, pivot) = Minutes(t, on);
             foreach (var p in t.Roster.ToList())
             {
                 int age = p.Age(on);
@@ -349,11 +471,9 @@ public sealed partial class CollegeWorld
                     grads.Add(p);
                     continue;
                 }
-                int g = Destined.TryGetValue(p.Id, out var d) ? d : p.CurrentAbility;
-                int target = (int)Math.Round(g * Share(age));
-                int delta = target - p.CurrentAbility + (int)Math.Round(rng.NextGaussian(0, 2));
-                if (delta > 0) dev.Nudge(p, delta, age);
+                Grow(t, p, age, on, minutes[p.Id], pivot, dev, rng);
             }
+        }
         // Prestige: winning and tournament runs raise it; it drifts back toward the conference's level.
         var s = Season;
         foreach (var t in Programs)

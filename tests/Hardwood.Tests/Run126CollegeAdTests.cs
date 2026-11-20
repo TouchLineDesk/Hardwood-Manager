@@ -19,6 +19,7 @@ namespace Hardwood.Tests;
 /// - A "build the program" season that missed the tournament well short of the target isn't "satisfied".
 /// - Goals follow prestige as well as the squad; prestige reads as a letter.
 /// </summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run126CollegeAdTests
 {
     private readonly ITestOutputHelper _out;
@@ -139,6 +140,7 @@ public class Run126CollegeAdTests
     }
 }
 
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run126CollegeBoardPageTests
 {
     private readonly ITestOutputHelper _out;
@@ -189,6 +191,7 @@ public class Run126CollegeBoardPageTests
     }
 }
 
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run126CollegeCreditTests
 {
     [Fact]

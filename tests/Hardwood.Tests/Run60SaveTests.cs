@@ -7,6 +7,7 @@ namespace Hardwood.Tests;
 
 /// <summary>Run 60, D74 B (#635): the career saves every 7 days, at every phase change, after your decisions, on
 /// Settings' Save now and when you leave (main menu or closing the window), instead of after every day.</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run60SaveTests
 {
     private static int Club(string abbr)

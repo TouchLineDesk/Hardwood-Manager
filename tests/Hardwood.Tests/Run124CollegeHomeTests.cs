@@ -8,6 +8,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 124, H120: before conference play, college Home's standings title is the conference alone, and the
 /// "overall records" note sits on its own line under it, so a long conference name isn't cut off
 /// (screenshot `run124-college-home.png`).</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run124CollegeHomeTests
 {
     [AvaloniaFact]

@@ -9,6 +9,7 @@ using Xunit.Abstractions;
 namespace Hardwood.Tests;
 
 /// <summary>Run 116 (H97): at 1480 px and 130% text the top bar stays on one row, and the assistant folds to its strip in a live game at big text.</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run116TopBarTests
 {
     private readonly ITestOutputHelper _out;

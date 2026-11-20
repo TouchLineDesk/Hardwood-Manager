@@ -7,6 +7,7 @@ using Xunit;
 namespace Hardwood.Tests;
 
 /// <summary>Danny's #529: Schedule &amp; Results filters by competition, and the head-to-head record since the career began.</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class ScheduleFilterTests
 {
     private static Team T(int id, string city) => new() { Id = id, City = city, Name = "Club", Abbreviation = city[..3].ToUpperInvariant(), Division = "" };

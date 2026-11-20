@@ -241,7 +241,10 @@ public sealed partial class StaffViewModel : PageViewModel
         int growing = Players.Count(r => r.Projected.StartsWith("+"));
         DevelopmentChips = new()
         {
-            new("Your staff add", $"{staffTotal:+0.0;-0.0} CA", "across the squad this summer, against average training", staffTotal >= 1 ? "good" : staffTotal < 0 ? "bad" : ""),
+            s.InCollege
+                // CP2 (run 131): in college the program's standing counts too, and growth is against an average program.
+                ? new("Your program adds", $"{Math.Round(staffTotal, 1) + 0.0:+0.0;-0.0} CA", "across the roster this summer: your staff, facility and Development rating, against an average program", staffTotal >= 1 ? "good" : staffTotal < 0 ? "bad" : "")
+                : new("Your staff add", $"{Math.Round(staffTotal, 1) + 0.0:+0.0;-0.0} CA", "across the squad this summer, against average training", staffTotal >= 1 ? "good" : staffTotal < 0 ? "bad" : ""),
             new("Biggest riser", riser is { } r && r.c >= 0.5 ? $"{r.c:+0} CA" : "None", riser is { } rr ? rr.p.Name : "", riser is { } r2 && r2.c >= 3 ? "good" : ""),
             new("Growing", growing.ToString(), "players heading up at their minutes", "info"),
         };

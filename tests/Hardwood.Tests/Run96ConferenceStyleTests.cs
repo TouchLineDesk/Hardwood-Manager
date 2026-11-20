@@ -18,6 +18,7 @@ namespace Hardwood.Tests;
 /// <summary>Run 96. C5's last piece (college-sim-design #165): each conference has a style (pace, defence, physicality)
 /// that shows in its conference games and tournament, on the full engine and the quick sim alike. Both sides play the
 /// same style, so the favourite's edge barely moves. Non-conference games, invitationals and March Madness are plain.</summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run96ConferenceStyleTests
 {
     private readonly ITestOutputHelper _out;

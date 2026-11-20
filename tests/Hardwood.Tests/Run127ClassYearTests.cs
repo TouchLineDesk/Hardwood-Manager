@@ -14,6 +14,7 @@ namespace Hardwood.Tests;
 /// - The preseason: a week before the first game, one message with the Top 25, the conference poll and media day.
 /// - Senior Night: the day before the last regular-season home game, the final-season players are named.
 /// </summary>
+[Collection(SharedUiState.Name)] // touches app settings or the portrait service (run 131: they raced PortraitServiceTests)
 public class Run127ClassYearTests
 {
     private readonly ITestOutputHelper _out;
