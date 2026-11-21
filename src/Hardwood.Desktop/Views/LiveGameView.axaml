@@ -147,9 +147,127 @@
             <Grid Width="1600" Height="900">
               <c:LiveCourt x:Name="ArenaCourt" Arena="{Binding Arena}" Dress="{Binding Dress}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
                            HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" Frame="{Binding ArenaFrame}" MotionMs="{Binding MotionMs}"/>
-              <Border x:Name="ArenaCaption" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="30,26,0,0" MaxWidth="1180" Background="#E00B0E14"
-                      CornerRadius="6" Padding="22,10" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="6,0,0,0">
-                <TextBlock Text="{Binding PlayCaption}" FontSize="34" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
+              <Border x:Name="AwayFloorPanel" VerticalAlignment="Top" HorizontalAlignment="Left" Width="600" Margin="20,16,20,0"
+                      CornerRadius="8" ClipToBounds="True" Background="#E60B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
+                <StackPanel>
+                  <Border Background="{Binding AwayBrush}" Padding="16,6">
+                    <TextBlock Text="{Binding AwayFloorTitle}" FontSize="28" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
+                  </Border>
+                  <Grid ColumnDefinitions="58,*,56,56,56,46,92" Margin="16,6,16,0">
+                    <TextBlock Grid.Column="2" Text="PTS" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="3" Text="REB" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="4" Text="AST" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="5" Text="PF" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="6" Text="FG" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding AwayFloor}" Margin="16,0,16,10">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:FloorPanelRow">
+                        <Grid ColumnDefinitions="58,*,56,56,56,46,92" RowDefinitions="Auto,12" Margin="0,2">
+                          <TextBlock Text="{Binding Pos}" FontSize="22" FontWeight="Bold" Foreground="#9AA5B4" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="28" FontWeight="SemiBold" Foreground="White"/>
+                          <TextBlock Grid.Column="2" Text="{Binding Pts}" FontSize="28" FontWeight="Bold" Foreground="White" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="3" Text="{Binding Reb}" FontSize="28" Foreground="White" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="4" Text="{Binding Ast}" FontSize="28" Foreground="White" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="5" Text="{Binding Pf}" FontSize="28" Foreground="{Binding PfBrush}" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="6" Text="{Binding Fg}" FontSize="28" Foreground="White" TextAlignment="Right"/>
+                          <!-- The energy bar: the engine's own energy (green 85%+, yellow 70-84%, red below 70%). -->
+                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{x:Static vm:FloorPanelRow.BarMax}" Height="8" CornerRadius="4"
+                                  Background="#30FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{Binding BarWidth}" Height="8" CornerRadius="4"
+                                  Background="{Binding BarBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <Border x:Name="HomeFloorPanel" VerticalAlignment="Top" HorizontalAlignment="Right" Width="600" Margin="20,16,20,0"
+                      CornerRadius="8" ClipToBounds="True" Background="#E60B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
+                <StackPanel>
+                  <Border Background="{Binding HomeBrush}" Padding="16,6">
+                    <TextBlock Text="{Binding HomeFloorTitle}" FontSize="28" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
+                  </Border>
+                  <Grid ColumnDefinitions="58,*,56,56,56,46,92" Margin="16,6,16,0">
+                    <TextBlock Grid.Column="2" Text="PTS" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="3" Text="REB" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="4" Text="AST" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="5" Text="PF" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                    <TextBlock Grid.Column="6" Text="FG" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding HomeFloor}" Margin="16,0,16,10">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:FloorPanelRow">
+                        <Grid ColumnDefinitions="58,*,56,56,56,46,92" RowDefinitions="Auto,12" Margin="0,2">
+                          <TextBlock Text="{Binding Pos}" FontSize="22" FontWeight="Bold" Foreground="#9AA5B4" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="28" FontWeight="SemiBold" Foreground="White"/>
+                          <TextBlock Grid.Column="2" Text="{Binding Pts}" FontSize="28" FontWeight="Bold" Foreground="White" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="3" Text="{Binding Reb}" FontSize="28" Foreground="White" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="4" Text="{Binding Ast}" FontSize="28" Foreground="White" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="5" Text="{Binding Pf}" FontSize="28" Foreground="{Binding PfBrush}" TextAlignment="Right"/>
+                          <TextBlock Grid.Column="6" Text="{Binding Fg}" FontSize="28" Foreground="White" TextAlignment="Right"/>
+                          <!-- The energy bar: the engine's own energy (green 85%+, yellow 70-84%, red below 70%). -->
+                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{x:Static vm:FloorPanelRow.BarMax}" Height="8" CornerRadius="4"
+                                  Background="#30FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{Binding BarWidth}" Height="8" CornerRadius="4"
+                                  Background="{Binding BarBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <!-- The jumbotron, hung over centre court: the half and clock (the break's name at a break) and the team comparison. -->
+              <StackPanel x:Name="Jumbotron" VerticalAlignment="Top" HorizontalAlignment="Center" Width="320" Margin="0,0,0,0">
+                <Grid ColumnDefinitions="*,*" Height="14">
+                  <Border Width="4" Background="#2A2F36" HorizontalAlignment="Center"/>
+                  <Border Grid.Column="1" Width="4" Background="#2A2F36" HorizontalAlignment="Center"/>
+                </Grid>
+                <Border Background="#F2050608" BorderBrush="#3C434C" BorderThickness="6" CornerRadius="6" Padding="10,6,10,8">
+                  <StackPanel>
+                    <TextBlock Text="{Binding BoardTitle}" FontSize="24" FontWeight="Black" Foreground="#FF6A3D" HorizontalAlignment="Center" LetterSpacing="1"/>
+                    <Grid ColumnDefinitions="90,*,*" Margin="0,2,0,2">
+                      <TextBlock Grid.Column="1" Text="{Binding AwayName}" FontSize="26" FontWeight="Black" Foreground="White" TextAlignment="Right"/>
+                      <TextBlock Grid.Column="2" Text="{Binding HomeName}" FontSize="26" FontWeight="Black" Foreground="White" TextAlignment="Right"/>
+                    </Grid>
+                    <Border Height="3" Background="#2A3038" Margin="0,0,0,2"/>
+                    <ItemsControl ItemsSource="{Binding JumboRows}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:JumboRow">
+                          <Grid ColumnDefinitions="90,*,*" Height="30">
+                            <TextBlock Text="{Binding Label}" FontSize="22" FontWeight="Bold" Foreground="#7D8794" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Away}" FontSize="26" FontWeight="Bold" Foreground="{Binding AwayBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Home}" FontSize="26" FontWeight="Bold" Foreground="{Binding HomeBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+                <!-- Momentum: the last four minutes played, the away colour from the left and the home colour from the right. -->
+                <Border x:Name="MomentumChip" Background="#E60B0E14" CornerRadius="6" Padding="10,4,10,8" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="4">
+                    <TextBlock FontSize="20" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"><Run Text="MOMENTUM (4 MIN) " Foreground="#9AA5B4"/><Run Text="{Binding Momentum.Label}"/></TextBlock>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                      <Border Width="{Binding MomentumAwayWidth}" Height="8" Background="{Binding AwayBrush}" CornerRadius="4,0,0,4"/>
+                      <Border Width="{Binding MomentumHomeWidth}" Height="8" Background="{Binding HomeBrush}" CornerRadius="0,4,4,0"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+              <!-- The offence and defence tags on the floor: away attacks the left basket, home the right. -->
+              <Border x:Name="AwayTagChip" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="40,0,0,150" CornerRadius="5" Padding="14,4"
+                      Background="{Binding AwayBrush}" Opacity="{Binding AwayTagOpacity}">
+                <TextBlock Text="{Binding AwayTag}" FontSize="26" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
+              </Border>
+              <Border x:Name="HomeTagChip" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,40,150" CornerRadius="5" Padding="14,4"
+                      Background="{Binding HomeBrush}" Opacity="{Binding HomeTagOpacity}">
+                <TextBlock Text="{Binding HomeTag}" FontSize="26" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
+              </Border>
+              <!-- The play caption, above the score bug (B2b: the jumbotron and the panels now hold the top of the frame). -->
+              <Border x:Name="ArenaCaption" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,140" MaxWidth="940" Background="#E00B0E14"
+                      CornerRadius="6" Padding="22,8" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="6,0,0,0">
+                <TextBlock Text="{Binding PlayCaption}" FontSize="30" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
               </Border>
               <!-- The score bug: rank, crest, team, score; the half and the clock; team fouls and the bonus. -->
               <Border x:Name="ScoreBug" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" CornerRadius="8" ClipToBounds="True"

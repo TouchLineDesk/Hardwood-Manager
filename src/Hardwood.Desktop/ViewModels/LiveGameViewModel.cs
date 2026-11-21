@@ -22,6 +22,34 @@ public sealed record LiveBoxRow(string Name, string Min, string Pts, string Reb,
     public Avalonia.Media.FontWeight Weight => Total ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal;
 }
 
+/// <summary>B2b (run 141): one row of an arena "On the floor" panel, with its energy bar drawn to <see cref="BarMax"/>.</summary>
+public sealed record FloorPanelRow(Hardwood.Core.Engine.FloorRow Row)
+{
+    public const double BarMax = 210;
+    public string Pos => Row.Pos;
+    public string Name => Row.Name;
+    public string Pts => Row.Pts.ToString();
+    public string Reb => Row.Reb.ToString();
+    public string Ast => Row.Ast.ToString();
+    public string Pf => Row.Pf.ToString();
+    public string Fg => Row.Fg;
+    public double BarWidth => Math.Max(4, BarMax * Row.Energy);
+    public Avalonia.Media.IBrush BarBrush => Avalonia.Media.SolidColorBrush.Parse(Row.EnergyBand switch { "fresh" => "#7AD85F", "ok" => "#E9C440", _ => "#E86040" });
+    public Avalonia.Media.IBrush PfBrush => Avalonia.Media.SolidColorBrush.Parse(Row.FoulTrouble ? "#F0A33A" : "#FFFFFF");
+}
+
+/// <summary>B2b (run 141): one line of the jumbotron, the leading side's value lit.</summary>
+public sealed record JumboRow(Hardwood.Core.Engine.BoardRow Row)
+{
+    public string Label => Row.Label;
+    public string Away => Row.Away;
+    public string Home => Row.Home;
+    private static readonly Avalonia.Media.IBrush Lit = Avalonia.Media.SolidColorBrush.Parse("#FFD24A");
+    private static readonly Avalonia.Media.IBrush Dim = Avalonia.Media.SolidColorBrush.Parse("#C9D1D9");
+    public Avalonia.Media.IBrush AwayBrush => Row.Lead < 0 ? Lit : Dim;
+    public Avalonia.Media.IBrush HomeBrush => Row.Lead > 0 ? Lit : Dim;
+}
+
 public sealed partial class LineupSlot : ObservableObject
 {
     public LiveGameViewModel Owner { get; init; } = null!;
@@ -345,12 +373,17 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public bool HomeRanked => HomeRank.Length > 0;
     /// <summary>"1ST HALF", "2ND HALF", "OT", "2OT" (or quarters in the pros), and FINAL at the end.</summary>
     public string BugPeriod => _live.Complete ? (_live.Period > _live.Result.Periods ? (_live.Period - _live.Result.Periods == 1 ? "FINAL/OT" : $"FINAL/{_live.Period - _live.Result.Periods}OT") : "FINAL")
+        : BetweenPeriods ? BreakName(_live.Period - 1, _live.Result.Periods)   // run 141: it read "2ND HALF 0:00" at halftime
         : BugPeriodName(Math.Max(1, _live.Period), _live.Result.Periods);   // before the tip the game is in period 0
+    /// <summary>True between periods: the engine has closed one (its clock at 0) and not yet opened the next.</summary>
+    public bool BetweenPeriods => !_live.Complete && _live.Period > 1 && _live.Clock <= 0;
+    /// <summary>"HALFTIME", "END OF 1ST QTR", "END OF 2ND HALF" (heading to overtime), "END OF OT".</summary>
+    public static string BreakName(int ended, int periods) => ended * 2 == periods ? "HALFTIME" : $"END OF {BugPeriodName(ended, periods)}";
     public static string BugPeriodName(int period, int periods) =>
         period > periods ? (period - periods == 1 ? "OT" : $"{period - periods}OT")
         : periods == 2 ? (period == 1 ? "1ST HALF" : "2ND HALF")
         : period switch { 1 => "1ST QTR", 2 => "2ND QTR", 3 => "3RD QTR", _ => "4TH QTR" };
-    public string BugClock => _live.Complete ? "" : _live.Period == 0 ? $"{_live.MinutesPerPeriod}:00" : _live.ClockText;
+    public string BugClock => _live.Complete || BetweenPeriods ? "" : _live.Period == 0 ? $"{_live.MinutesPerPeriod}:00" : _live.ClockText;
     public string AwayFouls => $"FOULS {_live.AwayTeamFouls}";
     public string HomeFouls => $"FOULS {_live.HomeTeamFouls}";
     /// <summary>"BONUS" (a one-and-one in college) or "DBL BONUS" beside the side that shoots free throws on a common foul.</summary>
@@ -359,6 +392,47 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public string HomeBonus => _live.Complete ? "" : BonusLabel(_live.BonusFor(homeShoots: true), _live.OneAndOne);
     public bool AwayInBonus => AwayBonus.Length > 0;
     public bool HomeInBonus => HomeBonus.Length > 0;
+    // B2b (run 141): the jumbotron (the team comparison, live), the two "On the floor" panels with energy bars, the
+    // offence and defence tags and the momentum chip. Presentation only: read from the box score and the engine.
+    [ObservableProperty] private IReadOnlyList<Hardwood.Core.Engine.BoardRow> _board = Array.Empty<Hardwood.Core.Engine.BoardRow>();
+    /// <summary>The rows the jumbotron shows (all but FG%, which the FG line's light already says).</summary>
+    public IReadOnlyList<JumboRow> JumboRows => Board.Where(b => b.Label != "FG%").Select(b => new JumboRow(b)).ToList();
+    partial void OnBoardChanged(IReadOnlyList<Hardwood.Core.Engine.BoardRow> value) => OnPropertyChanged(nameof(JumboRows));
+    [ObservableProperty] private IReadOnlyList<FloorPanelRow> _awayFloor = Array.Empty<FloorPanelRow>();
+    [ObservableProperty] private IReadOnlyList<FloorPanelRow> _homeFloor = Array.Empty<FloorPanelRow>();
+    [ObservableProperty] private Hardwood.Core.Engine.MomentumRead _momentum = new(0, "EVEN", null);
+    /// <summary>The jumbotron's title: the half and clock in play, the break's name at a break, FINAL at the end.</summary>
+    public string BoardTitle => _live.Complete || BetweenPeriods ? BugPeriod
+        : _live.Period == 0 ? "TIP-OFF" : $"{BugPeriod} · {BugClock}";
+    public string AwayFloorTitle => $"ON THE FLOOR · {AwayName}";
+    public string HomeFloorTitle => $"ON THE FLOOR · {HomeName}";
+    /// <summary>The momentum bar is <see cref="MomentumBar"/> wide: the away colour from the left, the home colour from the right.</summary>
+    public const double MomentumBar = 296;
+    public double MomentumHomeWidth => MomentumBar * Hardwood.Core.Engine.ArenaBoard.HomeShare(Momentum);
+    public double MomentumAwayWidth => MomentumBar - MomentumHomeWidth;
+    partial void OnMomentumChanged(Hardwood.Core.Engine.MomentumRead value) { OnPropertyChanged(nameof(MomentumHomeWidth)); OnPropertyChanged(nameof(MomentumAwayWidth)); }
+    /// <summary>Which side has the ball in the play shown (home attacks the right-hand basket).</summary>
+    public bool HomeOffence => Frame?.HomeOffense ?? true;
+    public string AwayTag => _live.Complete ? AwayName : $"{(HomeOffence ? "DEFENCE" : "OFFENCE")} · {AwayName}";
+    public string HomeTag => _live.Complete ? HomeName : $"{(HomeOffence ? "OFFENCE" : "DEFENCE")} · {HomeName}";
+    public bool AwayOnOffence => !_live.Complete && !HomeOffence;
+    public bool HomeOnOffence => !_live.Complete && HomeOffence;
+    /// <summary>The side with the ball has its tag lit; the defence's is dimmed.</summary>
+    public double AwayTagOpacity => AwayOnOffence || _live.Complete ? 1 : 0.6;
+    public double HomeTagOpacity => HomeOnOffence || _live.Complete ? 1 : 0.6;
+
+    private void UpdateBoard()
+    {
+        if (!InArena) return;
+        var r = _live.Result;
+        Board = Hardwood.Core.Engine.ArenaBoard.Compare(r);
+        AwayFloor = Hardwood.Core.Engine.ArenaBoard.OnFloor(r.Away, _live.AwayOnCourt, _live.EnergyOf, r.Periods).Select(x => new FloorPanelRow(x)).ToList();
+        HomeFloor = Hardwood.Core.Engine.ArenaBoard.OnFloor(r.Home, _live.HomeOnCourt, _live.EnergyOf, r.Periods).Select(x => new FloorPanelRow(x)).ToList();
+        Momentum = Hardwood.Core.Engine.ArenaBoard.Momentum(r);
+        foreach (var n in BoardProps) OnPropertyChanged(n);
+    }
+    private static readonly string[] BoardProps = { nameof(BoardTitle), nameof(HomeOffence), nameof(AwayTag), nameof(HomeTag), nameof(AwayOnOffence), nameof(HomeOnOffence), nameof(AwayTagOpacity), nameof(HomeTagOpacity) };
+
     private static readonly string[] BugProps = { nameof(BugPeriod), nameof(BugClock), nameof(AwayFouls), nameof(HomeFouls), nameof(AwayBonus), nameof(HomeBonus),
         nameof(AwayInBonus), nameof(HomeInBonus), nameof(AwayRank), nameof(HomeRank), nameof(AwayRanked), nameof(HomeRanked) };
 
@@ -612,6 +686,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (_shots.Count != before) CourtVersion++;
         UpdateFrame();
         UpdateBox();
+        UpdateBoard();
         Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);
         TeamStats = GameFlowInfo.TeamStats(r);
         var facts = GameHighlights.Ticker(r);
