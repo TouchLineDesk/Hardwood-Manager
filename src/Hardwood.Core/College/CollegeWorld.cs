@@ -640,7 +640,7 @@ public sealed partial class CollegeWorld
             }
             // H162 (run 138): a big conference played a single round robin (Providence's Big East season was 21 games, the
             // SEC's 15 conference games). Now an 11-team league plays home and away (20 games, as the Big East does) and a
-            // bigger one adds a partial second round, about 18-19 games each (the SEC plays 18, the ACC and Big Ten 20).
+            // bigger one adds a partial second round, 18-19 games each (the SEC plays 18, the ACC and Big Ten 20).
             // The rounds run from early January to the day before the conference tournaments.
             rounds = rounds.Concat(reversed.Take(BigConferenceRounds(members.Count) - rounds.Count)).ToList();
             var dates = ConferenceDates(year, rounds.Count);
@@ -650,9 +650,9 @@ public sealed partial class CollegeWorld
         Season = s;
     }
 
-    /// <summary>H162 (run 138): conference rounds for a league of 11 or more: 19 for an even league (19 games each) and 20 for
-    /// an odd one (a bye a round: 18-19 games each).</summary>
-    public static int BigConferenceRounds(int members) => members % 2 == 0 ? 19 : 20;
+    /// <summary>H162 (run 138): conference rounds for a league of 11 or more: home and away for 11 (22 rounds with a bye each,
+    /// 20 games), otherwise 19 for an even league (19 games each) and 20 for an odd one (a bye a round: 18-19 games each).</summary>
+    public static int BigConferenceRounds(int members) => members == 11 ? 22 : members % 2 == 0 ? 19 : 20;
 
     /// <summary>H162 (run 138): a big conference's game days, January 2 to March 9 (the conference tournaments start March 10):
     /// Tuesdays and Saturdays, and the Thursdays of the earliest weeks when a league needs more days.</summary>

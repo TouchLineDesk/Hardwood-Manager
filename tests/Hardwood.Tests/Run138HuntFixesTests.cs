@@ -1,4 +1,5 @@
 using Hardwood.Core;
+using Hardwood.Core.College;
 using Hardwood.Core.Generation;
 using Hardwood.Core.Jobs;
 using Hardwood.Core.Model;
@@ -178,7 +179,8 @@ public class Run138HuntFixesTests
             foreach (var id in members)
             {
                 int n = games.Count(g => g.Stage == "Conference" && (g.HomeId == id || g.AwayId == id));
-                if (members.Count >= 11) Assert.InRange(n, 18, 20);
+                if (members.Count == 11) Assert.Equal(20, n);
+                else if (members.Count > 11) Assert.InRange(n, 18, 19);
                 else Assert.Equal(2 * (members.Count - 1), n);
                 int all = games.Count(g => g.Stage is "Conference" or "Non-conference" && (g.HomeId == id || g.AwayId == id));
                 if (members.Count >= 11) Assert.InRange(all, 27, 30); // plus the invitationals and showcases for some
@@ -192,5 +194,32 @@ public class Run138HuntFixesTests
         var bigEast = c.InConference(c.ConferenceOf[prov.Id]).Select(t => t.Id).ToList();
         Assert.Equal(11, bigEast.Count);
         _out.WriteLine($"seed {seed}: Big East conference games {string.Join(",", bigEast.Select(id => games.Count(g => g.Stage == "Conference" && (g.HomeId == id || g.AwayId == id))))}");
+    }
+    [Fact]
+    public void The_words_never_leave_a_kept_coach_below_the_sack_line()
+    {
+        // The review of PR #204: a coach who began at 15, drifted up and survived the review was dropped back to 15 by
+        // "expected more", below the line he had just cleared.
+        var (job, team, ctx) = CollegeJob(15, SeasonGoal.Playoffs, 20);
+        job.Confidence = 45;
+        var (_, body, sacked) = Board.SeasonReview(job, new Coach(), ctx, team, SeasonGoal.Develop, 12, 17, new Dictionary<int, PlayerSeasonStats>(), new DateOnly(2027, 4, 8), 2026);
+        _out.WriteLine($"{body}\n→ {job.Confidence}");
+        if (!sacked) Assert.True(job.Confidence >= Math.Min(45, 25 - (team.Owner.Patience - 10)) - 0.01, $"{job.Confidence}");
+    }
+
+    [Theory]
+    [InlineData(2026)]
+    [InlineData(2027)]
+    [InlineData(2030)]
+    public void Conference_dates_fit_before_the_tournaments(int year)
+    {
+        foreach (int rounds in new[] { 19, 20, 22 })
+        {
+            var d = CollegeWorld.ConferenceDates(year, rounds);
+            Assert.Equal(rounds, d.Count);
+            Assert.Equal(rounds, d.Distinct().Count());
+            Assert.True(d[0] >= new DateOnly(year + 1, 1, 2) && d[^1] <= new DateOnly(year + 1, 3, 9));
+        }
+        Assert.Equal(22, CollegeWorld.BigConferenceRounds(11));
     }
 }

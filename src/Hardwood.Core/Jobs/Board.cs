@@ -889,7 +889,8 @@ public static class Board
         // K7 (run 115): the protection covers a poor record, not a relegation.
         bool shielded = protectedNow && !relegated
             && wins / Math.Max(1.0, wins + losses) >= ProtectedFloor;
-        bool sacked = !firstSeason && !winning && !shielded && job.Confidence < 25 - (team.Owner.Patience - 10);
+        double sackLine = 25 - (team.Owner.Patience - 10);
+        bool sacked = !firstSeason && !winning && !shielded && job.Confidence < sackLine;
         if (shielded && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
         // the title at 59-23 was sacked the next May at 41-41).
@@ -915,8 +916,14 @@ public static class Board
             string first = Verdict();
             if (first.Contains(" is delighted", StringComparison.Ordinal))
                 job.Confidence = Math.Max(job.Confidence, wins < losses ? Math.Min(seasonStart, LosingCap) : seasonStart);
-            else if (first.Contains(" is disappointed", StringComparison.Ordinal) || first.Contains(" expected more", StringComparison.Ordinal))
-                job.Confidence = Math.Min(job.Confidence, Math.Max(seasonStart, winning ? 25 : 0));
+            else if (first.Contains(" is disappointed", StringComparison.Ordinal) || first.Contains(" expected more", StringComparison.Ordinal)
+                     || first.Contains(" wanted to see progress", StringComparison.Ordinal))
+            {
+                // The review of PR #204: never below the sack line (or the winning floor) once the coach has been kept, so a coach
+                // who survived the review isn't left below the line by the words.
+                double keep = Math.Min(job.Confidence, Math.Max(sackLine, winning ? 25 : 0));
+                job.Confidence = Math.Max(Math.Min(job.Confidence, seasonStart), keep);
+            }
         }
         string verdict = Verdict();
         lines.Add(verdict);
