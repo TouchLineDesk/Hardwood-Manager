@@ -152,7 +152,8 @@ public sealed partial class CollegeViewModel
                 Cares = r.CourtedBy == me.Id && r.Scouted ? CollegeWorld.PriorityShort(CollegeWorld.PriorityOf(p)) : "",
                 Interest = interest, InterestText = $"{interest:0}",
                 Leaning = lean == null ? "-" : lean == me ? "You" : lean.City,
-                Status = r.CommittedTo is { } to ? (to == me.Id ? "Committed to you" : $"Committed: {c.Program(to)!.City}")
+                Status = r.CommittedTo is { } to ? (CollegeWorld.Signed(r, Session.Today) ? (to == me.Id ? "Signed with you" : $"Signed: {c.Program(to)!.City}")
+                                                     : to == me.Id ? "Committed to you" : $"Committed: {c.Program(to)!.City}")
                        : r.CourtedBy == me.Id && r.Offered ? "Offered" : r.CourtedBy == me.Id && r.OnBoard ? "On your board" : "Open",
             });
         }
@@ -172,6 +173,9 @@ public sealed partial class CollegeViewModel
         var (leaningAway, _) = OffersLeaning(c, me, year, board);
         if (leaningAway > 0 && chips.FindIndex(x => x.Label == "Offers out") is var oi and >= 0)
             chips[oi] = chips[oi] with { Sub = chips[oi].Tone == "" ? $"{leaningAway} leaning elsewhere" : $"{chips[oi].Sub} · {leaningAway} lean away", Tone = "warn" };
+        // K15b (run 147): a broken promise is known on the trail for a year.
+        if (c.WordBroken && c.BrokenWordUntil is { } until)
+            chips.Add(new("Your word", $"−{CollegeWorld.BrokenWordPenalty:0}", $"a broken promise · until {until:MMM d, yyyy}", "warn"));
         TrailChips = chips;
         bool closed = !c.Recruitable(new Recruit { ClassOf = year }, Session.Today);
         _otherClassOpen = closed && TrailOtherClass.Length > 0 && int.TryParse(TrailOtherClass.Replace("Class of ", "").Split(' ')[0], out var oy)
@@ -249,14 +253,19 @@ public sealed partial class CollegeViewModel
             new("Your pitch", ours && r.Pitch is { } pk ? CollegeWorld.PitchName(pk) : "None",
                 !(ours && r.Pitch != null) ? "pick one below" : !r.Scouted ? "scout him to know if it fits" : CollegeWorld.PitchMatches(p, r) == true ? $"fits · contacts land {(CollegeWorld.PitchMatch - 1) * 100:0}% better" : $"misses · contacts land {(1 - CollegeWorld.PitchMiss) * 100:0}% worse",
                 !(ours && r.Pitch != null && r.Scouted) ? "" : CollegeWorld.PitchMatches(p, r) == true ? "good" : "warn"),
-            new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? "he can commit to you" : "needed before he commits", ours && r.Offered ? "good" : ""),
+            new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? (r.CommittedTo is { } ct && ct != me.Id ? "a verbal commit elsewhere" : "he can commit to you") : "needed before he commits", ours && r.Offered ? "good" : ""),
+            // K15b (run 147): a starting-role promise (two a class), and whether the trail still believes you.
+            new("Promise", ours && r.Promised ? "Starting role" : "None",
+                ours && r.Promised ? (c.WordBroken ? "worth nothing: your word is broken" : $"+{CollegeWorld.PromiseAppeal:0} · judged in January")
+                    : $"{c.PromisesMade(me, r.ClassOf)} of {CollegeWorld.PromisesPerClass} made this class",
+                ours && r.Promised ? (c.WordBroken ? "warn" : "good") : ""),
             // CP3 (run 132): your graduates in the pros sway him a little (see the College page's Your pros tab).
             new("Your pros", c.PitchFor(r) > 0 ? $"+{c.PitchFor(r):0.#}" : "0", c.ProPitchText == "" ? "no graduates yet" : c.ProPitchText, c.PitchFor(r) > 0 ? "good" : ""),
         };
         var list = c.Considering(p, r, board).Take(4).ToList();
         int open = c.OpenScholarships(me, r.ClassOf), standing = c.StandingOf(me, p, r, board);
         string why = open <= 0 ? "no scholarship left in his class" : !(ours && r.Offered) ? "no offer yet" : "";
-        TrailConsidering = r.CommittedTo is { } to ? $"Committed to {c.Program(to)!.FullName}."
+        TrailConsidering = r.CommittedTo is not null ? c.CommitmentText(r, Session.Today, me)
             : "Considering: " + string.Join(" · ", list.Select((x, i) => $"{i + 1}. {x.Program.City}{(x.Program == me ? " (you)" : "")}")) + "."
               + (why != "" ? $" You'd rank {standing} with him, but you can't land him: {why}." : list.All(x => x.Program != me) ? $" You rank {standing}." : "");
         // K15a (run 146): why you trail (or lead), factor by factor, and what your calls and visits sell him.
@@ -278,6 +287,7 @@ public sealed partial class CollegeViewModel
     [RelayCommand] private void CallTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.CallProspect(p)); }
     [RelayCommand] private void HomeVisitTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.HomeVisitProspect(p)); }
     [RelayCommand] private void OfficialVisitTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.OfficialVisitProspect(p)); }
+    [RelayCommand] private void PromiseTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.PromiseProspect(p)); }
     [RelayCommand] private void OfferTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.OfferProspect(p)); }
     [RelayCommand] private void BoardTrail() { if (SelectedTrail?.Player is { } p) AfterTrail(Session.BoardProspect(p)); }
     [RelayCommand] private void OpenTrail() { if (SelectedTrail?.Player is { } p) Shell.ShowPlayer(p); }

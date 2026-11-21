@@ -528,6 +528,7 @@ public sealed partial class GameSession
         if (inSeason && Today.DayOfWeek == DayOfWeek.Monday)
         {
             WeeklyPeople();
+            WeeklyPromises(); // K15b (run 147)
             bool regular = InCollege ? !World.College!.Season.Selected && MyRecord.Games > 0
                 : Abroad ? HumanLeague?.Season.Stage == CompetitionSeason.RegularSeason : Phase == SessionPhase.RegularSeason;
             if (regular) WeeklyBoard();

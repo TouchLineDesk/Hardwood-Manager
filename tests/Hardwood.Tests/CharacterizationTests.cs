@@ -184,7 +184,9 @@ public class CharacterizationTests
         // Run 130 (CP1, the top band of each class): re-pinned (was EF04EA9CAF3C66EE since run 128). Every college and
         // high-school class draws its franchise and five-star prospects first, so the world uses different draws. The NBA
         // bench seasons stay on their pins.
-        Pin("career seed 2026, 30 days, no saves", "1FC57B04229F63BB", Session(s));
+        // Run 147 (K15b, decommitments): re-pinned (was 1FC57B04229F63BB since run 134). A verbal commit's flip changes
+        // which programs have scholarships open, so the world's recruiting draws (shared with the season) move.
+        Pin("career seed 2026, 30 days, no saves", "03E88F9310A12021", Session(s));
     }
 
     [Fact]

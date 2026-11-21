@@ -552,6 +552,7 @@
                       <Button Content="Home visit (4 h)" Command="{Binding HomeVisitTrailCommand}" Margin="0,0,6,6"/>
                       <Button Content="Official visit (8 h)" Command="{Binding OfficialVisitTrailCommand}" Margin="0,0,6,6"/>
                       <Button Classes="primary" Content="Offer a scholarship (2 h)" Command="{Binding OfferTrailCommand}" Margin="0,0,6,6"/>
+                      <Button Content="Promise a starting role (1 h)" Command="{Binding PromiseTrailCommand}" Margin="0,0,6,6" ToolTip.Tip="Promise him a starting role as a freshman (two a class). It is judged in mid-January of his first season: start him in half his games or give him 25 minutes a game."/>
                       <Button Content="Board +/-" Command="{Binding BoardTrailCommand}" Margin="0,0,6,6"/>
                       <Button Content="Open player" Command="{Binding OpenTrailCommand}" Margin="0,0,6,6"/>
                     </WrapPanel>

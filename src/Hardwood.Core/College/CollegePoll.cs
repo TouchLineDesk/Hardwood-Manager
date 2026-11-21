@@ -34,7 +34,10 @@ public sealed partial class CollegeWorld
         if (Season.ChampionId is { } champ && !_preMarchPoll)
         {
             var march = Programs.ToDictionary(t => t.Id, t => MadnessReached(t.Id));
-            score = id => id == champ ? double.MaxValue : PollScore(id) + MarchPollWeight * Math.Max(0, march[id] - 1);
+            // Run 147: the runner-up second, as the final coaches' poll nearly always has him (seed 25 had him 5th once
+            // K15b's flips moved the season's rosters).
+            int? runnerUp = Season.RunnerUpId;
+            score = id => id == champ ? double.MaxValue : id == runnerUp ? double.MaxValue / 2 : PollScore(id) + MarchPollWeight * Math.Max(0, march[id] - 1);
         }
         var all = Programs.Select(t => t.Id).OrderByDescending(score).ThenBy(id => id).ToList();
         _fullRanks = all.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);

@@ -256,7 +256,7 @@ public sealed partial class GameSession
             {
                 if (!mine.Contains(id) || l.TeamId != HumanTeam.Id) continue;
                 if (!stats.TryGetValue(id, out var s)) stats[id] = s = new PlayerSeasonStats { PlayerId = id, TeamId = l.TeamId, Season = League.Season };
-                s.Games += l.G; s.Minutes += l.Min; s.Points += l.Pts; s.DReb += l.Reb; s.Assists += l.Ast; s.Steals += l.Stl; s.Blocks += l.Blk;
+                s.Games += l.G; s.Starts += l.Gs; s.Minutes += l.Min; s.Points += l.Pts; s.DReb += l.Reb; s.Assists += l.Ast; s.Steals += l.Stl; s.Blocks += l.Blk;
                 s.FGM += l.Fgm; s.FGA += l.Fga; s.ThreePM += l.Tpm; s.ThreePA += l.Tpa;
             }
             return stats;

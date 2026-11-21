@@ -40,6 +40,12 @@ public sealed class Recruit
     public bool Offered { get; set; }
     /// <summary>K15a (run 146): what the coached program sells him on its calls and visits (null: no pitch). Saved; reset with the courting.</summary>
     public RecruitPriority? Pitch { get; set; }
+    /// <summary>Run 147 review answer: the coach chose the pitch himself (even "No pitch"), so the assistant leaves it alone. Saved; reset with the courting.</summary>
+    public bool PitchChosen { get; set; }
+    /// <summary>K15b (run 147): the coached program promised him a starting role as a freshman. Saved; reset with the courting.</summary>
+    public bool Promised { get; set; }
+    /// <summary>K15b review: the offer was made while he was verbally committed elsewhere, so it counts against the offer limit until he signs. Saved; reset with the courting.</summary>
+    public bool FlipOffer { get; set; }
 }
 
 /// <summary>
@@ -274,7 +280,7 @@ public sealed partial class CollegeWorld
             RecruitPriority.PlayingTime => minutes,
             _ => winning,
         };
-        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r) + PitchAppeal(p, r, t);
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r) + PitchAppeal(p, r, t) + PromiseAppealOf(r, t) + WordPenalty;
         return a + (rng?.NextGaussian(0, 14) ?? 0);
     }
 
@@ -387,13 +393,19 @@ public sealed partial class CollegeWorld
         return best;
     }
 
-    private void Commit(Player p, Recruit r, Team t, DateOnly on, ClassBoard board)
+    private void Commit(Player p, Recruit r, Team t, DateOnly on, ClassBoard board, Team? flippedFrom = null)
     {
         r.CommittedTo = t.Id; r.CommittedOn = on;
         board.Open[t.Id]--;
         board.AtPosition[(t.Id, p.PrimaryPosition)] = board.AtPosition.GetValueOrDefault((t.Id, p.PrimaryPosition)) + 1;
-        TellCoach(p, r, t);
-        if (r.Rank <= 10)
+        TellCoach(p, r, t, flippedFrom: flippedFrom);
+        if (flippedFrom != null)
+        {
+            if (r.Rank <= FlipNewsRank)
+                News.Add(($"{StarText(r.Stars)} {p.Name} flips from {flippedFrom.FullName} to {t.FullName}",
+                          $"The No. {r.Rank} player in the Class of {r.ClassOf} ({p.PrimaryPosition}, {r.HighSchool}, {StateName(r.State)}) has backed out of his commitment to {flippedFrom.FullName} and committed to {t.FullName}."));
+        }
+        else if (r.Rank <= 10)
             News.Add(($"{StarText(r.Stars)} {p.Name} commits to {t.FullName}",
                       $"The No. {r.Rank} player in the Class of {r.ClassOf} ({p.PrimaryPosition}, {r.HighSchool}, {StateName(r.State)}) has chosen {t.FullName}."));
     }
@@ -416,6 +428,7 @@ public sealed partial class CollegeWorld
             bool spring = day.Month is >= 3 and <= 4, early = day.Month == 11 && day.Day >= 8 && day.Day <= 21;
             var board = BoardFor(cls);
             var ranks = PrestigeRanks();
+            Reconsider(cls, day, board, ranks); // K15b (run 147): a verbal commitment can flip until he signs
             int open = board.Open.Values.Sum(v => Math.Max(0, v)), waiting = 0;
             foreach (var p in ClassOf(cls).OrderBy(p => Recruits[p.Id].Rank).ToList())
             {
@@ -534,6 +547,7 @@ public sealed partial class CollegeWorld
         int cls = on.Year;
         RecruitingThrough(on.AddDays(-1), rng); // signing day is in April; make sure it has happened
         var seniors = ClassOf(cls).ToList();
+        KeepPromisesOnEnrollment(seniors, cls);
         foreach (var p in seniors.Where(p => Recruits[p.Id].CommittedTo != null))
         {
             var t = Program(Recruits[p.Id].CommittedTo!.Value)!;

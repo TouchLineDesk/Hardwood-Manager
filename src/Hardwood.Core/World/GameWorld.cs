@@ -427,7 +427,7 @@ public sealed class GameWorld
         foreach (var l in box.Lines.Where(l => l.Seconds > 0))
         {
             var st = stats.TryGetValue(l.Player.Id, out var x) ? x : stats[l.Player.Id] = new StatLine();
-            st.TeamId = box.Team.Id; st.G++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
+            st.TeamId = box.Team.Id; st.G++; if (l.Started) st.Gs++; st.Min += l.Minutes; st.Pts += l.Points; st.Reb += l.Rebounds; st.Ast += l.Assists;
             st.Stl += l.Steals; st.Blk += l.Blocks; st.Fgm += l.FGM; st.Fga += l.FGA; st.Tpm += l.ThreePM; st.Tpa += l.ThreePA;
         }
     }

@@ -43,7 +43,7 @@ public sealed partial class CollegeWorld
         if (r.CourtedBy != t.Id)
         {
             r.CourtedBy = t.Id; r.Interest = 0; r.OnBoard = false; r.Scouted = false; r.Calls = 0; r.CalledWeek = null;
-            r.HomeVisit = false; r.OfficialVisit = false; r.Offered = false; r.Pitch = null;
+            r.HomeVisit = false; r.OfficialVisit = false; r.Offered = false; r.Pitch = null; r.PitchChosen = false; r.Promised = false; r.FlipOffer = false;
         }
         return r;
     }
@@ -56,7 +56,10 @@ public sealed partial class CollegeWorld
 
     /// <summary>Offers still open to uncommitted prospects in a class.</summary>
     public int OffersOut(Team t, int classOf) =>
-        Recruits.Values.Count(r => r.ClassOf == classOf && r.CourtedBy == t.Id && r.Offered && r.CommittedTo == null);
+        Recruits.Values.Count(r => r.ClassOf == classOf && r.CourtedBy == t.Id && r.Offered
+            && (r.CommittedTo == null
+                // K15b review: an offer made to a verbal commit elsewhere holds a place until he signs (no unlimited flip offers).
+                || (r.FlipOffer && r.CommittedTo != t.Id && !Signed(r, RecruitingDay ?? DateOnly.MinValue))));
 
     /// <summary>A program can have this many offers out in a class: its open scholarships plus 3 (coaches over-offer; not everyone says yes).</summary>
     public int OfferLimit(Team t, int classOf) => OpenScholarships(t, classOf) is var open and > 0 ? open + 3 : 0;
@@ -79,7 +82,9 @@ public sealed partial class CollegeWorld
     /// <summary>Why he can't be courted right now, or null.</summary>
     private string? Closed(Player p, Recruit r, DateOnly today)
     {
-        if (r.CommittedTo is { } to) return $"{p.Name} has committed to {Program(to)?.FullName ?? "another school"}.";
+        // K15b (run 147): a commitment binds once he signs (the November early period, or signing day); before that it is
+        // verbal, and he can still be courted (and flipped).
+        if (r.CommittedTo is { } to && Signed(r, today)) return $"{p.Name} has signed with {Program(to)?.FullName ?? "another school"}.";
         if (today >= SigningDay(r.ClassOf)) return $"Signing day has passed for the Class of {r.ClassOf}.";
         return NotASenior(p, r, today);
     }
@@ -172,7 +177,11 @@ public sealed partial class CollegeWorld
             return $"You have {outNow} offers out to the Class of {r.ClassOf} and {OpenScholarships(t, r.ClassOf)} scholarships open: you can have at most {limit} out.";
         if (Spend(OfferHours, today) is { } no) return no;
         r.Offered = true; r.OnBoard = true;
-        return $"You offered {p.Name} a scholarship. " + Gain(r, 8 * ContactScale(r)) + " He can now commit to you.";
+        r.FlipOffer = r.CommittedTo is { } elsewhere && elsewhere != t.Id;
+        return $"You offered {p.Name} a scholarship. " + Gain(r, 8 * ContactScale(r))
+            + (r.CommittedTo is { } other && other != t.Id
+                ? $" He is committed to {Program(other)?.FullName}, but only verbally: lead them clearly and he may flip to you before he signs."
+                : " He can now commit to you.");
     }
 
     /// <summary>The schools he's considering, best first, as he sees them today (no luck): only those that can take him
@@ -260,7 +269,7 @@ public sealed partial class CollegeWorld
                     () => cls == senior ? Offer(t, p, r, day) : "",
                     // K15a (run 146): he scouts each target (1 hour) and sells him what he cares about.
                     () => r.CourtedBy == t.Id && !r.Scouted ? Scout(t, p, r, day) : "",
-                    () => { if (r.CourtedBy == t.Id && r.Scouted && r.Pitch == null) r.Pitch = PriorityOf(p); return ""; },
+                    () => { if (r.CourtedBy == t.Id && r.Scouted && r.Pitch == null && !r.PitchChosen) r.Pitch = PriorityOf(p); return ""; },
                     () => cls == senior && day >= CommitmentsOpen(cls) ? OfficialVisit(t, p, r, day) : "",
                     () => VisitHome(t, p, r, day),
                     () => Call(t, p, r, day),
@@ -383,11 +392,17 @@ public sealed partial class CollegeWorld
     }
 
     /// <summary>Tell the coached program about a commitment it cares about: to it, or a prospect it was courting going elsewhere.</summary>
-    private void TellCoach(Player p, Recruit r, Team to, bool signingDay = false)
+    private void TellCoach(Player p, Recruit r, Team to, bool signingDay = false, Team? flippedFrom = null)
     {
         if (ManagedProgramId is not { } me) return;
         string who = $"{StarText(r.Stars)} {p.PrimaryPosition} {p.Name} (No. {r.Rank}, {r.HighSchool}, {StateName(r.State)})";
-        if (to.Id == me)
+        // K15b (run 147): a flip, to you or away from you.
+        if (flippedFrom?.Id == me)
+            CoachNews.Add(($"{p.Name} decommits", $"{who} has backed out of his commitment to you and committed to {to.FullName} instead. "
+                + $"Interest in you was {r.Interest:0}. A verbal commitment holds only until he signs; keep calling the ones you have."));
+        else if (flippedFrom != null && to.Id == me)
+            CoachNews.Add(($"{p.Name} flips to you", $"{who} has backed out of his commitment to {flippedFrom.FullName} and committed to you. He enrolls in the summer of {r.ClassOf}."));
+        else if (to.Id == me)
             CoachNews.Add(($"{p.Name} commits to you", $"{who} {(signingDay ? "signed with you on signing day" : "has committed to you")}. He enrolls in the summer of {r.ClassOf}."));
         // Only a prospect you'd offered gets a message when he goes elsewhere (critic review #8: a college coach's inbox had
         // about 100 of these in three seasons, most for prospects the assistant had only put on the board).
