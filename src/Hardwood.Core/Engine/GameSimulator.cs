@@ -156,6 +156,15 @@ public sealed class GameSimulator
         public IReadOnlyList<Player> HomeOnCourt => _game.HomeOnCourt;
         public IReadOnlyList<Player> AwayOnCourt => _game.AwayOnCourt;
         public IReadOnlyList<string> Log => Result.PlayLog;
+        /// <summary>Team fouls in the current period or half (B2a, run 140: the score bug). Reads state only.</summary>
+        public int HomeTeamFouls => _game.HomeTeamFouls;
+        public int AwayTeamFouls => _game.AwayTeamFouls;
+        /// <summary>Free throws a common foul gives the side with the ball (0, 1 for a one-and-one, 2), from the
+        /// defending side's team fouls under this game's rules. Reads state only.</summary>
+        public int BonusFor(bool homeShoots) => _game.Rules.BonusShots(homeShoots ? _game.AwayTeamFouls : _game.HomeTeamFouls);
+        /// <summary>True under college rules (a one-and-one before the double bonus).</summary>
+        public bool OneAndOne => _game.Rules.OneAndOne;
+        public int MinutesPerPeriod => _game.Rules.MinutesPerPeriod;
 
         /// <summary>Play one possession. Returns false when the game is over (and finalises injuries).</summary>
         public bool Step()
@@ -348,6 +357,9 @@ public sealed class GameSimulator
         public IReadOnlyList<Player> HomeOnCourt => _home.OnCourt;
         public IReadOnlyList<Player> AwayOnCourt => _away.OnCourt;
         public int LogCount => _result.PlayLog.Count;
+        public int HomeTeamFouls => _home.TeamFouls;
+        public int AwayTeamFouls => _away.TeamFouls;
+        public Rules Rules => _rules;
 
         private bool _periodOpen;
         private int _periodHomeStart, _periodAwayStart;

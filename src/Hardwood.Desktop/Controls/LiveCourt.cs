@@ -42,7 +42,7 @@ public sealed record LiveShot(bool Home, ShotZone Zone, bool Made, int Seq)
 /// court, with every shot of the game placed as it happens: a filled dot for a make, a ring for a miss, in the shooting
 /// side's colour, the latest one ringed.
 /// </summary>
-public sealed class LiveCourt : Control
+public sealed partial class LiveCourt : Control
 {
     public static readonly StyledProperty<IImage?> FloorProperty = AvaloniaProperty.Register<LiveCourt, IImage?>(nameof(Floor));
     public static readonly StyledProperty<IReadOnlyList<LiveShot>?> ShotsProperty = AvaloniaProperty.Register<LiveCourt, IReadOnlyList<LiveShot>?>(nameof(Shots));
@@ -70,7 +70,12 @@ public sealed class LiveCourt : Control
     public string? FloorName { get => GetValue(FloorNameProperty); set => SetValue(FloorNameProperty, value); }
     public TrackerFrame? Frame { get => GetValue(FrameProperty); set => SetValue(FrameProperty, value); }
 
-    static LiveCourt() => AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty, FloorColorProperty, FloorTrimProperty, FloorNameProperty, FrameProperty);
+    static LiveCourt()
+    {
+        AffectsRender<LiveCourt>(FloorProperty, ShotsProperty, VersionProperty, HomeColorProperty, AwayColorProperty, FloorColorProperty, FloorTrimProperty, FloorNameProperty, FrameProperty,
+            ArenaProperty, DressProperty);
+        AffectsMeasure<LiveCourt>(ArenaProperty);
+    }
 
     // The motion between frames (run 83): what was on screen when the new frame came, and when it came.
     private TrackerPose? _pose, _startPose;
@@ -126,9 +131,10 @@ public sealed class LiveCourt : Control
 
     protected override Size MeasureOverride(Size available)
     {
+        double aspect = InArena ? ArenaAspect : Aspect;
         double w = double.IsInfinity(available.Width) ? 470 : available.Width;
-        double h = w / Aspect;
-        if (!double.IsInfinity(available.Height) && h > available.Height) { h = available.Height; w = h * Aspect; }
+        double h = w / aspect;
+        if (!double.IsInfinity(available.Height) && h > available.Height) { h = available.Height; w = h * aspect; }
         return new Size(w, h);
     }
 
@@ -136,6 +142,7 @@ public sealed class LiveCourt : Control
     {
         double w = Bounds.Width, h = Bounds.Height;
         if (w < 60 || h < 32) return;
+        if (InArena) { RenderArena(ctx); return; }
         double s = Math.Min(w / 94, h / 50);
         double ox = (w - 94 * s) / 2, oy = (h - 50 * s) / 2;
         var rect = new Rect(ox, oy, 94 * s, 50 * s);

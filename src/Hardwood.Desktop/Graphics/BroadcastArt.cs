@@ -17,14 +17,22 @@ public sealed class BroadcastSet
     public Rect Screen { get; init; }
     public Point HostHead { get; init; }
     public Point AnalystHead { get; init; }
+    /// <summary>The arena (B2a, run 140): the court's corners for feet (0,0), (94,0), (94,50), (0,50), in frame pixels.</summary>
+    public Point[]? Court { get; init; }
+    /// <summary>The arena's tint mask (white where the crowd's team shirts and the ribbon boards take the home colours).</summary>
+    public Bitmap? Mask { get; init; }
 }
 
 public static class BroadcastArt
 {
-    private static BroadcastSet? _selection;
+    private static BroadcastSet? _selection, _arena;
 
     /// <summary>The Selection Show studio. Without the frame (a stripped build), the layout still works on a plain backdrop.</summary>
     public static BroadcastSet Selection => _selection ??= Load("selection-studio");
+
+    /// <summary>The college arena (B2a, run 140; <c>tools/Render/arena.py</c>). Without the frame, the court view falls back
+    /// to the flat court.</summary>
+    public static BroadcastSet Arena => _arena ??= Load("college-arena");
 
     public static BroadcastSet Load(string name)
     {
@@ -34,8 +42,10 @@ public static class BroadcastArt
             var n = asm.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith(name + ext, StringComparison.Ordinal));
             return n == null ? null : asm.GetManifestResourceStream(n);
         }
-        Bitmap? frame = null;
+        Bitmap? frame = null, mask = null;
         try { using var s = Res(".jpg"); if (s != null) frame = new Bitmap(s); } catch { frame = null; }
+        try { using var s = Res("-mask.png"); if (s != null) mask = new Bitmap(s); } catch { mask = null; }
+        Point[]? court = null;
         var screen = new Rect(492, 192, 939, 422);
         Point host = new(758, 600), analyst = new(1162, 610);
         try
@@ -45,14 +55,19 @@ public static class BroadcastArt
             {
                 using var doc = JsonDocument.Parse(js);
                 var root = doc.RootElement;
-                var pts = root.GetProperty("screen").EnumerateArray().Select(p => new Point(p[0].GetDouble(), p[1].GetDouble())).ToList();
-                double l = pts.Min(p => p.X), t = pts.Min(p => p.Y), r = pts.Max(p => p.X), b = pts.Max(p => p.Y);
-                screen = new Rect(l, t, r - l, b - t);
-                Point P(string k) { var a = root.GetProperty(k); return new Point(a[0].GetDouble(), a[1].GetDouble()); }
-                host = P("host_head"); analyst = P("analyst_head");
+                static Point Pt(JsonElement p) => new(p[0].GetDouble(), p[1].GetDouble());
+                if (root.TryGetProperty("court", out var c)) court = c.EnumerateArray().Select(Pt).ToArray();
+                if (root.TryGetProperty("screen", out var sc))
+                {
+                    var pts = sc.EnumerateArray().Select(Pt).ToList();
+                    double l = pts.Min(p => p.X), t = pts.Min(p => p.Y), r = pts.Max(p => p.X), b = pts.Max(p => p.Y);
+                    screen = new Rect(l, t, r - l, b - t);
+                }
+                if (root.TryGetProperty("host_head", out var h)) host = Pt(h);
+                if (root.TryGetProperty("analyst_head", out var a)) analyst = Pt(a);
             }
         }
         catch (Exception) { /* keep the defaults */ }
-        return new BroadcastSet { Frame = frame, Screen = screen, HostHead = host, AnalystHead = analyst };
+        return new BroadcastSet { Frame = frame, Screen = screen, HostHead = host, AnalystHead = analyst, Court = court is { Length: 4 } ? court : null, Mask = mask };
     }
 }
