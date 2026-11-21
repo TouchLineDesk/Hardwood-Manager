@@ -846,8 +846,8 @@ public static class Board
         else if (diff < 0 && j.BeatTarget && !earlyExit) delta = Math.Max(delta, 2);
         else if (diff < 0 && j.BeatTarget) delta = Math.Max(delta, -10); // H137: a great regular season softens an early March exit
         else if (diff < 0 && onPar) delta = Math.Max(delta, -6); // H137: March went as far as the seed promised
-        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6 - marchCost);
-        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14 - marchCost);
+        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6 - (earlyExit ? marchCost : 0));
+        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14 - (earlyExit ? marchCost : 0));
         // CS2 (run 126): a "build the program" season with no progress is a warning, not a second punishment on top of the
         // weekly drift that already followed the record (the review's share is at most 8).
         if (ctx.IsCollege && e.Goal == SeasonGoal.Develop && !e.Survive && diff < 0) delta = Math.Max(delta, -8);
@@ -869,8 +869,9 @@ public static class Board
         if (!relegated && madePost && winsVsTarget >= -CloseWins)
         {
             double start = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } sc ? sc : beforeReview;
-            // H166 (run 144): the early exit's March cost stays below the cap too.
-            job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner) - marchCost));
+            // H166 (run 144): an early exit's March cost stays below the cap too (the review of PR #211: only an early exit,
+            // so a mild miss keeps the cap's protection).
+            job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner) - (earlyExit ? marchCost : 0)));
         }
         // CS2 (run 126): a March run well past the seed (an 8-seed in the Sweet 16) leaves the AD content, whatever the regular
         // season's drift did (Cincinnati ended such a run at 36).
