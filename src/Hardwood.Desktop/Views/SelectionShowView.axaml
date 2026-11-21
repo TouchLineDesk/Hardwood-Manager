@@ -99,7 +99,7 @@
       </Viewbox>
     </Border>
     <WrapPanel>
-      <Button Content="Next game" Command="{Binding ShowNextCommand}" IsEnabled="{Binding CanShowNext}" Classes="primary" Margin="0,0,8,4"/>
+      <Button Content="Next matchup" Command="{Binding ShowNextCommand}" IsEnabled="{Binding CanShowNext}" Classes="primary" Margin="0,0,8,4"/>
       <Button Content="{Binding AutorunText}" Command="{Binding ShowAutorunCommand}" IsEnabled="{Binding CanShowNext}" Margin="0,0,8,4"/>
       <Button Content="Advance to the bracket" Command="{Binding ShowAdvanceCommand}" Margin="0,0,16,4"/>
       <TextBlock Text="{Binding ShowProgress}" Classes="muted" VerticalAlignment="Center" Margin="0,0,0,4"/>

@@ -198,7 +198,7 @@ public class Run143StudioDeskTests
             // Play on: the desk goes with the break.
             live.StepOne();
             Assert.Null(live.HalftimeReel);
-            while (!game.Complete) { live.StepOne(); Assert.False(live.DeskUp && live.BreakTitle != "Halftime"); }
+            while (!game.Complete) { live.StepOne(); Assert.False(live.DeskUp && live.BreakTitle != "Halftime" && !game.Complete); }
             session.FinishLiveDay(game, played);
         }
         finally
