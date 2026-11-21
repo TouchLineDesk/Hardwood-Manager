@@ -43,7 +43,7 @@ public sealed partial class CollegeWorld
         if (r.CourtedBy != t.Id)
         {
             r.CourtedBy = t.Id; r.Interest = 0; r.OnBoard = false; r.Scouted = false; r.Calls = 0; r.CalledWeek = null;
-            r.HomeVisit = false; r.OfficialVisit = false; r.Offered = false; r.Pitch = null; r.PitchChosen = false; r.Promised = false;
+            r.HomeVisit = false; r.OfficialVisit = false; r.Offered = false; r.Pitch = null; r.PitchChosen = false; r.Promised = false; r.FlipOffer = false;
         }
         return r;
     }
@@ -56,7 +56,10 @@ public sealed partial class CollegeWorld
 
     /// <summary>Offers still open to uncommitted prospects in a class.</summary>
     public int OffersOut(Team t, int classOf) =>
-        Recruits.Values.Count(r => r.ClassOf == classOf && r.CourtedBy == t.Id && r.Offered && r.CommittedTo == null);
+        Recruits.Values.Count(r => r.ClassOf == classOf && r.CourtedBy == t.Id && r.Offered
+            && (r.CommittedTo == null
+                // K15b review: an offer made to a verbal commit elsewhere holds a place until he signs (no unlimited flip offers).
+                || (r.FlipOffer && r.CommittedTo != t.Id && !Signed(r, RecruitingDay ?? DateOnly.MinValue))));
 
     /// <summary>A program can have this many offers out in a class: its open scholarships plus 3 (coaches over-offer; not everyone says yes).</summary>
     public int OfferLimit(Team t, int classOf) => OpenScholarships(t, classOf) is var open and > 0 ? open + 3 : 0;
@@ -174,6 +177,7 @@ public sealed partial class CollegeWorld
             return $"You have {outNow} offers out to the Class of {r.ClassOf} and {OpenScholarships(t, r.ClassOf)} scholarships open: you can have at most {limit} out.";
         if (Spend(OfferHours, today) is { } no) return no;
         r.Offered = true; r.OnBoard = true;
+        r.FlipOffer = r.CommittedTo is { } elsewhere && elsewhere != t.Id;
         return $"You offered {p.Name} a scholarship. " + Gain(r, 8 * ContactScale(r))
             + (r.CommittedTo is { } other && other != t.Id
                 ? $" He is committed to {Program(other)?.FullName}, but only verbally: lead them clearly and he may flip to you before he signs."

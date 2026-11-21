@@ -67,7 +67,9 @@ public sealed partial class GameSession
                 continue;
             }
             int starts = st!.Starts;
-            if (starts * 2 >= g || st.Mpg >= CollegeWorld.PromiseMpg)
+            // Review: a save from before v0.135.0 has no college starts for the games before it; judge on minutes alone then.
+            bool startsKnown = HumanTeam.Roster.Any(x => MyStats.TryGetValue(x.Id, out var y) && y.Starts > 0);
+            if ((startsKnown && starts * 2 >= g) || st.Mpg >= CollegeWorld.PromiseMpg)
             {
                 pl.Status = "kept";
                 p.Morale = Math.Min(100, p.Morale + 8);

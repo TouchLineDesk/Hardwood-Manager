@@ -253,7 +253,7 @@ public sealed partial class CollegeViewModel
             new("Your pitch", ours && r.Pitch is { } pk ? CollegeWorld.PitchName(pk) : "None",
                 !(ours && r.Pitch != null) ? "pick one below" : !r.Scouted ? "scout him to know if it fits" : CollegeWorld.PitchMatches(p, r) == true ? $"fits · contacts land {(CollegeWorld.PitchMatch - 1) * 100:0}% better" : $"misses · contacts land {(1 - CollegeWorld.PitchMiss) * 100:0}% worse",
                 !(ours && r.Pitch != null && r.Scouted) ? "" : CollegeWorld.PitchMatches(p, r) == true ? "good" : "warn"),
-            new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? "he can commit to you" : "needed before he commits", ours && r.Offered ? "good" : ""),
+            new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? (r.CommittedTo is { } ct && ct != me.Id ? "a verbal commit elsewhere" : "he can commit to you") : "needed before he commits", ours && r.Offered ? "good" : ""),
             // K15b (run 147): a starting-role promise (two a class), and whether the trail still believes you.
             new("Promise", ours && r.Promised ? "Starting role" : "None",
                 ours && r.Promised ? (c.WordBroken ? "worth nothing: your word is broken" : $"+{CollegeWorld.PromiseAppeal:0} · judged in January")

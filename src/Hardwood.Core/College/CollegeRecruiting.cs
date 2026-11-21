@@ -44,6 +44,8 @@ public sealed class Recruit
     public bool PitchChosen { get; set; }
     /// <summary>K15b (run 147): the coached program promised him a starting role as a freshman. Saved; reset with the courting.</summary>
     public bool Promised { get; set; }
+    /// <summary>K15b review: the offer was made while he was verbally committed elsewhere, so it counts against the offer limit until he signs. Saved; reset with the courting.</summary>
+    public bool FlipOffer { get; set; }
 }
 
 /// <summary>

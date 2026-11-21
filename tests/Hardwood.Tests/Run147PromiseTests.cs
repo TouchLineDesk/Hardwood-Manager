@@ -136,7 +136,12 @@ public class Run147PromiseTests
         FreshHours(s);
         Assert.False(CollegeWorld.Signed(r, s.Today));
         Assert.StartsWith("You called", s.CallProspect(p));
+        int before = c.OffersOut(me, r.ClassOf), promised = c.PromisesMade(me, r.ClassOf);
         Assert.Contains("only verbally", s.OfferProspect(p));
+        // Review: an offer and a promise to a verbal commit elsewhere still count against the limits.
+        Assert.Equal(before + 1, c.OffersOut(me, r.ClassOf));
+        s.PromiseProspect(p);
+        Assert.Equal(promised + 1, c.PromisesMade(me, r.ClassOf));
         Assert.Contains("verbally", c.CommitmentText(r, s.Today, me));
         r.CommittedOn = CollegeWorld.EarlySigningStart(r.ClassOf).AddDays(-30);
         var signedDay = CollegeWorld.EarlySigningStart(r.ClassOf).AddDays(1);

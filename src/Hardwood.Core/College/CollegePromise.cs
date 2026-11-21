@@ -61,7 +61,9 @@ public sealed partial class CollegeWorld
 
     /// <summary>Whether his commitment binds today: made by the end of the early period and that period has begun, or signing day has come.</summary>
     public static bool Signed(Recruit r, DateOnly today) =>
-        r.CommittedOn is { } on && (today >= SigningDay(r.ClassOf) || (on <= EarlySigningEnd(r.ClassOf) && today >= EarlySigningStart(r.ClassOf)));
+        r.CommittedTo != null && (today >= SigningDay(r.ClassOf)
+            // Review: a commitment without a date (very old saves) counts as made before the early period.
+            || ((r.CommittedOn ?? DateOnly.MinValue) <= EarlySigningEnd(r.ClassOf) && today >= EarlySigningStart(r.ClassOf)));
 
     /// <summary>"Committed to Duke (verbal: he can still flip until he signs on Nov 8)" for the panel; "Signed with Duke" once binding.</summary>
     public string CommitmentText(Recruit r, DateOnly today, Team me)
@@ -73,9 +75,11 @@ public sealed partial class CollegeWorld
         return $"Committed to {name}, verbally: he can still flip until he signs on {signs:MMM d}.";
     }
 
-    /// <summary>Starting-role promises the program has out in a class (to prospects not committed elsewhere).</summary>
+    /// <summary>Starting-role promises the program has out in a class: every one made, unless he has signed elsewhere
+    /// (review: a promise to a verbal commit elsewhere still counts, or the limit could be dodged and refilled by flips).</summary>
     public int PromisesMade(Team t, int classOf) =>
-        Recruits.Values.Count(r => r.ClassOf == classOf && r.CourtedBy == t.Id && r.Promised && (r.CommittedTo == null || r.CommittedTo == t.Id));
+        Recruits.Values.Count(r => r.ClassOf == classOf && r.CourtedBy == t.Id && r.Promised
+                                   && !(r.CommittedTo is { } at && at != t.Id && Signed(r, RecruitingDay ?? DateOnly.MinValue)));
 
     /// <summary>Promise him a starting role as a freshman (1 coach hour). It can't be taken back.</summary>
     public string Promise(Team t, Player p, Recruit r, DateOnly today)
