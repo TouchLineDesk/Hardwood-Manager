@@ -137,7 +137,7 @@
           <!-- The flat court (the pros, and a build without the arena frame) comes first, so it is the page's first LiveCourt. -->
           <Grid IsVisible="{Binding FlatCourt}" HorizontalAlignment="Center">
             <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding FlatFrame}" MotionMs="{Binding MotionMs}"
                          FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
             <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
             <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
@@ -146,7 +146,7 @@
           <Viewbox x:Name="ArenaBox" IsVisible="{Binding InArena}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Center">
             <Grid Width="1600" Height="900">
               <c:LiveCourt x:Name="ArenaCourt" Arena="{Binding Arena}" Dress="{Binding Dress}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                           HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"/>
+                           HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" Frame="{Binding ArenaFrame}" MotionMs="{Binding MotionMs}"/>
               <Border x:Name="ArenaCaption" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="30,26,0,0" MaxWidth="1180" Background="#E00B0E14"
                       CornerRadius="6" Padding="22,10" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="6,0,0,0">
                 <TextBlock Text="{Binding PlayCaption}" FontSize="34" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>

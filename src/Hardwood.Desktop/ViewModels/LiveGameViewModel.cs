@@ -149,6 +149,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
 
     // The 2D tracker (D67 B, run 80): the latest play drawn on the court, with the ten players and the ball.
     [ObservableProperty] private Hardwood.Desktop.Controls.TrackerFrame? _frame;
+    /// <summary>The frame for whichever court is shown (code review, run 140: the hidden one gets none, so only one
+    /// court runs its motion loop).</summary>
+    public Hardwood.Desktop.Controls.TrackerFrame? FlatFrame => InArena ? null : Frame;
+    public Hardwood.Desktop.Controls.TrackerFrame? ArenaFrame => InArena ? Frame : null;
+    partial void OnFrameChanged(Hardwood.Desktop.Controls.TrackerFrame? value) { OnPropertyChanged(nameof(FlatFrame)); OnPropertyChanged(nameof(ArenaFrame)); }
     [ObservableProperty] private string _playCaption = "Tip-off.";
     private int _framePlay = -1;
 

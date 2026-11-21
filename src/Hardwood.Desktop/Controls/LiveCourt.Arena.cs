@@ -112,11 +112,40 @@ public sealed partial class LiveCourt
     private static Color Hex(string hex, Color fallback) { try { return Color.Parse(hex); } catch (FormatException) { return fallback; } }
     private static Color A(Color c, double a) => Color.FromArgb((byte)Math.Clamp(a * 255, 0, 255), c.R, c.G, c.B);
 
+    // The dressed floor (the frame, the tint, the paint, the lettering and the crest) changes only with the size, the
+    // arena or the dress, so it is drawn once to a bitmap and only the players, the ball and the shots are drawn per frame
+    // (code review, run 140).
+    private RenderTargetBitmap? _floorLayer;
+    private (Size size, BroadcastSet? arena, ArenaDress? dress) _floorKey;
+
     private void RenderArena(DrawingContext ctx)
     {
-        var set = Arena!; var dress = Dress!; var proj = ArenaProjection!;
+        var proj = ArenaProjection!;
         var rect = ArenaRect();
+        var key = (Bounds.Size, Arena, Dress);
+        if (_floorLayer == null || _floorKey != key)
+        {
+            _floorLayer?.Dispose();
+            _floorLayer = null;
+            try
+            {
+                var px = new PixelSize(Math.Max(1, (int)Math.Ceiling(Bounds.Width)), Math.Max(1, (int)Math.Ceiling(Bounds.Height)));
+                var layer = new RenderTargetBitmap(px);
+                using (var dc = layer.CreateDrawingContext()) DrawFloor(dc, proj, rect);
+                _floorLayer = layer;
+            }
+            catch (Exception) { _floorLayer = null; }
+            _floorKey = key;
+        }
         using var clip = ctx.PushClip(new RoundedRect(rect, 6));
+        if (_floorLayer != null) ctx.DrawImage(_floorLayer, new Rect(_floorLayer.Size), new Rect(0, 0, _floorLayer.Size.Width, _floorLayer.Size.Height));
+        else DrawFloor(ctx, proj, rect);
+        DrawGame(ctx, proj);
+    }
+
+    private void DrawFloor(DrawingContext ctx, CourtProjection proj, Rect rect)
+    {
+        var set = Arena!; var dress = Dress!;
         ctx.DrawImage(set.Frame!, new Rect(set.Frame!.Size), rect);
 
         var paint = Hex(dress.Paint, Colors.SteelBlue);
@@ -146,7 +175,7 @@ public sealed partial class LiveCourt
 
         // The apron: a band of paint outside the lines (wider behind the baselines, where the lettering goes), with a
         // thin trim line along its inside edge.
-        ctx.DrawGeometry(new SolidColorBrush(A(paint, 0.86)), null, Poly(Rect4(-7, -3.6, 101, 53.6), Rect4(-0.25, -0.25, 94.25, 50.25)));
+        ctx.DrawGeometry(new SolidColorBrush(A(paint, 0.86)), null, Poly(Rect4(-5, -3.6, 99, 53.6), Rect4(-0.25, -0.25, 94.25, 50.25)));
         ctx.DrawGeometry(null, new Pen(new SolidColorBrush(A(trim, 0.85)), Math.Max(1, proj.Scale(47, 0) * 0.28)), Poly(Rect4(-0.9, -0.9, 94.9, 50.9)));
         // The keys and the centre circle, stained in the paint colour (the white lines stay on top).
         var keyBrush = new SolidColorBrush(A(paint, 0.7));
@@ -166,8 +195,8 @@ public sealed partial class LiveCourt
 
         // The lettering: the school and nickname (or the event) along the baselines, the event's line along the far sideline.
         var letter = Hex(dress.Lettering, Colors.White);
-        DrawFloorText(ctx, proj, dress.LeftBaseline, new Point(-3.9, 25), new Vector(0, -1), 3.6, 44, letter, trim);
-        DrawFloorText(ctx, proj, dress.RightBaseline, new Point(97.9, 25), new Vector(0, 1), 3.6, 44, letter, trim);
+        DrawFloorText(ctx, proj, dress.LeftBaseline, new Point(-2.9, 25), new Vector(0, -1), 2.9, 44, letter, trim);
+        DrawFloorText(ctx, proj, dress.RightBaseline, new Point(96.9, 25), new Vector(0, 1), 2.9, 44, letter, trim);
         if (dress.Sideline is { Length: > 0 } side)
             DrawFloorText(ctx, proj, side, new Point(47, -2.0), new Vector(1, 0), 2.1, 70, letter, trim);
 
@@ -183,6 +212,11 @@ public sealed partial class LiveCourt
             DrawFloorText(ctx, proj, dress.CentreText, new Point(47, 25.6), new Vector(1, 0), 2.2, 30, letter, paint);
         }
 
+    }
+
+    private void DrawGame(DrawingContext ctx, CourtProjection proj)
+    {
+        Point P(double x, double y) => proj.Map(x, y);
         // The game on the floor: the faint shot record, then the players and the ball.
         var shots = Shots ?? Array.Empty<LiveShot>();
         var frame = Frame;
