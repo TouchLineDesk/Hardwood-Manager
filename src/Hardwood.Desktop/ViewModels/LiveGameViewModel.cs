@@ -492,7 +492,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (Complete || Running) return;
         EndBreakCard();
         // M1: finish the possession on screen, or play the next one straight to its end.
-        if (_script == null) { BeginPossession(); if (_script != null) _scriptT = _script.Length; }
+        // Review (run 148): a possession paused mid-play jumps to its end too.
+        if (_script == null) BeginPossession();
+        if (_script != null) _scriptT = _script.Length;
         ShowFrame();
         FinishPossession();
         if (!Complete && !Running && !ShowBreak) Status = "Stepped one possession. Step again, or press Play.";
@@ -690,7 +692,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public override void Refresh()
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
-        if (_script == null) { BarAwayScore = AwayScore; BarHomeScore = HomeScore; BarClock = BugClock; }
+        if (_script == null) { BarAwayScore = AwayScore; BarHomeScore = HomeScore; BarClock = BugClock; BarPeriod = BugPeriod; }
         // Run 144 (broadcast check): the top scoreboard read "H2 0:00" at halftime (the arena's bug was fixed in run 141).
         // Run 145: it read "H2 0:00" at the final too.
         string? breakText = _live.Complete ? (_live.Result.Overtimes == 0 ? "FINAL" : _live.Result.Overtimes == 1 ? "FINAL/OT" : $"FINAL/{_live.Result.Overtimes}OT")

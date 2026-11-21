@@ -59,6 +59,22 @@ public sealed class MatchCourt : Control
     public int FramesDrawn { get; private set; }
     public List<double> FrameMs { get; } = new();
 
+    // Brushes that never change, made once (review, run 148: no per-frame allocations for the fixed parts).
+    private static readonly IBrush Back = new SolidColorBrush(Color.Parse("#12161D"));
+    private static readonly IBrush Bench = new SolidColorBrush(Color.Parse("#2A2F38"));
+    private static readonly IBrush Table = new SolidColorBrush(Color.Parse("#E6E6E6"));
+    private static readonly IBrush Shadow = new SolidColorBrush(Color.FromArgb(72, 0, 0, 0));
+    private static readonly IBrush BallShadow = new SolidColorBrush(Color.FromArgb(90, 0, 0, 0));
+    private static readonly IBrush BallFill = new SolidColorBrush(Color.Parse("#FF8A1E"));
+    private static readonly IPen BallEdge = new Pen(new SolidColorBrush(Color.Parse("#6B2C00")), 1.2);
+    private static readonly IPen BallSeam = new Pen(new SolidColorBrush(Color.Parse("#6B2C00")), 1);
+    private static readonly IBrush TagBack = new SolidColorBrush(Color.FromArgb(205, 10, 12, 16));
+    private static readonly IPen PlankPen = new Pen(new SolidColorBrush(Color.FromArgb(40, 120, 80, 40)), 1);
+    private static readonly IBrush Wood = new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        GradientStops = { new GradientStop(Color.Parse("#C99A63"), 0), new GradientStop(Color.Parse("#DDB27A"), 0.5), new GradientStop(Color.Parse("#C99A63"), 1) },
+    };
     private Size _staticSize;
     private string _staticKey = "";
     private (Geometry Geo, IBrush Brush)[] _crowd = Array.Empty<(Geometry, IBrush)>();
@@ -87,7 +103,7 @@ public sealed class MatchCourt : Control
         if (_staticSize != size || _staticKey != key) BuildStatic(size, s, o, dress);
 
         // The arena: dark, then the crowd in its colours.
-        ctx.FillRectangle(new SolidColorBrush(Color.Parse("#12161D")), new Rect(size));
+        ctx.FillRectangle(Back, new Rect(size));
         foreach (var (geo, brush) in _crowd) ctx.DrawGeometry(brush, null, geo);
         // Ribbon boards above and below the floor.
         var ribbon = new Rect(P(-5, -4.6), P(99, -2.6));
@@ -100,14 +116,10 @@ public sealed class MatchCourt : Control
 
         // The apron, the wood and its planks.
         ctx.FillRectangle(new SolidColorBrush(paint), new Rect(P(-3, -1.8), P(97, 51.8)));
-        var wood = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(Color.Parse("#C99A63"), 0), new GradientStop(Color.Parse("#DDB27A"), 0.5), new GradientStop(Color.Parse("#C99A63"), 1) },
-        };
+        var wood = Wood;
         var court = new Rect(P(0, 0), P(94, 50));
         ctx.FillRectangle(wood, court);
-        if (_planks != null) ctx.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(40, 120, 80, 40)), 1), _planks);
+        if (_planks != null) ctx.DrawGeometry(null, PlankPen, _planks);
 
         // The keys in the floor's paint; the lines.
         double lane = Markings == CourtMarkings.College ? 12 : 16;
@@ -178,10 +190,10 @@ public sealed class MatchCourt : Control
             ctx.DrawText(side, new Point(P(47, 0).X - side.Width / 2, P(0, -1.75).Y));
         }
         // Benches and the scorer's table along the near sideline.
-        var bench = new SolidColorBrush(Color.Parse("#2A2F38"));
+        var bench = Bench;
         ctx.FillRectangle(bench, new Rect(P(20, 52.4), P(38, 53.6)));
         ctx.FillRectangle(bench, new Rect(P(56, 52.4), P(74, 53.6)));
-        ctx.FillRectangle(new SolidColorBrush(Color.Parse("#E6E6E6")), new Rect(P(44, 52.2), P(50, 53.8)));
+        ctx.FillRectangle(Table, new Rect(P(44, 52.2), P(50, 53.8)));
 
         DrawFrame(ctx, s, P);
         FramesDrawn++;
@@ -200,7 +212,7 @@ public sealed class MatchCourt : Control
             ctx.DrawEllipse(null, new Pen(new SolidColorBrush(col), Math.Max(2, s * 0.3)), P(b.At.X, b.At.Y), (0.8 + f.BurstAge * 4) * s, (0.8 + f.BurstAge * 4) * s);
         }
         double r = Math.Max(7, s * 1.05);
-        var shadow = new SolidColorBrush(Color.FromArgb(72, 0, 0, 0));
+        var shadow = Shadow;
         var homeFill = new SolidColorBrush(HomeKit); var homeEdge = new Pen(new SolidColorBrush(HomeTrim), Math.Max(2, r * 0.22));
         var awayFill = new SolidColorBrush(AwayKit); var awayEdge = new Pen(new SolidColorBrush(AwayTrim), Math.Max(2, r * 0.22));
         var homeArrow = new SolidColorBrush(HomeTrim); var awayArrow = new SolidColorBrush(Lift(AwayTrim));
@@ -233,16 +245,16 @@ public sealed class MatchCourt : Control
             var c = P(f.Players[f.Holder].X, f.Players[f.Holder].Y);
             var name = Text(f.Who[f.Holder].LastName, Math.Max(10, r * 0.85), Colors.White, true);
             var tag = new Rect(c.X - name.Width / 2 - 6, c.Y - r * 2.7, name.Width + 12, name.Height + 4);
-            ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(205, 10, 12, 16)), null, tag, 4, 4);
+            ctx.DrawRectangle(TagBack, null, tag, 4, 4);
             ctx.DrawText(name, new Point(tag.X + 6, tag.Y + 2));
         }
         // The ball, lifted by its height, over its shadow.
         var bp = P(f.Ball.X, f.Ball.Y);
         double br = Math.Max(4, s * 0.45) * (1 + f.BallZ * 0.08);
-        ctx.DrawEllipse(new SolidColorBrush(Color.FromArgb(90, 0, 0, 0)), null, new Point(bp.X, bp.Y + 2), br, br * 0.7);
+        ctx.DrawEllipse(BallShadow, null, new Point(bp.X, bp.Y + 2), br, br * 0.7);
         var lifted = new Point(bp.X, bp.Y - f.BallZ * s * 0.9);
-        ctx.DrawEllipse(new SolidColorBrush(Color.Parse("#FF8A1E")), new Pen(new SolidColorBrush(Color.Parse("#6B2C00")), 1.2), lifted, br, br);
-        ctx.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#6B2C00")), 1), new Point(lifted.X - br, lifted.Y), new Point(lifted.X + br, lifted.Y));
+        ctx.DrawEllipse(BallFill, BallEdge, lifted, br, br);
+        ctx.DrawLine(BallSeam, new Point(lifted.X - br, lifted.Y), new Point(lifted.X + br, lifted.Y));
     }
 
     private void BuildStatic(Size size, double s, Point o, ArenaDress dress)

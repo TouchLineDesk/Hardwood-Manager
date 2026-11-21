@@ -37,7 +37,7 @@
           </Grid>
         </Border>
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0" MinWidth="92">
-          <TextBlock Text="{Binding BugPeriod}" FontSize="12" FontWeight="Bold" Foreground="#AAB3C2" HorizontalAlignment="Center" LetterSpacing="1"/>
+          <TextBlock Text="{Binding BarPeriod}" FontSize="12" FontWeight="Bold" Foreground="#AAB3C2" HorizontalAlignment="Center" LetterSpacing="1"/>
           <TextBlock x:Name="BarClockText" Text="{Binding BarClock}" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
         </StackPanel>
         <Border Grid.Column="2" Background="{Binding HomeBrush}" CornerRadius="7" Padding="10,4" MinWidth="{x:Static v:LiveGameView.SideBlockWidth}">

@@ -552,6 +552,7 @@ public static class PossessionChoreographer
                     clockNow = 0;
                     string name = PeriodName(e.Period, input.Periods);
                     c.Lines.Add(new(t, $"That's the end of {name}: {input.AwayName} {e.AwayScore}, {input.HomeName} {e.HomeScore}", true));
+                    c.Length = t;   // review (run 148): Sample clamps to Length, so set it before reading where the ball is
                     c.Ball.Add(new BallSegment(t, t + PeriodEndTime, BallMode.Loose, -1, -1, BallAt(c, t), new Spot(47, 25), 0.2));
                     t += PeriodEndTime;
                     c.Next = PossessionStart.PeriodStart;

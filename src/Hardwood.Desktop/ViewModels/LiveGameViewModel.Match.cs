@@ -49,6 +49,9 @@ public sealed partial class LiveGameViewModel
     [ObservableProperty] private int _barAwayScore;
     [ObservableProperty] private int _barHomeScore;
     [ObservableProperty] private string _barClock = "";
+    /// <summary>The period on the score bar: the possession on screen's (review, run 148: it read the last break's name
+    /// through the next period's first possession).</summary>
+    [ObservableProperty] private string _barPeriod = "";
     /// <summary>The shirt numbers on the discs (the game keeps none, so they're made up once per game).</summary>
     public IReadOnlyDictionary<Player, int> Numbers { get; private set; } = new Dictionary<Player, int>();
     /// <summary>How the floor is dressed: the home side's colours and names, or the event's floor (every game, M1).</summary>
@@ -112,7 +115,7 @@ public sealed partial class LiveGameViewModel
         FloorDress = Hardwood.Core.College.ArenaDress.For(HomeTeam, game);
         Markings = _live.Result.Periods == 2 ? CourtMarkings.College : _live.MinutesPerPeriod == 10 ? CourtMarkings.Fiba : CourtMarkings.Nba;
         BarAwayScore = _live.AwayScore; BarHomeScore = _live.HomeScore;
-        BarClock = BugClock;
+        BarClock = BugClock; BarPeriod = BugPeriod;
         Commentary = $"Welcome to {HomeTeam.City}: {AwayTeam.Name} at {HomeTeam.Name}. Press Play for the tip.";
         MatchFrame = TipFrame();
     }
@@ -150,6 +153,7 @@ public sealed partial class LiveGameViewModel
         double start = end + duration;
         _scriptEndsPeriod = events.Any(e => e.Kind == PlayKind.PeriodEnd);
         BarHomeScore = homeBefore; BarAwayScore = awayBefore;
+        if (events.FirstOrDefault() is { } first && first.Period > 0) BarPeriod = BugPeriodName(first.Period, r.Periods);
         _script = PossessionChoreographer.Build(Input(events, start, end, true));
         _scriptT = 0;
         _possIndex++;
@@ -228,8 +232,8 @@ public sealed partial class LiveGameViewModel
     [RelayCommand]
     private void SetSpeed(string which)
     {
-        SpeedIndex = which == "key" ? KeySpeed : Array.IndexOf(Speeds, double.Parse(which, System.Globalization.CultureInfo.InvariantCulture));
-        if (SpeedIndex < 0) SpeedIndex = 0;
+        int i = which == "key" ? KeySpeed : double.TryParse(which, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x) ? Array.IndexOf(Speeds, x) : -1;
+        SpeedIndex = Math.Clamp(i, 0, KeySpeed);
     }
 
     [RelayCommand] private void SpeedUp() => SpeedIndex = Math.Min(KeySpeed, SpeedIndex + 1);
