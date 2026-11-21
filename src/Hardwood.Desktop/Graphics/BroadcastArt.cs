@@ -21,11 +21,17 @@ public sealed class BroadcastSet
     public Point[]? Court { get; init; }
     /// <summary>The arena's tint mask (white where the crowd's team shirts and the ribbon boards take the home colours).</summary>
     public Bitmap? Mask { get; init; }
+    /// <summary>The draft stage (B3, run 142): the representatives' crest cards, picks 1–4 from the left, as rectangles.</summary>
+    public Rect[] Cards { get; init; } = Array.Empty<Rect>();
 }
 
 public static class BroadcastArt
 {
-    private static BroadcastSet? _selection, _arena;
+    private static BroadcastSet? _selection, _arena, _draft;
+
+    /// <summary>The draft-night stage (B3, run 142; <c>tools/Render/draft_stage.py</c>): the big screen, the podium (its
+    /// official is the "host" head) and four representatives behind blank crest cards.</summary>
+    public static BroadcastSet Draft => _draft ??= Load("draft-stage");
 
     /// <summary>The Selection Show studio. Without the frame (a stripped build), the layout still works on a plain backdrop.</summary>
     public static BroadcastSet Selection => _selection ??= Load("selection-studio");
@@ -46,6 +52,7 @@ public static class BroadcastArt
         try { using var s = Res(".jpg"); if (s != null) frame = new Bitmap(s); } catch { frame = null; }
         try { using var s = Res("-mask.png"); if (s != null) mask = new Bitmap(s); } catch { mask = null; }
         Point[]? court = null;
+        var cards = new List<Rect>();
         var screen = new Rect(492, 192, 939, 422);
         Point host = new(758, 600), analyst = new(1162, 610);
         try
@@ -64,10 +71,17 @@ public static class BroadcastArt
                     screen = new Rect(l, t, r - l, b - t);
                 }
                 if (root.TryGetProperty("host_head", out var h)) host = Pt(h);
+                if (root.TryGetProperty("cards", out var cs))
+                    foreach (var card in cs.EnumerateArray())
+                    {
+                        var pts = card.EnumerateArray().Select(Pt).ToList();
+                        double l = pts.Min(p => p.X), t = pts.Min(p => p.Y);
+                        cards.Add(new Rect(l, t, pts.Max(p => p.X) - l, pts.Max(p => p.Y) - t));
+                    }
                 if (root.TryGetProperty("analyst_head", out var a)) analyst = Pt(a);
             }
         }
         catch (Exception) { /* keep the defaults */ }
-        return new BroadcastSet { Frame = frame, Screen = screen, HostHead = host, AnalystHead = analyst, Court = court is { Length: 4 } ? court : null, Mask = mask };
+        return new BroadcastSet { Frame = frame, Screen = screen, HostHead = host, AnalystHead = analyst, Court = court is { Length: 4 } ? court : null, Mask = mask, Cards = cards.ToArray() };
     }
 }

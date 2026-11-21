@@ -98,7 +98,9 @@ public class Run79CollegeSummerTests
             Assert.False(page.CanReleaseFromRoster);
             Assert.False(page.ShowContracts);
             Assert.False(page.ShowFreeAgency);
-            Assert.Equal(3, page.Tab);   // Your roster
+            // B3 (run 142): the summer opens on draft night while there is one; the rest of this test reads Your roster.
+            Assert.Equal(page.ShowDraftNight ? OffseasonViewModel.DraftNightTab : 3, page.Tab);
+            page.Tab = 3; Settle();
             Assert.DoesNotContain("$", page.CapText);
             Assert.DoesNotContain("budget", page.CapText);
             Assert.StartsWith($"Roster {s.HumanTeam.Roster.Count}", page.CapText);

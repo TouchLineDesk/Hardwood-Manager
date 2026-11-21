@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.DraftNightView"
+             x:DataType="vm:OffseasonViewModel">
+  <!-- Draft night (B3, run 142): the HSN draft stage (a Blender frame, tools/Render/draft_stage.py) with the big screen
+       filled by the lottery's envelopes or the pick card, the side board (the odds, then the picks), the representatives'
+       crest cards, the official's speech bubble or the desk's lower third, and the controls. -->
+  <DockPanel>
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+      <ToggleButton x:Name="LotteryShowButton" Content="The lottery" IsChecked="{Binding NightOnLottery, Mode=OneWay}" Command="{Binding NightLotteryShowCommand}" Margin="0,0,6,4"/>
+      <ToggleButton x:Name="DraftShowButton" Content="The draft" IsChecked="{Binding NightOnDraft, Mode=OneWay}" Command="{Binding NightDraftShowCommand}" IsEnabled="{Binding CanWatchDraft}"
+                    ToolTip.Tip="The draft airs once the picks are made: press Continue to the draft" ToolTip.ShowOnDisabled="True" Margin="0,0,16,4"/>
+      <Button x:Name="NightNextButton" Content="{Binding NextText}" Command="{Binding NightNextCommand}" IsEnabled="{Binding CanNightNext}" Classes="primary" Margin="0,0,8,4"/>
+      <Button Content="{Binding NightAutorunText}" Command="{Binding NightAutorunCommand}" IsEnabled="{Binding CanNightNext}" Margin="0,0,8,4"/>
+      <Button Content="Skip to the end" Command="{Binding NightSkipCommand}" IsEnabled="{Binding CanNightNext}" Margin="0,0,12,4"/>
+      <TextBlock Text="{Binding NightProgress}" Classes="muted" VerticalAlignment="Center" Margin="0,0,0,4"/>
+    </WrapPanel>
+    <Border CornerRadius="10" ClipToBounds="True" Background="#07090D" VerticalAlignment="Top" HorizontalAlignment="Left">
+      <Viewbox Stretch="Uniform">
+        <Canvas x:Name="Stage" Width="1600" Height="900" ClipToBounds="True">
+          <Image x:Name="Backdrop" Width="1920" Height="1080" Stretch="Fill"/>
+          <!-- The big screen. -->
+          <Border x:Name="ScreenPanel" Background="#F20A101C" Padding="14,10" BorderBrush="#7C5CFF" BorderThickness="0,0,0,4">
+            <Panel>
+              <!-- Opens and closes: the title. -->
+              <StackPanel IsVisible="{Binding NightShowsTitle}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+                <TextBlock x:Name="NightTitleText" Text="{Binding NightTitle}" FontSize="58" FontWeight="Black" Foreground="White" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding NightSubtitle}" FontSize="24" Foreground="#F0A33A" HorizontalAlignment="Center"/>
+              </StackPanel>
+              <!-- The lottery: the envelopes. -->
+              <Grid IsVisible="{Binding NightShowsEnvelopes}" RowDefinitions="Auto,*">
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
+                  <Border Background="#F0A33A" CornerRadius="4" Padding="8,1" VerticalAlignment="Center">
+                    <TextBlock Text="DRAFT LOTTERY" FontSize="20" FontWeight="Bold" Foreground="#101318"/>
+                  </Border>
+                  <TextBlock Text="{Binding NightSubtitle}" FontSize="18" Foreground="#C9D1D9" VerticalAlignment="Center"/>
+                </StackPanel>
+                <ItemsControl x:Name="EnvelopeGrid" Grid.Row="1" ItemsSource="{Binding Envelopes}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:EnvelopeRow">
+                      <Border Margin="3" CornerRadius="5" BorderThickness="3"
+                              Background="{Binding Open, Converter={x:Static vm:DraftNightConverters.EnvelopeFill}}"
+                              BorderBrush="{Binding Now, Converter={x:Static vm:DraftNightConverters.NowEdge}}">
+                        <Panel>
+                          <TextBlock Text="{Binding PickText}" FontSize="15" FontWeight="Bold" Margin="5,1"
+                                     Foreground="{Binding Open, Converter={x:Static vm:DraftNightConverters.PickInk}}"/>
+                          <c:TeamLogo Team="{Binding Team}" IsVisible="{Binding Open}" ShowRank="False" Width="44" Height="44" Margin="0,8,0,0" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          <TextBlock Text="?" IsVisible="{Binding Sealed}" FontSize="30" FontWeight="Black" Foreground="#C9B8FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          <Border IsVisible="{Binding Mine}" Background="#F0A33A" CornerRadius="3" Padding="3,0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="2">
+                            <TextBlock Text="YOU" FontSize="11" FontWeight="Bold" Foreground="#101318"/>
+                          </Border>
+                        </Panel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Grid>
+              <!-- The draft: the pick card. -->
+              <Grid x:Name="PickCard" IsVisible="{Binding NightShowsCard}" RowDefinitions="Auto,*">
+                <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
+                  <Border Background="#F0A33A" CornerRadius="4" Padding="10,2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CardPick}" FontSize="26" FontWeight="Black" Foreground="#101318"/>
+                  </Border>
+                  <c:TeamLogo Grid.Column="1" Team="{Binding CardTeam}" ShowRank="False" Width="58" Height="58" Margin="12,0,10,0"/>
+                  <TextBlock Grid.Column="2" Text="{Binding CardAnnounce}" FontSize="22" Foreground="#C9D1D9" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </Grid>
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*" IsVisible="{Binding CardHasPlayer}">
+                  <Border Background="#1A2233" CornerRadius="8" Padding="6" BorderThickness="4"
+                          BorderBrush="{Binding CardMine, Converter={x:Static vm:DraftNightConverters.MineEdge}}" VerticalAlignment="Center">
+                    <c:Avatar Player="{Binding CardPlayer}" Width="150" Height="150"/>
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock x:Name="CardNameText" Text="{Binding CardName}" FontSize="46" FontWeight="Black" Foreground="White" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding CardLine}" FontSize="26" FontWeight="Bold" Foreground="#58A6FF" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding CardRange}" FontSize="22" Foreground="#C9D1D9" TextWrapping="Wrap"/>
+                    <Border IsVisible="{Binding CardMine}" Background="#F0A33A" CornerRadius="4" Padding="8,1" HorizontalAlignment="Left" Margin="0,4,0,0">
+                      <TextBlock Text="YOUR GRADUATE" FontSize="18" FontWeight="Bold" Foreground="#101318"/>
+                    </Border>
+                  </StackPanel>
+                </Grid>
+              </Grid>
+            </Panel>
+          </Border>
+          <!-- The side board over the stage-right sign: the odds, then the picks. -->
+          <Border x:Name="SideBoard" Width="250" Background="#E60A101C" CornerRadius="6" Padding="12,10" BorderBrush="#7C5CFF" BorderThickness="0,4,0,0">
+            <StackPanel Spacing="3">
+              <TextBlock Text="{Binding BoardTitle}" FontSize="22" FontWeight="Black" Foreground="#F0A33A"/>
+              <ItemsControl x:Name="BoardList" ItemsSource="{Binding NightBoard}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:NightBoardRow">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,1,6,1"
+                          Opacity="{Binding Lit, Converter={x:Static vm:DraftNightConverters.LitFade}}">
+                      <TextBlock Text="{Binding Left}" FontSize="15" Foreground="White" TextTrimming="CharacterEllipsis"
+                                 FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Right}" FontSize="15" Margin="8,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="130"
+                                 Foreground="{Binding Mine, Converter={x:Static vm:DraftNightConverters.MineInk}}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+          <!-- The representatives' crest cards (placed by the code behind from the frame's JSON). -->
+          <Canvas x:Name="Cards"/>
+          <!-- The official's line: a bubble beside the podium, its tail at his head. -->
+          <Path x:Name="BubbleTail" Fill="#F7F8FB" IsVisible="{Binding NightAtPodium}"/>
+          <Border x:Name="Bubble" Width="470" Background="#F7F8FB" CornerRadius="14" Padding="20,12" BoxShadow="0 6 18 0 #80000000" IsVisible="{Binding NightAtPodium}">
+            <StackPanel Spacing="3">
+              <TextBlock Text="{Binding NightSpeaker}" FontSize="19" FontWeight="Bold" Foreground="#7C5CFF"/>
+              <TextBlock x:Name="BubbleText" Text="{Binding NightLine}" FontSize="26" Foreground="#101318" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <!-- The HSN desk's line: a lower third. -->
+          <Border x:Name="LowerThird" Canvas.Left="40" Width="1520" Background="#F20A101C" CornerRadius="8" Padding="18,10" BorderBrush="#F0A33A" BorderThickness="6,0,0,0" IsVisible="{Binding NightAtDesk}">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{Binding NightSpeaker}" FontSize="19" FontWeight="Bold" Foreground="#F0A33A"/>
+              <TextBlock x:Name="LowerThirdText" Text="{Binding NightLine}" FontSize="27" Foreground="White" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </Canvas>
+      </Viewbox>
+    </Border>
+  </DockPanel>
+</UserControl>

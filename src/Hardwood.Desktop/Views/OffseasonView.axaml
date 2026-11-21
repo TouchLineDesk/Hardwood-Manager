@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:v="using:Hardwood.Desktop.Views"
              x:Class="Hardwood.Desktop.Views.OffseasonView"
              x:DataType="vm:OffseasonViewModel">
   <DockPanel>
@@ -20,7 +21,7 @@
     </StackPanel>
 
     <Grid ColumnDefinitions="3*,2*" IsVisible="{Binding InOffseason}">
-      <TabControl SelectedIndex="{Binding Tab}">
+      <TabControl SelectedIndex="{Binding Tab}" Grid.ColumnSpan="{Binding TabSpan}">
         <TabItem Header="Contracts up" IsEnabled="{Binding ShowContracts}" IsVisible="{Binding ShowTalk}">
           <Panel>
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowCards}">
@@ -283,6 +284,10 @@
             </DataGrid>
           </Grid>
         </TabItem>
+        <!-- B3 (run 142): draft night on the HSN stage, the page's full width. -->
+        <TabItem Header="Draft night" IsVisible="{Binding ShowDraftNight}">
+          <v:DraftNightView x:Name="DraftNight" Margin="0,6,0,0"/>
+        </TabItem>
       </TabControl>
       <ScrollViewer Grid.Column="1" Margin="12,0,0,0" IsVisible="{Binding ShowTalkPanel}">
         <ContentControl Content="{Binding Talk}"/>
@@ -337,7 +342,7 @@
         </Border>
       </ScrollViewer>
       <!-- H37 (run 79): a college coach's summer in place of contract talks. -->
-      <Border x:Name="CollegeSummerPanel" Grid.Column="1" Margin="12,0,0,0" Classes="panel" VerticalAlignment="Top" IsVisible="{Binding CollegeSummer}">
+      <Border x:Name="CollegeSummerPanel" Grid.Column="1" Margin="12,0,0,0" Classes="panel" VerticalAlignment="Top" IsVisible="{Binding ShowCollegePanel}">
         <StackPanel Spacing="8">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <c:Icon Kind="GraduationCap" Width="20" Height="20" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center"/>
