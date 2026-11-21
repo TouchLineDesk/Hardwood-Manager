@@ -109,6 +109,9 @@ public class Run86LineupSyncTests
 
             // H57: at the final the break card shows, and the box score under it still has room for rows.
             Assert.True(page.ShowBreak);
+            // B4b (run 145): the postgame show comes on first; the final's card is one button away.
+            if (page.DeskUp) { Assert.True(page.PostgameDesk); page.ToCardCommand.Execute(null); }
+            Assert.True(page.CardUp);
             page.ToBoxCommand.Execute(null); Settle();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs(); Settle();
             var view = window.GetVisualDescendants().OfType<LiveGameView>().First(v => v.Bounds.Width > 0);

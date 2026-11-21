@@ -173,6 +173,14 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public bool CardUp => ShowBreak && !DeskUp;
     /// <summary>This break has a halftime desk to go back to.</summary>
     public bool HasDesk => HalftimeReel != null;
+    /// <summary>B4b (run 145): the desk up now is the postgame show (at the final), not the halftime desk.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(DeskName), nameof(DeskButton), nameof(DeskButtonTip), nameof(CardTip))]
+    private bool _postgameDesk;
+    public string DeskName => PostgameDesk ? "HSN postgame show" : "HSN halftime desk";
+    public string DeskButton => PostgameDesk ? "Postgame show" : "Halftime desk";
+    public string DeskButtonTip => PostgameDesk ? "Back to the HSN postgame show: the final, the player of the game, how it was won and what it means"
+        : "Back to the HSN desk: the half's story, the stat that decided it and the pick";
+    public string CardTip => PostgameDesk ? "The final's numbers and highlights" : "The numbers and the assistant's halftime read";
     [RelayCommand] private void ToDesk() { if (HalftimeReel != null) { DeskShown = true; ShowBreak = true; } }
     [RelayCommand] private void ToCard() { DeskShown = false; ShowBreak = true; }
     // The card of the current break or the final, put away with Hide / On the floor / Game flow, comes back with "Break card"
@@ -566,13 +574,22 @@ public sealed partial class LiveGameViewModel : PageViewModel
             foreach (var h in Hardwood.Core.Engine.GameHighlights.For(r, final: true, max: 3))
                 chips.Add(new(h.Title, h.Value, h.Detail, h.Tone));
         BreakChips = chips;
-        // B4a: at halftime the HSN desk comes on first, unless the shows are skipped.
+        // B4a: at halftime the HSN desk comes on first, unless the shows are skipped. B4b (run 145): so does the postgame
+        // show at the final.
+        PostgameDesk = final;
         if (halftime && AppSettings.Current.StudioShow)
         {
             var wp = Hardwood.Core.Engine.GameFlow.WinProbability(r);
             double home = wp.Count == 0 ? 0.5 : wp[^1].Percent / 100.0;
             HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.HalftimeDesk.Build(r, home, Session.HalftimeAround(r.Home.Team, r.Away.Team),
                 t => _live.HalftimeRead(t)), r.Away.Team, r.Home.Team, "Halftime");
+            DeskShown = true;
+        }
+        else if (final && AppSettings.Current.StudioShow)
+        {
+            var (rows, line) = Session.PostgameTable(r);
+            HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.PostgameDesk.Build(r, rows, line, Session.HalftimeAround(r.Home.Team, r.Away.Team)),
+                r.Away.Team, r.Home.Team, "Postgame");
             DeskShown = true;
         }
         else { HalftimeReel = null; DeskShown = false; }
@@ -679,7 +696,9 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
         // Run 144 (broadcast check): the top scoreboard read "H2 0:00" at halftime (the arena's bug was fixed in run 141).
-        string? breakText = BetweenPeriods ? ((_live.Period - 1) * 2 == _live.Result.Periods ? "HALFTIME" : "BREAK") : null;
+        // Run 145: it read "H2 0:00" at the final too.
+        string? breakText = _live.Complete ? (_live.Result.Overtimes == 0 ? "FINAL" : _live.Result.Overtimes == 1 ? "FINAL/OT" : $"FINAL/{_live.Result.Overtimes}OT")
+            : BetweenPeriods ? ((_live.Period - 1) * 2 == _live.Result.Periods ? "HALFTIME" : "BREAK") : null;
         Clock = breakText ?? $"{_live.PeriodText}  {_live.ClockText}";
         if (InArena) foreach (var n in BugProps) OnPropertyChanged(n);
         Shell.Guide.LiveTick();

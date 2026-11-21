@@ -206,8 +206,189 @@ public static class HalftimeDesk
     }
 }
 
+/// <summary>
+/// The postgame show (B4b, run 145): the final and how it went, the player of the game, how it was won (with the full
+/// box's rim points, bench points and possessions, K17), the turning point from the score timeline, what it means for
+/// the table, and around college. Pure: it reads the finished box score; the session supplies the table rows.
+/// No interviews (#983).
+/// </summary>
+public static class PostgameDesk
+{
+    public static readonly StudioAnalyst Host = StudioShow.HostDesk, Numbers = StudioShow.Numbers, Big = StudioShow.BigMan;
+
+    /// <summary>The leading scorer, the same way as the halftime desk: points, then rebounds plus assists, then the line order.</summary>
+    internal static PlayerLine? Top(TeamBox b) => b.Lines.Where(l => l.Seconds > 0).OrderByDescending(l => l.Points).ThenByDescending(l => l.Rebounds + l.Assists).FirstOrDefault();
+
+    /// <summary>The player of the game: the best game score on the winning side (the best overall if the loser's was 6+ better).</summary>
+    public static (TeamBox Box, PlayerLine Line)? PlayerOfTheGame(GameResult r)
+    {
+        static (TeamBox, PlayerLine)? Best(TeamBox b) => b.Lines.Where(l => l.Seconds > 0).OrderByDescending(GameHighlights.GameScore).ThenByDescending(l => l.Points)
+            .Select(l => ((TeamBox, PlayerLine)?)(b, l)).FirstOrDefault();
+        var w = Best(r.Winner); var l = Best(r.Loser);
+        if (w == null) return l;
+        if (l != null && GameHighlights.GameScore(l.Value.Item2) >= GameHighlights.GameScore(w.Value.Item2) + 6) return l;
+        return w;
+    }
+
+    public static int RimPoints(TeamBox b) => b.Lines.Sum(l => l.ZoneMakes[0]) * 2;
+    public static int BenchPoints(TeamBox b) => b.Lines.Where(l => !l.Started).Sum(l => l.Points);
+
+    public static List<DeskBeat> Build(GameResult r, IReadOnlyList<DeskRow>? table = null, string? tableLine = null, IReadOnlyList<string>? around = null)
+    {
+        TeamBox a = r.Away, h = r.Home;
+        var win = r.Winner; var lose = r.Loser;
+        int margin = h.Points - a.Points;
+        string finalLabel = r.Overtimes == 0 ? "FINAL" : r.Overtimes == 1 ? "FINAL · OT" : $"FINAL · {r.Overtimes}OT";
+        var score = new DeskRow(finalLabel, a.Points.ToString(), h.Points.ToString(), Math.Sign(margin), true);
+        var beats = new List<DeskBeat>();
+
+        // 1. The final: the score, each side's leading scorer, and the shape of the game in one line.
+        var (ta, th) = (Top(a), Top(h));
+        string Name(PlayerLine? l) => l == null ? "-" : l.Player.Name;
+        string Line(PlayerLine? l) => l == null ? "-" : $"{l.Points} pts · {l.Rebounds} reb · {l.Assists} ast";
+        var (leadH, leadA) = GameFlow.BiggestLeads(r);
+        int loserLead = lose == h ? leadH : leadA, winnerLead = win == h ? leadH : leadA;
+        int gap = Math.Abs(margin);
+        string story = $"{win.Team.FullName} beat {lose.Team.FullName} {win.Points}-{lose.Points}";
+        if (r.Overtimes > 0) story += r.Overtimes == 1 ? " in overtime." : $" in {r.Overtimes} overtimes.";
+        else if (r.Flow.Count > 0 && loserLead >= 10) story += $", and they were down {loserLead} at one point.";
+        else if (r.Flow.Count > 0 && loserLead == 0) story += ": they led from the first basket to the last.";
+        else if (gap >= 20) story += ". It was never close.";
+        else if (gap <= 3) story += ": it came down to the last possession.";
+        else story += ".";
+        beats.Add(new("POSTGAME", "The final", new List<DeskRow> { score, new("Leading scorer", Name(ta), Name(th)), new("", Line(ta), Line(th)) }, new StudioLine(Host, story)));
+
+        // 2. The player of the game.
+        if (PlayerOfTheGame(r) is var (pb, pl))
+        {
+            var other = pb == h ? a : h;
+            var ol = Top(other);
+            string Fg(PlayerLine? l) => l == null ? "-" : $"{l.FGM}-{l.FGA}";
+            string Three(PlayerLine? l) => l == null ? "-" : $"{l.ThreePM}-{l.ThreePA}";
+            PlayerLine? Side(TeamBox b) => b == pb ? pl : ol;
+            var rows = new List<DeskRow>
+            {
+                new("", Side(a)?.Player.Name ?? "-", Side(h)?.Player.Name ?? "-", pb == a ? -1 : 1, true),
+                new("Points", $"{Side(a)?.Points}", $"{Side(h)?.Points}", Math.Sign((Side(h)?.Points ?? 0) - (Side(a)?.Points ?? 0))),
+                new("Rebounds", $"{Side(a)?.Rebounds}", $"{Side(h)?.Rebounds}", Math.Sign((Side(h)?.Rebounds ?? 0) - (Side(a)?.Rebounds ?? 0))),
+                new("Assists", $"{Side(a)?.Assists}", $"{Side(h)?.Assists}", Math.Sign((Side(h)?.Assists ?? 0) - (Side(a)?.Assists ?? 0))),
+                new("Field goals", Fg(Side(a)), Fg(Side(h))),
+                new("Threes", Three(Side(a)), Three(Side(h))),
+            };
+            string what = pl.Points >= 30 ? $"{pl.Points} points. That's a night you remember."
+                : pl.Rebounds >= 12 && pl.Points >= 10 ? $"{pl.Points} and {pl.Rebounds}: he owned the paint."
+                : pl.Assists >= 8 ? $"{pl.Assists} assists: he ran the whole thing."
+                : $"{pl.Points} points, {pl.Rebounds} rebounds, {pl.Assists} assists: the most complete line on the floor.";
+            string who = pb == win ? $"{pl.Player.Name} for {pb.Team.Abbreviation}. {what}" : $"{pl.Player.Name}, even in a loss for {pb.Team.Abbreviation}. {what}";
+            beats.Add(new("PLAYER OF THE GAME", pl.Player.Name, rows, new StudioLine(Big, who)));
+        }
+
+        // 3. How it was won: the halftime desk's deciders over the whole game, plus the full box's rim points, bench and pace.
+        var deciders = HalftimeDesk.Deciders(r);
+        var d = HalftimeDesk.Decided(r);
+        var how = new List<DeskRow> { score };
+        how.AddRange(deciders.Select(x => new DeskRow(x.Label, x.Away, x.Home, Math.Sign(x.Worth), x.Key == d.Key)));
+        int rimA = RimPoints(a), rimH = RimPoints(h), benA = BenchPoints(a), benH = BenchPoints(h);
+        how.Add(new("Points at the rim", rimA.ToString(), rimH.ToString(), Math.Sign(rimH - rimA)));
+        how.Add(new("Bench points", benA.ToString(), benH.ToString(), Math.Sign(benH - benA)));
+        if (a.Possessions > 0 || h.Possessions > 0) how.Add(new("Possessions", a.Possessions.ToString(), h.Possessions.ToString()));
+        var fav = d.Worth > 0 ? h : a;
+        string why = Math.Abs(d.Worth) < 1.5
+            ? "Nothing on the sheet separates them. A couple of possessions went one way."
+            : $"{d.Label}: {fav.Team.Abbreviation} {(fav == h ? d.Home : d.Away)} against {(fav == h ? d.Away : d.Home)}. That's about {Math.Abs(d.Worth):0} points"
+              + (fav == win ? ", and it's the game." : ", and they still lost it.");
+        int rimWin = win == h ? rimH : rimA, rimLose = win == h ? rimA : rimH;
+        if (rimWin >= rimLose + 10) why += $" Add {rimWin}-{rimLose} at the rim.";
+        beats.Add(new("BY THE NUMBERS", "How it was won", how, new StudioLine(Numbers, why)));
+
+        // 4. The turning point: the biggest run on the score timeline (games with a play log only).
+        if (r.Flow.Count > 0)
+        {
+            var runs = GameFlow.Runs(r);
+            var best = runs.OrderByDescending(x => x.For - x.Against).ThenBy(x => x.StartElapsed).FirstOrDefault();
+            int changes = GameFlow.LeadChanges(r);
+            var rows = new List<DeskRow>
+            {
+                score,
+                new("Biggest lead", leadA.ToString(), leadH.ToString(), Math.Sign(leadH - leadA)),
+                new("Lead changes", changes.ToString(), ""),
+            };
+            if (best != null) rows.Add(new("Biggest run", best.Home ? "" : best.Score, best.Home ? best.Score : "", best.Home ? 1 : -1, true));
+            string turn = best == null
+                ? (changes >= 8 ? $"No real run either way, and {changes} lead changes. A street fight." : "Nobody went on a run. It was a grind, basket for basket.")
+                : $"The game turned on {GameFlow.Describe(r, best)}." + ((best.Home ? h : a) == win ? "" : " They still couldn't finish it.")
+                  + (changes >= 8 ? $" {changes} lead changes before that." : "");
+            beats.Add(new("TURNING POINT", "Where it swung", rows, new StudioLine(Big, turn)));
+        }
+
+        // 5. What it means: the table as it stands now (supplied by the session).
+        if (table is { Count: > 0 })
+            beats.Add(new("WHAT IT MEANS", "The standings now", table, tableLine == null ? null : new StudioLine(Host, tableLine)));
+
+        // 6. Around college: tonight's other ranked games.
+        if (around is { Count: > 0 })
+        {
+            var shown = around.Take(6).ToList();   // review (run 145): the line counts the rows on the screen
+            int finals = shown.Count(x => x.StartsWith("Final"));
+            string line = finals == shown.Count ? (finals == 1 ? "One more final from around the country." : $"{finals} more finals from around the country.")
+                : finals == 0 ? (shown.Count == 1 ? "One more game with a ranked team still to come tonight." : $"{shown.Count} more games with a ranked team still to come tonight.")
+                : $"{finals} final{(finals == 1 ? "" : "s")} in from around the country, and {shown.Count - finals} still to come later tonight.";
+            beats.Add(new("AROUND COLLEGE", "Elsewhere tonight", shown.Select(x => new DeskRow("", x, "")).ToList(), new StudioLine(Host, line)));
+        }
+        return beats;
+    }
+}
+
 public sealed partial class GameSession
 {
+    /// <summary>
+    /// The postgame show's "what it means" (B4b): both sides' records once tonight's result counts (it is recorded on Continue),
+    /// their Top 25 ranks, and your next game. Rows are away, home.
+    /// </summary>
+    public (List<DeskRow> Rows, string? Line) PostgameTable(GameResult r)
+    {
+        var (a, h) = (r.Away.Team, r.Home.Team);
+        bool counts = LiveGameCountsInRecord;
+        string Rec(Team t)
+        {
+            var rec = RecordOf(t);
+            int w = rec.Wins, l = rec.Losses;
+            if (counts) { if (r.Winner.Team == t) w++; else l++; }
+            return w + l == 0 ? "" : $"{w}-{l}";
+        }
+        var rows = new List<DeskRow> { new("", a.FullName, h.FullName) };
+        string ra = Rec(a), rh = Rec(h);
+        if (ra != "" || rh != "") rows.Add(new("Record", ra, rh, Key: true));
+        if (InCollege && World.College is { } cw)
+        {
+            int? rkA = cw.Rank(a.Id), rkH = cw.Rank(h.Id);
+            if (rkA != null || rkH != null) rows.Add(new("Top 25", rkA is { } x ? $"No. {x}" : "-", rkH is { } y ? $"No. {y}" : "-"));
+        }
+        var us = HumanTeam;
+        string? line = null;
+        if (us == a || us == h)
+        {
+            var next = MyGames().FirstOrDefault(g => !g.Played && g.Date > Today);
+            string rec = us == a ? ra : rh;
+            // Review (run 145): a game that doesn't count in the record (a playoff or cup game) doesn't "move" it.
+            string result = counts ? (r.Winner.Team == us ? $"{us.FullName} win and move to {rec}." : $"{us.FullName} fall to {rec}.")
+                : r.Winner.Team == us ? $"A win for {us.FullName}." : $"A loss for {us.FullName}.";
+            // A neutral-site game is "vs" even when you're the listed home side.
+            string Where(MyGame g) => g.Neutral ? "vs" : g.Home ? "home to" : "at";
+            line = result
+                + (next == null ? (counts ? " That's the last game on the schedule for now." : "")
+                   : $" Next up: {(next.Neutral ? $"{next.Opponent.FullName} on a neutral floor" : next.Home ? $"{next.Opponent.FullName} at home" : $"at {next.Opponent.FullName}")}, {next.Date:ddd MMM d}.");
+            if (next != null)
+            {
+                string cell = $"{Where(next)} {next.Opponent.Abbreviation} · {next.Date:MMM d}";
+                rows.Add(new("Next", us == a ? cell : "", us == h ? cell : ""));
+            }
+            if (counts && rec == "") line = null;
+        }
+        return (rows, line);
+    }
+
+
     /// <summary>Halftime's "around college": today's other games with a ranked side, finals first, then the rest of the night.</summary>
     public List<string> HalftimeAround(Team home, Team away)
     {

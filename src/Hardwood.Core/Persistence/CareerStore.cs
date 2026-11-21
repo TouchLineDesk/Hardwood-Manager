@@ -112,17 +112,25 @@ public static class CareerStore
         s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? Enumerable.Empty<Team>()).DistinctBy(t => t.Id).ToList();
 
     /// <summary>A saved box score of one of your games outside the NBA's schedule table (college, or tiers 2-5 and abroad).</summary>
-    internal sealed record SideBox(string Kind, string Key, string? Date, int HomeId, int AwayId, int HomePts, int AwayPts, int Overtimes,
-                                   int[]? HomePeriods, int[]? AwayPeriods, List<int[]>? Lines)
+    public sealed record SideBox(string Kind, string Key, string? Date, int HomeId, int AwayId, int HomePts, int AwayPts, int Overtimes,
+                                   int[]? HomePeriods, int[]? AwayPeriods, List<int[]>? Lines,
+                                   int[]? Game = null, List<int[]>? Flow = null)
     {
-        // One line: team, player, started, seconds x10, pts, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, pm.
+        // One line: team, player, started, seconds x10, pts, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf, pm,
+        // then (K17, run 145) the five zones' attempts and the five zones' makes. Lines from older saves stop at pm (zones 0).
+        // Game (K17): home possessions, away possessions, periods, period seconds, overtime seconds, pregame edge x100,
+        // margin spread x100. Flow (K17): the score timeline as elapsed x10, period, home, away, scorer id (0: none), so a
+        // reloaded game keeps its Game flow panel. Both are null in older saves, which load as before.
         public static SideBox From(string kind, string key, GameResult r) => new(kind, key, r.Date?.ToString("yyyy-MM-dd"),
             r.Home.Team.Id, r.Away.Team.Id, r.Home.Points, r.Away.Points, r.Overtimes, r.Home.PointsByPeriod, r.Away.PointsByPeriod,
             new[] { r.Home, r.Away }.SelectMany(b => b.Lines.Where(l => l.Seconds > 0).Select(l => new[]
             {
                 b.Team.Id, l.Player.Id, l.Started ? 1 : 0, (int)Math.Round(l.Seconds * 10), l.Points, l.FGM, l.FGA, l.ThreePM, l.ThreePA, l.FTM, l.FTA,
                 l.OReb, l.DReb, l.Assists, l.Steals, l.Blocks, l.Turnovers, l.Fouls, l.PlusMinus,
-            })).ToList());
+            }.Concat(l.ZoneAttempts).Concat(l.ZoneMakes).ToArray())).ToList(),
+            new[] { r.Home.Possessions, r.Away.Possessions, r.Periods, r.PeriodSeconds, r.OvertimeSeconds,
+                    (int)Math.Round(r.PregameEdge * 100), (int)Math.Round(r.MarginSpread * 100) },
+            r.Flow.Count == 0 ? null : r.Flow.Select(f => new[] { (int)Math.Round(f.Elapsed * 10), f.Period, f.Home, f.Away, f.Scorer?.Id ?? 0 }).ToList());
 
         public GameResult? ToResult(Dictionary<int, Team> teams, Dictionary<int, Player> players)
         {
@@ -137,12 +145,32 @@ public static class CareerStore
                     Player = p, Started = v[2] == 1, Seconds = v[3] / 10.0, Points = v[4], FGM = v[5], FGA = v[6], ThreePM = v[7], ThreePA = v[8],
                     FTM = v[9], FTA = v[10], OReb = v[11], DReb = v[12], Assists = v[13], Steals = v[14], Blocks = v[15], Turnovers = v[16], Fouls = v[17], PlusMinus = v[18],
                 };
+                if (v.Length >= 29)
+                    for (int z = 0; z < 5; z++) { line.ZoneAttempts[z] = v[19 + z]; line.ZoneMakes[z] = v[24 + z]; }
                 (v[0] == HomeId ? home : away).Lines.Add(line);
             }
             // The score stands as played even if a player has since left the game world (a graduate, say).
             if (home.Points != HomePts) home.FixedPoints = HomePts;
             if (away.Points != AwayPts) away.FixedPoints = AwayPts;
-            return new GameResult { Home = home, Away = away, Overtimes = Overtimes, Date = Date is { } d ? DateOnly.Parse(d) : null };
+            var r = new GameResult { Home = home, Away = away, Overtimes = Overtimes, Date = Date is { } d ? DateOnly.Parse(d) : null };
+            if (Game is { Length: >= 7 } g)
+            {
+                home.Possessions = g[0]; away.Possessions = g[1];
+                r.Periods = g[2]; r.PeriodSeconds = g[3]; r.OvertimeSeconds = g[4]; r.PregameEdge = g[5] / 100.0; r.MarginSpread = g[6] / 100.0;
+            }
+            else if (home.PointsByPeriod.Length > Overtimes)
+            {
+                // An older save: the period scores say how many periods there were (college halves read H1 H2, not Q1 Q2).
+                r.Periods = home.PointsByPeriod.Length - Overtimes;
+                r.PeriodSeconds = r.Periods == 2 ? 1200 : 720;
+            }
+            // A finished game: every period played (the box score's splits read CurrentPeriod).
+            r.CurrentPeriod = r.Periods + Overtimes;
+            r.Elapsed = r.Periods * r.PeriodSeconds + Overtimes * r.OvertimeSeconds;
+            foreach (var f in Flow ?? new())
+                if (f.Length >= 5)
+                    r.Flow.Add(new FlowPoint(f[0] / 10.0, f[1], f[2], f[3], f[4] != 0 && players.TryGetValue(f[4], out var sc) ? sc : null));
+            return r;
         }
     }
 
