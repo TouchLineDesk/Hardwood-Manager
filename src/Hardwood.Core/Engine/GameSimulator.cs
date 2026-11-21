@@ -165,6 +165,11 @@ public sealed class GameSimulator
         /// <summary>True under college rules (a one-and-one before the double bonus).</summary>
         public bool OneAndOne => _game.Rules.OneAndOne;
         public int MinutesPerPeriod => _game.Rules.MinutesPerPeriod;
+        /// <summary>B2b (run 141): a player's energy for the "On the floor" panels (0.3–1.0). Reads state only.</summary>
+        public double EnergyOf(Player p) => _game.EnergyOf(p);
+        /// <summary>Fouls that foul a player out, and the energy below which the engine looks to sub him. Read only.</summary>
+        public int FoulsToFoulOut => _game.Rules.FoulsToFoulOut;
+        public double SubOutEnergy => _cfg.SubOutEnergy;
 
         /// <summary>Play one possession. Returns false when the game is over (and finalises injuries).</summary>
         public bool Step()
@@ -360,6 +365,9 @@ public sealed class GameSimulator
         public int HomeTeamFouls => _home.TeamFouls;
         public int AwayTeamFouls => _away.TeamFouls;
         public Rules Rules => _rules;
+        /// <summary>A player's energy (0.3–1.0), 1 for anyone the game doesn't know. Reads state only.</summary>
+        public double EnergyOf(Player p) =>
+            _home.Energy.TryGetValue(p, out var e) ? e : _away.Energy.TryGetValue(p, out var f) ? f : 1.0;
 
         private bool _periodOpen;
         private int _periodHomeStart, _periodAwayStart;
