@@ -30,10 +30,10 @@ public static class CollegeCards
     /// <summary>A trail status as a coloured chip: yours green, elsewhere grey, offered amber, on your board blue.</summary>
     public static IBrush StatusBrush(string status) => status switch
     {
-        "Committed to you" => StandingRow.PlayoffBrush,
+        "Committed to you" or "Signed with you" => StandingRow.PlayoffBrush,
         "Offered" => Amber,
         "On your board" => Blue,
-        _ when status.StartsWith("Committed", StringComparison.Ordinal) => Grey,
+        _ when status.StartsWith("Committed", StringComparison.Ordinal) || status.StartsWith("Signed", StringComparison.Ordinal) => Grey,
         _ => Open,
     };
 

@@ -41,6 +41,8 @@ public sealed class StatLine
 {
     public int TeamId { get; set; }
     public int G { get; set; }
+    /// <summary>Games started (run 147: K15b's starting-role promise reads it; 0 in saves from before v0.135.0 and in quick sims).</summary>
+    public int Gs { get; set; }
     public double Min { get; set; }
     public int Pts { get; set; }
     public int Reb { get; set; }

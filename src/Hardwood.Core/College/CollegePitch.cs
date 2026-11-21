@@ -56,8 +56,8 @@ public sealed partial class CollegeWorld
     {
         if (Closed(p, r, today) is { } c) return c;
         Courting(r, t);
-        if (r.Pitch == pitch) return pitch == null ? $"You have no pitch for {p.Name}." : $"You're already selling {p.Name} on {PriorityText(pitch.Value)}.";
-        r.Pitch = pitch; r.OnBoard = true;
+        if (r.Pitch == pitch) { r.PitchChosen = true; return pitch == null ? $"You have no pitch for {p.Name}." : $"You're already selling {p.Name} on {PriorityText(pitch.Value)}."; }
+        r.Pitch = pitch; r.PitchChosen = true; r.OnBoard = true;
         if (pitch == null) return $"No pitch for {p.Name}: your calls and visits sell nothing in particular.";
         string what = $"Your calls and visits now sell {p.Name} on {PriorityText(pitch.Value)}.";
         if (!r.Scouted) return what + " Scout him to learn whether that is what he cares about.";
@@ -93,6 +93,8 @@ public sealed partial class CollegeWorld
             parts.Add(("courting", CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale)));
             parts.Add(("pros", PitchFor(r)));
             parts.Add(("pitch", PitchAppeal(p, r, t)));
+            parts.Add(("promise", PromiseAppealOf(r, t)));
+            parts.Add(("your word", WordPenalty));
         }
         return parts;
     }

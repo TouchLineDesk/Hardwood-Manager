@@ -39,6 +39,52 @@ public sealed partial class GameSession
     /// <summary>K15a (run 146): what your calls and visits sell him (null: no pitch).</summary>
     public string PitchProspect(Player p, RecruitPriority? pitch) => Trail(p, (c, r) => c.SetPitch(HumanTeam, p, r, pitch, Today));
 
+    /// <summary>K15b (run 147): promise him a starting role as a freshman.</summary>
+    public string PromiseProspect(Player p) => Trail(p, (c, r) => c.Promise(HumanTeam, p, r, Today));
+
+    /// <summary>
+    /// K15b (run 147): from mid-January of a freshman's first season, the starting-role promise his recruiters made is
+    /// judged on his own numbers: at least half his games started, or <see cref="CollegeWorld.PromiseMpg"/> minutes a game.
+    /// Kept, he trusts you; broken, he feels lied to and the trail hears (<see cref="CollegeWorld.BrokenWordUntil"/>). A
+    /// freshman who has barely played (an injury) doesn't hold it against you. Pledges to a program you no longer coach lapse.
+    /// </summary>
+    internal void WeeklyPromises()
+    {
+        if (!InCollege || !Employed || World.College is not { Recruiting: true } c) return;
+        var due = new DateOnly(c.Season.Year + 1, 1, 15);
+        if (Today < due) return;
+        foreach (var pl in c.Pledges.Where(x => x.Status == "pending" && x.Season <= c.Season.Year).ToList())
+        {
+            var p = HumanTeam.Roster.FirstOrDefault(x => x.Id == pl.PlayerId);
+            if (pl.ProgramId != HumanTeam.Id || p == null || pl.Season < c.Season.Year) { pl.Status = "lapsed"; continue; }
+            MyStats.TryGetValue(p.Id, out var st);
+            int g = st?.Games ?? 0;
+            if (g < 6)
+            {
+                if (Today < due.AddDays(31)) continue;
+                pl.Status = "lapsed";
+                Post($"Promise on hold: {p.Name}", $"{p.Name} has played only {g} game{(g == 1 ? "" : "s")} this season, so he doesn't hold your promise of a starting role against you.", "Squad");
+                continue;
+            }
+            int starts = st!.Starts;
+            if (starts * 2 >= g || st.Mpg >= CollegeWorld.PromiseMpg)
+            {
+                pl.Status = "kept";
+                p.Morale = Math.Min(100, p.Morale + 8);
+                People.PeopleEngine.Boost(p, 10, Today.AddDays(56), "Trusts you after a kept promise", Today);
+                Post($"Promise kept: {p.Name}", $"You promised {p.Name} a starting role as a freshman, and he has it: {starts} starts in {g} games, {st.Mpg:0} minutes a game. He trusts you.", "Squad");
+            }
+            else
+            {
+                pl.Status = "broken";
+                p.Morale = Math.Max(0, p.Morale - 20); p.DistrustUntil = Today.AddDays(90);
+                c.BrokenWordUntil = Today.AddDays(365);
+                Post($"Promise broken: {p.Name}", $"You promised {p.Name} a starting role as a freshman. By mid-January he has {starts} starts in {g} games and {st.Mpg:0} minutes a game, and he feels lied to. "
+                    + $"The recruiting trail has heard too: until {c.BrokenWordUntil:MMMM d, yyyy} your appeal is {CollegeWorld.BrokenWordPenalty:0} lower with every prospect, and your promises won't sway anyone.", "Squad");
+            }
+        }
+    }
+
     /// <summary>Monday: fade your effort, let the assistant spend last week's spare hours if he recruits for you, refill the hours.</summary>
     internal void WeeklyTrail()
     {
