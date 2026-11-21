@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.College;
 using Hardwood.Core.Model;
 using Hardwood.Desktop.Controls;
+using System.Linq;
 
 namespace Hardwood.Desktop.ViewModels;
 
@@ -24,6 +25,10 @@ public sealed partial class TrailRow : ObservableObject
     public int StarCount { get; init; }
     public Team? LeaningTeam { get; init; }
     public string HighSchool { get; init; } = "";
+    /// <summary>K15a (run 146): what he cares about most, once your staff has scouted him ("" before).</summary>
+    public string Cares { get; init; } = "";
+    public bool HasCares => Cares.Length > 0;
+    public string CaresText => HasCares ? $"Cares about {Cares}" : "";
     [ObservableProperty] private bool _picked;
     public string RankText => $"#{Rank}";
     public string StarsOn => CollegeCards.On(StarCount);
@@ -43,7 +48,30 @@ public sealed partial class CollegeViewModel
     /// <summary>You coach a college program: the Recruiting tab is your high-school trail, not the pros' senior board.</summary>
     public bool IsCollegeCoach => Session.TrailOpen;
     public bool IsProRecruiting => !Session.InCollege && Session.SeniorRecruiting; // D48 B: real careers draft instead
-    public List<string> TrailViews { get; } = new() { "Best fits", "My board", "Committed to you", "All uncommitted", "5-star", "4-star" };
+    public List<string> TrailViews { get; } = new() { "Best fits", "My board", LeaningElsewhere, "Committed to you", "All uncommitted", "5-star", "4-star" };
+    /// <summary>H156 (run 146): the offers out to prospects leaning to another school, as a view instead of a paragraph.</summary>
+    public const string LeaningElsewhere = "Offers leaning elsewhere";
+    /// <summary>K15a (run 146): the pitch picker's choices (<see cref="CollegeWorld.PitchName"/>), "No pitch" first.</summary>
+    public List<string> TrailPitches { get; } = new[] { (RecruitPriority?)null }.Concat(CollegeWorld.Pitches.Select(k => (RecruitPriority?)k)).Select(CollegeWorld.PitchName).ToList();
+    [ObservableProperty] private string _trailPitch = CollegeWorld.PitchName(null);
+    [ObservableProperty] private string _trailWhy = "";
+    [ObservableProperty] private string _trailPitchNote = "";
+    public bool HasTrailWhy => TrailWhy.Length > 0;
+    partial void OnTrailWhyChanged(string value) => OnPropertyChanged(nameof(HasTrailWhy));
+    private bool _pitchLoading;
+    partial void OnTrailPitchChanged(string value)
+    {
+        if (value is null || _pitchLoading || SelectedTrail?.Player is not { } p) return;
+        var k = CollegeWorld.Pitches.Cast<RecruitPriority?>().FirstOrDefault(x => CollegeWorld.PitchName(x) == value);
+        AfterTrail(Session.PitchProspect(p, k));
+    }
+    /// <summary>H156: the other class on the list (after signing day, the rising seniors), offered from the empty state.</summary>
+    public string TrailOtherClass => Classes.FirstOrDefault(x => x != TrailClass) ?? "";
+    public bool HasTrailOtherClass => HasTrailEmpty && _otherClassOpen && TrailOtherClass.Length > 0;
+    /// <summary>Run 146 review: offer the other class only when the one on screen is closed (signed) and the other is open.</summary>
+    private bool _otherClassOpen;
+    public string TrailOtherClassText => TrailOtherClass.Length > 0 ? $"See the {TrailOtherClass.Split(" (")[0]}" : "";
+    [RelayCommand] private void OtherTrailClass() { if (TrailOtherClass is { Length: > 0 } other) TrailClass = other; }
     [ObservableProperty] private string _trailView = "Best fits";
     [ObservableProperty] private string _trailClass = "";
     public ObservableCollection<TrailRow> TrailRows { get; } = new();
@@ -73,7 +101,11 @@ public sealed partial class CollegeViewModel
     /// <summary>Why the board is empty (it used to be a blank table).</summary>
     [ObservableProperty] private string _trailEmpty = "";
     public bool HasTrailEmpty => TrailEmpty.Length > 0;
-    partial void OnTrailEmptyChanged(string value) => OnPropertyChanged(nameof(HasTrailEmpty));
+    partial void OnTrailEmptyChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasTrailEmpty)); OnPropertyChanged(nameof(HasTrailOtherClass));
+        OnPropertyChanged(nameof(TrailOtherClass)); OnPropertyChanged(nameof(TrailOtherClassText));
+    }
     /// <summary>A card press picks him, as a row click in the table does.</summary>
     public void PickTrail(TrailRow row) => SelectedTrail = row;
     partial void OnAssistantRecruitsChanged(bool value) { if (_trailLoading) return; Session.Delegated.Recruiting = value; Session.SaveNow(); FillTrail(); }
@@ -103,6 +135,7 @@ public sealed partial class CollegeViewModel
             {
                 "My board" => x.r.CourtedBy == me.Id && (x.r.OnBoard || x.r.Offered) || x.r.CommittedTo == me.Id,
                 "Committed to you" => x.r.CommittedTo == me.Id,
+                LeaningElsewhere => x.r.CourtedBy == me.Id && x.r.Offered && x.r.CommittedTo == null && c.LeaningTo(x.p, x.r, board) is { } l && l != me,
                 "5-star" => x.r.Stars == 5,
                 "4-star" => x.r.Stars == 4,
                 _ => x.r.CommittedTo == null,
@@ -116,6 +149,7 @@ public sealed partial class CollegeViewModel
             {
                 Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", State = r.State,
                 StarCount = r.Stars, LeaningTeam = lean, HighSchool = r.HighSchool,
+                Cares = r.CourtedBy == me.Id && r.Scouted ? CollegeWorld.PriorityShort(CollegeWorld.PriorityOf(p)) : "",
                 Interest = interest, InterestText = $"{interest:0}",
                 Leaning = lean == null ? "-" : lean == me ? "You" : lean.City,
                 Status = r.CommittedTo is { } to ? (to == me.Id ? "Committed to you" : $"Committed: {c.Program(to)!.City}")
@@ -126,7 +160,7 @@ public sealed partial class CollegeViewModel
         var ranking = c.ClassRanking(year);
         int ourRank = ranking.FindIndex(x => x.Program == me);
         int open = c.OpenScholarships(me, year), hours = Session.TrailHoursLeft;
-        TrailChips = new()
+        var chips = new List<Chip>
         {
             new("Coach hours", $"{hours} of {CollegeWorld.WeeklyHours}", "this week · refill Mondays", hours > 0 ? "team" : "warn"),
             new("Scholarships open", open.ToString(), $"Class of {year}", open == 0 ? "warn" : "info"),
@@ -134,14 +168,19 @@ public sealed partial class CollegeViewModel
             new("Committed to you", c.Commits(me, year).ToString(), year == senior ? $"signing day {CollegeWorld.SigningDay(year):MMM d}" : "early pledges", c.Commits(me, year) > 0 ? "good" : ""),
             new("Class rank", ourRank >= 0 ? $"No. {ourRank + 1}" : "-", ourRank >= 0 ? $"{ranking[ourRank].Points} pts" : "no commitments yet", ourRank is >= 0 and < 25 ? "good" : ""),
         };
+        // H156 (run 146): the offers leaning elsewhere are a chip (and a view), not a paragraph.
+        var (leaningAway, _) = OffersLeaning(c, me, year, board);
+        if (leaningAway > 0 && chips.FindIndex(x => x.Label == "Offers out") is var oi and >= 0)
+            chips[oi] = chips[oi] with { Sub = chips[oi].Tone == "" ? $"{leaningAway} leaning elsewhere" : $"{chips[oi].Sub} · {leaningAway} lean away", Tone = "warn" };
+        TrailChips = chips;
         bool closed = !c.Recruitable(new Recruit { ClassOf = year }, Session.Today);
+        _otherClassOpen = closed && TrailOtherClass.Length > 0 && int.TryParse(TrailOtherClass.Replace("Class of ", "").Split(' ')[0], out var oy)
+                          && c.Recruitable(new Recruit { ClassOf = oy }, Session.Today);
         string full = closed ? $"Signing day has passed for the Class of {year}: the rising seniors are the class to recruit now. "
             : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). "
             // CS1 (run 125): the calendar for the class you're chasing.
             : $"{open} scholarship{(open == 1 ? "" : "s")} open in the Class of {year}: seniors commit through the season, many in the November early period, and the rest sign on signing day ({CollegeWorld.SigningDay(year):MMM d}). ";
-        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + (closed ? "" : OffersLeaningNote(c, me, year, board)) + (Session.Delegated.Recruiting
-            ? "You recruit high-school seniors only. Your assistant spends the hours you leave unused each week on the best fits, and from March he withdraws offers that won't be accepted. A prospect can only commit to you once you've offered."
-            : "You recruit high-school seniors only, and you have the trail to yourself: hours you don't use are lost. A prospect can only commit to you once you've offered.");
+        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + "A prospect can only commit to you once you've offered.";
         foreach (var r in TrailRows.Take(CollegeCards.CardCount)) TrailCards.Add(r);
         if (keep != null && !TrailCards.Any(r => r.Player == keep) && TrailRows.FirstOrDefault(r => r.Player == keep) is { } further) TrailCards.Add(further);
         TrailEmpty = TrailRows.Count > 0 ? ""
@@ -151,9 +190,11 @@ public sealed partial class CollegeViewModel
             {
                 "My board" => $"Your board for the Class of {year} is empty. Pick a prospect in \"Best fits\" and press Board +/- or Offer.",
                 "Committed to you" => $"No one in the Class of {year} has committed to you yet. A prospect can only commit once you've offered.",
+                LeaningElsewhere => $"None of your open offers in the Class of {year} leans to another school.",
                 _ => $"No prospects in \"{TrailView}\" for the Class of {year}.",
             };
-        TrailCardNote = TrailRows.Count <= CollegeCards.CardCount ? $"{TrailRows.Count} prospects in \"{TrailView}\". Pick a card to recruit him."
+        TrailCardNote = TrailView == LeaningElsewhere ? OffersLeaningNote(c, me, year, board).Trim()
+            : TrailRows.Count <= CollegeCards.CardCount ? $"{TrailRows.Count} prospects in \"{TrailView}\". Pick a card to recruit him."
             : $"The first {CollegeCards.CardCount} of {TrailRows.Count} in \"{TrailView}\". Pick a card to recruit him; the full table lists them all.";
         SelectedTrail = keep == null ? null : TrailRows.FirstOrDefault(x => x.Player == keep);
         FillTrailPanel();
@@ -178,10 +219,20 @@ public sealed partial class CollegeViewModel
             + ". More calls and visits close the gap; a prospect far behind usually signs elsewhere. ";
     }
 
+    /// <summary>H156: how many of the open offers lean to another school today, of how many.</summary>
+    public static (int Away, int Offered) OffersLeaning(CollegeWorld c, Team me, int year, CollegeWorld.ClassBoard board)
+    {
+        var offered = c.ClassOf(year).Select(p => (p, r: c.RecruitOf(p)!)).Where(x => x.r.CourtedBy == me.Id && x.r.Offered && x.r.CommittedTo == null).ToList();
+        return (offered.Count(x => c.LeaningTo(x.p, x.r, board) is { } l && l != me), offered.Count);
+    }
+
+    /// <summary>The assistant checkbox's tip (the trail note's old last sentence, H156).</summary>
+    public string AssistantTip => "You recruit high-school seniors only. With this on, your assistant spends the hours you leave unused each week on the best fits, sells each scouted prospect what he cares about, and from March withdraws offers that won't be accepted. With it off, hours you don't use are lost.";
+
     private void FillTrailPanel()
     {
         if (SelectedTrail?.Player is not { } p || Session.TrailWorld is not { } c || c.RecruitOf(p) is not { } r)
-        { ProspectChips = new(); TrailHeader = ""; TrailConsidering = ""; return; }
+        { ProspectChips = new(); TrailHeader = ""; TrailConsidering = ""; TrailWhy = ""; TrailPitchNote = ""; return; }
         var me = Session.HumanTeam;
         var board = c.BoardFor(r.ClassOf);
         bool ours = r.CourtedBy == me.Id;
@@ -195,6 +246,9 @@ public sealed partial class CollegeViewModel
             new("Leaning", lean == null ? "-" : lean == me ? "You" : lean.City, r.CommittedTo != null ? "committed" : "if he chose today", lean == me ? "good" : "warn"),
             new("Cares most about", ours && r.Scouted ? CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p)) : "?", ours && r.Scouted ? "it weighs extra with him" : "scout him to find out", "info"),
             new("Your staff project", ours && r.Scouted ? $"{c.StaffProjection(p, r)}" : "?", ours && r.Scouted ? "ability at 22" : $"services: {r.Projection}", ""),
+            new("Your pitch", ours && r.Pitch is { } pk ? CollegeWorld.PitchName(pk) : "None",
+                !(ours && r.Pitch != null) ? "pick one below" : !r.Scouted ? "scout him to know if it fits" : CollegeWorld.PitchMatches(p, r) == true ? $"fits · contacts land {(CollegeWorld.PitchMatch - 1) * 100:0}% better" : $"misses · contacts land {(1 - CollegeWorld.PitchMiss) * 100:0}% worse",
+                !(ours && r.Pitch != null && r.Scouted) ? "" : CollegeWorld.PitchMatches(p, r) == true ? "good" : "warn"),
             new("Offer", ours && r.Offered ? "Made" : "None", ours && r.Offered ? "he can commit to you" : "needed before he commits", ours && r.Offered ? "good" : ""),
             // CP3 (run 132): your graduates in the pros sway him a little (see the College page's Your pros tab).
             new("Your pros", c.PitchFor(r) > 0 ? $"+{c.PitchFor(r):0.#}" : "0", c.ProPitchText == "" ? "no graduates yet" : c.ProPitchText, c.PitchFor(r) > 0 ? "good" : ""),
@@ -205,6 +259,12 @@ public sealed partial class CollegeViewModel
         TrailConsidering = r.CommittedTo is { } to ? $"Committed to {c.Program(to)!.FullName}."
             : "Considering: " + string.Join(" · ", list.Select((x, i) => $"{i + 1}. {x.Program.City}{(x.Program == me ? " (you)" : "")}")) + "."
               + (why != "" ? $" You'd rank {standing} with him, but you can't land him: {why}." : list.All(x => x.Program != me) ? $" You rank {standing}." : "");
+        // K15a (run 146): why you trail (or lead), factor by factor, and what your calls and visits sell him.
+        TrailWhy = c.WhyTrails(me, p, r, board);
+        _pitchLoading = true; TrailPitch = CollegeWorld.PitchName(ours ? r.Pitch : null); _pitchLoading = false;
+        TrailPitchNote = "What your calls and visits sell him. " + (ours && r.Scouted
+            ? $"He cares most about {CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p))}: the right pitch lands {(CollegeWorld.PitchMatch - 1) * 100:0}% better, a wrong one {(1 - CollegeWorld.PitchMiss) * 100:0}% worse."
+            : "Scout him first to learn what he cares about; a wrong pitch lands worse than none.");
     }
 
     private void AfterTrail(string reply)

@@ -38,6 +38,8 @@ public sealed class Recruit
     public bool HomeVisit { get; set; }
     public bool OfficialVisit { get; set; }
     public bool Offered { get; set; }
+    /// <summary>K15a (run 146): what the coached program sells him on its calls and visits (null: no pitch). Saved; reset with the courting.</summary>
+    public RecruitPriority? Pitch { get; set; }
 }
 
 /// <summary>
@@ -272,7 +274,7 @@ public sealed partial class CollegeWorld
             RecruitPriority.PlayingTime => minutes,
             _ => winning,
         };
-        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r);
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r) + PitchAppeal(p, r, t);
         return a + (rng?.NextGaussian(0, 14) ?? 0);
     }
 

@@ -495,8 +495,13 @@ public class LayoutCheckTests
                         col.SelectedTrail = col.TrailRows[0];
                         col.ScoutTrailCommand.Execute(null);
                         col.OfferTrailCommand.Execute(null);
+                        // K15a (run 146): a pitch that misses, then a call, for the longest reply and the "why" line.
+                        var miss = CollegeWorld.Pitches.First(k => k != CollegeWorld.PriorityOf(col.SelectedTrail!.Player));
+                        col.TrailPitch = CollegeWorld.PitchName(miss);
+                        col.CallTrailCommand.Execute(null);
                     }
                 }),
+                ("Recruiting leaning elsewhere", v => { v.Navigate("College"); var col = (CollegeViewModel)v.CurrentPage!; col.Tab = 5; col.TrailView = CollegeViewModel.LeaningElsewhere; col.BoardView = "Cards"; }),
                 // Run 68 (review #13 rank 7): the board's full table, the high-school class as star cards (the longest
                 // name picked) and as a table, and the class rankings.
                 ("Recruiting cards", v =>

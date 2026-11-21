@@ -43,7 +43,7 @@ public sealed partial class CollegeWorld
         if (r.CourtedBy != t.Id)
         {
             r.CourtedBy = t.Id; r.Interest = 0; r.OnBoard = false; r.Scouted = false; r.Calls = 0; r.CalledWeek = null;
-            r.HomeVisit = false; r.OfficialVisit = false; r.Offered = false;
+            r.HomeVisit = false; r.OfficialVisit = false; r.Offered = false; r.Pitch = null;
         }
         return r;
     }
@@ -92,9 +92,10 @@ public sealed partial class CollegeWorld
         return null;
     }
 
-    private string Gain(Recruit r, double amount)
+    private string Gain(Recruit r, double amount, Player? pitched = null)
     {
         double before = r.Interest;
+        if (pitched != null) amount *= PitchFactor(pitched, r);
         r.Interest = Math.Min(100, r.Interest + amount);
         return $"Interest {before:0} → {r.Interest:0}.";
     }
@@ -132,7 +133,7 @@ public sealed partial class CollegeWorld
         r.CalledWeek = MondayOf(today); r.OnBoard = true;
         double gain = 5 / (1 + r.Calls * 0.25) * ContactScale(r);
         r.Calls++;
-        return $"You called {p.Name}. " + Gain(r, gain);
+        return $"You called {p.Name}{PitchedText(p, r)}. " + Gain(r, gain, p) + PitchHint(p, r);
     }
 
     /// <summary>A home visit (4 hours, once): sitting down with the family.</summary>
@@ -143,7 +144,7 @@ public sealed partial class CollegeWorld
         if (r.HomeVisit) return $"You've already been to {p.Name}'s home.";
         if (Spend(HomeVisitHours, today) is { } no) return no;
         r.HomeVisit = true; r.OnBoard = true;
-        return $"You visited {p.Name} and his family in {StateName(r.State)}. " + Gain(r, 12 * ContactScale(r));
+        return $"You visited {p.Name} and his family in {StateName(r.State)}{PitchedText(p, r)}. " + Gain(r, 12 * ContactScale(r), p) + PitchHint(p, r);
     }
 
     /// <summary>An official visit (8 hours, once, seniors only from September 1): a weekend on campus.</summary>
@@ -155,7 +156,7 @@ public sealed partial class CollegeWorld
         if (today < CommitmentsOpen(r.ClassOf)) return $"Official visits open for the Class of {r.ClassOf} on {CommitmentsOpen(r.ClassOf):MMM d, yyyy}.";
         if (Spend(OfficialVisitHours, today) is { } no) return no;
         r.OfficialVisit = true; r.OnBoard = true;
-        return $"{p.Name} spent a weekend on campus at {t.FullName}. " + Gain(r, 18 * ContactScale(r));
+        return $"{p.Name} spent a weekend on campus at {t.FullName}{PitchedText(p, r)}. " + Gain(r, 18 * ContactScale(r), p) + PitchHint(p, r);
     }
 
     /// <summary>A scholarship offer (2 hours): needed before he can commit to you, and a boost on its own.</summary>
@@ -257,6 +258,9 @@ public sealed partial class CollegeWorld
                 foreach (var act in new Func<string>[]
                 {
                     () => cls == senior ? Offer(t, p, r, day) : "",
+                    // K15a (run 146): he scouts each target (1 hour) and sells him what he cares about.
+                    () => r.CourtedBy == t.Id && !r.Scouted ? Scout(t, p, r, day) : "",
+                    () => { if (r.CourtedBy == t.Id && r.Scouted && r.Pitch == null) r.Pitch = PriorityOf(p); return ""; },
                     () => cls == senior && day >= CommitmentsOpen(cls) ? OfficialVisit(t, p, r, day) : "",
                     () => VisitHome(t, p, r, day),
                     () => Call(t, p, r, day),

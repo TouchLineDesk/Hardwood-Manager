@@ -36,6 +36,8 @@ public sealed partial class GameSession
     public string HomeVisitProspect(Player p) => Trail(p, (c, r) => c.VisitHome(HumanTeam, p, r, Today));
     public string OfficialVisitProspect(Player p) => Trail(p, (c, r) => c.OfficialVisit(HumanTeam, p, r, Today));
     public string OfferProspect(Player p) => Trail(p, (c, r) => c.Offer(HumanTeam, p, r, Today));
+    /// <summary>K15a (run 146): what your calls and visits sell him (null: no pitch).</summary>
+    public string PitchProspect(Player p, RecruitPriority? pitch) => Trail(p, (c, r) => c.SetPitch(HumanTeam, p, r, pitch, Today));
 
     /// <summary>Monday: fade your effort, let the assistant spend last week's spare hours if he recruits for you, refill the hours.</summary>
     internal void WeeklyTrail()
