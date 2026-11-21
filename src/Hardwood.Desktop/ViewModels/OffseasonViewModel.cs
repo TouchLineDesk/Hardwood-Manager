@@ -266,6 +266,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 : "You aren't coaching a club. Press Continue to move through the summer.";
             ShowContracts = ShowFreeAgency = ShowBuyouts = false;
             CapText = ""; RelegationText = ""; RelegationDetail = "";
+            if (Tab == DraftNightTab) { StopNightAutorun(); Tab = 3; }   // review (run 142): no hidden draft night
             return;
         }
         var team = s.HumanTeam; var fin = s.League.Finance;

@@ -104,13 +104,25 @@ public sealed partial class OffseasonViewModel
         var grads = MyGraduates(s, o);
         int? mine = s.InCollege ? null : team.Id;
         _lottery = DraftNight.Lottery(o, mine, grads);
-        _draftBeats = DraftNight.Draft(o, mine, p => SchoolOf(s, p), p => RangeOf(s, team, p), grads);
+        List<Player>? myClass = null; int? classSize = null;
+        if (grads != null && s.World.College is { } cw)
+        {
+            var ids = grads.ToHashSet();
+            myClass = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.World.Players).Concat(o.Prospects)
+                .Where(p => ids.Contains(p.Id)).DistinctBy(p => p.Id).ToList();
+            classSize = cw.Alumni.Count(kv => kv.Value.Year == o.Season + 1);
+        }
+        _draftBeats = DraftNight.Draft(o, mine, p => SchoolOf(s, p), p => RangeOf(s, team, p), grads, myClass, classSize);
         bool fresh = !ReferenceEquals(_nightFor, o), had = CanWatchDraft && !fresh;
         _nightFor = o;
         ShowDraftNight = _lottery.Count > 0;
         CanWatchDraft = _draftBeats.Count > 0;
         // The draft broadcast as soon as there is one (its picks are made); the lottery before.
-        if (fresh || !CanWatchDraft || !had) NightOnDraft = CanWatchDraft;
+        if (fresh || !CanWatchDraft || !had)
+        {
+            if (NightOnDraft != CanWatchDraft) StopNightAutorun();   // review: autorun doesn't carry into the other show
+            NightOnDraft = CanWatchDraft;
+        }
         ShowNightBeat();
     }
 
@@ -223,7 +235,7 @@ public sealed partial class OffseasonViewModel
         // As the Selection Show (run 139's review): never tick off this page, while the game is busy, after a load, or
         // once the summer has moved on.
         if (!CanNightNext || Shell.IsBusy || !ReferenceEquals(Shell.CurrentPage, this) || Shell.Session == null
-            || !ReferenceEquals(Session.Offseason, _nightFor) || Tab != DraftNightTab) { StopNightAutorun(); return; }
+            || !ReferenceEquals(Session.Offseason, _nightFor) || Tab != DraftNightTab || !ShowDraftNight) { StopNightAutorun(); return; }
         NightNext();
     }
 

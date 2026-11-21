@@ -60,6 +60,8 @@ public class Run142DraftNightTests
             Assert.Equal(Enumerable.Range(1, o.PickOwners.Count).ToList(), envelopes.Select(b => b.Pick).OrderBy(k => k).ToList());
             Assert.All(envelopes, b => Assert.Equal(o.PickOwners[b.Pick - 1], b.Team));
             Assert.Equal(1, envelopes[^1].Pick);
+            if (o.PickOwners.Take(o.PickOwners.Count - 1).Contains(o.PickOwners[^1]))
+                Assert.Equal(o.PickOwners.Count, envelopes[0].Pick);   // the extra pick opens first
             Assert.Contains("1 in ", lottery[0].Line);
             // Building the show twice gives the same show and changes nothing.
             Assert.Equal(lottery.Select(b => b.Line), DraftNight.Lottery(o, null, grads).Select(b => b.Line));
@@ -124,7 +126,7 @@ public class Run142DraftNightTests
             // Your graduates are flagged, and the close counts them.
             Assert.Equal(o.Report.Draft.Count(d => grads.Contains(d.Player.Id)), picks.Count(b => b.MyGraduate));
             if (o.Report.Draft.Any(d => grads.Contains(d.Player.Id)) || o.Prospects.Any(p => grads.Contains(p.Id)))
-                Assert.Contains("seniors", draft[^1].Line);
+                Assert.Contains("senior", draft[^1].Line);
             Assert.Equal("DRAFT NIGHT", page.NightTitle);
             page.NightNextCommand.Execute(null);
             Assert.True(page.NightShowsCard && page.CardHasPlayer);
@@ -147,14 +149,17 @@ public class Run142DraftNightTests
             page.NightAutorunCommand.Execute(null);
             Assert.False(page.NightAutorunning);
             page.NightSkipCommand.Execute(null);
-            Assert.Equal(draft[^1].Line, page.NightLine);
             Assert.False(page.CanNightNext);
+            // Review (run 142): in free agency the undrafted are back in the pool; the close still counts them and
+            // speaks of every one of your seniors, drafted or not.
+            Assert.Contains("go undrafted into free agency", page.NightLine);
+            if (grads.Count > 0) Assert.Contains("senior", page.NightLine);
             Snap(window, "run142-draft-close");
             // The lottery can be watched again; the draft keeps its place.
             page.NightLotteryShowCommand.Execute(null);
             Assert.False(page.NightOnDraft);
             page.NightDraftShowCommand.Execute(null);
-            Assert.Equal(draft[^1].Line, page.NightLine);
+            Assert.Contains("go undrafted", page.NightLine);
             // Other tabs bring the side panel back.
             page.Tab = 3;
             Assert.Equal(1, page.TabSpan);

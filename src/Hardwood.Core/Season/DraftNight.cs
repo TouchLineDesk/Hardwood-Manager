@@ -44,8 +44,10 @@ public static class DraftNight
     private static (List<Team> Drawn, Team? Extra) Draw(Offseason o)
     {
         var owners = o.DraftOrder.Count > 0 ? o.DraftOrder : o.PickOwners;
-        // The third-place tournament's winner is in the draw like everyone else and also holds the last pick (CollegeDraft.Lottery).
-        var extra = owners.Count > 1 && o.Outcome.ThirdPlaceWinner is { } w && owners[^1] == w && owners.Take(owners.Count - 1).Contains(w) ? w : null;
+        // The third-place tournament's winner is in the draw like everyone else and also holds the last pick
+        // (CollegeDraft.Lottery shuffles distinct clubs and appends it). Read from the order itself: a loaded summer's
+        // outcome doesn't carry the third-place winner (review, run 142).
+        var extra = owners.Count > 1 && owners.Take(owners.Count - 1).Contains(owners[^1]) ? owners[^1] : null;
         return (extra == null ? owners.ToList() : owners.Take(owners.Count - 1).ToList(), extra);
     }
 
@@ -107,8 +109,11 @@ public static class DraftNight
     /// potential (a range in a college career, the pros' number otherwise); <paramref name="myGraduates"/> are the coached
     /// program's seniors of this summer, flagged on their picks.
     /// </summary>
+    /// <param name="myClass">The coached program's seniors of this summer as players, drafted or not (they leave the
+    /// draft's pool when free agency opens).</param>
+    /// <param name="classSize">How many college players graduated this summer (for the close's undrafted count).</param>
     public static List<DraftBeat> Draft(Offseason o, int? mine, Func<Player, string> school, Func<Player, Scouting.Range> range,
-        IReadOnlyCollection<int>? myGraduates = null)
+        IReadOnlyCollection<int>? myGraduates = null, IReadOnlyCollection<Player>? myClass = null, int? classSize = null)
     {
         var beats = new List<DraftBeat>();
         if (!o.CollegeDraftOn || o.PickOwners.Count == 0) return beats;
@@ -119,7 +124,7 @@ public static class DraftNight
         var pool = picks.Select(d => d.Player).Concat(o.Prospects).Distinct()
             .OrderByDescending(p => range(p).Mid).ThenByDescending(p => p.CurrentAbility).ThenBy(p => p.Id).ToList();
         int Rank(Player p) => pool.IndexOf(p) + 1;
-        var ours = pool.Where(Grad).ToList();
+        var ours = (myClass ?? (IReadOnlyCollection<Player>)pool.Where(Grad).ToList()).OrderByDescending(p => range(p).Mid).ToList();
         beats.Add(new DraftBeat(DraftOpen, 0, null, null, "", "", "DRAFT NIGHT", Host,
             $"Welcome to draft night: one round, {o.PickOwners.Count} picks, and the best {pool.Count} college graduates in the country."
             + (ours.Count == 1 ? $" One of yours is waiting: {ours[0].Name}." : ours.Count > 1 ? $" {ours.Count} of yours are waiting: {string.Join(", ", ours.Select(p => p.Name))}." : ""),
@@ -150,13 +155,14 @@ public static class DraftNight
                 me ? $"You're on the clock with pick {k}. Choose on the Draft tab, or press Continue and your scouts pick." : $"{clock.TheFullNameCap} are on the clock with pick {k}.", me, false));
             return beats;
         }
-        int undrafted = o.Prospects.Count;
+        // Once free agency opens the undrafted are back in the pool, so the class's size counts them.
+        int undrafted = classSize is { } size ? Math.Max(0, size - picks.Count) : o.Prospects.Count;
         var picked = picks.Where(d => Grad(d.Player)).ToList();
-        string close = $"That's the draft: {picks.Count} picks" + (undrafted > 0 ? $", and {undrafted} graduates go undrafted into free agency." : ".");
+        string close = $"That's the draft: {picks.Count} picks" + (undrafted > 0 ? $". The other {undrafted:N0} graduates of the class go undrafted into free agency." : ".");
         if (myGraduates != null && ours.Count > 0)
             close += picked.Count == 0 ? $" None of your {ours.Count} seniors was picked; they're free agents, and any club can still sign them."
-                : picked.Count == 1 ? $" One of your seniors went: {picked[0].Player.Name}, {Ordinal(picked[0].Pick)}."
-                : $" {picked.Count} of your seniors went, the first {Ordinal(picked[0].Pick)}.";
+                : picked.Count == 1 ? (ours.Count == 1 ? $" Your senior went: {picked[0].Player.Name}, {Ordinal(picked[0].Pick)}." : $" 1 of your {ours.Count} seniors went: {picked[0].Player.Name}, {Ordinal(picked[0].Pick)}.")
+                : $" {picked.Count} of your {ours.Count} seniors went, the first {Ordinal(picked[0].Pick)}.";
         beats.Add(new DraftBeat(DraftClose, 0, null, null, "", "", "THE DRAFT IS DONE", Host, close, false, false));
         return beats;
     }
