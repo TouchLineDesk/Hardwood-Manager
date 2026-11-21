@@ -147,7 +147,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
     /// <summary>H18 (run 100): on the Draft tab the side panel is the picked graduate's scouting card, not the last
     /// contract talk ("Sign Luka Garza" while you were on the clock).</summary>
     public bool ShowProspectPanel => ShowTalk && ShowDraft && Tab == DraftTab;
-    public bool ShowTalkPanel => ShowTalk && !ShowProspectPanel;
+    public bool ShowTalkPanel => ShowTalk && !ShowProspectPanel && Tab != DraftNightTab;
     /// <summary>The side panel a college coach sees in place of contract talks.</summary>
     [ObservableProperty] private string _collegeSummerText = "";
     /// <summary>Pros release players to free agency; a college program has no one to release to.</summary>
@@ -248,7 +248,11 @@ public sealed partial class OffseasonViewModel : PageViewModel
         InOffseason = s.Phase == SessionPhase.Offseason && o != null;
         Expiring.Clear(); FreeAgents.Clear(); Roster.Clear(); Overseas.Clear(); DraftPool.Clear(); DraftSlots.Clear();
         FreeAgentCards.Clear(); DraftCards.Clear(); FreeAgentNote = DraftNote = DraftHint = "";
-        ShowDraft = InOffseason && o!.CollegeDraftOn && o.Phase is OffseasonPhase.ReSigning or OffseasonPhase.Draft;
+        // B3 (run 142): a college coach's draft is over in one press, so his Draft tabs stay open through free agency to
+        // watch it (draft night) and see where his graduates went.
+        ShowDraft = InOffseason && o!.CollegeDraftOn && (o.Phase is OffseasonPhase.ReSigning or OffseasonPhase.Draft
+            || (s.Employed && s.InCollege && o.Phase == OffseasonPhase.FreeAgency && o.Report.Draft.Count > 0));
+        ShowDraftNight = false;
         OnTheClock = false; DraftText = "";
         CollegeSummer = false; CollegeSummerText = "";
         OnPropertyChanged(nameof(CanReleaseFromRoster));
@@ -262,6 +266,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 : "You aren't coaching a club. Press Continue to move through the summer.";
             ShowContracts = ShowFreeAgency = ShowBuyouts = false;
             CapText = ""; RelegationText = ""; RelegationDetail = "";
+            if (Tab == DraftNightTab) { StopNightAutorun(); Tab = 3; }   // review (run 142): no hidden draft night
             return;
         }
         var team = s.HumanTeam; var fin = s.League.Finance;
@@ -370,9 +375,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
                     Terms = terms.Possible ? $"Yes: ${terms.NablSalary / 1e6:F1}M a year. {terms.Note}" : terms.Note,
                 });
             }
-        if (ShowDraft) FillDraft(s, o, team);
+        if (ShowDraft) { FillDraft(s, o, team); FillDraftNight(s, o, team); }
         if (Tab == 0 && !ShowContracts) Tab = ShowDraft ? DraftTab : 1;
-        if (Tab == DraftTab && !ShowDraft) Tab = 1;
+        if (Tab is DraftTab or DraftNightTab && !ShowDraft) Tab = 1;
         if (Talk.Player == null || (!s.MyExpiring.Contains(Talk.Player) && !s.League.FreeAgents.Contains(Talk.Player) && !Talk.Signed))
             Talk.Show(Expiring.FirstOrDefault()?.Player ?? FreeAgents.FirstOrDefault()?.Player);
         // H28 (run 75): a renewal panel left open into free agency read "New deal for …" with Release for a player
@@ -415,17 +420,20 @@ public sealed partial class OffseasonViewModel : PageViewModel
         }
         if (s.Inbox.Any(m => m.Title == "Graduation and enrollment" && m.Date.Year == o.Season + 1))
             lines.Add("Who left and who joined is in your inbox (\"Graduation and enrollment\").");
-        if (ShowDraft) lines.Add("The pros' draft is on the Draft tab: watch where your graduates go. College programs don't draft.");
+        if (ShowDraft) lines.Add("Watch the pros' lottery and draft on the Draft night tab: your graduates are flagged when they're picked. College programs don't draft.");
         CollegeSummerText = string.Join("\n\n", lines);
         if (ShowDraft)
         {
             FillDraft(s, o, team);
+            FillDraftNight(s, o, team);
             DraftText = o.Phase == OffseasonPhase.Draft ? "The pros' draft is under way. College programs don't pick; your graduates can be taken."
+                      : o.Phase == OffseasonPhase.FreeAgency ? "The pros' draft is over: the order below shows who went where. Watch it pick by pick on the Draft night tab."
                                                         : "The pros' draft follows their contract decisions. College programs don't pick; your graduates can be taken.";
             DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted." : $"The best {DraftPool.Count} graduates, in the pros' scouts' order (potential first). Pick a card to see where he stands.";
         }
-        if (Tab is 0 or 1 or 2) Tab = 3;
-        if (Tab == 4 && !ShowDraft) Tab = 3;
+        // B3 (run 142): the summer opens on draft night while there is one to watch.
+        if (Tab is 0 or 1 or 2) Tab = ShowDraftNight ? DraftNightTab : 3;
+        if (Tab is DraftTab or DraftNightTab && !ShowDraft) Tab = 3;
         Talk.Show(null);
     }
 

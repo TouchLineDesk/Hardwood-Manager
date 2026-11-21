@@ -360,7 +360,8 @@ public sealed partial class MainViewModel : ViewModelBase
             {
                 // H15b (run 93): out of work there's no draft or free agency of yours to continue to.
                 OffseasonPhase.ReSigning or OffseasonPhase.Draft when !s.Employed => "Continue the summer",
-                OffseasonPhase.ReSigning => s.League.Finance.OpenMarket && s.Offseason?.CollegeDraftOn != true ? "Continue to free agency" : "Continue to the draft",
+                OffseasonPhase.ReSigning => s.League.Finance.OpenMarket && s.Offseason?.CollegeDraftOn != true ? "Continue to free agency"
+                    : s.InCollege ? "Continue to draft night" : "Continue to the draft",   // B3 (run 142): your seniors' draft night
                 OffseasonPhase.Draft => "Continue to free agency",
                 OffseasonPhase.FreeAgency => "Start new season",
                 _ => "Continue",
