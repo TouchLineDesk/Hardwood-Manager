@@ -48,10 +48,12 @@ public class LayoutCheckTests
     private static IEnumerable<(string name, Action<MainViewModel> open)> Pages(MainViewModel vm, LiveGameViewModel? live = null, StudioShowViewModel? studio = null)
     {
         if (studio != null) yield return ("Studio show", v => { v.CurrentPage = studio; });
-        if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Refresh(); live.ShowBreakCard(final: false); });
-        if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.ShowCourt = true; live.Refresh(); });
-        // The live panel's other view: the game flow chart (the court is the default, Danny, run 45).
-        if (live != null) yield return ("Live flow", v => { v.CurrentPage = live; live.ShowCourt = false; live.Refresh(); });
+        if (live != null) yield return ("Live game", v => { v.CurrentPage = live; live.Drawer = -1; live.Refresh(); live.ShowBreakCard(final: false); });
+        // M1 (run 148): the live page is the court; its panels are drawers over it.
+        if (live != null) yield return ("Live stats", v => { v.CurrentPage = live; live.HideBreakCommand.Execute(null); live.Drawer = 5; live.Refresh(); });
+        if (live != null) yield return ("Live box", v => { v.CurrentPage = live; live.Drawer = 0; live.Refresh(); });
+        if (live != null) yield return ("Live tactics", v => { v.CurrentPage = live; live.Drawer = 2; live.Refresh(); });
+        if (live != null) yield return ("Live flow", v => { v.CurrentPage = live; live.Drawer = 6; live.Refresh(); });
         foreach (var nav in vm.Nav.ToList())
             // The page keeps its view between visits (run 72): each size checks the tiles here and the table below.
             yield return (nav.Name, v =>

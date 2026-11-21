@@ -4,365 +4,126 @@
              xmlns:c="using:Hardwood.Desktop.Controls"
              xmlns:v="using:Hardwood.Desktop.Views"
              x:Class="Hardwood.Desktop.Views.LiveGameView"
-             x:DataType="vm:LiveGameViewModel">
-  <Grid x:Name="RootGrid" RowDefinitions="Auto,*" ColumnDefinitions="3*,2*">
-    <!-- Scoreboard: arena floor, team colours, big score (game-day presentation, decision #69) -->
-    <Border Grid.ColumnSpan="2" CornerRadius="10" ClipToBounds="True" Margin="0,0,0,10" MinHeight="118">
-      <Grid>
-        <c:CourtBackdrop Glow="{Binding HomeColor}" Intensity="0.7"/>
-        <!-- College games: the home program's own court from Danny's pack (run 45), dimmed so the score reads. -->
-        <Border Background="{Binding CourtBrush}" IsVisible="{Binding HasCourt}"/>
-        <Border Background="#8C0B0E12" IsVisible="{Binding HasCourt}"/>
-        <StackPanel VerticalAlignment="Center">
-        <Grid x:Name="ScoreRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="16,8,16,4">
-        <Grid x:Name="ScoreLine" ColumnDefinitions="*,Auto,*" MinHeight="100">
-          <!-- Away -->
-          <Grid ColumnDefinitions="6,Auto,*,Auto" VerticalAlignment="Center">
-            <Border Background="{Binding AwayBrush}" CornerRadius="3"/>
-            <c:TeamLogo x:Name="AwayLogo" Grid.Column="1" Team="{Binding AwayTeam}" Width="52" Height="52" Margin="10,0"/>
-            <StackPanel Grid.Column="2" VerticalAlignment="Center">
-              <TextBlock Text="{Binding AwayName}" FontSize="22" FontWeight="Bold" MinWidth="58"/>
-              <TextBlock Text="AWAY" Classes="muted" FontSize="11" LetterSpacing="2"/>
-            </StackPanel>
-            <TextBlock x:Name="AwayScoreText" Grid.Column="3" Text="{Binding AwayScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
+             x:DataType="vm:LiveGameViewModel" Focusable="True">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Space" Command="{Binding PlayPauseCommand}"/>
+    <KeyBinding Gesture="OemPlus" Command="{Binding SpeedUpCommand}"/>
+    <KeyBinding Gesture="Add" Command="{Binding SpeedUpCommand}"/>
+    <KeyBinding Gesture="OemMinus" Command="{Binding SpeedDownCommand}"/>
+    <KeyBinding Gesture="Subtract" Command="{Binding SpeedDownCommand}"/>
+  </UserControl.KeyBindings>
+  <UserControl.Styles>
+    <Style Selector="Border.hud"><Setter Property="Background" Value="#E60A0C12"/><Setter Property="CornerRadius" Value="10"/></Style>
+    <Style Selector="Button.speed"><Setter Property="MinWidth" Value="44"/><Setter Property="Padding" Value="8,4"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
+    <Style Selector="Button.tab"><Setter Property="Padding" Value="10,4"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+  </UserControl.Styles>
+  <!-- M1 of the 2D match engine (run 148, claude/match-engine-2d-design.md): the whole page is the court, top down, in
+       real time. The score bar sits on top, the controls and speeds in the corners, the drawers on the right and the
+       commentary bar at the bottom. Every result still comes from the game engine. -->
+  <Panel x:Name="RootGrid" Background="#12161D" ClipToBounds="True">
+    <c:MatchCourt x:Name="Match" Frame="{Binding MatchFrame}" Dress="{Binding FloorDress}" Markings="{Binding Markings}"
+                  HomeKit="{Binding HomeKit}" HomeTrim="{Binding HomeKitTrim}" AwayKit="{Binding AwayKit}" AwayTrim="{Binding AwayKitTrim}"
+                  Numbers="{Binding Numbers}"/>
+
+    <!-- The score bar: rank, crest, team and score each side; the period and clock; team fouls, the bonus and what each side runs. -->
+    <Border x:Name="ScoreBar" Classes="hud" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="{x:Static v:LiveGameView.ScoreMargin}" Padding="8,8,8,6">
+      <Grid ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto">
+        <Border Background="{Binding AwayBrush}" CornerRadius="7" Padding="10,4" MinWidth="{x:Static v:LiveGameView.SideBlockWidth}">
+          <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+            <TextBlock Text="{Binding AwayRank}" IsVisible="{Binding AwayRanked}" FontSize="13" FontWeight="Bold" Foreground="#F2D58A" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" ShowText="False" Width="30" Height="30" Margin="0,0,8,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding AwayName}" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+            <TextBlock x:Name="AwayScoreText" Grid.Column="3" Text="{Binding BarAwayScore}" FontSize="26" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" Margin="14,0,0,0"/>
           </Grid>
-          <!-- Clock -->
-          <Border Grid.Column="1" Background="#C0101318" CornerRadius="8" Padding="16,6" VerticalAlignment="Center" Margin="10,0">
-            <StackPanel>
-              <TextBlock Text="{Binding Clock}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource HwAccentBrush}"/>
-              <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="11" HorizontalAlignment="Center"/>
-            </StackPanel>
-          </Border>
-          <!-- Home -->
-          <Grid Grid.Column="2" ColumnDefinitions="Auto,*,Auto,6" VerticalAlignment="Center">
-            <TextBlock x:Name="HomeScoreText" Text="{Binding HomeScore}" FontSize="42" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0"/>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-              <TextBlock Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right" MinWidth="58" TextAlignment="Right"/>
-              <TextBlock Text="HOME" Classes="muted" FontSize="11" LetterSpacing="2" HorizontalAlignment="Right"/>
-            </StackPanel>
-            <c:TeamLogo x:Name="HomeLogo" Grid.Column="2" Team="{Binding HomeTeam}" Width="52" Height="52" Margin="10,0"/>
-            <Border Grid.Column="3" Background="{Binding HomeBrush}" CornerRadius="3"/>
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0" MinWidth="92">
+          <TextBlock Text="{Binding BarPeriod}" FontSize="12" FontWeight="Bold" Foreground="#AAB3C2" HorizontalAlignment="Center" LetterSpacing="1"/>
+          <TextBlock x:Name="BarClockText" Text="{Binding BarClock}" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+        </StackPanel>
+        <Border Grid.Column="2" Background="{Binding HomeBrush}" CornerRadius="7" Padding="10,4" MinWidth="{x:Static v:LiveGameView.SideBlockWidth}">
+          <Grid ColumnDefinitions="Auto,Auto,Auto,*">
+            <TextBlock x:Name="HomeScoreText" Text="{Binding BarHomeScore}" FontSize="26" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <TextBlock Grid.Column="1" Text="{Binding HomeRank}" IsVisible="{Binding HomeRanked}" FontSize="13" FontWeight="Bold" Foreground="#F2D58A" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" ShowText="False" Width="30" Height="30" Margin="0,0,8,0"/>
+            <TextBlock Grid.Column="3" Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Right"/>
           </Grid>
-        </Grid>
-          <StackPanel x:Name="ScoreButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
-            <Button Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" MinWidth="80"/>
-            <Button Content="Step" Command="{Binding StepOneCommand}" IsEnabled="{Binding CanStep}" IsVisible="{Binding !Complete}" ToolTip.Tip="Paused: play one possession and stop"/>
-            <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsVisible="{Binding !Complete}"/>
-            <CheckBox Content="Stop at breaks" IsChecked="{Binding PauseAtBreaks}" VerticalAlignment="Center" ToolTip.Tip="Pause at the end of each period for the break card"/>
-            <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="96">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
-                <TextBlock Text="{Binding PlayPauseText}"/>
-              </StackPanel>
-            </Button>
-            <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110"/>
+        </Border>
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,5,0,0" Spacing="3">
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <TextBlock Text="{Binding AwayFouls}" FontSize="11.5" FontWeight="Bold" Foreground="#AAB3C2" VerticalAlignment="Center"/>
+            <Border Background="#F0A33A" CornerRadius="3" Padding="6,0" IsVisible="{Binding AwayInBonus}"><TextBlock Text="{Binding AwayBonus}" FontSize="11" FontWeight="Bold" Foreground="#111"/></Border>
           </StackPanel>
-        </Grid>
-        <!-- Stat ticker (match day part 2): one fact at a time, moving on as the game goes; click for the next. -->
-        <Button Classes="flat" Command="{Binding NextFactCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="#B0101318" CornerRadius="0" Padding="16,4" ToolTip.Tip="Next fact">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="{Binding TickerTag}" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="#F85149" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding Ticker}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          <Border Background="#33FFFFFF" CornerRadius="9" Padding="8,1" HorizontalAlignment="Center"><TextBlock Text="{Binding OffenceTagAway}" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="2" HorizontalAlignment="Center" Margin="0,5,0,0" Spacing="3">
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <Border Background="#F0A33A" CornerRadius="3" Padding="6,0" IsVisible="{Binding HomeInBonus}"><TextBlock Text="{Binding HomeBonus}" FontSize="11" FontWeight="Bold" Foreground="#111"/></Border>
+            <TextBlock Text="{Binding HomeFouls}" FontSize="11.5" FontWeight="Bold" Foreground="#AAB3C2" VerticalAlignment="Center"/>
           </StackPanel>
-        </Button>
+          <Border Background="#33FFFFFF" CornerRadius="9" Padding="8,1" HorizontalAlignment="Center"><TextBlock Text="{Binding OffenceTagHome}" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
         </StackPanel>
       </Grid>
     </Border>
 
-    <Grid x:Name="LeftCol" Grid.Row="1" Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,10,0">
-      <!-- On the floor (Danny, run 45: the whole court, every shot as it happens) and the game flow (roadmap 2: win
-           probability and momentum, quarter splits, run alerts) share one panel, so the play by play keeps its room. -->
-      <Border x:Name="CourtPanel" Classes="panel" Padding="8" Margin="0,0,0,10">
-        <StackPanel Spacing="4">
-          <WrapPanel Margin="4,0,4,4">
-            <Button Content="On the floor" Command="{Binding ToCourtCommand}" Classes.primary="{Binding CourtShown}" Padding="10,3" Margin="0,0,6,0" VerticalAlignment="Center"/>
-            <Button Content="Game flow" Command="{Binding ToFlowCommand}" Classes.primary="{Binding FlowShown}" Padding="10,3" Margin="0,0,6,0" VerticalAlignment="Center"/>
-            <Button Content="Break card" Command="{Binding ReopenBreakCommand}" IsVisible="{Binding CanReopenBreak}" Padding="10,3" Margin="0,0,12,0" VerticalAlignment="Center"
-                    ToolTip.Tip="Bring back this break's card (the read and the numbers)"/>
-            <Border Width="6" IsVisible="{Binding !CanReopenBreak}"/>
-            <Border Background="#26303B" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="{Binding !Complete}">
-              <TextBlock FontSize="11.5"><Run Text="Win chance " Foreground="#8B96A5"/><Run Text="{Binding WinChance}" FontWeight="SemiBold"/></TextBlock>
-            </Border>
-            <Border Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" IsVisible="{Binding HasRunAlert}" VerticalAlignment="Center">
-              <TextBlock Text="{Binding RunAlert}" FontSize="11.5" FontWeight="SemiBold" Foreground="#F0A33A"/>
-            </Border>
-            <!-- The big view (run 85, tracker slice 3): the court takes the window's room; the play by play folds under it. -->
-            <Button x:Name="BigCourtButton" Content="{Binding BigCourtLabel}" Command="{Binding ToggleBigCourtCommand}" IsVisible="{Binding CourtShown}" Padding="10,3" VerticalAlignment="Center"
-                    ToolTip.Tip="Bigger: the court fills the room the window has and the play by play folds under it. Smaller: the court keeps 300 px."/>
-          </WrapPanel>
-          <!-- Match day part 3: the break card, like a broadcast's quarter-break graphic. -->
-          <!-- Scrolls rather than being cut when its chips wrap onto extra lines (big text, narrow window). -->
-          <!-- H57 (run 86): at a break the card takes the court's place in this panel (Hide, On the floor or Game flow bring the
-               court back), so the play by play and box score under it keep all their rows. -->
-          <!-- B4a (run 143): at halftime the HSN desk takes the court's place first; "Break card" switches to the card.
-               B4b (run 145): the postgame show does the same at the final. -->
-          <StackPanel x:Name="HalftimeDesk" IsVisible="{Binding DeskUp}" Spacing="4" Margin="4,0,4,4">
-            <WrapPanel>
-              <TextBlock Text="{Binding DeskName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center" Margin="0,0,12,2"/>
-              <Button Content="Break card" Command="{Binding ToCardCommand}" Padding="8,1" Margin="0,0,6,2" ToolTip.Tip="{Binding CardTip}"/>
-              <Button Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1" Margin="0,0,0,2" ToolTip.Tip="Put the desk away and see the court again; Break card brings it back"/>
-            </WrapPanel>
-            <v:StudioDeskView x:Name="HalftimeSet" DataContext="{Binding HalftimeReel}" HorizontalAlignment="Left"/>
-          </StackPanel>
-          <ScrollViewer x:Name="BreakCard" IsVisible="{Binding CardUp}" MaxHeight="{x:Static v:LiveGameView.BreakCardMax}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <Border Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
-                  CornerRadius="6" Padding="10,8" Margin="4,0,4,4">
-            <StackPanel Spacing="4">
-              <Grid ColumnDefinitions="*,Auto">
-              <WrapPanel>
-                <TextBlock Text="{Binding BreakTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="12" VerticalAlignment="Center"/>
-              </WrapPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0" VerticalAlignment="Top">
-                  <Button Content="{Binding DeskButton}" Command="{Binding ToDeskCommand}" IsVisible="{Binding HasDesk}" Padding="8,1"
-                          ToolTip.Tip="{Binding DeskButtonTip}"/>
-                  <Button Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1"
-                          ToolTip.Tip="Put the card away and see the court again; Break card brings it back"/>
-                </StackPanel>
-              </Grid>
-              <TextBlock Text="{Binding BreakLine}" TextWrapping="Wrap"/>
-              <!-- D75 A (run 69): the assistant's halftime read as a one-click suggestion. -->
-              <Border IsVisible="{Binding HasReadSuggestion}" Background="#1C2430" BorderBrush="#E0A93B" BorderThickness="3,0,0,0"
-                      CornerRadius="4" Padding="10,6" Margin="0,2,0,2">
-                <Grid ColumnDefinitions="*,Auto">
-                  <StackPanel Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding ReadTitle}" FontWeight="Bold" Foreground="#E0A93B"/>
-                    <TextBlock Text="{Binding ReadLine}" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding ReadNote}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="10,0,0,0">
-                    <Button Content="Apply the read" Command="{Binding ApplyReadCommand}" IsVisible="{Binding CanApplyRead}" Classes="primary"/>
-                    <Button Content="Undo" Command="{Binding UndoReadCommand}" IsVisible="{Binding ReadApplied}"/>
-                  </StackPanel>
-                </Grid>
-              </Border>
-              <c:StatStrip ItemsSource="{Binding BreakChips}" Accent="{DynamicResource HwAccent}"/>
+    <!-- Top left: play, step, sim and the break setting, and the speeds under them (Space pauses, + and - change the speed). -->
+    <StackPanel x:Name="LeftStack" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0" Spacing="8" Width="{x:Static v:LiveGameView.CornerWidth}">
+    <Border x:Name="MatchControls" Classes="hud" Padding="8">
+      <StackPanel Spacing="6">
+        <WrapPanel x:Name="ScoreButtons">
+          <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="88" Margin="0,0,6,6" ToolTip.Tip="Play or pause (Space)">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
+              <TextBlock Text="{Binding PlayPauseText}"/>
             </StackPanel>
-          </Border>
-          </ScrollViewer>
-          <!-- The 2D tracker (D67 B, run 80): the latest play in words over the court that draws it. -->
-          <!-- The caption above the court: the flat court's, and the arena's when it's too small for its own caption bar (code-behind). -->
-          <Panel x:Name="CaptionPanel">
-            <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
-          </Panel>
-          <!-- B2a (run 140): a college game in the arena (tools/Render/arena.py): the floor in perspective, dressed for the
-               home program or the event, the crowd in its colours, the play caption bar and the broadcast score bug. -->
-          <Panel IsVisible="{Binding CourtShown}">
-          <!-- The flat court (the pros, and a build without the arena frame) comes first, so it is the page's first LiveCourt. -->
-          <Grid IsVisible="{Binding FlatCourt}" HorizontalAlignment="Center">
-            <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding FlatFrame}" MotionMs="{Binding MotionMs}"
-                         FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
-            <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
-            <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
-          </Grid>
-          <Viewbox x:Name="ArenaBox" IsVisible="{Binding InArena}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Center">
-            <Grid Width="1600" Height="900">
-              <c:LiveCourt x:Name="ArenaCourt" Arena="{Binding Arena}" Dress="{Binding Dress}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                           HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" Frame="{Binding ArenaFrame}" MotionMs="{Binding MotionMs}"/>
-              <Border x:Name="AwayFloorPanel" VerticalAlignment="Top" HorizontalAlignment="Left" Width="600" Margin="20,16,20,0"
-                      CornerRadius="8" ClipToBounds="True" Background="#E60B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
-                <StackPanel>
-                  <Border Background="{Binding AwayBrush}" Padding="16,6">
-                    <TextBlock Text="{Binding AwayFloorTitle}" FontSize="28" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
-                  </Border>
-                  <Grid ColumnDefinitions="58,*,56,56,56,46,92" Margin="16,6,16,0">
-                    <TextBlock Grid.Column="2" Text="PTS" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="3" Text="REB" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="4" Text="AST" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="5" Text="PF" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="6" Text="FG" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                  </Grid>
-                  <ItemsControl ItemsSource="{Binding AwayFloor}" Margin="16,0,16,10">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:FloorPanelRow">
-                        <Grid ColumnDefinitions="58,*,56,56,56,46,92" RowDefinitions="Auto,12" Margin="0,2">
-                          <TextBlock Text="{Binding Pos}" FontSize="22" FontWeight="Bold" Foreground="#9AA5B4" VerticalAlignment="Center"/>
-                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="28" FontWeight="SemiBold" Foreground="White"/>
-                          <TextBlock Grid.Column="2" Text="{Binding Pts}" FontSize="28" FontWeight="Bold" Foreground="White" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="3" Text="{Binding Reb}" FontSize="28" Foreground="White" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="4" Text="{Binding Ast}" FontSize="28" Foreground="White" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="5" Text="{Binding Pf}" FontSize="28" Foreground="{Binding PfBrush}" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="6" Text="{Binding Fg}" FontSize="28" Foreground="White" TextAlignment="Right"/>
-                          <!-- The energy bar: the engine's own energy (green 85%+, yellow 70-84%, red below 70%). -->
-                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{x:Static vm:FloorPanelRow.BarMax}" Height="8" CornerRadius="4"
-                                  Background="#30FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
-                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{Binding BarWidth}" Height="8" CornerRadius="4"
-                                  Background="{Binding BarBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Border>
-              <Border x:Name="HomeFloorPanel" VerticalAlignment="Top" HorizontalAlignment="Right" Width="600" Margin="20,16,20,0"
-                      CornerRadius="8" ClipToBounds="True" Background="#E60B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
-                <StackPanel>
-                  <Border Background="{Binding HomeBrush}" Padding="16,6">
-                    <TextBlock Text="{Binding HomeFloorTitle}" FontSize="28" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
-                  </Border>
-                  <Grid ColumnDefinitions="58,*,56,56,56,46,92" Margin="16,6,16,0">
-                    <TextBlock Grid.Column="2" Text="PTS" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="3" Text="REB" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="4" Text="AST" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="5" Text="PF" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                    <TextBlock Grid.Column="6" Text="FG" FontSize="20" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
-                  </Grid>
-                  <ItemsControl ItemsSource="{Binding HomeFloor}" Margin="16,0,16,10">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:FloorPanelRow">
-                        <Grid ColumnDefinitions="58,*,56,56,56,46,92" RowDefinitions="Auto,12" Margin="0,2">
-                          <TextBlock Text="{Binding Pos}" FontSize="22" FontWeight="Bold" Foreground="#9AA5B4" VerticalAlignment="Center"/>
-                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="28" FontWeight="SemiBold" Foreground="White"/>
-                          <TextBlock Grid.Column="2" Text="{Binding Pts}" FontSize="28" FontWeight="Bold" Foreground="White" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="3" Text="{Binding Reb}" FontSize="28" Foreground="White" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="4" Text="{Binding Ast}" FontSize="28" Foreground="White" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="5" Text="{Binding Pf}" FontSize="28" Foreground="{Binding PfBrush}" TextAlignment="Right"/>
-                          <TextBlock Grid.Column="6" Text="{Binding Fg}" FontSize="28" Foreground="White" TextAlignment="Right"/>
-                          <!-- The energy bar: the engine's own energy (green 85%+, yellow 70-84%, red below 70%). -->
-                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{x:Static vm:FloorPanelRow.BarMax}" Height="8" CornerRadius="4"
-                                  Background="#30FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
-                          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Width="{Binding BarWidth}" Height="8" CornerRadius="4"
-                                  Background="{Binding BarBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Border>
-              <!-- The jumbotron, hung over centre court: the half and clock (the break's name at a break) and the team comparison. -->
-              <StackPanel x:Name="Jumbotron" VerticalAlignment="Top" HorizontalAlignment="Center" Width="320" Margin="0,0,0,0">
-                <Grid ColumnDefinitions="*,*" Height="14">
-                  <Border Width="4" Background="#2A2F36" HorizontalAlignment="Center"/>
-                  <Border Grid.Column="1" Width="4" Background="#2A2F36" HorizontalAlignment="Center"/>
-                </Grid>
-                <Border Background="#F2050608" BorderBrush="#3C434C" BorderThickness="6" CornerRadius="6" Padding="10,6,10,8">
-                  <StackPanel>
-                    <TextBlock Text="{Binding BoardTitle}" FontSize="24" FontWeight="Black" Foreground="#FF6A3D" HorizontalAlignment="Center" LetterSpacing="1"/>
-                    <Grid ColumnDefinitions="90,*,*" Margin="0,2,0,2">
-                      <TextBlock Grid.Column="1" Text="{Binding AwayName}" FontSize="26" FontWeight="Black" Foreground="White" TextAlignment="Right"/>
-                      <TextBlock Grid.Column="2" Text="{Binding HomeName}" FontSize="26" FontWeight="Black" Foreground="White" TextAlignment="Right"/>
-                    </Grid>
-                    <Border Height="3" Background="#2A3038" Margin="0,0,0,2"/>
-                    <ItemsControl ItemsSource="{Binding JumboRows}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:JumboRow">
-                          <Grid ColumnDefinitions="90,*,*" Height="30">
-                            <TextBlock Text="{Binding Label}" FontSize="22" FontWeight="Bold" Foreground="#7D8794" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Away}" FontSize="26" FontWeight="Bold" Foreground="{Binding AwayBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="2" Text="{Binding Home}" FontSize="26" FontWeight="Bold" Foreground="{Binding HomeBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
-                          </Grid>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </Border>
-                <!-- Momentum: the last four minutes played, the away colour from the left and the home colour from the right. -->
-                <Border x:Name="MomentumChip" Background="#E60B0E14" CornerRadius="6" Padding="10,4,10,8" Margin="0,8,0,0" HorizontalAlignment="Stretch">
-                  <StackPanel Spacing="4">
-                    <TextBlock FontSize="20" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"><Run Text="MOMENTUM (4 MIN) " Foreground="#9AA5B4"/><Run Text="{Binding Momentum.Label}"/></TextBlock>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                      <Border Width="{Binding MomentumAwayWidth}" Height="8" Background="{Binding AwayBrush}" CornerRadius="4,0,0,4"/>
-                      <Border Width="{Binding MomentumHomeWidth}" Height="8" Background="{Binding HomeBrush}" CornerRadius="0,4,4,0"/>
-                    </StackPanel>
-                  </StackPanel>
-                </Border>
-              </StackPanel>
-              <!-- The offence and defence tags on the floor: away attacks the left basket, home the right. -->
-              <Border x:Name="AwayTagChip" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="40,0,0,150" CornerRadius="5" Padding="14,4"
-                      Background="{Binding AwayBrush}" Opacity="{Binding AwayTagOpacity}">
-                <TextBlock Text="{Binding AwayTag}" FontSize="26" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
-              </Border>
-              <Border x:Name="HomeTagChip" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,40,150" CornerRadius="5" Padding="14,4"
-                      Background="{Binding HomeBrush}" Opacity="{Binding HomeTagOpacity}">
-                <TextBlock Text="{Binding HomeTag}" FontSize="26" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
-              </Border>
-              <!-- The play caption, above the score bug (B2b: the jumbotron and the panels now hold the top of the frame). -->
-              <Border x:Name="ArenaCaption" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,140" MaxWidth="840" Background="#E00B0E14"
-                      CornerRadius="6" Padding="22,8" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="6,0,0,0">
-                <TextBlock Text="{Binding PlayCaption}" FontSize="30" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
-              </Border>
-              <!-- The score bug: rank, crest, team, score; the half and the clock; team fouls and the bonus. -->
-              <Border x:Name="ScoreBug" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" CornerRadius="8" ClipToBounds="True"
-                      Background="#F20B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
-                <Grid ColumnDefinitions="Auto,Auto,Auto">
-                  <Grid ColumnDefinitions="12,Auto,Auto,Auto">
-                    <Border Background="{Binding AwayBrush}"/>
-                    <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" Width="72" Height="72" ShowRank="False" Margin="14,8"/>
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="150">
-                      <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="{Binding AwayRank}" IsVisible="{Binding AwayRanked}" FontSize="26" FontWeight="SemiBold" Foreground="#9AA5B4" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding AwayName}" FontSize="40" FontWeight="Black" Foreground="White"/>
-                      </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="{Binding AwayFouls}" FontSize="20" Foreground="#9AA5B4" FontWeight="SemiBold"/>
-                        <Border Background="#F0A33A" CornerRadius="3" Padding="7,0" IsVisible="{Binding AwayInBonus}">
-                          <TextBlock Text="{Binding AwayBonus}" FontSize="18" FontWeight="Bold" Foreground="#101318"/>
-                        </Border>
-                      </StackPanel>
-                    </StackPanel>
-                    <TextBlock Grid.Column="3" Text="{Binding AwayScore}" FontSize="64" FontWeight="Black" Foreground="White" VerticalAlignment="Center" MinWidth="110" TextAlignment="Right" Margin="10,0,22,0"/>
-                  </Grid>
-                  <Border Grid.Column="1" Background="#1A2130" MinWidth="230" Padding="18,6">
-                    <StackPanel VerticalAlignment="Center">
-                      <TextBlock Text="{Binding BugPeriod}" FontSize="24" FontWeight="Bold" Foreground="#C9D1D9" HorizontalAlignment="Center" LetterSpacing="1.5"/>
-                      <TextBlock Text="{Binding BugClock}" FontSize="44" FontWeight="Black" Foreground="{DynamicResource HwAccentBrush}" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </Border>
-                  <Grid Grid.Column="2" ColumnDefinitions="Auto,Auto,Auto,12">
-                    <TextBlock Text="{Binding HomeScore}" FontSize="64" FontWeight="Black" Foreground="White" VerticalAlignment="Center" MinWidth="110" Margin="22,0,10,0"/>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="150">
-                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <TextBlock Text="{Binding HomeRank}" IsVisible="{Binding HomeRanked}" FontSize="26" FontWeight="SemiBold" Foreground="#9AA5B4" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding HomeName}" FontSize="40" FontWeight="Black" Foreground="White"/>
-                      </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-                        <Border Background="#F0A33A" CornerRadius="3" Padding="7,0" IsVisible="{Binding HomeInBonus}">
-                          <TextBlock Text="{Binding HomeBonus}" FontSize="18" FontWeight="Bold" Foreground="#101318"/>
-                        </Border>
-                        <TextBlock Text="{Binding HomeFouls}" FontSize="20" Foreground="#9AA5B4" FontWeight="SemiBold"/>
-                      </StackPanel>
-                    </StackPanel>
-                    <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" Width="72" Height="72" ShowRank="False" Margin="14,8"/>
-                    <Border Grid.Column="3" Background="{Binding HomeBrush}"/>
-                  </Grid>
-                </Grid>
-              </Border>
-            </Grid>
-          </Viewbox>
-          </Panel>
-          <TextBlock Text="{Binding CourtLegend}" ToolTip.Tip="{Binding CourtLegendTip}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
-          <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding FlowShown}">
-          <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
-          <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:SplitRow">
-                <StackPanel Orientation="Horizontal" Margin="0,2" Opacity="{Binding Opacity}">
-                  <TextBlock Text="{Binding Team}" Width="44" FontWeight="SemiBold" FontSize="12"/>
-                  <ItemsControl ItemsSource="{Binding Cells}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Width="30" TextAlignment="Center" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <TextBlock Text="{Binding Total}" Width="34" TextAlignment="Right" FontWeight="Bold" FontSize="12"/>
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          </Grid>
-        </StackPanel>
-      </Border>
+          </Button>
+          <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" MinWidth="110" Margin="0,0,6,6"/>
+          <Button Content="Step" Command="{Binding StepOneCommand}" IsEnabled="{Binding CanStep}" IsVisible="{Binding !Complete}" Margin="0,0,6,6" ToolTip.Tip="Paused: play one possession and stop"/>
+          <Button Content="Sim to end" Command="{Binding SimToEndCommand}" IsVisible="{Binding !Complete}" Margin="0,0,6,6"/>
+          <Button Content="Break card" Command="{Binding ReopenBreakCommand}" IsVisible="{Binding CanReopenBreak}" Margin="0,0,6,6"/>
+          <Button x:Name="SpeedCycle" Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" IsVisible="False" MinWidth="64" Margin="0,0,6,6" ToolTip.Tip="The speed: 1×, 2×, 4×, 8× or Key moments (+ and - too)"/>
+        </WrapPanel>
+        <CheckBox Content="Stop at breaks" IsChecked="{Binding PauseAtBreaks}" Foreground="White" ToolTip.Tip="Pause at the end of each period for the break card"/>
+      </StackPanel>
+    </Border>
 
+    <Border x:Name="SpeedBar" Classes="hud" Padding="6">
+      <WrapPanel>
+        <Button Classes="speed" Classes.primary="{Binding Speed1}" Content="1×" Command="{Binding SetSpeedCommand}" CommandParameter="1" Margin="0,0,4,4" ToolTip.Tip="Real time: the game clock runs as it does in the arena"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed2}" Content="2×" Command="{Binding SetSpeedCommand}" CommandParameter="2" Margin="0,0,4,4"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed4}" Content="4×" Command="{Binding SetSpeedCommand}" CommandParameter="4" Margin="0,0,4,4"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed8}" Content="8×" Command="{Binding SetSpeedCommand}" CommandParameter="8" Margin="0,0,4,4"/>
+        <Button Classes="speed" Classes.primary="{Binding SpeedKey}" Content="Key" Command="{Binding SetSpeedCommand}" CommandParameter="key" Margin="0,0,0,4" ToolTip.Tip="Key moments: baskets, blocks, steals and the late, close possessions at 2×; the rest flies by"/>
+      </WrapPanel>
+    </Border>
+    </StackPanel>
 
-      <!-- Play by play (folds under the big court, keeping at least LiveGameView.MinLogHeight) -->
-      <Border x:Name="LogPanel" Grid.Row="1" Classes="panel" Padding="8">
+    <!-- The drawers on the right: the box score, the play by play, tactics, subs, shots, stats and the game flow. -->
+    <Border x:Name="DrawerTabs" Classes="hud" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" Padding="4" IsVisible="{Binding ShowDrawerTabs}">
+      <StackPanel Spacing="4" Width="112">
+        <Button Classes="tab" Content="Box score" Command="{Binding OpenDrawerCommand}" CommandParameter="0"/>
+        <Button Classes="tab" Content="Play by play" Command="{Binding OpenDrawerCommand}" CommandParameter="1"/>
+        <Button Classes="tab" Content="Tactics" Command="{Binding OpenDrawerCommand}" CommandParameter="2"/>
+        <Button Classes="tab" Content="Subs" Command="{Binding OpenDrawerCommand}" CommandParameter="3"/>
+        <Button Classes="tab" Content="Shots" Command="{Binding OpenDrawerCommand}" CommandParameter="4"/>
+        <Button Classes="tab" Content="Stats" Command="{Binding OpenDrawerCommand}" CommandParameter="5"/>
+        <Button Classes="tab" Content="Game flow" Command="{Binding OpenDrawerCommand}" CommandParameter="6"/>
+      </StackPanel>
+    </Border>
+    <Border x:Name="Drawer" Classes="hud" Background="#F2141920" HorizontalAlignment="Right" Width="{x:Static v:LiveGameView.DrawerWidth}" Margin="0,124,8,62"
+            Padding="8" IsVisible="{Binding DrawerOpen}">
+      <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="4,0,0,6">
+          <TextBlock Text="{Binding DrawerTitle}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+          <Button Grid.Column="1" Content="Close" Command="{Binding CloseDrawerCommand}" Padding="10,3"/>
+        </Grid>
+        <TextBlock x:Name="LogHeadline" DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,6" TextWrapping="Wrap"/>
+        <Panel>
+      <Border x:Name="LogPanel" Padding="4" IsVisible="{Binding DrawerLog}">
         <DockPanel>
           <StackPanel x:Name="LogTabs" DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="4,0,4,6">
             <Button Content="Play by play" Command="{Binding ToLogCommand}" Classes.primary="{Binding ShowLog}" Padding="10,3"/>
             <Button x:Name="BoxTab" Content="Box score" Command="{Binding ToBoxCommand}" Classes.primary="{Binding ShowBox}" Padding="10,3"/>
           </StackPanel>
-          <TextBlock x:Name="LogHeadline" DockPanel.Dock="Top" Text="{Binding Headline}" Classes="muted" Margin="4,0,4,2" TextWrapping="Wrap"/>
-          <TextBlock x:Name="LogStatus" DockPanel.Dock="Top" Text="{Binding Status}" Classes="accent" Margin="4,0,4,6" TextWrapping="Wrap"/>
           <ListBox ItemsSource="{Binding Log}" Background="Transparent" FontFamily="Consolas,Menlo,monospace" FontSize="12.5" IsVisible="{Binding ShowLog}">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Margin="0,-2" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
@@ -428,11 +189,7 @@
           </ScrollViewer>
         </DockPanel>
       </Border>
-    </Grid>
-
-    <!-- Bench and controls: lineup and tactics on tabs, so tactics never sit below the fold -->
-    <!-- B4a (run 143): the halftime desk takes the whole width (a theatre view); the tabs come back with the card. -->
-    <TabControl x:Name="SideTabs" Grid.Row="1" Grid.Column="1" Padding="0">
+    <TabControl x:Name="SideTabs" Padding="0" SelectedIndex="{Binding SideTab}" IsVisible="{Binding DrawerSide}">
       <TabItem Header="Lineup">
         <ScrollViewer>
           <StackPanel Spacing="10">
@@ -555,5 +312,94 @@
         </ScrollViewer>
       </TabItem>
     </TabControl>
-  </Grid>
+          <ScrollViewer x:Name="FlowDrawer" IsVisible="{Binding DrawerFlow}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>
+          <ItemsControl x:Name="FlowSplits" Grid.Column="1" ItemsSource="{Binding Splits}" Margin="12,14,4,0" VerticalAlignment="Top">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SplitRow">
+                <StackPanel Orientation="Horizontal" Margin="0,2" Opacity="{Binding Opacity}">
+                  <TextBlock Text="{Binding Team}" Width="44" FontWeight="SemiBold" FontSize="12"/>
+                  <ItemsControl ItemsSource="{Binding Cells}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Width="30" TextAlignment="Center" FontSize="12"/></DataTemplate></ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding Total}" Width="34" TextAlignment="Right" FontWeight="Bold" FontSize="12"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          </Grid>
+          </ScrollViewer>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- The break: the HSN desk at halftime and the final, or the break card, over the court. -->
+    <Border x:Name="BreakOverlay" Classes="hud" Background="#F20F1318" IsVisible="{Binding ShowBreak}" HorizontalAlignment="Center" VerticalAlignment="Center"
+            MaxWidth="{x:Static v:LiveGameView.BreakWidth}" Margin="16,120,16,80" Padding="6">
+      <StackPanel>
+          <StackPanel x:Name="HalftimeDesk" IsVisible="{Binding DeskUp}" Spacing="4" Margin="4,0,4,4">
+            <WrapPanel>
+              <TextBlock Text="{Binding DeskName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Center" Margin="0,0,12,2"/>
+              <Button Content="Break card" Command="{Binding ToCardCommand}" Padding="8,1" Margin="0,0,6,2" ToolTip.Tip="{Binding CardTip}"/>
+              <Button Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1" Margin="0,0,0,2" ToolTip.Tip="Put the desk away and see the court again; Break card brings it back"/>
+              <!-- M1 (run 148): the desk takes the controls' corner, so it carries the way on. -->
+              <Button Classes="primary" Content="Play on" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" Padding="10,1" Margin="6,0,0,2" ToolTip.Tip="Put the desk away and play the next period"/>
+              <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" Padding="10,1" Margin="6,0,0,2" ToolTip.Tip="Record the result and move on"/>
+            </WrapPanel>
+            <v:StudioDeskView x:Name="HalftimeSet" DataContext="{Binding HalftimeReel}" HorizontalAlignment="Left"/>
+          </StackPanel>
+          <ScrollViewer x:Name="BreakCard" IsVisible="{Binding CardUp}" MaxHeight="{x:Static v:LiveGameView.BreakCardMax}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Border Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
+                  CornerRadius="6" Padding="10,8" Margin="4,0,4,4">
+            <StackPanel Spacing="4">
+              <Grid ColumnDefinitions="*,Auto">
+              <WrapPanel>
+                <TextBlock Text="{Binding BreakTitle}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource HwAccentBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="{Binding PeriodLine}" Classes="muted" FontFamily="Consolas,Menlo,monospace" FontSize="12" VerticalAlignment="Center"/>
+              </WrapPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0" VerticalAlignment="Top">
+                  <Button Content="{Binding DeskButton}" Command="{Binding ToDeskCommand}" IsVisible="{Binding HasDesk}" Padding="8,1"
+                          ToolTip.Tip="{Binding DeskButtonTip}"/>
+                  <Button Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1"
+                          ToolTip.Tip="Put the card away and see the court again; Break card brings it back"/>
+                </StackPanel>
+              </Grid>
+              <TextBlock Text="{Binding BreakLine}" TextWrapping="Wrap"/>
+              <!-- D75 A (run 69): the assistant's halftime read as a one-click suggestion. -->
+              <Border IsVisible="{Binding HasReadSuggestion}" Background="#1C2430" BorderBrush="#E0A93B" BorderThickness="3,0,0,0"
+                      CornerRadius="4" Padding="10,6" Margin="0,2,0,2">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ReadTitle}" FontWeight="Bold" Foreground="#E0A93B"/>
+                    <TextBlock Text="{Binding ReadLine}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding ReadNote}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="10,0,0,0">
+                    <Button Content="Apply the read" Command="{Binding ApplyReadCommand}" IsVisible="{Binding CanApplyRead}" Classes="primary"/>
+                    <Button Content="Undo" Command="{Binding UndoReadCommand}" IsVisible="{Binding ReadApplied}"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
+              <c:StatStrip ItemsSource="{Binding BreakChips}" Accent="{DynamicResource HwAccent}"/>
+            </StackPanel>
+          </Border>
+          </ScrollViewer>
+      </StackPanel>
+    </Border>
+
+    <!-- The commentary bar: one line at a time, bold for the big moments; the run alert at the right. -->
+    <Border x:Name="CommentaryBar" VerticalAlignment="Bottom" Background="{Binding CommentaryBrush}" BorderBrush="{Binding HomeTrimBrush}" BorderThickness="0,3,0,0" MinHeight="54">
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="16,6">
+        <TextBlock x:Name="CommentaryTag" Text="HSN LIVE" FontSize="13" FontWeight="Bold" Foreground="#F6E3B0" VerticalAlignment="Center" Margin="0,0,16,0"/>
+        <TextBlock x:Name="CommentaryText" Grid.Column="1" Text="{Binding Commentary}" FontSize="20" FontWeight="{Binding CommentaryWeight}" Foreground="White"
+                   TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        <Border Grid.Column="2" Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="16,0,0,0" IsVisible="{Binding HasRunAlert}" VerticalAlignment="Center">
+          <TextBlock Text="{Binding RunAlert}" Foreground="#F0A33A" FontSize="12" FontWeight="SemiBold"/>
+        </Border>
+        <TextBlock x:Name="LogStatus" Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding Status}" Foreground="#F6E3B0" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding HasStatus}" Margin="0,2,0,0"/>
+      </Grid>
+    </Border>
+  </Panel>
 </UserControl>

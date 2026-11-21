@@ -16,6 +16,34 @@ public partial class MainWindow : Window
         {
             if (e.Property == BoundsProperty) FitPage();
         };
+        DataContextChanged += (_, _) =>
+        {
+            if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
+            _vm = DataContext as ViewModels.MainViewModel;
+            if (_vm != null) _vm.PropertyChanged += OnVmChanged;
+            FitLive();
+        };
+    }
+
+    private ViewModels.MainViewModel? _vm;
+    private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModels.MainViewModel.InLiveGame)) FitLive();
+    }
+
+    /// <summary>M1 (run 148): a live game takes the whole page: the sidebar folds away (it is locked during a game anyway)
+    /// and the page loses its padding, so the court fills the window as in Football Manager's match view.</summary>
+    public const double LivePageMinHeight = 540;
+    private bool _live;
+    private void FitLive()
+    {
+        bool live = _vm?.InLiveGame == true;
+        if (live == _live && Sidebar.IsVisible == !live) return;
+        _live = live;
+        Sidebar.IsVisible = !live;
+        ShellGrid.ColumnDefinitions[0].Width = new GridLength(live ? 0 : 210);
+        PageHost.Padding = new Thickness(live ? 0 : 16);
+        FitPage();
     }
 
     private readonly Controls.Reflow _topReflow;
@@ -29,7 +57,7 @@ public partial class MainWindow : Window
 
     private void FitPage()
     {
-        double h = Math.Max(PageScroll.Bounds.Height, MinPageHeight);
+        double h = Math.Max(PageScroll.Bounds.Height, _live ? LivePageMinHeight : MinPageHeight);
         if (Math.Abs(PageHost.Height - h) > 0.5 || double.IsNaN(PageHost.Height)) PageHost.Height = h;
     }
 

@@ -149,10 +149,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
 
     /// <summary>How long the tracker's motion lasts (run 83): most of a tick at Slow and Normal, none at Fast (too quick
     /// to follow), and the full glide when you Step while paused.</summary>
-    public double MotionMs => Running ? Hardwood.Desktop.Controls.TrackerMotion.DurationFor(_speedsMs[_speed]) : 650;
+    public double MotionMs => 0;
     partial void OnShowCourtChanged(bool value) { OnPropertyChanged(nameof(ShowFlow)); OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); }
     partial void OnShowBreakChanged(bool value)
     {
+        OnPropertyChanged(nameof(ShowDrawerTabs));
         OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); OnPropertyChanged(nameof(CanReopenBreak));
         OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan));
         if (!value) HalftimeReel?.StopAutorun();
@@ -181,13 +182,13 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public string DeskButtonTip => PostgameDesk ? "Back to the HSN postgame show: the final, the player of the game, how it was won and what it means"
         : "Back to the HSN desk: the half's story, the stat that decided it and the pick";
     public string CardTip => PostgameDesk ? "The final's numbers and highlights" : "The numbers and the assistant's halftime read";
-    [RelayCommand] private void ToDesk() { if (HalftimeReel != null) { DeskShown = true; ShowBreak = true; } }
-    [RelayCommand] private void ToCard() { DeskShown = false; ShowBreak = true; }
+    [RelayCommand] private void ToDesk() { if (HalftimeReel != null) { Drawer = -1; DeskShown = true; ShowBreak = true; } }
+    [RelayCommand] private void ToCard() { Drawer = -1; DeskShown = false; ShowBreak = true; }
     // The card of the current break or the final, put away with Hide / On the floor / Game flow, comes back with "Break card"
     // until play goes on (code review, run 86).
     private bool _breakCardUp;
     public bool CanReopenBreak => _breakCardUp && !ShowBreak;
-    [RelayCommand] private void ReopenBreak() { if (_breakCardUp) ShowBreak = true; }
+    [RelayCommand] private void ReopenBreak() { if (_breakCardUp) { Drawer = -1; ShowBreak = true; } }
     private void EndBreakCard() { _breakCardUp = false; ShowBreak = false; DeskShown = false; HalftimeReel = null; OnPropertyChanged(nameof(CanReopenBreak)); }
     public Avalonia.Media.Color HomeDot => Bright(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color AwayDot => Bright(Distinct(AwayTeam, Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor)));
@@ -331,7 +332,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     [ObservableProperty] private string _clock = "";
     [ObservableProperty] private bool _running;
     [ObservableProperty] private bool _complete;
-    [ObservableProperty] private string _speedLabel = "Normal";
+    [ObservableProperty] private string _speedLabel = "1×";
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _periodLine = "";
     public ObservableCollection<string> Log { get; } = new();
@@ -363,14 +364,13 @@ public sealed partial class LiveGameViewModel : PageViewModel
     }
     public bool DoubleStar { get => Us.Tactic.DoubleStar; set { Us.Tactic.DoubleStar = value; OnPropertyChanged(); } }
 
-    private readonly int[] _speedsMs = { 700, 250, 60 };
-    private int _speed = 1;
 
     public LiveGameViewModel(MainViewModel shell, GameSimulator.LiveGame live, List<GameResult> played) : base(shell)
     {
         _live = live; _played = played;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_speedsMs[_speed]) };
-        _timer.Tick += (_, _) => Tick();
+        // M1 (run 148): a frame clock (about 60 a second) plays each possession out over its real game-clock time.
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _timer.Tick += (_, _) => FrameTick();
 
         var ours = _live.Result.Home.Team == Us ? _live.Result.Home : _live.Result.Away;
         foreach (var p in ours.Lines.Where(l => Us.Roster.Contains(l.Player) && l.Player.IsAvailable(Session.Today)).Select(l => l.Player).OrderByDescending(p => p.Overall))
@@ -388,6 +388,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         }
         // K10 (run 136): the assistant's panel reads this game while it's on.
         Shell.Guide.SetLive(() => Hardwood.Core.Guide.Assistant.LiveRead(_live.Result, Us, _live.PeriodText, _live.ClockText, _live.Complete));
+        InitMatch();
         Refresh();
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
@@ -484,30 +485,25 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (value) Refresh();   // H71: the top bar's line turns to the result
     }
 
-    private void Tick() => Advance(_speed == 2 ? 3 : 1);
-
     /// <summary>While paused: play one possession and stop (the tracker's step control).</summary>
     [RelayCommand]
     public void StepOne()
     {
         if (Complete || Running) return;
         EndBreakCard();
-        Advance(1);
+        // M1: finish the possession on screen, or play the next one straight to its end.
+        // Review (run 148): a possession paused mid-play jumps to its end too.
+        if (_script == null) BeginPossession();
+        if (_script != null) _scriptT = _script.Length;
+        ShowFrame();
+        FinishPossession();
         if (!Complete && !Running && !ShowBreak) Status = "Stepped one possession. Step again, or press Play.";
     }
     public bool CanStep => !Complete && !Running;
 
-    private void Advance(int steps)
+    /// <summary>After a possession has played out (or been stepped): the final, or a break, or play on.</summary>
+    private void AfterStep(bool periodEnded)
     {
-        // A few possessions per tick at the faster speeds keeps the log readable without being sluggish.
-        bool periodEnded = false;
-        for (int i = 0; i < steps && !_live.Complete && !periodEnded; i++)
-        {
-            int before = _live.Log.Count;
-            _live.Step();
-            for (int k = before; k < _live.Log.Count; k++) if (_live.Log[k].Contains("End of period")) periodEnded = true;
-        }
-        Refresh();
         if (_live.Complete)
         {
             _timer.Stop(); Running = false; Complete = true;
@@ -594,6 +590,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         }
         else { HalftimeReel = null; DeskShown = false; }
         _breakCardUp = true;
+        Drawer = -1;
         ShowBreak = true;
         OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan));
     }
@@ -695,16 +692,17 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public override void Refresh()
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
+        if (_script == null) { BarAwayScore = AwayScore; BarHomeScore = HomeScore; BarClock = BugClock; BarPeriod = BugPeriod; }
         // Run 144 (broadcast check): the top scoreboard read "H2 0:00" at halftime (the arena's bug was fixed in run 141).
         // Run 145: it read "H2 0:00" at the final too.
         string? breakText = _live.Complete ? (_live.Result.Overtimes == 0 ? "FINAL" : _live.Result.Overtimes == 1 ? "FINAL/OT" : $"FINAL/{_live.Result.Overtimes}OT")
             : BetweenPeriods ? ((_live.Period - 1) * 2 == _live.Result.Periods ? "HALFTIME" : "BREAK") : null;
         Clock = breakText ?? $"{_live.PeriodText}  {_live.ClockText}";
-        if (InArena) foreach (var n in BugProps) OnPropertyChanged(n);
+        foreach (var n in BugProps) OnPropertyChanged(n);   // M1: the score bar on every game reads these
         Shell.Guide.LiveTick();
         var r = _live.Result;
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";
-        Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, breakText == "HALFTIME" ? "Halftime" : _live.PeriodText, _live.Complete,
+        Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, breakText == "HALFTIME" ? "Halftime" : _live.Period == 0 ? (r.Periods == 2 ? "H1" : "Q1") : _live.PeriodText, _live.Complete,
             r.Home.Team == Us ? HomeScore : AwayScore, r.Home.Team == Us ? AwayScore : HomeScore);
         // H106 (run 112): with FINAL on screen the bar said "1-0 · Final: L 123-129"; the record counts this game already.
         if (_live.Complete && Session.Employed && Session.LiveGameCountsInRecord)
@@ -801,7 +799,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         if (Complete) return;
         if (Running) { _timer.Stop(); Running = false; Status = "Paused. Change your lineup or tactics, then press Play."; }
-        else { _timer.Start(); Running = true; Status = ""; EndBreakCard(); }
+        else { _sw.Restart(); _lastFrame = TimeSpan.Zero; _timer.Start(); Running = true; Status = ""; EndBreakCard(); }
     }
 
     /// <summary>Skip the ticker to its next fact.</summary>
@@ -814,13 +812,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     }
 
     [RelayCommand]
-    public void CycleSpeed()
-    {
-        _speed = (_speed + 1) % _speedsMs.Length;
-        _timer.Interval = TimeSpan.FromMilliseconds(_speedsMs[_speed]);
-        SpeedLabel = _speed switch { 0 => "Slow", 1 => "Normal", _ => "Fast" };
-        OnPropertyChanged(nameof(MotionMs));
-    }
+    public void CycleSpeed() => SpeedIndex = (SpeedIndex + 1) % (KeySpeed + 1);
 
     [RelayCommand]
     public void ApplyLineup()
@@ -841,6 +833,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public void SimToEnd()
     {
         _timer.Stop(); Running = false;
+        _script = null;
         _live.Finish();
         RestoreRead();
         Refresh();

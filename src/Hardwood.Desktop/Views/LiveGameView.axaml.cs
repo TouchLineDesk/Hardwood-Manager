@@ -1,148 +1,114 @@
-using System.ComponentModel;
-using Avalonia;
 using Avalonia.Controls;
-using Hardwood.Desktop.ViewModels;
 
 namespace Hardwood.Desktop.Views;
 
+/// <summary>
+/// The live game (M1 of the 2D match engine, run 148): the court fills the page, with the score bar, the controls, the
+/// speeds, the drawers and the commentary bar over it. The court draws itself to fit (MatchCourt.Fit), so the page needs
+/// no fitting code of its own.
+/// </summary>
 public partial class LiveGameView : UserControl
 {
-    /// <summary>Below this width the scoreboard drops the club badges and uses a smaller score, so names and scores don't collide.</summary>
-    public const double CompactScoreWidth = 640;
+    /// <summary>The corner panels' width (the controls at the top left, the speeds at the top right).</summary>
+    public const double CornerWidth = 236;
+    /// <summary>The drawer on the right (box score, play by play, tactics, subs, shots, stats, game flow).</summary>
+    public const double DrawerWidth = 440;
+    /// <summary>The break card and the HSN desk over the court.</summary>
+    public const double BreakWidth = 900;
+    /// <summary>Each side's block in the score bar.</summary>
+    public const double SideBlockWidth = 150;
+    /// <summary>The break card scrolls past this height rather than covering the score bar.</summary>
+    public const double BreakCardMax = 420;
 
-    /// <summary>The court's height when the big view is off, and the least it ever gets (run 80).</summary>
-    public const double SmallCourtHeight = 300;
+    /// <summary>The least width the break overlay takes beside the controls (the desk's stage reads from about here).</summary>
+    public const double MinBreakWidth = 620;
+    /// <summary>The status line at the right of the commentary bar.</summary>
+    public const double StatusWidth = 300;
+    /// <summary>Room the commentary bar keeps at the bottom.</summary>
+    public const double BottomBar = 64;
 
-    /// <summary>The big view (run 85) never leaves the play by play / box score panel under the court less than this.</summary>
-    public const double MinLogHeight = 180;
-
-    /// <summary>From this page width the big view also widens the court's column (2:1 instead of 3:2), so wide windows
-    /// get a bigger court, not just a taller cap; the side tabs keep at least <see cref="MinSideWidth"/>.</summary>
-    public const double WideViewWidth = 900;
-    public const double MinSideWidth = 330;
-
-    /// <summary>H57 (run 86): the break card takes the court's place in its panel, up to this height (it scrolls past it).</summary>
-    public const double BreakCardMax = 280;
-
-    private LiveGameViewModel? _vm;
-    private bool _fitPending = true;
+    private ViewModels.LiveGameViewModel? _vm;
 
     public LiveGameView()
     {
         InitializeComponent();
-        // Nothing covered up (roadmap 1): the buttons drop under the score, and the quarter table under the chart, when space runs out.
-        Controls.Reflow.Watch(ScoreRow, ScoreLine, ScoreButtons, leftNeed: () => 660);
-        Controls.Reflow.Watch(FlowRow, FlowChart, FlowSplits, leftNeed: () => 360);
-        ScoreLine.PropertyChanged += (_, e) =>
-        {
-            if (e.Property != BoundsProperty) return;
-            bool compact = ScoreLine.Bounds.Width < CompactScoreWidth;
-            if (AwayLogo.IsVisible != compact) return;
-            AwayLogo.IsVisible = HomeLogo.IsVisible = !compact;
-            AwayScoreText.FontSize = HomeScoreText.FontSize = compact ? 34 : 42;
-        };
-        // The big view (tracker slice 3): fit the court to the column's height whenever the room changes.
-        RootGrid.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitColumns(); };
-        // The cap is worked out again only when the room changes (the column, the big view, the court tab), not when the
-        // caption or tab row wraps to another line, so the court doesn't pulse from play to play (code review, run 85).
-        LeftCol.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) { _fitPending = true; FitCourt(); FitDeskHeight(); } };
-        CourtPanel.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty && _fitPending) FitCourt(); };
-        // B2a (run 140): the arena's caption bar is drawn at the arena's scale; when the arena is small the caption moves
-        // above it, at full size, so the play stays readable.
-        ArenaBox.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) PlaceCaption(); };
-    }
-
-    /// <summary>Below this width the arena's own caption bar would be too small to read (its text is drawn at 34 px on a 1600 px stage).</summary>
-    public const double ArenaCaptionMinWidth = 640;
-
-    private void PlaceCaption()
-    {
-        bool arena = _vm?.InArena == true;
-        bool small = arena && ArenaBox.Bounds.Width > 0 && ArenaBox.Bounds.Width < ArenaCaptionMinWidth;
-        ArenaCaption.IsVisible = arena && !small;
-        CaptionPanel.IsVisible = !arena || small;
+        AttachedToVisualTree += (_, _) => Focus();
+        RootGrid.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitSoon(); };
+        foreach (var c in new Control[] { ScoreBar, LeftStack, CommentaryBar })
+            c.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitSoon(); };
     }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
         if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
-        _vm = DataContext as LiveGameViewModel;
+        _vm = DataContext as ViewModels.LiveGameViewModel;
         if (_vm != null) _vm.PropertyChanged += OnVmChanged;
-        FitColumns();
-        FitCourt();
-        PlaceCaption();
-        FitDesk();
+        Fit();
     }
 
-    private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(LiveGameViewModel.BigCourt)) FitColumns();
-        if (e.PropertyName is nameof(LiveGameViewModel.DeskUp)) FitDesk();
-        if (e.PropertyName is nameof(LiveGameViewModel.BigCourt) or nameof(LiveGameViewModel.CourtShown))
-        {
-            // After the layout pass, when the court's bounds are current again.
-            _fitPending = true;
-            Avalonia.Threading.Dispatcher.UIThread.Post(FitCourt, Avalonia.Threading.DispatcherPriority.Background);
-        }
+        if (e.PropertyName is nameof(ViewModels.LiveGameViewModel.ShowBreak) or nameof(ViewModels.LiveGameViewModel.DeskUp) or nameof(ViewModels.LiveGameViewModel.DrawerOpen)) Fit();
     }
 
-    /// <summary>True when the big view widens the court's column at this page width.</summary>
-    public static bool WidensColumn(bool big, double pageWidth) => big && pageWidth >= WideViewWidth;
+    /// <summary>The score bar sits centred in the room right of the controls' column.</summary>
+    public static readonly Avalonia.Thickness ScoreMargin = new(CornerWidth + 20, 10, 10, 0);
 
-    /// <summary>B4a (run 143): the halftime desk takes both columns (a theatre view); the side tabs come back with the card.
-    /// Set here rather than bound: a bound ColumnSpan upset the layout check's first measure of the page.</summary>
-    private void FitDesk()
+    /// <summary>Lays the overlays out so none covers another: the break overlay starts under the top row, the drawer under
+    /// the score bar, both above the commentary bar; the HSN desk's width follows the height it has (its stage is 16:9).</summary>
+    /// <summary>True when the controls' column, the score bar and a drawer can't sit side by side at this width: the
+    /// score bar then takes the top row, the controls go under it (the speeds as one button), a drawer takes the width
+    /// (the controls step aside while it's open), and the HSN tag leaves the commentary bar.</summary>
+    public static bool Compact(double width, double scoreBar) => width < Math.Max(scoreBar, DrawerWidth) + CornerWidth + 40;
+
+    private bool _fitQueued;
+    /// <summary>Fit after the layout pass that moved something (changing margins inside a pass left stale measures).</summary>
+    private void FitSoon()
     {
-        bool desk = _vm?.DeskUp == true;
-        if (Grid.GetColumnSpan(LeftCol) != (desk ? 2 : 1)) Grid.SetColumnSpan(LeftCol, desk ? 2 : 1);
-        if (SideTabs.IsVisible == desk) SideTabs.IsVisible = !desk;
-        FitDeskHeight();
+        if (_fitQueued) return;
+        _fitQueued = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => { _fitQueued = false; Fit(); }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
-    /// <summary>The desk keeps the play by play's least share of the column (code review, run 143): its width is capped so
-    /// that its 16:9 stage, its title row and its controls fit the column's height.</summary>
-    private void FitDeskHeight()
+    private void Fit()
     {
-        if (LeftCol.Bounds.Height <= 0) return;
-        double w = DeskWidthFor(LeftCol.Bounds.Height - CourtPanel.Margin.Bottom - MinLogHeight);
-        if (Math.Abs(HalftimeSet.MaxWidth - w) > 1) HalftimeSet.MaxWidth = w;
+        double w = RootGrid.Bounds.Width, h = RootGrid.Bounds.Height;
+        if (w <= 0 || h <= 0) return;
+        bool compact = Compact(w, ScoreBar.DesiredSize.Width - ScoreBar.Margin.Left - ScoreBar.Margin.Right);   // DesiredSize includes the margin, which compact mode changes
+        bool drawerOpen = _vm?.DrawerOpen == true;
+        var scoreMargin = compact ? new Avalonia.Thickness(10, 10, 10, 0) : ScoreMargin;
+        if (ScoreBar.Margin != scoreMargin) ScoreBar.Margin = scoreMargin;
+        var leftMargin = compact ? new Avalonia.Thickness(10, ScoreBar.Bounds.Bottom + 8, 0, 0) : new Avalonia.Thickness(10, 10, 0, 0);
+        if (LeftStack.Margin != leftMargin) LeftStack.Margin = leftMargin;
+        if (SpeedBar.IsVisible == compact) SpeedBar.IsVisible = !compact;
+        if (SpeedCycle.IsVisible != compact) SpeedCycle.IsVisible = compact;
+        if (CommentaryTag.IsVisible == compact) CommentaryTag.IsVisible = !compact;
+        // The HSN desk wants the width: it takes the controls' corner while it's up (it carries Play on / Continue).
+        bool deskUp = _vm?.DeskUp == true;
+        bool showLeft = !(compact && drawerOpen) && !deskUp;
+        if (LeftStack.IsVisible != showLeft) LeftStack.IsVisible = showLeft;
+        double bottom = Math.Max(BottomBar, CommentaryBar.Bounds.Height) + 8;
+        // The break sits beside the controls' column when there's room for the desk there, else under it.
+        bool beside = !deskUp && w - CornerWidth - 36 >= MinBreakWidth;
+        double top = (beside || !showLeft ? ScoreBar.Bounds.Bottom : Math.Max(LeftStack.Bounds.Bottom, ScoreBar.Bounds.Bottom)) + 8;
+        var overlay = new Avalonia.Thickness(beside ? CornerWidth + 20 : 8, top, 8, bottom);
+        if (BreakOverlay.Margin != overlay) BreakOverlay.Margin = overlay;
+        var drawer = new Avalonia.Thickness(compact ? 8 : 0, ScoreBar.Bounds.Bottom + 8, 8, bottom);
+        if (Drawer.Margin != drawer) Drawer.Margin = drawer;
+        double drawerWidth = compact ? double.NaN : DrawerWidth;
+        if (!Drawer.Width.Equals(drawerWidth)) Drawer.Width = drawerWidth;
+        var drawerAlign = compact ? Avalonia.Layout.HorizontalAlignment.Stretch : Avalonia.Layout.HorizontalAlignment.Right;
+        if (Drawer.HorizontalAlignment != drawerAlign) Drawer.HorizontalAlignment = drawerAlign;
+        var tabs = new Avalonia.Thickness(0, top, 8, bottom);
+        if (DrawerTabs.Margin != tabs) DrawerTabs.Margin = tabs;
+        double room = h - top - bottom - 12 - 40;   // the overlay's padding and the desk's title row
+        double desk = Math.Min(DeskWidthFor(room), Math.Min(BreakWidth, w - overlay.Left - overlay.Right) - 16);
+        if (Math.Abs(HalftimeSet.MaxWidth - desk) > 1) HalftimeSet.MaxWidth = desk;
+        double card = Math.Max(120, h - top - bottom - 16);
+        if (Math.Abs(BreakCard.MaxHeight - card) > 1) BreakCard.MaxHeight = card;
     }
 
-    /// <summary>The desk's width for the height it may take: the stage is 16:9 under about 120 px of tabs, title and controls.</summary>
-    public static double DeskWidthFor(double height) => Math.Clamp((height - 120) * 16 / 9, 300, 760);
-
-    private void FitColumns()
-    {
-        bool wide = WidensColumn(_vm?.BigCourt == true, RootGrid.Bounds.Width);
-        var left = new GridLength(wide ? 2 : 3, GridUnitType.Star);
-        var right = new GridLength(wide ? 1 : 2, GridUnitType.Star);
-        var cols = RootGrid.ColumnDefinitions;
-        if (cols[0].Width != left) cols[0].Width = left;
-        if (cols[1].Width != right) cols[1].Width = right;
-        double minSide = wide ? MinSideWidth : 0;
-        if (cols[1].MinWidth != minSide) cols[1].MinWidth = minSide;
-    }
-
-    /// <summary>The court's height cap for a column of this height: the column less the panel's own rows (tabs,
-    /// caption, legend, padding), its margin and the play by play's least share; never under the small court.
-    /// The court's width still limits it (it keeps 94:50).</summary>
-    public static double BigCourtCap(double columnHeight, double panelOverhead, double panelMargin) =>
-        Math.Max(SmallCourtHeight, Math.Floor(columnHeight - panelOverhead - panelMargin - MinLogHeight));
-
-    private void FitCourt()
-    {
-        double cap = SmallCourtHeight;
-        // B2a (run 140): a college game's arena takes the same room as the flat court.
-        Control court = _vm?.InArena == true ? ArenaBox : Court;
-        if (_vm is { BigCourt: true, CourtShown: true } && LeftCol.Bounds.Height > 0 && court.Bounds.Height > 0)
-        {
-            double overhead = CourtPanel.Bounds.Height - court.Bounds.Height;
-            cap = BigCourtCap(LeftCol.Bounds.Height, overhead, CourtPanel.Margin.Bottom);
-            _fitPending = false;
-        }
-        else if (_vm is { BigCourt: true }) return;   // the court is hidden or not laid out yet: keep its size for now
-        else _fitPending = false;
-        if (Math.Abs(court.MaxHeight - cap) > 1) court.MaxHeight = cap;
-    }
+    /// <summary>The desk's width for the height it may take: its 16:9 stage over about 130 px of controls (as run 143 sized it).</summary>
+    public static double DeskWidthFor(double height) => Math.Clamp((height - 150) * 16 / 9, 300, 760);
 }
