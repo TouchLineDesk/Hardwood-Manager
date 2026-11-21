@@ -84,7 +84,7 @@ public class Run132PayoffTests
             Assert.All(c.Alumni.Values, a => Assert.Equal(0, a.Year));
             var day1 = s.ProRecordOf(s.HumanTeam);
             Assert.True(day1.TopLeague > 0, day1.Summary("NBA"));
-            Assert.Equal(CollegeWorld.PitchPoints(day1.TopLeague, day1.Lines.Count(l => l.TopLeague && l.AllStars > 0)), c.ProPitch);
+            Assert.Equal(CollegeWorld.PitchPoints(day1.TopLeague, day1.Lines.Count(l => l.TopLeague && l.EverAllStar)), c.ProPitch);
 
             var seniors = c.FinalYear(s.HumanTeam).Select(p => p.Id).ToHashSet();
             int guard = 0;
@@ -119,7 +119,7 @@ public class Run132PayoffTests
             while (back.Phase == SessionPhase.Offseason && guard++ < 1200) back.AdvanceOffseason();
             rec = back.ProRecordOf(back.HumanTeam);
             _out.WriteLine($"{rec.Summary("NBA")} · pitch {back.World.College!.ProPitch} ({back.World.College.ProPitchText})");
-            Assert.Equal(CollegeWorld.PitchPoints(rec.TopLeague, rec.Lines.Count(l => l.TopLeague && l.AllStars > 0)), back.World.College.ProPitch);
+            Assert.Equal(CollegeWorld.PitchPoints(rec.TopLeague, rec.Lines.Count(l => l.TopLeague && l.EverAllStar)), back.World.College.ProPitch);
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
     }

@@ -6,7 +6,11 @@ namespace Hardwood.Core.Season;
 
 /// <summary>One of a program's graduates as the alumni tracker shows him (CP3, run 132).</summary>
 public sealed record AlumnusLine(Player Player, int Class, string Club, string League, bool TopLeague, bool Retired,
-                                 int AllStars, int Awards, DraftRecord? Draft);
+                                 int AllStars, int Awards, DraftRecord? Draft, Hardwood.Core.RealWorld.RealAlumnusFact? Real = null)
+{
+    /// <summary>H161 (run 138): an All-Star in this career, or a real alumnus who has been one.</summary>
+    public bool EverAllStar => AllStars > 0 || Real?.AllStar == true;
+}
 
 /// <summary>A program's pro record: its graduates in the pros and what they've won.</summary>
 public sealed record ProRecord(int Pros, int TopLeague, int AllStars, int Awards, IReadOnlyList<AlumnusLine> Lines, int Abroad = 0)
@@ -64,14 +68,14 @@ public sealed partial class GameSession
                     // K13 (run 133): a young graduate who found no club has left pro basketball; he didn't "retire" at 22.
                     string left = p.Age(Today) < 28 ? "Out of pro basketball" : "Retired";
                     lines.Add(new AlumnusLine(p, a.Year, gone ? left : club?.FullName ?? (draft.Contains(p) ? "In the draft" : "Free agent"), league, isTop && !gone, gone,
-                        career?.AllStars ?? 0, awards, p.Draft));
+                        career?.AllStars ?? 0, awards, p.Draft, a.Year == 0 ? Hardwood.Core.RealWorld.RealCollegeHistory.FactOf(p.Name) : null));
                 }
             }
         }
         lines = lines.OrderByDescending(l => l.Class).ThenByDescending(l => l.Player.CurrentAbility).ToList();
         int pros = lines.Count(l => !l.Retired && l.Player.TeamId != null);
         int abroad = lines.Count(l => !l.Retired && l.Player.TeamId is { } tid && FindTeam(tid) is { } t && World.LeagueOf(t) is { } comp && !UsaPyramid.IsPyramid(comp.Key));
-        return new ProRecord(pros, lines.Count(l => l.TopLeague), lines.Count(l => l.AllStars > 0), lines.Sum(l => l.Awards), lines, abroad);
+        return new ProRecord(pros, lines.Count(l => l.TopLeague), lines.Count(l => l.EverAllStar), lines.Sum(l => l.Awards), lines, abroad);
     }
 
     /// <summary>
@@ -86,8 +90,8 @@ public sealed partial class GameSession
         if (World.College is not { } c) return;
         if (!Employed || !InCollege || !IsCollegeProgram(HumanTeam)) { c.ProPitch = 0; c.ProPitchText = ""; return; }
         var rec = ProRecordOf(HumanTeam);
-        c.ProPitch = CollegeWorld.PitchPoints(rec.TopLeague, rec.Lines.Count(l => l.TopLeague && l.AllStars > 0));
-        int stars = rec.Lines.Count(l => l.TopLeague && l.AllStars > 0); // what the pitch counts (the review of PR #196)
+        c.ProPitch = CollegeWorld.PitchPoints(rec.TopLeague, rec.Lines.Count(l => l.TopLeague && l.EverAllStar));
+        int stars = rec.Lines.Count(l => l.TopLeague && l.EverAllStar); // what the pitch counts (the review of PR #196)
         c.ProPitchText = rec.TopLeague == 0 ? $"none in the {Names.Brand.TopShort} yet"
             : $"{rec.TopLeague} in the {Names.Brand.TopShort}" + (stars > 0 ? $", {stars} All-Star{(stars == 1 ? "" : "s")}" : "");
     }

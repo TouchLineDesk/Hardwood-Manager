@@ -625,16 +625,47 @@ public sealed partial class CollegeWorld
         {
             var members = InConference(conf.Key).Select(t => t.Id).ToList();
             var rounds = RoundRobin(members);
-            if (members.Count <= 10) rounds = rounds.Concat(rounds.Select(r => r.Select(g => (g.Item2, g.Item1)).ToList())).ToList();
-            var d = new DateOnly(year + 1, 1, 3);
-            foreach (var r in rounds)
+            var reversed = rounds.Select(r => r.Select(g => (g.Item2, g.Item1)).ToList()).ToList();
+            if (members.Count <= 10)
             {
-                while (d.DayOfWeek is not (DayOfWeek.Tuesday or DayOfWeek.Saturday)) d = d.AddDays(1);
-                foreach (var (h, a) in r) s.Games.Add(new CollegeGame { Date = d, HomeId = h, AwayId = a, Stage = "Conference" });
-                d = d.AddDays(1);
+                rounds = rounds.Concat(reversed).ToList();
+                var d = new DateOnly(year + 1, 1, 3);
+                foreach (var r in rounds)
+                {
+                    while (d.DayOfWeek is not (DayOfWeek.Tuesday or DayOfWeek.Saturday)) d = d.AddDays(1);
+                    foreach (var (h, a) in r) s.Games.Add(new CollegeGame { Date = d, HomeId = h, AwayId = a, Stage = "Conference" });
+                    d = d.AddDays(1);
+                }
+                continue;
             }
+            // H162 (run 138): a big conference played a single round robin (Providence's Big East season was 21 games, the
+            // SEC's 15 conference games). Now an 11-team league plays home and away (20 games, as the Big East does) and a
+            // bigger one adds a partial second round, 18-19 games each (the SEC plays 18, the ACC and Big Ten 20).
+            // The rounds run from early January to the day before the conference tournaments.
+            rounds = rounds.Concat(reversed.Take(BigConferenceRounds(members.Count) - rounds.Count)).ToList();
+            var dates = ConferenceDates(year, rounds.Count);
+            for (int i = 0; i < rounds.Count; i++)
+                foreach (var (h, a) in rounds[i]) s.Games.Add(new CollegeGame { Date = dates[i], HomeId = h, AwayId = a, Stage = "Conference" });
         }
         Season = s;
+    }
+
+    /// <summary>H162 (run 138): conference rounds for a league of 11 or more: home and away for 11 (22 rounds with a bye each,
+    /// 20 games), otherwise 19 for an even league (19 games each) and 20 for an odd one (a bye a round: 18-19 games each).</summary>
+    public static int BigConferenceRounds(int members) => members == 11 ? 22 : members % 2 == 0 ? 19 : 20;
+
+    /// <summary>H162 (run 138): a big conference's game days, January 2 to March 9 (the conference tournaments start March 10):
+    /// Tuesdays and Saturdays, and the Thursdays of the earliest weeks when a league needs more days.</summary>
+    public static List<DateOnly> ConferenceDates(int year, int rounds)
+    {
+        var first = new DateOnly(year + 1, 1, 2);
+        var last = new DateOnly(year + 1, 3, 9);
+        var all = Enumerable.Range(0, last.DayNumber - first.DayNumber + 1).Select(first.AddDays).ToList();
+        var dates = all.Where(d => d.DayOfWeek is DayOfWeek.Tuesday or DayOfWeek.Saturday).ToList();
+        dates.AddRange(all.Where(d => d.DayOfWeek == DayOfWeek.Thursday).Take(Math.Max(0, rounds - dates.Count)));
+        dates.Sort();
+        // Drop the earliest days a league doesn't need.
+        return dates.Skip(Math.Max(0, dates.Count - rounds)).ToList();
     }
 
     private static List<List<(int, int)>> RoundRobin(List<int> teams)

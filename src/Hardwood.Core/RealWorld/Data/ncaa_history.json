@@ -1,7 +1,7 @@
 {
  "checked": "2026-11-20",
  "source": "Champions, runners-up, title-game scores and vacated appearances: Wikipedia, 'List of NCAA Division I men's basketball champions' and 'List of NCAA Division I men's basketball tournament Final Four participants' (vacated section), read Nov 20, 2026. The 2026 Final Four (Michigan, Arizona, UConn, Illinois): NCAA.com and theScore, Nov 20, 2026. NBA alumni: Dunkest (Jul 3, 2026), WTOP (Feb 2026), Baylor Proud (Feb 24, 2026), NBA.com (Mar 21, 2025), Sportskeeda (2024), Spotrac college pages and Rivals (2023-24), read Nov 20, 2026.",
- "notes": "The other two Final Four teams for 1985-2025 did not render on the Wikipedia page fetched on Nov 20 and are from general knowledge (well-documented; check against the Final Four page when it can be read). Vacated appearances are listed as the source marks them; program totals (titles, Final Fours) are the ncaa_programs.json counts. Alumni lists name only players the sources name; the game matches them by name against the real NBA rosters at the start of a career, so retired or departed players are skipped. Kansas's 2018 Final Four is not vacated (the 2023 independent panel vacated no Kansas wins), though the page fetched on Nov 20 marked it.",
+ "notes": "The other two Final Four teams for 1985-2025 did not render on the Wikipedia page fetched on Nov 20 and are from general knowledge (well-documented; check against the Final Four page when it can be read). Vacated appearances are listed as the source marks them; program totals (titles, Final Fours) are the ncaa_programs.json counts. Alumni lists name only players the sources name; the game matches them by name against the real NBA rosters at the start of a career, so retired or departed players are skipped. Kansas's 2018 Final Four is not vacated (the 2023 independent panel vacated no Kansas wins), though the page fetched on Nov 20 marked it. Facts (run 138, H161): each alumnus's real draft year and pick (an empty list: undrafted) and whether he has been an NBA All-Star (through the 2025 All-Star Game), from general knowledge; run 138 also added alumni from general knowledge (Kentucky's Herro, Quickley and others, and one or two stars for 30 more programs).",
  "tournaments": [
   {
    "year": 1985,
@@ -483,7 +483,22 @@
    "Karl-Anthony Towns",
    "Bam Adebayo",
    "Tyrese Maxey",
-   "Julius Randle"
+   "Julius Randle",
+   "Tyler Herro",
+   "Immanuel Quickley",
+   "Keldon Johnson",
+   "PJ Washington",
+   "Shaedon Sharpe",
+   "Reed Sheppard",
+   "Cason Wallace",
+   "Rob Dillingham",
+   "Malik Monk",
+   "Nick Richards",
+   "Isaiah Jackson",
+   "Trey Lyles",
+   "Kevin Knox",
+   "Antonio Reeves",
+   "Chris Livingston"
   ],
   "Duke": [
    "Jayson Tatum",
@@ -492,14 +507,37 @@
    "Brandon Ingram",
    "Cooper Flagg",
    "Paolo Banchero",
-   "Seth Curry"
+   "Seth Curry",
+   "RJ Barrett",
+   "Wendell Carter Jr.",
+   "Marvin Bagley III",
+   "Mark Williams",
+   "Dereck Lively II",
+   "Kyle Filipowski",
+   "Jared McCain",
+   "Tre Jones",
+   "Grayson Allen",
+   "Gary Trent Jr.",
+   "Jalen Johnson",
+   "AJ Griffin",
+   "Kon Knueppel",
+   "Khaman Maluach",
+   "Tyus Jones",
+   "Mason Plumlee",
+   "Cam Reddish",
+   "Vernon Carey Jr.",
+   "Wendell Moore Jr."
   ],
   "Arizona": [
    "Deandre Ayton",
    "Aaron Gordon",
    "Lauri Markkanen",
    "T.J. McConnell",
-   "Bennedict Mathurin"
+   "Bennedict Mathurin",
+   "Zeke Nnaji",
+   "Josh Green",
+   "Dalen Terry",
+   "Christian Koloko"
   ],
   "UCLA": [
    "Russell Westbrook",
@@ -510,7 +548,11 @@
    "Jaime Jaquez Jr.",
    "Kevon Looney",
    "Norman Powell",
-   "Amari Bailey"
+   "Amari Bailey",
+   "Aaron Holiday",
+   "Kyle Anderson",
+   "Jaylen Clark",
+   "Adem Bona"
   ],
   "Michigan": [
    "Jordan Poole",
@@ -522,14 +564,20 @@
    "Franz Wagner",
    "Kobe Bufkin",
    "Colin Castleton",
-   "Jett Howard"
+   "Jett Howard",
+   "Isaiah Livers"
   ],
   "Gonzaga": [
    "Domantas Sabonis",
    "Kelly Olynyk",
    "Chet Holmgren",
    "Andrew Nembhard",
-   "Jalen Suggs"
+   "Jalen Suggs",
+   "Rui Hachimura",
+   "Brandon Clarke",
+   "Corey Kispert",
+   "Zach Collins",
+   "Julian Strawther"
   ],
   "Kansas": [
    "Joel Embiid",
@@ -540,7 +588,11 @@
    "Ochai Agbaji",
    "Markieff Morris",
    "Svi Mykhailiuk",
-   "Jalen Wilson"
+   "Jalen Wilson",
+   "Devonte' Graham",
+   "Kevin McCullar Jr.",
+   "Johnny Furphy",
+   "Marcus Morris Sr."
   ],
   "Arkansas": [
    "Bobby Portis",
@@ -569,21 +621,26 @@
    "Stephon Castle",
    "Donovan Clingan",
    "Liam McNeeley",
-   "Tristen Newton"
+   "Tristen Newton",
+   "Jordan Hawkins",
+   "Andre Jackson Jr.",
+   "James Bouknight"
   ],
   "USC": [
    "DeMar DeRozan",
    "Nikola Vučević",
    "Evan Mobley",
    "Onyeka Okongwu",
-   "Bronny James"
+   "Bronny James",
+   "Isaiah Collier"
   ],
   "Auburn": [
    "Isaac Okoro",
    "Jabari Smith Jr.",
    "Walker Kessler",
    "Johni Broome",
-   "Dylan Cardwell"
+   "Dylan Cardwell",
+   "Chuma Okeke"
   ],
   "Florida": [
    "Bradley Beal",
@@ -597,31 +654,44 @@
    "Cameron Johnson",
    "Coby White",
    "Cole Anthony",
-   "Pete Nance"
+   "Pete Nance",
+   "Day'Ron Sharpe"
   ],
   "Villanova": [
    "Jalen Brunson",
    "Mikal Bridges",
    "Kyle Lowry",
    "Donte DiVincenzo",
-   "Josh Hart"
+   "Josh Hart",
+   "Saddiq Bey",
+   "Cam Whitmore",
+   "Collin Gillespie"
   ],
   "Michigan State": [
    "Draymond Green",
    "Jaren Jackson Jr.",
    "Gary Harris",
    "Miles Bridges",
-   "Jase Richardson"
+   "Jase Richardson",
+   "Max Christie",
+   "Xavier Tillman"
   ],
   "Virginia": [
    "De'Andre Hunter",
    "Trey Murphy III",
    "Ty Jerome",
    "Ryan Dunn",
-   "Jay Huff"
+   "Jay Huff",
+   "Malcolm Brogdon",
+   "Joe Harris"
   ],
   "Texas": [
-   "Kevin Durant"
+   "Kevin Durant",
+   "Jarrett Allen",
+   "Myles Turner",
+   "Mo Bamba",
+   "Tre Johnson",
+   "Kai Jones"
   ],
   "Miami (FL)": [
    "Davon Reed",
@@ -641,7 +711,9 @@
   ],
   "Illinois": [
    "Ayo Dosunmu",
-   "Terrence Shannon Jr."
+   "Terrence Shannon Jr.",
+   "Kasparas Jakučionis",
+   "Will Riley"
   ],
   "Clemson": [
    "Hunter Tyson",
@@ -660,6 +732,1783 @@
   ],
   "Toledo": [
    "Ryan Rollins"
+  ],
+  "Louisville": [
+   "Donovan Mitchell",
+   "Terry Rozier"
+  ],
+  "Georgia": [
+   "Anthony Edwards"
+  ],
+  "Iowa State": [
+   "Tyrese Haliburton",
+   "Talen Horton-Tucker"
+  ],
+  "Oklahoma State": [
+   "Cade Cunningham"
+  ],
+  "Murray State": [
+   "Ja Morant"
+  ],
+  "Oklahoma": [
+   "Trae Young",
+   "Buddy Hield"
+  ],
+  "Wake Forest": [
+   "Chris Paul"
+  ],
+  "Davidson": [
+   "Stephen Curry"
+  ],
+  "Marquette": [
+   "Jimmy Butler"
+  ],
+  "Weber State": [
+   "Damian Lillard"
+  ],
+  "Fresno State": [
+   "Paul George"
+  ],
+  "San Diego State": [
+   "Kawhi Leonard"
+  ],
+  "California": [
+   "Jaylen Brown"
+  ],
+  "New Mexico State": [
+   "Pascal Siakam"
+  ],
+  "Santa Clara": [
+   "Jalen Williams"
+  ],
+  "TCU": [
+   "Desmond Bane"
+  ],
+  "Colorado": [
+   "Derrick White"
+  ],
+  "Wichita State": [
+   "Fred VanVleet"
+  ],
+  "Vanderbilt": [
+   "Darius Garland"
+  ],
+  "Alabama": [
+   "Collin Sexton",
+   "Herbert Jones",
+   "Brandon Miller"
+  ],
+  "Tennessee": [
+   "Dalton Knecht",
+   "Grant Williams"
+  ],
+  "Indiana": [
+   "Trayce Jackson-Davis"
+  ],
+  "Ohio State": [
+   "D'Angelo Russell",
+   "Mike Conley"
+  ],
+  "Utah": [
+   "Kyle Kuzma"
+  ],
+  "Washington": [
+   "Dejounte Murray"
+  ],
+  "Stanford": [
+   "Brook Lopez"
+  ],
+  "Arizona State": [
+   "James Harden"
+  ],
+  "Purdue": [
+   "Zach Edey",
+   "Jaden Ivey"
+  ],
+  "Houston": [
+   "Jarace Walker",
+   "Marcus Sasser"
+  ],
+  "Maryland": [
+   "Jalen Smith",
+   "Kevin Huerter"
   ]
+ },
+ "facts": {
+  "Anthony Davis": {
+   "draft": [
+    2012,
+    1
+   ],
+   "allStar": true
+  },
+  "Devin Booker": {
+   "draft": [
+    2015,
+    13
+   ],
+   "allStar": true
+  },
+  "Shai Gilgeous-Alexander": {
+   "draft": [
+    2018,
+    11
+   ],
+   "allStar": true
+  },
+  "De'Aaron Fox": {
+   "draft": [
+    2017,
+    5
+   ],
+   "allStar": true
+  },
+  "Jamal Murray": {
+   "draft": [
+    2016,
+    7
+   ],
+   "allStar": false
+  },
+  "Karl-Anthony Towns": {
+   "draft": [
+    2015,
+    1
+   ],
+   "allStar": true
+  },
+  "Bam Adebayo": {
+   "draft": [
+    2017,
+    14
+   ],
+   "allStar": true
+  },
+  "Tyrese Maxey": {
+   "draft": [
+    2020,
+    21
+   ],
+   "allStar": true
+  },
+  "Julius Randle": {
+   "draft": [
+    2014,
+    7
+   ],
+   "allStar": true
+  },
+  "Tyler Herro": {
+   "draft": [
+    2019,
+    13
+   ],
+   "allStar": true
+  },
+  "Immanuel Quickley": {
+   "draft": [
+    2020,
+    25
+   ],
+   "allStar": false
+  },
+  "Keldon Johnson": {
+   "draft": [
+    2019,
+    29
+   ],
+   "allStar": false
+  },
+  "PJ Washington": {
+   "draft": [
+    2019,
+    12
+   ],
+   "allStar": false
+  },
+  "Shaedon Sharpe": {
+   "draft": [
+    2022,
+    7
+   ],
+   "allStar": false
+  },
+  "Reed Sheppard": {
+   "draft": [
+    2024,
+    3
+   ],
+   "allStar": false
+  },
+  "Cason Wallace": {
+   "draft": [
+    2023,
+    10
+   ],
+   "allStar": false
+  },
+  "Rob Dillingham": {
+   "draft": [
+    2024,
+    8
+   ],
+   "allStar": false
+  },
+  "Malik Monk": {
+   "draft": [
+    2017,
+    11
+   ],
+   "allStar": false
+  },
+  "Nick Richards": {
+   "draft": [
+    2020,
+    42
+   ],
+   "allStar": false
+  },
+  "Isaiah Jackson": {
+   "draft": [
+    2021,
+    22
+   ],
+   "allStar": false
+  },
+  "Trey Lyles": {
+   "draft": [
+    2015,
+    12
+   ],
+   "allStar": false
+  },
+  "Kevin Knox": {
+   "draft": [
+    2018,
+    9
+   ],
+   "allStar": false
+  },
+  "Antonio Reeves": {
+   "draft": [
+    2024,
+    47
+   ],
+   "allStar": false
+  },
+  "Chris Livingston": {
+   "draft": [
+    2023,
+    58
+   ],
+   "allStar": false
+  },
+  "Jayson Tatum": {
+   "draft": [
+    2017,
+    3
+   ],
+   "allStar": true
+  },
+  "Kyrie Irving": {
+   "draft": [
+    2011,
+    1
+   ],
+   "allStar": true
+  },
+  "Zion Williamson": {
+   "draft": [
+    2019,
+    1
+   ],
+   "allStar": true
+  },
+  "Brandon Ingram": {
+   "draft": [
+    2016,
+    2
+   ],
+   "allStar": true
+  },
+  "Cooper Flagg": {
+   "draft": [
+    2025,
+    1
+   ],
+   "allStar": false
+  },
+  "Paolo Banchero": {
+   "draft": [
+    2022,
+    1
+   ],
+   "allStar": true
+  },
+  "Seth Curry": {
+   "draft": [],
+   "allStar": false
+  },
+  "RJ Barrett": {
+   "draft": [
+    2019,
+    3
+   ],
+   "allStar": false
+  },
+  "Wendell Carter Jr.": {
+   "draft": [
+    2018,
+    7
+   ],
+   "allStar": false
+  },
+  "Marvin Bagley III": {
+   "draft": [
+    2018,
+    2
+   ],
+   "allStar": false
+  },
+  "Mark Williams": {
+   "draft": [
+    2022,
+    15
+   ],
+   "allStar": false
+  },
+  "Dereck Lively II": {
+   "draft": [
+    2023,
+    12
+   ],
+   "allStar": false
+  },
+  "Kyle Filipowski": {
+   "draft": [
+    2024,
+    32
+   ],
+   "allStar": false
+  },
+  "Jared McCain": {
+   "draft": [
+    2024,
+    16
+   ],
+   "allStar": false
+  },
+  "Tre Jones": {
+   "draft": [
+    2020,
+    41
+   ],
+   "allStar": false
+  },
+  "Grayson Allen": {
+   "draft": [
+    2018,
+    21
+   ],
+   "allStar": false
+  },
+  "Gary Trent Jr.": {
+   "draft": [
+    2018,
+    37
+   ],
+   "allStar": false
+  },
+  "Jalen Johnson": {
+   "draft": [
+    2021,
+    20
+   ],
+   "allStar": false
+  },
+  "AJ Griffin": {
+   "draft": [
+    2022,
+    16
+   ],
+   "allStar": false
+  },
+  "Kon Knueppel": {
+   "draft": [
+    2025,
+    4
+   ],
+   "allStar": false
+  },
+  "Khaman Maluach": {
+   "draft": [
+    2025,
+    10
+   ],
+   "allStar": false
+  },
+  "Tyus Jones": {
+   "draft": [
+    2015,
+    24
+   ],
+   "allStar": false
+  },
+  "Mason Plumlee": {
+   "draft": [
+    2013,
+    22
+   ],
+   "allStar": false
+  },
+  "Cam Reddish": {
+   "draft": [
+    2019,
+    10
+   ],
+   "allStar": false
+  },
+  "Vernon Carey Jr.": {
+   "draft": [
+    2020,
+    32
+   ],
+   "allStar": false
+  },
+  "Wendell Moore Jr.": {
+   "draft": [
+    2022,
+    26
+   ],
+   "allStar": false
+  },
+  "Deandre Ayton": {
+   "draft": [
+    2018,
+    1
+   ],
+   "allStar": false
+  },
+  "Aaron Gordon": {
+   "draft": [
+    2014,
+    4
+   ],
+   "allStar": false
+  },
+  "Lauri Markkanen": {
+   "draft": [
+    2017,
+    7
+   ],
+   "allStar": true
+  },
+  "T.J. McConnell": {
+   "draft": [],
+   "allStar": false
+  },
+  "Bennedict Mathurin": {
+   "draft": [
+    2022,
+    6
+   ],
+   "allStar": false
+  },
+  "Zeke Nnaji": {
+   "draft": [
+    2020,
+    22
+   ],
+   "allStar": false
+  },
+  "Josh Green": {
+   "draft": [
+    2020,
+    18
+   ],
+   "allStar": false
+  },
+  "Dalen Terry": {
+   "draft": [
+    2022,
+    18
+   ],
+   "allStar": false
+  },
+  "Christian Koloko": {
+   "draft": [
+    2022,
+    33
+   ],
+   "allStar": false
+  },
+  "Russell Westbrook": {
+   "draft": [
+    2008,
+    4
+   ],
+   "allStar": true
+  },
+  "Kevin Love": {
+   "draft": [
+    2008,
+    5
+   ],
+   "allStar": true
+  },
+  "Jrue Holiday": {
+   "draft": [
+    2009,
+    17
+   ],
+   "allStar": true
+  },
+  "Zach LaVine": {
+   "draft": [
+    2014,
+    13
+   ],
+   "allStar": true
+  },
+  "Lonzo Ball": {
+   "draft": [
+    2017,
+    2
+   ],
+   "allStar": false
+  },
+  "Jaime Jaquez Jr.": {
+   "draft": [
+    2023,
+    18
+   ],
+   "allStar": false
+  },
+  "Kevon Looney": {
+   "draft": [
+    2015,
+    30
+   ],
+   "allStar": false
+  },
+  "Norman Powell": {
+   "draft": [
+    2015,
+    46
+   ],
+   "allStar": false
+  },
+  "Amari Bailey": {
+   "draft": [
+    2023,
+    41
+   ],
+   "allStar": false
+  },
+  "Aaron Holiday": {
+   "draft": [
+    2018,
+    23
+   ],
+   "allStar": false
+  },
+  "Kyle Anderson": {
+   "draft": [
+    2014,
+    30
+   ],
+   "allStar": false
+  },
+  "Jaylen Clark": {
+   "draft": [
+    2023,
+    53
+   ],
+   "allStar": false
+  },
+  "Adem Bona": {
+   "draft": [
+    2024,
+    41
+   ],
+   "allStar": false
+  },
+  "Jordan Poole": {
+   "draft": [
+    2019,
+    28
+   ],
+   "allStar": false
+  },
+  "Duncan Robinson": {
+   "draft": [],
+   "allStar": false
+  },
+  "Tim Hardaway Jr.": {
+   "draft": [
+    2013,
+    24
+   ],
+   "allStar": false
+  },
+  "Caris LeVert": {
+   "draft": [
+    2016,
+    20
+   ],
+   "allStar": false
+  },
+  "Danny Wolf": {
+   "draft": [
+    2025,
+    27
+   ],
+   "allStar": false
+  },
+  "Moritz Wagner": {
+   "draft": [
+    2018,
+    25
+   ],
+   "allStar": false
+  },
+  "Franz Wagner": {
+   "draft": [
+    2021,
+    8
+   ],
+   "allStar": false
+  },
+  "Kobe Bufkin": {
+   "draft": [
+    2023,
+    15
+   ],
+   "allStar": false
+  },
+  "Colin Castleton": {
+   "draft": [],
+   "allStar": false
+  },
+  "Jett Howard": {
+   "draft": [
+    2023,
+    11
+   ],
+   "allStar": false
+  },
+  "Isaiah Livers": {
+   "draft": [
+    2021,
+    42
+   ],
+   "allStar": false
+  },
+  "Domantas Sabonis": {
+   "draft": [
+    2016,
+    11
+   ],
+   "allStar": true
+  },
+  "Kelly Olynyk": {
+   "draft": [
+    2013,
+    13
+   ],
+   "allStar": false
+  },
+  "Chet Holmgren": {
+   "draft": [
+    2022,
+    2
+   ],
+   "allStar": false
+  },
+  "Andrew Nembhard": {
+   "draft": [
+    2022,
+    31
+   ],
+   "allStar": false
+  },
+  "Jalen Suggs": {
+   "draft": [
+    2021,
+    5
+   ],
+   "allStar": false
+  },
+  "Rui Hachimura": {
+   "draft": [
+    2019,
+    9
+   ],
+   "allStar": false
+  },
+  "Brandon Clarke": {
+   "draft": [
+    2019,
+    21
+   ],
+   "allStar": false
+  },
+  "Corey Kispert": {
+   "draft": [
+    2021,
+    15
+   ],
+   "allStar": false
+  },
+  "Zach Collins": {
+   "draft": [
+    2017,
+    10
+   ],
+   "allStar": false
+  },
+  "Julian Strawther": {
+   "draft": [
+    2023,
+    29
+   ],
+   "allStar": false
+  },
+  "Joel Embiid": {
+   "draft": [
+    2014,
+    3
+   ],
+   "allStar": true
+  },
+  "Andrew Wiggins": {
+   "draft": [
+    2014,
+    1
+   ],
+   "allStar": true
+  },
+  "Christian Braun": {
+   "draft": [
+    2022,
+    21
+   ],
+   "allStar": false
+  },
+  "Gradey Dick": {
+   "draft": [
+    2023,
+    13
+   ],
+   "allStar": false
+  },
+  "Kelly Oubre Jr.": {
+   "draft": [
+    2015,
+    15
+   ],
+   "allStar": false
+  },
+  "Ochai Agbaji": {
+   "draft": [
+    2022,
+    14
+   ],
+   "allStar": false
+  },
+  "Markieff Morris": {
+   "draft": [
+    2011,
+    13
+   ],
+   "allStar": false
+  },
+  "Svi Mykhailiuk": {
+   "draft": [
+    2018,
+    47
+   ],
+   "allStar": false
+  },
+  "Jalen Wilson": {
+   "draft": [
+    2023,
+    51
+   ],
+   "allStar": false
+  },
+  "Devonte' Graham": {
+   "draft": [
+    2018,
+    34
+   ],
+   "allStar": false
+  },
+  "Kevin McCullar Jr.": {
+   "draft": [
+    2024,
+    56
+   ],
+   "allStar": false
+  },
+  "Johnny Furphy": {
+   "draft": [
+    2024,
+    35
+   ],
+   "allStar": false
+  },
+  "Marcus Morris Sr.": {
+   "draft": [
+    2011,
+    14
+   ],
+   "allStar": false
+  },
+  "Bobby Portis": {
+   "draft": [
+    2015,
+    22
+   ],
+   "allStar": false
+  },
+  "Daniel Gafford": {
+   "draft": [
+    2019,
+    38
+   ],
+   "allStar": false
+  },
+  "Moses Moody": {
+   "draft": [
+    2021,
+    14
+   ],
+   "allStar": false
+  },
+  "Anthony Black": {
+   "draft": [
+    2023,
+    6
+   ],
+   "allStar": false
+  },
+  "Isaiah Joe": {
+   "draft": [
+    2020,
+    49
+   ],
+   "allStar": false
+  },
+  "Jaylin Williams": {
+   "draft": [
+    2022,
+    34
+   ],
+   "allStar": false
+  },
+  "Nick Smith Jr.": {
+   "draft": [
+    2023,
+    27
+   ],
+   "allStar": false
+  },
+  "Jordan Walsh": {
+   "draft": [
+    2023,
+    38
+   ],
+   "allStar": false
+  },
+  "RayJ Dennis": {
+   "draft": [],
+   "allStar": false
+  },
+  "VJ Edgecombe": {
+   "draft": [
+    2025,
+    3
+   ],
+   "allStar": false
+  },
+  "Keyonte George": {
+   "draft": [
+    2023,
+    16
+   ],
+   "allStar": false
+  },
+  "Davion Mitchell": {
+   "draft": [
+    2021,
+    9
+   ],
+   "allStar": false
+  },
+  "Yves Missi": {
+   "draft": [
+    2024,
+    21
+   ],
+   "allStar": false
+  },
+  "Norchad Omier": {
+   "draft": [],
+   "allStar": false
+  },
+  "Royce O'Neale": {
+   "draft": [],
+   "allStar": false
+  },
+  "Taurean Prince": {
+   "draft": [
+    2016,
+    12
+   ],
+   "allStar": false
+  },
+  "Jeremy Sochan": {
+   "draft": [
+    2022,
+    9
+   ],
+   "allStar": false
+  },
+  "Ja'Kobe Walter": {
+   "draft": [
+    2024,
+    19
+   ],
+   "allStar": false
+  },
+  "Andre Drummond": {
+   "draft": [
+    2012,
+    9
+   ],
+   "allStar": true
+  },
+  "Stephon Castle": {
+   "draft": [
+    2024,
+    4
+   ],
+   "allStar": false
+  },
+  "Donovan Clingan": {
+   "draft": [
+    2024,
+    7
+   ],
+   "allStar": false
+  },
+  "Liam McNeeley": {
+   "draft": [
+    2025,
+    29
+   ],
+   "allStar": false
+  },
+  "Tristen Newton": {
+   "draft": [
+    2024,
+    49
+   ],
+   "allStar": false
+  },
+  "Jordan Hawkins": {
+   "draft": [
+    2023,
+    14
+   ],
+   "allStar": false
+  },
+  "Andre Jackson Jr.": {
+   "draft": [
+    2023,
+    36
+   ],
+   "allStar": false
+  },
+  "James Bouknight": {
+   "draft": [
+    2021,
+    11
+   ],
+   "allStar": false
+  },
+  "DeMar DeRozan": {
+   "draft": [
+    2009,
+    9
+   ],
+   "allStar": true
+  },
+  "Nikola Vučević": {
+   "draft": [
+    2011,
+    16
+   ],
+   "allStar": true
+  },
+  "Evan Mobley": {
+   "draft": [
+    2021,
+    3
+   ],
+   "allStar": true
+  },
+  "Onyeka Okongwu": {
+   "draft": [
+    2020,
+    6
+   ],
+   "allStar": false
+  },
+  "Bronny James": {
+   "draft": [
+    2024,
+    55
+   ],
+   "allStar": false
+  },
+  "Isaiah Collier": {
+   "draft": [
+    2024,
+    29
+   ],
+   "allStar": false
+  },
+  "Isaac Okoro": {
+   "draft": [
+    2020,
+    5
+   ],
+   "allStar": false
+  },
+  "Jabari Smith Jr.": {
+   "draft": [
+    2022,
+    3
+   ],
+   "allStar": false
+  },
+  "Walker Kessler": {
+   "draft": [
+    2022,
+    22
+   ],
+   "allStar": false
+  },
+  "Johni Broome": {
+   "draft": [
+    2025,
+    35
+   ],
+   "allStar": false
+  },
+  "Dylan Cardwell": {
+   "draft": [],
+   "allStar": false
+  },
+  "Chuma Okeke": {
+   "draft": [
+    2019,
+    16
+   ],
+   "allStar": false
+  },
+  "Bradley Beal": {
+   "draft": [
+    2012,
+    3
+   ],
+   "allStar": true
+  },
+  "Al Horford": {
+   "draft": [
+    2007,
+    3
+   ],
+   "allStar": true
+  },
+  "Dorian Finney-Smith": {
+   "draft": [],
+   "allStar": false
+  },
+  "Tre Mann": {
+   "draft": [
+    2021,
+    18
+   ],
+   "allStar": false
+  },
+  "Walter Clayton Jr.": {
+   "draft": [
+    2025,
+    18
+   ],
+   "allStar": false
+  },
+  "Harrison Barnes": {
+   "draft": [
+    2012,
+    7
+   ],
+   "allStar": false
+  },
+  "Cameron Johnson": {
+   "draft": [
+    2019,
+    11
+   ],
+   "allStar": false
+  },
+  "Coby White": {
+   "draft": [
+    2019,
+    7
+   ],
+   "allStar": false
+  },
+  "Cole Anthony": {
+   "draft": [
+    2020,
+    15
+   ],
+   "allStar": false
+  },
+  "Pete Nance": {
+   "draft": [],
+   "allStar": false
+  },
+  "Day'Ron Sharpe": {
+   "draft": [
+    2021,
+    29
+   ],
+   "allStar": false
+  },
+  "Jalen Brunson": {
+   "draft": [
+    2018,
+    33
+   ],
+   "allStar": true
+  },
+  "Mikal Bridges": {
+   "draft": [
+    2018,
+    10
+   ],
+   "allStar": false
+  },
+  "Kyle Lowry": {
+   "draft": [
+    2006,
+    24
+   ],
+   "allStar": true
+  },
+  "Donte DiVincenzo": {
+   "draft": [
+    2018,
+    17
+   ],
+   "allStar": false
+  },
+  "Josh Hart": {
+   "draft": [
+    2017,
+    30
+   ],
+   "allStar": false
+  },
+  "Saddiq Bey": {
+   "draft": [
+    2020,
+    19
+   ],
+   "allStar": false
+  },
+  "Cam Whitmore": {
+   "draft": [
+    2023,
+    20
+   ],
+   "allStar": false
+  },
+  "Collin Gillespie": {
+   "draft": [],
+   "allStar": false
+  },
+  "Draymond Green": {
+   "draft": [
+    2012,
+    35
+   ],
+   "allStar": true
+  },
+  "Jaren Jackson Jr.": {
+   "draft": [
+    2018,
+    4
+   ],
+   "allStar": true
+  },
+  "Gary Harris": {
+   "draft": [
+    2014,
+    19
+   ],
+   "allStar": false
+  },
+  "Miles Bridges": {
+   "draft": [
+    2018,
+    12
+   ],
+   "allStar": false
+  },
+  "Jase Richardson": {
+   "draft": [
+    2025,
+    25
+   ],
+   "allStar": false
+  },
+  "Max Christie": {
+   "draft": [
+    2022,
+    35
+   ],
+   "allStar": false
+  },
+  "Xavier Tillman": {
+   "draft": [
+    2020,
+    35
+   ],
+   "allStar": false
+  },
+  "De'Andre Hunter": {
+   "draft": [
+    2019,
+    4
+   ],
+   "allStar": false
+  },
+  "Trey Murphy III": {
+   "draft": [
+    2021,
+    17
+   ],
+   "allStar": false
+  },
+  "Ty Jerome": {
+   "draft": [
+    2019,
+    24
+   ],
+   "allStar": false
+  },
+  "Ryan Dunn": {
+   "draft": [
+    2024,
+    28
+   ],
+   "allStar": false
+  },
+  "Jay Huff": {
+   "draft": [],
+   "allStar": false
+  },
+  "Malcolm Brogdon": {
+   "draft": [
+    2016,
+    36
+   ],
+   "allStar": false
+  },
+  "Joe Harris": {
+   "draft": [
+    2014,
+    33
+   ],
+   "allStar": false
+  },
+  "Kevin Durant": {
+   "draft": [
+    2007,
+    2
+   ],
+   "allStar": true
+  },
+  "Jarrett Allen": {
+   "draft": [
+    2017,
+    22
+   ],
+   "allStar": true
+  },
+  "Myles Turner": {
+   "draft": [
+    2015,
+    11
+   ],
+   "allStar": false
+  },
+  "Mo Bamba": {
+   "draft": [
+    2018,
+    6
+   ],
+   "allStar": false
+  },
+  "Tre Johnson": {
+   "draft": [
+    2025,
+    6
+   ],
+   "allStar": false
+  },
+  "Kai Jones": {
+   "draft": [
+    2021,
+    19
+   ],
+   "allStar": false
+  },
+  "Davon Reed": {
+   "draft": [
+    2017,
+    32
+   ],
+   "allStar": false
+  },
+  "Dewan Hernandez": {
+   "draft": [
+    2019,
+    59
+   ],
+   "allStar": false
+  },
+  "Kyshawn George": {
+   "draft": [
+    2024,
+    24
+   ],
+   "allStar": false
+  },
+  "Bruce Brown": {
+   "draft": [
+    2018,
+    42
+   ],
+   "allStar": false
+  },
+  "Isaiah Wong": {
+   "draft": [
+    2023,
+    55
+   ],
+   "allStar": false
+  },
+  "Jordan Miller": {
+   "draft": [
+    2023,
+    48
+   ],
+   "allStar": false
+  },
+  "Lonnie Walker IV": {
+   "draft": [
+    2018,
+    18
+   ],
+   "allStar": false
+  },
+  "Precious Achiuwa": {
+   "draft": [
+    2020,
+    20
+   ],
+   "allStar": false
+  },
+  "Jalen Duren": {
+   "draft": [
+    2022,
+    13
+   ],
+   "allStar": false
+  },
+  "James Wiseman": {
+   "draft": [
+    2020,
+    2
+   ],
+   "allStar": false
+  },
+  "Josh Minott": {
+   "draft": [
+    2022,
+    45
+   ],
+   "allStar": false
+  },
+  "Lester Quinones": {
+   "draft": [],
+   "allStar": false
+  },
+  "Ayo Dosunmu": {
+   "draft": [
+    2021,
+    38
+   ],
+   "allStar": false
+  },
+  "Terrence Shannon Jr.": {
+   "draft": [
+    2024,
+    27
+   ],
+   "allStar": false
+  },
+  "Kasparas Jakučionis": {
+   "draft": [
+    2025,
+    20
+   ],
+   "allStar": false
+  },
+  "Will Riley": {
+   "draft": [
+    2025,
+    21
+   ],
+   "allStar": false
+  },
+  "Hunter Tyson": {
+   "draft": [
+    2023,
+    37
+   ],
+   "allStar": false
+  },
+  "P.J. Hall": {
+   "draft": [],
+   "allStar": false
+  },
+  "Christian Wood": {
+   "draft": [],
+   "allStar": false
+  },
+  "Derrick Jones Jr.": {
+   "draft": [],
+   "allStar": false
+  },
+  "Santi Aldama": {
+   "draft": [
+    2021,
+    30
+   ],
+   "allStar": false
+  },
+  "Max Strus": {
+   "draft": [],
+   "allStar": false
+  },
+  "Paul Reed": {
+   "draft": [
+    2020,
+    58
+   ],
+   "allStar": false
+  },
+  "Ryan Rollins": {
+   "draft": [
+    2022,
+    44
+   ],
+   "allStar": false
+  },
+  "Donovan Mitchell": {
+   "draft": [
+    2017,
+    13
+   ],
+   "allStar": true
+  },
+  "Terry Rozier": {
+   "draft": [
+    2015,
+    16
+   ],
+   "allStar": false
+  },
+  "Anthony Edwards": {
+   "draft": [
+    2020,
+    1
+   ],
+   "allStar": true
+  },
+  "Tyrese Haliburton": {
+   "draft": [
+    2020,
+    12
+   ],
+   "allStar": true
+  },
+  "Talen Horton-Tucker": {
+   "draft": [
+    2019,
+    46
+   ],
+   "allStar": false
+  },
+  "Cade Cunningham": {
+   "draft": [
+    2021,
+    1
+   ],
+   "allStar": true
+  },
+  "Ja Morant": {
+   "draft": [
+    2019,
+    2
+   ],
+   "allStar": true
+  },
+  "Trae Young": {
+   "draft": [
+    2018,
+    5
+   ],
+   "allStar": true
+  },
+  "Buddy Hield": {
+   "draft": [
+    2016,
+    6
+   ],
+   "allStar": false
+  },
+  "Chris Paul": {
+   "draft": [
+    2005,
+    4
+   ],
+   "allStar": true
+  },
+  "Stephen Curry": {
+   "draft": [
+    2009,
+    7
+   ],
+   "allStar": true
+  },
+  "Jimmy Butler": {
+   "draft": [
+    2011,
+    30
+   ],
+   "allStar": true
+  },
+  "Damian Lillard": {
+   "draft": [
+    2012,
+    6
+   ],
+   "allStar": true
+  },
+  "Paul George": {
+   "draft": [
+    2010,
+    10
+   ],
+   "allStar": true
+  },
+  "Kawhi Leonard": {
+   "draft": [
+    2011,
+    15
+   ],
+   "allStar": true
+  },
+  "Jaylen Brown": {
+   "draft": [
+    2016,
+    3
+   ],
+   "allStar": true
+  },
+  "Pascal Siakam": {
+   "draft": [
+    2016,
+    27
+   ],
+   "allStar": true
+  },
+  "Jalen Williams": {
+   "draft": [
+    2022,
+    12
+   ],
+   "allStar": true
+  },
+  "Desmond Bane": {
+   "draft": [
+    2020,
+    30
+   ],
+   "allStar": false
+  },
+  "Derrick White": {
+   "draft": [
+    2017,
+    29
+   ],
+   "allStar": false
+  },
+  "Fred VanVleet": {
+   "draft": [],
+   "allStar": true
+  },
+  "Darius Garland": {
+   "draft": [
+    2019,
+    5
+   ],
+   "allStar": true
+  },
+  "Collin Sexton": {
+   "draft": [
+    2018,
+    8
+   ],
+   "allStar": false
+  },
+  "Herbert Jones": {
+   "draft": [
+    2021,
+    35
+   ],
+   "allStar": false
+  },
+  "Brandon Miller": {
+   "draft": [
+    2023,
+    2
+   ],
+   "allStar": false
+  },
+  "Dalton Knecht": {
+   "draft": [
+    2024,
+    17
+   ],
+   "allStar": false
+  },
+  "Grant Williams": {
+   "draft": [
+    2019,
+    22
+   ],
+   "allStar": false
+  },
+  "Trayce Jackson-Davis": {
+   "draft": [
+    2023,
+    57
+   ],
+   "allStar": false
+  },
+  "D'Angelo Russell": {
+   "draft": [
+    2015,
+    2
+   ],
+   "allStar": true
+  },
+  "Mike Conley": {
+   "draft": [
+    2007,
+    4
+   ],
+   "allStar": false
+  },
+  "Kyle Kuzma": {
+   "draft": [
+    2017,
+    27
+   ],
+   "allStar": false
+  },
+  "Dejounte Murray": {
+   "draft": [
+    2016,
+    29
+   ],
+   "allStar": true
+  },
+  "Brook Lopez": {
+   "draft": [
+    2008,
+    10
+   ],
+   "allStar": true
+  },
+  "James Harden": {
+   "draft": [
+    2009,
+    3
+   ],
+   "allStar": true
+  },
+  "Zach Edey": {
+   "draft": [
+    2024,
+    9
+   ],
+   "allStar": false
+  },
+  "Jaden Ivey": {
+   "draft": [
+    2022,
+    5
+   ],
+   "allStar": false
+  },
+  "Jarace Walker": {
+   "draft": [
+    2023,
+    8
+   ],
+   "allStar": false
+  },
+  "Marcus Sasser": {
+   "draft": [
+    2023,
+    25
+   ],
+   "allStar": false
+  },
+  "Jalen Smith": {
+   "draft": [
+    2020,
+    10
+   ],
+   "allStar": false
+  },
+  "Kevin Huerter": {
+   "draft": [
+    2018,
+    19
+   ],
+   "allStar": false
+  }
  }
 }

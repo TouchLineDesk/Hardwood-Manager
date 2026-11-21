@@ -606,7 +606,7 @@ public sealed class Offseason
         // seasons; the world's leagues are where the rest go). Every unsigned one of NBA calibre, not only this summer's:
         // the report isn't saved, so a reload mid-summer would otherwise change who stays.
         var leaving = _league.FreeAgents.Where(p => p.CurrentAbility >= SettleCalibre && p.Age(Date) <= 34 && p.DraftRightsTeamId == null
-                                                   && RealWorld.RealNames.IsReal(p.Name))
+                                                   && RealWorld.RealNames.IsRealPlayer(p.Name))
             .OrderByDescending(p => ContractMarket.Value(p, Date)).ThenBy(p => p.Id).ToList();
         foreach (var p in leaving)
         {

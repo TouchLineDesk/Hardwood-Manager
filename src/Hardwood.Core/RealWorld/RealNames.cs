@@ -11,7 +11,9 @@ namespace Hardwood.Core.RealWorld;
 /// </summary>
 public static class RealNames
 {
-    private static readonly Lazy<HashSet<string>> _names = new(Load);
+    private static readonly Lazy<HashSet<string>> _names = new(() => Load(true));
+    // Run 138 review: the names of today's real players only (no nba_legends.json), for code that asks "is he a real player?".
+    private static readonly Lazy<HashSet<string>> _players = new(() => Load(false));
 
     /// <summary>How many distinct real names are known (for tests and tools).</summary>
     public static int Count => _names.Value.Count;
@@ -19,6 +21,10 @@ public static class RealNames
     public static bool IsReal(string first, string last) => _names.Value.Contains(Key($"{first} {last}"));
 
     public static bool IsReal(string fullName) => _names.Value.Contains(Key(fullName));
+
+    /// <summary>A name from today's real-player data (players, rosters, careers, history), not the legends list (H150), which
+    /// only keeps generated names away from famous ones.</summary>
+    public static bool IsRealPlayer(string fullName) => _players.Value.Contains(Key(fullName));
 
     /// <summary>Lower case, no accents, no punctuation, no Jr./Sr./II/III, single spaces.</summary>
     public static string Key(string name)
@@ -39,11 +45,12 @@ public static class RealNames
         return string.Join(' ', parts);
     }
 
-    private static HashSet<string> Load()
+    private static HashSet<string> Load(bool legends)
     {
         var set = new HashSet<string>(StringComparer.Ordinal);
         var asm = typeof(RealNames).Assembly;
-        foreach (var res in asm.GetManifestResourceNames().Where(n => n.Contains("RealWorld.Data.nba_", StringComparison.Ordinal) && n.EndsWith(".json", StringComparison.Ordinal)))
+        foreach (var res in asm.GetManifestResourceNames().Where(n => n.Contains("RealWorld.Data.nba_", StringComparison.Ordinal) && n.EndsWith(".json", StringComparison.Ordinal)
+                                                                  && (legends || !n.EndsWith("nba_legends.json", StringComparison.Ordinal))))
         {
             using var stream = asm.GetManifestResourceStream(res)!;
             using var doc = JsonDocument.Parse(stream);
