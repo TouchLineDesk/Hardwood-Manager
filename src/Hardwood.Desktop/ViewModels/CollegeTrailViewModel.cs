@@ -61,13 +61,15 @@ public sealed partial class CollegeViewModel
     private bool _pitchLoading;
     partial void OnTrailPitchChanged(string value)
     {
-        if (_pitchLoading || SelectedTrail?.Player is not { } p) return;
+        if (value is null || _pitchLoading || SelectedTrail?.Player is not { } p) return;
         var k = CollegeWorld.Pitches.Cast<RecruitPriority?>().FirstOrDefault(x => CollegeWorld.PitchName(x) == value);
         AfterTrail(Session.PitchProspect(p, k));
     }
     /// <summary>H156: the other class on the list (after signing day, the rising seniors), offered from the empty state.</summary>
     public string TrailOtherClass => Classes.FirstOrDefault(x => x != TrailClass) ?? "";
-    public bool HasTrailOtherClass => HasTrailEmpty && TrailOtherClass.Length > 0;
+    public bool HasTrailOtherClass => HasTrailEmpty && _otherClassOpen && TrailOtherClass.Length > 0;
+    /// <summary>Run 146 review: offer the other class only when the one on screen is closed (signed) and the other is open.</summary>
+    private bool _otherClassOpen;
     public string TrailOtherClassText => TrailOtherClass.Length > 0 ? $"See the {TrailOtherClass.Split(" (")[0]}" : "";
     [RelayCommand] private void OtherTrailClass() { if (TrailOtherClass is { Length: > 0 } other) TrailClass = other; }
     [ObservableProperty] private string _trailView = "Best fits";
@@ -168,10 +170,12 @@ public sealed partial class CollegeViewModel
         };
         // H156 (run 146): the offers leaning elsewhere are a chip (and a view), not a paragraph.
         var (leaningAway, _) = OffersLeaning(c, me, year, board);
-        if (leaningAway > 0 && chips.FindIndex(x => x.Label == "Offers out") is var oi and >= 0 && chips[oi].Tone == "")
-            chips[oi] = chips[oi] with { Sub = $"{leaningAway} leaning elsewhere", Tone = "warn" };
+        if (leaningAway > 0 && chips.FindIndex(x => x.Label == "Offers out") is var oi and >= 0)
+            chips[oi] = chips[oi] with { Sub = chips[oi].Tone == "" ? $"{leaningAway} leaning elsewhere" : $"{chips[oi].Sub} · {leaningAway} lean away", Tone = "warn" };
         TrailChips = chips;
         bool closed = !c.Recruitable(new Recruit { ClassOf = year }, Session.Today);
+        _otherClassOpen = closed && TrailOtherClass.Length > 0 && int.TryParse(TrailOtherClass.Replace("Class of ", "").Split(' ')[0], out var oy)
+                          && c.Recruitable(new Recruit { ClassOf = oy }, Session.Today);
         string full = closed ? $"Signing day has passed for the Class of {year}: the rising seniors are the class to recruit now. "
             : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). "
             // CS1 (run 125): the calendar for the class you're chasing.

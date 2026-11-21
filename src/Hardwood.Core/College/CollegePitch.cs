@@ -24,8 +24,9 @@ public sealed partial class CollegeWorld
     /// <summary>How much of a call's or a visit's interest lands under the current pitch.</summary>
     public static double PitchFactor(Player p, Recruit r) => PitchMatches(p, r) switch { true => PitchMatch, false => PitchMiss, _ => 1 };
 
-    /// <summary>He has heard the pitch once you've called or visited him.</summary>
-    public static bool HeardPitch(Recruit r) => r.Pitch != null && (r.Calls > 0 || r.HomeVisit || r.OfficialVisit);
+    /// <summary>He has heard the pitch once you've called or visited him; it weighs in your appeal only once your staff
+    /// has scouted him (run 146 review: otherwise cycling the free pitch on an unscouted prospect would reveal what he cares about).</summary>
+    public static bool HeardPitch(Recruit r) => r.Pitch != null && r.Scouted && (r.Calls > 0 || r.HomeVisit || r.OfficialVisit);
 
     /// <summary>The pitch's own weight in the coached program's appeal (0 for anyone else, or before he has heard it).</summary>
     public static double PitchAppeal(Player p, Recruit r, Team t) =>
@@ -89,9 +90,9 @@ public sealed partial class CollegeWorld
         };
         if (t.Id == ManagedProgramId)
         {
-            parts.Add(("your courting", CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale)));
-            parts.Add(("your pros", PitchFor(r)));
-            parts.Add(("your pitch", PitchAppeal(p, r, t)));
+            parts.Add(("courting", CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale)));
+            parts.Add(("pros", PitchFor(r)));
+            parts.Add(("pitch", PitchAppeal(p, r, t)));
         }
         return parts;
     }

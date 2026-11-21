@@ -90,6 +90,22 @@ public class Run146PitchTests
     }
 
     [Fact]
+    public void An_unscouted_prospect_gives_nothing_away_when_the_pitch_changes()
+    {
+        // Run 146 review: the pitch is free to change, so before scouting it must not move the appeal (or it would
+        // reveal what he cares about for nothing).
+        var s = Career("Providence");
+        var c = s.TrailWorld!; var me = s.HumanTeam;
+        var (p, r) = Target(c, me, s.Today, 3);
+        s.CallProspect(p);
+        Assert.False(r.Scouted);
+        var board = c.BoardFor(r.ClassOf);
+        var appeals = CollegeWorld.Pitches.Select(k => { s.PitchProspect(p, k); return c.Appeal(me, p, r, board); }).ToList();
+        Assert.All(appeals, a => Assert.Equal(appeals[0], a, 6));
+        Assert.Contains("Scout him", s.PitchProspect(p, null) + s.PitchProspect(p, CollegeWorld.Pitches[0]));
+    }
+
+    [Fact]
     public void The_pitch_is_saved_and_reset_when_another_program_courts_him()
     {
         var path = Path.Combine(Path.GetTempPath(), $"hw-run146-{Guid.NewGuid():N}.save");
