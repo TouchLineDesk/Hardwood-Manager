@@ -14,7 +14,7 @@
     <ContentControl Content="{Binding CurrentPage}" IsVisible="{Binding !HasSession}"/>
 
     <!-- Shell -->
-    <Grid IsVisible="{Binding HasSession}" RowDefinitions="Auto,*" ColumnDefinitions="210,*,Auto">
+    <Grid x:Name="ShellGrid" IsVisible="{Binding HasSession}" RowDefinitions="Auto,*" ColumnDefinitions="210,*,Auto">
       <!-- Top bar -->
       <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
         <!-- H97 (run 116): at big text (120%+) the bar compacts first (MainWindow.ApplyScale: icon-only Assistant, "Watch", no ball mark,
@@ -66,7 +66,7 @@
       </Border>
 
       <!-- Sidebar -->
-      <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,1,0" Padding="8">
+      <Border x:Name="Sidebar" Grid.Row="1" Grid.Column="0" Background="{StaticResource HwPanelBrush}" BorderBrush="{StaticResource HwBorderBrush}" BorderThickness="0,0,1,0" Padding="8">
         <DockPanel>
           <Button DockPanel.Dock="Bottom" Classes="nav" Command="{Binding BackToStartCommand}" Foreground="{StaticResource HwMutedBrush}">
             <StackPanel Orientation="Horizontal">

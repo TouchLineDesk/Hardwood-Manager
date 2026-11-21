@@ -159,7 +159,8 @@ public class Run106BugSweepTests
             Assert.StartsWith($"Now: vs {opp.Abbreviation} · Q", vm.NextGameText);
             Assert.Equal("LIVE", live.TickerTag);
 
-            // H60: at 130% the live court's tabs sit on one row.
+            // H60: at 130% the live court's tabs sit on one row (M1, run 148: in the Subs drawer).
+            live.Drawer = 3; Settle();
             var view = window.GetVisualDescendants().OfType<LiveGameView>().Single(v => v.IsEffectivelyVisible);
             var tabs = view.GetVisualDescendants().OfType<TabItem>().Where(t => t.IsEffectivelyVisible).ToList();
             Assert.True(tabs.Count >= 3);
@@ -174,7 +175,9 @@ public class Run106BugSweepTests
             var apply = view.GetVisualDescendants().OfType<Button>().First(b => b.Content as string == "Apply lineup");
             Assert.False(apply.IsEffectivelyEnabled);
             // (The court/flow switch marks its picked view with the same class; the game's controls are the scoreboard's buttons.)
-            var controls = view.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Name == "ScoreButtons");
+            // M1 (run 148): the postgame desk takes the controls' corner (it carries Continue itself); put it away first.
+            if (live.DeskUp) { live.HideBreakCommand.Execute(null); Settle(); }
+            var controls = view.GetVisualDescendants().OfType<Panel>().Single(p => p.Name == "ScoreButtons");
             var primaries = controls.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("primary") && b.IsEffectivelyVisible).ToList();
             Assert.Single(primaries);
             Assert.Equal("Continue", primaries[0].Content as string);

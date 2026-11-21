@@ -112,41 +112,22 @@ public class Run86LineupSyncTests
             // B4b (run 145): the postgame show comes on first; the final's card is one button away.
             if (page.DeskUp) { Assert.True(page.PostgameDesk); page.ToCardCommand.Execute(null); }
             Assert.True(page.CardUp);
-            page.ToBoxCommand.Execute(null); Settle();
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs(); Settle();
             var view = window.GetVisualDescendants().OfType<LiveGameView>().First(v => v.Bounds.Width > 0);
-            var box = view.GetVisualDescendants().OfType<ScrollViewer>().First(x => x.Name == "LiveBox");
             var card = view.GetVisualDescendants().OfType<ScrollViewer>().First(x => x.Name == "BreakCard");
-            _out.WriteLine($"{club}: break card {card.Bounds.Height:0} (cap {card.MaxHeight:0}), box rows {box.Bounds.Height:0}");
-            Assert.True(card.IsEffectivelyVisible && box.IsEffectivelyVisible);
-            var court = view.GetVisualDescendants().OfType<Border>().First(x => x.Name == "CourtPanel");
-            var logPanel = view.GetVisualDescendants().OfType<Border>().First(x => x.Name == "LogPanel");
-            if (dir != null) { using var f = window.CaptureRenderedFrame(); f?.Save(Path.Combine(dir, shot + "-final-box.png")); }
-            // The box score keeps the room it has without the card (it isn't squeezed under it any more).
-            double withCardRows = box.Bounds.Height;
-            Assert.True(withCardRows >= 80, $"the box score has only {withCardRows:0} px with the break card up");
-            // The card takes the court's place in its panel: inside it, and the court is hidden while it shows.
-            Assert.True(card.GetVisualAncestors().Contains(court));
-            Assert.False(view.GetVisualDescendants().OfType<Hardwood.Desktop.Controls.LiveCourt>().First().IsEffectivelyVisible);
+            Assert.True(card.IsEffectivelyVisible);
             var withCard = LayoutCheck.Scan(window);
             Assert.True(withCard.Count == 0, "Live game final with the break card:\n" + string.Join("\n", withCard));
-            // Hide puts it away.
-            page.HideBreakCommand.Execute(null); Settle();
-            Assert.False(card.IsEffectivelyVisible);
+            // M1 (run 148): the box score is a drawer over the court; opening it puts the card away, and "Break card" brings it back.
+            page.OpenDrawerCommand.Execute("0"); Settle();
+            var box = view.GetVisualDescendants().OfType<ScrollViewer>().First(x => x.Name == "LiveBox");
+            Assert.True(box.IsEffectivelyVisible && !card.IsEffectivelyVisible);
+            Assert.True(box.Bounds.Height >= 80, $"the box score has only {box.Bounds.Height:0} px");
             Assert.True(page.CanReopenBreak);
-            Assert.True(view.GetVisualDescendants().OfType<Hardwood.Desktop.Controls.LiveCourt>().First().IsEffectivelyVisible);
-            _out.WriteLine($"{club}: box rows {withCardRows:0} with the card, {box.Bounds.Height:0} with the big court");
-            Assert.True(withCardRows >= box.Bounds.Height - 2, $"box rows {withCardRows:0} with the card, {box.Bounds.Height:0} without");
-            // Game flow puts it away too, and "Break card" brings it back.
-            page.ReopenBreakCommand.Execute(null); Settle();
-            Assert.True(card.IsEffectivelyVisible);
-            page.ToFlowCommand.Execute(null); Settle();
-            Assert.False(card.IsEffectivelyVisible);
-            page.ReopenBreakCommand.Execute(null); Settle();
-            Assert.True(card.IsEffectivelyVisible && !page.FlowShown);
-            page.ToCourtCommand.Execute(null); Settle();
+            if (dir != null) { using var f = window.CaptureRenderedFrame(); f?.Save(Path.Combine(dir, shot + "-final-box.png")); }
             var problems = LayoutCheck.Scan(window);
             Assert.True(problems.Count == 0, $"Live game final, box score at 1480x900:\n" + string.Join("\n", problems));
+            page.ReopenBreakCommand.Execute(null); Settle();
+            Assert.True(card.IsEffectivelyVisible && !page.DrawerOpen);
         }
         finally
         {
