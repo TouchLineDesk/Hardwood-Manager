@@ -265,7 +265,7 @@
                 <TextBlock Text="{Binding HomeTag}" FontSize="26" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
               </Border>
               <!-- The play caption, above the score bug (B2b: the jumbotron and the panels now hold the top of the frame). -->
-              <Border x:Name="ArenaCaption" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,140" MaxWidth="940" Background="#E00B0E14"
+              <Border x:Name="ArenaCaption" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,140" MaxWidth="840" Background="#E00B0E14"
                       CornerRadius="6" Padding="22,8" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="6,0,0,0">
                 <TextBlock Text="{Binding PlayCaption}" FontSize="30" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
               </Border>

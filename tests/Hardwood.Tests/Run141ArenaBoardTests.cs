@@ -39,7 +39,6 @@ public class Run141ArenaBoardTests
         // The score at the window's start is the last point at or before 320 s: 10-20 (at 300).
         Assert.Equal(8, m.Swing);
         Assert.Equal("MIA +8", m.Label);
-        Assert.True(m.HomeHas);
         Assert.InRange(ArenaBoard.HomeShare(m), 0.83, 0.84);
         // A 12-point swing or more fills the bar.
         r.Flow.Add(new FlowPoint(550, 1, 24, 20));
@@ -51,7 +50,6 @@ public class Run141ArenaBoardTests
         // The window opens at 560: the score then was 24-20 (at 550).
         Assert.Equal(-7, later.Swing);
         Assert.Equal("UNC +7", later.Label);
-        Assert.False(later.HomeHas);
     }
 
     [Fact]
@@ -62,13 +60,42 @@ public class Run141ArenaBoardTests
         var box = new TeamBox { Team = T(1, "MIA") };
         box.Lines.Add(new PlayerLine { Player = p, Points = 12, Fouls = 4, FGM = 5, FGA = 9 });
         var row = ArenaBoard.OnFloor(box, new[] { p }, _ => 0.72).Single();
+        Assert.Equal("tired", ArenaBoard.OnFloor(box, new[] { p }, _ => 0.695).Single().EnergyBand);   // shown as 70%, but under the sub line
         Assert.Equal("ok", row.EnergyBand);
         Assert.Equal(72, row.EnergyPercent);
-        Assert.True(row.FoulTrouble, "four fouls in a college game");
+        Assert.True(row.FoulTrouble, "four fouls when five foul out");
         Assert.Equal("5-9", row.Fg);
-        Assert.False(ArenaBoard.OnFloor(box, new[] { p }, _ => 0.9, periods: 4).Single().FoulTrouble, "the pros foul out at six");
+        Assert.False(ArenaBoard.OnFloor(box, new[] { p }, _ => 0.9, foulsToFoulOut: 6).Single().FoulTrouble, "six foul out in the pros");
         Assert.Equal("fresh", ArenaBoard.OnFloor(box, new[] { p }, _ => 0.9).Single().EnergyBand);
         Assert.Equal("tired", ArenaBoard.OnFloor(box, new[] { p }, _ => 0.5).Single().EnergyBand);
+    }
+
+    [Fact]
+    public void Breaks_are_named_on_the_bug_and_the_jumbotron()
+    {
+        Assert.Equal("HALFTIME", LiveGameViewModel.BreakName(1, 2));
+        Assert.Equal("END OF 2ND HALF", LiveGameViewModel.BreakName(2, 2));   // a tie, heading to overtime
+        Assert.Equal("END OF OT", LiveGameViewModel.BreakName(3, 2));
+        Assert.Equal("END OF 2OT", LiveGameViewModel.BreakName(4, 2));
+        Assert.Equal("END OF 1ST QTR", LiveGameViewModel.BreakName(1, 4));
+        Assert.Equal("HALFTIME", LiveGameViewModel.BreakName(2, 4));
+        Assert.Equal("END OF 4TH QTR", LiveGameViewModel.BreakName(4, 4));
+        Assert.Equal("END OF OT", LiveGameViewModel.BreakName(5, 4));
+    }
+
+    [Fact]
+    public void Shooting_lines_are_lit_by_percentage()
+    {
+        var r = new GameResult { Home = new TeamBox { Team = T(1, "MIA") }, Away = new TeamBox { Team = T(2, "UNC") } };
+        var a = new Player { Id = 2, FirstName = "A", LastName = "Away" };
+        var h = new Player { Id = 1, FirstName = "H", LastName = "Home" };
+        r.Away.Lines.Add(new PlayerLine { Player = a, ThreePM = 2, ThreePA = 20, FTM = 1, FTA = 2, Turnovers = 3 });
+        r.Home.Lines.Add(new PlayerLine { Player = h, ThreePM = 1, ThreePA = 2, FTM = 4, FTA = 10, Turnovers = 5 });
+        var rows = ArenaBoard.Compare(r).ToDictionary(x => x.Label);
+        Assert.Equal(1, rows["3PT"].Lead);    // 1-2 beats 2-20
+        Assert.Equal(-1, rows["FT"].Lead);    // 1-2 (50%) beats 4-10 (40%)
+        Assert.Equal(-1, rows["TO"].Lead);    // fewer turnovers
+        Assert.Equal("-", rows["FG%"].Away);
     }
 
     private static void CheckBoard(LiveGameViewModel live, GameSimulator.LiveGame game, string when)
@@ -143,7 +170,7 @@ public class Run141ArenaBoardTests
 
             // Possession by possession: the board matches the box score; at every break the jumbotron names it.
             int breaks = 0;
-            bool sawSubWithFresherLegs = false, sawTired = false, sawSwing = false, sawTags = false;
+            bool sawStageCaption = false, sawSubWithFresherLegs = false, sawTired = false, sawSwing = false, sawTags = false;
             var lastEnergy = new Dictionary<int, double>();
             var homeFive = game!.HomeOnCourt.Select(p => p.Id).ToHashSet();
             while (!game.Complete)
@@ -166,9 +193,13 @@ public class Run141ArenaBoardTests
                 if (Math.Abs(live.Momentum.Swing) >= 6) sawSwing = true;
                 if (live.Frame is { } f && !game.Complete)
                 {
-                    Assert.Equal(f.HomeOffense, live.HomeOnOffence);
-                    Assert.StartsWith(f.HomeOffense ? "OFFENCE" : "DEFENCE", live.HomeTag);
-                    Assert.StartsWith(f.HomeOffense ? "DEFENCE" : "OFFENCE", live.AwayTag);
+                    Assert.Equal(f.HomeOffense && !live.BetweenPeriods, live.HomeOnOffence);
+                    if (!live.BetweenPeriods)
+                    {
+                        Assert.StartsWith(f.HomeOffense ? "OFFENCE" : "DEFENCE", live.HomeTag);
+                        Assert.StartsWith(f.HomeOffense ? "DEFENCE" : "OFFENCE", live.AwayTag);
+                    }
+                    else Assert.Equal(live.HomeName, live.HomeTag);
                     sawTags = true;
                 }
                 if (live.ShowBreak && !game.Complete)
@@ -186,7 +217,7 @@ public class Run141ArenaBoardTests
                         Settle(window);
                         Assert.Equal("HALFTIME", live.BoardTitle);   // the card put away, the break goes on
                         Snap(window, "run141-board-halftime");
-                        foreach (var (width, scale, big) in new[] { (1480, 1.0, false), (1480, 1.0, true), (1280, 1.0, false), (1280, 1.3, false) })
+                        foreach (var (width, scale, big) in new[] { (1480, 1.0, false), (1480, 1.0, true), (1280, 1.0, false), (1280, 1.3, false), (1920, 1.0, true) })
                         {
                             window.Width = width;
                             window.ApplyScale(scale);
@@ -200,9 +231,19 @@ public class Run141ArenaBoardTests
                             }
                             foreach (var p in LayoutCheck.Scan(window)) problems.Add($"{width}px {scale:P0}{(big ? " big" : "")} board | {p}");
                             CheckOverlap(window);
+                            var v = window.GetVisualDescendants().OfType<LiveGameView>().First(x => x.IsEffectivelyVisible && x.Bounds.Width > 0);
+                            if (v.FindControl<Border>("ArenaCaption")!.IsVisible) sawStageCaption = true;
+                            // The longest caption a play gives, with four-letter names on the tags (code review, run 141).
+                            var keep = live.PlayCaption;
+                            live.PlayCaption = "H2 0:04  Gilgeous-Alexander misses a three (blocked by Christopherson) · End of the period: UCLA 70, DUKE 72";
+                            Settle(window);
+                            CheckOverlap(window);
+                            live.PlayCaption = keep;
+                            Settle(window);
                         }
                         window.ApplyScale(1.0); window.Width = 1480;
                         if (live.BigCourt) live.ToggleBigCourtCommand.Execute(null);
+                        Assert.True(sawStageCaption, "the caption bar on the stage was checked at least once");
                     }
                     else live.HideBreakCommand.Execute(null);
                 }

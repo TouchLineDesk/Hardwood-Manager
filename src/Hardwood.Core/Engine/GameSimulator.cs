@@ -167,6 +167,9 @@ public sealed class GameSimulator
         public int MinutesPerPeriod => _game.Rules.MinutesPerPeriod;
         /// <summary>B2b (run 141): a player's energy for the "On the floor" panels (0.3–1.0). Reads state only.</summary>
         public double EnergyOf(Player p) => _game.EnergyOf(p);
+        /// <summary>Fouls that foul a player out, and the energy below which the engine looks to sub him. Read only.</summary>
+        public int FoulsToFoulOut => _game.Rules.FoulsToFoulOut;
+        public double SubOutEnergy => _cfg.SubOutEnergy;
 
         /// <summary>Play one possession. Returns false when the game is over (and finalises injuries).</summary>
         public bool Step()

@@ -34,8 +34,10 @@ public sealed record FloorPanelRow(Hardwood.Core.Engine.FloorRow Row)
     public string Pf => Row.Pf.ToString();
     public string Fg => Row.Fg;
     public double BarWidth => Math.Max(4, BarMax * Row.Energy);
-    public Avalonia.Media.IBrush BarBrush => Avalonia.Media.SolidColorBrush.Parse(Row.EnergyBand switch { "fresh" => "#7AD85F", "ok" => "#E9C440", _ => "#E86040" });
-    public Avalonia.Media.IBrush PfBrush => Avalonia.Media.SolidColorBrush.Parse(Row.FoulTrouble ? "#F0A33A" : "#FFFFFF");
+    private static readonly Avalonia.Media.IBrush Fresh = Avalonia.Media.SolidColorBrush.Parse("#7AD85F"), Ok = Avalonia.Media.SolidColorBrush.Parse("#E9C440"),
+        Tired = Avalonia.Media.SolidColorBrush.Parse("#E86040"), Trouble = Avalonia.Media.SolidColorBrush.Parse("#F0A33A"), Plain = Avalonia.Media.Brushes.White;
+    public Avalonia.Media.IBrush BarBrush => Row.EnergyBand switch { "fresh" => Fresh, "ok" => Ok, _ => Tired };
+    public Avalonia.Media.IBrush PfBrush => Row.FoulTrouble ? Trouble : Plain;
 }
 
 /// <summary>B2b (run 141): one line of the jumbotron, the leading side's value lit.</summary>
@@ -396,11 +398,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
     // offence and defence tags and the momentum chip. Presentation only: read from the box score and the engine.
     [ObservableProperty] private IReadOnlyList<Hardwood.Core.Engine.BoardRow> _board = Array.Empty<Hardwood.Core.Engine.BoardRow>();
     /// <summary>The rows the jumbotron shows (all but FG%, which the FG line's light already says).</summary>
-    public IReadOnlyList<JumboRow> JumboRows => Board.Where(b => b.Label != "FG%").Select(b => new JumboRow(b)).ToList();
-    partial void OnBoardChanged(IReadOnlyList<Hardwood.Core.Engine.BoardRow> value) => OnPropertyChanged(nameof(JumboRows));
+    [ObservableProperty] private IReadOnlyList<JumboRow> _jumboRows = Array.Empty<JumboRow>();
+    partial void OnBoardChanged(IReadOnlyList<Hardwood.Core.Engine.BoardRow> value) => JumboRows = value.Where(b => b.Label != "FG%").Select(b => new JumboRow(b)).ToList();
     [ObservableProperty] private IReadOnlyList<FloorPanelRow> _awayFloor = Array.Empty<FloorPanelRow>();
     [ObservableProperty] private IReadOnlyList<FloorPanelRow> _homeFloor = Array.Empty<FloorPanelRow>();
-    [ObservableProperty] private Hardwood.Core.Engine.MomentumRead _momentum = new(0, "EVEN", null);
+    [ObservableProperty] private Hardwood.Core.Engine.MomentumRead _momentum = new(0, "EVEN");
     /// <summary>The jumbotron's title: the half and clock in play, the break's name at a break, FINAL at the end.</summary>
     public string BoardTitle => _live.Complete || BetweenPeriods ? BugPeriod
         : _live.Period == 0 ? "TIP-OFF" : $"{BugPeriod} · {BugClock}";
@@ -413,21 +415,29 @@ public sealed partial class LiveGameViewModel : PageViewModel
     partial void OnMomentumChanged(Hardwood.Core.Engine.MomentumRead value) { OnPropertyChanged(nameof(MomentumHomeWidth)); OnPropertyChanged(nameof(MomentumAwayWidth)); }
     /// <summary>Which side has the ball in the play shown (home attacks the right-hand basket).</summary>
     public bool HomeOffence => Frame?.HomeOffense ?? true;
-    public string AwayTag => _live.Complete ? AwayName : $"{(HomeOffence ? "DEFENCE" : "OFFENCE")} · {AwayName}";
-    public string HomeTag => _live.Complete ? HomeName : $"{(HomeOffence ? "OFFENCE" : "DEFENCE")} · {HomeName}";
-    public bool AwayOnOffence => !_live.Complete && !HomeOffence;
-    public bool HomeOnOffence => !_live.Complete && HomeOffence;
+    /// <summary>No ball between periods or after the final: the tags then just name the sides (code review, run 141).</summary>
+    private bool NoBall => _live.Complete || BetweenPeriods;
+    public string AwayTag => NoBall ? AwayName : $"{(HomeOffence ? "DEFENCE" : "OFFENCE")} · {AwayName}";
+    public string HomeTag => NoBall ? HomeName : $"{(HomeOffence ? "OFFENCE" : "DEFENCE")} · {HomeName}";
+    public bool AwayOnOffence => !NoBall && !HomeOffence;
+    public bool HomeOnOffence => !NoBall && HomeOffence;
     /// <summary>The side with the ball has its tag lit; the defence's is dimmed.</summary>
-    public double AwayTagOpacity => AwayOnOffence || _live.Complete ? 1 : 0.6;
-    public double HomeTagOpacity => HomeOnOffence || _live.Complete ? 1 : 0.6;
+    public double AwayTagOpacity => AwayOnOffence || NoBall ? 1 : 0.6;
+    public double HomeTagOpacity => HomeOnOffence || NoBall ? 1 : 0.6;
 
     private void UpdateBoard()
     {
         if (!InArena) return;
         var r = _live.Result;
-        Board = Hardwood.Core.Engine.ArenaBoard.Compare(r);
-        AwayFloor = Hardwood.Core.Engine.ArenaBoard.OnFloor(r.Away, _live.AwayOnCourt, _live.EnergyOf, r.Periods).Select(x => new FloorPanelRow(x)).ToList();
-        HomeFloor = Hardwood.Core.Engine.ArenaBoard.OnFloor(r.Home, _live.HomeOnCourt, _live.EnergyOf, r.Periods).Select(x => new FloorPanelRow(x)).ToList();
+        // Code review (run 141): only hand the views new lists when something changed, so the rows aren't rebuilt every tick.
+        var board = Hardwood.Core.Engine.ArenaBoard.Compare(r);
+        if (!board.SequenceEqual(Board)) Board = board;
+        IReadOnlyList<FloorPanelRow> Five(TeamBox box, IReadOnlyList<Player> five) => Hardwood.Core.Engine.ArenaBoard
+            .OnFloor(box, five, _live.EnergyOf, _live.FoulsToFoulOut, _live.SubOutEnergy).Select(x => new FloorPanelRow(x)).ToList();
+        var away = Five(r.Away, _live.AwayOnCourt);
+        if (!away.SequenceEqual(AwayFloor)) AwayFloor = away;
+        var home = Five(r.Home, _live.HomeOnCourt);
+        if (!home.SequenceEqual(HomeFloor)) HomeFloor = home;
         Momentum = Hardwood.Core.Engine.ArenaBoard.Momentum(r);
         foreach (var n in BoardProps) OnPropertyChanged(n);
     }

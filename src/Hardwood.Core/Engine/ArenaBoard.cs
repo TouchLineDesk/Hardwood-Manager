@@ -12,15 +12,17 @@ public sealed record FloorRow(Player Player, string Pos, string Name, int Pts, i
 {
     /// <summary>Energy as a whole percentage, as the bar is drawn.</summary>
     public int EnergyPercent => (int)Math.Round(100 * Energy);
-    /// <summary>"fresh" (85%+), "ok" (70–84%: the engine starts looking to sub him below 70) or "tired".</summary>
-    public string EnergyBand => EnergyPercent >= 85 ? "fresh" : EnergyPercent >= 70 ? "ok" : "tired";
-    /// <summary>Four or more fouls in a 40-minute game (five fouls out), three or more in the first half.</summary>
+    /// <summary>Below this the engine looks to sub him (<see cref="EngineConfig.SubOutEnergy"/>'s default).</summary>
+    public double TiredBelow { get; init; } = 0.70;
+    /// <summary>"fresh" (85%+), "ok" (from the engine's sub-out line up to 85%) or "tired" (below it), read from the raw energy.</summary>
+    public string EnergyBand => Energy >= 0.85 ? "fresh" : Energy >= TiredBelow ? "ok" : "tired";
+    /// <summary>One foul from fouling out.</summary>
     public bool FoulTrouble { get; init; }
 }
 
 /// <summary>The momentum chip: home points minus away points over the last <see cref="ArenaBoard.MomentumWindow"/>
 /// seconds played, and the line it shows.</summary>
-public sealed record MomentumRead(int Swing, string Label, bool? HomeHas);
+public sealed record MomentumRead(int Swing, string Label);
 
 /// <summary>
 /// B2b (run 141, broadcast-presentation-design.md): what the arena's jumbotron, the two "On the floor" panels and the
@@ -32,19 +34,20 @@ public static class ArenaBoard
     /// <summary>The momentum chip looks at the last four minutes played.</summary>
     public const double MomentumWindow = 240;
 
-    /// <summary>The jumbotron's comparison, from the two team boxes: FG, 3PT, FT, rebounds, assists, steals, blocks, turnovers.</summary>
+    /// <summary>The jumbotron's comparison, from the two team boxes: FG, 3PT, FT, rebounds, assists, steals, blocks, turnovers.
+    /// The shooting lines are lit by percentage, the counts by the bigger number (fewer turnovers).</summary>
     public static IReadOnlyList<BoardRow> Compare(GameResult r)
     {
         var a = r.Away; var h = r.Home;
         static int Cmp(double away, double home) => away > home ? -1 : home > away ? 1 : 0;
         static double P(int m, int att) => att == 0 ? 0 : (double)m / att;
-        static string Pct(int m, int att) => att == 0 ? "–" : $"{Math.Round(100.0 * m / att):0}%";
+        static string Pct(int m, int att) => att == 0 ? "-" : $"{Math.Round(100.0 * m / att):0}%";
         return new List<BoardRow>
         {
             new("FG", $"{a.FGM}-{a.FGA}", $"{h.FGM}-{h.FGA}", Cmp(P(a.FGM, a.FGA), P(h.FGM, h.FGA))),
             new("FG%", Pct(a.FGM, a.FGA), Pct(h.FGM, h.FGA), Cmp(P(a.FGM, a.FGA), P(h.FGM, h.FGA))),
-            new("3PT", $"{a.ThreePM}-{a.ThreePA}", $"{h.ThreePM}-{h.ThreePA}", Cmp(a.ThreePM, h.ThreePM)),
-            new("FT", $"{a.FTM}-{a.FTA}", $"{h.FTM}-{h.FTA}", Cmp(a.FTM, h.FTM)),
+            new("3PT", $"{a.ThreePM}-{a.ThreePA}", $"{h.ThreePM}-{h.ThreePA}", Cmp(P(a.ThreePM, a.ThreePA), P(h.ThreePM, h.ThreePA))),
+            new("FT", $"{a.FTM}-{a.FTA}", $"{h.FTM}-{h.FTA}", Cmp(P(a.FTM, a.FTA), P(h.FTM, h.FTA))),
             new("REB", Reb(a).ToString(), Reb(h).ToString(), Cmp(Reb(a), Reb(h))),
             new("AST", a.Assists.ToString(), h.Assists.ToString(), Cmp(a.Assists, h.Assists)),
             new("STL", a.Steals.ToString(), h.Steals.ToString(), Cmp(a.Steals, h.Steals)),
@@ -57,14 +60,14 @@ public static class ArenaBoard
     private static int Reb(TeamBox b) => b.Lines.Sum(l => l.Rebounds);
 
     /// <summary>The five on the floor, point guard to centre, each with his line so far and his energy.</summary>
-    public static IReadOnlyList<FloorRow> OnFloor(TeamBox box, IReadOnlyList<Player> five, Func<Player, double> energy, int periods = 2)
+    public static IReadOnlyList<FloorRow> OnFloor(TeamBox box, IReadOnlyList<Player> five, Func<Player, double> energy, int foulsToFoulOut = 5, double tiredBelow = 0.70)
     {
-        int trouble = periods == 2 ? 4 : 5;
+        int trouble = foulsToFoulOut - 1;
         return five.Where(p => p != null).OrderBy(p => p.PrimaryPosition).Select(p =>
         {
             var l = box.LineFor(p);
             return new FloorRow(p, p.PrimaryPosition.ToString(), Surname(p), l.Points, l.Rebounds, l.Assists, l.Fouls, $"{l.FGM}-{l.FGA}",
-                Math.Clamp(energy(p), 0, 1)) { FoulTrouble = l.Fouls >= trouble };
+                Math.Clamp(energy(p), 0, 1)) { FoulTrouble = l.Fouls >= trouble, TiredBelow = tiredBelow };
         }).ToList();
     }
 
@@ -82,7 +85,7 @@ public static class ArenaBoard
     public static MomentumRead Momentum(GameResult r)
     {
         var flow = r.Flow;
-        if (flow.Count == 0) return new MomentumRead(0, "EVEN", null);
+        if (flow.Count == 0) return new MomentumRead(0, "EVEN");
         double cutoff = r.Elapsed - MomentumWindow;
         int h0 = 0, a0 = 0;
         foreach (var p in flow)
@@ -92,9 +95,9 @@ public static class ArenaBoard
         }
         var now = flow[^1];
         int swing = (now.Home - h0) - (now.Away - a0);
-        if (swing == 0) return new MomentumRead(0, "EVEN", null);
+        if (swing == 0) return new MomentumRead(0, "EVEN");
         var team = swing > 0 ? r.Home.Team : r.Away.Team;
-        return new MomentumRead(swing, $"{team.Abbreviation} +{Math.Abs(swing)}", swing > 0);
+        return new MomentumRead(swing, $"{team.Abbreviation} +{Math.Abs(swing)}");
     }
 
     /// <summary>The share of the momentum bar the home side fills (0.5 at level; a 12-point swing or more fills it).</summary>
