@@ -127,15 +127,79 @@
           </Border>
           </ScrollViewer>
           <!-- The 2D tracker (D67 B, run 80): the latest play in words over the court that draws it. -->
-          <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
-          <Grid IsVisible="{Binding CourtShown}" HorizontalAlignment="Center">
+          <!-- The caption above the court: the flat court's, and the arena's when it's too small for its own caption bar (code-behind). -->
+          <Panel x:Name="CaptionPanel">
+            <TextBlock x:Name="PlayCaptionText" Text="{Binding PlayCaption}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
+          </Panel>
+          <!-- B2a (run 140): a college game in the arena (tools/Render/arena.py): the floor in perspective, dressed for the
+               home program or the event, the crowd in its colours, the play caption bar and the broadcast score bug. -->
+          <Panel IsVisible="{Binding CourtShown}">
+          <!-- The flat court (the pros, and a build without the arena frame) comes first, so it is the page's first LiveCourt. -->
+          <Grid IsVisible="{Binding FlatCourt}" HorizontalAlignment="Center">
             <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding FlatFrame}" MotionMs="{Binding MotionMs}"
                          FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
             <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
             <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
                         HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
           </Grid>
+          <Viewbox x:Name="ArenaBox" IsVisible="{Binding InArena}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Center">
+            <Grid Width="1600" Height="900">
+              <c:LiveCourt x:Name="ArenaCourt" Arena="{Binding Arena}" Dress="{Binding Dress}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
+                           HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" Frame="{Binding ArenaFrame}" MotionMs="{Binding MotionMs}"/>
+              <Border x:Name="ArenaCaption" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="30,26,0,0" MaxWidth="1180" Background="#E00B0E14"
+                      CornerRadius="6" Padding="22,10" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="6,0,0,0">
+                <TextBlock Text="{Binding PlayCaption}" FontSize="34" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
+              </Border>
+              <!-- The score bug: rank, crest, team, score; the half and the clock; team fouls and the bonus. -->
+              <Border x:Name="ScoreBug" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" CornerRadius="8" ClipToBounds="True"
+                      Background="#F20B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
+                <Grid ColumnDefinitions="Auto,Auto,Auto">
+                  <Grid ColumnDefinitions="12,Auto,Auto,Auto">
+                    <Border Background="{Binding AwayBrush}"/>
+                    <c:TeamLogo Grid.Column="1" Team="{Binding AwayTeam}" Width="72" Height="72" ShowRank="False" Margin="14,8"/>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="150">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding AwayRank}" IsVisible="{Binding AwayRanked}" FontSize="26" FontWeight="SemiBold" Foreground="#9AA5B4" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding AwayName}" FontSize="40" FontWeight="Black" Foreground="White"/>
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{Binding AwayFouls}" FontSize="20" Foreground="#9AA5B4" FontWeight="SemiBold"/>
+                        <Border Background="#F0A33A" CornerRadius="3" Padding="7,0" IsVisible="{Binding AwayInBonus}">
+                          <TextBlock Text="{Binding AwayBonus}" FontSize="18" FontWeight="Bold" Foreground="#101318"/>
+                        </Border>
+                      </StackPanel>
+                    </StackPanel>
+                    <TextBlock Grid.Column="3" Text="{Binding AwayScore}" FontSize="64" FontWeight="Black" Foreground="White" VerticalAlignment="Center" MinWidth="110" TextAlignment="Right" Margin="10,0,22,0"/>
+                  </Grid>
+                  <Border Grid.Column="1" Background="#1A2130" MinWidth="230" Padding="18,6">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding BugPeriod}" FontSize="24" FontWeight="Bold" Foreground="#C9D1D9" HorizontalAlignment="Center" LetterSpacing="1.5"/>
+                      <TextBlock Text="{Binding BugClock}" FontSize="44" FontWeight="Black" Foreground="{DynamicResource HwAccentBrush}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </Border>
+                  <Grid Grid.Column="2" ColumnDefinitions="Auto,Auto,Auto,12">
+                    <TextBlock Text="{Binding HomeScore}" FontSize="64" FontWeight="Black" Foreground="White" VerticalAlignment="Center" MinWidth="110" Margin="22,0,10,0"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="150">
+                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding HomeRank}" IsVisible="{Binding HomeRanked}" FontSize="26" FontWeight="SemiBold" Foreground="#9AA5B4" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding HomeName}" FontSize="40" FontWeight="Black" Foreground="White"/>
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Border Background="#F0A33A" CornerRadius="3" Padding="7,0" IsVisible="{Binding HomeInBonus}">
+                          <TextBlock Text="{Binding HomeBonus}" FontSize="18" FontWeight="Bold" Foreground="#101318"/>
+                        </Border>
+                        <TextBlock Text="{Binding HomeFouls}" FontSize="20" Foreground="#9AA5B4" FontWeight="SemiBold"/>
+                      </StackPanel>
+                    </StackPanel>
+                    <c:TeamLogo Grid.Column="2" Team="{Binding HomeTeam}" Width="72" Height="72" ShowRank="False" Margin="14,8"/>
+                    <Border Grid.Column="3" Background="{Binding HomeBrush}"/>
+                  </Grid>
+                </Grid>
+              </Border>
+            </Grid>
+          </Viewbox>
+          </Panel>
           <TextBlock Text="{Binding CourtLegend}" ToolTip.Tip="{Binding CourtLegendTip}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
           <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding FlowShown}">
           <c:GameFlowChart x:Name="FlowChart" Result="{Binding Result}" Version="{Binding FlowVersion}" HomeColor="{Binding FlowHome}" AwayColor="{Binding FlowAway}" Height="150" MinWidth="200"/>

@@ -149,6 +149,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
 
     // The 2D tracker (D67 B, run 80): the latest play drawn on the court, with the ten players and the ball.
     [ObservableProperty] private Hardwood.Desktop.Controls.TrackerFrame? _frame;
+    /// <summary>The frame for whichever court is shown (code review, run 140: the hidden one gets none, so only one
+    /// court runs its motion loop).</summary>
+    public Hardwood.Desktop.Controls.TrackerFrame? FlatFrame => InArena ? null : Frame;
+    public Hardwood.Desktop.Controls.TrackerFrame? ArenaFrame => InArena ? Frame : null;
+    partial void OnFrameChanged(Hardwood.Desktop.Controls.TrackerFrame? value) { OnPropertyChanged(nameof(FlatFrame)); OnPropertyChanged(nameof(ArenaFrame)); }
     [ObservableProperty] private string _playCaption = "Tip-off.";
     private int _framePlay = -1;
 
@@ -315,11 +320,47 @@ public sealed partial class LiveGameViewModel : PageViewModel
             foreach (var row in OurPlayers) slot.Options.Add(row.Player);
             Lineup.Add(slot);
         }
+        if (Session.InCollege && Graphics.BroadcastArt.Arena is { Frame: not null, Court: not null } arena)
+        {
+            Arena = arena;
+            Dress = Hardwood.Core.College.ArenaDress.For(HomeTeam, Session.World.College?.GameOn(Us.Id, Session.Today));
+        }
         // K10 (run 136): the assistant's panel reads this game while it's on.
         Shell.Guide.SetLive(() => Hardwood.Core.Guide.Assistant.LiveRead(_live.Result, Us, _live.PeriodText, _live.ClockText, _live.Complete));
         Refresh();
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
+
+    // B2a (run 140): a college game is shown in the arena: the floor in perspective, dressed for the home program or
+    // the event, the crowd in its colours, and a broadcast score bug. Presentation only: it reads the game.
+    /// <summary>The arena frame, for a college game when the build carries it (else the flat court).</summary>
+    public Graphics.BroadcastSet? Arena { get; }
+    public Hardwood.Core.College.ArenaDress? Dress { get; }
+    public bool InArena => Arena != null;
+    public bool FlatCourt => !InArena;
+    public static string BugRank(Team t) => Hardwood.Desktop.Controls.CollegeRank.For(t) is { } r ? r.ToString() : "";
+    public string AwayRank => BugRank(AwayTeam);
+    public string HomeRank => BugRank(HomeTeam);
+    public bool AwayRanked => AwayRank.Length > 0;
+    public bool HomeRanked => HomeRank.Length > 0;
+    /// <summary>"1ST HALF", "2ND HALF", "OT", "2OT" (or quarters in the pros), and FINAL at the end.</summary>
+    public string BugPeriod => _live.Complete ? (_live.Period > _live.Result.Periods ? (_live.Period - _live.Result.Periods == 1 ? "FINAL/OT" : $"FINAL/{_live.Period - _live.Result.Periods}OT") : "FINAL")
+        : BugPeriodName(Math.Max(1, _live.Period), _live.Result.Periods);   // before the tip the game is in period 0
+    public static string BugPeriodName(int period, int periods) =>
+        period > periods ? (period - periods == 1 ? "OT" : $"{period - periods}OT")
+        : periods == 2 ? (period == 1 ? "1ST HALF" : "2ND HALF")
+        : period switch { 1 => "1ST QTR", 2 => "2ND QTR", 3 => "3RD QTR", _ => "4TH QTR" };
+    public string BugClock => _live.Complete ? "" : _live.Period == 0 ? $"{_live.MinutesPerPeriod}:00" : _live.ClockText;
+    public string AwayFouls => $"FOULS {_live.AwayTeamFouls}";
+    public string HomeFouls => $"FOULS {_live.HomeTeamFouls}";
+    /// <summary>"BONUS" (a one-and-one in college) or "DBL BONUS" beside the side that shoots free throws on a common foul.</summary>
+    public static string BonusLabel(int shots, bool oneAndOne) => shots == 0 ? "" : oneAndOne && shots == 1 ? "BONUS" : oneAndOne ? "DBL BONUS" : "BONUS";
+    public string AwayBonus => _live.Complete ? "" : BonusLabel(_live.BonusFor(homeShoots: false), _live.OneAndOne);
+    public string HomeBonus => _live.Complete ? "" : BonusLabel(_live.BonusFor(homeShoots: true), _live.OneAndOne);
+    public bool AwayInBonus => AwayBonus.Length > 0;
+    public bool HomeInBonus => HomeBonus.Length > 0;
+    private static readonly string[] BugProps = { nameof(BugPeriod), nameof(BugClock), nameof(AwayFouls), nameof(HomeFouls), nameof(AwayBonus), nameof(HomeBonus),
+        nameof(AwayInBonus), nameof(HomeInBonus), nameof(AwayRank), nameof(HomeRank), nameof(AwayRanked), nameof(HomeRanked) };
 
     partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(MotionMs)); OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
     partial void OnCompleteChanged(bool value)
@@ -520,6 +561,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
         Clock = $"{_live.PeriodText}  {_live.ClockText}";
+        if (InArena) foreach (var n in BugProps) OnPropertyChanged(n);
         Shell.Guide.LiveTick();
         var r = _live.Result;
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";

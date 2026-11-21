@@ -15,6 +15,14 @@ mkdir -p "$D" && unzip -q mh_cc0.zip -d "$D"
 ```
 The Anton font comes from the system's Google Fonts folder (`/usr/share/fonts/truetype/google-fonts/ofl/anton`).
 
+### Arena assets (B2a, run 140)
+Downloaded into `tools/Render/assets/` (git-ignored), or anywhere named by `HW_RENDER_ASSETS`:
+```bash
+mkdir -p tools/Render/assets && cd tools/Render/assets
+curl -L -o WoodFloor051.zip "https://ambientcg.com/get?file=WoodFloor051_1K-JPG.zip" && unzip -q -d WoodFloor051 WoodFloor051.zip
+curl -L -o events_hall_interior_1k.hdr "$(curl -s https://api.polyhaven.com/files/events_hall_interior | python3 -c 'import json,sys; print(json.load(sys.stdin)["hdri"]["1k"]["hdr"]["url"])')"
+```
+
 ## Render
 ```bash
 python3 tools/Render/selection_studio.py 48 /tmp/selection-studio.png   # about 4 minutes on 2 CPUs
@@ -23,4 +31,5 @@ Then save it as `src/Hardwood.Desktop/Assets/Broadcast/selection-studio.jpg` (qu
 
 | Script | Frame |
 |---|---|
+| `arena.py` | The college arena (B2a): a bare maple floor with white lines, baskets, ribbon boards and about 6,000 fans; writes the frame, a tint mask (team shirts and ribbon boards) and the court's corners in pixels. The game paints the keys, the apron, the lettering and the crest, projects the players onto the floor and tints the crowd. `python3 tools/Render/arena.py 40 /tmp/college-arena.png` takes about 5 minutes; save the frame as `college-arena.jpg` (quality 86), the mask as an alpha PNG (`college-arena-mask.png`, alpha = the mask) and copy the `.json`. |
 | `selection_studio.py` | The Selection Show studio: curved LED wall, the big screen, the anchor desk, host and analyst (MakeHuman, `mpfb_people.py`). |

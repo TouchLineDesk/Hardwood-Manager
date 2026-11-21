@@ -47,6 +47,20 @@ public partial class LiveGameView : UserControl
         // caption or tab row wraps to another line, so the court doesn't pulse from play to play (code review, run 85).
         LeftCol.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) { _fitPending = true; FitCourt(); } };
         CourtPanel.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty && _fitPending) FitCourt(); };
+        // B2a (run 140): the arena's caption bar is drawn at the arena's scale; when the arena is small the caption moves
+        // above it, at full size, so the play stays readable.
+        ArenaBox.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) PlaceCaption(); };
+    }
+
+    /// <summary>Below this width the arena's own caption bar would be too small to read (its text is drawn at 34 px on a 1600 px stage).</summary>
+    public const double ArenaCaptionMinWidth = 640;
+
+    private void PlaceCaption()
+    {
+        bool arena = _vm?.InArena == true;
+        bool small = arena && ArenaBox.Bounds.Width > 0 && ArenaBox.Bounds.Width < ArenaCaptionMinWidth;
+        ArenaCaption.IsVisible = arena && !small;
+        CaptionPanel.IsVisible = !arena || small;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -57,6 +71,7 @@ public partial class LiveGameView : UserControl
         if (_vm != null) _vm.PropertyChanged += OnVmChanged;
         FitColumns();
         FitCourt();
+        PlaceCaption();
     }
 
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
@@ -94,14 +109,16 @@ public partial class LiveGameView : UserControl
     private void FitCourt()
     {
         double cap = SmallCourtHeight;
-        if (_vm is { BigCourt: true, CourtShown: true } && LeftCol.Bounds.Height > 0 && Court.Bounds.Height > 0)
+        // B2a (run 140): a college game's arena takes the same room as the flat court.
+        Control court = _vm?.InArena == true ? ArenaBox : Court;
+        if (_vm is { BigCourt: true, CourtShown: true } && LeftCol.Bounds.Height > 0 && court.Bounds.Height > 0)
         {
-            double overhead = CourtPanel.Bounds.Height - Court.Bounds.Height;
+            double overhead = CourtPanel.Bounds.Height - court.Bounds.Height;
             cap = BigCourtCap(LeftCol.Bounds.Height, overhead, CourtPanel.Margin.Bottom);
             _fitPending = false;
         }
         else if (_vm is { BigCourt: true }) return;   // the court is hidden or not laid out yet: keep its size for now
         else _fitPending = false;
-        if (Math.Abs(Court.MaxHeight - cap) > 1) Court.MaxHeight = cap;
+        if (Math.Abs(court.MaxHeight - cap) > 1) court.MaxHeight = cap;
     }
 }
