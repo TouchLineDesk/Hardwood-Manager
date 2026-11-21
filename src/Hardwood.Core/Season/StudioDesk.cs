@@ -328,10 +328,12 @@ public static class PostgameDesk
         // 6. Around college: tonight's other ranked games.
         if (around is { Count: > 0 })
         {
-            int finals = around.Count(x => x.StartsWith("Final"));
-            string line = finals == around.Count ? (finals == 1 ? "One more final from around the country." : $"{finals} more finals from around the country.")
-                : $"{finals} final{(finals == 1 ? "" : "s")} in from around the country, and {around.Count - finals} still going later tonight.";
-            beats.Add(new("AROUND COLLEGE", "Elsewhere tonight", around.Take(6).Select(x => new DeskRow("", x, "")).ToList(), new StudioLine(Host, line)));
+            var shown = around.Take(6).ToList();   // review (run 145): the line counts the rows on the screen
+            int finals = shown.Count(x => x.StartsWith("Final"));
+            string line = finals == shown.Count ? (finals == 1 ? "One more final from around the country." : $"{finals} more finals from around the country.")
+                : finals == 0 ? (shown.Count == 1 ? "One more game with a ranked team still to come tonight." : $"{shown.Count} more games with a ranked team still to come tonight.")
+                : $"{finals} final{(finals == 1 ? "" : "s")} in from around the country, and {shown.Count - finals} still to come later tonight.";
+            beats.Add(new("AROUND COLLEGE", "Elsewhere tonight", shown.Select(x => new DeskRow("", x, "")).ToList(), new StudioLine(Host, line)));
         }
         return beats;
     }
@@ -368,11 +370,20 @@ public sealed partial class GameSession
         {
             var next = MyGames().FirstOrDefault(g => !g.Played && g.Date > Today);
             string rec = us == a ? ra : rh;
-            line = (r.Winner.Team == us ? $"{us.FullName} win and move to {rec}." : $"{us.FullName} fall to {rec}.")
-                + (next == null ? " That's the last game on the schedule for now."
-                   : $" Next up: {(next.Home ? "" : next.Neutral ? "vs " : "at ")}{next.Opponent.FullName}{(next.Home ? " at home" : "")}, {next.Date:ddd MMM d}.");
-            if (next != null) rows.Add(new("Next", us == a ? $"{(next.Home ? "vs" : "at")} {next.Opponent.Abbreviation} · {next.Date:MMM d}" : "", us == h ? $"{(next.Home ? "vs" : "at")} {next.Opponent.Abbreviation} · {next.Date:MMM d}" : ""));
-            if (rec == "") line = null;
+            // Review (run 145): a game that doesn't count in the record (a playoff or cup game) doesn't "move" it.
+            string result = counts ? (r.Winner.Team == us ? $"{us.FullName} win and move to {rec}." : $"{us.FullName} fall to {rec}.")
+                : r.Winner.Team == us ? $"A win for {us.FullName}." : $"A loss for {us.FullName}.";
+            // A neutral-site game is "vs" even when you're the listed home side.
+            string Where(MyGame g) => g.Neutral ? "vs" : g.Home ? "home to" : "at";
+            line = result
+                + (next == null ? (counts ? " That's the last game on the schedule for now." : "")
+                   : $" Next up: {(next.Neutral ? $"{next.Opponent.FullName} on a neutral floor" : next.Home ? $"{next.Opponent.FullName} at home" : $"at {next.Opponent.FullName}")}, {next.Date:ddd MMM d}.");
+            if (next != null)
+            {
+                string cell = $"{Where(next)} {next.Opponent.Abbreviation} · {next.Date:MMM d}";
+                rows.Add(new("Next", us == a ? cell : "", us == h ? cell : ""));
+            }
+            if (counts && rec == "") line = null;
         }
         return (rows, line);
     }
