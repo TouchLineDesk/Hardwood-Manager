@@ -37,7 +37,7 @@ public sealed partial class CollegeWorld
     /// <summary>How far ahead (appeal points, no luck) another school must be before a verbal commit thinks again.</summary>
     public const double FlipGap = 12;
     /// <summary>The weekly chance that a verbal commit so far behind backs out.</summary>
-    public const double FlipChance = 0.08;
+    public const double FlipChance = 0.06;
     /// <summary>Verbal commits ranked this high (or tied to the coached program) are reconsidered; the rest are depth.</summary>
     public const int ReconsiderTop = 400;
     /// <summary>A flip this high in the class makes the news.</summary>

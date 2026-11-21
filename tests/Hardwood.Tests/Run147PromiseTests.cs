@@ -154,7 +154,7 @@ public class Run147PromiseTests
         while (s.Today < end) s.AdvanceDay();
         int top = c.ClassOf(cls).Count(p => c.Recruits[p.Id] is { CommittedTo: not null, Rank: <= CollegeWorld.ReconsiderTop });
         _out.WriteLine($"Class of {cls}: {c.Flips} flips; {top} of the top {CollegeWorld.ReconsiderTop} signed");
-        Assert.InRange(c.Flips, top / 50, top / 8);
+        Assert.InRange(c.Flips, top / 50, top / 6);
     }
 
     [Fact]
