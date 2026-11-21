@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:v="using:Hardwood.Desktop.Views"
              x:Class="Hardwood.Desktop.Views.CollegeView"
              x:DataType="vm:CollegeViewModel">
   <UserControl.Styles>
@@ -167,7 +168,9 @@
             <c:StatStrip ItemsSource="{Binding MadnessChips}" Accent="{DynamicResource HwAccent}" IsVisible="{Binding FieldPicked}"/>
             <ComboBox ItemsSource="{Binding BracketViews}" SelectedItem="{Binding BracketView}" MinWidth="200" IsVisible="{Binding FieldPicked}"/>
             <!-- Selection Sunday as a reveal (C4 part 2): the regions one at a time, then the bubble. -->
-            <StackPanel Spacing="6" IsVisible="{Binding ShowSelection}">
+            <!-- The Selection Show (B1, run 139): the reveal on the HSN set, game by game, until Advance. -->
+            <v:SelectionShowView IsVisible="{Binding ShowOn}"/>
+            <StackPanel Spacing="6" IsVisible="{Binding ShowRegions}">
               <TextBlock Text="{Binding SelectionIntro}" Classes="muted" TextWrapping="Wrap"/>
               <WrapPanel IsVisible="{Binding CanReveal}">
                 <Button Content="{Binding RevealButton}" Command="{Binding RevealNextCommand}" IsEnabled="{Binding CanReveal}" Classes="primary" Margin="0,0,8,4"/>

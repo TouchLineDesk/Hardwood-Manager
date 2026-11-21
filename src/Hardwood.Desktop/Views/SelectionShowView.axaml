@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.SelectionShowView"
+             x:DataType="vm:CollegeViewModel">
+  <!-- The Selection Show (B1, run 139): the HSN studio (a Blender frame, tools/Render/selection_studio.py), the big screen
+       filled with the game being revealed and its region's board, the presenter's line in a speech bubble, and the controls. -->
+  <StackPanel Spacing="8">
+    <Border CornerRadius="10" ClipToBounds="True" Background="#07090D" MaxWidth="1400" HorizontalAlignment="Left">
+      <Viewbox Stretch="Uniform">
+        <Canvas x:Name="Stage" Width="1440" Height="810" ClipToBounds="True">
+          <Image x:Name="Backdrop" Width="1920" Height="1080" Stretch="Fill"/>
+          <!-- The big screen. -->
+          <Border x:Name="ScreenPanel" Background="#F20A101C" Padding="22,16" BorderBrush="#7C5CFF" BorderThickness="0,0,0,4">
+            <Grid RowDefinitions="Auto,*">
+              <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                  <Border Background="#F0A33A" CornerRadius="4" Padding="10,2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ScreenRound}" FontSize="24" FontWeight="Bold" Foreground="#101318"/>
+                  </Border>
+                  <TextBlock Text="{Binding ScreenSite}" FontSize="40" FontWeight="Black" Foreground="White" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding ScreenWhen}" FontSize="26" Foreground="#C9D1D9" VerticalAlignment="Center"/>
+              </Grid>
+              <Grid Grid.Row="1" ColumnDefinitions="*,380">
+                <!-- The matchup (or the show's title on the open and the close). -->
+                <TextBlock Text="{Binding ScreenTitle}" IsVisible="{Binding !ScreenHasGame}" FontSize="64" FontWeight="Black" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <StackPanel IsVisible="{Binding ScreenHasGame}" Spacing="10" VerticalAlignment="Center" Margin="0,0,18,0">
+                  <ContentControl Content="{Binding ScreenTop}">
+                    <ContentControl.ContentTemplate>
+                      <DataTemplate x:DataType="vm:ScreenSide">
+                        <Border Background="#1A2233" CornerRadius="6" Padding="10,6" BorderThickness="6,0,0,0"
+                                BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                          <Grid ColumnDefinitions="56,84,*,Auto">
+                            <TextBlock Text="{Binding Seed}" FontSize="40" FontWeight="Black" Foreground="#F0A33A" VerticalAlignment="Center"/>
+                            <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="72" Height="72" IsVisible="{Binding HasTeam}" ShowRank="False"/>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
+                              <TextBlock Text="{Binding School}" FontSize="34" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                              <TextBlock Text="{Binding Tag}" IsVisible="{Binding HasTag}" FontSize="20" FontWeight="Bold" Foreground="#58A6FF"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="3" Text="{Binding Record}" FontSize="30" Foreground="#C9D1D9" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                  </ContentControl>
+                  <ContentControl Content="{Binding ScreenBottom}">
+                    <ContentControl.ContentTemplate>
+                      <DataTemplate x:DataType="vm:ScreenSide">
+                        <Border Background="#1A2233" CornerRadius="6" Padding="10,6" BorderThickness="6,0,0,0"
+                                BorderBrush="{Binding Mine, Converter={x:Static vm:CollegeConverters.MineEdge}}">
+                          <Grid ColumnDefinitions="56,84,*,Auto">
+                            <TextBlock Text="{Binding Seed}" FontSize="40" FontWeight="Black" Foreground="#F0A33A" VerticalAlignment="Center"/>
+                            <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="72" Height="72" IsVisible="{Binding HasTeam}" ShowRank="False"/>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
+                              <TextBlock Text="{Binding School}" FontSize="34" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                              <TextBlock Text="{Binding Tag}" IsVisible="{Binding HasTag}" FontSize="20" FontWeight="Bold" Foreground="#58A6FF"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="3" Text="{Binding Record}" FontSize="30" Foreground="#C9D1D9" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                  </ContentControl>
+                </StackPanel>
+                <!-- The region's board, filling in. -->
+                <Border Grid.Column="1" Background="#121A28" CornerRadius="6" Padding="12,8">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding ScreenBoardTitle}" FontSize="24" FontWeight="Black" Foreground="#F0A33A"/>
+                    <ItemsControl ItemsSource="{Binding ScreenBoard}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ScreenBoardRow">
+                          <Border Opacity="{Binding Fade}" CornerRadius="4" Padding="6,1" Margin="0,1"
+                                  Background="{Binding Now, Converter={x:Static vm:CollegeConverters.NowFill}}">
+                            <Grid ColumnDefinitions="*,*">
+                              <TextBlock Text="{Binding Top}" FontSize="25" Foreground="White" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                              <TextBlock Grid.Column="1" Text="{Binding Bottom}" FontSize="25" Foreground="#C9D1D9" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </Grid>
+          </Border>
+          <!-- The presenter's line, beside the speaker (the tail is drawn first, under the bubble). -->
+          <Path x:Name="BubbleTail" Fill="#F7F8FB"/>
+          <Border x:Name="Bubble" Width="430" Background="#F7F8FB" CornerRadius="14" Padding="22,14" BoxShadow="0 6 18 0 #80000000">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding BubbleSpeaker}" FontSize="22" FontWeight="Bold" Foreground="#7C5CFF"/>
+              <TextBlock Text="{Binding BubbleText}" FontSize="30" Foreground="#101318" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </Canvas>
+      </Viewbox>
+    </Border>
+    <WrapPanel>
+      <Button Content="Next game" Command="{Binding ShowNextCommand}" IsEnabled="{Binding CanShowNext}" Classes="primary" Margin="0,0,8,4"/>
+      <Button Content="{Binding AutorunText}" Command="{Binding ShowAutorunCommand}" IsEnabled="{Binding CanShowNext}" Margin="0,0,8,4"/>
+      <Button Content="Advance to the bracket" Command="{Binding ShowAdvanceCommand}" Margin="0,0,16,4"/>
+      <TextBlock Text="{Binding ShowProgress}" Classes="muted" VerticalAlignment="Center" Margin="0,0,0,4"/>
+    </WrapPanel>
+  </StackPanel>
+</UserControl>

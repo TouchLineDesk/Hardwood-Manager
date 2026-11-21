@@ -7,3 +7,5 @@ obj/
 *.db
 *.db-journal
 TestResults/
+__pycache__/
+*.pyc
