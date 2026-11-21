@@ -29,6 +29,7 @@ public sealed partial class CollegeViewModel
 {
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CollegeSeason, System.Runtime.CompilerServices.StrongBox<int>> ShowAt = new();
     private List<ShowBeat> _beats = new();
+    private CollegeSeason? _beatsFor;
     private DispatcherTimer? _autorun;
 
     [ObservableProperty] private bool _showOn;
@@ -64,6 +65,7 @@ public sealed partial class CollegeViewModel
         var s = c.Season;
         int? me = Session.Employed && Session.InCollege ? Session.HumanTeam.Id : null;
         _beats = SelectionShow.Build(c, me);
+        _beatsFor = s;
         bool over = RevealedRegions >= 4 || _beats.Count == 0;
         int at = Math.Min(ShowPosition(s), _beats.Count);
         ShowOn = !over;
@@ -95,7 +97,7 @@ public sealed partial class CollegeViewModel
     /// <summary>The board beside the matchup: the current region's eight pairings (the First Four's four games), filled as revealed.</summary>
     private void FillBoard(CollegeWorld c, ShowBeat beat, int at)
     {
-        string Short(ShowSide x) => x.TeamId > 0 ? $"{x.Seed} {c.Program(x.TeamId)?.Abbreviation}" : $"{x.Seed} FIRST FOUR";
+        string Short(ShowSide x) => x.TeamId > 0 ? $"{x.Seed} {c.Program(x.TeamId)?.Abbreviation}" : $"{x.Seed} PLAY-IN";
         var shownSoFar = _beats.Take(at).ToList();
         if (beat.Kind == "First Four")
         {
@@ -120,7 +122,7 @@ public sealed partial class CollegeViewModel
     [RelayCommand]
     private void ShowNext()
     {
-        if (Session.World.College is not { } c || !c.Season.Selected) return;
+        if (Shell.IsBusy || Session.World.College is not { } c || !c.Season.Selected || !ReferenceEquals(c.Season, _beatsFor)) return;
         var box = ShowAt.GetValue(c.Season, _ => new System.Runtime.CompilerServices.StrongBox<int>(1));
         if (box.Value >= _beats.Count) { ShowAdvance(); return; }
         box.Value++;
@@ -147,7 +149,10 @@ public sealed partial class CollegeViewModel
 
     private void AutorunTick(object? sender, EventArgs e)
     {
-        if (!ShowOn || !CanShowNext) { StopAutorun(); return; }
+        // Review (run 139): never tick behind the player's back: off this page, while the game is advancing on its
+        // worker thread, after a different save was loaded, or once the season has moved on.
+        if (!ShowOn || !CanShowNext || Shell.IsBusy || !ReferenceEquals(Shell.CurrentPage, this) || Shell.Session == null
+            || Session.World.College is not { } c || !ReferenceEquals(c.Season, _beatsFor)) { StopAutorun(); return; }
         ShowNext();
     }
 

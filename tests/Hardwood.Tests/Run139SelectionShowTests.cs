@@ -110,6 +110,7 @@ public class Run139SelectionShowTests
             Assert.Equal(1, college.RevealedRegions);
             Assert.Equal(beats[12].Line, college.BubbleText);
             Snap(window, "run139-selection-show-east");
+            foreach (var p in LayoutCheck.Scan(window)) problems.Add($"1480px East board | {p}");
             // Go to your own game, if any, for the shots and the layout check.
             int mine = beats.FindIndex(b => b.Mine && b.IsGame);
             int at = 13;

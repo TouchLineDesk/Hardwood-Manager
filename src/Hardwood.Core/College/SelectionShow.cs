@@ -130,6 +130,8 @@ public static class SelectionShow
         if (my)
         {
             var me = a.Mine ? a : b; var them = a.Mine ? b : a;
+            if (b.Mine && b.TeamId == 0)
+                return $"And there's your First Four game's prize: the winner is the No. {b.Seed} seed in the {reg}, against No. {a.Seed} {a.School} in {site}.";
             return $"There it is: {me.School} is in! A No. {me.Seed} seed in the {reg}, against No. {them.Seed} {them.School} in {site}.";
         }
         if (pair == 0)

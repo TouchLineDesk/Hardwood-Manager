@@ -99,11 +99,7 @@ public static class LayoutCheck
             }
 
             // Where does the ink actually sit in window coordinates?
-            var origin = tb.TranslatePoint(new Point(tb.Padding.Left, 0), space);
-            if (origin == null) continue;
             double inkW = Math.Min(textW, inner);
-            if (tb.TextAlignment == TextAlignment.Right) origin = origin.Value.WithX(origin.Value.X + inner - inkW);
-            else if (tb.TextAlignment == TextAlignment.Center) origin = origin.Value.WithX(origin.Value.X + (inner - inkW) / 2);
             double lx = tb.Padding.Left + (tb.TextAlignment == TextAlignment.Right ? inner - inkW : tb.TextAlignment == TextAlignment.Center ? (inner - inkW) / 2 : 0);
             double lh = Math.Min(layout.Height, tb.Bounds.Height);
             var ink = InSpace(tb, new Rect(lx, 0, inkW, lh), space) ?? default;
