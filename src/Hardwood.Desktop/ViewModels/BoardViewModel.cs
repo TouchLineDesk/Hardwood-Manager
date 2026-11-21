@@ -270,11 +270,17 @@ public sealed partial class BoardViewModel : PageViewModel
 
         Vacancies.Clear();
         bool summer = s.Phase == Hardwood.Core.Season.SessionPhase.Offseason;
-        foreach (var v in s.LiveVacancies.Where(v => !s.Employed || v.WhileEmployed))
+        // H167 (run 144): out of work, the jobs most likely to answer come first (offers, applications, then by hire chance);
+        // the list opened on NBA long shots while the programs that would consider a sacked college coach sat below them.
+        var listed = s.LiveVacancies.Where(v => !s.Employed || v.WhileEmployed);
+        if (!s.Employed)
+            listed = listed.OrderBy(v => v.Status switch { "offered" => 0, "applied" => 1, _ => 2 })
+                .ThenByDescending(v => s.FindTeam(v.TeamId) is { } vt ? s.HireChanceFor(vt) : 0).ToList();
+        foreach (var v in listed)
         {
             var t = s.FindTeam(v.TeamId)!;
             var vctx = s.ContextOf(t);
-            double chance = Board.HireChance(coach, vctx, t);
+            double chance = s.Employed ? Board.HireChance(coach, vctx, t) : s.HireChanceFor(t); // H167
             var vrec = s.League.Teams.Contains(t) ? s.Standings[t] : s.World.LeagueOf(t) is { } lc ? s.TableOf(lc)[t]
                 : s.IsCollegeProgram(t) ? s.CollegeRecord(t) : new Hardwood.Core.Season.TeamRecord { Team = t };
             int id = v.TeamId;
@@ -300,7 +306,11 @@ public sealed partial class BoardViewModel : PageViewModel
         JobsNote = s.Employed
             ? $"These clubs changed coach and would be a step up from {s.HumanTeam.TheFullName}. Apply without leaving your job; if an offer comes and you accept it, you move at once and your history goes with you. Openings close when the new season starts."
             : "Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team."
-              + (s.World.College != null ? " College programs post theirs at the end of the season." : "");
+              + (s.World.College == null ? ""
+                  : summer ? " College programs posted theirs when the season ended; more open as their coaches move."
+                  : " College programs post theirs at the end of the season.")
+              + (s.RecentlySackedFromCollege && s.Coach.Reputation < Hardwood.Core.Season.GameSession.SackedCollegeCoachProReputation
+                  ? " Pro clubs rarely hire a college coach straight after a sacking: a college program is the likelier way back." : "");
         ResignNote = !s.Employed ? "" : ConfirmingResign
             ? $"Resign as head coach of {s.HumanTeam.TheFullName}? You'll be out of work (reputation −2) and can apply for open jobs."
             : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work.";
@@ -381,7 +391,7 @@ public sealed partial class BoardViewModel : PageViewModel
         {
             // CS2 (run 126, #166): prestige as a letter, the number beside it.
             new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + PrestigeWords(prestige, cw.PrestigeRanks().GetValueOrDefault(t.Id, cw.Programs.Count)), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
-            new("National rank", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? $"No. {rank}" : "Unranked", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "in the Top 25 poll" : $"No. {rank} of {cw.Programs.Count} in the poll", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "good" : ""),
+            new("National rank", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? $"No. {rank}" : "Unranked", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "in the Top 25 poll" : $"No. {rank} of {cw.Programs.Count} in the ratings", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "good" : ""),
             new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
             new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
             new("Graduating", $"{seniors}", "turn pro next summer", "info"),

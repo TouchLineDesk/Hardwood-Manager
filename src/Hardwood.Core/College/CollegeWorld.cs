@@ -650,6 +650,38 @@ public sealed partial class CollegeWorld
         Season = s;
     }
 
+    /// <summary>H166 (run 144): conference games a program plays in a league of <paramref name="members"/> (the schedule above):
+    /// home and away up to 11 (2 × (n − 1)), 19 for an even big league, and an odd big league's 20 rounds less its byes.</summary>
+    public static int ConferenceGames(int members)
+    {
+        if (members <= 1) return 0;
+        if (members <= 11) return 2 * (members - 1);
+        if (members % 2 == 0) return BigConferenceRounds(members);
+        int second = BigConferenceRounds(members) - members; // the reversed rounds after a full round robin of n rounds
+        return members - 1 + (int)Math.Round(second * (members - 1) / (double)members);
+    }
+
+    /// <summary>
+    /// H166 (run 144): the regular-season games a program plays this season (<see cref="IsRegularSeason"/>), the count the
+    /// athletic director's target and pace use. From the schedule once it exists: its non-conference and conference games,
+    /// the invitational games actually played (2 while an invited program's bracket is still going) and a showcase once drawn.
+    /// Before a schedule exists: 10 non-conference games, <see cref="ConferenceGames"/> and one invitational game.
+    /// </summary>
+    public int RegularSeasonGames(int id, int? conferenceSize = null)
+    {
+        int confSize = conferenceSize ?? (ConferenceOf.TryGetValue(id, out var key) ? InConference(key).Count() : 14);
+        var mine = Season?.Games.Where(g => (g.HomeId == id || g.AwayId == id) && IsRegularSeason(g)).ToList();
+        if (mine == null || !mine.Any(g => g.Stage == "Conference")) return 10 + ConferenceGames(confSize) + 1;
+        int games = mine.Count(g => g.Stage is "Non-conference" or "Conference" or "Showcase");
+        var inv = mine.Where(g => g.Stage == "Invitational").ToList();
+        if (inv.Count > 0)
+        {
+            bool settled = inv.All(g => g.Played) && (inv.Any(g => g.WinnerId != id) || Season!.EventWinners.ContainsKey(inv[0].Event ?? ""));
+            games += settled ? inv.Count : Math.Max(inv.Count, 2);
+        }
+        return games;
+    }
+
     /// <summary>H162 (run 138): conference rounds for a league of 11 or more: home and away for 11 (22 rounds with a bye each,
     /// 20 games), otherwise 19 for an even league (19 games each) and 20 for an odd one (a bye a round: 18-19 games each).</summary>
     public static int BigConferenceRounds(int members) => members == 11 ? 22 : members % 2 == 0 ? 19 : 20;
