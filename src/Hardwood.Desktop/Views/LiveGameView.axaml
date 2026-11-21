@@ -134,6 +134,15 @@
           <!-- B2a (run 140): a college game in the arena (tools/Render/arena.py): the floor in perspective, dressed for the
                home program or the event, the crowd in its colours, the play caption bar and the broadcast score bug. -->
           <Panel IsVisible="{Binding CourtShown}">
+          <!-- The flat court (the pros, and a build without the arena frame) comes first, so it is the page's first LiveCourt. -->
+          <Grid IsVisible="{Binding FlatCourt}" HorizontalAlignment="Center">
+            <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
+                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
+                         FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
+            <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
+            <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
+          </Grid>
           <Viewbox x:Name="ArenaBox" IsVisible="{Binding InArena}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Center">
             <Grid Width="1600" Height="900">
               <c:LiveCourt x:Name="ArenaCourt" Arena="{Binding Arena}" Dress="{Binding Dress}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
@@ -190,14 +199,6 @@
               </Border>
             </Grid>
           </Viewbox>
-          <Grid IsVisible="{Binding FlatCourt}" HorizontalAlignment="Center">
-            <c:LiveCourt x:Name="Court" Floor="{Binding HomeCourt}" Shots="{Binding CourtShots}" Version="{Binding CourtVersion}"
-                         HomeColor="{Binding HomeDot}" AwayColor="{Binding AwayDot}" MaxHeight="300" Frame="{Binding Frame}" MotionMs="{Binding MotionMs}"
-                         FloorColor="{Binding FloorColor}" FloorTrim="{Binding FloorTrim}" FloorName="{Binding FloorName}"/>
-            <!-- The home club's logo at centre court (the pack's own courts already carry theirs). -->
-            <c:TeamLogo Team="{Binding HomeTeam}" Width="40" Height="40" Opacity="0.85" IsHitTestVisible="False"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasCourt}"/>
-          </Grid>
           </Panel>
           <TextBlock Text="{Binding CourtLegend}" ToolTip.Tip="{Binding CourtLegendTip}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="4,0" IsVisible="{Binding CourtShown}"/>
           <Grid x:Name="FlowRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding FlowShown}">
