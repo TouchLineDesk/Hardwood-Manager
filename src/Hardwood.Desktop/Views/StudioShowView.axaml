@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:v="using:Hardwood.Desktop.Views"
              x:Class="Hardwood.Desktop.Views.StudioShowView"
              x:DataType="vm:StudioShowViewModel">
   <!-- Danny's pre-game studio show (#446, D53 B; part 1): the HSN desk before tip-off. -->
@@ -62,6 +63,9 @@
           </StackPanel>
         </Grid>
       </Border>
+
+      <!-- B4a (run 143): the show on the HSN set, beat by beat. Everything it says is also on the panels below. -->
+      <v:StudioDeskView x:Name="Set" DataContext="{Binding Reel}" MaxWidth="1100" HorizontalAlignment="Left"/>
 
       <!-- The desk -->
       <ItemsControl ItemsSource="{Binding Desk}">

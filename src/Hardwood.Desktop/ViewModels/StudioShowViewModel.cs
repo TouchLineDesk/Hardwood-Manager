@@ -34,7 +34,11 @@ public sealed partial class StudioShowViewModel : PageViewModel
         // The picks are on the record once the show airs before the game itself.
         if (live != null) Session.LockStudioPicks(Show);
         Build();
+        Reel = new DeskReelViewModel(DeskReel.Pregame(Show), Show.Away, Show.Home, "Pregame", Show.Accent);
     }
+
+    /// <summary>B4a (run 143): the show on the studio set, one beat at a time.</summary>
+    public DeskReelViewModel Reel { get; }
 
     private static IBrush B(string hex) => new SolidColorBrush(Color.Parse(hex));
     private static readonly IBrush Dim = B("#8B96A5"), Plain = B("#E6EDF3"), Good = B("#3FB950"), Row = B("#00000000"), Tonight = B("#2A58A6FF");
