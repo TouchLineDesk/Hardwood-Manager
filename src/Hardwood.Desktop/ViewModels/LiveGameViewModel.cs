@@ -151,13 +151,35 @@ public sealed partial class LiveGameViewModel : PageViewModel
     /// to follow), and the full glide when you Step while paused.</summary>
     public double MotionMs => Running ? Hardwood.Desktop.Controls.TrackerMotion.DurationFor(_speedsMs[_speed]) : 650;
     partial void OnShowCourtChanged(bool value) { OnPropertyChanged(nameof(ShowFlow)); OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); }
-    partial void OnShowBreakChanged(bool value) { OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); OnPropertyChanged(nameof(CanReopenBreak)); }
+    partial void OnShowBreakChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CourtShown)); OnPropertyChanged(nameof(FlowShown)); OnPropertyChanged(nameof(CanReopenBreak));
+        OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan));
+        if (!value) HalftimeReel?.StopAutorun();
+    }
+
+    // B4a (run 143): the halftime desk on the HSN set takes the break card's place at halftime (the card, with the
+    // assistant's read, is one button away). "Skip the show" in Settings keeps the card only.
+    [ObservableProperty] private DeskReelViewModel? _halftimeReel;
+    [ObservableProperty] private bool _deskShown;
+    partial void OnHalftimeReelChanged(DeskReelViewModel? value) { OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan)); OnPropertyChanged(nameof(HasDesk)); }
+    partial void OnDeskShownChanged(bool value) { OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan)); if (!value) HalftimeReel?.StopAutorun(); }
+    /// <summary>The halftime desk is on screen (in the court's place).</summary>
+    public bool DeskUp => ShowBreak && DeskShown && HalftimeReel != null;
+    /// <summary>The desk takes both columns while it's up (the lineup tabs come back with the card or Hide).</summary>
+    public int DeskSpan => DeskUp ? 2 : 1;
+    /// <summary>The break card is on screen.</summary>
+    public bool CardUp => ShowBreak && !DeskUp;
+    /// <summary>This break has a halftime desk to go back to.</summary>
+    public bool HasDesk => HalftimeReel != null;
+    [RelayCommand] private void ToDesk() { if (HalftimeReel != null) { DeskShown = true; ShowBreak = true; } }
+    [RelayCommand] private void ToCard() { DeskShown = false; ShowBreak = true; }
     // The card of the current break or the final, put away with Hide / On the floor / Game flow, comes back with "Break card"
     // until play goes on (code review, run 86).
     private bool _breakCardUp;
     public bool CanReopenBreak => _breakCardUp && !ShowBreak;
     [RelayCommand] private void ReopenBreak() { if (_breakCardUp) ShowBreak = true; }
-    private void EndBreakCard() { _breakCardUp = false; ShowBreak = false; OnPropertyChanged(nameof(CanReopenBreak)); }
+    private void EndBreakCard() { _breakCardUp = false; ShowBreak = false; DeskShown = false; HalftimeReel = null; OnPropertyChanged(nameof(CanReopenBreak)); }
     public Avalonia.Media.Color HomeDot => Bright(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color AwayDot => Bright(Distinct(AwayTeam, Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor)));
 
@@ -543,8 +565,19 @@ public sealed partial class LiveGameViewModel : PageViewModel
             foreach (var h in Hardwood.Core.Engine.GameHighlights.For(r, final: true, max: 3))
                 chips.Add(new(h.Title, h.Value, h.Detail, h.Tone));
         BreakChips = chips;
+        // B4a: at halftime the HSN desk comes on first, unless the shows are skipped.
+        if (halftime && AppSettings.Current.StudioShow)
+        {
+            var wp = Hardwood.Core.Engine.GameFlow.WinProbability(r);
+            double home = wp.Count == 0 ? 0.5 : wp[^1].Percent / 100.0;
+            HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.HalftimeDesk.Build(r, home, Session.HalftimeAround(r.Home.Team, r.Away.Team),
+                t => _live.HalftimeRead(t)), r.Away.Team, r.Home.Team, "Halftime");
+            DeskShown = true;
+        }
+        else { HalftimeReel = null; DeskShown = false; }
         _breakCardUp = true;
         ShowBreak = true;
+        OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan));
     }
 
     private static string N(OffensiveSystem x) => Systems.Name(x).ToLower();

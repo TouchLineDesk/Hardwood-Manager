@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.StudioDeskView"
+             x:DataType="vm:DeskReelViewModel">
+  <!-- The HSN studio set (B4a, run 143): the Selection Show's render (tools/Render/selection_studio.py) with the show's own
+       name painted on the desk, its beats on the big screen and the speaker's line in a bubble. Pregame and halftime. -->
+  <StackPanel Spacing="6">
+    <Border CornerRadius="10" ClipToBounds="True" Background="#07090D">
+      <Viewbox Stretch="Uniform">
+        <Canvas x:Name="Stage" Width="1440" Height="810" ClipToBounds="True">
+          <Image x:Name="Backdrop" Width="1920" Height="1080" Stretch="Fill"/>
+          <!-- The desk's front panel: the show's name over the render's "SELECTION SHOW". -->
+          <Border x:Name="Plate" Background="#F4F5F8" Width="605" Height="130">
+            <TextBlock Text="{Binding Plate}" FontSize="46" FontWeight="Black" Foreground="#4A505A" HorizontalAlignment="Center" Margin="0,30,0,0"/>
+          </Border>
+          <!-- The big screen. -->
+          <Border x:Name="ScreenPanel" Background="#F20A101C" Padding="22,14" BorderBrush="{Binding Accent}" BorderThickness="0,0,0,4" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                <Border Background="#F0A33A" CornerRadius="4" Padding="10,2" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Kicker}" FontSize="22" FontWeight="Bold" Foreground="#101318"/>
+                </Border>
+                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="34" FontWeight="Black" Foreground="White" VerticalAlignment="Center" Margin="14,0" TextWrapping="Wrap"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <c:TeamLogo Team="{Binding Away}" Width="44" Height="44" ShowRank="False"/>
+                  <TextBlock Text="{Binding Away.Abbreviation}" FontSize="22" FontWeight="Bold" Foreground="#C9D1D9" VerticalAlignment="Center"/>
+                  <TextBlock Text="·" FontSize="22" Foreground="#8B96A5" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding Home.Abbreviation}" FontSize="22" FontWeight="Bold" Foreground="#C9D1D9" VerticalAlignment="Center"/>
+                  <c:TeamLogo Team="{Binding Home}" Width="44" Height="44" ShowRank="False"/>
+                </StackPanel>
+              </Grid>
+              <StackPanel Grid.Row="1" Spacing="2">
+                <ItemsControl ItemsSource="{Binding Rows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DeskRowView">
+                      <Border Background="{Binding Fill}" CornerRadius="4" Padding="8,2" Margin="0,1">
+                        <Grid ColumnDefinitions="*,Auto,*">
+                          <TextBlock Text="{Binding Away}" Grid.ColumnSpan="{Binding Span}" FontSize="{Binding Size}" Foreground="{Binding AwayBrush}" FontWeight="{Binding AwayWeight}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Label}" IsVisible="{Binding HasLabel}" FontSize="{Binding LabelSize}" Foreground="#8B96A5" Margin="14,0" MaxWidth="260"
+                                     TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="2" Text="{Binding Home}" FontSize="{Binding Size}" Foreground="{Binding HomeBrush}" FontWeight="{Binding HomeWeight}" TextWrapping="Wrap"
+                                     TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}" FontSize="40" FontWeight="Black" Foreground="#F0A33A" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <!-- The speaker's line, beside him (the tail is drawn first, under the bubble). -->
+          <Path x:Name="BubbleTail" Fill="#F7F8FB" IsVisible="{Binding HasLine}"/>
+          <Border x:Name="Bubble" Width="440" Background="#F7F8FB" CornerRadius="14" Padding="22,14" BoxShadow="0 6 18 0 #80000000" IsVisible="{Binding HasLine}">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding Speaker}" FontSize="24" FontWeight="Bold" Foreground="{Binding SpeakerBrush}"/>
+              <TextBlock Text="{Binding Text}" FontSize="28" Foreground="#101318" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </Canvas>
+      </Viewbox>
+    </Border>
+    <WrapPanel>
+      <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,4"/>
+      <Button Content="Next" Command="{Binding NextCommand}" IsEnabled="{Binding CanNext}" Classes="primary" Margin="0,0,8,4"/>
+      <Button Content="{Binding AutorunText}" Command="{Binding AutorunCommand}" Margin="0,0,8,4"/>
+      <Button Content="Skip to the end" Command="{Binding SkipToEndCommand}" Margin="0,0,12,4"/>
+      <TextBlock Text="{Binding Progress}" Classes="muted" VerticalAlignment="Center" Margin="0,0,0,4"/>
+    </WrapPanel>
+  </StackPanel>
+</UserControl>
