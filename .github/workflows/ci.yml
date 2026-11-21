@@ -19,7 +19,8 @@ jobs:
     # and says whether all three passed.
     name: test (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Each shard took about 10 minutes on PR #215; 45 leaves room for an unlucky split.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
