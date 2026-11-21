@@ -22,6 +22,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.ttf" />
+    <EmbeddedResource Include="Assets\Broadcast\*.jpg" />
+    <EmbeddedResource Include="Assets\Broadcast\*.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hardwood.Core\Hardwood.Core.csproj" />

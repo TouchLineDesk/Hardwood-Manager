@@ -141,6 +141,11 @@ public static class CollegeConverters
         new Avalonia.Data.Converters.FuncValueConverter<bool, Avalonia.Media.IBrush>(b => b
             ? new Avalonia.Media.SolidColorBrush(Hardwood.Desktop.ThemeService.Accent)
             : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A4654")));
+    /// <summary>The Selection Show's board: the pairing on screen now is lit.</summary>
+    public static readonly Avalonia.Data.Converters.IValueConverter NowFill =
+        new Avalonia.Data.Converters.FuncValueConverter<bool, Avalonia.Media.IBrush>(b => b
+            ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#7C5CFF"))
+            : Avalonia.Media.Brushes.Transparent);
 }
 
 /// <summary>A seed line of the projected field: the seed and its four teams (eight on the 16 line, the First Four).</summary>
@@ -624,6 +629,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         FieldPicked = s.Selected;
         ShowFinalFour = s.Selected && BracketView == FinalFourView;
         ShowSelection = s.Selected && BracketView == SelectionView;
+        if (!ShowSelection) { ShowOn = false; StopAutorun(); }
         if (!s.Selected) { FillBracketology(c); return; }
         if (ShowSelection) { FillSelection(c); return; }
         BracketNote = s.ChampionId is { } ch ? $"Champions: {c.Program(ch)!.FullName}." : "Every March Madness game uses the full match engine. Upsets (a seed four or more lines worse winning) are marked.";
@@ -786,6 +792,7 @@ public sealed partial class CollegeViewModel : PageViewModel
     /// </summary>
     private void FillSelection(CollegeWorld c)
     {
+        FillShow(c);
         var s = c.Season;
         int shown = RevealedRegions;
         int? me = Session.Employed && Session.InCollege ? Session.HumanTeam.Id : null;

@@ -104,14 +104,16 @@ public static class LayoutCheck
             double inkW = Math.Min(textW, inner);
             if (tb.TextAlignment == TextAlignment.Right) origin = origin.Value.WithX(origin.Value.X + inner - inkW);
             else if (tb.TextAlignment == TextAlignment.Center) origin = origin.Value.WithX(origin.Value.X + (inner - inkW) / 2);
-            var ink = new Rect(origin.Value, new Size(inkW, Math.Min(layout.Height, tb.Bounds.Height)));
+            double lx = tb.Padding.Left + (tb.TextAlignment == TextAlignment.Right ? inner - inkW : tb.TextAlignment == TextAlignment.Center ? (inner - inkW) / 2 : 0);
+            double lh = Math.Min(layout.Height, tb.Bounds.Height);
+            var ink = InSpace(tb, new Rect(lx, 0, inkW, lh), space) ?? default;
             if (ink.Width <= 0 || ink.Height <= 0) continue;
 
-            if (VisibleRect(tb, new Rect(tb.Padding.Left + (tb.TextAlignment == TextAlignment.Right ? inner - inkW : tb.TextAlignment == TextAlignment.Center ? (inner - inkW) / 2 : 0), 0, inkW, ink.Height), space) is { Width: > 0, Height: > 0 } seenInk)
+            if (VisibleRect(tb, new Rect(lx, 0, inkW, lh), space) is { Width: > 0, Height: > 0 } seenInk)
                 inks.Add((tb, Short(text), where, seenInk));
 
             // Text lying on a chart it doesn't belong to.
-            if (charts.Count > 0 && VisibleRect(tb, new Rect(tb.Padding.Left, 0, inkW, ink.Height), space) is { Width: > 0, Height: > 0 } shown)
+            if (charts.Count > 0 && VisibleRect(tb, new Rect(tb.Padding.Left, 0, inkW, lh), space) is { Width: > 0, Height: > 0 } shown)
             {
                 var under = charts.FirstOrDefault(x => !tb.GetVisualAncestors().Contains(x.chart) && x.rect!.Value.Intersect(shown) is { Width: > 2, Height: > 2 });
                 if (under.chart != null)
@@ -124,9 +126,9 @@ public static class LayoutCheck
 
             // A table cell is narrower or shorter than its text: the row hides the rest (rows don't clip themselves;
             // the rows panel does, so the generic check below can't see it).
-            if (tb.FindAncestorOfType<DataGridCell>() is { } cell && cell.TranslatePoint(new Point(0, 0), space) is { } ctl)
+            if (tb.FindAncestorOfType<DataGridCell>() is { } cell && InSpace(cell, new Rect(cell.Bounds.Size), space) is { } cellRect)
             {
-                var seen = ink.Intersect(new Rect(ctl, cell.Bounds.Size));
+                var seen = ink.Intersect(cellRect);
                 double missW = ink.Width - seen.Width, missH = ink.Height - seen.Height;
                 if (seen.Width > 0 && (missW > Slack || missH > Math.Max(Slack, ink.Height / 4)))
                 {
@@ -140,9 +142,7 @@ public static class LayoutCheck
                 if (anc is ScrollContentPresenter or DataGridRowsPresenter or DataGridColumnHeadersPresenter or DataGridRow or DataGridCellsPresenter) break; // scrolled out of view is fine; it can be scrolled to
                 if (anc is TopLevel) break;
                 if (!anc.ClipToBounds) continue;
-                var tl = anc.TranslatePoint(new Point(0, 0), space);
-                if (tl == null) continue;
-                var clip = new Rect(tl.Value, anc.Bounds.Size);
+                if (InSpace(anc, new Rect(anc.Bounds.Size), space) is not { } clip) continue;
                 var seen = ink.Intersect(clip);
                 if (seen.Width <= 0 || seen.Height <= 0) break; // wholly hidden (a collapsed panel, an animation), not cut
                 double missW = ink.Width - seen.Width, missH = ink.Height - seen.Height;
@@ -170,19 +170,28 @@ public static class LayoutCheck
         return problems;
     }
 
+    /// <summary>
+    /// <paramref name="local"/> (in <paramref name="v"/>'s coordinates) as drawn in <paramref name="space"/>: both corners
+    /// are translated, so text inside a scaled panel (the Selection Show's stage, a Viewbox) is measured at its drawn size.
+    /// </summary>
+    private static Rect? InSpace(Visual v, Rect local, Visual space)
+    {
+        var a = v.TranslatePoint(local.TopLeft, space);
+        var b = v.TranslatePoint(local.BottomRight, space);
+        if (a == null || b == null) return null;
+        return new Rect(a.Value, b.Value).Normalize();
+    }
+
     /// <summary>The part of <paramref name="local"/> (in <paramref name="v"/>'s coordinates) left showing after every clipping ancestor, in <paramref name="space"/>.</summary>
     private static Rect? VisibleRect(Visual v, Rect local, Visual space)
     {
-        var tl = v.TranslatePoint(local.TopLeft, space);
-        if (tl == null) return null;
-        var r = new Rect(tl.Value, local.Size);
+        if (InSpace(v, local, space) is not { } r) return null;
         foreach (var anc in v.GetVisualAncestors().OfType<Visual>())
         {
             if (anc is TopLevel) break;
             if (!anc.ClipToBounds && anc is not ScrollContentPresenter) continue;
-            var at = anc.TranslatePoint(new Point(0, 0), space);
-            if (at == null) continue;
-            r = r.Intersect(new Rect(at.Value, anc.Bounds.Size));
+            if (InSpace(anc, new Rect(anc.Bounds.Size), space) is not { } at) continue;
+            r = r.Intersect(at);
             if (r.Width <= 0 || r.Height <= 0) return null;
         }
         return r;
