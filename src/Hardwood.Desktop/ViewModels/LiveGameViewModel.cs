@@ -162,6 +162,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     // assistant's read, is one button away). "Skip the show" in Settings keeps the card only.
     [ObservableProperty] private DeskReelViewModel? _halftimeReel;
     [ObservableProperty] private bool _deskShown;
+    partial void OnHalftimeReelChanging(DeskReelViewModel? value) => HalftimeReel?.StopAutorun();   // review, run 143: Sim to end with autorun on
     partial void OnHalftimeReelChanged(DeskReelViewModel? value) { OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan)); OnPropertyChanged(nameof(HasDesk)); }
     partial void OnDeskShownChanged(bool value) { OnPropertyChanged(nameof(DeskUp)); OnPropertyChanged(nameof(CardUp)); OnPropertyChanged(nameof(DeskSpan)); if (!value) HalftimeReel?.StopAutorun(); }
     /// <summary>The halftime desk is on screen (in the court's place).</summary>

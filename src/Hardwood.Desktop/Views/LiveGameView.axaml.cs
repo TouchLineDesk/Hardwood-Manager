@@ -45,7 +45,7 @@ public partial class LiveGameView : UserControl
         RootGrid.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitColumns(); };
         // The cap is worked out again only when the room changes (the column, the big view, the court tab), not when the
         // caption or tab row wraps to another line, so the court doesn't pulse from play to play (code review, run 85).
-        LeftCol.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) { _fitPending = true; FitCourt(); } };
+        LeftCol.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) { _fitPending = true; FitCourt(); FitDeskHeight(); } };
         CourtPanel.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty && _fitPending) FitCourt(); };
         // B2a (run 140): the arena's caption bar is drawn at the arena's scale; when the arena is small the caption moves
         // above it, at full size, so the play stays readable.
@@ -72,11 +72,13 @@ public partial class LiveGameView : UserControl
         FitColumns();
         FitCourt();
         PlaceCaption();
+        FitDesk();
     }
 
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(LiveGameViewModel.BigCourt)) FitColumns();
+        if (e.PropertyName is nameof(LiveGameViewModel.DeskUp)) FitDesk();
         if (e.PropertyName is nameof(LiveGameViewModel.BigCourt) or nameof(LiveGameViewModel.CourtShown))
         {
             // After the layout pass, when the court's bounds are current again.
@@ -87,6 +89,28 @@ public partial class LiveGameView : UserControl
 
     /// <summary>True when the big view widens the court's column at this page width.</summary>
     public static bool WidensColumn(bool big, double pageWidth) => big && pageWidth >= WideViewWidth;
+
+    /// <summary>B4a (run 143): the halftime desk takes both columns (a theatre view); the side tabs come back with the card.
+    /// Set here rather than bound: a bound ColumnSpan upset the layout check's first measure of the page.</summary>
+    private void FitDesk()
+    {
+        bool desk = _vm?.DeskUp == true;
+        if (Grid.GetColumnSpan(LeftCol) != (desk ? 2 : 1)) Grid.SetColumnSpan(LeftCol, desk ? 2 : 1);
+        if (SideTabs.IsVisible == desk) SideTabs.IsVisible = !desk;
+        FitDeskHeight();
+    }
+
+    /// <summary>The desk keeps the play by play's least share of the column (code review, run 143): its width is capped so
+    /// that its 16:9 stage, its title row and its controls fit the column's height.</summary>
+    private void FitDeskHeight()
+    {
+        if (LeftCol.Bounds.Height <= 0) return;
+        double w = DeskWidthFor(LeftCol.Bounds.Height - CourtPanel.Margin.Bottom - MinLogHeight);
+        if (Math.Abs(HalftimeSet.MaxWidth - w) > 1) HalftimeSet.MaxWidth = w;
+    }
+
+    /// <summary>The desk's width for the height it may take: the stage is 16:9 under about 120 px of tabs, title and controls.</summary>
+    public static double DeskWidthFor(double height) => Math.Clamp((height - 120) * 16 / 9, 300, 760);
 
     private void FitColumns()
     {

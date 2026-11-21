@@ -69,7 +69,7 @@
       </Grid>
     </Border>
 
-    <Grid x:Name="LeftCol" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="{Binding DeskSpan}" RowDefinitions="Auto,*" Margin="0,0,10,0">
+    <Grid x:Name="LeftCol" Grid.Row="1" Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,10,0">
       <!-- On the floor (Danny, run 45: the whole court, every shot as it happens) and the game flow (roadmap 2: win
            probability and momentum, quarter splits, run alerts) share one panel, so the play by play keeps its room. -->
       <Border x:Name="CourtPanel" Classes="panel" Padding="8" Margin="0,0,0,10">
@@ -101,7 +101,7 @@
               <Button Content="Break card" Command="{Binding ToCardCommand}" Padding="8,1" Margin="0,0,6,2" ToolTip.Tip="The numbers and the assistant's halftime read"/>
               <Button Content="Hide" Command="{Binding HideBreakCommand}" Padding="8,1" Margin="0,0,0,2" ToolTip.Tip="Put the desk away and see the court again; Break card brings it back"/>
             </WrapPanel>
-            <v:StudioDeskView x:Name="HalftimeSet" DataContext="{Binding HalftimeReel}" MaxWidth="900" HorizontalAlignment="Left"/>
+            <v:StudioDeskView x:Name="HalftimeSet" DataContext="{Binding HalftimeReel}" HorizontalAlignment="Left"/>
           </StackPanel>
           <ScrollViewer x:Name="BreakCard" IsVisible="{Binding CardUp}" MaxHeight="{x:Static v:LiveGameView.BreakCardMax}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <Border Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"
@@ -431,7 +431,7 @@
 
     <!-- Bench and controls: lineup and tactics on tabs, so tactics never sit below the fold -->
     <!-- B4a (run 143): the halftime desk takes the whole width (a theatre view); the tabs come back with the card. -->
-    <TabControl Grid.Row="1" Grid.Column="1" Padding="0" IsVisible="{Binding !DeskUp}">
+    <TabControl x:Name="SideTabs" Grid.Row="1" Grid.Column="1" Padding="0">
       <TabItem Header="Lineup">
         <ScrollViewer>
           <StackPanel Spacing="10">

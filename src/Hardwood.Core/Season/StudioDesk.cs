@@ -23,7 +23,7 @@ public static class DeskReel
         {
             new("", s.Away.FullName, s.Home.FullName),
             new("Record", s.AwayRecord, s.HomeRecord),
-            new("Win chance", $"{(1 - s.HomeChance) * 100:0}%", $"{s.HomeChance * 100:0}%", Math.Sign(s.HomeChance - 0.5)),
+            new("Win chance", $"{100 - Math.Round(s.HomeChance * 100):0}%", $"{Math.Round(s.HomeChance * 100):0}%", Math.Sign(s.HomeChance - 0.5)),
         };
         // The segments: the open, keys to the game, off the court. One beat per line; the screen keeps the matchup.
         foreach (var seg in s.Segments)
@@ -34,9 +34,10 @@ public static class DeskReel
         // The tale of the tape: the screen shows it whole while the host reads the headline.
         if (s.Tape.Count > 0)
         {
-            var best = s.Tape.Where(t => t.Edge != 0).GroupBy(t => t.Edge).OrderByDescending(g => g.Count()).FirstOrDefault();
-            string text = best == null ? "On paper these two are dead level." :
-                $"On paper: {(best.Key > 0 ? s.Home.FullName : s.Away.FullName)} have the edge in {best.Count()} of {s.Tape.Count} categories.";
+            int homeEdges = s.Tape.Count(t => t.Edge > 0), awayEdges = s.Tape.Count(t => t.Edge < 0);
+            string text = homeEdges == awayEdges
+                ? (homeEdges == 0 ? "On paper these two are dead level." : $"On paper it's split: {homeEdges} categories each.")
+                : $"On paper: {(homeEdges > awayEdges ? s.Home.FullName : s.Away.FullName)} have the edge in {Math.Max(homeEdges, awayEdges)} of {s.Tape.Count} categories.";
             beats.Add(new("TALE OF THE TAPE", $"{s.Away.Abbreviation} vs {s.Home.Abbreviation}", s.Tape.Select(t => new DeskRow(t.Label, t.Away, t.Home, t.Edge)).ToList(),
                 new StudioLine(s.Host, text)));
         }
@@ -196,7 +197,7 @@ public static class HalftimeDesk
         double pc = pick == h ? homeChance : 1 - homeChance;
         int by = Math.Max(1, (int)Math.Round(Math.Abs(margin) * 0.7 + (pc - 0.5) * 12));
         bool comeback = leader != null && pick != leader;
-        var prow = new List<DeskRow> { score, new("Win chance", $"{(1 - homeChance) * 100:0}%", $"{homeChance * 100:0}%", Math.Sign(homeChance - 0.5), true) };
+        var prow = new List<DeskRow> { score, new("Win chance", $"{100 - Math.Round(homeChance * 100):0}%", $"{Math.Round(homeChance * 100):0}%", Math.Sign(homeChance - 0.5), true) };
         string ptxt = comeback ? $"I'm going against the scoreboard: {pick.Team.FullName} come back and win by {by}."
             : leader == null ? $"Coin flip, but I'll take {pick.Team.FullName} by {by}."
             : $"{pick.Team.FullName} hold on. {pick.Team.Abbreviation} by {by}.";
