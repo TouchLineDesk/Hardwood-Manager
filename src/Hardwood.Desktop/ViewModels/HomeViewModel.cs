@@ -362,10 +362,10 @@ public sealed partial class HomeViewModel : PageViewModel
             : live.Count == 0 ? "Clubs post openings when they change coach." : "Apply on the Board page.";
         foreach (var (v, t) in live
                      .OrderBy(x => x.v.Status switch { "offered" => 0, "applied" => 1, _ => 2 })
-                     .ThenByDescending(x => Hardwood.Core.Jobs.Board.HireChance(coach, s.ContextOf(x.t!), x.t!))
+                     .ThenByDescending(x => s.HireChanceFor(x.t!))
                      .Take(6))
         {
-            double chance = Hardwood.Core.Jobs.Board.HireChance(coach, s.ContextOf(t!), t!);
+            double chance = s.HireChanceFor(t!); // H167
             Jobs.Add(new HomeRow
             {
                 Icon = v.Status == "offered" ? "Handshake" : v.Status == "applied" ? "ClipboardPen" : "Shield",

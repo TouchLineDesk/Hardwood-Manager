@@ -678,12 +678,14 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public override void Refresh()
     {
         AwayScore = _live.AwayScore; HomeScore = _live.HomeScore;
-        Clock = $"{_live.PeriodText}  {_live.ClockText}";
+        // Run 144 (broadcast check): the top scoreboard read "H2 0:00" at halftime (the arena's bug was fixed in run 141).
+        string? breakText = BetweenPeriods ? ((_live.Period - 1) * 2 == _live.Result.Periods ? "HALFTIME" : "BREAK") : null;
+        Clock = breakText ?? $"{_live.PeriodText}  {_live.ClockText}";
         if (InArena) foreach (var n in BugProps) OnPropertyChanged(n);
         Shell.Guide.LiveTick();
         var r = _live.Result;
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";
-        Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, _live.PeriodText, _live.Complete,
+        Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, breakText == "HALFTIME" ? "Halftime" : _live.PeriodText, _live.Complete,
             r.Home.Team == Us ? HomeScore : AwayScore, r.Home.Team == Us ? AwayScore : HomeScore);
         // H106 (run 112): with FINAL on screen the bar said "1-0 · Final: L 123-129"; the record counts this game already.
         if (_live.Complete && Session.Employed && Session.LiveGameCountsInRecord)

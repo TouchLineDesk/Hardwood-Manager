@@ -1066,7 +1066,7 @@ public sealed partial class GameSession
             if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
             if (v.Status == "applied" && v.DecideOn <= Today)
             {
-                if (_rng.Chance(Jobs.Board.HireChance(Coach, ContextOf(t), t)))
+                if (_rng.Chance(HireChanceFor(t)))
                 {
                     v.Status = "offered"; v.DecideOn = Today.AddDays(7);
                     Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of {t.TheFullName}. Accept or decline on the Board page within a week.", "Board");

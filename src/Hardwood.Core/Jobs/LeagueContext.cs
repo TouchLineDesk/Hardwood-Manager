@@ -42,7 +42,9 @@ public sealed record LeagueContext(string Name, IReadOnlyList<Team> Teams, int S
         int confSize = cw.ConferenceOf.TryGetValue(program.Id, out var key) ? cw.InConference(key).Count() : 14;
         // CS2 (run 126): the programs' prestige, so the athletic director's goal follows the program's standing as well as this
         // year's squad (Clemson's goal flipped between "build" and "make March Madness" each year).
-        return new("College basketball", cw.Programs, 10 + confSize - 1 + 3, 68, false, null, -10, 0, true, cw.Prestige);
+        // H166 (run 144): the athletic director's season is the program's real schedule (Providence's Big East season is
+        // 31 games, not the 23 that 10 + 13 + 3 - 3 counted), so the pace, the target and the verdict agree with the record.
+        return new("College basketball", cw.Programs, cw.RegularSeasonGames(program.Id, confSize), 68, false, null, -10, 0, true, cw.Prestige);
     }
 
     /// <summary>Where a team sits on a 0 (best) to 1 (worst) scale given its projected rank.</summary>

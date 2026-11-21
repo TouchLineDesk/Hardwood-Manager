@@ -362,7 +362,7 @@ public class BugFinderTests
             var ranked = s.Job.Vacancies.Where(x => x.Status == "open")
                 .Select(x => (v: x, t: s.FindTeam(x.TeamId)))
                 .Where(x => x.t != null)
-                .OrderByDescending(x => Hardwood.Core.Jobs.Board.HireChance(s.Coach, s.ContextOf(x.t!), x.t!))
+                .OrderByDescending(x => s.HireChanceFor(x.t!)) // run 144 (H167): the chance the Board page shows
                 .Take(3).ToList();
             foreach (var (v, _) in ranked) s.Apply(v.TeamId);
             if (s.Phase == SessionPhase.Offseason)

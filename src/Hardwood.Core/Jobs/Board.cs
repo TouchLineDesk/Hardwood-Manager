@@ -822,7 +822,10 @@ public static class Board
         // Round of 32. An exit rounds before the seed's expectation costs up to 12; reaching it is no loss.
         bool earlyExit = ctx.IsCollege && seed > 0 && seedOver <= -1.5;
         bool onPar = ctx.IsCollege && seed > 0 && seedOver >= 0;
-        if (ctx.IsCollege && seed > 0 && !e.Survive) delta += MarchWeight * Math.Clamp(seedOver, -2, 0);
+        // H166 (run 144): what an early exit costs; the floors below keep it, so a 1-seed out in the Round of 32 never lands on
+        // the same number as one that reached the Elite Eight (both read 64 once the AD counted the real 31-game season).
+        double marchCost = ctx.IsCollege && seed > 0 && !e.Survive ? MarchWeight * -Math.Clamp(seedOver, -2, 0) : 0;
+        delta -= marchCost;
         // A strong season with a playoff upset is a disappointment, not a crisis; a near miss on the win target is a warning.
         // (Replayed careers, Nov 10: a 54-28 team set "conference finals" was sacked after a first-round exit.)
         var lines = new List<string>();
@@ -843,8 +846,8 @@ public static class Board
         else if (diff < 0 && j.BeatTarget && !earlyExit) delta = Math.Max(delta, 2);
         else if (diff < 0 && j.BeatTarget) delta = Math.Max(delta, -10); // H137: a great regular season softens an early March exit
         else if (diff < 0 && onPar) delta = Math.Max(delta, -6); // H137: March went as far as the seed promised
-        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6);
-        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14);
+        else if (diff < 0 && winsVsTarget >= 0) delta = Math.Max(delta, -6 - marchCost);
+        else if (diff < 0 && winsVsTarget >= -5) delta = Math.Max(delta, -14 - marchCost);
         // CS2 (run 126): a "build the program" season with no progress is a warning, not a second punishment on top of the
         // weekly drift that already followed the record (the review's share is at most 8).
         if (ctx.IsCollege && e.Goal == SeasonGoal.Develop && !e.Survive && diff < 0) delta = Math.Max(delta, -8);
@@ -866,7 +869,8 @@ public static class Board
         if (!relegated && madePost && winsVsTarget >= -CloseWins)
         {
             double start = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } sc ? sc : beforeReview;
-            job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner)));
+            // H166 (run 144): the early exit's March cost stays below the cap too.
+            job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start - SeasonDropCap(team.Owner) - marchCost));
         }
         // CS2 (run 126): a March run well past the seed (an 8-seed in the Sweet 16) leaves the AD content, whatever the regular
         // season's drift did (Cincinnati ended such a run at 36).
@@ -940,14 +944,14 @@ public static class Board
             : seedOver >= 1 ? $"{owner} is delighted with the March run: {SeedPhrase(seed)} {MarchPhrase(madnessRound)}. AD confidence: {job.Confidence:0}/100."
             // CS2: a "build the program" season that missed the tournament well short of the target showed no progress.
             : ctx.IsCollege && e.Goal == SeasonGoal.Develop && diff < 0 && !reachedPost
-                ? $"{owner} wanted to see progress, and {wins}-{losses} is well short of the {e.TargetWins}-win target. AD confidence: {job.Confidence:0}/100."
+                ? $"{owner} wanted to see progress, and {TargetPhrase(wins, losses, e.TargetWins)}{(wins >= e.TargetWins ? ", but the program missed the tournament" : "")}. AD confidence: {job.Confidence:0}/100."
             // H70 (run 117): the word follows the confidence. Cincinnati went 14-14 against a 21-win target and read "satisfied" at 32.
             : diff >= 0 && job.Confidence < ContentLine ? (winsVsTarget < 0
                 ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
                 : $"{owner} accepts the result, but there is ground to make up. Board confidence: {job.Confidence:0}/100.")
             : diff >= 1 ? $"{owner} is delighted."
             // H137 (run 138): Miami missed its 20-win target and March at 18-11 and read "satisfied" with nothing else.
-            : diff == 0 && ctx.IsCollege && wins < e.TargetWins ? $"{owner} is satisfied with the progress, though {wins}-{losses} is short of the {e.TargetWins}-win target{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
+            : diff == 0 && ctx.IsCollege && wins < e.TargetWins ? $"{owner} is satisfied with the progress, though {TargetPhrase(wins, losses, e.TargetWins)}{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
             : diff == 0 ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
             : relegated && wins > losses ? $"{owner} is disappointed: a winning record wasn't enough to stay up, last in the division. Board confidence: {job.Confidence:0}/100."
@@ -964,6 +968,13 @@ public static class Board
                 ? $"{owner} hoped for more, but the team {(ctx.IsCollege ? "made the tournament" : reachedPost ? "made the playoffs" : "finished in the top half")} close to the {e.TargetWins}-win target and still has the {(ctx.IsCollege ? "AD's" : "board's")} backing. Board confidence: {job.Confidence:0}/100."
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
     }
+
+    /// <summary>K20 (run 144): a record against the win target, worded by the margin: "reached" at or past it, "just short"
+    /// within two wins, "well short" beyond (Providence read "15-17 is well short of the 15-win target").</summary>
+    public static string TargetPhrase(int wins, int losses, int target) =>
+        wins >= target ? $"{wins}-{losses} reached the {target}-win target"
+        : target - wins <= 2 ? $"{wins}-{losses} is just short of the {target}-win target"
+        : $"{wins}-{losses} is well short of the {target}-win target";
 
     /// <summary>CS2: "an 8-seed", "an 11-seed", "a 1-seed".</summary>
     public static string SeedPhrase(int seed) => (seed is 8 or 11 or 18 ? "an " : "a ") + $"{seed}-seed";

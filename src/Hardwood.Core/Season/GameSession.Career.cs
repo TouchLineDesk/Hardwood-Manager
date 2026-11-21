@@ -32,6 +32,31 @@ public sealed partial class GameSession
     /// <summary>A club's standing as a job (the board's hiring bar), in its own league's terms.</summary>
     public double JobPrestige(Team t) => Board.Prestige(ContextOf(t), t);
 
+    /// <summary>H167 (run 144, #933): what a recently sacked college coach's chance at a pro club is scaled by while his
+    /// reputation is low. Pro clubs look for coaches who have won; a college coach sacked this season is a long shot until
+    /// he has rebuilt his name (Providence, sacked at 12-19 with reputation 24, coached Riga the same week).</summary>
+    public const double SackedCollegeCoachProFactor = 0.2;
+
+    /// <summary>H167: below this reputation a recently sacked college coach is a long shot for a pro head job.</summary>
+    public const double SackedCollegeCoachProReputation = 50;
+
+    /// <summary>
+    /// The chance a club hires you (<see cref="Board.HireChance(Coach, LeagueContext, Team)"/>), with H167's rule (#933): out of
+    /// work after a sacking at a college program this season, a pro club takes you only rarely unless your reputation is high.
+    /// College programs (lower conferences first) are the way back.
+    /// </summary>
+    public double HireChanceFor(Team t)
+    {
+        double chance = Board.HireChance(Coach, ContextOf(t), t);
+        return RecentlySackedFromCollege && !IsCollegeProgram(t) && Coach.Reputation < SackedCollegeCoachProReputation
+            ? chance * SackedCollegeCoachProFactor : chance;
+    }
+
+    /// <summary>H167: out of work, and the last job was a college program that sacked you this season (or this summer).</summary>
+    public bool RecentlySackedFromCollege =>
+        !Employed && Coach.History.LastOrDefault() is { Ended: "Sacked" } last && last.ToSeason >= League.Season
+        && World.College?.Programs.Any(p => p.Id == last.TeamId) == true;
+
     /// <summary>A college program (not a pro club).</summary>
     public bool IsCollegeProgram(Team t) => World.College?.Programs.Contains(t) == true;
 
@@ -242,7 +267,7 @@ public sealed partial class GameSession
         foreach (var v in Job.Vacancies.Where(v => v.Status == "applied").ToList())
         {
             if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
-            if (rng.Chance(Board.HireChance(Coach, ContextOf(t), t)))
+            if (rng.Chance(HireChanceFor(t)))
             {
                 v.Status = "offered"; v.DecideOn = Today.AddDays(7);
                 Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of {t.TheFullName}. Accept or decline on the Board page before the new season starts.", "Board");
