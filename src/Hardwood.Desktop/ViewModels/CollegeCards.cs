@@ -37,7 +37,7 @@ public static class CollegeCards
         _ => Open,
     };
 
-    /// <summary>Interest in you: 70+ green, 40–69 amber, under 40 red.</summary>
+    /// <summary>Interest in you: 70+ green, 40–69 amber, under 40 neutral blue (H156, run 146: a new target isn't an alarm).</summary>
     public static IBrush InterestBrush(double interest) =>
-        interest >= 70 ? StandingRow.PlayoffBrush : interest >= 40 ? Amber : StandingRow.RelegationBrush;
+        interest >= 70 ? StandingRow.PlayoffBrush : interest >= 40 ? Amber : Blue;
 }

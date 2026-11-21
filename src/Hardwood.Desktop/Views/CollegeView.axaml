@@ -452,11 +452,14 @@
               <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding TrailClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding TrailViews}" SelectedItem="{Binding TrailView}" MinWidth="170" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding BoardViews}" SelectedItem="{Binding BoardView}" Width="120" Margin="0,0,8,4" ToolTip.Tip="Star cards, or the full table with every prospect"/>
-              <CheckBox Content="My assistant uses the hours I leave" IsChecked="{Binding AssistantRecruits}" Margin="0,0,8,4"/>
+              <CheckBox Content="My assistant uses the hours I leave" IsChecked="{Binding AssistantRecruits}" Margin="0,0,8,4" ToolTip.Tip="{Binding AssistantTip}"/>
             </WrapPanel>
             <TextBlock Text="{Binding TrailCardNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasTrailEmpty}"/>
             <Border Classes="panel" IsVisible="{Binding HasTrailEmpty}" HorizontalAlignment="Left">
-              <TextBlock x:Name="TrailEmptyText" Text="{Binding TrailEmpty}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+              <StackPanel Spacing="6">
+                <TextBlock x:Name="TrailEmptyText" Text="{Binding TrailEmpty}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                <Button x:Name="TrailOtherClassButton" Content="{Binding TrailOtherClassText}" Command="{Binding OtherTrailClassCommand}" IsVisible="{Binding HasTrailOtherClass}" HorizontalAlignment="Left"/>
+              </StackPanel>
             </Border>
             <Grid x:Name="TrailRowGrid" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
               <Panel x:Name="TrailBoard" VerticalAlignment="Top">
@@ -475,6 +478,7 @@
                               <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Spacing="1">
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
                                 <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding CaresText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HwAccent}" IsVisible="{Binding HasCares}" TextTrimming="CharacterEllipsis" ToolTip.Tip="What he weighs most when he picks a school (your scouts found out)"/>
                                 <TextBlock FontSize="15" ToolTip.Tip="{Binding StarTip}"><Run Text="{Binding StarsOn}" Foreground="#FFC83D"/><Run Text="{Binding StarsOff}" Foreground="#3A4452"/></TextBlock>
                               </StackPanel>
                             </Grid>
@@ -523,6 +527,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                   </DataGridTemplateColumn>
                   <DataGridTextColumn Header="Leaning" Binding="{Binding Leaning}" Width="150"/>
+                  <DataGridTextColumn Header="Cares about" Binding="{Binding Cares}" Width="110"/>
                   <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*" MinWidth="130"/>
                 </DataGrid.Columns>
               </DataGrid>
@@ -535,6 +540,12 @@
                     <TextBlock Text="{Binding TrailHeader}" Classes="muted" TextWrapping="Wrap"/>
                     <c:StatStrip ItemsSource="{Binding ProspectChips}" Accent="{DynamicResource HwAccent}"/>
                     <TextBlock Text="{Binding TrailConsidering}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="TrailWhyText" Text="{Binding TrailWhy}" TextWrapping="Wrap" IsVisible="{Binding HasTrailWhy}"/>
+                    <Grid ColumnDefinitions="Auto,*">
+                      <TextBlock Text="Pitch" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <ComboBox x:Name="TrailPitchBox" Grid.Column="1" ItemsSource="{Binding TrailPitches}" SelectedItem="{Binding TrailPitch}" HorizontalAlignment="Stretch" ToolTip.Tip="What your calls and visits sell him (free to change)"/>
+                    </Grid>
+                    <TextBlock Text="{Binding TrailPitchNote}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
                     <WrapPanel>
                       <Button Content="Scout (1 h)" Command="{Binding ScoutTrailCommand}" Margin="0,0,6,6"/>
                       <Button Content="Call (1 h)" Command="{Binding CallTrailCommand}" Margin="0,0,6,6"/>

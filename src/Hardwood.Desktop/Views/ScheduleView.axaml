@@ -99,7 +99,8 @@
               <DataTemplate x:DataType="vm:GameRow"><c:TeamLogo Team="{Binding OpponentTeam}" Width="22" Height="22" ShowText="False" Margin="4,0"/></DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="*" MinWidth="220"/>
+          <!-- Run 146: a ranked neutral-site opponent ("vs #17 North Carolina (neutral)") needs about 230 px. -->
+          <DataGridTextColumn Header="Opponent" Binding="{Binding Opponent}" Width="1.25*" MinWidth="250"/>
           <DataGridTextColumn Header="Event" Binding="{Binding Competition}" Width="186" IsVisible="False"/>
           <!-- The result and score in one column ("W 78-66"), so the H2H column (#529) fits beside them. -->
           <!-- Run 101: 130 fits the widest result, a three-digit multi-overtime game ("W 161-158 2OT", 119 px at 100%). -->

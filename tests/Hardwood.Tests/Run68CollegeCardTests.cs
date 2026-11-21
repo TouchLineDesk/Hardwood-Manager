@@ -32,7 +32,8 @@ public class Run68CollegeCardTests
         Assert.NotSame(StandingRow.PlayoffBrush, CollegeCards.StatusBrush("Committed: Duke"));
         Assert.NotSame(CollegeCards.StatusBrush("Offered"), CollegeCards.StatusBrush("Open"));
         Assert.Same(StandingRow.PlayoffBrush, CollegeCards.InterestBrush(75));
-        Assert.Same(StandingRow.RelegationBrush, CollegeCards.InterestBrush(10));
+        // H156 (run 146): low interest in a new target is neutral, not red.
+        Assert.NotSame(StandingRow.RelegationBrush, CollegeCards.InterestBrush(10));
     }
 
     [Avalonia.Headless.XUnit.AvaloniaFact]
