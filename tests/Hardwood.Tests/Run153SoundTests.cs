@@ -259,12 +259,13 @@ public class Run153SoundTests
             page.PauseAtBreaks = false;
             Choreography? last = null;
             int planned = 0, frames = 0;
+            var bandRun = new BandRun();   // run 161: the band's hit after a home run
             var lateBeds = new List<double>(); var earlyBeds = new List<double>();
             void Check(Choreography c)
             {
                 var cues = Reactions.Plan(c);
                 // Run 160: the court and the band play from the same clock.
-                planned += cues.Count + Reactions.Court(c).Count;
+                planned += cues.Count + Reactions.Court(c).Count + Reactions.Band(c, bandRun).Count;
                 foreach (var q in cues)
                 {
                     // Run 157: a crowd's answer to a whistle comes 0.15–0.2 s after it.

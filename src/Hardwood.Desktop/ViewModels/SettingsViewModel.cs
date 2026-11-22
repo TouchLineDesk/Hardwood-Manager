@@ -55,6 +55,30 @@ public sealed partial class SettingsViewModel : PageViewModel
     }
     public string SoundVolumeText => $"{SoundVolume:0}%";
 
+    /// <summary>Fight songs A (run 161): Danny's own song files (tier 3), which play instead of the composed songs.</summary>
+    public string FightSongsText
+    {
+        get
+        {
+            int n = Audio.FightSongLibrary.CustomCount();
+            return $"Custom fight songs: {(n == 0 ? "none" : n.ToString())} found";
+        }
+    }
+    public string FightSongsFolder => Audio.FightSongLibrary.CustomFolder;
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void OpenFightSongs()
+    {
+        try
+        {
+            Directory.CreateDirectory(FightSongsFolder);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(FightSongsFolder) { UseShellExecute = true });
+        }
+        catch (Exception) { }
+        Audio.FightSongLibrary.Forget();
+        OnPropertyChanged(nameof(FightSongsText));
+    }
+
     /// <summary>Text and interface size (roadmap 1): 90-130% of the standard size.</summary>
     public IReadOnlyList<string> SizeChoices { get; } = UiScale.Percents.Select(UiScale.Label).ToList();
 
