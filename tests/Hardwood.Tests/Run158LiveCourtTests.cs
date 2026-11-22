@@ -27,7 +27,7 @@ public class Run158LiveCourtTests
     public void The_court_fits_inside_the_room_its_reserve_leaves()
     {
         foreach (var size in new[] { new Size(1480, 860), new Size(1138, 660), new Size(700, 500) })
-        foreach (var reserve in new[] { new Thickness(256, 110, 136, 70), new Thickness(12, 110, 584, 70), new Thickness(44, 124, 44, 66) })
+        foreach (var reserve in new[] { new Thickness(256, 110, 136, 70), new Thickness(12, 110, 400, 70), new Thickness(44, 124, 44, 66) })
         {
             var (s, o) = MatchCourt.Fit(size, reserve);
             var e = MatchCourt.Extent(s, o);
@@ -41,6 +41,7 @@ public class Run158LiveCourtTests
         // Only a narrow page steps the controls aside for an open drawer (the drawer keeps its width for the box score).
         Assert.False(LiveGameView.StepAside(1480));
         Assert.False(LiveGameView.StepAside(1210));   // 1480 with the assistant open
+        Assert.False(LiveGameView.StepAside(1138));   // 130% with the assistant closed
         Assert.True(LiveGameView.StepAside(868));     // 130% with the assistant open
     }
 
@@ -142,6 +143,11 @@ public class Run158LiveCourtTests
                 Assert.True(MatchCourt.Fit(court.Bounds.Size, court.Reserve).Scale > open);
                 Assert.Empty(LayoutCheck.Scan(w).Select(x => x.ToString()));
             }
+            // A compact page (review, run 158): the controls' column sits under the score bar and still keeps off the floor.
+            w.Width = 900; w.Height = 700; Settle(); Settle();
+            Assert.True(view.FindControl<Control>("LeftStack")!.IsEffectivelyVisible);
+            NothingCovers("compact closed");
+            Shot("compact-closed");
             Assert.Null(MatchCourt.LastRenderError);
         }
         finally

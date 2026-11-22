@@ -128,7 +128,7 @@ public partial class LiveGameView : UserControl
     /// <summary>K23: the least room left for the court beside an open drawer while the controls' column stays; below it the
     /// controls step aside for the drawer (Space still plays and pauses), as the compact layout always did. The drawer
     /// itself keeps its width (the box score's names need it).</summary>
-    public const double MinCourtBand = 300;
+    public const double MinCourtBand = 260;
 
     /// <summary>K23: the open drawer's width at this page width.</summary>
     public static double DrawerWidthFor(double width) => DrawerWidth;
@@ -141,7 +141,8 @@ public partial class LiveGameView : UserControl
     /// commentary bar take, so the floor, its apron and its boards are drawn in what's left and nothing covers them.</summary>
     public static Avalonia.Thickness CourtReserve(double scoreBottom, double commentary, bool leftColumn, bool drawerOpen, double drawerWidth, bool compact)
     {
-        double left = leftColumn && !compact ? CornerWidth + 20 : 12;
+        // On a compact page the controls' column sits under the score bar, still at the left (review, run 158).
+        double left = leftColumn ? CornerWidth + 20 : 12;
         double right = TabsWidth + 16 + (drawerOpen && !compact ? drawerWidth + 8 : 0);
         return new Avalonia.Thickness(left, scoreBottom + 6, right, commentary + 6);
     }
