@@ -18,6 +18,8 @@ public sealed partial class LiveGameViewModel
     private bool _audioReleased;
     /// <summary>The most the home side has trailed by on screen so far (run 157: a comeback brings the crowd back).</summary>
     private int _worstDeficit;
+    /// <summary>The home side's run, for the band's hit (run 161).</summary>
+    private readonly BandRun _bandRun = new();
 
     /// <summary>The game's sound (opened on the first frame played; silent with no device).</summary>
     public IGameAudio Audio => _audio ??= _audioReleased ? new SilentAudio() : OpenAudio();
@@ -28,7 +30,28 @@ public sealed partial class LiveGameViewModel
         a.Volume = AppSettings.Current.SoundVolume;
         a.Muted = !AppSettings.Current.SoundOn;
         a.Suspended = _minimised;
+        // Fight songs A (run 161): a college home side brings its band. The song renders off the UI thread (about a
+        // second the first time; then it's kept for the session) and joins in when it's ready.
+        if (BandFor() is { } band)
+        {
+            var (school, spec) = band;
+            a.ExpectBand();
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try { var song = FightSongLibrary.For(school, spec); if (!_audioReleased) a.SetBand(song); }
+                catch (Exception) { }
+            });
+        }
         return a;
+    }
+
+    /// <summary>The home band's school and its song, or null when the home side isn't a college program.</summary>
+    public (string School, Hardwood.Core.Presentation.FightSongSpec Spec)? BandFor()
+    {
+        var college = Session.InCollege ? Session.World.College : null;
+        if (college == null || !college.ConferenceOf.TryGetValue(HomeTeam.Id, out var conf)) return null;
+        var members = college.InConference(conf).Select(t => t.City);
+        return (HomeTeam.City, Hardwood.Core.Presentation.FightSongs.For(HomeTeam.City, members));
     }
 
     /// <summary>The speaker button: sound on or off (saved in the app settings, like Settings' switch).</summary>
@@ -88,7 +111,7 @@ public sealed partial class LiveGameViewModel
     private void PlanSound()
     {
         // The crowd's reactions, then the court and the band (run 160), on one clock.
-        _cues = _script == null ? new() : Reactions.Plan(_script).Concat(Reactions.Court(_script)).OrderBy(q => q.T).ToList();
+        _cues = _script == null ? new() : Reactions.Plan(_script).Concat(Reactions.Court(_script)).Concat(Reactions.Band(_script, _bandRun)).OrderBy(q => q.T).ToList();
         _cueNext = 0;
     }
 

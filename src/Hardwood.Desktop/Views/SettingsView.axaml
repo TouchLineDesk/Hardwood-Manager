@@ -48,6 +48,12 @@
             <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolume}" IsEnabled="{Binding SoundOn}" Width="240"/>
             <TextBlock Text="{Binding SoundVolumeText}" VerticalAlignment="Center" Classes="muted"/>
           </StackPanel>
+          <TextBlock Text="Fight songs: at a college game the home band plays its school's song before the tip, at halftime, after a home run of 8-0 or more and when the home side wins. Every program has its own original song. To use your own recording instead, put it in the fight-songs folder named after the school (for example &quot;Duke.ogg&quot; or &quot;miami-fl.mp3&quot;; .ogg, .wav or .mp3)."
+                     TextWrapping="Wrap" Classes="muted"/>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding FightSongsText}" VerticalAlignment="Center"/>
+            <Button Content="Open folder" Command="{Binding OpenFightSongsCommand}" ToolTip.Tip="{Binding FightSongsFolder}"/>
+          </StackPanel>
         </StackPanel>
       </Border>
       <ContentControl Content="{Binding Graphics}"/>

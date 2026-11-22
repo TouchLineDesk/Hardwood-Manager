@@ -85,7 +85,36 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         _shots[Cue.Slam] = Pack(2, "court-backboard-1.ogg");
         _shots[Cue.Drumline] = Pack(10, Numbered("band-drumline", 2));
         _shots[Cue.Brass] = Pack(1, "band-brass-stab-1.ogg");
+        _shots[Cue.FightSong] = Array.Empty<float[]>();
+        _shots[Cue.FightHit] = Array.Empty<float[]>();
     }
+
+    /// <summary>The home band's song (fight songs A, run 161): the whole song and its hit. Without one (the pros, or
+    /// while it renders) a fight-song cue plays the drumline instead and a hit plays nothing.</summary>
+    public void SetBand(BandSong? song)
+    {
+        lock (_gate)
+        {
+            _shots[Cue.FightSong] = song == null ? Array.Empty<float[]>() : new[] { song.Song };
+            _shots[Cue.FightHit] = song == null ? Array.Empty<float[]>() : new[] { song.Hit };
+            _bandExpected = false;
+            // Review (run 161): the tip's song was asked for while the band was still rendering: it starts now, if the
+            // ask was in the last few seconds.
+            if (song != null && _pendingSong is { } at && (DateTime.UtcNow - at.When).TotalSeconds < PendingSeconds)
+            {
+                _pendingSong = null;
+                Play(Cue.FightSong, at.Gain);
+            }
+            _pendingSong = null;
+        }
+    }
+
+    /// <summary>A band is on its way (rendering): until it arrives, a fight-song cue waits rather than play the drumline.</summary>
+    public void ExpectBand() { lock (_gate) _bandExpected = true; }
+    private bool _bandExpected;
+    private (DateTime When, double Gain)? _pendingSong;
+    /// <summary>A song asked for this long before the band is ready still plays; later, it's let go.</summary>
+    public const double PendingSeconds = 8;
 
     /// <summary>The bed's target mix; the mixer eases toward it.</summary>
     public void SetBed(BedLevels target) { lock (_gate) _target = target; }
@@ -101,6 +130,13 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         {
             if (cue == Cue.Groan) { _groans.Add((0, gain)); return; }
             if (cue == Cue.Boo && _shots[Cue.Boo].Length == 0) { _swells.Add((0, gain)); return; }
+            if (cue == Cue.FightSong && _shots[Cue.FightSong].Length == 0)
+            {
+                if (_bandExpected) { _pendingSong = (DateTime.UtcNow, gain); return; }
+                cue = Cue.Drumline;
+            }
+            // One song at a time: a new song or hit takes over from one still playing.
+            if (cue is Cue.FightSong or Cue.FightHit) foreach (var v in _voices.Where(v => v.Band)) v.Cut();
             if (!_shots.TryGetValue(cue, out var set) || set.Length == 0) return;
             int turn = _turns.GetValueOrDefault(cue);
             _turns[cue] = turn + 1;
@@ -111,8 +147,8 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
             // At most 8 sounds at once; the oldest court sound gives way first (review: a run of dribbles mustn't cut the
             // eruption or the band), else the oldest.
             var live = _voices.Where(v => v.FadeLeft < 0).ToList();
-            if (live.Count >= MaxVoices) (live.FirstOrDefault(v => v.Court) ?? live[0]).Cut();
-            _voices.Add(new Voice(clip, g, pan) { Court = cue is Cue.Bounce or Cue.Squeak or Cue.Swish or Cue.Finish or Cue.Rim or Cue.Backboard or Cue.Slam });
+            if (live.Count >= MaxVoices) (live.FirstOrDefault(v => v.Court) ?? live.FirstOrDefault(v => !v.Band) ?? live[0]).Cut();
+            _voices.Add(new Voice(clip, g, pan) { Band = cue is Cue.FightSong or Cue.FightHit, Court = cue is Cue.Bounce or Cue.Squeak or Cue.Swish or Cue.Finish or Cue.Rim or Cue.Backboard or Cue.Slam });
         }
     }
 
@@ -126,6 +162,7 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         Cue.Bounce or Cue.Squeak => 0.45,
         Cue.Swish or Cue.Finish or Cue.Rim or Cue.Backboard or Cue.Slam => 0.6,
         Cue.Drumline or Cue.Brass => 0.6,
+        Cue.FightSong or Cue.FightHit => 0.55,
         _ => 0.75,
     };
 
@@ -228,6 +265,8 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         public readonly float Left, Right;
         /// <summary>A court sound (stolen first when the voices run out).</summary>
         public bool Court { get; init; }
+        /// <summary>The fight song or its hit (one at a time).</summary>
+        public bool Band { get; init; }
         /// <summary>Frames left in a cut's fade, or −1 while it plays out.</summary>
         public int FadeLeft = -1;
         public Voice(float[] clip, float gain, double pan)

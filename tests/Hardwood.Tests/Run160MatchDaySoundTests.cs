@@ -162,8 +162,9 @@ public class Run160MatchDaySoundTests
         Assert.Empty(Reactions.Plan(Build(hf, af, new() { new(1, 505, PlayKind.Shot, false, af[2], null, ShotZone.AboveBreakThree, false, 10, 10) })));
         Assert.Empty(Reactions.Plan(Build(hf, af, new() { new(1, 505, PlayKind.Shot, true, hf[2], null, ShotZone.AboveBreakThree, false, 10, 20) }, 7, 10, 20)));
 
-        // The band: the drumline before the tip (the game's first possession) and at a period's end, after the buzzer.
-        Assert.Contains(Reactions.Court(Build(hf, af, new() { new(1, 700, PlayKind.Shot, true, hf[1], null, ShotZone.LongMid, false, 0, 0) }, index: 0)), q => q.Kind == Cue.Drumline && q.T < 0.5);
+        // The band: the fight song before the tip (run 161; the mixer plays the drumline when there's no band) and the
+        // drumline at a period's end, after the buzzer.
+        Assert.Contains(Reactions.Court(Build(hf, af, new() { new(1, 700, PlayKind.Shot, true, hf[1], null, ShotZone.LongMid, false, 0, 0) }, index: 0)), q => q.Kind == Cue.FightSong && q.T < 0.5);
         var end = Build(hf, af, new() { new(1, 0, PlayKind.PeriodEnd, true, null, null, ShotZone.Rim, false, 20, 18) });
         var buzzer = Reactions.Plan(end).Single(q => q.Kind == Cue.Buzzer);
         Assert.Contains(Reactions.Court(end), q => q.Kind == Cue.Drumline && q.T > buzzer.T);

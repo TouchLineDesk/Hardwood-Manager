@@ -52,13 +52,27 @@ public enum Cue
     Drumline,
     /// <summary>The brass section's stab after a big home play.</summary>
     Brass,
+    /// <summary>The home band's fight song (fight songs A, run 161): before the tip, at halftime and on a home win. With no
+    /// band (the pros) the drumline plays instead.</summary>
+    FightSong,
+    /// <summary>The song's last strain: after a home run of 8-0 or more, at the next dead ball.</summary>
+    FightHit,
+}
+
+/// <summary>The home side's run so far, carried from one possession to the next (the band's hit, run 161).</summary>
+public sealed class BandRun
+{
+    /// <summary>Home points since the visitors last scored.</summary>
+    public int Points { get; set; }
+    /// <summary>The band has already played this run's hit.</summary>
+    public bool Played { get; set; }
 }
 
 /// <summary>One sound at a time on the possession's playback clock (seconds into the possession on screen).</summary>
 public sealed record SoundCue(double T, Cue Kind, double Gain = 1.0, double Pan = 0)
 {
     /// <summary>The cues that still play at 4× and 8×: the biggest reactions, the buzzer and the band at a period's end.</summary>
-    public bool Big => Kind is Cue.BigCheer or Cue.Erupt or Cue.Buzzer or Cue.Drumline;
+    public bool Big => Kind is Cue.BigCheer or Cue.Erupt or Cue.Buzzer or Cue.Drumline or Cue.FightSong;
 }
 
 /// <summary>
@@ -169,8 +183,8 @@ public static class Reactions
         var cues = new List<SoundCue>();
         var input = c.Input;
         static double Pan(double x) => Math.Clamp((x - 47) / 47.0, -1, 1) * 0.8;
-        // Before the tip: the drumline (the game's first possession).
-        if (input.Index == 0) cues.Add(new SoundCue(0.1, Cue.Drumline, 0.8));
+        // Before the tip: the home band's fight song (run 161; the drumline when there's no band).
+        if (input.Index == 0) cues.Add(new SoundCue(0.1, Cue.FightSong, 0.8));
         // Dribbles while the ball is carried: one every 0.42 s, at the carrier (at most 12 a possession).
         int bounces = 0;
         foreach (var b in c.Ball.Where(b => b.Mode == BallMode.Held && b.Holder >= 0 && !b.FreeThrow && b.T1 - b.T0 >= 0.5))
@@ -207,12 +221,43 @@ public static class Reactions
                     cues.Add(new SoundCue(t, e.Made ? Cue.Swish : Cue.Rim, 0.7, Pan(RimX(t))));
                     break;
                 case PlayKind.PeriodEnd:
-                    // The band strikes up at the break (after the buzzer and the applause).
-                    cues.Add(new SoundCue(t + 1.2, Cue.Drumline, 0.8));
+                {
+                    // The band strikes up at the break (after the buzzer and the applause): the fight song at halftime and
+                    // when the home side has won (run 161), else the drumline.
+                    bool half = input.Periods >= 2 && e.Period == input.Periods / 2;
+                    bool over = e.Period >= input.Periods && e.HomeScore != e.AwayScore;
+                    bool song = half || over && e.HomeScore > e.AwayScore;
+                    if (!over || song) cues.Add(new SoundCue(t + (over ? 1.5 : 1.2), song ? Cue.FightSong : Cue.Drumline, 0.8));
                     break;
+                }
             }
         }
         return cues.OrderBy(q => q.T).ToList();
+    }
+
+    /// <summary>
+    /// The band's hit (run 161, fight songs plan): after a home run of 8-0 or more, the song's last strain at the next dead
+    /// ball (a foul, a dead-ball turnover or a period's end), once a run. <paramref name="run"/> carries the run from one
+    /// possession to the next. Not in a blowout loss (the home side still down 15 or more).
+    /// </summary>
+    public static List<SoundCue> Band(Choreography c, BandRun run)
+    {
+        var cues = new List<SoundCue>();
+        int home = c.Input.StartHomeScore, away = c.Input.StartAwayScore;
+        foreach (var (t, e) in c.Moments)
+        {
+            if (e.AwayScore > away) { run.Points = 0; run.Played = false; }
+            else if (e.HomeScore > home) run.Points += e.HomeScore - home;
+            home = e.HomeScore; away = e.AwayScore;
+            bool dead = e.Kind is PlayKind.Foul or PlayKind.Turnover or PlayKind.PeriodEnd;
+            bool over = e.Kind == PlayKind.PeriodEnd && e.Period >= c.Input.Periods && home != away;
+            if (dead && !over && run.Points >= 8 && !run.Played && away - home < BlowoutDeficit)
+            {
+                cues.Add(new SoundCue(t + 0.6, Cue.FightHit, 0.8));
+                run.Played = true;
+            }
+        }
+        return cues;
     }
 
     /// <summary>The speed rules (design §F): at 1× and 2× everything plays; at 4× and 8× only the biggest reactions and the
