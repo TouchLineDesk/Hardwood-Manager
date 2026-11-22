@@ -106,7 +106,7 @@ public class Run160MatchDaySoundTests
         mix.Play(Cue.Bounce, 1, 0); mix.Play(Cue.Squeak, 1, 0); mix.Play(Cue.Drumline, 1, 0);
         Assert.Equal(0, mix.Voices);
 
-        // A build without the pack (tests, CI, forks) is M6's crowd: no court or band sounds, an "ohh" is the bed's dip,
+        // A build without the pack (tests, CI, forks) is M6's crowd: no court or band sounds and no "ohh",
         // and the eruption is the big cheer.
         using var m6 = new CrowdMixer(_ => null);
         Assert.False(m6.HasPack);
@@ -157,9 +157,10 @@ public class Run160MatchDaySoundTests
         }
         finally { big.Attributes[Attr.Dunk] = old; }
 
-        // A home three that rims out: "ohh". An away one: nothing from the home crowd.
+        // A home three that rims out in a close game: "ohh". Down 10, or an away miss: nothing from the home crowd.
         Assert.Equal(new[] { Cue.Oh }, Reactions.Plan(Build(hf, af, new() { new(1, 505, PlayKind.Shot, true, hf[2], null, ShotZone.AboveBreakThree, false, 10, 10) })).Select(q => q.Kind));
         Assert.Empty(Reactions.Plan(Build(hf, af, new() { new(1, 505, PlayKind.Shot, false, af[2], null, ShotZone.AboveBreakThree, false, 10, 10) })));
+        Assert.Empty(Reactions.Plan(Build(hf, af, new() { new(1, 505, PlayKind.Shot, true, hf[2], null, ShotZone.AboveBreakThree, false, 10, 20) }, 7, 10, 20)));
 
         // The band: the drumline before the tip (the game's first possession) and at a period's end, after the buzzer.
         Assert.Contains(Reactions.Court(Build(hf, af, new() { new(1, 700, PlayKind.Shot, true, hf[1], null, ShotZone.LongMid, false, 0, 0) }, index: 0)), q => q.Kind == Cue.Drumline && q.T < 0.5);

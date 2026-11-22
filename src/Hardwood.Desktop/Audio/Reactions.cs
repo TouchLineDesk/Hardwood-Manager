@@ -30,7 +30,7 @@ public enum Cue
     Erupt,
     /// <summary>The student section's chant and stomp after the house erupts (pack only).</summary>
     Student,
-    /// <summary>"Ohh": a home three that rims out, or a home shot blocked (the pack's file, else the bed's dip).</summary>
+    /// <summary>"Ohh": a home three that rims out in a close game (the pack's file; nothing without it).</summary>
     Oh,
     // The court (run 160; pack only, panned to where the play is; never made in code).
     /// <summary>One dribble while the ball is carried.</summary>
@@ -116,10 +116,11 @@ public static class Reactions
                 case PlayKind.Shot when e.Blocked:
                     // The blocker is on the other side from the shooter (e.Home is the shooter's).
                     if (!e.Home) cues.Add(new SoundCue(t, Cue.BigCheer, 1.0));
-                    else if (!beaten) cues.Add(new SoundCue(t, Cue.Oh, 0.5));   // run 160: "ohh" (the bed's dip without the pack)
+                    else if (!beaten) cues.Add(new SoundCue(t, Cue.Groan, 0.5));
                     break;
-                case PlayKind.Shot when e.Home && !beaten && e.Zone is ShotZone.CornerThree or ShotZone.AboveBreakThree:
-                    // Run 160: a home three that rims out gets the crowd's "ohh".
+                case PlayKind.Shot when e.Home && Math.Abs(hBefore - aBefore) <= 6 && e.Zone is ShotZone.CornerThree or ShotZone.AboveBreakThree:
+                    // Run 160: in a close game, a home three that rims out gets the crowd's "ohh" (the pack's file; nothing
+                    // without it). Review: not every missed three, or it's 15–20 a game.
                     cues.Add(new SoundCue(t, Cue.Oh, 0.6));
                     break;
                 case PlayKind.Steal:
@@ -176,7 +177,7 @@ public static class Reactions
             for (double t = b.T0 + 0.25; t < b.T1 - 0.1 && bounces < 12; t += 0.42, bounces++)
                 cues.Add(new SoundCue(t, Cue.Bounce, 0.8, Pan(c.PositionOf(b.Holder, t).X)));
         // Squeaks on cuts, drives and closeouts (at most 4).
-        foreach (var a in c.Actions.Where(a => a.Tag is "cut" or "drive" or "attack-paint" or "hedge" or "switch" or "get-back" or "retreat" && a.Slot >= 0).Take(4))
+        foreach (var a in c.Actions.Where(a => a.Tag is "cut" or "drive" or "attack-paint" or "hedge" or "switch" && a.Slot >= 0).OrderBy(a => a.T).Take(4))
             cues.Add(new SoundCue(a.T + 0.1, Cue.Squeak, 0.7, Pan(c.PositionOf(a.Slot, a.T + 0.1).X)));
         // The rim, the glass and the net where the shot lands.
         double RimX(double t) => c.Ball.LastOrDefault(b => b.Mode == BallMode.Shot && Math.Abs(b.T1 - t) < 0.05)?.Dest.X ?? 47;

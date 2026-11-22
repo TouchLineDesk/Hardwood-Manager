@@ -101,8 +101,6 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         {
             if (cue == Cue.Groan) { _groans.Add((0, gain)); return; }
             if (cue == Cue.Boo && _shots[Cue.Boo].Length == 0) { _swells.Add((0, gain)); return; }
-            // No "ohh" file (M6's files): the bed dips instead, as a groan.
-            if (cue == Cue.Oh && _shots[Cue.Oh].Length == 0) { _groans.Add((0, gain * 0.7)); return; }
             if (!_shots.TryGetValue(cue, out var set) || set.Length == 0) return;
             int turn = _turns.GetValueOrDefault(cue);
             _turns[cue] = turn + 1;
@@ -110,10 +108,11 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
             // Applause and cheers sit a little under the code-made whistle and buzzer, which cut through; the court's
             // sounds and the band sit under the crowd (the starting point is the approved demo mix, run 160).
             float g = (float)(gain * Level(cue));
-            // At most 8 sounds at once; the oldest gives way.
+            // At most 8 sounds at once; the oldest court sound gives way first (review: a run of dribbles mustn't cut the
+            // eruption or the band), else the oldest.
             var live = _voices.Where(v => v.FadeLeft < 0).ToList();
-            if (live.Count >= MaxVoices) live[0].Cut();
-            _voices.Add(new Voice(clip, g, pan));
+            if (live.Count >= MaxVoices) (live.FirstOrDefault(v => v.Court) ?? live[0]).Cut();
+            _voices.Add(new Voice(clip, g, pan) { Court = cue is Cue.Bounce or Cue.Squeak or Cue.Swish or Cue.Finish or Cue.Rim or Cue.Backboard or Cue.Slam });
         }
     }
 
@@ -227,6 +226,8 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         public readonly float[] Clip; public readonly float Gain; public int Pos;
         /// <summary>The balance: the middle is whole on both sides; panned, the far side fades (to 0.2 at the edge).</summary>
         public readonly float Left, Right;
+        /// <summary>A court sound (stolen first when the voices run out).</summary>
+        public bool Court { get; init; }
         /// <summary>Frames left in a cut's fade, or −1 while it plays out.</summary>
         public int FadeLeft = -1;
         public Voice(float[] clip, float gain, double pan)
