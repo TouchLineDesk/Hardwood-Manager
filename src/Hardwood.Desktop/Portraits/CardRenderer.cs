@@ -62,6 +62,7 @@ public static class CardRenderer
             {
                 using var s = Resource("Cards." + name);
                 b = s == null ? null : SKBitmap.Decode(s);
+                b?.SetImmutable(); // shared across render threads, read-only; drawing it then needs no copy
             }
             catch (Exception) { b = null; }
             return Textures[name] = b;
@@ -343,6 +344,33 @@ public static class CardRenderer
 
     private static SKPath Svg(string d) => SKPath.ParseSvgPathData(d);
 
+    /// <summary>Letters the card fonts lack (they cover Latin-1 only: Ć, Š, Ş, Ž, Ł, Đ …) folded to their base letter,
+    /// so "JOKIĆ" reads "JOKIC" instead of losing a letter. Anything still missing becomes a space.</summary>
+    public static string Fold(string text, SKTypeface face)
+    {
+        if (face.ContainsGlyphs(text)) return text;
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (var ch in text)
+        {
+            if (char.IsSurrogate(ch)) { continue; }
+            if (face.ContainsGlyph(ch)) { sb.Append(ch); continue; }
+            var mapped = ch switch
+            {
+                'Đ' or 'Ð' => "D", 'đ' => "d", 'Ł' => "L", 'ł' => "l", 'İ' => "I", 'ı' => "i", 'Ø' => "O", 'ø' => "o", 'Æ' => "AE", 'æ' => "ae", 'ß' => "SS",
+                _ => new string(ch.ToString().Normalize(System.Text.NormalizationForm.FormD)
+                        .Where(d => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(d) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray()),
+            };
+            foreach (var m in mapped) sb.Append(face.ContainsGlyph(m) ? m : ' ');
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>The card fonts, for tests.</summary>
+    internal static (SKTypeface bigShoulders, SKTypeface barlow) CardFonts => Fonts.Value;
+
+    /// <summary>Whether an embedded card texture loads (tests).</summary>
+    public static bool HasTexture(string name) => Texture(name) != null;
+
     private static double Luma(SKColor c) => 0.299 * c.Red + 0.587 * c.Green + 0.114 * c.Blue;
     private static double Distance(SKColor a, SKColor b) =>
         Math.Sqrt(Math.Pow(a.Red - b.Red, 2) + Math.Pow(a.Green - b.Green, 2) + Math.Pow(a.Blue - b.Blue, 2));
@@ -459,23 +487,28 @@ public static class CardRenderer
         using (var ff = new SKFont(bc, 13) { Subpixel = true, Edging = SKFontEdging.Antialias })
         using (var p = new SKPaint { IsAntialias = true, Color = Hex("#DDE3EC") })
         {
-            var first = (card.FirstName ?? "").ToUpperInvariant();
-            var (fAsc, _) = LineBox(ff);
+            var first = Fold((card.FirstName ?? "").ToUpperInvariant(), bc);
+            var (fAsc0, _) = LineBox(ff);
             float fw = SpacedWidth(first, ff, 1);
             if (fw > room) ff.Size = 13 * room / fw;
-            DrawSpacedFrom(c, first, x, band.Top + 2 + 7 + fAsc, ff, ff.Size / 13f, p);
+            // A shrunken first name keeps the line's 13-unit box: its baseline moves up with the smaller ascent, centred.
+            var (fAsc, _) = LineBox(ff);
+            float lineTop = band.Top + 2 + 7 + (fAsc0 - fAsc) / 2;
+            DrawSpacedFrom(c, first, x, lineTop + fAsc, ff, ff.Size / 13f, p);
         }
         using (var lf = new SKFont(bs, 27) { Subpixel = true, Edging = SKFontEdging.Antialias })
         using (var p = new SKPaint { IsAntialias = true, Color = SKColors.White })
         {
-            var text = last.ToUpperInvariant();
+            var full = Fold(last.ToUpperInvariant(), bs);
+            var text = full;
             float lw = SpacedWidth(text, lf, .5f);
             // A long surname shrinks to fit (never below 60%), then is cut with an ellipsis.
             float size = 27;
             if (lw > room) size = Math.Max(27 * .6f, 27 * room / lw);
             lf.Size = size;
             float sp = .5f * size / 27;
-            while (text.Length > 2 && SpacedWidth(text, lf, sp) > room) text = text[..^2] + "…";
+            for (int keep = full.Length - 1; keep >= 1 && SpacedWidth(text, lf, sp) > room; keep--)
+                text = full[..keep].TrimEnd(' ', '-') + "…";
             // line-height 1 below the first name's line (13 * 1.2 = 16 units).
             var lm = lf.Metrics;
             float lineTop = band.Top + 2 + 7 + 16 + (27 - size) / 2;

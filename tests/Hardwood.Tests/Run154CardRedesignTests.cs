@@ -142,6 +142,22 @@ public class Run154CardRedesignTests
     }
 
     [Fact]
+    public void The_textures_load_and_names_the_fonts_lack_are_folded()
+    {
+        foreach (var t in new[] { "foil-pearl.jpg", "foil-diamond.jpg", "gem-amethyst.jpg", "gem-ruby.jpg" })
+            Assert.True(CardRenderer.HasTexture(t), t);
+        // The real fonts: Latin-1 stays, the rest folds to its base letter.
+        var card = CardRenderer.Render(Card(120, 130, last: "Jokić"), Face(new SKColor(150, 100, 75)));
+        card.Dispose();
+        var big = typeof(CardRenderer).GetProperty("CardFonts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+        var face = (SKTypeface)big.GetType().GetField("Item1")!.GetValue(big)!;
+        Assert.Equal("JOKIC", CardRenderer.Fold("JOKIĆ", face));
+        Assert.Equal("SENGÜN", CardRenderer.Fold("ŞENGÜN", face));
+        Assert.Equal("BOGDANOVIC", CardRenderer.Fold("BOGDANOVIĆ", face));
+        Assert.Equal("O'NEAL", CardRenderer.Fold("O'NEAL", face));
+    }
+
+    [Fact]
     public void The_plate_name_is_part_of_the_cards_key()
     {
         var a = Card(120, 130);
