@@ -95,6 +95,32 @@
         <Button Classes="speed" Classes.primary="{Binding SpeedKey}" Content="Key" Command="{Binding SetSpeedCommand}" CommandParameter="key" Margin="0,0,0,4" ToolTip.Tip="Key moments: baskets, blocks, steals and the late, close possessions at 2×; the rest flies by"/>
       </WrapPanel>
     </Border>
+
+    <!-- M3 (run 150): the shout bar, FM-style. Each shout moves the levers the engine already reads; tap again to cancel. -->
+    <Border x:Name="ShoutBar" Classes="hud" Padding="6" IsVisible="{Binding !Complete}">
+      <StackPanel Spacing="4">
+        <Button x:Name="ShoutsToggle" Classes="tab" Command="{Binding ToggleShoutsCommand}" HorizontalAlignment="Stretch" ToolTip.Tip="Show or fold the shouts">
+          <TextBlock Text="{Binding ShoutsHeader}" FontWeight="SemiBold"/>
+        </Button>
+        <ItemsControl x:Name="ShoutButtons" ItemsSource="{Binding ShoutRows}" IsVisible="{Binding ShoutsOpen}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ShoutRow">
+              <Button Classes="speed" Classes.primary="{Binding IsOn}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,3" Padding="4,3"
+                      Command="{Binding Toggle}" CommandParameter="{Binding Key}" ToolTip.Tip="{Binding Tip}">
+                <TextBlock Text="{Binding Label}" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center"/>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border x:Name="ActiveShoutsChip" Background="#2A3A24" BorderBrush="#7FC46A" BorderThickness="1" CornerRadius="4" Padding="6,2" IsVisible="{Binding HasActiveShouts}">
+          <TextBlock Text="{Binding ActiveShoutsLine}" FontSize="11" Foreground="#CFEFC4" TextWrapping="Wrap"/>
+        </Border>
+        <Border x:Name="SubChipBorder" Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,2" IsVisible="{Binding HasSubChip}">
+          <TextBlock x:Name="SubChipText" Text="{Binding SubChip}" FontSize="11" Foreground="#F6E3B0" TextWrapping="Wrap"/>
+        </Border>
+      </StackPanel>
+    </Border>
     </StackPanel>
 
     <!-- The drawers on the right: the box score, the play by play, tactics, subs, shots, stats and the game flow. -->

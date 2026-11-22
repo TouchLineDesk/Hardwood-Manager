@@ -439,7 +439,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         if (Session == null || IsBusy) return false;
         // D75 A (run 69): leaving mid-game, a halftime read you applied was for the second half only: save your own plan.
-        if (CurrentPage is LiveGameViewModel live) live.RestoreRead();
+        if (CurrentPage is LiveGameViewModel live) { live.RestoreRead(); live.ClearShouts(); }   // M3 review (run 150): shouts are for one game
         try { Session.SaveNow(); return true; }
         catch (Exception e) { Console.Error.WriteLine($"Save on leave failed: {e.Message}"); return false; }
     }

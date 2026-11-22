@@ -730,6 +730,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (ShouldSyncLineup(Running, _live.Complete, _live.LineupPending(Us), LineupEdited))
             SyncLineup(ourFloor.OrderBy(p => p.PrimaryPosition).Take(5).ToList());
 
+        UpdateSubChip();
         var log = _live.Log;
         for (; _logShown < log.Count; _logShown++) Log.Insert(0, log[_logShown]);
 
@@ -827,6 +828,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         _live.RequestLineup(Us, five!);
         for (int i = 0; i < 5; i++) _lastSynced[i] = Lineup[i].Selected;
         Status = Running ? "Lineup goes in at the next dead ball." : "Lineup set; it goes in at the next dead ball once you press Play.";
+        UpdateSubChip();
     }
 
     [RelayCommand]
@@ -848,6 +850,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         _timer.Stop();
         if (!_live.Complete) _live.Finish();
         RestoreRead();
+        ClearShouts();   // M3: shouts are for this game only
         Session.FinishLiveDay(_live, _played);
         Shell.AfterTick();
         Shell.ShowBoxScore(_live.Result);

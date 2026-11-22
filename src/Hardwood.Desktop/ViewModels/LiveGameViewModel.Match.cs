@@ -118,6 +118,7 @@ public sealed partial class LiveGameViewModel
         BarClock = BugClock; BarPeriod = BugPeriod;
         Commentary = $"Welcome to {HomeTeam.City}: {AwayTeam.Name} at {HomeTeam.Name}. Press Play for the tip.";
         MatchFrame = TipFrame();
+        InitShouts();
     }
 
     /// <summary>The ten at the centre circle before the tip.</summary>
@@ -129,7 +130,7 @@ public sealed partial class LiveGameViewModel
 
     private string Short(Team t) => Session.InCollege ? t.City : t.Name;
 
-    private PossessionInput Input(IReadOnlyList<PlayEvent> events, double start, double end, bool homeBall)
+    private PossessionInput Input(IReadOnlyList<PlayEvent> events, double start, double end, bool homeBall, IReadOnlyList<string>? notes = null)
     {
         var r = _live.Result;
         bool late = _live.Period >= r.Periods && end < 120 && Math.Abs(_live.HomeScore - _live.AwayScore) <= 6;
@@ -143,6 +144,11 @@ public sealed partial class LiveGameViewModel
             EnergyOf = _live.EnergyOf,
             HomePace = HomeTeam.Tactic.Pace, AwayPace = AwayTeam.Tactic.Pace,
             HomeAggression = HomeTeam.Tactic.DefensiveAggression, AwayAggression = AwayTeam.Tactic.DefensiveAggression,
+            // M3 (run 150): the shouts' levers show in the shape, and the commentary names what changed.
+            HomeThrees = HomeTeam.Tactic.ThreePointEmphasis, AwayThrees = AwayTeam.Tactic.ThreePointEmphasis,
+            HomeGlass = HomeTeam.Tactic.CrashGlass, AwayGlass = AwayTeam.Tactic.CrashGlass,
+            HomeDouble = HomeTeam.Tactic.DoubleStar, AwayDouble = AwayTeam.Tactic.DoubleStar,
+            Notes = notes ?? Array.Empty<string>(),
         };
     }
 
@@ -162,7 +168,8 @@ public sealed partial class LiveGameViewModel
         _scriptEndsPeriod = events.Any(e => e.Kind == PlayKind.PeriodEnd);
         BarHomeScore = homeBefore; BarAwayScore = awayBefore;
         if (events.FirstOrDefault() is { } first && first.Period > 0) BarPeriod = BugPeriodName(first.Period, r.Periods);
-        _script = PossessionChoreographer.Build(Input(events, start, end, true));
+        // M3: the levers the engine just played with are the ones drawn, and any change since the last possession is said.
+        _script = PossessionChoreographer.Build(Input(events, start, end, true, TakeChangeNotes()));
         _scriptT = 0;
         _possIndex++;
         ShowFrame();
