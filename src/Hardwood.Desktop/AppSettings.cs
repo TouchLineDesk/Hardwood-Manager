@@ -45,6 +45,11 @@ public sealed class AppSettings
     /// tracker slice 3). Off: the court keeps its 300 px.</summary>
     public bool LiveBigCourt { get; set; } = true;
 
+    /// <summary>M6 (run 153): the live game's crowd sound, on or off, and its volume (0–1). The live view's speaker
+    /// button and slider change these too.</summary>
+    public bool SoundOn { get; set; } = true;
+    public double SoundVolume { get; set; } = 0.7;
+
     /// <summary>Custom views on the big tables (#465): each table's chosen view and "My view" columns, by table key.</summary>
     public Dictionary<string, Controls.TableViewChoice> TableViews { get; set; } = new();
 

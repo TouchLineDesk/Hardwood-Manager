@@ -362,11 +362,12 @@ public sealed partial class LiveGameViewModel : PageViewModel
     private static readonly string[] BugProps = { nameof(BugPeriod), nameof(BugClock), nameof(AwayFouls), nameof(HomeFouls), nameof(AwayBonus), nameof(HomeBonus),
         nameof(AwayInBonus), nameof(HomeInBonus), nameof(AwayRank), nameof(HomeRank), nameof(AwayRanked), nameof(HomeRanked) };
 
-    partial void OnRunningChanged(bool value) { OnPropertyChanged(nameof(MotionMs)); OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
+    partial void OnRunningChanged(bool value) { UpdateBed(); OnPropertyChanged(nameof(MotionMs)); OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
     partial void OnCompleteChanged(bool value)
     {
         OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(CanStep)); OnPropertyChanged(nameof(TickerTag));
         if (value) Refresh();   // H71: the top bar's line turns to the result
+        UpdateBed();
     }
 
     /// <summary>While paused: play one possession and stop (the tracker's step control).</summary>
@@ -379,6 +380,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         // Review (run 148): a possession paused mid-play jumps to its end too.
         if (_script == null) BeginPossession();
         if (_script != null) _scriptT = _script.Length;
+        SkipSound();   // M6: a step jumps; its reactions aren't played late
         ShowFrame();
         FinishPossession();
         if (!Complete && !Running && !ShowBreak) Status = "Stepped one possession. Step again, or press Play.";
@@ -710,6 +712,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public void SimToEnd()
     {
         _timer.Stop(); Running = false;
+        SkipSound();
         _script = null;
         _live.Finish();
         RestoreRead();
@@ -726,6 +729,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         if (!_live.Complete) _live.Finish();
         RestoreRead();
         ClearShouts();   // M3: shouts are for this game only
+        ReleaseAudio();  // M6: the crowd goes home
         Session.FinishLiveDay(_live, _played);
         Shell.AfterTick();
         Shell.ShowBoxScore(_live.Result);

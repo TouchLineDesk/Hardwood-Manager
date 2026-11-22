@@ -106,6 +106,10 @@ public sealed class Choreography
     public List<(double T, int Home, int Away)> Scores { get; } = new();
     public List<(double T, double Clock)> ClockPoints { get; } = new();
     public List<Burst> Bursts { get; } = new();
+    /// <summary>M6 (run 153): when each of the engine's events lands on screen (a shot's make or miss as the ball
+    /// arrives, a block, a steal, a whistle, a rebound, a free throw, a period's end). The crowd reacts to these and
+    /// nothing else, so the sound never says anything the engine didn't do.</summary>
+    public List<(double T, PlayEvent E)> Moments { get; } = new();
     /// <summary>What was drawn, in order (M2): the set's signature, the defence's answer, transition, dead balls.</summary>
     public List<ChoreoAction> Actions { get; } = new();
     /// <summary>The set actually run this possession (Balanced resolves to one of the others).</summary>
@@ -595,6 +599,7 @@ public static class PossessionChoreographer
                             c.Ball.Add(new BallSegment(t + 0.3, t + 0.9, BallMode.Loose, -1, -1, Spot.Lerp(cur[target], rim, 0.15), deflect.Clamp(), 0.8));
                             c.Bursts.Add(new Burst(t + 0.3, Spot.Lerp(cur[target], rim, 0.15), false));
                             c.Lines.Add(new(t + 0.3, $"REJECTED! {Last(e.Other)} blocks {Last(e.Actor)}", true));
+                            c.Moments.Add((t + 0.3, e));
                             c.Key = true;
                             t += 0.9;
                         }
@@ -603,6 +608,7 @@ public static class PossessionChoreographer
                             double flight = three ? ShotFlight : e.Zone == ShotZone.Rim ? 0.45 : 0.8;
                             c.Ball.Add(new BallSegment(t, t + flight, BallMode.Shot, target, -1, default, rim, three ? 6 : e.Zone == ShotZone.Rim ? 1.5 : 4));
                             t += flight;
+                            c.Moments.Add((t, e));
                             if (e.Made)
                             {
                                 c.Scores.Add((t, e.HomeScore, e.AwayScore));
@@ -625,6 +631,7 @@ public static class PossessionChoreographer
                         var outSpot = new Spot(cur[target].X + J(rng, 3), cur[target].Y < 25 ? 0.2 : 49.8);
                         c.Ball.Add(new BallSegment(t, t + 0.6, BallMode.Loose, -1, -1, cur[target], outSpot, 0.5));
                         c.Lines.Add(new(t, $"{Last(e.Actor)} turns it over. {(e.Home ? input.AwayName : input.HomeName)} ball", false));
+                        c.Moments.Add((t, e));
                         t += TurnoverTime;
                         c.Next = PossessionStart.DeadBall;
                         break;
@@ -632,6 +639,7 @@ public static class PossessionChoreographer
                     case PlayKind.Steal:
                     {
                         c.Lines.Add(new(t, $"Stolen! {Last(e.Actor)} picks off {Last(e.Other)}", true));
+                        c.Moments.Add((t, e));
                         c.Key = true;
                         int st = Slot(e.Actor);
                         if (st >= 0) c.Ball.Add(new BallSegment(t, t + 0.8, BallMode.Held, st, -1, default, default, 0));
@@ -645,6 +653,7 @@ public static class PossessionChoreographer
                         int fo = Slot(e.Actor);
                         if (fo >= 0) Go(fo, t - 0.4, t + 0.2, Spot.Lerp(cur[fo], cur[target], 0.7));
                         c.Lines.Add(new(t, e.Other != null ? $"Whistle: foul on {Last(e.Actor)}, {Last(e.Other)} was hit" : $"Whistle: foul on {Last(e.Actor)}", false));
+                        c.Moments.Add((t, e));
                         c.Ball.Add(new BallSegment(t, t + FoulTime, BallMode.Held, target, -1, default, default, 0));
                         t += FoulTime;
                         c.Next = PossessionStart.DeadBall;
@@ -678,6 +687,7 @@ public static class PossessionChoreographer
                     if (r >= 0) c.Ball.Add(new BallSegment(t + 0.5, t + ReboundTime, BallMode.Held, r, -1, default, default, 0));
                     bool off = e.Kind == PlayKind.OffensiveRebound;
                     c.Lines.Add(new(t + 0.4, off ? $"Offensive board, {Last(e.Actor)}!" : $"{Last(e.Actor)} secures the rebound for {(e.Home ? input.HomeName : input.AwayName)}", off));
+                    c.Moments.Add((t + 0.4, e));
                     t += ReboundTime;
                     if (off) { firstChance = false; handler = r >= 0 ? r : handler; c.Ball.Add(new BallSegment(t, t + 0.01, BallMode.Held, handler, -1, default, default, 0)); }
                     else
@@ -699,6 +709,7 @@ public static class PossessionChoreographer
                 {
                     // A foul inside a free-throw trip (a lane violation is not modelled): just the whistle.
                     c.Lines.Add(new(t, $"Foul on {Last(e.Actor)}", false));
+                    c.Moments.Add((t, e));
                     t += 0.6;
                     break;
                 }
@@ -729,6 +740,7 @@ public static class PossessionChoreographer
                     if (sh >= 0) c.Ball.Add(new BallSegment(t, t + 0.9, BallMode.Held, sh, -1, default, default, 0));
                     c.Ball.Add(new BallSegment(t + 0.9, t + FreeThrowTime, BallMode.Shot, sh, -1, S(15, 25), rim, 3.5, FreeThrow: true));
                     t += FreeThrowTime;
+                    c.Moments.Add((t, e));
                     if (e.Made) { c.Scores.Add((t, e.HomeScore, e.AwayScore)); c.Bursts.Add(new Burst(t, rim, true)); }
                     bool more = i + 1 < ev.Count && ev[i + 1].Kind == PlayKind.FreeThrow && ev[i + 1].Actor == e.Actor;
                     c.Lines.Add(new(t, e.Made ? (more ? $"{Last(e.Actor)} makes the first" : $"{Last(e.Actor)} knocks it down. {ScoreLine(input, e.HomeScore, e.AwayScore)}") : $"{Last(e.Actor)} misses from the line", false));
@@ -745,6 +757,7 @@ public static class PossessionChoreographer
                     clockNow = 0;
                     string name = PeriodName(e.Period, input.Periods);
                     c.Lines.Add(new(t, $"That's the end of {name}: {input.AwayName} {e.AwayScore}, {input.HomeName} {e.HomeScore}", true));
+                    c.Moments.Add((t, e));
                     c.Length = t;   // review (run 148): Sample clamps to Length, so set it before reading where the ball is
                     c.Ball.Add(new BallSegment(t, t + PeriodEndTime, BallMode.Loose, -1, -1, BallAt(c, t), new Spot(47, 25), 0.2));
                     // M2: both fives head for their benches, in front of the scorer's table.

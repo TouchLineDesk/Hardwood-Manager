@@ -35,6 +35,26 @@ public sealed partial class SettingsViewModel : PageViewModel
         Shell.RefreshHeader();
     }
 
+    /// <summary>M6 (run 153): the master switch and volume for the live game's crowd (the live view's speaker button
+    /// changes the same settings).</summary>
+    public bool SoundOn
+    {
+        get => AppSettings.Current.SoundOn;
+        set { if (AppSettings.Current.SoundOn == value) return; AppSettings.Current.SoundOn = value; AppSettings.Current.Save(); OnPropertyChanged(); }
+    }
+    public double SoundVolume
+    {
+        get => Math.Round(AppSettings.Current.SoundVolume * 100);
+        set
+        {
+            double v = Math.Clamp(value / 100.0, 0, 1);
+            if (Math.Abs(AppSettings.Current.SoundVolume - v) < 0.001) return;
+            AppSettings.Current.SoundVolume = v; AppSettings.Current.Save();
+            OnPropertyChanged(); OnPropertyChanged(nameof(SoundVolumeText));
+        }
+    }
+    public string SoundVolumeText => $"{SoundVolume:0}%";
+
     /// <summary>Text and interface size (roadmap 1): 90-130% of the standard size.</summary>
     public IReadOnlyList<string> SizeChoices { get; } = UiScale.Percents.Select(UiScale.Label).ToList();
 

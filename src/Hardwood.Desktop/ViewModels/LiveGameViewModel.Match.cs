@@ -40,7 +40,7 @@ public sealed partial class LiveGameViewModel
     public bool Speed4 => SpeedIndex == 2;
     public bool Speed8 => SpeedIndex == 3;
     public bool SpeedKey => SpeedIndex == KeySpeed;
-    partial void OnSpeedIndexChanged(int value) => SpeedLabel = value == KeySpeed ? "Key moments" : $"{Speeds[value]:0}×";
+    partial void OnSpeedIndexChanged(int value) { SpeedLabel = value == KeySpeed ? "Key moments" : $"{Speeds[value]:0}×"; UpdateBed(); }
 
     /// <summary>The moment on screen: ten players, the ball, the clock, the score and the commentary.</summary>
     [ObservableProperty] private ChoreoFrame? _matchFrame;
@@ -205,6 +205,7 @@ public sealed partial class LiveGameViewModel
         }
         _scriptT = 0;
         _possIndex++;
+        PlanSound();   // M6 (run 153): the crowd's reactions to this possession's events, at their playback times
         ShowFrame();
     }
 
@@ -260,11 +261,15 @@ public sealed partial class LiveGameViewModel
         if (_scriptT >= _script.Length)
         {
             _scriptT = _script.Length;
+            FireSound(_scriptT);
             ShowFrame();
             FinishPossession();
+            UpdateBed();
             return;
         }
+        FireSound(_scriptT);
         ShowFrame();
+        UpdateBed();
     }
 
     /// <summary>Play the rest of the game on screen at the given rate, frame by frame (tests: proves the viewer changes
