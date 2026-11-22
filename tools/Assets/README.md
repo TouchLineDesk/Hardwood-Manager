@@ -34,7 +34,26 @@ indoors. The beds are normalised to −26 and −20 dBFS RMS, the cheers to −1
 
 - A **referee's whistle** and the **shot-clock/period buzzer**: draw them in code (a pea-whistle
   trill and a square-wave buzzer) or buy SoundDogs *Basketball Sound FX*.
-- **Sneaker squeaks, dribbles, rim and backboard hits**: SoundDogs *Basketball Sound FX*.
+- ~~Sneaker squeaks, dribbles, rim and backboard hits~~: in the licensed Splice pack (run 160, below).
+- A crowd **"aww"** for a home turnover (the bed dips instead), and **players shouting**.
+
+## The licensed match-day pack (Splice; release builds only, #1070)
+
+30 OGGs (48 kHz stereo, Vorbis q5; effects −16 LUFS, beds −23 LUFS) made from 23 Splice WAVs on Nov 22, 2026
+(`claude/sound-intake-2026-11-22.md` in the project has every cut and level). They live in the private
+`TouchLineDesk/hardwood-licensed-audio` repo, never here. `release.yml` checks it out with the
+`LICENSED_AUDIO_TOKEN` secret and builds with `-p:LicensedAudioDir=…`, which embeds them as `Licensed.<file>`;
+`CrowdMixer` uses them when `crowd-bed-1.ogg` and `crowd-bed-3.ogg` are there, else the M6 files above.
+
+| File(s) | Cue in the game |
+|---|---|
+| `crowd-bed-1`, `crowd-bed-3` (`-2` spare) | the low and high beds |
+| `crowd-yeah-1` / `crowd-cheer-1` / `crowd-erupt-1` | Cheer / BigCheer / Erupt (dunk, and-one, late lead change) |
+| `crowd-boo-1..4`, `crowd-oh-1`, `crowd-student-1..2` | Boo, Oh, Student |
+| `court-bounce-1`, `court-squeak-1..6` | dribbles while carried; cuts, drives, closeouts |
+| `court-swish-1`, `court-shot-bounce-1`, `court-backboard-1` | made jumper/three/free throw; layup; dunk |
+| `court-rim-1..2`, `court-backboard-2` | misses |
+| `band-drumline-1..2`, `band-brass-stab-1` | before the tip and at each break; after a home dunk or late lead change |
 
 ## Looked at and not used
 

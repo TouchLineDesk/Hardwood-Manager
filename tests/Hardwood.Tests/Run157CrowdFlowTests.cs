@@ -60,7 +60,8 @@ public class Run157CrowdFlowTests
             big.Attributes[Attr.Dunk] = 18;
             var dunk = Build(hf, af, new() { new(1, 505, PlayKind.Shot, true, big, null, ShotZone.Rim, true, 12, 10) });
             Assert.True(Choreography.IsDunk(dunk.Moments.Single(m => m.E.Kind == PlayKind.Shot).E));
-            Assert.Equal(new[] { Cue.BigCheer }, Kinds(dunk));
+            // Run 160: a home dunk brings the house down (the eruption), and the students join in.
+            Assert.Equal(new[] { Cue.Erupt, Cue.Student }, Kinds(dunk));
             Assert.Contains(dunk.Lines, l => l.Text.Contains("throws it down"));
             big.Attributes[Attr.Dunk] = 8;
             var layup = Build(hf, af, new() { new(1, 505, PlayKind.Shot, true, big, null, ShotZone.Rim, true, 12, 10) });

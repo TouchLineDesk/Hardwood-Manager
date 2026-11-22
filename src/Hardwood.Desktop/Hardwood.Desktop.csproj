@@ -29,6 +29,10 @@
     <EmbeddedResource Include="Assets\Broadcast\*.json" />
     <EmbeddedResource Include="Assets\Broadcast\*.png" />
     <EmbeddedResource Include="Assets\Audio\Crowd\*.ogg" />
+    <!-- Run 160: the licensed match-day pack (Splice; crowd, court and band). Only the release build has it: the release
+         workflow checks out the private TouchLineDesk/hardwood-licensed-audio repo with LICENSED_AUDIO_TOKEN and passes
+         -p:LicensedAudioDir=…. Never committed here (#1070). Without it the game plays the M6 crowd above. -->
+    <EmbeddedResource Include="$(LicensedAudioDir)\*.ogg" Exclude="$(LicensedAudioDir)\demo-mix*.ogg" Condition="'$(LicensedAudioDir)' != '' And Exists('$(LicensedAudioDir)')" LogicalName="Licensed.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets\Court\*.jpg" />
     <EmbeddedResource Include="Assets\Cards\*.jpg" />
   </ItemGroup>
