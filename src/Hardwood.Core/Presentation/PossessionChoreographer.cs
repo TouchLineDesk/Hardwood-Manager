@@ -67,6 +67,18 @@ public sealed record PossessionInput(int Index, ulong Seed, IReadOnlyList<PlayEv
     /// <summary>Defensive aggression, 0–100: higher closes the gaps (less sag off the ball).</summary>
     public int HomeAggression { get; init; } = 50;
     public int AwayAggression { get; init; } = 50;
+    /// <summary>M3: three-point emphasis, 0–100. High spreads the floor four out; low brings the shooters in to attack.</summary>
+    public int HomeThrees { get; init; } = 50;
+    public int AwayThrees { get; init; } = 50;
+    /// <summary>M3: offensive glass, 0–100. High sends bodies to the rim on a miss; low sends them back.</summary>
+    public int HomeGlass { get; init; } = 50;
+    public int AwayGlass { get; init; } = 50;
+    /// <summary>M3: the defence sends a second man at the other side's best scorer.</summary>
+    public bool HomeDouble { get; init; }
+    public bool AwayDouble { get; init; }
+    /// <summary>M3: what the benches changed since the last possession, for the commentary bar ("Duke switch to a 2-3
+    /// zone"). Said as the possession starts.</summary>
+    public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>How the possession began: from the tip or a period's start, after a make (an inbound under the basket),
@@ -268,10 +280,21 @@ public static class PossessionChoreographer
         double Tired(int slot) => Math.Clamp((0.9 - (input.EnergyOf?.Invoke(players[slot]) ?? 1.0)) / 0.6, 0, 1);
         double paceK = Math.Clamp(((homeOff ? input.HomePace : input.AwayPace) - 99) / 15, -1, 1);
         double aggression = homeOff ? input.AwayAggression : input.HomeAggression;
+        int threes = homeOff ? input.HomeThrees : input.AwayThrees;
+        int glass = homeOff ? input.HomeGlass : input.AwayGlass;
+        bool doubling = homeOff ? input.AwayDouble : input.HomeDouble;
         void Act(double at, string tag, int slot) => c.Actions.Add(new ChoreoAction(at, tag, slot));
         // Who guards whom: defender k (slot defBase + k) guards the offence's slot offBase + guard[k]. A switch swaps two.
         var guard = new[] { 0, 1, 2, 3, 4 };
         int DefOf(int offSlot) => defBase + Array.IndexOf(guard, offSlot - offBase);
+        // M3: the offence's best scorer (the one a double goes at), and who leaves his man to double him.
+        int star = -1, helper = -1;
+        if (doubling)
+        {
+            star = Enumerable.Range(offBase, 5).OrderByDescending(k => players[k].Overall).ThenBy(k => k).First();
+            int own = Array.IndexOf(guard, star - offBase);
+            helper = Enumerable.Range(0, 5).Where(k => k != own).OrderBy(k => Math.Abs(guard[k] - (star - offBase))).ThenBy(k => k).First();
+        }
 
         // Start: where they stood, or the tip.
         var cur = new Spot[10];
@@ -313,10 +336,17 @@ public static class PossessionChoreographer
                 else if (role == Role.StretchBig && k >= 3) sp[k] = S(21, low ? 11 : 39);
                 else if (role == Role.RimRunner && k >= 3 && set != OffensiveSystem.PaceAndSpace) sp[k] = S(3, low ? 17 : 33);
             }
+            // M3: Hunt threes spreads the wings and the four to the arc (four out); Attack the paint pulls everyone in.
+            if (threes >= 70)
+                for (int k = 1; k < 4; k++) { if (sp[k].DistanceTo(rim) < 23.5) sp[k] = Toward(rim, sp[k], 24); }
+            else if (threes <= 30)
+                for (int k = 1; k < 5; k++) { if (sp[k].DistanceTo(rim) > 15) sp[k] = Toward(rim, sp[k], 14); }
             return sp;
         }
         Spot DefSpot(int k, Spot ball)
         {
+            // M3: the double comes from the defender nearest their best scorer (not his own man's).
+            if (doubling && k == helper && star >= 0) return Spot.Lerp(cur[star], rim, 0.12).Clamp() with { Y = Math.Clamp(cur[star].Y + (cur[star].Y < 25 ? 2.2 : -2.2), 0.8, 49.2) };
             if (scheme == DefensiveScheme.Zone23)
             {
                 var zone = new[] { S(15, 18), S(15, 32), S(6, 9), S(6, 41), S(4, 25) };
@@ -326,7 +356,8 @@ public static class PossessionChoreographer
             // Man, Switch and Drop: between his man and the basket, sagging off the ball; aggression closes the gap.
             var man = cur[offBase + guard[k]];
             double close = 1.25 - aggression / 100.0 * 0.5;
-            double sag = (man.DistanceTo(ball) < 3 ? 0.18 : 0.35) * close;
+            bool onBall = man.DistanceTo(ball) < 3;
+            double sag = (onBall ? (aggression >= 70 ? 0.06 : 0.18) : 0.35) * close;
             if (scheme == DefensiveScheme.SwitchEverything) sag *= 0.85;
             return Spot.Lerp(man, rim, sag).Clamp();
         }
@@ -387,7 +418,12 @@ public static class PossessionChoreographer
                 c.Ball.Add(new BallSegment(t + 0.6, t + 1.2, BallMode.Pass, inb, handler, inbAt, default, 0.2));
                 t += 1.2;
             }
-            c.Lines.Add(new(lead, input.How switch
+            if (input.Notes.Count > 0)
+            {
+                foreach (var n in input.Notes) c.Lines.Add(new(lead, n, false));
+                Act(lead, "change", -1);
+            }
+            c.Lines.Add(new(input.Notes.Count > 0 ? lead + 2.0 : lead, input.How switch
             {
                 PossessionStart.AfterStop => $"{Last(players[handler])} pushes it up the floor for {offName}",
                 PossessionStart.PeriodStart => $"{offName} have the ball to start the period",
@@ -428,6 +464,10 @@ public static class PossessionChoreographer
             if (c.Ball.Count == 0) c.Ball.Add(new BallSegment(0, bring, BallMode.Held, handler, -1, default, default, 0));
             else c.Ball.Add(new BallSegment(LastEnd(c), bring, BallMode.Held, handler, -1, default, default, 0));
             for (int k = 0; k < 5; k++) Drift(defBase + k, t, bring + 0.3, DefSpot(k, cur[handler]));
+            // M3: what the levers did to the shape, for tests (the spots above already show it), as the walk-up ends.
+            if (threes >= 70) Act(bring, "spread", -1); else if (threes <= 30) Act(bring, "attack-paint", -1);
+            if (aggression >= 70) Act(bring, "pressure", DefOf(handler)); else if (aggression <= 30) Act(bring, "pack-paint", -1);
+            if (doubling && helper >= 0) Act(bring, "double", defBase + helper);
             t = bring;
         }
         else if (c.Ball.Count == 0)
@@ -613,9 +653,17 @@ public static class PossessionChoreographer
                     int r = Slot(e.Actor);
                     var at = new Spot(bx + o * (3 + rng.NextDouble() * 4), 25 + J(rng, 7)).Clamp();
                     if (r >= 0) Go(r, t - 0.6, t + 0.3, at);
-                    // Everyone else crashes or retreats a little.
+                    // Everyone else crashes or retreats a little. M3: the offence's glass lever decides how many crash
+                    // (high: the wings and bigs go to the rim) or sprint back (low: all but the bigs head for half court).
                     for (int k = 0; k < 10; k++)
-                        if (k != r) Drift(k, t - 0.4, t + ReboundTime, Spot.Lerp(cur[k], rim, k / 5 == offBase / 5 ? 0.15 : 0.25));
+                    {
+                        if (k == r) continue;
+                        bool ofOff = k / 5 == offBase / 5;
+                        if (ofOff && glass >= 70 && k % 5 >= 1) Drift(k, t - 0.4, t + ReboundTime, Spot.Lerp(cur[k], rim, 0.5));
+                        else if (ofOff && glass <= 30 && k % 5 <= 2) Drift(k, t - 0.4, t + ReboundTime, new Spot(47 + o * 4, cur[k].Y));
+                        else Drift(k, t - 0.4, t + ReboundTime, Spot.Lerp(cur[k], rim, ofOff ? 0.15 : 0.25));
+                    }
+                    if (glass >= 70) Act(t, "crash", -1); else if (glass <= 30) Act(t, "retreat", -1);
                     c.Ball.Add(new BallSegment(t, t + 0.5, BallMode.Loose, -1, -1, rim, at, 1.2));
                     if (r >= 0) c.Ball.Add(new BallSegment(t + 0.5, t + ReboundTime, BallMode.Held, r, -1, default, default, 0));
                     bool off = e.Kind == PlayKind.OffensiveRebound;
@@ -892,6 +940,14 @@ public static class PossessionChoreographer
         int at = five.FindIndex(x => x.PrimaryPosition == p.PrimaryPosition && !actors.Contains(x));
         if (at < 0) at = five.FindIndex(x => !actors.Contains(x));
         five[at >= 0 ? at : five.Count - 1] = p;
+    }
+
+    /// <summary>The point <paramref name="dist"/> feet from <paramref name="from"/> on the line through <paramref name="to"/>.</summary>
+    private static Spot Toward(Spot from, Spot to, double dist)
+    {
+        double dx = to.X - from.X, dy = to.Y - from.Y, len = Math.Sqrt(dx * dx + dy * dy);
+        if (len < 1e-6) return to;
+        return new Spot(from.X + dx / len * dist, from.Y + dy / len * dist).Clamp();
     }
 
     private static double J(Random rng, double r) => (rng.NextDouble() * 2 - 1) * r;
