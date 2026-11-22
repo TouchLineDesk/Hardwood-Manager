@@ -5,8 +5,8 @@ namespace Hardwood.Desktop.Views;
 
 /// <summary>
 /// The live game (M1 of the 2D match engine, run 148): the court fills the page, with the score bar, the controls, the
-/// speeds, the drawers and the commentary bar over it. The court draws itself to fit (MatchCourt.Fit), so the page needs
-/// no fitting code of its own.
+/// speeds, the drawers and the commentary bar round it. K23 (run 158): the page tells the court the room those take
+/// (<see cref="CourtReserve"/>) and the court fits itself into the rest (MatchCourt.Fit), so nothing covers the floor.
 /// </summary>
 public partial class LiveGameView : UserControl
 {
@@ -37,7 +37,7 @@ public partial class LiveGameView : UserControl
         // M6 (run 153): the crowd goes quiet when the page goes (the game's own Continue closes it too).
         DetachedFromVisualTree += (_, _) => { UnwatchWindow(); _vm?.ReleaseAudio(); };
         RootGrid.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitSoon(); };
-        foreach (var c in new Control[] { ScoreBar, LeftStack, CommentaryBar })
+        foreach (var c in new Control[] { ScoreBar, LeftStack, CommentaryBar, DrawerTabs })
             c.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitSoon(); };
     }
 
@@ -55,7 +55,7 @@ public partial class LiveGameView : UserControl
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(ViewModels.LiveGameViewModel.ShowBreak) or nameof(ViewModels.LiveGameViewModel.DeskUp) or nameof(ViewModels.LiveGameViewModel.DrawerOpen)) Fit();
+        if (e.PropertyName is nameof(ViewModels.LiveGameViewModel.ShowBreak) or nameof(ViewModels.LiveGameViewModel.DeskUp) or nameof(ViewModels.LiveGameViewModel.DrawerOpen) or nameof(ViewModels.LiveGameViewModel.ShowDrawerTabs)) Fit();
     }
 
     /// <summary>M5 (run 152): the speeds (1-4, K) and the drawers (B, P, T, S, H, A, G, O) from the keyboard, except while a
@@ -121,6 +121,31 @@ public partial class LiveGameView : UserControl
         Avalonia.Threading.Dispatcher.UIThread.Post(() => { _fitQueued = false; Fit(); }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
+    /// <summary>K23 (run 158): the drawer tabs' column (a 112 px stack in 4 px of padding).</summary>
+    public const double TabsWidth = 120;
+    /// <summary>The tabs' stack inside its padding.</summary>
+    public const double TabsInner = TabsWidth - 8;
+    /// <summary>K23: the least room left for the court beside an open drawer while the controls' column stays; below it the
+    /// controls step aside for the drawer (Space still plays and pauses), as the compact layout always did. The drawer
+    /// itself keeps its width (the box score's names need it).</summary>
+    public const double MinCourtBand = 300;
+
+    /// <summary>K23: the open drawer's width at this page width.</summary>
+    public static double DrawerWidthFor(double width) => DrawerWidth;
+
+    /// <summary>K23: true when the controls' column must step aside for an open drawer to leave the court room.</summary>
+    public static bool StepAside(double width) =>
+        width - (CornerWidth + 20) - (TabsWidth + 16) - (DrawerWidthFor(width) + 8) < MinCourtBand;
+
+    /// <summary>The court's reserve (K23): the room the score bar, the controls' column, the tabs, an open drawer and the
+    /// commentary bar take, so the floor, its apron and its boards are drawn in what's left and nothing covers them.</summary>
+    public static Avalonia.Thickness CourtReserve(double scoreBottom, double commentary, bool leftColumn, bool drawerOpen, double drawerWidth, bool compact)
+    {
+        double left = leftColumn && !compact ? CornerWidth + 20 : 12;
+        double right = TabsWidth + 16 + (drawerOpen && !compact ? drawerWidth + 8 : 0);
+        return new Avalonia.Thickness(left, scoreBottom + 6, right, commentary + 6);
+    }
+
     private void Fit()
     {
         double w = RootGrid.Bounds.Width, h = RootGrid.Bounds.Height;
@@ -136,7 +161,9 @@ public partial class LiveGameView : UserControl
         if (CommentaryTag.IsVisible == compact) CommentaryTag.IsVisible = !compact;
         // The HSN desk wants the width: it takes the controls' corner while it's up (it carries Play on / Continue).
         bool deskUp = _vm?.DeskUp == true;
-        bool showLeft = !(compact && drawerOpen) && !deskUp;
+        // K23: an open drawer docks at the right, beside the court; on a narrow page the controls step aside for it.
+        bool stepAside = drawerOpen && (compact || StepAside(w));
+        bool showLeft = !stepAside && !deskUp;
         if (LeftStack.IsVisible != showLeft) LeftStack.IsVisible = showLeft;
         double bottom = Math.Max(BottomBar, CommentaryBar.Bounds.Height) + 8;
         // The break sits beside the controls' column when there's room for the desk there, else under it.
@@ -144,14 +171,22 @@ public partial class LiveGameView : UserControl
         double top = (beside || !showLeft ? ScoreBar.Bounds.Bottom : Math.Max(LeftStack.Bounds.Bottom, ScoreBar.Bounds.Bottom)) + 8;
         var overlay = new Avalonia.Thickness(beside ? CornerWidth + 20 : 8, top, 8, bottom);
         if (BreakOverlay.Margin != overlay) BreakOverlay.Margin = overlay;
+        double drawerWidth = compact ? double.NaN : DrawerWidthFor(w);
+        // K23: the tabs stay beside an open drawer, left of it. On a compact page the drawer takes the width, so they step
+        // aside while it's open (Close brings them back), as before.
+        bool tabsUp = _vm?.ShowDrawerTabs != false && !(compact && drawerOpen);
+        if (DrawerTabs.IsVisible != tabsUp) DrawerTabs.IsVisible = tabsUp;
         var drawer = new Avalonia.Thickness(compact ? 8 : 0, ScoreBar.Bounds.Bottom + 8, 8, bottom);
         if (Drawer.Margin != drawer) Drawer.Margin = drawer;
-        double drawerWidth = compact ? double.NaN : DrawerWidth;
         if (!Drawer.Width.Equals(drawerWidth)) Drawer.Width = drawerWidth;
         var drawerAlign = compact ? Avalonia.Layout.HorizontalAlignment.Stretch : Avalonia.Layout.HorizontalAlignment.Right;
         if (Drawer.HorizontalAlignment != drawerAlign) Drawer.HorizontalAlignment = drawerAlign;
-        var tabs = new Avalonia.Thickness(0, top, 8, bottom);
+        // K23: the tabs start under the score bar (under the controls' column they ran off the bottom at 130%).
+        double tabsTop = ScoreBar.Bounds.Bottom + 8;
+        var tabs = new Avalonia.Thickness(0, tabsTop, drawerOpen && !compact ? drawerWidth + 16 : 8, bottom);
         if (DrawerTabs.Margin != tabs) DrawerTabs.Margin = tabs;
+        var reserve = CourtReserve(ScoreBar.Bounds.Bottom, Math.Max(BottomBar, CommentaryBar.Bounds.Height), showLeft, drawerOpen, compact ? 0 : drawerWidth, compact);
+        if (Match.Reserve != reserve) Match.Reserve = reserve;
         double room = h - top - bottom - 12 - 40;   // the overlay's padding and the desk's title row
         double desk = Math.Min(DeskWidthFor(room), Math.Min(BreakWidth, w - overlay.Left - overlay.Right) - 16);
         if (Math.Abs(HalftimeSet.MaxWidth - desk) > 1) HalftimeSet.MaxWidth = desk;

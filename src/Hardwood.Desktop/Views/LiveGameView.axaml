@@ -135,17 +135,18 @@
     </Border>
     </StackPanel>
 
-    <!-- The drawers on the right: the box score, the play by play, tactics, subs, shots, stats and the game flow. -->
-    <Border x:Name="DrawerTabs" Classes="hud" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" Padding="4" IsVisible="{Binding ShowDrawerTabs}">
-      <StackPanel Spacing="4" Width="112">
-        <Button Classes="tab" Content="Box score" Command="{Binding OpenDrawerCommand}" CommandParameter="0" ToolTip.Tip="Box score (B)"/>
-        <Button Classes="tab" Content="Play by play" Command="{Binding OpenDrawerCommand}" CommandParameter="1" ToolTip.Tip="Play by play (P)"/>
-        <Button Classes="tab" Content="Tactics" Command="{Binding OpenDrawerCommand}" CommandParameter="2" ToolTip.Tip="Tactics (T)"/>
-        <Button Classes="tab" Content="Subs" Command="{Binding OpenDrawerCommand}" CommandParameter="3" ToolTip.Tip="Subs (S)"/>
-        <Button Classes="tab" Content="Shots" Command="{Binding OpenDrawerCommand}" CommandParameter="4" ToolTip.Tip="Shots (H)"/>
-        <Button Classes="tab" Content="Stats" Command="{Binding OpenDrawerCommand}" CommandParameter="5" ToolTip.Tip="Stats (A)"/>
-        <Button Classes="tab" Content="Game flow" Command="{Binding OpenDrawerCommand}" CommandParameter="6" ToolTip.Tip="Game flow (G)"/>
-        <Button x:Name="FloorTab" Classes="tab" Content="On the floor" Command="{Binding OpenDrawerCommand}" CommandParameter="7" ToolTip.Tip="The jumbotron's numbers, momentum and both fives with their energy (O)"/>
+    <!-- The drawers on the right: the box score, the play by play, tactics, subs, shots, stats and the game flow.
+         K23 (run 158): the tabs stay up beside an open drawer, and the court fits into the room left (no panel covers it). -->
+    <Border x:Name="DrawerTabs" Classes="hud" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" Padding="4">
+      <StackPanel Spacing="4" Width="{x:Static v:LiveGameView.TabsInner}">
+        <Button Classes="tab" Content="Box score" Classes.primary="{Binding Tab0}" Command="{Binding OpenDrawerCommand}" CommandParameter="0" ToolTip.Tip="Box score (B)"/>
+        <Button Classes="tab" Content="Play by play" Classes.primary="{Binding Tab1}" Command="{Binding OpenDrawerCommand}" CommandParameter="1" ToolTip.Tip="Play by play (P)"/>
+        <Button Classes="tab" Content="Tactics" Classes.primary="{Binding Tab2}" Command="{Binding OpenDrawerCommand}" CommandParameter="2" ToolTip.Tip="Tactics (T)"/>
+        <Button Classes="tab" Content="Subs" Classes.primary="{Binding Tab3}" Command="{Binding OpenDrawerCommand}" CommandParameter="3" ToolTip.Tip="Subs (S)"/>
+        <Button Classes="tab" Content="Shots" Classes.primary="{Binding Tab4}" Command="{Binding OpenDrawerCommand}" CommandParameter="4" ToolTip.Tip="Shots (H)"/>
+        <Button Classes="tab" Content="Stats" Classes.primary="{Binding Tab5}" Command="{Binding OpenDrawerCommand}" CommandParameter="5" ToolTip.Tip="Stats (A)"/>
+        <Button Classes="tab" Content="Game flow" Classes.primary="{Binding Tab6}" Command="{Binding OpenDrawerCommand}" CommandParameter="6" ToolTip.Tip="Game flow (G)"/>
+        <Button x:Name="FloorTab" Classes="tab" Content="On the floor" Classes.primary="{Binding Tab7}" Command="{Binding OpenDrawerCommand}" CommandParameter="7" ToolTip.Tip="The jumbotron's numbers, momentum and both fives with their energy (O)"/>
       </StackPanel>
     </Border>
     <Border x:Name="Drawer" Classes="hud" Background="#F2141920" HorizontalAlignment="Right" Width="{x:Static v:LiveGameView.DrawerWidth}" Margin="0,124,8,62"
