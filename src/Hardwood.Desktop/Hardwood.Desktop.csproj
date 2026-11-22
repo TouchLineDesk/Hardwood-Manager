@@ -25,6 +25,9 @@
     <EmbeddedResource Include="Assets\Broadcast\*.jpg" />
     <EmbeddedResource Include="Assets\Broadcast\*.json" />
     <EmbeddedResource Include="Assets\Broadcast\*.png" />
+    <EmbeddedResource Include="Assets\Audio\Crowd\*.ogg" />
+    <EmbeddedResource Include="Assets\Court\*.jpg" />
+    <EmbeddedResource Include="Assets\Cards\*.jpg" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hardwood.Core\Hardwood.Core.csproj" />
