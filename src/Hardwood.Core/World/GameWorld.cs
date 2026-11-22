@@ -52,6 +52,9 @@ public sealed class GameWorld
     /// <summary>Headlines (champions, Final Four) since the session last read them.</summary>
     public List<(string Title, string Body)> News { get; } = new();
 
+    /// <summary>K16 (run 155): the titles in <see cref="News"/> that came from the college world, so a college coach's digest can keep only those. Not saved; cleared with <see cref="News"/>.</summary>
+    public HashSet<string> CollegeTitles { get; } = new();
+
     public GameWorld(League nabl, ulong rngSeed)
     {
         Nabl = nabl;
@@ -379,7 +382,7 @@ public sealed class GameWorld
         if (College != null)
         {
             College.PlayThrough(date, sim, _rng);
-            News.AddRange(College.News); College.News.Clear();
+            News.AddRange(College.News); foreach (var (t, _) in College.News) CollegeTitles.Add(t); College.News.Clear();
         }
     }
 
@@ -725,7 +728,7 @@ public sealed class GameWorld
             var cgen = new PlayerGenerator(new Rng(_rng.NextULong()), Nabl.NextPlayerId) { Names = NameBook.Of(this, freeAgents) };
             College.Summer(date, freeAgents, cgen, new DevelopmentEngine(_rng), _rng);
             Nabl.NextPlayerId = cgen.NextId;
-            News.AddRange(College.News); College.News.Clear();
+            News.AddRange(College.News); foreach (var (t, _) in College.News) CollegeTitles.Add(t); College.News.Clear();
         }
         // Draft rights lapse once a player is 27 (he's no longer a prospect the team is waiting on).
         foreach (var p in Players.Concat(Nabl.FreeAgents)) if (p.DraftRightsTeamId != null && p.Age(date) >= 27) p.DraftRightsTeamId = null;

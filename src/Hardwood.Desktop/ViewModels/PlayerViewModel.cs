@@ -95,7 +95,9 @@ public sealed partial class PlayerViewModel : PageViewModel
     public override void Refresh()
     {
         var p = Player; var s = Session;
-        var team = p.TeamId is { } id ? s.FindTeam(id)!.FullName : "Free agent";
+        // H160 (run 155): a college program's Top 25 rank goes before its name here ("#3 Duke Blue Devils"), not onto the
+        // "Open team page" link, where it read "Duke Blue Devils #3 Open team page".
+        var team = p.TeamId is { } id && s.FindTeam(id) is { } club ? Hardwood.Desktop.Controls.CollegeRank.Prefix(club, club.FullName) : "Free agent";
         Headline = $"{p.PrimaryPosition}{(p.SecondaryPosition is { } sp ? "/" + sp : "")} · {team}";
         // The collector card (D58 B) has no tier label, so the header names his skills instead of a card tier.
         TierLine = string.Join(" · ", CollectorCard.Badges(p, Scouting.Knowledge(s.HumanTeam, p))) + "  ·  click his card to flip it";

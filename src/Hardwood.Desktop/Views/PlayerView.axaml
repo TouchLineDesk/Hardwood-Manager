@@ -16,7 +16,7 @@
               <TextBlock Text="{Binding Name}" FontSize="28" FontWeight="Bold" TextWrapping="Wrap"/>
               <WrapPanel>
                 <TextBlock Text="{Binding Headline}" Classes="accent" FontSize="14" Margin="0,0,10,0"/>
-                <c:TeamLink Team="{Binding Club}" IsVisible="{Binding Club, Converter={x:Static ObjectConverters.IsNotNull}}" Text="Open team page" FontSize="12" VerticalAlignment="Center"/>
+                <c:TeamLink Team="{Binding Club}" IsVisible="{Binding Club, Converter={x:Static ObjectConverters.IsNotNull}}" Text="Open team page" ShowRank="False" FontSize="12" VerticalAlignment="Center"/>
               </WrapPanel>
               <TextBlock Text="{Binding TierLine}" Classes="muted" FontSize="12"/>
             </StackPanel>
