@@ -1191,7 +1191,6 @@ public sealed partial class GameSession
         MyStats.TryGetValue(p.Id, out var st);
         double wp = MyRecord.Games > 0 ? MyRecord.WinPct : 0.5;
         var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng, Coach);
-        if (InCollege) r = r with { Reply = r.Reply.Replace("withdraws his trade request", "puts his transfer thoughts aside") };   // H76
         Coach.SeasonTalks++;
         SaveNow();
         return r;

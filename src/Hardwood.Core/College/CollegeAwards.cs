@@ -228,7 +228,7 @@ public sealed partial class CollegeWorld
             $"Freshman of the Year: {Who(a.FreshmanId)}",
             $"Coach of the Year: {(a.CoachName.Length > 0 ? a.CoachName + ", " : "")}{Program(a.CoachProgramId ?? 0)?.FullName ?? "-"}",
         };
-        if (a.OutstandingId != null) lines.Insert(1, $"Most Outstanding Player: {Who(a.OutstandingId)}");
+        if (a.OutstandingId != null) lines.Insert(0, $"Most Outstanding Player: {Who(a.OutstandingId)}");
         if (a.AllAmerica.Count > 0) lines.Add("All-America first team: " + string.Join(", ", a.AllAmerica[0].Select(i => a.NameOf(i))));
         return ($"{Who(a.PlayerOfYearId)} is the National Player of the Year", string.Join("\n", lines) + ".");
     }
