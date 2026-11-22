@@ -126,7 +126,7 @@ public class GraphicsPackTests
         face.Erase(new SKColor(200, 150, 120));
         using var img = CardRenderer.Render(new PortraitCard(1, 120, 130, null, null, "x", new JerseySpec("#00FF00", "#FFFFFF", 7)), face, 512);
         using var bmp = SKBitmap.FromImage(img);
-        var shoulder = bmp.GetPixel(230, 470);                   // left shoulder of the shirt
+        var shoulder = bmp.GetPixel(189, 521);                   // the tank, left of the number (units (84,232))
         Assert.True(shoulder.Green > 140 && shoulder.Red < 90 && shoulder.Blue < 90, $"shoulder {shoulder}");
     }
 }

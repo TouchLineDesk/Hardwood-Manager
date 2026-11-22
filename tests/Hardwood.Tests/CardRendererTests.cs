@@ -30,17 +30,17 @@ public class CardRendererTests
     [InlineData(50, 60)]     // Pearl / Pearl
     [InlineData(120, 150)]   // Gold / Amethyst
     [InlineData(160, 190)]   // Ruby / Diamond
-    public void Renders_a_256_card_with_rounded_transparent_corners(int ca, int pa)
+    public void Renders_a_256_by_384_card_with_transparent_angled_corners(int ca, int pa)
     {
         using var face = Face();
         var card = new PortraitCard(1, ca, pa, new CrestSpec("TST", "#1D428A", "#C8102E", 0), new DraftRecord(2026, 1, 4), "African/African1.png");
         using var img = CardRenderer.Render(card, face);
         Assert.Equal(256, img.Width);
-        Assert.Equal(256, img.Height);
-        Assert.Equal(0, Pixel(img, 0, 0).Alpha);          // corner cut by the 40px radius
-        Assert.Equal(255, Pixel(img, 128, 128).Alpha);    // card body is opaque
-        // Face sits right of centre: magenta dominates at its centre (face box centre is (341,303) at 512).
-        var f = Pixel(img, 170, 151);
+        Assert.Equal(384, img.Height);
+        Assert.Equal(0, Pixel(img, 255, 0).Alpha);        // the top-right angle
+        Assert.Equal(255, Pixel(img, 128, 192).Alpha);    // card body is opaque
+        // The face is centred near the top: magenta at the face box's centre (units (114,108) of 228x342).
+        var f = Pixel(img, 128, 116);
         Assert.True(f.Red > 150 && f.Blue > 150 && f.Green < 110, $"face pixel {f}");
     }
 
@@ -50,7 +50,7 @@ public class CardRendererTests
         using var face = Face();
         using var pearl = CardRenderer.Render(new PortraitCard(1, 50, 60, null, null, "x"), face);
         using var ruby = CardRenderer.Render(new PortraitCard(1, 170, 175, null, null, "x"), face);
-        var a = Pixel(pearl, 60, 128); var b = Pixel(ruby, 60, 128);
+        var a = Pixel(pearl, 26, 135); var b = Pixel(ruby, 26, 135);
         Assert.True(a.Red > 150 && a.Green > 150, $"pearl {a}");
         Assert.True(b.Red > b.Green + 40, $"ruby {b}");
     }
@@ -75,7 +75,7 @@ public class CardRendererTests
                 new DraftRecord(c.GetProperty("draft")[0].GetInt32(), c.GetProperty("draft")[1].GetInt32(), c.GetProperty("draft")[2].GetInt32());
             var card = new PortraitCard(c.GetProperty("id").GetInt32(), c.GetProperty("ca").GetInt32(), c.GetProperty("pa").GetInt32(), crest, draft, "proof");
             using var own = c.TryGetProperty("face", out var fp) ? SKBitmap.Decode(fp.GetString()) : null;
-            foreach (var size in new[] { 256, 512 })
+            foreach (var size in new[] { 256, 512 }) // widths
             {
                 using var img = CardRenderer.Render(card, own ?? face, size);
                 using var data = img.Encode(SKEncodedImageFormat.Png, 100);
