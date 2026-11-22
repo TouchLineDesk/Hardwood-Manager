@@ -56,10 +56,11 @@ public static class CrowdMix
         return 0.45;
     }
 
-    /// <summary>A comeback (run 157): the home side trailed by 10 or more, has cut at least 8 off its worst deficit, and the
-    /// last stretch is going its way.</summary>
+    /// <summary>A comeback (run 157): the home side trailed by 10 or more, has cut at least 8 off its worst deficit, the last
+    /// stretch is going its way, and the game is back within reach (at most 3 ahead). Once it's a comfortable lead again
+    /// the comeback is over (review: a 0-10 start in the first quarter mustn't hype a 25-point lead in the fourth).</summary>
     public static bool Comeback(int homeMargin, int worstDeficit, int homeSwing) =>
-        worstDeficit >= 10 && worstDeficit - Math.Max(0, -homeMargin) >= 8 && homeSwing > 0;
+        worstDeficit >= 10 && worstDeficit - Math.Max(0, -homeMargin) >= 8 && homeSwing > 0 && homeMargin <= 3;
 
     /// <summary>One easing step of <paramref name="dt"/> seconds from <paramref name="now"/> toward <paramref name="target"/>.</summary>
     public static BedLevels Ease(BedLevels now, BedLevels target, double dt)

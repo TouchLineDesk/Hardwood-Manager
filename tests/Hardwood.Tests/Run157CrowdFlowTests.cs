@@ -45,7 +45,7 @@ public class Run157CrowdFlowTests
         var homeFoul = Kinds(Build(hf, af, new() { new(1, 505, PlayKind.Foul, true, hf[1], af[2], ShotZone.Rim, false, 10, 10) }));
         Assert.Equal(new[] { Cue.Whistle, Cue.Boo }, homeFoul);
         var awayFoul = Kinds(Build(hf, af, new() { new(1, 505, PlayKind.Foul, false, af[1], hf[2], ShotZone.Rim, false, 10, 10) }));
-        Assert.Equal(new[] { Cue.Whistle, Cue.Cheer }, awayFoul);
+        Assert.Equal(new[] { Cue.Whistle, Cue.BigCheer }, awayFoul);
         // A home steal brings them up; an away steal (the home side losing it) is a groan.
         Assert.Contains(Cue.BigCheer, Kinds(Build(hf, af, new() { new(1, 505, PlayKind.Steal, true, hf[0], af[0], ShotZone.Rim, false, 10, 10) })));
         Assert.Equal(new[] { Cue.Groan }, Kinds(Build(hf, af, new() { new(1, 505, PlayKind.Steal, false, af[0], hf[0], ShotZone.Rim, false, 10, 10) })));
@@ -116,6 +116,8 @@ public class Run157CrowdFlowTests
         Assert.False(CrowdMix.Comeback(-6, 9, 6));    // never down 10
         Assert.False(CrowdMix.Comeback(-12, 18, 6));  // only 6 cut off
         Assert.False(CrowdMix.Comeback(-6, 18, 0));   // no run
+        Assert.False(CrowdMix.Comeback(25, 10, 6));   // review: a 0-10 start doesn't hype a 25-point lead later
+        Assert.True(CrowdMix.Comeback(2, 12, 6));     // just back in front: still the comeback
         var comeback = CrowdMix.Target(0.9, 6, false, false, false, -6, 18);
         var sameScoreNoHistory = CrowdMix.Target(0.9, 6, false, false, false, -6, 6);
         _out.WriteLine($"bed: comeback {comeback.Total:0.000}; same score without the comeback {sameScoreNoHistory.Total:0.000}");
@@ -128,8 +130,9 @@ public class Run157CrowdFlowTests
     [Fact]
     public void A_boo_swells_the_crowd_until_the_intake_brings_its_file()
     {
-        // No crowd-boo-*.ogg is embedded yet: the boo is the bed's own swell, up quickly and back by its end.
-        Assert.Empty(Enumerable.Range(1, 4).Select(n => CrowdMixer.Decode($"crowd-boo-{n}.ogg")).Where(x => x.Length > 0));
+        // Until the intake embeds crowd-boo-*.ogg, the boo is the bed's own swell, up quickly and back by its end; once a
+        // file is there (review), the boo is a voice of its own.
+        bool files = Enumerable.Range(1, 4).Any(n => CrowdMixer.Decode($"crowd-boo-{n}.ogg").Length > 0);
         Assert.Equal(1, CrowdMix.Swell(0, 1), 3);
         Assert.True(CrowdMix.Swell(0.25, 1) > 1.7);
         Assert.Equal(1, CrowdMix.Swell(CrowdMix.SwellTime, 1), 3);
@@ -141,6 +144,8 @@ public class Run157CrowdFlowTests
         Rms(70);
         double settled = Rms(30);
         mix.Play(Cue.Boo, 1);
+        Assert.Equal(files ? 1 : 0, mix.Voices);
+        if (files) return;
         Rms(5);
         double booing = Rms(6);
         Rms(60);

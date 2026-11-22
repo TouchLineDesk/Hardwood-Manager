@@ -7,9 +7,9 @@ namespace Hardwood.Desktop.Audio;
 /// The crowd beds are not cues: they loop all game and their mix is set by <see cref="CrowdMix"/>.</summary>
 public enum Cue
 {
-    /// <summary>A home make, or an away foul (cheer-1 or cheer-3, alternating).</summary>
+    /// <summary>A home make (cheer-1 or cheer-3, alternating).</summary>
     Cheer,
-    /// <summary>A big home moment: a three, a dunk, an and-one, a block, a steal or a late lead change (cheer-2).</summary>
+    /// <summary>A big home moment: a three, a dunk, an and-one, a block, a steal, an away foul or a late lead change (cheer-2).</summary>
     BigCheer,
     /// <summary>Applause: a substitution or a period's end.</summary>
     Applause,
@@ -98,7 +98,7 @@ public static class Reactions
                     // e.Home is the fouler's side. The whistle, then the crowd's answer to the call.
                     cues.Add(new SoundCue(t, Cue.Whistle, 1.0));
                     if (e.Home) cues.Add(new SoundCue(t + 0.15, Cue.Boo, beaten ? 0.6 : 1.0));
-                    else if (!beaten) cues.Add(new SoundCue(t + 0.15, Cue.Cheer, 0.8));
+                    else if (!beaten) cues.Add(new SoundCue(t + 0.15, Cue.BigCheer, 0.8));   // Danny: "cheer loudly … the away team fouls"
                     break;
                 case PlayKind.FreeThrow:
                 {

@@ -271,7 +271,7 @@ public class Run153SoundTests
                     switch (q.Kind)
                     {
                         case Cue.Cheer or Cue.BigCheer:
-                            Assert.Contains(at, e => (e.Kind is PlayKind.Shot or PlayKind.FreeThrow && e.Made && e.Home) || (e.Blocked && !e.Home) || (e.Kind == PlayKind.Steal && e.Home) || (e.Kind == PlayKind.Foul && !e.Home));
+                            Assert.Contains(at, e => (e.Kind is PlayKind.Shot or PlayKind.FreeThrow && e.Made && e.Home) || (e.Blocked && !e.Home) || (e.Kind == PlayKind.Steal && e.Home) || (e.Kind == PlayKind.Foul && !e.Home && q.Kind == Cue.BigCheer));
                             break;
                         case Cue.Groan:
                             Assert.Contains(at, e => (e.Kind is PlayKind.Shot or PlayKind.FreeThrow && e.Made && !e.Home) || (e.Blocked && e.Home) || (e.Kind == PlayKind.Steal && !e.Home) || (e.Kind == PlayKind.Turnover && e.Home));
