@@ -129,7 +129,7 @@ public static class CareerStore
                 l.OReb, l.DReb, l.Assists, l.Steals, l.Blocks, l.Turnovers, l.Fouls, l.PlusMinus,
             }.Concat(l.ZoneAttempts).Concat(l.ZoneMakes).ToArray())).ToList(),
             new[] { r.Home.Possessions, r.Away.Possessions, r.Periods, r.PeriodSeconds, r.OvertimeSeconds,
-                    (int)Math.Round(r.PregameEdge * 100), (int)Math.Round(r.MarginSpread * 100) },
+                    (int)Math.Round(r.PregameEdge * 100), (int)Math.Round(r.MarginSpread * 100), r.Neutral ? 1 : 0 },
             r.Flow.Count == 0 ? null : r.Flow.Select(f => new[] { (int)Math.Round(f.Elapsed * 10), f.Period, f.Home, f.Away, f.Scorer?.Id ?? 0 }).ToList());
 
         public GameResult? ToResult(Dictionary<int, Team> teams, Dictionary<int, Player> players)
@@ -157,6 +157,7 @@ public static class CareerStore
             {
                 home.Possessions = g[0]; away.Possessions = g[1];
                 r.Periods = g[2]; r.PeriodSeconds = g[3]; r.OvertimeSeconds = g[4]; r.PregameEdge = g[5] / 100.0; r.MarginSpread = g[6] / 100.0;
+                r.Neutral = g.Length >= 8 && g[7] == 1; // K24 (run 162); older saves read as home games
             }
             else if (home.PointsByPeriod.Length > Overtimes)
             {

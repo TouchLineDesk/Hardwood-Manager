@@ -369,7 +369,8 @@ public sealed partial class WorldViewModel : PageViewModel
                 };
             }).ToList();
             string c = cat;
-            StatCards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, Peers = b.Teams, ShowAll = new RelayCommand(() => ShowFullStat(c)) });
+            bool college = entries.Any(e => e.Team != null && s.IsCollegeProgram(e.Team)); // K24: the school, not the nickname
+            StatCards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, Peers = b.Teams, College = college, ShowAll = new RelayCommand(() => ShowFullStat(c)) });
         }
     }
 

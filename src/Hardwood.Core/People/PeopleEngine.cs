@@ -153,7 +153,8 @@ public static class PeopleEngine
 
     /// <summary>The weekly update for any set of clubs (a club abroad judges wages by its league's market: <paramref name="salaryScale"/>).</summary>
     public static List<PeopleEvent> Weekly(IEnumerable<Team> teams, Finance finance, double salaryScale, Func<int, Team?> teamById, DateOnly today,
-        Func<Team, double> winPct, IReadOnlyDictionary<int, PlayerSeasonStats> stats, int? humanTeamId, List<Promise>? promises = null)
+        Func<Team, double> winPct, IReadOnlyDictionary<int, PlayerSeasonStats> stats, int? humanTeamId, List<Promise>? promises = null,
+        bool allowRequests = true)
     {
         var events = new List<PeopleEvent>();
         var teamList = teams.ToList();
@@ -187,7 +188,19 @@ public static class PeopleEngine
                 var season = new DateOnly(today.Month >= 8 ? today.Year + 1 : today.Year, 6, 30); // the boost lasts the season
                 // Every unhappy spell resolves (critic review #3): after about a month he either asks out (egos, ambition,
                 // or real misery) or makes his peace with it; a trade request stands about two months before it resolves.
-                if (!p.TradeRequested && p.UnhappyWeeks >= DecideWeeks && (p.Hidden.Ego + p.Hidden.Ambition >= 22 || p.Morale < 26))
+                // Danny, Nov 22 (danny-no-college-transfers-nov22): a college player plays where he starts. With requests off
+                // (college), nobody asks out: a proud or miserable player simply stays unhappy (and says so) until the cause is fixed.
+                if (!allowRequests && p.TradeRequested) { p.TradeRequested = false; }
+                bool wantsOut = !p.TradeRequested && p.UnhappyWeeks >= DecideWeeks && (p.Hidden.Ego + p.Hidden.Ambition >= 22 || p.Morale < 26);
+                if (wantsOut && !allowRequests)
+                {
+                    if (human && (p.LastTalk == null || today.DayNumber - p.LastTalk.Value.DayNumber >= 21) && today.DayNumber % 14 < 7)
+                    {
+                        var worst = Factors(p, team, wp, st, finance, today, salaryScale).OrderBy(x => x.effect).FirstOrDefault();
+                        events.Add(new(p, team, PeopleEventKind.WantsTalk, $"{p.Name} is unhappy and wants to talk. {(worst.reason != null ? worst.reason + "." : "")}"));
+                    }
+                }
+                else if (wantsOut)
                 {
                     p.TradeRequested = true;
                     if (human) events.Add(new(p, team, PeopleEventKind.TradeRequest,

@@ -97,5 +97,8 @@ public sealed class GameResult
     public TeamBox Winner => Home.Points > Away.Points ? Home : Away;
     public TeamBox Loser => Home.Points > Away.Points ? Away : Home;
 
-    public string Summary() => $"{Away.Team.Abbreviation} {Away.Points} @ {Home.Team.Abbreviation} {Home.Points}" + (Overtimes > 0 ? $" ({Overtimes}OT)" : "");
+    /// <summary>K24 (run 162): played on a neutral court (a college event or the tournament), so it reads "vs", not "@".</summary>
+    public bool Neutral { get; set; }
+
+    public string Summary() => $"{Away.Team.Abbreviation} {Away.Points} {(Neutral ? "vs" : "@")} {Home.Team.Abbreviation} {Home.Points}" + (Overtimes > 0 ? $" ({Overtimes}OT)" : "");
 }

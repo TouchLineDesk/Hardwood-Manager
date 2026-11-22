@@ -1141,7 +1141,7 @@ public sealed partial class GameSession
             People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, null);
             var rec = MyRecord;
             events = People.PeopleEngine.Weekly(new[] { HumanTeam }, League.Finance, HumanLeague?.Profile.SalaryScale ?? 1, FindTeam, Today,
-                _ => rec.Games > 0 ? rec.WinPct : 0.5, MyStats, ControlledTeamId, Promises);
+                _ => rec.Games > 0 ? rec.WinPct : 0.5, MyStats, ControlledTeamId, Promises, allowRequests: !InCollege);
         }
         MoodHistory.Add(new People.MoodSnapshot(Today, Math.Round(HumanTeam.Chemistry, 1), Math.Round(HumanTeam.Roster.Select(p => p.Morale).DefaultIfEmpty(60).Average(), 1)));
         if (MoodHistory.Count > 120) MoodHistory.RemoveAt(0);
@@ -1149,7 +1149,6 @@ public sealed partial class GameSession
         {
             string title = e.Kind switch
             {
-                People.PeopleEventKind.TradeRequest when InCollege => $"{e.Player.Name} is thinking of transferring",
                 People.PeopleEventKind.TradeRequest => $"{e.Player.Name} requests a trade",
                 People.PeopleEventKind.WantsTalk => $"{e.Player.Name} wants a word",
                 People.PeopleEventKind.PromiseKept => $"Promise kept: {e.Player.Name}",
@@ -1163,18 +1162,26 @@ public sealed partial class GameSession
     }
 
     /// <summary>
-    /// H76 (bug hunt Nov 17, run 97): a college player who wants out is thinking of transferring. Programs don't trade or
-    /// sell, so the message offers only what a college coach can do: talk to him.
+    /// H76 (run 97), then Danny's Nov 22 rule (no college transfers): a college player never asks out, so the only
+    /// college-specific wording left is for an old save's settle message.
     /// </summary>
     public static string CollegeWording(People.PeopleEvent e) => e.Kind switch
     {
-        People.PeopleEventKind.TradeRequest =>
-            $"{e.Player.Name} is unhappy and thinking of transferring. Talk to him on the Squad page (convince him to stay, or ask what's wrong). "
-            + $"If nothing changes he'll decide within about {People.PeopleEngine.RequestWeeks} weeks whether to knuckle down.",
         People.PeopleEventKind.Settled when e.Text.Contains("trade request") =>
-            $"{e.Player.Name} has put his transfer thoughts aside and will see out the season. He hasn't forgotten; expect the question again in the summer.",
+            $"{e.Player.Name} has settled down and will see out the season.",
         _ => e.Text,
     };
+
+    /// <summary>Danny, Nov 22: no college transfers. Clears any want-out flag a college player carries (old saves, or a move from the pros).</summary>
+    public int ClearCollegeRequests()
+    {
+        if (World.College == null) return 0;
+        int n = 0;
+        foreach (var t in World.College.Programs)
+            foreach (var p in t.Roster.Where(p => p.TradeRequested)) { p.TradeRequested = false; p.UnhappyWeeks = 0; n++; }
+        Promises.RemoveAll(pr => pr.Kind == "trade" && World.College.Programs.Any(t => t.Id == pr.TeamId));
+        return n;
+    }
 
     /// <summary>Hold a one-on-one conversation with one of your players. Returns his reply (or why you can't talk now).</summary>
     public People.TalkResult Talk(Player p, People.TalkTopic topic)
@@ -1680,6 +1687,7 @@ public sealed partial class GameSession
         var session = save.LoadSession(league, world);
         save.LoadPeople(session);
         save.LoadCareer(session);
+        session.ClearCollegeRequests(); // Danny, Nov 22: no college transfers (old saves may carry "thinking of transferring")
         session.CatchUpWorld();
         session.FixStaffPay();
         session.SeedRealAlumni(); // K12b: saves from before v0.125.0 get the real alumni once

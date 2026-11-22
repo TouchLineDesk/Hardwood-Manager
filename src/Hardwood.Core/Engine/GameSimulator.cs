@@ -97,6 +97,7 @@ public sealed class GameSimulator
             Away = new TeamBox { Team = away },
             Seed = seed,
             Date = date,
+            Neutral = rules.NeutralSite,
         };
         var cfg = _cfg.For(rules);
         var h = new Side(home, result.Home, rng, cfg, isHome: true, date);
@@ -122,7 +123,7 @@ public sealed class GameSimulator
     {
         CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date); CoachAi.Remember(home); CoachAi.Remember(away);
         var rng = new Rng(seed);
-        var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date };
+        var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date, Neutral = rules.NeutralSite };
         var cfg = _cfg.For(rules);
         var h = new Side(home, result.Home, rng, cfg, isHome: true, date);
         var a = new Side(away, result.Away, rng, cfg, isHome: false, date);

@@ -218,7 +218,7 @@ public sealed partial class HomeViewModel : PageViewModel
             Session.MyStats.TryGetValue(p.Id, out var pst);
             var worst = PeopleEngine.Factors(p, team, winPct, pst, Session.League.Finance, s.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect).FirstOrDefault();
             string why = worst.reason != null && worst.effect < 0 ? worst.reason : "";
-            string mood = p.TradeRequested ? (Session.InCollege ? "Thinking of transferring" : "Wants a trade") : PeopleEngine.Mood(p.Morale);
+            string mood = p.TradeRequested && !Session.InCollege ? "Wants a trade" : PeopleEngine.Mood(p.Morale); // no college transfers (Danny, Nov 22)
             Pulse.Add(new HomeRow { Icon = p.Morale < 38 ? "Frown" : "Meh", IconBrush = p.Morale < 38 ? Bad : Warn, Title = p.Name,
                 Detail = mood + (why != "" ? $": {char.ToLowerInvariant(why[0])}{why[1..]}" : "") + " · talk to him on Squad" });
         }
@@ -273,7 +273,12 @@ public sealed partial class HomeViewModel : PageViewModel
         if (s.InCollege)
         {
             // No wages in college: the roster by class instead, so the coach sees who graduates when (C2).
-            var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today)); // the same school year as the cards
+            // K22 (run 162): once the seniors have graduated and the new class has enrolled (the summer), the chart shows next
+            // season's classes, as the "Graduation and enrollment" message does; it says so in its caption.
+            int schoolYear = Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today);
+            bool nextSeason = s.Phase == SessionPhase.Offseason && s.Today.Month < 7;
+            if (nextSeason) schoolYear++;
+            var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(schoolYear); // the same school year as the cards
             // By age next summer: 19 = freshmen ... 22 = seniors, who turn pro then (D80 A, run 128; CS3, H132). In a career from
             // before four-year college, last year's juniors are 23 next summer and graduate with the seniors: they count as seniors.
             string[] names = Hardwood.Core.College.CollegeWorld.ClassShort;
@@ -285,7 +290,8 @@ public sealed partial class HomeViewModel : PageViewModel
             }).ToList();
             PayrollLines = null;
             PayrollTitle = "Roster by class"; PayrollIcon = "GraduationCap";
-            PayrollCaption = "Enroll at 18, turn pro at 22. Seniors: final season."; // H138 (run 133): one line, so it isn't cut at 1480×900
+            PayrollCaption = nextSeason ? $"Next season ({schoolYear}-{(schoolYear + 1) % 100:00}). Seniors: final season." // K22
+                : "Enroll at 18, turn pro at 22. Seniors: final season."; // H138 (run 133): one line, so it isn't cut at 1480×900
         }
         else
         {
