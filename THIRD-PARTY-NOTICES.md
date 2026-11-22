@@ -56,3 +56,14 @@ How they were made: `tools/Assets/audio.py`.
 ## Card gem bodies (src/Hardwood.Desktop/Assets/Cards/gem-*.jpg)
 
 Cropped and scaled copies of three low-poly backgrounds from **Vecteezy** (https://www.vecteezy.com): "Purple polygonal mosaic background" (#561306), "A red background with diamonds shape" (#34817381) and "Triangle poly prism background" (#34784959). Made by `tools/Assets/images.py`. Downloaded under Vecteezy's licence; under the Free licence the attribution "Vecteezy.com" is required, and the game shows it on its credits line as well as here.
+
+## Audio libraries (src/Hardwood.Desktop/Audio)
+
+The live game's sound (run 153) plays through two MIT-licensed libraries, used as NuGet packages:
+
+- **NAudio** 2.2.1 (`NAudio.Core`, `NAudio.WinMM`), Copyright 2020 Mark Heath, MIT licence: https://github.com/naudio/NAudio
+- **NVorbis** 0.10.5, Copyright (c) 2020 Andrew Ward, MIT licence: https://github.com/NVorbis/NVorbis
+
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+The period buzzer and the referee's whistle are synthesised in code (`Synth.cs`); no recording is used for them.

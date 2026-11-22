@@ -71,7 +71,7 @@
     <Border x:Name="MatchControls" Classes="hud" Padding="8">
       <StackPanel Spacing="6">
         <WrapPanel x:Name="ScoreButtons">
-          <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="88" Margin="0,0,6,6" ToolTip.Tip="Play or pause (Space). Keys: 1-4 and K the speeds, + and - faster or slower; B, P, T, S, H, A, G and O the drawers; Esc closes one">
+          <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="88" Margin="0,0,6,6" ToolTip.Tip="Play or pause (Space). Keys: 1-4 and K the speeds, + and - faster or slower; B, P, T, S, H, A, G and O the drawers; Esc closes one; M mutes the crowd">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
               <TextBlock Text="{Binding PlayPauseText}"/>
@@ -84,6 +84,13 @@
           <Button x:Name="SpeedCycle" Content="{Binding SpeedLabel}" Command="{Binding CycleSpeedCommand}" IsVisible="False" MinWidth="64" Margin="0,0,6,6" ToolTip.Tip="The speed: 1×, 2×, 4×, 8× or Key moments (+ and - too)"/>
         </WrapPanel>
         <CheckBox Content="Stop at breaks" IsChecked="{Binding PauseAtBreaks}" Foreground="White" ToolTip.Tip="Pause at the end of each period for the break card"/>
+        <!-- M6 (run 153): the crowd's sound. The speaker mutes (M); the slider is the volume. Both are saved, like Settings' switch. -->
+        <Grid x:Name="SoundRow" ColumnDefinitions="Auto,*">
+          <Button x:Name="SoundButton" Command="{Binding ToggleSoundCommand}" Padding="6,4" Margin="0,0,8,0" ToolTip.Tip="{Binding SoundTip}">
+            <c:Icon Kind="{Binding SoundIcon}" Width="16" Height="16" Foreground="White"/>
+          </Button>
+          <Slider x:Name="SoundSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding SoundVolume}" IsEnabled="{Binding SoundOn}" VerticalAlignment="Center" Margin="0,-8" ToolTip.Tip="Crowd volume"/>
+        </Grid>
       </StackPanel>
     </Border>
 

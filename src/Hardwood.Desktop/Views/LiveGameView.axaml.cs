@@ -33,7 +33,9 @@ public partial class LiveGameView : UserControl
     public LiveGameView()
     {
         InitializeComponent();
-        AttachedToVisualTree += (_, _) => Focus();
+        AttachedToVisualTree += (_, _) => { Focus(); WatchWindow(); };
+        // M6 (run 153): the crowd goes quiet when the page goes (the game's own Continue closes it too).
+        DetachedFromVisualTree += (_, _) => { UnwatchWindow(); _vm?.ReleaseAudio(); };
         RootGrid.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitSoon(); };
         foreach (var c in new Control[] { ScoreBar, LeftStack, CommentaryBar })
             c.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) FitSoon(); };
@@ -43,7 +45,10 @@ public partial class LiveGameView : UserControl
     {
         base.OnDataContextChanged(e);
         if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
-        _vm = DataContext as ViewModels.LiveGameViewModel;
+        var next = DataContext as ViewModels.LiveGameViewModel;
+        // Review (run 153): a new page in this view lets the old game's sound go (the detach may come after).
+        if (_vm != null && _vm != next) _vm.ReleaseAudio();
+        _vm = next;
         if (_vm != null) _vm.PropertyChanged += OnVmChanged;
         Fit();
     }
@@ -58,7 +63,7 @@ public partial class LiveGameView : UserControl
     public static string? KeyAction(Avalonia.Input.Key key) => key switch
     {
         Avalonia.Input.Key.D1 => "speed:1", Avalonia.Input.Key.D2 => "speed:2", Avalonia.Input.Key.D3 => "speed:4", Avalonia.Input.Key.D4 => "speed:8",
-        Avalonia.Input.Key.K => "speed:key",
+        Avalonia.Input.Key.K => "speed:key", Avalonia.Input.Key.M => "sound:",
         Avalonia.Input.Key.B => "drawer:0", Avalonia.Input.Key.P => "drawer:1", Avalonia.Input.Key.T => "drawer:2", Avalonia.Input.Key.S => "drawer:3",
         Avalonia.Input.Key.H => "drawer:4", Avalonia.Input.Key.A => "drawer:5", Avalonia.Input.Key.G => "drawer:6", Avalonia.Input.Key.O => "drawer:7",
         _ => null,
@@ -71,8 +76,30 @@ public partial class LiveGameView : UserControl
         if (e.Source is Avalonia.Visual v && (v is ComboBox or TextBox || v.FindAncestorOfType<ComboBox>() != null || v.FindAncestorOfType<TextBox>() != null)) return;
         if (KeyAction(e.Key) is not { } act) return;
         var (kind, arg) = (act[..act.IndexOf(':')], act[(act.IndexOf(':') + 1)..]);
-        if (kind == "speed") _vm.SetSpeedCommand.Execute(arg); else _vm.OpenDrawerCommand.Execute(arg);
+        if (kind == "speed") _vm.SetSpeedCommand.Execute(arg);
+        else if (kind == "sound") _vm.ToggleSoundCommand.Execute(null);
+        else _vm.OpenDrawerCommand.Execute(arg);
         e.Handled = true;
+    }
+
+    private Window? _window;
+    /// <summary>M6: silence while the window is minimised.</summary>
+    private void WatchWindow()
+    {
+        UnwatchWindow();
+        _window = TopLevel.GetTopLevel(this) as Window;
+        if (_window == null) return;
+        _window.PropertyChanged += OnWindowChanged;
+        _vm?.SetMinimised(_window.WindowState == WindowState.Minimized);
+    }
+    private void UnwatchWindow()
+    {
+        if (_window != null) _window.PropertyChanged -= OnWindowChanged;
+        _window = null;
+    }
+    private void OnWindowChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Window.WindowStateProperty && _window != null) _vm?.SetMinimised(_window.WindowState == WindowState.Minimized);
     }
 
     /// <summary>The score bar sits centred in the room right of the controls' column.</summary>

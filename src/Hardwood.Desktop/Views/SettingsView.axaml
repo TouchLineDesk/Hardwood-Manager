@@ -37,6 +37,19 @@
           <TextBlock Text="{Binding Guide.ResetNote}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding Guide.ResetNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
       </Border>
+      <Border Classes="panel" Padding="16">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Sound" Classes="h2"/>
+          <TextBlock Text="The crowd in live games: it swells with big crowds, runs and close finishes, cheers the home side's baskets and groans at the visitors'. The referee's whistle and the buzzer too. At 4× and 8× only the biggest moments play. The speaker button on the live game (or M) mutes it there."
+                     TextWrapping="Wrap" Classes="muted"/>
+          <CheckBox Content="Play the crowd's sound in live games" IsChecked="{Binding SoundOn}"/>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Volume" VerticalAlignment="Center"/>
+            <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolume}" IsEnabled="{Binding SoundOn}" Width="240"/>
+            <TextBlock Text="{Binding SoundVolumeText}" VerticalAlignment="Center" Classes="muted"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
       <ContentControl Content="{Binding Graphics}"/>
     </StackPanel>
   </ScrollViewer>
