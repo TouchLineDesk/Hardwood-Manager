@@ -372,6 +372,10 @@ public sealed partial class GameSession
     public (GameSimulator.LiveGame? live, List<GameResult> played) BeginLiveDay() => BeginDay(liveHumanGame: true);
 
     private Series? _liveSeries;
+    /// <summary>The playoff series the live game belongs to, or null (M4, run 151: the floor's dressing reads it).</summary>
+    public Series? LiveSeries => _liveSeries;
+    /// <summary>The live game's competition when it is a world fixture (abroad, or a continental cup), else null.</summary>
+    public Hardwood.Core.World.CompetitionProfile? LiveCompetition => _liveWorld?.comp.Profile;
     private ScheduledGame? _liveScheduled;
 
     private (GameSimulator.LiveGame? live, List<GameResult> played) BeginDay(bool liveHumanGame)
