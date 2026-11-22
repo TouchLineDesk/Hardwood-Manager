@@ -55,7 +55,9 @@ public sealed partial class LiveGameViewModel
         var t = Us.Tactic;
         var before = TacticSnapshot.Of(t);
         bool on = Shouts.Toggle(t, _shouts, s);
-        if (on) _newShouts.Add(s); else _newShouts.Remove(s);
+        // Review (run 150): a shout that moved nothing (its lever already at the limit) isn't announced.
+        bool moved = _shouts.FirstOrDefault(a => a.Shout == s) is { } act && (act.Moved != 0 || act.WasDoubling == false);
+        if (on && moved) _newShouts.Add(s); else _newShouts.Remove(s);
         if (info.Opposite is { } opp) _newShouts.Remove(opp);
         foreach (var row in ShoutRows) row.IsOn = _shouts.Any(a => a.Shout == row.Info.Shout);
         Status = on ? $"Shout: {info.Label} ({LeverWords(before, TacticSnapshot.Of(t))}). It counts from the next possession."

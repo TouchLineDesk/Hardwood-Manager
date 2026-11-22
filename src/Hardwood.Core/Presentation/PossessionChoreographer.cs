@@ -241,6 +241,8 @@ public static class PossessionChoreographer
     public static readonly Spot ScorersTable = new(47, 50.5);
 
     // Dead-ball and flight times on screen (seconds at 1×; the game clock is stopped for them).
+    /// <summary>M3: how long each bench-change line stays up on the commentary bar before the next line.</summary>
+    public const double NoteTime = 2.0;
     public const double ShotFlight = 1.0, ReboundTime = 0.8, FreeThrowTime = 1.9, LineUpTime = 1.4, FoulTime = 1.0, TurnoverTime = 1.0,
         PeriodEndTime = 1.6, Epilogue = 0.8;
 
@@ -404,6 +406,11 @@ public static class PossessionChoreographer
             t = lead;
         }
 
+        // M3: what the benches changed, one line each (2 s apart, so both sides' changes are read), before the bring-up line.
+        // Review (run 150): said even when the possession has no plays on the floor, so no change goes unannounced.
+        for (int n = 0; n < input.Notes.Count; n++) c.Lines.Add(new(lead + NoteTime * n, input.Notes[n], false));
+        if (input.Notes.Count > 0) Act(lead, "change", -1);
+
         // 1. The start: an inbound after a make, a push after a stop, or a walk up.
         if (firstBall != null)
         {
@@ -418,12 +425,7 @@ public static class PossessionChoreographer
                 c.Ball.Add(new BallSegment(t + 0.6, t + 1.2, BallMode.Pass, inb, handler, inbAt, default, 0.2));
                 t += 1.2;
             }
-            if (input.Notes.Count > 0)
-            {
-                foreach (var n in input.Notes) c.Lines.Add(new(lead, n, false));
-                Act(lead, "change", -1);
-            }
-            c.Lines.Add(new(input.Notes.Count > 0 ? lead + 2.0 : lead, input.How switch
+            c.Lines.Add(new(lead + NoteTime * input.Notes.Count, input.How switch
             {
                 PossessionStart.AfterStop => $"{Last(players[handler])} pushes it up the floor for {offName}",
                 PossessionStart.PeriodStart => $"{offName} have the ball to start the period",
@@ -452,7 +454,7 @@ public static class PossessionChoreographer
                 var back = new[] { S(16, 25), S(10, 12), S(10, 38), S(6, 19), S(4, 27) };
                 for (int k = 0; k < 5; k++) Drift(defBase + k, t, mid, back[k]);
                 Act(t, "lanes", -1); Act(t, "get-back", -1);
-                c.Lines.Add(new(t + 0.3, paceK > 0.2 ? $"{offName} run, and {defName} scramble back" : $"{offName} in transition, {defName} get back", false));
+                c.Lines.Add(new(input.Notes.Count > 0 ? Math.Max(t + 0.3, lead + NoteTime * input.Notes.Count + 1.2) : t + 0.3, paceK > 0.2 ? $"{offName} run, and {defName} scramble back" : $"{offName} in transition, {defName} get back", false));
                 t = mid;
             }
             for (int k = 0; k < 5; k++)

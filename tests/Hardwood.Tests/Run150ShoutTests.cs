@@ -184,6 +184,10 @@ public class Run150ShoutTests
         Assert.Equal("Away switch to a 2-3 zone", c.Lines[0].Text);
         Assert.Contains(c.Actions, x => x.Tag == "change");
         Assert.True(c.Lines[1].T >= c.Lines[0].T + 1.9, "the bring-up line waits for the change line");
+        // Review (run 150): both benches' changes are read, one after the other.
+        var two = PossessionChoreographer.Build(Input(notes: new[] { "Away switch to a 2-3 zone", "Home push the pace" }));
+        Assert.Equal("Away switch to a 2-3 zone", two.Sample(0.5).Line);
+        Assert.Equal("Home push the pace", two.Sample(PossessionChoreographer.NoteTime + 0.5).Line);
     }
 
     /// <summary>A whole game with shouts on both benches: the picture never changes a result (the box score is the plain
@@ -303,7 +307,7 @@ public class Run150ShoutTests
             Assert.Equal("", page.SubChip);   // the sub went in at a dead ball
             page.SimToEnd();
             Assert.True(home.Tactic.DoubleStar);   // still on through the final whistle
-            page.ClearShouts();   // what Continue does before the box score
+            Assert.True(vm.SaveOnLeave());   // review (run 150): leaving mid-game saves without the shouts (Continue clears them too)
             Assert.Equal(plan, TacticSnapshot.Of(home.Tactic));   // shouts are for one game
         }
         finally
