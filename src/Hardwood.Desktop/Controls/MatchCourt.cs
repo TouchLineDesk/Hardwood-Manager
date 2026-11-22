@@ -79,6 +79,14 @@ public sealed class MatchCourt : Control
     private string _staticKey = "";
     private (Geometry Geo, IBrush Brush)[] _crowd = Array.Empty<(Geometry, IBrush)>();
     private Geometry? _planks;
+    private Geometry? _pulseHome, _pulseAway;
+    private Avalonia.Media.Imaging.RenderTargetBitmap? _staticBitmap;
+    private static readonly IBrush BoardDark = new SolidColorBrush(Color.Parse("#0E1116"));
+    /// <summary>A soft light across the maple, brighter at centre court, as arena lights fall.</summary>
+    private static readonly IBrush Sheen = new RadialGradientBrush
+    {
+        GradientStops = { new GradientStop(Color.FromArgb(46, 255, 250, 235), 0), new GradientStop(Color.FromArgb(0, 255, 250, 235), 0.6), new GradientStop(Color.FromArgb(34, 40, 20, 0), 1) },
+    };
     private readonly Dictionary<string, FormattedText> _text = new();
 
     /// <summary>The last drawing error (shown in tests; a frame that fails is skipped, never the game).</summary>
@@ -98,30 +106,96 @@ public sealed class MatchCourt : Control
         var dress = Dress ?? new ArenaDress("#1D3FA3", "#F0A33A", "#F4F1EA", "HOME", "HOME", "", null, "", false);
         var (s, o) = Fit(size, Reserve);
         Point P(double x, double y) => new(o.X + x * s, o.Y + y * s);
-        var paint = Color.Parse(dress.Paint); var trim = Color.Parse(dress.Trim);
-        string key = $"{dress.Paint}{dress.Trim}{dress.CrowdColour}{Markings}";
-        if (_staticSize != size || _staticKey != key) BuildStatic(size, s, o, dress);
+        double scaling = (VisualRoot as TopLevel)?.RenderScaling ?? 1;
+        string key = StaticKey(dress, scaling);
+        if (_staticSize != size || _staticKey != key) BuildStatic(size, s, o, dress, scaling, key);
 
-        // The arena: dark, then the crowd in its colours.
+        // M4 (run 151, #1034): the arena, the floor (maple), the lines and the boards are one bitmap, drawn once per size
+        // and dress; each frame blits it and draws only what moves. Without a bitmap (a renderer that can't make one) the
+        // same layer is drawn directly.
+        // The source rect is in the bitmap's pixels (review, run 151: Size is in DIPs, which showed only a corner above 100%).
+        if (_staticBitmap != null) ctx.DrawImage(_staticBitmap, new Rect(0, 0, _staticBitmap.PixelSize.Width, _staticBitmap.PixelSize.Height), new Rect(size));
+        else DrawStatic(ctx, size, s, o, dress);
+        StaticFromCache = _staticBitmap != null;
+
+        DrawCrowdReaction(ctx, dress);
+        DrawFrame(ctx, s, P);
+        FramesDrawn++;
+        sw.Stop();
+        if (FrameMs.Count < 20000) FrameMs.Add(sw.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>The cached layer is a native surface: let it go when the court leaves the screen.</summary>
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _staticBitmap?.Dispose(); _staticBitmap = null;
+        _staticSize = default; _staticKey = "";
+    }
+
+    /// <summary>True when the last frame came from the cached static bitmap (tests read it).</summary>
+    public bool StaticFromCache { get; private set; }
+    /// <summary>How many times the static layer was built (once per size or dress; tests read it).</summary>
+    public int StaticBuilds { get; private set; }
+
+    private string StaticKey(ArenaDress d, double scaling) =>
+        $"{d.Paint}|{d.Trim}|{d.Lettering}|{d.CrowdColour}|{d.AwayCrowdColour}|{d.Crowd}|{d.LeftBaseline}|{d.RightBaseline}|{d.Sideline}|{d.CentreText}|{d.CrestTeam?.Id}|{string.Join(",", d.Boards)}|{d.TableText}|{Markings}|{HomeKit}|{AwayKit}|{HomeTrim}|{AwayTrim}|{Reserve}|{scaling}";
+
+    /// <summary>The maple floor (Poly Haven wood_floor recoloured, CC0; asset-library.md), loaded once; null if missing.</summary>
+    private static readonly Lazy<Avalonia.Media.Imaging.Bitmap?> Maple = new(() =>
+    {
+        try
+        {
+            var asm = typeof(MatchCourt).Assembly;
+            var n = asm.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith("court-maple.jpg", StringComparison.Ordinal));
+            if (n == null) return null;
+            using var st = asm.GetManifestResourceStream(n)!;
+            return new Avalonia.Media.Imaging.Bitmap(st);
+        }
+        catch { return null; }
+    });
+    /// <summary>True when the maple texture loaded (tests read it).</summary>
+    public static bool HasMaple => Maple.Value != null;
+
+    private void DrawStatic(DrawingContext ctx, Size size, double s, Point o, ArenaDress dress)
+    {
+        Point P(double x, double y) => new(o.X + x * s, o.Y + y * s);
+        var paint = Color.Parse(dress.Paint); var trim = Color.Parse(dress.Trim);
+
+        // The arena: dark, the empty seats, then the crowd in its colours.
         ctx.FillRectangle(Back, new Rect(size));
         foreach (var (geo, brush) in _crowd) ctx.DrawGeometry(brush, null, geo);
-        // Ribbon boards above and below the floor.
-        var ribbon = new Rect(P(-5, -4.6), P(99, -2.6));
-        var ribbon2 = new Rect(P(-5, 54.2), P(99, 56.0));
-        var boardBrush = new SolidColorBrush(paint);
-        ctx.FillRectangle(boardBrush, ribbon); ctx.FillRectangle(boardBrush, ribbon2);
-        string boardText = dress.Neutral ? $"{dress.CentreText}  ·  HSN LIVE" : $"{dress.RightBaseline}  ·  HSN {(Markings == CourtMarkings.College ? "COLLEGE HOOPS" : "LIVE")}";
-        Repeat(ctx, boardText, ribbon, Math.Clamp(s * 0.95, 9, 15), trim);
-        Repeat(ctx, dress.Neutral ? "HSN LIVE" : $"{dress.LeftBaseline}  ·  HSN LIVE", ribbon2, Math.Clamp(s * 0.9, 9, 14), trim);
+        // Ribbon boards above and below the floor, in panels.
+        Boards(ctx, new Rect(P(-5, -4.6), P(99, -2.6)), dress, paint, trim, 0, Math.Clamp(s * 0.95, 9, 15));
+        Boards(ctx, new Rect(P(-5, 54.2), P(99, 56.0)), dress, paint, trim, 1, Math.Clamp(s * 0.9, 9, 14));
 
-        // The apron, the wood and its planks.
+        // The apron, the maple and its grain.
         ctx.FillRectangle(new SolidColorBrush(paint), new Rect(P(-3, -1.8), P(97, 51.8)));
-        var wood = Wood;
         var court = new Rect(P(0, 0), P(94, 50));
-        ctx.FillRectangle(wood, court);
-        if (_planks != null) ctx.DrawGeometry(null, PlankPen, _planks);
+        if (Maple.Value is { } maple)
+        {
+            // The texture's boards run up the image; each tile is turned a quarter so they run the length of the floor, as a
+            // court's do. Tiles overlap by a pixel so no seam lets the apron show through (the layer is cached, so the
+            // tiles cost nothing per frame).
+            double tile = Math.Max(8, Math.Round(9 * s));
+            var src = new Rect(0, 0, maple.Size.Width, maple.Size.Height);
+            using (ctx.PushClip(court))
+                for (double ty = court.Y; ty < court.Bottom; ty += tile)
+                    for (double tx = court.X; tx < court.Right; tx += tile)
+                    {
+                        var c = new Point(tx + tile / 2, ty + tile / 2);
+                        using (ctx.PushTransform(Matrix.CreateTranslation(-c.X, -c.Y) * Matrix.CreateRotation(Math.PI / 2) * Matrix.CreateTranslation(c.X, c.Y)))
+                            ctx.DrawImage(maple, src, new Rect(tx - 1, ty - 1, tile + 2, tile + 2));
+                    }
+            ctx.FillRectangle(Sheen, court);
+        }
+        else
+        {
+            ctx.FillRectangle(Wood, court);
+            if (_planks != null) ctx.DrawGeometry(null, PlankPen, _planks);
+        }
 
-        // The keys in the floor's paint; the lines.
+        // The keys in the floor's paint; the lines by league.
         double lane = Markings == CourtMarkings.College ? 12 : 16;
         var keyBrush = new SolidColorBrush(Color.FromArgb(230, paint.R, paint.G, paint.B));
         ctx.FillRectangle(keyBrush, new Rect(P(0, 25 - lane / 2), P(19, 25 + lane / 2)));
@@ -130,13 +204,31 @@ public sealed class MatchCourt : Control
         ctx.DrawRectangle(null, line, court);
         ctx.DrawLine(line, P(47, 0), P(47, 50));
         ctx.DrawEllipse(new SolidColorBrush(paint), line, P(47, 25), 6 * s, 6 * s);
+        if (Markings != CourtMarkings.Fiba) ctx.DrawEllipse(null, line, P(47, 25), 2 * s, 2 * s);
+        // The sideline hashes: the coaching box (28 ft from each baseline) in the NBA and college.
+        if (Markings != CourtMarkings.Fiba)
+            foreach (double hx in new[] { 28.0, 66.0 })
+            {
+                ctx.DrawLine(line, P(hx, 0), P(hx, 3));
+                ctx.DrawLine(line, P(hx, 47), P(hx, 50));
+            }
         foreach (bool right in new[] { false, true })
         {
             double bx = right ? 88.75 : 5.25, dir = right ? -1 : 1, baseX = right ? 94 : 0;
             ctx.DrawRectangle(null, line, new Rect(P(right ? 75 : 0, 25 - lane / 2), P(right ? 94 : 19, 25 + lane / 2)));
+            // The lane's blocks and spaces.
+            foreach (double fx in new[] { 7.0, 11.0, 14.0, 17.0 })
+            {
+                double x = right ? 94 - fx : fx;
+                ctx.DrawLine(line, P(x, 25 - lane / 2), P(x, 25 - lane / 2 - 0.6));
+                ctx.DrawLine(line, P(x, 25 + lane / 2), P(x, 25 + lane / 2 + 0.6));
+            }
             // The free-throw circle (the far half).
             var ft = P(right ? 75 : 19, 25);
             ctx.DrawGeometry(null, line, Arc(ft, 6 * s, right ? Math.PI / 2 : -Math.PI / 2, Math.PI));
+            // The restricted area: 4 ft (NBA, college), 1.25 m (FIBA).
+            double ra = Markings == CourtMarkings.Fiba ? 4.1 : 4;
+            ctx.DrawGeometry(null, line, Arc(P(bx, 25), ra * s, right ? Math.PI / 2 : -Math.PI / 2, Math.PI));
             // The three-point line by league.
             double r = Markings switch { CourtMarkings.College => 22.146, CourtMarkings.Fiba => 22.15, _ => 23.75 };
             double corner = Markings switch { CourtMarkings.College => 21.65, CourtMarkings.Fiba => 21.65, _ => 22 };
@@ -189,16 +281,54 @@ public sealed class MatchCourt : Control
             var side = Text(dress.Sideline, Math.Clamp(s, 9, 18), Color.Parse(dress.Lettering), true);
             ctx.DrawText(side, new Point(P(47, 0).X - side.Width / 2, P(0, -1.75).Y));
         }
-        // Benches and the scorer's table along the near sideline.
-        var bench = Bench;
-        ctx.FillRectangle(bench, new Rect(P(20, 52.4), P(38, 53.6)));
-        ctx.FillRectangle(bench, new Rect(P(56, 52.4), P(74, 53.6)));
-        ctx.FillRectangle(Table, new Rect(P(44, 52.2), P(50, 53.8)));
+        // The benches (the away bench at the left, the home bench at the right, chairs in kit colours) and the scorer's
+        // table between them, along the near sideline.
+        foreach (bool homeBench in new[] { false, true })
+        {
+            double x0 = homeBench ? 56 : 20;
+            ctx.FillRectangle(Bench, new Rect(P(x0, 52.3), P(x0 + 18, 53.7)));
+            var chair = new SolidColorBrush(homeBench ? HomeKit : AwayKit);
+            var chairEdge = new Pen(new SolidColorBrush(homeBench ? HomeTrim : AwayTrim), 1);
+            for (int i = 0; i < 9; i++)
+                ctx.DrawRectangle(chair, chairEdge, new Rect(P(x0 + 0.5 + i * 1.95, 52.55), P(x0 + 1.9 + i * 1.95, 53.45)), 1.5, 1.5);
+        }
+        var table = new Rect(P(40, 52.1), P(54, 53.9));
+        ctx.FillRectangle(Table, table);
+        ctx.FillRectangle(new SolidColorBrush(paint), new Rect(table.X, table.Bottom - Math.Max(3, table.Height * 0.3), table.Width, Math.Max(3, table.Height * 0.3)));
+        if (dress.TableText.Length > 0)
+        {
+            var tt = Text(dress.TableText, Math.Clamp(s * 0.62, 7, 12), Color.Parse("#14171C"), true);
+            if (tt.Width < table.Width - 6) ctx.DrawText(tt, new Point(table.Center.X - tt.Width / 2, table.Y + (table.Height * 0.7 - tt.Height) / 2));
+        }
+    }
 
-        DrawFrame(ctx, s, P);
-        FramesDrawn++;
-        sw.Stop();
-        if (FrameMs.Count < 20000) FrameMs.Add(sw.Elapsed.TotalMilliseconds);
+    /// <summary>A ribbon board in panels: the dress's board texts in turn, on the floor's paint and a dark panel.</summary>
+    private void Boards(DrawingContext ctx, Rect band, ArenaDress dress, Color paint, Color trim, int offset, double size)
+    {
+        var texts = dress.Boards.Count > 0 ? dress.Boards : new[] { dress.Neutral ? dress.CentreText : dress.RightBaseline, "HSN LIVE" };
+        int panels = Math.Max(2, (int)Math.Round(band.Width / Math.Max(140, size * 16)));
+        double w = band.Width / panels;
+        for (int i = 0; i < panels; i++)
+        {
+            bool dark = (i + offset) % 2 == 1;
+            var r = new Rect(band.X + i * w, band.Y, w - 1, band.Height);
+            ctx.FillRectangle(dark ? BoardDark : new SolidColorBrush(paint), r);
+            var t = Text(texts[(i + offset) % texts.Count], size, dark ? Colors.White : trim, true);
+            if (t.Width > r.Width - 8) continue;
+            ctx.DrawText(t, new Point(r.Center.X - t.Width / 2, r.Y + (r.Height - t.Height) / 2));
+        }
+    }
+
+    /// <summary>The fans rise on a make: the scoring side's end (the home stands, or the away end when it has one) lights for
+    /// the moment of the burst. Presentation only.</summary>
+    private void DrawCrowdReaction(DrawingContext ctx, ArenaDress dress)
+    {
+        if (Frame is not { Burst: { Made: true } } f || f.BurstAge >= 1) return;
+        bool homeScored = f.HomeOffense;
+        var geo = homeScored ? _pulseHome : (dress.AwayCrowdColour != null ? _pulseAway : null);
+        if (geo == null) return;
+        byte a = (byte)(170 * (1 - f.BurstAge));
+        ctx.DrawGeometry(new SolidColorBrush(Color.FromArgb(a, 255, 255, 255)), null, geo);
     }
 
     private void DrawFrame(DrawingContext ctx, double s, Func<double, double, Point> P)
@@ -267,33 +397,57 @@ public sealed class MatchCourt : Control
         ctx.DrawLine(BallSeam, new Point(lifted.X - br, lifted.Y), new Point(lifted.X + br, lifted.Y));
     }
 
-    private void BuildStatic(Size size, double s, Point o, ArenaDress dress)
+    private void BuildStatic(Size size, double s, Point o, ArenaDress dress, double scaling, string key)
     {
         _staticSize = size;
-        _staticKey = $"{dress.Paint}{dress.Trim}{dress.CrowdColour}{Markings}";
+        _staticKey = key;
+        StaticBuilds++;
         var floor = new Rect(o.X - 5.5 * s, o.Y - 5 * s, 105 * s, 61.5 * s);
         var crowd = Color.Parse(dress.CrowdColour);
-        var cols = new[] { crowd, Color.Parse(dress.Trim), Color.Parse("#E9ECF1"), Color.Parse("#3A3F49") };
+        var away = dress.AwayCrowdColour is { } ac ? Color.Parse(ac) : (Color?)null;
+        // Home colours, trim, white shirts, dark; then the away end's colour; then the empty seats.
+        var cols = new[] { crowd, Color.Parse(dress.Trim), Color.Parse("#E9ECF1"), Color.Parse("#3A3F49"), away ?? crowd, Color.Parse("#20242C") };
         var geos = cols.Select(_ => new StreamGeometry()).ToArray();
         var ctxs = geos.Select(g => g.Open()).ToArray();
+        var pulseHome = new StreamGeometry(); var pulseAway = new StreamGeometry();
+        var ph = pulseHome.Open(); var pa = pulseAway.Open();
         var rng = new Random(7);
-        double cw = 6, ch = 7;
-        for (double y = 2; y < size.Height - 2; y += ch)
+        double cw = 6, ch = 7, fill = Math.Clamp(dress.Crowd, 0.2, 1);
+        // The away end: the stands beyond the left baseline (the away side's basket end) at a big game.
+        double awayEnd = floor.Left;
+        int row = 0;
+        for (double y = 2; y < size.Height - 2; y += ch, row++)
+        {
+            if (row % 7 == 6) continue;   // an aisle between the tiers
             for (double x = 2; x < size.Width - 2; x += cw)
             {
                 if (floor.Contains(new Point(x, y))) continue;
-                double q = rng.NextDouble();
-                if (q < 0.12) continue;
-                int k = q < 0.6 ? 0 : q < 0.82 ? 1 : q < 0.91 ? 2 : 3;
+                double q = rng.NextDouble(), seat = rng.NextDouble();
                 double px = x + rng.NextDouble() * 1.5, py = y + rng.NextDouble() * 1.5;
+                bool awaySide = away != null && x < awayEnd;
+                int k;
+                if (seat > fill) k = 5;
+                else if (awaySide) k = q < 0.7 ? 4 : q < 0.85 ? 2 : 3;
+                else k = q < 0.6 ? 0 : q < 0.82 ? 1 : q < 0.91 ? 2 : 3;
                 var g = ctxs[k];
                 g.BeginFigure(new Point(px, py), true);
                 g.LineTo(new Point(px + 4, py)); g.LineTo(new Point(px + 4, py + 4.5)); g.LineTo(new Point(px, py + 4.5));
                 g.EndFigure(true);
+                // About a third of the fans on each side jump up on a make.
+                if (k != 5 && k != 3 && rng.NextDouble() < 0.35)
+                {
+                    var pg = awaySide ? pa : ph;
+                    pg.BeginFigure(new Point(px, py - 1.5), true);
+                    pg.LineTo(new Point(px + 4, py - 1.5)); pg.LineTo(new Point(px + 4, py + 2)); pg.LineTo(new Point(px, py + 2));
+                    pg.EndFigure(true);
+                }
             }
+        }
         foreach (var c in ctxs) c.Dispose();
-        _crowd = geos.Select((g, i) => ((Geometry)g, (IBrush)new SolidColorBrush(cols[i], i == 3 ? 1 : 0.9))).ToArray();
-        // The planks: long lines along the floor, with short joints.
+        ph.Dispose(); pa.Dispose();
+        _pulseHome = pulseHome; _pulseAway = away != null ? pulseAway : null;
+        _crowd = geos.Select((g, i) => ((Geometry)g, (IBrush)new SolidColorBrush(cols[i], i is 3 or 5 ? 1 : 0.9))).ToArray();
+        // The fallback planks (when the maple texture is missing): long lines along the floor, with short joints.
         var planks = new StreamGeometry();
         var pr = new Random(3);
         using (var g = planks.Open())
@@ -310,6 +464,18 @@ public sealed class MatchCourt : Control
         }
         _planks = planks;
         _text.Clear();
+        // The cached layer, at the screen's pixel density so the lines stay crisp.
+        _staticBitmap?.Dispose();
+        _staticBitmap = null;
+        try
+        {
+            var px = new PixelSize(Math.Max(1, (int)Math.Ceiling(size.Width * scaling)), Math.Max(1, (int)Math.Ceiling(size.Height * scaling)));
+            var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(px, new Vector(96 * scaling, 96 * scaling));
+            using (var dc = bmp.CreateDrawingContext())
+                DrawStatic(dc, size, s, o, dress);
+            _staticBitmap = bmp;
+        }
+        catch (Exception e) { _staticBitmap = null; LastRenderError = "static cache: " + e.Message; }
     }
 
     private static Geometry Arc(Point centre, double radius, double from, double sweep)
@@ -332,18 +498,6 @@ public sealed class MatchCourt : Control
             new Typeface(family ?? "Inter", FontStyle.Normal, bold ? FontWeight.Bold : FontWeight.Normal), size, new SolidColorBrush(c));
         _text[key] = t;
         return t;
-    }
-
-    private void Repeat(DrawingContext ctx, string text, Rect band, double size, Color c)
-    {
-        var t = Text(text, size, c, true);
-        double step = t.Width + 80;
-        int n = Math.Max(1, (int)(band.Width / step));
-        for (int i = 0; i < n; i++)
-        {
-            double cx = band.X + (i + 0.5) * band.Width / n;
-            ctx.DrawText(t, new Point(cx - t.Width / 2, band.Y + (band.Height - t.Height) / 2));
-        }
     }
 
     private void Vertical(DrawingContext ctx, string text, Point centre, double size, Color c, double angle)

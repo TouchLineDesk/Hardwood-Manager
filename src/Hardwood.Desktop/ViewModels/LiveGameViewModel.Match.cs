@@ -112,13 +112,25 @@ public sealed partial class LiveGameViewModel
         foreach (var t in new[] { HomeTeam, AwayTeam }) foreach (var kv in ShirtNumbers.For(t)) numbers[kv.Key] = kv.Value;
         Numbers = numbers;
         var game = Session.InCollege ? Session.World.College?.GameOn(Us.Id, Session.Today) : null;
-        FloorDress = Hardwood.Core.College.ArenaDress.For(HomeTeam, game);
+        FloorDress = DressFor(Session, HomeTeam, AwayTeam, game);
         Markings = _live.Result.Periods == 2 ? CourtMarkings.College : _live.MinutesPerPeriod == 10 ? CourtMarkings.Fiba : CourtMarkings.Nba;
         BarAwayScore = _live.AwayScore; BarHomeScore = _live.HomeScore;
         BarClock = BugClock; BarPeriod = BugPeriod;
         Commentary = $"Welcome to {HomeTeam.City}: {AwayTeam.Name} at {HomeTeam.Name}. Press Play for the tip.";
         MatchFrame = TipFrame();
         InitShouts();
+    }
+
+    /// <summary>M4 (run 151): the floor for this game: the college program's or the event's, or the pro club's with the
+    /// playoffs', the Finals' or a continental cup's dressing.</summary>
+    public static Hardwood.Core.College.ArenaDress DressFor(Hardwood.Core.Season.GameSession s, Team home, Team away, Hardwood.Core.College.CollegeGame? game)
+    {
+        if (s.InCollege) return Hardwood.Core.College.ArenaDress.For(home, game, away, s.World.College);
+        if (s.LiveCompetition is { } comp)
+            return comp.Kind == Hardwood.Core.World.CompetitionKind.Continental
+                ? Hardwood.Core.College.ArenaDress.ForPro(home, away, comp.Short, cup: comp.Name)
+                : Hardwood.Core.College.ArenaDress.ForPro(home, away, comp.Short);
+        return Hardwood.Core.College.ArenaDress.ForPro(home, away, Hardwood.Core.Names.Brand.TopShort, s.LiveSeries);
     }
 
     /// <summary>The ten at the centre circle before the tip.</summary>
