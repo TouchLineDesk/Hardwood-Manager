@@ -113,7 +113,8 @@ public sealed class MatchCourt : Control
         // M4 (run 151, #1034): the arena, the floor (maple), the lines and the boards are one bitmap, drawn once per size
         // and dress; each frame blits it and draws only what moves. Without a bitmap (a renderer that can't make one) the
         // same layer is drawn directly.
-        if (_staticBitmap != null) ctx.DrawImage(_staticBitmap, new Rect(_staticBitmap.Size), new Rect(size));
+        // The source rect is in the bitmap's pixels (review, run 151: Size is in DIPs, which showed only a corner above 100%).
+        if (_staticBitmap != null) ctx.DrawImage(_staticBitmap, new Rect(0, 0, _staticBitmap.PixelSize.Width, _staticBitmap.PixelSize.Height), new Rect(size));
         else DrawStatic(ctx, size, s, o, dress);
         StaticFromCache = _staticBitmap != null;
 
@@ -124,13 +125,21 @@ public sealed class MatchCourt : Control
         if (FrameMs.Count < 20000) FrameMs.Add(sw.Elapsed.TotalMilliseconds);
     }
 
+    /// <summary>The cached layer is a native surface: let it go when the court leaves the screen.</summary>
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _staticBitmap?.Dispose(); _staticBitmap = null;
+        _staticSize = default; _staticKey = "";
+    }
+
     /// <summary>True when the last frame came from the cached static bitmap (tests read it).</summary>
     public bool StaticFromCache { get; private set; }
     /// <summary>How many times the static layer was built (once per size or dress; tests read it).</summary>
     public int StaticBuilds { get; private set; }
 
     private string StaticKey(ArenaDress d, double scaling) =>
-        $"{d.Paint}|{d.Trim}|{d.Lettering}|{d.CrowdColour}|{d.AwayCrowdColour}|{d.Crowd}|{d.LeftBaseline}|{d.RightBaseline}|{d.Sideline}|{d.CentreText}|{d.CrestTeam?.Id}|{string.Join(",", d.Boards)}|{d.TableText}|{Markings}|{HomeKit}|{AwayKit}|{scaling}";
+        $"{d.Paint}|{d.Trim}|{d.Lettering}|{d.CrowdColour}|{d.AwayCrowdColour}|{d.Crowd}|{d.LeftBaseline}|{d.RightBaseline}|{d.Sideline}|{d.CentreText}|{d.CrestTeam?.Id}|{string.Join(",", d.Boards)}|{d.TableText}|{Markings}|{HomeKit}|{AwayKit}|{HomeTrim}|{AwayTrim}|{Reserve}|{scaling}";
 
     /// <summary>The maple floor (Poly Haven wood_floor recoloured, CC0; asset-library.md), loaded once; null if missing.</summary>
     private static readonly Lazy<Avalonia.Media.Imaging.Bitmap?> Maple = new(() =>
@@ -168,7 +177,7 @@ public sealed class MatchCourt : Control
             // The texture's boards run up the image; each tile is turned a quarter so they run the length of the floor, as a
             // court's do. Tiles overlap by a pixel so no seam lets the apron show through (the layer is cached, so the
             // tiles cost nothing per frame).
-            double tile = Math.Round(9 * s);
+            double tile = Math.Max(8, Math.Round(9 * s));
             var src = new Rect(0, 0, maple.Size.Width, maple.Size.Height);
             using (ctx.PushClip(court))
                 for (double ty = court.Y; ty < court.Bottom; ty += tile)
