@@ -263,13 +263,20 @@ public class Run153SoundTests
             void Check(Choreography c)
             {
                 var cues = Reactions.Plan(c);
-                planned += cues.Count;
+                // Run 160: the court and the band play from the same clock.
+                planned += cues.Count + Reactions.Court(c).Count;
                 foreach (var q in cues)
                 {
                     // Run 157: a crowd's answer to a whistle comes 0.15–0.2 s after it.
                     var at = c.Moments.Where(m => q.T - m.T > -1e-9 && q.T - m.T < 0.25).Select(m => m.E).ToList();
                     switch (q.Kind)
                     {
+                        case Cue.Erupt:
+                            Assert.Contains(at, e => e.Kind == PlayKind.Shot && e.Made && e.Home);
+                            break;
+                        case Cue.Oh:
+                            Assert.Contains(at, e => e.Kind == PlayKind.Shot && e.Home && !e.Made);
+                            break;
                         case Cue.Cheer or Cue.BigCheer:
                             Assert.Contains(at, e => (e.Kind is PlayKind.Shot or PlayKind.FreeThrow && e.Made && e.Home) || (e.Blocked && !e.Home) || (e.Kind == PlayKind.Steal && e.Home) || (e.Kind == PlayKind.Foul && !e.Home && q.Kind == Cue.BigCheer));
                             break;
@@ -311,7 +318,7 @@ public class Run153SoundTests
             // Run 157: down 15 or more, an ordinary home basket gets no cheer (only the big plays do).
             int homeBaskets = 0, hs = 0, aws = 0;
             foreach (var p in plays) { if (p.Kind == PlayKind.Shot && p.Made && p.Home && aws - hs < Reactions.BlowoutDeficit) homeBaskets++; hs = p.HomeScore; aws = p.AwayScore; }
-            Assert.True(played.GetValueOrDefault(Cue.Cheer) + played.GetValueOrDefault(Cue.BigCheer) >= homeBaskets);
+            Assert.True(played.GetValueOrDefault(Cue.Cheer) + played.GetValueOrDefault(Cue.BigCheer) + played.GetValueOrDefault(Cue.Erupt) >= homeBaskets);
             Assert.True(played.GetValueOrDefault(Cue.Groan) >= plays.Count(p => p.Kind == PlayKind.Shot && p.Made && !p.Home));
             Assert.Equal(plays.Count(p => p.Kind == PlayKind.Foul && p.Home), played.GetValueOrDefault(Cue.Boo));
             if (lateBeds.Count > 0) Assert.True(lateBeds.Average() > earlyBeds.Average(), "the bed swells late in a close game");

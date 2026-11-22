@@ -8,6 +8,8 @@ public interface IGameAudio : IDisposable
 {
     void SetBed(BedLevels target);
     void Play(Cue cue, double gain);
+    /// <summary>Play one sound, panned (−1 left to 1 right; run 160's court sounds). Unpanned by default.</summary>
+    void Play(Cue cue, double gain, double pan) => Play(cue, gain);
     void StopReactions();
     double Volume { get; set; }
     bool Muted { get; set; }
@@ -62,6 +64,7 @@ public sealed class DeviceAudio : IGameAudio
 
     public void SetBed(BedLevels target) => _mixer.SetBed(target);
     public void Play(Cue cue, double gain) => _mixer.Play(cue, gain);
+    public void Play(Cue cue, double gain, double pan) => _mixer.Play(cue, gain, pan);
     public void StopReactions() => _mixer.StopReactions();
     public double Volume { get => _mixer.Volume; set => _mixer.Volume = value; }
     public bool Muted { get => _mixer.Muted; set => _mixer.Muted = value; }

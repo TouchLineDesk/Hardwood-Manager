@@ -23,6 +23,10 @@ jobs:
   release:
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      # Run 160: the licensed match-day audio (Splice) lives in a private repo, never in this one (#1070). The secret is a
+      # read-only token for that repo; forks and runs without it build with the M6 crowd only.
+      HAS_AUDIO_TOKEN: ${{ secrets.LICENSED_AUDIO_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,13 +59,41 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Fetch the licensed match-day audio (private repo)
+        if: steps.check.outputs.skip == 'false' && env.HAS_AUDIO_TOKEN == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: TouchLineDesk/hardwood-licensed-audio
+          token: ${{ secrets.LICENSED_AUDIO_TOKEN }}
+          path: licensed-audio
+          persist-credentials: false
+
+      - name: Check the licensed audio
+        id: audio
+        if: steps.check.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE "licensed-audio"
+          if (Test-Path $dir) {
+            $oggs = @(Get-ChildItem $dir -Filter *.ogg | Where-Object { $_.Name -notlike 'demo-mix*' })
+            Write-Host "Licensed audio: $($oggs.Count) OGGs"
+            if (-not (Test-Path (Join-Path $dir 'crowd-bed-1.ogg')) -or -not (Test-Path (Join-Path $dir 'crowd-bed-3.ogg'))) { throw "The licensed audio has no crowd-bed-1/3.ogg" }
+            "dir=$dir" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "No licensed audio (no token): building with the M6 crowd only."
+            "dir=" >> $env:GITHUB_OUTPUT
+          }
+
       - name: Build the Windows zip
         if: steps.check.outputs.skip == 'false'
         shell: pwsh
         run: |
           $v = "${{ steps.v.outputs.version }}"
           $dir = "HardwoodManager-$v"
-          dotnet publish src/Hardwood.Desktop -c Release -r win-x64 --self-contained true -p:Version=$v -o $dir
+          $audio = "${{ steps.audio.outputs.dir }}"
+          $extra = @()
+          if ($audio -ne "") { $extra += "-p:LicensedAudioDir=$audio" }
+          dotnet publish src/Hardwood.Desktop -c Release -r win-x64 --self-contained true -p:Version=$v -o $dir @extra
           Copy-Item THIRD-PARTY-NOTICES.md $dir
           Compress-Archive -Path $dir -DestinationPath "HardwoodManager-v$v-win-x64.zip"
 

@@ -45,6 +45,10 @@ Trimmed, layered and re-encoded excerpts from the **Sonniss #GameAudioGDC 2026 b
 
 How they were made: `tools/Assets/audio.py`.
 
+## Match-day audio: crowd, court and band (release builds only)
+
+The release build embeds 30 processed OGGs from **Splice Sounds** (https://splice.com), bought on Danny's Splice account on Nov 22, 2026 and used under the Splice Sounds licence, which covers sounds inside a game. They are not in this repository (they live in a private repo, fetched by the release workflow), and builds without them play the crowd above. The source files carry their packs' prefixes (FF_, BRS_, FNF_OS_, KSHMR_, OSS_, MCS_ and S08SP). The per-file list (source, cut, loudness) is in the private repo's `manifest.csv`.
+
 ## Court floor (src/Hardwood.Desktop/Assets/Court)
 
 `court-maple.jpg` is the **Poly Haven wood_floor** diffuse texture (https://polyhaven.com/a/wood_floor, 2K), scaled to 1024 px and recoloured to light maple by `tools/Assets/images.py`. Poly Haven assets are CC0 1.0.

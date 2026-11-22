@@ -25,13 +25,40 @@ public enum Cue
     Whistle,
     /// <summary>The period buzzer (code-made).</summary>
     Buzzer,
+    /// <summary>The house erupts: a home dunk, an and-one or a late lead change (run 160; the pack's eruption, else
+    /// the big cheer).</summary>
+    Erupt,
+    /// <summary>The student section's chant and stomp after the house erupts (pack only).</summary>
+    Student,
+    /// <summary>"Ohh": a home three that rims out, or a home shot blocked (the pack's file, else the bed's dip).</summary>
+    Oh,
+    // The court (run 160; pack only, panned to where the play is; never made in code).
+    /// <summary>One dribble while the ball is carried.</summary>
+    Bounce,
+    /// <summary>A sneaker squeak on a cut, a drive or a closeout.</summary>
+    Squeak,
+    /// <summary>The net on a made jumper, three or free throw.</summary>
+    Swish,
+    /// <summary>A finish at the rim off the glass (a made layup).</summary>
+    Finish,
+    /// <summary>A miss off the rim.</summary>
+    Rim,
+    /// <summary>A miss off the backboard.</summary>
+    Backboard,
+    /// <summary>A dunk: the backboard slam.</summary>
+    Slam,
+    // The band (run 160; pack only).
+    /// <summary>The drumline's cadence at a dead ball: before the tip and at each period's end.</summary>
+    Drumline,
+    /// <summary>The brass section's stab after a big home play.</summary>
+    Brass,
 }
 
 /// <summary>One sound at a time on the possession's playback clock (seconds into the possession on screen).</summary>
-public sealed record SoundCue(double T, Cue Kind, double Gain = 1.0)
+public sealed record SoundCue(double T, Cue Kind, double Gain = 1.0, double Pan = 0)
 {
-    /// <summary>The cues that still play at 4× and 8×: the biggest reactions and the buzzer.</summary>
-    public bool Big => Kind is Cue.BigCheer or Cue.Buzzer;
+    /// <summary>The cues that still play at 4× and 8×: the biggest reactions, the buzzer and the band at a period's end.</summary>
+    public bool Big => Kind is Cue.BigCheer or Cue.Erupt or Cue.Buzzer or Cue.Drumline;
 }
 
 /// <summary>
@@ -74,15 +101,26 @@ public static class Reactions
                     bool andOne = moments.Skip(i + 1).TakeWhile(m => m.E.Kind is PlayKind.Foul or PlayKind.FreeThrow)
                         .Count(m => m.E.Kind == PlayKind.FreeThrow && m.E.Actor == e.Actor) == 1;
                     bool leadChange = late && hBefore <= aBefore && home > away;
-                    bool big = three || andOne || leadChange || Choreography.IsDunk(e);
-                    if (big) cues.Add(new SoundCue(t, Cue.BigCheer, 1.0));
+                    // Run 160: a dunk, an and-one or a late lead change brings the house down (the eruption), and the
+                    // students join in unless it's a blowout; a three is the big cheer.
+                    bool dunk = Choreography.IsDunk(e);
+                    if (dunk || andOne || leadChange)
+                    {
+                        cues.Add(new SoundCue(t, Cue.Erupt, 1.0));
+                        if (!beaten) cues.Add(new SoundCue(t + 0.8, Cue.Student, 0.6));
+                    }
+                    else if (three) cues.Add(new SoundCue(t, Cue.BigCheer, 1.0));
                     else if (!beaten) cues.Add(new SoundCue(t, Cue.Cheer, 1.0));
                     break;
                 }
                 case PlayKind.Shot when e.Blocked:
                     // The blocker is on the other side from the shooter (e.Home is the shooter's).
                     if (!e.Home) cues.Add(new SoundCue(t, Cue.BigCheer, 1.0));
-                    else if (!beaten) cues.Add(new SoundCue(t, Cue.Groan, 0.5));
+                    else if (!beaten) cues.Add(new SoundCue(t, Cue.Oh, 0.5));   // run 160: "ohh" (the bed's dip without the pack)
+                    break;
+                case PlayKind.Shot when e.Home && !beaten && e.Zone is ShotZone.CornerThree or ShotZone.AboveBreakThree:
+                    // Run 160: a home three that rims out gets the crowd's "ohh".
+                    cues.Add(new SoundCue(t, Cue.Oh, 0.6));
                     break;
                 case PlayKind.Steal:
                     // e.Home is the stealer's side: a home steal brings them up; an away steal is the home side losing it.
@@ -115,6 +153,61 @@ public static class Reactions
                 case PlayKind.PeriodEnd:
                     cues.Add(new SoundCue(t, Cue.Buzzer, 1.0));
                     cues.Add(new SoundCue(t + 0.3, Cue.Applause, beaten ? 0.4 : 0.9));
+                    break;
+            }
+        }
+        return cues.OrderBy(q => q.T).ToList();
+    }
+
+    /// <summary>The court's sounds and the band for one possession (run 160; Danny's note: "zero basketball court noises …
+    /// where is the big college band"). Pure: read from the choreography's ball, actions and moments, panned to where the
+    /// play is. Nothing here touches the engine or its random stream. The players' shouts wait for a file (none in the
+    /// pack), and the fight songs come in their own runs.</summary>
+    public static List<SoundCue> Court(Choreography c)
+    {
+        var cues = new List<SoundCue>();
+        var input = c.Input;
+        static double Pan(double x) => Math.Clamp((x - 47) / 47.0, -1, 1) * 0.8;
+        // Before the tip: the drumline (the game's first possession).
+        if (input.Index == 0) cues.Add(new SoundCue(0.1, Cue.Drumline, 0.8));
+        // Dribbles while the ball is carried: one every 0.42 s, at the carrier (at most 12 a possession).
+        int bounces = 0;
+        foreach (var b in c.Ball.Where(b => b.Mode == BallMode.Held && b.Holder >= 0 && !b.FreeThrow && b.T1 - b.T0 >= 0.5))
+            for (double t = b.T0 + 0.25; t < b.T1 - 0.1 && bounces < 12; t += 0.42, bounces++)
+                cues.Add(new SoundCue(t, Cue.Bounce, 0.8, Pan(c.PositionOf(b.Holder, t).X)));
+        // Squeaks on cuts, drives and closeouts (at most 4).
+        foreach (var a in c.Actions.Where(a => a.Tag is "cut" or "drive" or "attack-paint" or "hedge" or "switch" or "get-back" or "retreat" && a.Slot >= 0).Take(4))
+            cues.Add(new SoundCue(a.T + 0.1, Cue.Squeak, 0.7, Pan(c.PositionOf(a.Slot, a.T + 0.1).X)));
+        // The rim, the glass and the net where the shot lands.
+        double RimX(double t) => c.Ball.LastOrDefault(b => b.Mode == BallMode.Shot && Math.Abs(b.T1 - t) < 0.05)?.Dest.X ?? 47;
+        int home = input.StartHomeScore, away = input.StartAwayScore;
+        for (int i = 0; i < c.Moments.Count; i++)
+        {
+            var (t, e) = c.Moments[i];
+            int hBefore = home, aBefore = away;
+            home = e.HomeScore; away = e.AwayScore;
+            switch (e.Kind)
+            {
+                case PlayKind.Shot when !e.Blocked:
+                {
+                    double pan = Pan(RimX(t));
+                    if (e.Made)
+                    {
+                        bool dunk = Choreography.IsDunk(e);
+                        cues.Add(new SoundCue(t, dunk ? Cue.Slam : e.Zone == ShotZone.Rim ? Cue.Finish : Cue.Swish, 1.0, pan));
+                        bool leadChange = e.Period >= input.Periods && hBefore <= aBefore && home > away;
+                        // The brass after a home dunk or a late lead change (not in a blowout).
+                        if (e.Home && (dunk || leadChange) && aBefore - hBefore < BlowoutDeficit) cues.Add(new SoundCue(t + 0.5, Cue.Brass, 0.7));
+                    }
+                    else cues.Add(new SoundCue(t, (input.Index + i) % 3 == 0 && e.Zone != ShotZone.Rim ? Cue.Backboard : Cue.Rim, 0.9, pan));
+                    break;
+                }
+                case PlayKind.FreeThrow:
+                    cues.Add(new SoundCue(t, e.Made ? Cue.Swish : Cue.Rim, 0.7, Pan(RimX(t))));
+                    break;
+                case PlayKind.PeriodEnd:
+                    // The band strikes up at the break (after the buzzer and the applause).
+                    cues.Add(new SoundCue(t + 1.2, Cue.Drumline, 0.8));
                     break;
             }
         }

@@ -87,7 +87,8 @@ public sealed partial class LiveGameViewModel
     /// <summary>A new possession is on screen: plan its reactions.</summary>
     private void PlanSound()
     {
-        _cues = _script == null ? new() : Reactions.Plan(_script);
+        // The crowd's reactions, then the court and the band (run 160), on one clock.
+        _cues = _script == null ? new() : Reactions.Plan(_script).Concat(Reactions.Court(_script)).OrderBy(q => q.T).ToList();
         _cueNext = 0;
     }
 
@@ -100,7 +101,7 @@ public sealed partial class LiveGameViewModel
         while (_cueNext < _cues.Count && _cues[_cueNext].T <= t)
         {
             var cue = _cues[_cueNext++];
-            if (Reactions.Plays(cue, Rate, key)) audio.Play(cue.Kind, cue.Gain);
+            if (Reactions.Plays(cue, Rate, key)) audio.Play(cue.Kind, cue.Gain, cue.Pan);
         }
     }
 
