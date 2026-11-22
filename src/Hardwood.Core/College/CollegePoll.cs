@@ -54,13 +54,17 @@ public sealed partial class CollegeWorld
     /// grew (H159). No voter does that, so an unbeaten team (8+ games) moves up to just ahead of the first team above it
     /// with three or more losses. Unbeaten teams keep their order among themselves.
     /// </summary>
+    public const int UnbeatenReach = 40;
+
     private void KeepUnbeatenAhead(List<int> order)
     {
         var rec = order.ToDictionary(id => id, Record);
         for (int i = 0; i < order.Count; i++)
         {
             var (w, l) = rec[order[i]];
-            if (l != 0 || w < 8) continue;
+            // Only a team the voters already have in view (the top 40 by score): an 8-0 low-major 200th on the ratings
+            // doesn't leap into the Top 25 on the record alone (run 156 review).
+            if (l != 0 || w < 8 || i >= UnbeatenReach) continue;
             int first = order.FindIndex(0, i, id => rec[id].losses >= 3);
             if (first < 0) continue;
             int id = order[i];

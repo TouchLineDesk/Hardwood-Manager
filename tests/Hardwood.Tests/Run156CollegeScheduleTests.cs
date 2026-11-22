@@ -17,14 +17,16 @@ public class Run156CollegeScheduleTests
     public Run156CollegeScheduleTests(ITestOutputHelper o) => _out = o;
 
     [Theory]
-    [InlineData(9UL)]
-    [InlineData(31UL)]
-    [InlineData(77UL)]
-    public void Every_program_plays_a_full_season(ulong seed)
+    [InlineData(9UL, 2026)]
+    [InlineData(31UL, 2026)]
+    [InlineData(77UL, 2026)]
+    [InlineData(9UL, 2027)]  // run 156 review: the weekdays move, and 2027-2039 had one day fewer
+    [InlineData(31UL, 2028)]
+    public void Every_program_plays_a_full_season(ulong seed, int year)
     {
         var (_, world) = RealWorldData.NewWorld(seed, 2026, GameSession.DefaultFullSim);
         var c = world.College!;
-        c.StartSeason(2026, new Rng(seed));
+        c.StartSeason(year, new Rng(seed));
         var games = c.Season.Games;
         // The regular season as the AD counts it, before the brackets are played: non-conference, conference, and the
         // invitational allowance for an invited program (one to three games).
@@ -36,7 +38,7 @@ public class Run156CollegeScheduleTests
             return (t, n, invited, total: n + (invited ? CollegeWorld.InvitationalAllowance : 0));
         }).ToList();
         var hist = counts.GroupBy(x => x.total).OrderBy(g => g.Key).Select(g => $"{g.Key}:{g.Count()}");
-        _out.WriteLine($"seed {seed}: " + string.Join(" ", hist));
+        _out.WriteLine($"seed {seed} {year}: " + string.Join(" ", hist));
         foreach (var x in counts.Where(x => x.total < 29 || x.total > 32))
             _out.WriteLine($"  {x.t.FullName} {x.total} (invited {x.invited})");
         Assert.All(counts, x => Assert.InRange(x.total, 29, 32));
@@ -46,7 +48,7 @@ public class Run156CollegeScheduleTests
         Assert.Empty(byDay);
         Assert.All(games.Where(g => g.Stage == "Non-conference"), g =>
         {
-            Assert.True(g.Date < new DateOnly(2027, 1, 1), g.Date.ToString());
+            Assert.True(g.Date < new DateOnly(year + 1, 1, 1), g.Date.ToString());
             Assert.False(g.Date.Month == 12 && g.Date.Day is >= 19 and <= 21, g.Date.ToString());
             Assert.NotEqual(c.ConferenceOf[g.HomeId], c.ConferenceOf[g.AwayId]);
         });
@@ -66,6 +68,6 @@ public class Run156CollegeScheduleTests
         Assert.Equal(16, CollegeWorld.NonConferenceTarget(14, false)); // an eight-team league: 14 + 16 = 30
         Assert.Equal(10, CollegeWorld.NonConferenceTarget(20, false));
         Assert.Equal(8, CollegeWorld.NonConferenceTarget(20, true));
-        Assert.True(CollegeWorld.NonConferenceDates(2026).Count >= 16);
+        for (int y = 2026; y <= 2060; y++) Assert.True(CollegeWorld.NonConferenceDates(y).Count >= 18, $"{y}");
     }
 }

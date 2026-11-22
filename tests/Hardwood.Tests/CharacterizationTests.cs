@@ -189,7 +189,7 @@ public class CharacterizationTests
         // Run 156 (H159, a full college schedule): re-pinned (was 03E88F9310A12021 since run 147). Every program plays about
         // 30 regular-season games from November 3 and the invitationals are drawn first, so the college world uses different
         // draws on the shared stream. The NBA's schedule and odds are unchanged.
-        Pin("career seed 2026, 30 days, no saves", "6BC4954919E1D2F1", Session(s));
+        Pin("career seed 2026, 30 days, no saves", "2F5E2E304E34C26C", Session(s));
     }
 
     [Fact]

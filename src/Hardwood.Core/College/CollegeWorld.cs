@@ -607,10 +607,10 @@ public sealed partial class CollegeWorld
             }
             int left = ncRounds - round;
             // Who plays today: a program that must play every remaining day to reach its count always does; the rest play
-            // in proportion to the games they still need, so the season spreads from November to New Year.
+            // in proportion to the games they still need, leaning to November (as the real season does), so it runs to New Year.
             var pool = ids.Where(i => taken?.Contains(i) != true && owed[i] > 0)
                 .Select(i => (id: i, urgent: owed[i] - (left - RivalDaysLeft(rivalGames, i, round)), roll: rng.NextDouble()))
-                .Where(x => x.urgent >= 0 || x.roll < owed[x.id] / (double)left)
+                .Where(x => x.urgent >= 0 || x.roll < FrontLoad * owed[x.id] / left)
                 .OrderByDescending(x => x.urgent >= 0).ThenBy(x => x.roll).Select(x => x.id).ToList();
             while (pool.Count >= 2)
             {
@@ -666,20 +666,24 @@ public sealed partial class CollegeWorld
     public const int TargetRegularSeason = 30;
     /// <summary>H159: the invitational games an invited program counts on (one to three in a bracket of eight).</summary>
     public const int InvitationalAllowance = 2;
+    /// <summary>H159: how much a program's non-conference games lean to the early days (1 = evenly spread).</summary>
+    public const double FrontLoad = 1.6;
 
     /// <summary>H159 (run 156): non-conference games for a program with <paramref name="conferenceGames"/> conference games,
     /// filling its season to <see cref="TargetRegularSeason"/> (8 to 16).</summary>
     public static int NonConferenceTarget(int conferenceGames, bool invited) =>
         Math.Clamp(TargetRegularSeason - conferenceGames - (invited ? InvitationalAllowance : 0), 8, 16);
 
-    /// <summary>H159 (run 156): non-conference game days. Tuesdays and Fridays from November 3 to December 18, skipping
-    /// Thanksgiving week (the invitationals) and before the December showcases (19-21); then December 22, 23, 29 and 30.</summary>
+    /// <summary>H159 (run 156): non-conference game days. Tuesdays and Fridays from November 3 to December 18 (and November's
+    /// Saturdays), skipping
+    /// Thanksgiving week (the invitationals) and before the December showcases (19-21); then December 22, 23, 28, 29 and 30.
+    /// Every year has at least 19 (the most a program needs is 16, with room for a day it sits out).</summary>
     public static List<DateOnly> NonConferenceDates(int year)
     {
         var list = new List<DateOnly>();
         for (var d = new DateOnly(year, 11, 3); d <= new DateOnly(year, 12, 18); d = d.AddDays(1))
-            if (d.DayOfWeek is DayOfWeek.Tuesday or DayOfWeek.Friday && !(d.Month == 11 && d.Day >= 23 && d.Day <= 29)) list.Add(d);
-        foreach (int day in new[] { 22, 23, 29, 30 }) list.Add(new DateOnly(year, 12, day));
+            if ((d.DayOfWeek is DayOfWeek.Tuesday or DayOfWeek.Friday || d.DayOfWeek == DayOfWeek.Saturday && d.Month == 11) && !(d.Month == 11 && d.Day >= 23 && d.Day <= 29)) list.Add(d);
+        foreach (int day in new[] { 22, 23, 28, 29, 30 }) list.Add(new DateOnly(year, 12, day)); // run 156 review: 19+ days every year
         return list;
     }
 
