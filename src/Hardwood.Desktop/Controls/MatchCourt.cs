@@ -218,6 +218,16 @@ public sealed class MatchCourt : Control
         var homeArrow = new SolidColorBrush(HomeTrim); var awayArrow = new SolidColorBrush(Lift(AwayTrim));
         Color homeNum = Luma(HomeKit) < 0.6 ? Colors.White : Color.Parse("#14171C");
         Color awayNum = Luma(AwayKit) < 0.6 ? Colors.White : AwayTrim;
+        // M2: players coming off at a substitution walk to the scorer's table, faded.
+        foreach (var x in f.Exits)
+        {
+            var c = P(x.At.X, x.At.Y);
+            var fill = new SolidColorBrush(x.Home ? HomeKit : AwayKit, 0.45);
+            ctx.DrawEllipse(fill, new Pen(new SolidColorBrush(x.Home ? HomeTrim : AwayTrim, 0.5), Math.Max(1.5, r * 0.15)), c, r * 0.9, r * 0.9);
+            int n = Numbers != null && Numbers.TryGetValue(x.Who, out var num) ? num : 0;
+            var t = Text(n.ToString(CultureInfo.InvariantCulture), r * 0.85, Color.FromArgb(150, 255, 255, 255), true);
+            ctx.DrawText(t, new Point(c.X - t.Width / 2, c.Y - t.Height / 2));
+        }
         for (int i = 0; i < 10; i++)
         {
             bool home = i < 5;
