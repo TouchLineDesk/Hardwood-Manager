@@ -16,6 +16,8 @@ public sealed partial class LiveGameViewModel
     private bool _minimised;
     /// <summary>Set once the page has let the sound go (left, or the game recorded): nothing reopens it.</summary>
     private bool _audioReleased;
+    /// <summary>The most the home side has trailed by on screen so far (run 157: a comeback brings the crowd back).</summary>
+    private int _worstDeficit;
 
     /// <summary>The game's sound (opened on the first frame played; silent with no device).</summary>
     public IGameAudio Audio => _audio ??= _audioReleased ? new SilentAudio() : OpenAudio();
@@ -131,6 +133,8 @@ public sealed partial class LiveGameViewModel
     public BedLevels BedTarget(bool running)
     {
         bool quiet = SpeedIndex is 2 or 3 || (SpeedIndex == KeySpeed && _script is { Key: false });
-        return CrowdMix.Target(FloorDress.Crowd, Momentum.Swing, LateAndClose(), paused: !running, quiet);
+        int margin = BarHomeScore - BarAwayScore;
+        _worstDeficit = Math.Max(_worstDeficit, -margin);
+        return CrowdMix.Target(FloorDress.Crowd, Momentum.Swing, LateAndClose(), paused: !running, quiet, margin, _worstDeficit);
     }
 }
