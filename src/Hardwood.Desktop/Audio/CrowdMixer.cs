@@ -19,6 +19,8 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
     private readonly object _gate = new();
     private BedLevels _bed, _target;
     private readonly List<(double Age, double Depth)> _groans = new();
+    /// <summary>Boos while no boo file is embedded: the low bed swells under the whistle (run 157).</summary>
+    private readonly List<(double Age, double Depth)> _swells = new();
     private int _cheerTurn;
     private float[] _lowBuf = Array.Empty<float>(), _highBuf = Array.Empty<float>();
     private bool _disposed;
@@ -44,6 +46,8 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         _shots[Cue.BigCheer] = new[] { Decode("crowd-cheer-2.ogg") }.Where(x => x.Length > 0).ToArray();
         _shots[Cue.Applause] = new[] { Decode("crowd-applause.ogg") }.Where(x => x.Length > 0).ToArray();
         _shots[Cue.FanWhistle] = new[] { Decode("crowd-fan-whistle.ogg") }.Where(x => x.Length > 0).ToArray();
+        // Run 157: boos come from the intake's files (crowd-boo-1.ogg …) once they're embedded; until then, the bed swells.
+        _shots[Cue.Boo] = Enumerable.Range(1, 4).Select(n => Decode($"crowd-boo-{n}.ogg")).Where(x => x.Length > 0).ToArray();
         _shots[Cue.Whistle] = new[] { Synth.Whistle() };
         _shots[Cue.Buzzer] = new[] { Synth.Buzzer() };
     }
@@ -57,8 +61,9 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         lock (_gate)
         {
             if (cue == Cue.Groan) { _groans.Add((0, gain)); return; }
+            if (cue == Cue.Boo && _shots[Cue.Boo].Length == 0) { _swells.Add((0, gain)); return; }
             if (!_shots.TryGetValue(cue, out var set) || set.Length == 0) return;
-            var clip = set[cue == Cue.Cheer ? _cheerTurn++ % set.Length : 0];
+            var clip = set[cue is Cue.Cheer or Cue.Boo ? _cheerTurn++ % set.Length : 0];
             // Applause and cheers sit a little under the code-made whistle and buzzer, which cut through.
             float g = (float)(gain * (cue is Cue.Whistle or Cue.Buzzer ? 0.9 : 0.75));
             // At most 6 reactions at once; the oldest gives way.
@@ -69,7 +74,7 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
     }
 
     /// <summary>Stop the one-shots (a jump in the game, the final, leaving the page).</summary>
-    public void StopReactions() { lock (_gate) { foreach (var v in _voices) v.Cut(); _groans.Clear(); } }
+    public void StopReactions() { lock (_gate) { foreach (var v in _voices) v.Cut(); _groans.Clear(); _swells.Clear(); } }
 
     public int Read(float[] buffer, int offset, int count)
     {
@@ -96,7 +101,16 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
                     age += dt;
                     if (age >= CrowdMix.GroanTime) _groans.RemoveAt(g); else _groans[g] = (age, depth);
                 }
-                float lo = (float)(_bed.Low * dip), hi = (float)(_bed.High * dip);
+                double swell = 1;
+                for (int g = _swells.Count - 1; g >= 0; g--)
+                {
+                    var (age, depth) = _swells[g];
+                    swell = Math.Max(swell, CrowdMix.Swell(age, depth));
+                    age += dt;
+                    if (age >= CrowdMix.SwellTime) _swells.RemoveAt(g); else _swells[g] = (age, depth);
+                }
+                // The swell lifts the low bed by part of the whole bed (the murmur turns to a rumble).
+                float lo = (float)((_bed.Low + (swell - 1) * 0.6 * _bed.Total) * dip), hi = (float)(_bed.High * dip);
                 for (int f = f0; f < f1; f++)
                 {
                     int i = 2 * f;

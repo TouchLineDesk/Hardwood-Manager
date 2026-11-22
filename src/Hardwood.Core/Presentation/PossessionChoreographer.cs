@@ -127,6 +127,15 @@ public sealed class Choreography
     /// <summary>How the next possession starts.</summary>
     public PossessionStart Next { get; set; } = PossessionStart.DeadBall;
 
+    /// <summary>The Dunk rating at which a made shot at the rim is called (and heard) as a dunk (run 157).</summary>
+    public const int DunkRating = 14;
+
+    /// <summary>A made shot at the rim by a finisher who dunks (Dunk 14+ of 20) is a dunk (run 157). The engine has no dunk
+    /// event, so this reads the shooter's own rating: no draw, the same answer every time, and the commentary and the
+    /// crowd agree on it.</summary>
+    public static bool IsDunk(PlayEvent e) =>
+        e.Kind == PlayKind.Shot && e.Made && e.Zone == ShotZone.Rim && e.Actor is { } p && p.Attributes[Attr.Dunk] >= DunkRating;
+
     public Spot PositionOf(int slot, double t)
     {
         var k = Tracks[slot];
@@ -614,7 +623,7 @@ public static class PossessionChoreographer
                                 c.Scores.Add((t, e.HomeScore, e.AwayScore));
                                 c.Bursts.Add(new Burst(t, rim, true));
                                 string who = Last(e.Actor).ToUpperInvariant();
-                                c.Lines.Add(new(t, $"{who}! {(three ? $"The {(e.Zone == ShotZone.CornerThree ? "corner " : "")}three is good" : e.Zone == ShotZone.Rim ? "He finishes at the rim" : "The jumper is good")}. {ScoreLine(input, e.HomeScore, e.AwayScore)}", true));
+                                c.Lines.Add(new(t, $"{who}! {(three ? $"The {(e.Zone == ShotZone.CornerThree ? "corner " : "")}three is good" : e.Zone == ShotZone.Rim ? (Choreography.IsDunk(e) ? "He throws it down" : "He finishes at the rim") : "The jumper is good")}. {ScoreLine(input, e.HomeScore, e.AwayScore)}", true));
                                 c.Key = true;
                                 c.Ball.Add(new BallSegment(t, t + 0.5, BallMode.Loose, -1, -1, rim, new Spot(bx + o * 2, 25 + J(rng, 3)), 0.3));
                                 c.Next = PossessionStart.AfterMake;
