@@ -183,7 +183,7 @@ public class Run138HuntFixesTests
                 else if (members.Count > 11) Assert.InRange(n, 18, 19);
                 else Assert.Equal(2 * (members.Count - 1), n);
                 int all = games.Count(g => g.Stage is "Conference" or "Non-conference" && (g.HomeId == id || g.AwayId == id));
-                if (members.Count >= 11) Assert.InRange(all, 27, 30); // plus the invitationals and showcases for some
+                Assert.InRange(all, 28, 31); // H159 (run 156): about 30 for everyone, less two for an invited program (its bracket), one more for a fixed rival
             }
         }
         // One game a day at most, and the conference season ends before the conference tournaments (March 10).

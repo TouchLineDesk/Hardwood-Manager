@@ -92,11 +92,13 @@ public class Run129CollegeInboxTests
         var s = Career("Clemson");
         s.WeekRecruiting.Add("Joe Smith (PG, Texas), whom you were recruiting, has committed to Duke Blue Devils. Interest in you was 41.");
         s.WeekRecruiting.Add("Sam Jones (C, Ohio), whom you were recruiting, has committed to Ohio State Buckeyes. Interest in you was 22.");
-        for (int d = 0; d < 16 && s.WeekRecruiting.Count > 0; d++) s.AdvanceDay();
+        for (int d = 0; d < 30 && s.WeekRecruiting.Count > 0; d++) s.AdvanceDay();
         Assert.Empty(s.WeekRecruiting);
-        // No college results are coming before the first game, so they ride in the next digest (fortnightly), together.
-        var m = Assert.Single(s.Inbox, m => m.Title.StartsWith("Recruiting:"));
-        Assert.StartsWith("Recruiting: 2 targets chose other schools", m.Title);
+        // They arrive together: in the next digest ("Recruiting: 2 targets chose other schools") or, once the season is
+        // a week away (H159, run 156: it opens November 3), in the first results message.
+        var m = Assert.Single(s.Inbox, m => m.Body.Contains("Recruiting (targets who chose other schools)"));
+        if (m.Title.StartsWith("Recruiting:")) Assert.StartsWith("Recruiting: 2 targets chose other schools", m.Title);
+        else Assert.True(GameSession.IsResultsTitle(m.Title), m.Title);
         Assert.Contains("Duke Blue Devils", m.Body);
         Assert.Contains("Ohio State Buckeyes", m.Body);
         _out.WriteLine($"{m.Date}: {m.Title}");
