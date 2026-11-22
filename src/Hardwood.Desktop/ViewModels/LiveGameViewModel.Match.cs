@@ -77,11 +77,16 @@ public sealed partial class LiveGameViewModel
     public string DrawerTitle => Drawer >= 0 && Drawer < DrawerNames.Length ? DrawerNames[Drawer] : "";
     /// <summary>The side tabs' page for the drawer (Lineup 0, Shots 1, Stats 2, Tactics 3).</summary>
     [ObservableProperty] private int _sideTab;
-    /// <summary>The drawer tabs hide while a drawer or the break is up (they would sit under it).</summary>
-    public bool ShowDrawerTabs => !DrawerOpen && !ShowBreak;
+    /// <summary>The drawer tabs hide while the break is up. K23 (run 158): they stay beside an open drawer, so every other
+    /// drawer is one press away (the open one is lit; pressing it again closes it).</summary>
+    public bool ShowDrawerTabs => !ShowBreak;
+    public bool Tab0 => Drawer == 0; public bool Tab1 => Drawer == 1; public bool Tab2 => Drawer == 2; public bool Tab3 => Drawer == 3;
+    public bool Tab4 => Drawer == 4; public bool Tab5 => Drawer == 5; public bool Tab6 => Drawer == 6; public bool Tab7 => Drawer == 7;
+    private static readonly string[] TabNames = { nameof(Tab0), nameof(Tab1), nameof(Tab2), nameof(Tab3), nameof(Tab4), nameof(Tab5), nameof(Tab6), nameof(Tab7) };
     partial void OnDrawerChanged(int value)
     {
         OnPropertyChanged(nameof(ShowDrawerTabs));
+        foreach (var n in TabNames) OnPropertyChanged(n);
         // A drawer and the break card share the middle of the court: opening one puts the other away ("Break card" brings it back).
         if (value >= 0 && ShowBreak) ShowBreak = false;
         if (value == 0) ShowBox = true;

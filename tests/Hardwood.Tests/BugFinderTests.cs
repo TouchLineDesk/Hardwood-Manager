@@ -225,6 +225,10 @@ public class BugFinderTests
         {
             // Bug list H4: the double-team box lives on the live game's Tactics tab, so open that tab first and go
             // back to the first tab after.
+            // Run 158 (K23): since M1 these live in the right-hand drawers, so press the drawer's tab first (the tabs now
+            // stay up beside an open drawer).
+            if ((label switch { "Double their best scorer" => "Tactics", "Apply lineup" => "Subs", _ => null }) is { } drawerTab
+                && Find(window, drawerTab) is { } dt && !(live.DrawerOpen && live.DrawerTitle.StartsWith(drawerTab))) { Click(dt); bf.Settle(); }
             var tabs = label == "Double their best scorer" ? OpenTab(window, "Tactics") : null;
             var b = Find(window, label);
             if (tabs != null) { if (b != null) { try { Click(b); bf.Settle(); } catch (Exception ex) { bf.Add("crash", "Live game", $"\"{label}\": {(ex.InnerException ?? ex).Message}", true); } }
@@ -269,6 +273,8 @@ public class BugFinderTests
             bf.Settle();
             bf.Scan("Live game", $"live game {when}");
             bf.Tour("Live game court", $"live game {when}");
+            // Run 158: at the final the HSN desk (or the break card) is up over the court; put it away first, as a player would.
+            if (live.ShowBreak && Find(window, "Hide") is { } hide) { Click(hide); bf.Settle(); }
             var boxTab = Find(window, "Box score");
             if (boxTab == null) { bf.Add("dead end", "Live game", $"no Box score tab beside the court ({when})", true); return; }
             Click(boxTab); bf.Settle();

@@ -44,16 +44,21 @@ public sealed class MatchCourt : Control
         ClipToBoundsProperty.OverrideDefaultValue<MatchCourt>(true);
     }
 
-    /// <summary>Where the 94×50 ft court sits in a control of this size: pixels per foot and the court's top-left corner.</summary>
+    /// <summary>Where the 94×50 ft court sits in a control of this size: pixels per foot and the court's top-left corner.
+    /// K23 (run 158): the whole floor, the apron and both ribbon boards (−5.5 to 99.5 ft across, −5 to 56.5 ft down) fit
+    /// inside the room the reserve leaves, centred in it, so the score bar, the controls and an open drawer sit beside the
+    /// court rather than over it.</summary>
     public static (double Scale, Point Origin) Fit(Size size, Thickness reserve)
     {
-        const double wFt = 100, hFt = 56.5;   // the court, the apron and the benches
+        const double left = 5.5, top = 5, wFt = 105, hFt = 61.5;
         double w = Math.Max(10, size.Width - reserve.Left - reserve.Right), h = Math.Max(10, size.Height - reserve.Top - reserve.Bottom);
         double s = Math.Max(1, Math.Min(w / wFt, h / hFt));
-        double x0 = (size.Width - 94 * s) / 2;
-        double y0 = reserve.Top + (h - hFt * s) / 2 + 2.2 * s;
+        double x0 = reserve.Left + (w - wFt * s) / 2 + left * s;
+        double y0 = reserve.Top + (h - hFt * s) / 2 + top * s;
         return (s, new Point(x0, y0));
     }
+    /// <summary>The floor's outer edge (apron and boards) for a fit, in the control's pixels.</summary>
+    public static Rect Extent(double s, Point o) => new(o.X - 5.5 * s, o.Y - 5 * s, 105 * s, 61.5 * s);
 
     /// <summary>Frames drawn (for the frame-time log).</summary>
     public int FramesDrawn { get; private set; }
@@ -402,7 +407,7 @@ public sealed class MatchCourt : Control
         _staticSize = size;
         _staticKey = key;
         StaticBuilds++;
-        var floor = new Rect(o.X - 5.5 * s, o.Y - 5 * s, 105 * s, 61.5 * s);
+        var floor = Extent(s, o);
         var crowd = Color.Parse(dress.CrowdColour);
         var away = dress.AwayCrowdColour is { } ac ? Color.Parse(ac) : (Color?)null;
         // Home colours, trim, white shirts, dark; then the away end's colour; then the empty seats.
