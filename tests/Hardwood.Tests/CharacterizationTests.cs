@@ -186,7 +186,10 @@ public class CharacterizationTests
         // bench seasons stay on their pins.
         // Run 147 (K15b, decommitments): re-pinned (was 1FC57B04229F63BB since run 134). A verbal commit's flip changes
         // which programs have scholarships open, so the world's recruiting draws (shared with the season) move.
-        Pin("career seed 2026, 30 days, no saves", "03E88F9310A12021", Session(s));
+        // Run 156 (H159, a full college schedule): re-pinned (was 03E88F9310A12021 since run 147). Every program plays about
+        // 30 regular-season games from November 3 and the invitationals are drawn first, so the college world uses different
+        // draws on the shared stream. The NBA's schedule and odds are unchanged.
+        Pin("career seed 2026, 30 days, no saves", "6BC4954919E1D2F1", Session(s));
     }
 
     [Fact]

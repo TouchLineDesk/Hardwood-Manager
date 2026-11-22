@@ -572,52 +572,64 @@ public sealed partial class CollegeWorld
         foreach (var t in Programs)
             s.Elo[t.Id] = 1500 + (QuickSim.Strength(t) - 85) * 8 + (Prestige[t.Id] - 50) * 2;
         var ids = Programs.Select(t => t.Id).ToList();
-        // Non-conference: ten rounds, Tuesdays and Fridays from early November, against teams from other conferences.
-        var day = new DateOnly(year, 11, 6);
+        // Invitationals (Thanksgiving week): eight brackets of eight, invited by prestige with some luck. H159 (run 156): drawn
+        // before the non-conference rounds, so an invited program's non-conference count can allow for its bracket games.
+        var invited = ids.OrderByDescending(i => Prestige[i] + rng.NextGaussian(0, 15)).Take(64).OrderBy(_ => rng.NextDouble()).ToList();
+        var invitedSet = invited.ToHashSet();
+        // H159 (run 156): non-conference games fill each program's season to about 30 regular-season games (real D-I plays
+        // 29-32), not a flat ten (a small conference's season was 24-28 games). Dates: Tuesdays and Fridays from November 3
+        // to December 18 (not Thanksgiving week), then the days between the December showcases and conference play.
+        var owed = ids.ToDictionary(i => i, i => NonConferenceTarget(ConferenceGames(InConference(ConferenceOf[i]).Count()), invitedSet.Contains(i)));
+        var ncDates = NonConferenceDates(year);
+        int ncRounds = ncDates.Count;
         // C5 part 2: listed rivals in different conferences meet every season, in the earliest round both are free
-        // (no random numbers); home alternates by year. Everyone else in that round is paired at random as before.
+        // (no random numbers); home alternates by year.
         var booked = new List<HashSet<int>>();
         var rivalGames = new List<(int Round, int Home, int Away)>();
         foreach (var rv in NonConferenceRivalries())
         {
             int r = 0;
-            while (r < 10 && r < booked.Count && (booked[r].Contains(rv.A) || booked[r].Contains(rv.B))) r++;
-            if (r >= 10) continue;
+            while (r < ncRounds && r < booked.Count && (booked[r].Contains(rv.A) || booked[r].Contains(rv.B))) r++;
+            if (r >= ncRounds) continue;
             while (booked.Count <= r) booked.Add(new HashSet<int>());
             booked[r].Add(rv.A); booked[r].Add(rv.B);
             bool aHome = (year + rv.A + rv.B) % 2 == 0;
             rivalGames.Add((r, aHome ? rv.A : rv.B, aHome ? rv.B : rv.A));
         }
-        for (int round = 0; round < 10; round++)
+        for (int round = 0; round < ncRounds; round++)
         {
-            while (day.DayOfWeek is not (DayOfWeek.Tuesday or DayOfWeek.Friday)) day = day.AddDays(1);
-            if (day.Month == 11 && day.Day >= 24 && day.Day <= 28) { day = day.AddDays(1); round--; continue; } // invitational week
+            var day = ncDates[round];
             var taken = round < booked.Count ? booked[round] : null;
             foreach (var (_, h, a) in rivalGames.Where(x => x.Round == round))
+            {
                 s.Games.Add(new CollegeGame { Date = day, HomeId = h, AwayId = a, Stage = "Non-conference" });
-            // Shuffle every program as before (the same random draws, so nothing else in the world moves), then drop the rivals.
-            var pool = ids.OrderBy(_ => rng.NextDouble()).ToList();
-            if (taken != null) pool.RemoveAll(taken.Contains);
+                owed[h]--; owed[a]--;
+            }
+            int left = ncRounds - round;
+            // Who plays today: a program that must play every remaining day to reach its count always does; the rest play
+            // in proportion to the games they still need, so the season spreads from November to New Year.
+            var pool = ids.Where(i => taken?.Contains(i) != true && owed[i] > 0)
+                .Select(i => (id: i, urgent: owed[i] - (left - RivalDaysLeft(rivalGames, i, round)), roll: rng.NextDouble()))
+                .Where(x => x.urgent >= 0 || x.roll < owed[x.id] / (double)left)
+                .OrderByDescending(x => x.urgent >= 0).ThenBy(x => x.roll).Select(x => x.id).ToList();
             while (pool.Count >= 2)
             {
                 int a = pool[0]; pool.RemoveAt(0);
                 int j = pool.FindIndex(b => ConferenceOf[b] != ConferenceOf[a]);
-                if (j < 0) j = 0;
+                if (j < 0) continue; // nobody from another conference is free today: he waits for the next round
                 int b = pool[j]; pool.RemoveAt(j);
-                s.Games.Add(new CollegeGame { Date = day, HomeId = rng.Chance(0.5) ? a : b, AwayId = 0, Stage = "Non-conference" });
-                s.Games[^1].AwayId = s.Games[^1].HomeId == a ? b : a;
+                // H159: a power program hosts a low-major (Duke opened the season at Queens). Home odds lean to the bigger name.
+                double aHome = 0.5 + Math.Clamp((Prestige[a] - Prestige[b]) / 50.0, -0.45, 0.45);
+                bool home = rng.Chance(aHome);
+                s.Games.Add(new CollegeGame { Date = day, HomeId = home ? a : b, AwayId = home ? b : a, Stage = "Non-conference" });
+                owed[a]--; owed[b]--;
             }
-            // One home-or-away draw for each rivalry game too (its home is set by the year), so the round draws what it always did.
-            for (int k = 0; k < (taken?.Count ?? 0) / 2; k++) rng.Chance(0.5);
-            day = day.AddDays(1);
         }
-        // Invitationals (Thanksgiving week): eight brackets of eight, invited by prestige with some luck.
-        var invited = ids.OrderByDescending(i => Prestige[i] + rng.NextGaussian(0, 15)).Take(64).OrderBy(_ => rng.NextDouble()).ToList();
         for (int e = 0; e < Invitationals.Length; e++)
         {
             var field = invited.Skip(e * 8).Take(8).OrderByDescending(i => s.Elo[i]).ToList();
-            var dates = new List<DateOnly> { new(year, 11, 25), new(year, 11, 26), new(year, 11, 27) };
-            AddKnockout(s, Invitationals[e], "Invitational", Seeded(field), dates);
+            var idates = new List<DateOnly> { new(year, 11, 25), new(year, 11, 26), new(year, 11, 27) };
+            AddKnockout(s, Invitationals[e], "Invitational", Seeded(field), idates);
         }
         // Conference play: a single round robin, Tuesdays and Saturdays from early January. R3: a real conference of ten
         // or fewer plays home and away (as the Ivy and most small leagues do), so every program plays about 30 games.
@@ -650,6 +662,31 @@ public sealed partial class CollegeWorld
         Season = s;
     }
 
+    /// <summary>H159 (run 156): the regular season a program is scheduled to (non-conference plus conference plus its bracket).</summary>
+    public const int TargetRegularSeason = 30;
+    /// <summary>H159: the invitational games an invited program counts on (one to three in a bracket of eight).</summary>
+    public const int InvitationalAllowance = 2;
+
+    /// <summary>H159 (run 156): non-conference games for a program with <paramref name="conferenceGames"/> conference games,
+    /// filling its season to <see cref="TargetRegularSeason"/> (8 to 16).</summary>
+    public static int NonConferenceTarget(int conferenceGames, bool invited) =>
+        Math.Clamp(TargetRegularSeason - conferenceGames - (invited ? InvitationalAllowance : 0), 8, 16);
+
+    /// <summary>H159 (run 156): non-conference game days. Tuesdays and Fridays from November 3 to December 18, skipping
+    /// Thanksgiving week (the invitationals) and before the December showcases (19-21); then December 22, 23, 29 and 30.</summary>
+    public static List<DateOnly> NonConferenceDates(int year)
+    {
+        var list = new List<DateOnly>();
+        for (var d = new DateOnly(year, 11, 3); d <= new DateOnly(year, 12, 18); d = d.AddDays(1))
+            if (d.DayOfWeek is DayOfWeek.Tuesday or DayOfWeek.Friday && !(d.Month == 11 && d.Day >= 23 && d.Day <= 29)) list.Add(d);
+        foreach (int day in new[] { 22, 23, 29, 30 }) list.Add(new DateOnly(year, 12, day));
+        return list;
+    }
+
+    /// <summary>The rival games a program has booked after <paramref name="round"/> (days it plays anyway).</summary>
+    private static int RivalDaysLeft(List<(int Round, int Home, int Away)> rivals, int id, int round) =>
+        rivals.Count(x => x.Round > round && (x.Home == id || x.Away == id));
+
     /// <summary>H166 (run 144): conference games a program plays in a league of <paramref name="members"/> (the schedule above):
     /// home and away up to 11 (2 × (n − 1)), 19 for an even big league, and an odd big league's 20 rounds less its byes.</summary>
     public static int ConferenceGames(int members)
@@ -665,13 +702,13 @@ public sealed partial class CollegeWorld
     /// H166 (run 144): the regular-season games a program plays this season (<see cref="IsRegularSeason"/>), the count the
     /// athletic director's target and pace use. From the schedule once it exists: its non-conference and conference games,
     /// the invitational games actually played (2 while an invited program's bracket is still going) and a showcase once drawn.
-    /// Before a schedule exists: 10 non-conference games, <see cref="ConferenceGames"/> and one invitational game.
+    /// Before a schedule exists: <see cref="NonConferenceTarget"/> plus <see cref="ConferenceGames"/> (about 30; H159, run 156).
     /// </summary>
     public int RegularSeasonGames(int id, int? conferenceSize = null)
     {
         int confSize = conferenceSize ?? (ConferenceOf.TryGetValue(id, out var key) ? InConference(key).Count() : 14);
         var mine = Season?.Games.Where(g => (g.HomeId == id || g.AwayId == id) && IsRegularSeason(g)).ToList();
-        if (mine == null || !mine.Any(g => g.Stage == "Conference")) return 10 + ConferenceGames(confSize) + 1;
+        if (mine == null || !mine.Any(g => g.Stage == "Conference")) return NonConferenceTarget(ConferenceGames(confSize), false) + ConferenceGames(confSize); // H159: about 30
         int games = mine.Count(g => g.Stage is "Non-conference" or "Conference" or "Showcase");
         var inv = mine.Where(g => g.Stage == "Invitational").ToList();
         if (inv.Count > 0)
@@ -890,7 +927,8 @@ public sealed partial class CollegeWorld
         if (changed) return true;
 
         // December showcases once the non-conference season and invitationals are done.
-        if (!s.Games.Any(g => g.Stage == "Showcase") && s.Games.Where(g => g.Stage is "Non-conference" or "Invitational").All(g => g.Played))
+        // H159 (run 156): non-conference games now run on after the showcases (December 22-30), so only those before them count.
+        if (!s.Games.Any(g => g.Stage == "Showcase") && s.Games.Where(g => g.Stage is "Non-conference" or "Invitational" && g.Date < new DateOnly(s.Year, 12, 19)).All(g => g.Played))
         {
             var top = Programs.Select(t => t.Id).OrderByDescending(i => s.Elo[i]).Take(30).ToList();
             var day = new DateOnly(s.Year, 12, 19);

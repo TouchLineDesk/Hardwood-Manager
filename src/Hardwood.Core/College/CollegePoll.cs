@@ -40,6 +40,7 @@ public sealed partial class CollegeWorld
             score = id => id == champ ? double.MaxValue : id == runnerUp ? double.MaxValue / 2 : PollScore(id) + MarchPollWeight * Math.Max(0, march[id] - 1);
         }
         var all = Programs.Select(t => t.Id).OrderByDescending(score).ThenBy(id => id).ToList();
+        if (Season.ChampionId == null || _preMarchPoll) KeepUnbeatenAhead(all);
         _fullRanks = all.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
         _pollOrder = all.Take(PollSize).ToList();
         _pollRanks = _pollOrder.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
@@ -47,6 +48,26 @@ public sealed partial class CollegeWorld
     }
 
     private Dictionary<int, int> _fullRanks = new();
+
+    /// <summary>
+    /// H148, hardened (run 156): the score alone let an 8-0 DePaul sit 20th behind 9-3 BYU once the non-conference season
+    /// grew (H159). No voter does that, so an unbeaten team (8+ games) moves up to just ahead of the first team above it
+    /// with three or more losses. Unbeaten teams keep their order among themselves.
+    /// </summary>
+    private void KeepUnbeatenAhead(List<int> order)
+    {
+        var rec = order.ToDictionary(id => id, Record);
+        for (int i = 0; i < order.Count; i++)
+        {
+            var (w, l) = rec[order[i]];
+            if (l != 0 || w < 8) continue;
+            int first = order.FindIndex(0, i, id => rec[id].losses >= 3);
+            if (first < 0) continue;
+            int id = order[i];
+            order.RemoveAt(i);
+            order.Insert(first, id);
+        }
+    }
 
     /// <summary>
     /// H148 (run 133, critic review #18): the poll votes on the rating and the record together, as voters do. Before the
