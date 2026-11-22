@@ -53,3 +53,7 @@ How they were made: `tools/Assets/audio.py`.
 ## Card foils (src/Hardwood.Desktop/Assets/Cards)
 
 `foil-*.jpg` are cropped and scaled copies of six textures from **HOLOFOIL** by FRZ Designs (https://takoizu.gumroad.com/l/holofoil), which the pack states are free for personal and commercial use. Made by `tools/Assets/images.py`.
+
+## Card gem bodies (src/Hardwood.Desktop/Assets/Cards/gem-*.jpg)
+
+Cropped and scaled copies of three low-poly backgrounds from **Vecteezy** (https://www.vecteezy.com): "Purple polygonal mosaic background" (#561306), "A red background with diamonds shape" (#34817381) and "Triangle poly prism background" (#34784959). Made by `tools/Assets/images.py`. Downloaded under Vecteezy's licence; under the Free licence the attribution "Vecteezy.com" is required, and the game shows it on its credits line as well as here.

@@ -18,5 +18,12 @@ for name,n in picks.items():
     im=Image.open(U+f'cards/HOLOFOIL-FRZ-Designs/JPG/{n}.jpg'); im.draft('RGB',(1500,1000)); im=im.convert('RGB')
     im=ImageOps.fit(im,(768,1152),Image.LANCZOS,centering=(0.5,0.5))
     im.save(O+'cards/'+name,quality=84,optimize=True)
+# Faceted gem bodies (Vecteezy, low-poly backgrounds), same 2:3 card crop.
+gems={'gem-ruby.jpg':'vecteezy_a-red-background-with-diamonds-shape_34817381_961/vecteezy_a-red-background-with-diamonds-shape_34817381-1.jpg',
+      'gem-sapphire.jpg':'vecteezy_adobe-illustrator-artwork-triangle-poly-prism-background_34784959_79/vecteezy_adobe-illustrator-artwork-triangle-poly-prism-background_34784959.jpg',
+      'gem-amethyst.jpg':'vecteezy_purple-polygonal-mosaic-background-creative-design-templates_561306/poly-g-4-150(1246).jpg'}
+for name,src in gems.items():
+    im=Image.open(U+'cards/'+src).convert('RGB')
+    ImageOps.fit(im,(768,1152),Image.LANCZOS).save(O+'cards/'+name,quality=84,optimize=True)
 for d in ('floor','cards'):
     for f in sorted(os.listdir(O+d)): print(d,f,os.path.getsize(O+d+'/'+f)//1024,'KB')

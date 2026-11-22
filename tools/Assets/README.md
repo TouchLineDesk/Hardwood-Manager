@@ -24,7 +24,8 @@ Needs `ffmpeg` (with libvorbis), `numpy` and `Pillow`. Copy the results over the
 | `Audio/Crowd/crowd-applause.ogg` (7 s) | The same Sonik recording, its clapping tail | Timeouts, substitutions, the end of a period. |
 | `Audio/Crowd/crowd-fan-whistle.ogg` (2 s) | SoundBits, *Vox Hominis*, "Whistle Male 06 09" | A fan whistling in the stands. **It is not a referee's whistle.** |
 | `Court/court-maple.jpg` (1024², tiles) | Poly Haven **wood_floor** (2K diffuse), recoloured to light maple | Under the painted court in the 2D live view (M4). |
-| `Cards/foil-*.jpg` (768×1152) | **HOLOFOIL** by FRZ Designs: textures 13 (diamond), 5 (pearl), 1 (amethyst), 2 (ruby), 11 (opal), 9 (prism) | The foil layer on the higher player-card tiers. |
+| `Cards/foil-*.jpg` (768×1152) | **HOLOFOIL** by FRZ Designs: textures 13 (diamond), 5 (pearl), 1 (amethyst), 2 (ruby), 11 (opal), 9 (prism) | The foil layer: Pearl and the Diamond badge (Danny, Nov 21), opal and prism kept for special cards. |
+| `Cards/gem-amethyst.jpg`, `gem-ruby.jpg`, `gem-sapphire.jpg` (768×1152) | **Vecteezy** low-poly backgrounds: "Purple polygonal mosaic background" (#561306), "A red background with diamonds shape" (#34817381), "Triangle poly prism background" (#34784959) | The faceted bodies for the **Amethyst** and **Ruby** tiers (Danny picked gems over foil, Nov 21); sapphire is a spare. Vecteezy free licence: credit "Vecteezy.com". |
 
 All audio has a 90 Hz high-pass and a light hall echo so the outdoor and pub recordings sound
 indoors. The beds are normalised to −26 and −20 dBFS RMS, the cheers to −18, so nothing clips.
