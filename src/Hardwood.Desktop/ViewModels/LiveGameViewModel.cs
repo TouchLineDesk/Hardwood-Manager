@@ -79,16 +79,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public Avalonia.Media.IBrush AwayBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(AwayTeam.PrimaryColor));
     public Avalonia.Media.IBrush HomeBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor));
     public Avalonia.Media.Color HomeColor => ThemeService.AccentFor(HomeTeam);
-    /// <summary>A college game is played on the home program's court from Danny's pack, under the scoreboard (run 45).</summary>
-    public Avalonia.Media.Imaging.Bitmap? HomeCourt => _court ??= Graphics.GraphicsPackService.CourtFor(HomeTeam);
-    private Avalonia.Media.Imaging.Bitmap? _court;
-    public bool HasCourt => HomeCourt != null;
 
-    // The whole court (Danny, run 45): every shot placed as it happens, from the zone counts' changes between refreshes.
-    private readonly List<Hardwood.Desktop.Controls.LiveShot> _shots = new();
-    private int _shotPlaysSeen;
-    public IReadOnlyList<Hardwood.Desktop.Controls.LiveShot> CourtShots => _shots;
-    [ObservableProperty] private int _courtVersion;
     /// <summary>The live panel shows the court (default) or the game flow chart.</summary>
     [ObservableProperty] private bool _showCourt = true;
     public bool ShowFlow => !ShowCourt;
@@ -201,98 +192,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
         double t = Math.Min(0.6, 0.35 - lum + 0.3);
         return Avalonia.Media.Color.FromRgb((byte)(c.R + (255 - c.R) * t), (byte)(c.G + (255 - c.G) * t), (byte)(c.B + (255 - c.B) * t));
     }
-    public Avalonia.Media.Color FloorColor => Avalonia.Media.Color.Parse(HomeTeam.PrimaryColor);
-    public Avalonia.Media.Color FloorTrim => Avalonia.Media.Color.Parse(HomeTeam.SecondaryColor);
-    public string FloorName => HomeTeam.Name;
-    // Run 118: the key in two short lines at 130% (it was four, and a two-line play caption then took the play by play
-    // under its 180 px); how the court is drawn is in the tooltip.
-    public string CourtLegend => $"{AwayName} attack left, {HomeName} right · gold ring: the play · dotted: the pass · faint dots: shots";
-    public string CourtLegendTip => "Player spots and movement are drawn for show; every result comes from the game engine.";
-
-    // The 2D tracker (D67 B, run 80): the latest play drawn on the court, with the ten players and the ball.
-    [ObservableProperty] private Hardwood.Desktop.Controls.TrackerFrame? _frame;
-    /// <summary>The frame for whichever court is shown (code review, run 140: the hidden one gets none, so only one
-    /// court runs its motion loop).</summary>
-    public Hardwood.Desktop.Controls.TrackerFrame? FlatFrame => InArena ? null : Frame;
-    public Hardwood.Desktop.Controls.TrackerFrame? ArenaFrame => InArena ? Frame : null;
-    partial void OnFrameChanged(Hardwood.Desktop.Controls.TrackerFrame? value) { OnPropertyChanged(nameof(FlatFrame)); OnPropertyChanged(nameof(ArenaFrame)); }
-    [ObservableProperty] private string _playCaption = "Tip-off.";
-    private int _framePlay = -1;
-
-    /// <summary>Build the tracker's frame from the engine's latest play and the two fives on the floor.</summary>
-    private void UpdateFrame()
-    {
-        var plays = _live.Result.Plays;
-        if (plays.Count == _framePlay + 1 && Frame != null) return;
-        int first = _framePlay + 1;
-        _framePlay = plays.Count - 1;
-        if (plays.Count == 0)
-        {
-            PlayCaption = "Tip-off.";
-            Frame = Hardwood.Desktop.Controls.TrackerLayout.Build(null, 0, _live.HomeOnCourt, _live.AwayOnCourt, PlayCaption);
-            return;
-        }
-        int idx = HeadlinePlay(plays, first);
-        var play = plays[idx];
-        var last = plays[^1];
-        string line = Caption(play);
-        if (last != play && last.Kind is not PlayKind.Foul) line += " · " + Caption(last);
-        PlayCaption = $"{_live.PeriodText} {Clk(play.Clock)}  {line}";
-        Frame = Hardwood.Desktop.Controls.TrackerLayout.Build(play, idx, _live.HomeOnCourt, _live.AwayOnCourt, PlayCaption);
-    }
-
-    /// <summary>
-    /// The play the tracker draws for the possessions just played: the latest shot, steal, turnover or free throw (a
-    /// rebound or foul shows the shot or trip it came from); free throws after a made basket (an and-one) show the basket.
-    /// </summary>
-    public static int HeadlinePlay(IReadOnlyList<PlayEvent> plays, int first)
-    {
-        first = Math.Clamp(first, 0, plays.Count - 1);
-        static bool Ball(PlayKind k) => k is PlayKind.Shot or PlayKind.Steal or PlayKind.Turnover or PlayKind.FreeThrow;
-        for (int i = plays.Count - 1; i >= first; i--)
-        {
-            if (!Ball(plays[i].Kind)) continue;
-            if (plays[i].Kind == PlayKind.FreeThrow)
-            {
-                int j = i;
-                var ft = plays[i].Actor;
-                // Only his own trip: his free throws and the foul on him.
-                while (j - 1 >= first && (plays[j - 1] is { Kind: PlayKind.FreeThrow } f && f.Actor == ft || plays[j - 1] is { Kind: PlayKind.Foul } g && g.Other == ft)) j--;
-                if (j - 1 >= first && plays[j - 1] is { Kind: PlayKind.Shot, Made: true } shot && shot.Actor == plays[i].Actor) return j - 1;
-            }
-            return i;
-        }
-        for (int i = plays.Count - 1; i >= first; i--) if (plays[i].Kind == PlayKind.PeriodEnd) return i;
-        return plays.Count - 1;
-    }
-
-    private static string Clk(double c) => $"{(int)(c / 60)}:{(int)(c % 60):00}";
-
-    /// <summary>One line for a play, as the tracker shows it.</summary>
-    public string Caption(PlayEvent e)
-    {
-        string team = (e.Home ? HomeTeam : AwayTeam).Abbreviation;
-        string Who(Player? p) => p?.LastName ?? "";
-        string shot = e.Zone switch
-        {
-            ShotZone.Rim => "at the rim", ShotZone.ShortMid => "a short jumper", ShotZone.LongMid => "a long two",
-            ShotZone.CornerThree => "a corner three", _ => "a three",
-        };
-        return e.Kind switch
-        {
-            PlayKind.Shot when e.Made => $"{team}: {Who(e.Actor)} scores {(e.Zone == ShotZone.Rim ? "at the rim" : "with " + shot)}" + (e.Other != null ? $" (assist {Who(e.Other)})" : ""),
-            PlayKind.Shot when e.Blocked => $"{team}: {Who(e.Actor)} is blocked by {Who(e.Other)}",
-            PlayKind.Shot => $"{team}: {Who(e.Actor)} misses {(e.Zone == ShotZone.Rim ? "at the rim" : shot)}",
-            PlayKind.FreeThrow => $"{team}: {Who(e.Actor)} at the line, {(e.Made ? "good" : "no good")}",
-            PlayKind.Turnover => $"{team}: turnover by {Who(e.Actor)}",
-            PlayKind.Steal => $"{team}: {Who(e.Actor)} steals it from {Who(e.Other)}",
-            PlayKind.OffensiveRebound => $"{team}: offensive rebound, {Who(e.Actor)}",
-            PlayKind.DefensiveRebound => $"{team}: {Who(e.Actor)} rebounds",
-            PlayKind.Foul => e.Other != null ? $"{team}: foul by {Who(e.Actor)} on {Who(e.Other)}" : $"{team}: foul by {Who(e.Actor)}",
-            PlayKind.PeriodEnd => $"End of the period: {AwayName} {e.AwayScore}, {HomeName} {e.HomeScore}",
-            _ => "",
-        };
-    }
 
     private static Avalonia.Media.Color Distinct(Team t, Avalonia.Media.Color other)
     {
@@ -301,8 +200,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
         return d >= 120 ? c : Avalonia.Media.Color.Parse(t.SecondaryColor);
     }
 
-    /// <summary>The court as a brush, so the picture fills the scoreboard without setting its size.</summary>
-    public Avalonia.Media.IBrush? CourtBrush => HomeCourt is { } b ? new Avalonia.Media.ImageBrush(b) { Stretch = Avalonia.Media.Stretch.UniformToFill, Opacity = 0.75 } : null;
 
     // Match day (roadmap 2): the game's shape as it happens.
     public GameResult Result => _live.Result;
@@ -381,11 +278,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
             foreach (var row in OurPlayers) slot.Options.Add(row.Player);
             Lineup.Add(slot);
         }
-        if (Session.InCollege && Graphics.BroadcastArt.Arena is { Frame: not null, Court: not null } arena)
-        {
-            Arena = arena;
-            Dress = Hardwood.Core.College.ArenaDress.For(HomeTeam, Session.World.College?.GameOn(Us.Id, Session.Today));
-        }
         // K10 (run 136): the assistant's panel reads this game while it's on.
         Shell.Guide.SetLive(() => Hardwood.Core.Guide.Assistant.LiveRead(_live.Result, Us, _live.PeriodText, _live.ClockText, _live.Complete));
         InitMatch();
@@ -393,13 +285,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";
     }
 
-    // B2a (run 140): a college game is shown in the arena: the floor in perspective, dressed for the home program or
-    // the event, the crowd in its colours, and a broadcast score bug. Presentation only: it reads the game.
-    /// <summary>The arena frame, for a college game when the build carries it (else the flat court).</summary>
-    public Graphics.BroadcastSet? Arena { get; }
-    public Hardwood.Core.College.ArenaDress? Dress { get; }
-    public bool InArena => Arena != null;
-    public bool FlatCourt => !InArena;
     public static string BugRank(Team t) => Hardwood.Desktop.Controls.CollegeRank.For(t) is { } r ? r.ToString() : "";
     public string AwayRank => BugRank(AwayTeam);
     public string HomeRank => BugRank(HomeTeam);
@@ -446,7 +331,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public double MomentumAwayWidth => MomentumBar - MomentumHomeWidth;
     partial void OnMomentumChanged(Hardwood.Core.Engine.MomentumRead value) { OnPropertyChanged(nameof(MomentumHomeWidth)); OnPropertyChanged(nameof(MomentumAwayWidth)); }
     /// <summary>Which side has the ball in the play shown (home attacks the right-hand basket).</summary>
-    public bool HomeOffence => Frame?.HomeOffense ?? true;
+    public bool HomeOffence => MatchFrame?.HomeOffense ?? true;
     /// <summary>No ball between periods or after the final: the tags then just name the sides (code review, run 141).</summary>
     private bool NoBall => _live.Complete || BetweenPeriods;
     public string AwayTag => NoBall ? AwayName : $"{(HomeOffence ? "DEFENCE" : "OFFENCE")} · {AwayName}";
@@ -459,7 +344,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
 
     private void UpdateBoard()
     {
-        if (!InArena) return;
         var r = _live.Result;
         // Code review (run 141): only hand the views new lists when something changed, so the rows aren't rebuilt every tick.
         var board = Hardwood.Core.Engine.ArenaBoard.Compare(r);
@@ -740,15 +624,6 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Splits = GameFlowInfo.Splits(r);
         AwayZoneAttempts = ZoneSum(r.Away, l => l.ZoneAttempts); AwayZoneMakes = ZoneSum(r.Away, l => l.ZoneMakes);
         HomeZoneAttempts = ZoneSum(r.Home, l => l.ZoneAttempts); HomeZoneMakes = ZoneSum(r.Home, l => l.ZoneMakes);
-        // The court's shot dots come from the engine's plays (run 80), in order, so each dot sits where the tracker
-        // drew that shot.
-        int before = _shots.Count;
-        var plays = r.Plays;
-        for (; _shotPlaysSeen < plays.Count; _shotPlaysSeen++)
-            if (plays[_shotPlaysSeen] is { Kind: PlayKind.Shot } sp)
-                _shots.Add(new Hardwood.Desktop.Controls.LiveShot(sp.Home, sp.Zone, sp.Made, _shotPlaysSeen));
-        if (_shots.Count != before) CourtVersion++;
-        UpdateFrame();
         UpdateBox();
         UpdateBoard();
         Highlights = GameHighlights.For(r, final: _live.Complete, max: 4);

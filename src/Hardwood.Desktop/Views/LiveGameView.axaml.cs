@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 
 namespace Hardwood.Desktop.Views;
 
@@ -50,6 +51,28 @@ public partial class LiveGameView : UserControl
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ViewModels.LiveGameViewModel.ShowBreak) or nameof(ViewModels.LiveGameViewModel.DeskUp) or nameof(ViewModels.LiveGameViewModel.DrawerOpen)) Fit();
+    }
+
+    /// <summary>M5 (run 152): the speeds (1-4, K) and the drawers (B, P, T, S, H, A, G, O) from the keyboard, except while a
+    /// picker or text box has the focus (its own type-to-search keeps the letters).</summary>
+    public static string? KeyAction(Avalonia.Input.Key key) => key switch
+    {
+        Avalonia.Input.Key.D1 => "speed:1", Avalonia.Input.Key.D2 => "speed:2", Avalonia.Input.Key.D3 => "speed:4", Avalonia.Input.Key.D4 => "speed:8",
+        Avalonia.Input.Key.K => "speed:key",
+        Avalonia.Input.Key.B => "drawer:0", Avalonia.Input.Key.P => "drawer:1", Avalonia.Input.Key.T => "drawer:2", Avalonia.Input.Key.S => "drawer:3",
+        Avalonia.Input.Key.H => "drawer:4", Avalonia.Input.Key.A => "drawer:5", Avalonia.Input.Key.G => "drawer:6", Avalonia.Input.Key.O => "drawer:7",
+        _ => null,
+    };
+
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled || _vm == null || e.KeyModifiers != Avalonia.Input.KeyModifiers.None) return;
+        if (e.Source is Avalonia.Visual v && (v is ComboBox or TextBox || v.FindAncestorOfType<ComboBox>() != null || v.FindAncestorOfType<TextBox>() != null)) return;
+        if (KeyAction(e.Key) is not { } act) return;
+        var (kind, arg) = (act[..act.IndexOf(':')], act[(act.IndexOf(':') + 1)..]);
+        if (kind == "speed") _vm.SetSpeedCommand.Execute(arg); else _vm.OpenDrawerCommand.Execute(arg);
+        e.Handled = true;
     }
 
     /// <summary>The score bar sits centred in the room right of the controls' column.</summary>

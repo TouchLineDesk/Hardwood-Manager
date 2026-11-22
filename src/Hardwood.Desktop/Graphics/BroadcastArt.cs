@@ -27,7 +27,7 @@ public sealed class BroadcastSet
 
 public static class BroadcastArt
 {
-    private static BroadcastSet? _selection, _arena, _draft;
+    private static BroadcastSet? _selection, _draft;
 
     /// <summary>The draft-night stage (B3, run 142; <c>tools/Render/draft_stage.py</c>): the big screen, the podium (its
     /// official is the "host" head) and four representatives behind blank crest cards.</summary>
@@ -35,10 +35,6 @@ public static class BroadcastArt
 
     /// <summary>The Selection Show studio. Without the frame (a stripped build), the layout still works on a plain backdrop.</summary>
     public static BroadcastSet Selection => _selection ??= Load("selection-studio");
-
-    /// <summary>The college arena (B2a, run 140; <c>tools/Render/arena.py</c>). Without the frame, the court view falls back
-    /// to the flat court.</summary>
-    public static BroadcastSet Arena => _arena ??= Load("college-arena");
 
     public static BroadcastSet Load(string name)
     {

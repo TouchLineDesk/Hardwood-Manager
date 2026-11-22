@@ -65,14 +65,15 @@ public sealed partial class LiveGameViewModel
     /// <summary>The possession on screen, for tests and the drawers.</summary>
     public Choreography? Script => _script;
     public double ScriptTime => _scriptT;
-    /// <summary>The drawer on the right (Box, Play-by-play, Tactics, Subs, Shots, Stats, Flow), or −1 when closed.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(DrawerOpen), nameof(DrawerLog), nameof(DrawerSide), nameof(DrawerFlow), nameof(DrawerTitle))]
+    /// <summary>The drawer on the right (Box, Play-by-play, Tactics, Subs, Shots, Stats, Flow, On the floor), or −1 when closed.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(DrawerOpen), nameof(DrawerLog), nameof(DrawerSide), nameof(DrawerFlow), nameof(DrawerFloor), nameof(DrawerTitle))]
     private int _drawer = -1;
     public bool DrawerOpen => Drawer >= 0;
     public bool DrawerLog => Drawer is 0 or 1;
     public bool DrawerSide => Drawer is >= 2 and <= 5;
     public bool DrawerFlow => Drawer == 6;
-    public static readonly string[] DrawerNames = { "Box score", "Play by play", "Tactics (live)", "Subs", "Shots", "Stats", "Game flow" };
+    public bool DrawerFloor => Drawer == 7;
+    public static readonly string[] DrawerNames = { "Box score", "Play by play", "Tactics (live)", "Subs", "Shots", "Stats", "Game flow", "On the floor" };
     public string DrawerTitle => Drawer >= 0 && Drawer < DrawerNames.Length ? DrawerNames[Drawer] : "";
     /// <summary>The side tabs' page for the drawer (Lineup 0, Shots 1, Stats 2, Tactics 3).</summary>
     [ObservableProperty] private int _sideTab;
@@ -103,8 +104,11 @@ public sealed partial class LiveGameViewModel
     }
     [RelayCommand] private void OpenDrawer(string tab) { int i = int.Parse(tab); Drawer = Drawer == i ? -1 : i; }
     [RelayCommand] private void CloseDrawer() => Drawer = -1;
-    public string OffenceTagHome => (MatchFrame?.HomeOffense ?? true) ? $"OFF: {Systems.Name(HomeTeam.Tactic.System).ToUpperInvariant()}" : $"DEF: {Systems.Name(HomeTeam.Tactic.Scheme).ToUpperInvariant()}";
-    public string OffenceTagAway => (MatchFrame?.HomeOffense ?? true) ? $"DEF: {Systems.Name(AwayTeam.Tactic.Scheme).ToUpperInvariant()}" : $"OFF: {Systems.Name(AwayTeam.Tactic.System).ToUpperInvariant()}";
+    public string OffenceTagHome => (MatchFrame?.HomeOffense ?? true) ? $"OFF: {Systems.Name(Playing(HomeTeam, _clutchHome).System).ToUpperInvariant()}" : $"DEF: {Systems.Name(Playing(HomeTeam, _clutchHome).Scheme).ToUpperInvariant()}";
+    public string OffenceTagAway => (MatchFrame?.HomeOffense ?? true) ? $"DEF: {Systems.Name(Playing(AwayTeam, _clutchAway).Scheme).ToUpperInvariant()}" : $"OFF: {Systems.Name(Playing(AwayTeam, _clutchAway).System).ToUpperInvariant()}";
+    /// <summary>M5: the system and scheme in play: the clutch plan's while it's on, else the tactic's.</summary>
+    private static (OffensiveSystem System, DefensiveScheme Scheme) Playing(Team t, bool clutch) =>
+        clutch && t.Tactic.Presets.FirstOrDefault(p => p.Name == t.Tactic.LateGamePreset) is { } pre ? (pre.System, pre.Scheme) : (t.Tactic.System, t.Tactic.Scheme);
 
     private void InitMatch()
     {
@@ -142,16 +146,16 @@ public sealed partial class LiveGameViewModel
 
     private string Short(Team t) => Session.InCollege ? t.City : t.Name;
 
-    private PossessionInput Input(IReadOnlyList<PlayEvent> events, double start, double end, bool homeBall, IReadOnlyList<string>? notes = null)
+    private PossessionInput Input(IReadOnlyList<PlayEvent> events, double start, double end, bool homeBall, IReadOnlyList<string>? notes = null, IReadOnlyList<string>? calls = null)
     {
         var r = _live.Result;
         bool late = _live.Period >= r.Periods && end < 120 && Math.Abs(_live.HomeScore - _live.AwayScore) <= 6;
         return new PossessionInput(_possIndex, r.Seed, events, start, end, _live.HomeOnCourt.ToList(), _live.AwayOnCourt.ToList(), _spots,
-            BarHomeScore, BarAwayScore, homeBall, Short(HomeTeam), Short(AwayTeam), HomeTeam.Tactic.Scheme, AwayTeam.Tactic.Scheme,
+            BarHomeScore, BarAwayScore, homeBall, Short(HomeTeam), Short(AwayTeam), Playing(HomeTeam, _clutchHome).Scheme, Playing(AwayTeam, _clutchAway).Scheme,
             _nextStart, r.Periods, late)
         {
             // M2 (run 149): the sets by system and role, the defence's aggression, transition by pace, tired legs.
-            HomeSystem = HomeTeam.Tactic.System, AwaySystem = AwayTeam.Tactic.System,
+            HomeSystem = Playing(HomeTeam, _clutchHome).System, AwaySystem = Playing(AwayTeam, _clutchAway).System,   // M5: the clutch plan's set while it plays
             RoleOf = p => (HomeTeam.Roster.Contains(p) ? HomeTeam : AwayTeam).Tactic.RoleOf(p),
             EnergyOf = _live.EnergyOf,
             HomePace = HomeTeam.Tactic.Pace, AwayPace = AwayTeam.Tactic.Pace,
@@ -161,6 +165,7 @@ public sealed partial class LiveGameViewModel
             HomeGlass = HomeTeam.Tactic.CrashGlass, AwayGlass = AwayTeam.Tactic.CrashGlass,
             HomeDouble = HomeTeam.Tactic.DoubleStar, AwayDouble = AwayTeam.Tactic.DoubleStar,
             Notes = notes ?? Array.Empty<string>(),
+            Calls = calls ?? Array.Empty<string>(),
         };
     }
 
@@ -172,6 +177,8 @@ public sealed partial class LiveGameViewModel
         int before = r.Plays.Count;
         double elapsed = r.Elapsed;
         int homeBefore = _live.HomeScore, awayBefore = _live.AwayScore;
+        // M5 (run 152): the clutch plan, read as the engine reads it at the start of the possession (GameSimulator.SetTactics).
+        var clutchNotes = ClutchNotes();
         _live.Step();
         var events = r.Plays.Skip(before).ToList();
         double duration = Math.Max(0, r.Elapsed - elapsed);
@@ -181,7 +188,21 @@ public sealed partial class LiveGameViewModel
         BarHomeScore = homeBefore; BarAwayScore = awayBefore;
         if (events.FirstOrDefault() is { } first && first.Period > 0) BarPeriod = BugPeriodName(first.Period, r.Periods);
         // M3: the levers the engine just played with are the ones drawn, and any change since the last possession is said.
-        _script = PossessionChoreographer.Build(Input(events, start, end, true, TakeChangeNotes()));
+        var notes = TakeChangeNotes();
+        notes.AddRange(clutchNotes);
+        // M5: the calls on the last possession are said as this one starts; this one's are kept for the next.
+        var calls = _pendingCalls;
+        _pendingCalls = _calls.For(events, r.Home, r.Away, homeBefore, awayBefore, Short(HomeTeam), Short(AwayTeam), r.Periods, _live.FoulsToFoulOut);
+        _script = PossessionChoreographer.Build(Input(events, start, end, true, notes, calls));
+        // The log gets this possession's calls when it has played out (after its plays), not before.
+        _logCalls = _pendingCalls.ToList();
+        // Review (run 152): a possession that ends a period or the game has no next possession to say its calls, so
+        // they follow the period's last line, 2 s each.
+        if (_scriptEndsPeriod && _pendingCalls.Count > 0)
+        {
+            foreach (var line in _pendingCalls) { _script.Lines.Add(new CommentaryLine(_script.Length, line, true)); _script.Length += PossessionChoreographer.NoteTime; }
+            _pendingCalls = new();
+        }
         _scriptT = 0;
         _possIndex++;
         ShowFrame();
@@ -196,6 +217,8 @@ public sealed partial class LiveGameViewModel
         bool periodEnded = _scriptEndsPeriod;
         _script = null;
         Refresh();
+        foreach (var c in _logCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
+        _logCalls = new();
         AfterStep(periodEnded);
     }
 
@@ -261,6 +284,42 @@ public sealed partial class LiveGameViewModel
     {
         int i = which == "key" ? KeySpeed : double.TryParse(which, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x) ? Array.IndexOf(Speeds, x) : -1;
         SpeedIndex = Math.Clamp(i, 0, KeySpeed);
+    }
+
+    // M5 (run 152): the commentary's calls across the game (runs, lead changes, milestones, foul trouble).
+    private readonly GameCalls _calls = new();
+    private List<string> _pendingCalls = new();
+    private List<string> _logCalls = new();
+
+    /// <summary>The clutch plan (a team's late-game preset) is on when the engine plays it: the last period or overtime,
+    /// five minutes or less to go, within six points (GameSimulator.SetTactics).</summary>
+    public static bool ClutchOn(Team t, int period, int periods, double clock, int homeScore, int awayScore) =>
+        t.Tactic.LateGamePreset is { } name && period >= periods && clock <= 300 && Math.Abs(homeScore - awayScore) <= 6
+        && t.Tactic.Presets.Any(p => p.Name == name);
+    private bool _clutchHome, _clutchAway;
+    /// <summary>The chip under the shouts while our clutch plan plays: shouts move the base plan, which comes back if the game opens up.</summary>
+    [ObservableProperty] private string _clutchChip = "";
+    public bool HasClutchChip => ClutchChip.Length > 0;
+    partial void OnClutchChipChanged(string value) => OnPropertyChanged(nameof(HasClutchChip));
+
+    private List<string> ClutchNotes()
+    {
+        var notes = new List<string>();
+        // Between periods the engine has moved to the next period but the clock reads 0:00 until it opens: judge with the
+        // full clock the period opens with (5 minutes in overtime), or the plan would flash on at every break.
+        int period = Math.Max(1, _live.Period);
+        double clock = _live.Clock > 0 ? _live.Clock : period <= _live.Result.Periods ? _live.MinutesPerPeriod * 60.0 : 300;
+        foreach (var home in new[] { true, false })
+        {
+            var t = home ? HomeTeam : AwayTeam;
+            bool on = ClutchOn(t, period, _live.Result.Periods, clock, _live.HomeScore, _live.AwayScore);
+            ref bool was = ref home ? ref _clutchHome : ref _clutchAway;
+            if (on && !was) notes.Add($"{Short(t)} go to their clutch plan, {t.Tactic.LateGamePreset}");
+            else if (!on && was && !_live.Complete) notes.Add($"{Short(t)} go back to their base plan");
+            was = on;
+            if (t == Us) ClutchChip = on ? $"Clutch plan on: {t.Tactic.LateGamePreset}. Shouts change your base plan, which comes back if the game opens up." : "";
+        }
+        return notes;
     }
 
     [RelayCommand] private void SpeedUp() => SpeedIndex = Math.Min(KeySpeed, SpeedIndex + 1);

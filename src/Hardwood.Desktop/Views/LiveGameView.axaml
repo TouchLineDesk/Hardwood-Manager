@@ -11,6 +11,7 @@
     <KeyBinding Gesture="Add" Command="{Binding SpeedUpCommand}"/>
     <KeyBinding Gesture="OemMinus" Command="{Binding SpeedDownCommand}"/>
     <KeyBinding Gesture="Subtract" Command="{Binding SpeedDownCommand}"/>
+    <KeyBinding Gesture="Escape" Command="{Binding CloseDrawerCommand}"/>
   </UserControl.KeyBindings>
   <UserControl.Styles>
     <Style Selector="Border.hud"><Setter Property="Background" Value="#E60A0C12"/><Setter Property="CornerRadius" Value="10"/></Style>
@@ -70,7 +71,7 @@
     <Border x:Name="MatchControls" Classes="hud" Padding="8">
       <StackPanel Spacing="6">
         <WrapPanel x:Name="ScoreButtons">
-          <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="88" Margin="0,0,6,6" ToolTip.Tip="Play or pause (Space)">
+          <Button Classes="primary" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" MinWidth="88" Margin="0,0,6,6" ToolTip.Tip="Play or pause (Space). Keys: 1-4 and K the speeds, + and - faster or slower; B, P, T, S, H, A, G and O the drawers; Esc closes one">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <c:Icon Kind="{Binding PlayPauseIcon}" Width="15" Height="15" Foreground="#111"/>
               <TextBlock Text="{Binding PlayPauseText}"/>
@@ -88,11 +89,11 @@
 
     <Border x:Name="SpeedBar" Classes="hud" Padding="6">
       <WrapPanel>
-        <Button Classes="speed" Classes.primary="{Binding Speed1}" Content="1×" Command="{Binding SetSpeedCommand}" CommandParameter="1" Margin="0,0,4,4" ToolTip.Tip="Real time: the game clock runs as it does in the arena"/>
-        <Button Classes="speed" Classes.primary="{Binding Speed2}" Content="2×" Command="{Binding SetSpeedCommand}" CommandParameter="2" Margin="0,0,4,4"/>
-        <Button Classes="speed" Classes.primary="{Binding Speed4}" Content="4×" Command="{Binding SetSpeedCommand}" CommandParameter="4" Margin="0,0,4,4"/>
-        <Button Classes="speed" Classes.primary="{Binding Speed8}" Content="8×" Command="{Binding SetSpeedCommand}" CommandParameter="8" Margin="0,0,4,4"/>
-        <Button Classes="speed" Classes.primary="{Binding SpeedKey}" Content="Key" Command="{Binding SetSpeedCommand}" CommandParameter="key" Margin="0,0,0,4" ToolTip.Tip="Key moments: baskets, blocks, steals and the late, close possessions at 2×; the rest flies by"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed1}" Content="1×" Command="{Binding SetSpeedCommand}" CommandParameter="1" Margin="0,0,4,4" ToolTip.Tip="Real time: the game clock runs as it does in the arena (1)"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed2}" Content="2×" Command="{Binding SetSpeedCommand}" CommandParameter="2" Margin="0,0,4,4" ToolTip.Tip="Twice real time (2)"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed4}" Content="4×" Command="{Binding SetSpeedCommand}" CommandParameter="4" Margin="0,0,4,4" ToolTip.Tip="Four times real time (3)"/>
+        <Button Classes="speed" Classes.primary="{Binding Speed8}" Content="8×" Command="{Binding SetSpeedCommand}" CommandParameter="8" Margin="0,0,4,4" ToolTip.Tip="Eight times real time (4)"/>
+        <Button Classes="speed" Classes.primary="{Binding SpeedKey}" Content="Key" Command="{Binding SetSpeedCommand}" CommandParameter="key" Margin="0,0,0,4" ToolTip.Tip="Key moments: baskets, blocks, steals and the late, close possessions, runs and milestones at 2×; the rest flies by (K)"/>
       </WrapPanel>
     </Border>
 
@@ -119,6 +120,10 @@
         <Border x:Name="SubChipBorder" Background="#3A2A12" BorderBrush="#F0A33A" BorderThickness="1" CornerRadius="4" Padding="6,2" IsVisible="{Binding HasSubChip}">
           <TextBlock x:Name="SubChipText" Text="{Binding SubChip}" FontSize="11" Foreground="#F6E3B0" TextWrapping="Wrap"/>
         </Border>
+        <!-- M5 (run 152): the late-game preset is playing, so the shouts move the base plan for later (run 150's review). -->
+        <Border x:Name="ClutchChipBorder" Background="#2A2440" BorderBrush="#A58CF0" BorderThickness="1" CornerRadius="4" Padding="6,2" IsVisible="{Binding HasClutchChip}">
+          <TextBlock x:Name="ClutchChipText" Text="{Binding ClutchChip}" FontSize="11" Foreground="#E2D9FF" TextWrapping="Wrap"/>
+        </Border>
       </StackPanel>
     </Border>
     </StackPanel>
@@ -126,13 +131,14 @@
     <!-- The drawers on the right: the box score, the play by play, tactics, subs, shots, stats and the game flow. -->
     <Border x:Name="DrawerTabs" Classes="hud" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" Padding="4" IsVisible="{Binding ShowDrawerTabs}">
       <StackPanel Spacing="4" Width="112">
-        <Button Classes="tab" Content="Box score" Command="{Binding OpenDrawerCommand}" CommandParameter="0"/>
-        <Button Classes="tab" Content="Play by play" Command="{Binding OpenDrawerCommand}" CommandParameter="1"/>
-        <Button Classes="tab" Content="Tactics" Command="{Binding OpenDrawerCommand}" CommandParameter="2"/>
-        <Button Classes="tab" Content="Subs" Command="{Binding OpenDrawerCommand}" CommandParameter="3"/>
-        <Button Classes="tab" Content="Shots" Command="{Binding OpenDrawerCommand}" CommandParameter="4"/>
-        <Button Classes="tab" Content="Stats" Command="{Binding OpenDrawerCommand}" CommandParameter="5"/>
-        <Button Classes="tab" Content="Game flow" Command="{Binding OpenDrawerCommand}" CommandParameter="6"/>
+        <Button Classes="tab" Content="Box score" Command="{Binding OpenDrawerCommand}" CommandParameter="0" ToolTip.Tip="Box score (B)"/>
+        <Button Classes="tab" Content="Play by play" Command="{Binding OpenDrawerCommand}" CommandParameter="1" ToolTip.Tip="Play by play (P)"/>
+        <Button Classes="tab" Content="Tactics" Command="{Binding OpenDrawerCommand}" CommandParameter="2" ToolTip.Tip="Tactics (T)"/>
+        <Button Classes="tab" Content="Subs" Command="{Binding OpenDrawerCommand}" CommandParameter="3" ToolTip.Tip="Subs (S)"/>
+        <Button Classes="tab" Content="Shots" Command="{Binding OpenDrawerCommand}" CommandParameter="4" ToolTip.Tip="Shots (H)"/>
+        <Button Classes="tab" Content="Stats" Command="{Binding OpenDrawerCommand}" CommandParameter="5" ToolTip.Tip="Stats (A)"/>
+        <Button Classes="tab" Content="Game flow" Command="{Binding OpenDrawerCommand}" CommandParameter="6" ToolTip.Tip="Game flow (G)"/>
+        <Button x:Name="FloorTab" Classes="tab" Content="On the floor" Command="{Binding OpenDrawerCommand}" CommandParameter="7" ToolTip.Tip="The jumbotron's numbers, momentum and both fives with their energy (O)"/>
       </StackPanel>
     </Border>
     <Border x:Name="Drawer" Classes="hud" Background="#F2141920" HorizontalAlignment="Right" Width="{x:Static v:LiveGameView.DrawerWidth}" Margin="0,124,8,62"
@@ -356,6 +362,110 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           </Grid>
+          </ScrollViewer>
+          <!-- M5 (run 152): the arena's jumbotron numbers and the two "On the floor" panels (B2b), now a drawer over the court. -->
+          <ScrollViewer x:Name="FloorDrawer" IsVisible="{Binding DrawerFloor}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="8">
+            <Border x:Name="Jumbotron" Background="#F2050608" BorderBrush="#3C434C" BorderThickness="3" CornerRadius="6" Padding="10,4,10,6">
+              <StackPanel>
+                <TextBlock Text="{Binding BoardTitle}" FontSize="13" FontWeight="Black" Foreground="#FF6A3D" HorizontalAlignment="Center" LetterSpacing="1"/>
+                <Grid ColumnDefinitions="90,*,*" Margin="0,2,0,2">
+                  <TextBlock Grid.Column="1" Text="{Binding AwayName}" FontSize="13" FontWeight="Black" Foreground="White" TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="{Binding HomeName}" FontSize="13" FontWeight="Black" Foreground="White" TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                </Grid>
+                <Border Height="2" Background="#2A3038" Margin="0,0,0,2"/>
+                <ItemsControl ItemsSource="{Binding JumboRows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:JumboRow">
+                      <Grid ColumnDefinitions="90,*,*" Height="19">
+                        <TextBlock Text="{Binding Label}" FontSize="11.5" FontWeight="Bold" Foreground="#7D8794" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Away}" FontSize="13" FontWeight="Bold" Foreground="{Binding AwayBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Home}" FontSize="13" FontWeight="Bold" Foreground="{Binding HomeBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+            <!-- Momentum: the last four minutes played, the away colour from the left and the home colour from the right. -->
+            <Border x:Name="MomentumChip" Background="#E60B0E14" CornerRadius="6" Padding="10,3,10,6">
+              <StackPanel Spacing="3">
+                <TextBlock FontSize="11.5" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"><Run Text="MOMENTUM (4 MIN) " Foreground="#9AA5B4"/><Run Text="{Binding Momentum.Label}"/></TextBlock>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                  <Border Width="{Binding MomentumAwayWidth}" Height="6" Background="{Binding AwayBrush}" CornerRadius="3,0,0,3"/>
+                  <Border Width="{Binding MomentumHomeWidth}" Height="6" Background="{Binding HomeBrush}" CornerRadius="0,3,3,0"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <Border x:Name="AwayFloorPanel" CornerRadius="6" ClipToBounds="True" Background="#E60B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
+              <StackPanel>
+                <Border Background="{Binding AwayBrush}" Padding="8,3">
+                  <TextBlock Text="{Binding AwayFloorTitle}" FontSize="12" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
+                </Border>
+                <Grid ColumnDefinitions="30,*,34,34,34,28,52" Margin="8,3,8,0">
+                  <TextBlock Grid.Column="2" Text="PTS" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="3" Text="REB" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="4" Text="AST" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="5" Text="PF" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="6" Text="FG" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding AwayFloor}" Margin="8,0,8,6">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FloorPanelRow">
+                      <Grid ColumnDefinitions="30,*,34,34,34,28,52" RowDefinitions="Auto,7" Margin="0,1">
+                        <TextBlock Text="{Binding Pos}" FontSize="11" FontWeight="Bold" Foreground="#9AA5B4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Pts}" FontSize="13" FontWeight="Bold" Foreground="White" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Reb}" FontSize="13" Foreground="White" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="4" Text="{Binding Ast}" FontSize="13" Foreground="White" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="5" Text="{Binding Pf}" FontSize="13" Foreground="{Binding PfBrush}" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="6" Text="{Binding Fg}" FontSize="13" Foreground="White" TextAlignment="Right"/>
+                        <!-- The energy bar: the engine's own energy (green 85%+, yellow 70-84%, red below 70%). -->
+                        <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Width="{x:Static vm:FloorPanelRow.BarMax}" Height="4" CornerRadius="2"
+                                Background="#30FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                        <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Width="{Binding BarWidth}" Height="4" CornerRadius="2"
+                                Background="{Binding BarBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+            <Border x:Name="HomeFloorPanel" CornerRadius="6" ClipToBounds="True" Background="#E60B0E14" BorderBrush="#40FFFFFF" BorderThickness="1">
+              <StackPanel>
+                <Border Background="{Binding HomeBrush}" Padding="8,3">
+                  <TextBlock Text="{Binding HomeFloorTitle}" FontSize="12" FontWeight="Black" Foreground="White" LetterSpacing="1"/>
+                </Border>
+                <Grid ColumnDefinitions="30,*,34,34,34,28,52" Margin="8,3,8,0">
+                  <TextBlock Grid.Column="2" Text="PTS" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="3" Text="REB" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="4" Text="AST" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="5" Text="PF" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                  <TextBlock Grid.Column="6" Text="FG" FontSize="10.5" FontWeight="Bold" Foreground="#9AA5B4" TextAlignment="Right"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding HomeFloor}" Margin="8,0,8,6">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FloorPanelRow">
+                      <Grid ColumnDefinitions="30,*,34,34,34,28,52" RowDefinitions="Auto,7" Margin="0,1">
+                        <TextBlock Text="{Binding Pos}" FontSize="11" FontWeight="Bold" Foreground="#9AA5B4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Pts}" FontSize="13" FontWeight="Bold" Foreground="White" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Reb}" FontSize="13" Foreground="White" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="4" Text="{Binding Ast}" FontSize="13" Foreground="White" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="5" Text="{Binding Pf}" FontSize="13" Foreground="{Binding PfBrush}" TextAlignment="Right"/>
+                        <TextBlock Grid.Column="6" Text="{Binding Fg}" FontSize="13" Foreground="White" TextAlignment="Right"/>
+                        <!-- The energy bar: the engine's own energy (green 85%+, yellow 70-84%, red below 70%). -->
+                        <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Width="{x:Static vm:FloorPanelRow.BarMax}" Height="4" CornerRadius="2"
+                                Background="#30FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                        <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Width="{Binding BarWidth}" Height="4" CornerRadius="2"
+                                Background="{Binding BarBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
           </ScrollViewer>
         </Panel>
       </DockPanel>

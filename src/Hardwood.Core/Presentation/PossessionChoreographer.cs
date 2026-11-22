@@ -79,6 +79,11 @@ public sealed record PossessionInput(int Index, ulong Seed, IReadOnlyList<PlayEv
     /// <summary>M3: what the benches changed since the last possession, for the commentary bar ("Duke switch to a 2-3
     /// zone"). Said as the possession starts.</summary>
     public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
+    /// <summary>M5 (run 152): the bigger calls from the last possession (a run, a lead change, a milestone, foul trouble;
+    /// <see cref="GameCalls"/>), said after <see cref="Notes"/> as this possession starts.</summary>
+    public IReadOnlyList<string> Calls { get; init; } = Array.Empty<string>();
+    /// <summary>Everything said before the bring-up line: the benches' changes, then the calls.</summary>
+    public IReadOnlyList<string> Said => Calls.Count == 0 ? Notes : Notes.Concat(Calls).ToList();
 }
 
 /// <summary>How the possession began: from the tip or a period's start, after a make (an inbound under the basket),
@@ -408,8 +413,11 @@ public static class PossessionChoreographer
 
         // M3: what the benches changed, one line each (2 s apart, so both sides' changes are read), before the bring-up line.
         // Review (run 150): said even when the possession has no plays on the floor, so no change goes unannounced.
-        for (int n = 0; n < input.Notes.Count; n++) c.Lines.Add(new(lead + NoteTime * n, input.Notes[n], false));
+        // M5 (run 152): then the calls on the last possession (a run, a lead change, a milestone), one line each.
+        var said = input.Said;
+        for (int n = 0; n < said.Count; n++) c.Lines.Add(new(lead + NoteTime * n, said[n], n >= input.Notes.Count));
         if (input.Notes.Count > 0) Act(lead, "change", -1);
+        if (input.Calls.Count > 0) Act(lead, "call", -1);
 
         // 1. The start: an inbound after a make, a push after a stop, or a walk up.
         if (firstBall != null)
@@ -425,7 +433,7 @@ public static class PossessionChoreographer
                 c.Ball.Add(new BallSegment(t + 0.6, t + 1.2, BallMode.Pass, inb, handler, inbAt, default, 0.2));
                 t += 1.2;
             }
-            c.Lines.Add(new(lead + NoteTime * input.Notes.Count, input.How switch
+            c.Lines.Add(new(lead + NoteTime * said.Count, input.How switch
             {
                 PossessionStart.AfterStop => $"{Last(players[handler])} pushes it up the floor for {offName}",
                 PossessionStart.PeriodStart => $"{offName} have the ball to start the period",
@@ -454,7 +462,7 @@ public static class PossessionChoreographer
                 var back = new[] { S(16, 25), S(10, 12), S(10, 38), S(6, 19), S(4, 27) };
                 for (int k = 0; k < 5; k++) Drift(defBase + k, t, mid, back[k]);
                 Act(t, "lanes", -1); Act(t, "get-back", -1);
-                c.Lines.Add(new(input.Notes.Count > 0 ? Math.Max(t + 0.3, lead + NoteTime * input.Notes.Count + 1.2) : t + 0.3, paceK > 0.2 ? $"{offName} run, and {defName} scramble back" : $"{offName} in transition, {defName} get back", false));
+                c.Lines.Add(new(said.Count > 0 ? Math.Max(t + 0.3, lead + NoteTime * said.Count + 1.2) : t + 0.3, paceK > 0.2 ? $"{offName} run, and {defName} scramble back" : $"{offName} in transition, {defName} get back", false));
                 t = mid;
             }
             for (int k = 0; k < 5; k++)
@@ -754,6 +762,8 @@ public static class PossessionChoreographer
         // Everybody turns for the other end as the possession ends (the next one moves them).
         c.Length = t;
         if (input.LateAndClose) c.Key = true;
+        // M5: a possession that opens with a call (a run, a lead change, a milestone) is watched at Key moments too.
+        if (input.Calls.Count > 0) c.Key = true;
         // The commentary reads in time order (the set's lines are written before the passes', at earlier times).
         var sorted = c.Lines.OrderBy(l => l.T).ToList();
         c.Lines.Clear(); c.Lines.AddRange(sorted);
