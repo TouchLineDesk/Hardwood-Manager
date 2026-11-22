@@ -64,19 +64,14 @@ public class Run97SummerJobTests
     }
 
     [Fact]
-    public void A_college_player_who_wants_out_is_thinking_of_transferring_and_can_only_be_talked_round()
+    public void A_college_settle_message_never_mentions_a_trade()
     {
         var p = new Player { FirstName = "John", LastName = "Mercer", TradeRequested = true };
-        Assert.Equal(new[] { TalkTopic.ConvinceToStay, TalkTopic.AskWhatsWrong }, Talks.Available(p, college: true));
         Assert.Contains(TalkTopic.PromiseTrade, Talks.Available(p));       // the pros are unchanged
         var T = new Team { City = "Clemson", Name = "Tigers", Abbreviation = "CLEM", Division = "ACC" };
-        var e = new PeopleEvent(p, T, PeopleEventKind.TradeRequest, "pro text");
-        var text = GameSession.CollegeWording(e);
-        Assert.Contains("thinking of transferring", text);
-        Assert.DoesNotContain("Transactions", text);
-        Assert.DoesNotContain("trade", text);
         var settled = GameSession.CollegeWording(new PeopleEvent(p, T, PeopleEventKind.Settled, "John Mercer has withdrawn his trade request and will see out the season."));
         Assert.DoesNotContain("trade", settled);
+        Assert.DoesNotContain("transfer", settled);
         Assert.Equal("ok", GameSession.CollegeWording(new PeopleEvent(p, T, PeopleEventKind.WantsTalk, "ok")));
     }
 }

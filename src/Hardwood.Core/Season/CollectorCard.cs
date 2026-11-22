@@ -145,7 +145,7 @@ public static class CollectorCard
         {
             var mood = People.PeopleEngine.Mood(p.Morale);
             bool college = s.FindTeam(p.TeamId.Value) is { } pt && s.IsCollegeProgram(pt);
-            chips.Add(new(p.TradeRequested ? (college ? "Thinking of transferring" : "Wants a trade") : mood, p.TradeRequested || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
+            chips.Add(new(p.TradeRequested && !college ? "Wants a trade" : mood, (p.TradeRequested && !college) || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
         }
         if (p.Contract is { } con)
             chips.Add(new($"{Money(con.Salary)} · {(con.Years <= 0 ? "expiring" : $"{con.Years} yr{(con.Years == 1 ? "" : "s")}")}", con.Years <= 0 ? "warn" : ""));

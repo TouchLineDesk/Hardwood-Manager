@@ -11,7 +11,7 @@ namespace Hardwood.Tests;
 
 /// <summary>
 /// Run 97, on screen. H77: a college coach's spring with no games says the season is over. H76: a player who wants out
-/// is "thinking of transferring" on Squad and Home, with only the talks a college coach has. H75: out of work in the
+/// is unhappy (never "thinking of transferring", Danny Nov 22) on Squad and Home, with only the talks a college coach has. H75: out of work in the
 /// summer, the Board says applications are answered at the next step.
 /// </summary>
 [Collection(SharedUiState.Name)]
@@ -47,22 +47,24 @@ public class Run97CollegeSpringUiTests
             _out.WriteLine($"Spring: {s.Today:MMM d yyyy}, phase {s.Phase}");
             Assert.NotEqual(SessionPhase.Offseason, s.Phase);
 
-            // H76: one player wants out.
+            // H76, then Danny's Nov 22 rule (no college transfers): an unhappy player is unhappy, never "thinking of transferring".
             var unhappy = s.HumanTeam.Roster.OrderBy(p => p.Morale).First();
-            unhappy.TradeRequested = true;
+            unhappy.Morale = 20;
             vm.AfterTick();
             vm.Navigate("Home");
             var home = (HomeViewModel)vm.CurrentPage!;
             Assert.Equal("Season over", home.NextGame);
             Assert.Contains("mid-May", home.NextDetail);
-            Assert.Contains(home.Pulse, r => r.Title == unhappy.Name && r.Detail.StartsWith("Thinking of transferring"));
+            Assert.Contains(home.Pulse, r => r.Title == unhappy.Name && r.Detail.StartsWith(Hardwood.Core.People.PeopleEngine.Mood(unhappy.Morale)));
+            Assert.DoesNotContain(home.Pulse, r => r.Detail.Contains("transfer", StringComparison.OrdinalIgnoreCase));
             Settle(window);
             foreach (var p in LayoutCheck.Scan(window)) problems.Add($"1480px Home college spring | {p}");
             Snap(window, "run97-home-college-spring");
 
             vm.Navigate("Squad");
             var squad = (SquadViewModel)vm.CurrentPage!;
-            Assert.Contains(squad.Players, r => r.Player == unhappy && r.Status == "Thinking of transferring");
+            Assert.Contains(squad.Players, r => r.Player == unhappy && r.Status == "");
+            Assert.DoesNotContain(squad.Chips, c => c.Label.Contains("transfer", StringComparison.OrdinalIgnoreCase) || c.Label == "Trade requests");
             Settle(window);
 
             // H75: sacked going into the summer, the Board says when applications are answered.

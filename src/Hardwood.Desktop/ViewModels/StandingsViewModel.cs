@@ -501,7 +501,8 @@ public sealed partial class LeadersViewModel : PageViewModel
                     Ours = q.TeamId == s.HumanTeam.Id,
                 }).ToList();
             string c = cat;
-            Cards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, Peers = s.League.Teams, ShowAll = new RelayCommand(() => ShowFull(c)) });
+            bool college = entries.Any(e => e.Team != null && s.IsCollegeProgram(e.Team));
+            Cards.Add(new LeaderCard { Category = cat, Title = title, Unit = unit, Entries = entries, Peers = s.League.Teams, College = college, ShowAll = new RelayCommand(() => ShowFull(c)) });
         }
     }
 

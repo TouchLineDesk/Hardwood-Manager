@@ -39,7 +39,7 @@ public sealed partial class PlayerViewModel : PageViewModel
     public Player Player { get; }
     public override string Title => Player.Name;
 
-    /// <summary>H76 (run 97): a college player who wants out is thinking of transferring; programs don't trade.</summary>
+    /// <summary>H76 (run 97); Danny, Nov 22: no college transfers, so a college player never shows as wanting out.</summary>
     private static bool InCollegeProgram(Hardwood.Core.Season.GameSession s, Player p) => p.TeamId is { } id && s.FindTeam(id) is { } t && s.IsCollegeProgram(t);
 
     public PlayerViewModel(MainViewModel shell, Player player) : base(shell)
@@ -109,7 +109,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"
             : p.InjuryHistory.Count > 0 ? $"Healthy · {p.InjuryHistory.Count} past injur{(p.InjuryHistory.Count == 1 ? "y" : "ies")}" : "Healthy";
-        MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested ? (InCollegeProgram(s, p) ? " · thinking of transferring" : " · has asked to be traded") : "")
+        MoodText = p.TeamId == null ? "" : $"Mood: {Hardwood.Core.People.PeopleEngine.Mood(p.Morale)}" + (p.TradeRequested && !InCollegeProgram(s, p) ? " · has asked to be traded" : "")
             ;
         Chips = BuildChips(p, k);
         Hint = "";
@@ -207,8 +207,8 @@ public sealed partial class PlayerViewModel : PageViewModel
         if (p.TeamId != null)
         {
             var mood = Hardwood.Core.People.PeopleEngine.Mood(p.Morale);
-            chips.Add(new("Mood", mood, p.TradeRequested ? (InCollegeProgram(s, p) ? "thinking of transferring" : "has asked to be traded") : $"morale {p.Morale:0}/100",
-                p.TradeRequested || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
+            chips.Add(new("Mood", mood, p.TradeRequested && !InCollegeProgram(s, p) ? "has asked to be traded" : $"morale {p.Morale:0}/100",
+                (p.TradeRequested && !InCollegeProgram(s, p)) || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
         }
         // CP2 (run 131): your college players' growth this summer, at their minutes, with what your program adds.
         if (s.InCollege && p.TeamId == s.HumanTeam.Id && s.ClassYearOf(p) is { Final: false })

@@ -116,15 +116,17 @@ public sealed partial class SquadViewModel : PageViewModel
         int happy = roster.Count(p => MoodRow.Band(p.Morale) == 2), unhappy = roster.Count(p => MoodRow.Band(p.Morale) == 0 && !p.TradeRequested),
             requests = roster.Count(p => p.TradeRequested), promises = Session.Promises.Count(pr => roster.Any(p => p.Id == pr.PlayerId));
         var lowest = roster.OrderBy(p => p.Morale).FirstOrDefault();
-        return new List<Hardwood.Desktop.Controls.Chip>
+        var chips = new List<Hardwood.Desktop.Controls.Chip>
         {
             new("Chemistry", $"{team.Chemistry:0}", chemistryLabel + " · out of 100", team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "" : "bad"),
             new("Happy", happy.ToString(), $"of {roster.Count} players", happy >= roster.Count / 2 ? "good" : ""),
             new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody unsettled" : lowest != null ? $"lowest: {lowest.Name.Split(' ').Last()} ({lowest.Morale:0})" : "",
                 roster.Any(p => p.Morale < 35 && !p.TradeRequested) ? "bad" : unhappy > 0 ? "warn" : "good"),
-            new(Session.InCollege ? "Thinking of transferring" : "Trade requests", requests.ToString(), requests == 0 ? "nobody wants out" : "want out", requests > 0 ? "bad" : "good"),
-            new("Promises", promises.ToString(), promises == 0 ? "none outstanding" : "you must keep them", promises > 0 ? "info" : ""),
         };
+        // Danny, Nov 22: no college transfers, so a college program has no "wants out" count.
+        if (!Session.InCollege) chips.Add(new("Trade requests", requests.ToString(), requests == 0 ? "nobody wants out" : "want out", requests > 0 ? "bad" : "good"));
+        chips.Add(new("Promises", promises.ToString(), promises == 0 ? "none outstanding" : "you must keep them", promises > 0 ? "info" : ""));
+        return chips;
     }
 
     public override void Refresh()
@@ -155,7 +157,7 @@ public sealed partial class SquadViewModel : PageViewModel
                 Team = team,
                 Today = Session.Today,
                 MainReason = worst.reason != null && worst.effect < 0 ? worst.reason : "",
-                Status = p.TradeRequested ? (Session.InCollege ? "Thinking of transferring" : "Wants a trade") : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min") : "",
+                Status = p.TradeRequested && !Session.InCollege ? "Wants a trade" : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min") : "",
             });
         }
         Lanes.Clear();
@@ -198,7 +200,7 @@ public sealed partial class SquadViewModel : PageViewModel
         if (p == null) { PlayerHeadline = ""; PlayerScore = ""; return; }
         Session.MyStats.TryGetValue(p.Id, out var st);
         // Bug list #14: the score is its own unwrapped text, so "(61/100)" never breaks mid-number in the narrow panel.
-        PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested ? (Session.InCollege ? ", thinking of transferring" : ", wants a trade") : "");
+        PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested && !Session.InCollege ? ", wants a trade" : "");
         PlayerScore = $"{p.Morale:0}/100";
         foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });

@@ -86,7 +86,7 @@ public class Run135CollegeAwardsTests
         // The honours follow the player, and the news names the winner.
         Assert.Contains($"National Player of the Year {CollegeAwards.SeasonText(s.Year)}", c.HonoursOf(poy));
         Assert.Contains(c.HonoursOf(a.AllAmerica[1][0]), h => h.StartsWith("All-America second team"));
-        Assert.Contains(c.News, n => n.Title == $"{a.NameOf(poy)} is the National Player of the Year");
+        Assert.Contains(c.News, n => n.Title.StartsWith($"{a.NameOf(poy)} (") && n.Title.EndsWith(") is the National Player of the Year") && !n.Body.Contains("National Player of the Year"));
     }
 
     [Fact]

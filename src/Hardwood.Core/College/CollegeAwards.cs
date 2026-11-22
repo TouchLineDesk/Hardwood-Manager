@@ -220,16 +220,17 @@ public sealed partial class CollegeWorld
     private (string, string) AwardsNews(CollegeAwards a)
     {
         string Who(int? id) => id is { } i ? $"{a.NameOf(i)} ({Program(a.ProgramOf.GetValueOrDefault(i))?.FullName ?? "-"})" : "-";
+        // K24 (run 162): the title names the Player of the Year and his program, so the body doesn't repeat him (the world
+        // digest printed "… is the National Player of the Year: National Player of the Year: …").
         var lines = new List<string>
         {
-            $"National Player of the Year: {Who(a.PlayerOfYearId)}",
             $"Defensive Player of the Year: {Who(a.DefensiveId)}",
             $"Freshman of the Year: {Who(a.FreshmanId)}",
             $"Coach of the Year: {(a.CoachName.Length > 0 ? a.CoachName + ", " : "")}{Program(a.CoachProgramId ?? 0)?.FullName ?? "-"}",
         };
-        if (a.OutstandingId != null) lines.Insert(1, $"Most Outstanding Player: {Who(a.OutstandingId)}");
+        if (a.OutstandingId != null) lines.Insert(0, $"Most Outstanding Player: {Who(a.OutstandingId)}");
         if (a.AllAmerica.Count > 0) lines.Add("All-America first team: " + string.Join(", ", a.AllAmerica[0].Select(i => a.NameOf(i))));
-        return ($"{a.NameOf(a.PlayerOfYearId ?? 0)} is the National Player of the Year", string.Join("\n", lines) + ".");
+        return ($"{Who(a.PlayerOfYearId)} is the National Player of the Year", string.Join("\n", lines) + ".");
     }
 }
 

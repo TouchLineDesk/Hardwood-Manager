@@ -666,9 +666,9 @@ public sealed partial class CollegeViewModel : PageViewModel
             new("Upsets", played.Count(b => b.Upset).ToString(), "a seed 4+ lines worse winning", "warn"),
             new("Biggest upset", biggest == null ? "None yet" : $"{Math.Max(biggest.SeedA, biggest.SeedB)} over {Math.Min(biggest.SeedA, biggest.SeedB)}",
                 biggest == null ? "" : c.Program(biggest.Winner!.Value)?.FullName ?? "", biggest == null ? "" : "warn"),
-            new("Cinderellas", cinderella.Count.ToString(), cinderella.Count == 0 ? "no double-digit seed in the Sweet 16" : string.Join(", ", cinderella.Take(2).Select(id => c.Program(id)?.Name)), cinderella.Count > 0 ? "good" : ""),
+            new("Cinderellas", cinderella.Count.ToString(), cinderella.Count == 0 ? "no double-digit seed in the Sweet 16" : string.Join(", ", cinderella.Take(2).Select(id => c.Program(id)?.City)) /* K24: the school, not "Tigers" */, cinderella.Count > 0 ? "good" : ""),
         };
-        if (s.ChampionId is { } champ) chips.Insert(0, new("Champions", c.Program(champ)!.Name, c.Program(champ)!.City, "good"));
+        if (s.ChampionId is { } champ) chips.Insert(0, new("Champions", c.Program(champ)!.City, c.Program(champ)!.Name, "good")); // K24: the school first
         // Your program on Selection Sunday and since: its seed and region, and how far it got.
         if (Session.Employed && Session.InCollege)
         {

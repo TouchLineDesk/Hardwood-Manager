@@ -35,7 +35,10 @@ public sealed class LeaderCard
     public Team? TopTeam => Top?.Team;
     /// <summary>A short club name ("Lakers"): short enough to sit beside the number; the full name is on the club page.
     /// H87 (run 106): never a bare "FC" or "United", and never a nickname two clubs share (the bracket's rule).</summary>
-    public string TopClub => Top?.Team is { } t ? Hardwood.Desktop.Controls.BracketView.Label(t, Peers) : "";
+    public string TopClub => Top?.Team is { } t ? (College ? t.City : Hardwood.Desktop.Controls.BracketView.Label(t, Peers)) : "";
+    /// <summary>K24 (run 162): a college leader's program is named by its school ("North Texas"), never a nickname
+    /// that seven programs share ("Wildcats").</summary>
+    public bool College { get; init; }
     /// <summary>The league's clubs, to tell clubs with the same nickname apart (H87).</summary>
     public IReadOnlyList<Team>? Peers { get; init; }
     public string TopValue => Top?.Value ?? "";
