@@ -128,6 +128,8 @@ public sealed partial class LiveGameViewModel
         Commentary = $"Welcome to {HomeTeam.City}: {AwayTeam.Name} at {HomeTeam.Name}. Press Play for the tip.";
         MatchFrame = TipFrame();
         InitShouts();
+        // Fight songs A (review): start the home band's song rendering now, so it's ready by the tip.
+        if (BandFor() is { } band) System.Threading.Tasks.Task.Run(() => { try { Hardwood.Desktop.Audio.FightSongLibrary.For(band.School, band.Spec); } catch (Exception) { } });
     }
 
     /// <summary>M4 (run 151): the floor for this game: the college program's or the event's, or the pro club's with the

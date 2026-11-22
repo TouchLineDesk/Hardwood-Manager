@@ -120,7 +120,8 @@ public static class FightSongs
             foreach (var name in conf.Select(p => p.Program).Distinct().OrderBy(n => n, StringComparer.Ordinal))
             {
                 FightSongSpec spec = SpecFor(name);
-                for (int shift = 0; taken.Contains((spec.Style, spec.Key)); shift++) spec = SpecFor(name, shift + 1);
+                // (A conference of more than 42 programs, which no real one is, would share a pair rather than loop forever.)
+                for (int shift = 0; taken.Contains((spec.Style, spec.Key)) && shift < 6 * BandKeys.Length; shift++) spec = SpecFor(name, shift + 1);
                 taken.Add((spec.Style, spec.Key));
                 result[name] = spec;
             }

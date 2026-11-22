@@ -204,7 +204,15 @@ public class Run161FightSongTests
         Assert.Equal(0, mix.Voices);
         mix.Play(Cue.FightHit, 1);
         Assert.Equal(0, mix.Voices);
+        // Review: a band still rendering at the tip: the song waits, and starts when the band arrives.
+        mix.ExpectBand();
+        mix.Play(Cue.FightSong, 1);
+        Assert.Equal(0, mix.Voices);
         mix.SetBand(song);
+        Assert.Equal(1, mix.Voices);
+        mix.StopReactions();
+        mix.Read(buf, 0, buf.Length);
+        Assert.Equal(0, mix.Voices);
         mix.Play(Cue.FightSong, 1);
         Assert.Equal(1, mix.Voices);
         double rms = 0;

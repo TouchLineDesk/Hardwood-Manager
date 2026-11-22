@@ -113,7 +113,7 @@ public static class FightSongLibrary
         try
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
-            if (ext == ".ogg") return Nonempty(CrowdMixer.Decode(File.OpenRead(path), 180));
+            if (ext == ".ogg") return Nonempty(CrowdMixer.Decode(File.OpenRead(path), 180)) ?? Mono(path);
             ISampleProvider? sp = null;
             IDisposable? owner = null;
             if (ext == ".wav") { var w = new WaveFileReader(path); owner = w; sp = w.ToSampleProvider(); }
@@ -141,6 +141,20 @@ public static class FightSongLibrary
     }
 
     private static float[]? Nonempty(float[] x) => x.Length > 0 ? x : null;
+
+    /// <summary>A mono OGG (review, run 161: the crowd's decoder takes stereo only), doubled to both sides.</summary>
+    private static float[]? Mono(string path)
+    {
+        using var r = new NVorbis.VorbisReader(path);
+        if (r.Channels != 1 || r.SampleRate < 8000) return null;
+        var all = new List<float>();
+        var buf = new float[8192];
+        int got;
+        while (all.Count < 180L * r.SampleRate && (got = r.ReadSamples(buf, 0, buf.Length)) > 0) all.AddRange(buf.AsSpan(0, got).ToArray());
+        var st = new float[all.Count * 2];
+        for (int i = 0; i < all.Count; i++) st[2 * i] = st[2 * i + 1] = all[i];
+        return Nonempty(r.SampleRate == Synth.Rate ? st : CrowdMixer.Resample(st, r.SampleRate, Synth.Rate));
+    }
 
     private static void Fade(float[] stereo, int frames, bool fadeIn)
     {

@@ -35,6 +35,7 @@ public sealed partial class LiveGameViewModel
         if (BandFor() is { } band)
         {
             var (school, spec) = band;
+            a.ExpectBand();
             System.Threading.Tasks.Task.Run(() =>
             {
                 try { var song = FightSongLibrary.For(school, spec); if (!_audioReleased) a.SetBand(song); }

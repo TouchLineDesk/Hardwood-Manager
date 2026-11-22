@@ -97,8 +97,24 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         {
             _shots[Cue.FightSong] = song == null ? Array.Empty<float[]>() : new[] { song.Song };
             _shots[Cue.FightHit] = song == null ? Array.Empty<float[]>() : new[] { song.Hit };
+            _bandExpected = false;
+            // Review (run 161): the tip's song was asked for while the band was still rendering: it starts now, if the
+            // ask was in the last few seconds.
+            if (song != null && _pendingSong is { } at && (DateTime.UtcNow - at.When).TotalSeconds < PendingSeconds)
+            {
+                _pendingSong = null;
+                Play(Cue.FightSong, at.Gain);
+            }
+            _pendingSong = null;
         }
     }
+
+    /// <summary>A band is on its way (rendering): until it arrives, a fight-song cue waits rather than play the drumline.</summary>
+    public void ExpectBand() { lock (_gate) _bandExpected = true; }
+    private bool _bandExpected;
+    private (DateTime When, double Gain)? _pendingSong;
+    /// <summary>A song asked for this long before the band is ready still plays; later, it's let go.</summary>
+    public const double PendingSeconds = 8;
 
     /// <summary>The bed's target mix; the mixer eases toward it.</summary>
     public void SetBed(BedLevels target) { lock (_gate) _target = target; }
@@ -114,7 +130,11 @@ public sealed class CrowdMixer : ISampleProvider, IDisposable
         {
             if (cue == Cue.Groan) { _groans.Add((0, gain)); return; }
             if (cue == Cue.Boo && _shots[Cue.Boo].Length == 0) { _swells.Add((0, gain)); return; }
-            if (cue == Cue.FightSong && _shots[Cue.FightSong].Length == 0) cue = Cue.Drumline;
+            if (cue == Cue.FightSong && _shots[Cue.FightSong].Length == 0)
+            {
+                if (_bandExpected) { _pendingSong = (DateTime.UtcNow, gain); return; }
+                cue = Cue.Drumline;
+            }
             // One song at a time: a new song or hit takes over from one still playing.
             if (cue is Cue.FightSong or Cue.FightHit) foreach (var v in _voices.Where(v => v.Band)) v.Cut();
             if (!_shots.TryGetValue(cue, out var set) || set.Length == 0) return;

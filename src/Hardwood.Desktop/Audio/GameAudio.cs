@@ -13,6 +13,8 @@ public interface IGameAudio : IDisposable
     void StopReactions();
     /// <summary>The home band's fight song for this game (fight songs A, run 161); null = no band (the pros).</summary>
     void SetBand(BandSong? song) { }
+    /// <summary>A band is coming (its song is rendering): a fight-song cue waits for it instead of playing the drumline.</summary>
+    void ExpectBand() { }
     double Volume { get; set; }
     bool Muted { get; set; }
     bool Suspended { get; set; }
@@ -69,6 +71,7 @@ public sealed class DeviceAudio : IGameAudio
     public void Play(Cue cue, double gain, double pan) => _mixer.Play(cue, gain, pan);
     public void StopReactions() => _mixer.StopReactions();
     public void SetBand(BandSong? song) => _mixer.SetBand(song);
+    public void ExpectBand() => _mixer.ExpectBand();
     public double Volume { get => _mixer.Volume; set => _mixer.Volume = value; }
     public bool Muted { get => _mixer.Muted; set => _mixer.Muted = value; }
     public bool Suspended { get => _mixer.Suspended; set => _mixer.Suspended = value; }
