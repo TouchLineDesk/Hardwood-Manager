@@ -323,10 +323,15 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 FitTip = fits switch
                 {
                     "Won't stay" => $"{p.Name} is too unhappy here to sign a new deal",
-                    "Owner stretches" => $"His ask is over your wage budget, but he's your own young star (CA {ContractRules.YoungStarAbility}+, under {ContractRules.YoungStarMaxAge + 1}): the owner will go up to {M(stretch)} over the budget to keep him, and raises the budget to cover it.",
+                    "Owner stretches" => s.KeepsByMeans
+                        // D81 (run 159): no salary cap in the NBA; the club keeps its own players up to what its finances carry.
+                        ? $"His ask is over your wage budget, but there's no salary cap in the NBA: the owner will go up to {M(stretch)} over the budget to keep your own players, as far as the club's revenue and savings carry, and raises the budget to cover it."
+                        : $"His ask is over your wage budget, but he's your own young star (CA {ContractRules.YoungStarAbility}+, under {ContractRules.YoungStarMaxAge + 1}): the owner will go up to {M(stretch)} over the budget to keep him, and raises the budget to cover it.",
                     "Fits on its own" => $"His ask fits your wage budget with the deals you have now ({M(Math.Max(0, team.Money.WageBudget - s.MyCommittedWages))} to spend). Each card is checked on its own: keeping several takes the room of all of them.",
                     _ => stretch > 0
-                        ? $"His ask would take you over the wage budget even with the {M(stretch)} the owner adds to keep his own young star"
+                        ? s.KeepsByMeans
+                            ? $"His ask is more than the club's finances can carry, even with the {M(stretch)} past the budget the owner allows to keep your own players"
+                            : $"His ask would take you over the wage budget even with the {M(stretch)} the owner adds to keep his own young star"
                         : "His ask would take you over the wage budget; the owner won't allow it",
                 },
                 Picked = Talk.Player == p,

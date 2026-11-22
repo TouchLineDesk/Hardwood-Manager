@@ -228,7 +228,7 @@ public sealed class LeagueBook
                     : "Top 6 in each conference go straight in; 7th-10th play the play-in for the last two places. Four rounds, best of seven."),
                 ("Rosters", $"{fin.RosterMin}-{fin.RosterMax} players. Americans turn pro at 22, after four years of college."),
                 ("Money", fin.OpenMarket
-                    ? (Hardwood.Core.RealWorld.RealWorldData.IsReal(lg) ? "Open market: no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January. A one-round college draft each summer, before free agency: the top three in each division and the clubs coming up, in an equal-odds lottery." : "Open market: no draft and no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January.")
+                    ? (Hardwood.Core.RealWorld.RealWorldData.IsReal(lg) ? "Open market: no salary cap. Each club spends within a wage budget set by its owner and revenue, and may go past it to keep its own players as far as its revenue and savings carry; transfers in the summer and January. A one-round college draft each summer, before free agency: the top three in each division and the clubs coming up, in an equal-odds lottery." : "Open market: no draft and no salary cap. Each club spends within a wage budget set by its owner and revenue; transfers in the summer and January.")
                     : $"Salary cap ${fin.HardCap / 1e6:F0}M."),
             },
             Champions = lg.History.AsEnumerable().Reverse().Select(h =>
