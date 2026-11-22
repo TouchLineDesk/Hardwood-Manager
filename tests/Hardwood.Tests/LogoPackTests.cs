@@ -98,10 +98,10 @@ public class LogoPackTests
             var packed = drawn with { Crest = drawn.Crest! with { LogoFile = logo } };
             using var img = CardRenderer.Render(packed, face);
             using var bmp = SKBitmap.FromImage(img);
-            var px = bmp.GetPixel(48, 210);
+            var px = bmp.GetPixel(35, 290); // the crest box: units (12,234)-(50,278) of the 228x342 card
             Assert.True(px.Green > 200 && px.Red < 60 && px.Blue < 60, $"crest pixel {px}");
             using var plain = SKBitmap.FromImage(CardRenderer.Render(drawn, face));
-            Assert.False(plain.GetPixel(48, 210).Green > 200 && plain.GetPixel(48, 210).Red < 60);
+            Assert.False(plain.GetPixel(35, 290).Green > 200 && plain.GetPixel(35, 290).Red < 60);
 
             Assert.NotEqual(drawn.Key(CardRenderer.Version), packed.Key(CardRenderer.Version));
             var before = packed.Key(CardRenderer.Version);

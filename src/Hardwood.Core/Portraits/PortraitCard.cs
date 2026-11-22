@@ -22,8 +22,9 @@ public sealed record JerseySpec(string PrimaryColor, string SecondaryColor, int 
 
 /// <summary>Everything that decides how one player's portrait card looks.</summary>
 /// <param name="Photo">A real photo (Danny's graphics pack) used instead of the generated face; it already shows the jersey.</param>
+/// <param name="FirstName">The name plate's small line (#1036); with <paramref name="LastName"/> and <paramref name="Position"/>.</param>
 public sealed record PortraitCard(int PlayerId, int CurrentAbility, int PotentialAbility, CrestSpec? Crest, DraftRecord? Draft, string FaceFile,
-    JerseySpec? Jersey = null, string? Photo = null)
+    JerseySpec? Jersey = null, string? Photo = null, string? FirstName = null, string? LastName = null, string? Position = null)
 {
     /// <summary>
     /// Changes whenever the rendered image would change: body/badge tier, the POT number, crest,
@@ -37,7 +38,8 @@ public sealed record PortraitCard(int PlayerId, int CurrentAbility, int Potentia
         var draft = Draft is { } d ? $"{d.Year}/{d.Round}/{d.Pick}" : "-";
         var kit = Jersey is { } j ? $"{j.PrimaryColor}/{j.SecondaryColor}/{j.Number}" : "-";
         var photo = Photo != null ? LogoStamp(Photo) : "-";
-        return $"v{rendererVersion}|{body}|{badge}|{PotentialAbility}|{crest}|{draft}|{FaceFile}|{kit}|{photo}";
+        var plate = LastName != null ? $"{FirstName}/{LastName}/{Position}" : "-";
+        return $"v{rendererVersion}|{body}|{badge}|{PotentialAbility}|{crest}|{draft}|{FaceFile}|{kit}|{photo}|{plate}";
     }
 
     /// <summary>A logo file's name and last write time, so replacing a logo redraws the cards.</summary>
@@ -60,7 +62,8 @@ public sealed record PortraitCard(int PlayerId, int CurrentAbility, int Potentia
     {
         var cards = new List<PortraitCard>();
         PortraitCard Card(Player p, CrestSpec? crest, Team? t) =>
-            new(p.Id, p.CurrentAbility, p.PotentialAbility, crest, p.Draft, p.FaceFile!, jerseys && t != null ? JerseySpec.Of(t, p.Id) : null, photoOf?.Invoke(p));
+            new(p.Id, p.CurrentAbility, p.PotentialAbility, crest, p.Draft, p.FaceFile!, jerseys && t != null ? JerseySpec.Of(t, p.Id) : null, photoOf?.Invoke(p),
+              p.FirstName, p.LastName, p.PrimaryPosition.ToString());
         foreach (var t in league.Teams)
         {
             var crest = CrestSpec.Of(t, logoOf);

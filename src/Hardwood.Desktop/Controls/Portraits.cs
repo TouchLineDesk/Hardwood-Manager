@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media.Imaging;
 
 namespace Hardwood.Desktop.Controls;
@@ -13,6 +14,11 @@ namespace Hardwood.Desktop.Controls;
 public static class Portraits
 {
     private static readonly Dictionary<int, Bitmap?> Cache = new();
+
+    /// <summary>The card's design units (<see cref="Hardwood.Desktop.Portraits.CardRenderer"/>: 228x342) and the head square small avatars show.</summary>
+    public static readonly Size CardUnits = new(Hardwood.Desktop.Portraits.CardRenderer.UW, Hardwood.Desktop.Portraits.CardRenderer.UH);
+    public static readonly Rect HeadSquare = new(Hardwood.Desktop.Portraits.CardRenderer.HeadSquare.Left, Hardwood.Desktop.Portraits.CardRenderer.HeadSquare.Top,
+        Hardwood.Desktop.Portraits.CardRenderer.HeadSquare.Width, Hardwood.Desktop.Portraits.CardRenderer.HeadSquare.Height);
 
     public static string? Folder { get; private set; }
 

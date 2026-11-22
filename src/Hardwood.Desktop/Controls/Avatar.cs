@@ -39,6 +39,31 @@ public sealed class Avatar : Control
     }
     private static int Pick(int id, int salt, int n) => (int)(Hash(id, salt) % (uint)n);
 
+    /// <summary>The smallest slot that shows the whole 2:3 card with its name plate (#1036); smaller slots show the head.</summary>
+    public const double WholeCardMinHeight = 96;
+
+    /// <summary>
+    /// Where a portrait image goes in a slot. A tall card (v3, 2:3) is drawn whole, fitted and centred, when the slot is at least
+    /// <see cref="WholeCardMinHeight"/> high and tall itself (height at least 1.3x the width); otherwise its head square
+    /// (the face, shoulders and POT badge, no plate) fills a centred square. An old square card fills the square as before.
+    /// </summary>
+    public static (Rect src, Rect dst, bool whole) PortraitRects(Size image, Size slot)
+    {
+        double s = Math.Min(slot.Width, slot.Height);
+        var square = new Rect((slot.Width - s) / 2, (slot.Height - s) / 2, s, s);
+        bool tallCard = image.Width > 0 && image.Height >= image.Width * 1.3;
+        if (!tallCard) return (new Rect(image), square, false);
+        if (slot.Height >= WholeCardMinHeight && slot.Height >= slot.Width * 1.3)
+        {
+            double k = Math.Min(slot.Width / image.Width, slot.Height / image.Height);
+            double w = image.Width * k, h = image.Height * k;
+            return (new Rect(image), new Rect((slot.Width - w) / 2, (slot.Height - h) / 2, w, h), true);
+        }
+        double u = image.Width / Portraits.CardUnits.Width;
+        var hs = Portraits.HeadSquare;
+        return (new Rect(hs.X * u, hs.Y * u, hs.Width * u, hs.Height * u), square, false);
+    }
+
     // Redraw when the game finishes drawing new portraits.
     private void OnPortraitsChanged() => InvalidateVisual();
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -64,9 +89,11 @@ public sealed class Avatar : Control
         // A rendered portrait (player card) wins over the procedural face.
         if (Portraits.Get(id) is { } portrait)
         {
-            var box = new Rect(cx - s / 2, cy - s / 2, s, s);
-            using (ctx.PushClip(new RoundedRect(box, s * 0.08)))
-                ctx.DrawImage(portrait, new Rect(portrait.Size), box);
+            var (src, dst, whole) = PortraitRects(portrait.Size, Bounds.Size);
+            if (whole) ctx.DrawImage(portrait, src, dst); // the card's own angled outline, transparent corners
+            else
+                using (ctx.PushClip(new RoundedRect(dst, dst.Width * 0.08)))
+                    ctx.DrawImage(portrait, src, dst);
             return;
         }
 

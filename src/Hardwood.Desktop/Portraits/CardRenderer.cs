@@ -5,26 +5,46 @@ using SkiaSharp;
 namespace Hardwood.Desktop.Portraits;
 
 /// <summary>
-/// Draws the approved 2K-style player card (claude/kit/player_card.py, card-design.md) natively with SkiaSharp,
-/// so the game can make its own portraits without a browser. Every measurement below is the CSS of the
-/// original template translated to a 512x512 canvas; the result is scaled to 256x256 like the kit's output.
+/// Draws the player card natively with SkiaSharp. Version 3 is the 2K-style redesign (#1036, option A;
+/// claude/card-redesign-mockup.md): a tall 2:3 card with angled corners, a tier body (metals drawn in code for Bronze,
+/// Silver and Gold; the Vecteezy gem facets for Amethyst and Ruby; the HOLOFOIL foil for Pearl), the face on a drawn
+/// neck, shoulders and tank top in the player's own skin tone, the hex POT badge (holographic for Diamond), the crest,
+/// the draft stamp and a name plate. Still no current-rating number.
+/// All measurements are the mock-up's 228x342 card (card_mockup_build.py), scaled to the output size.
 /// Thread-safe: each call uses its own surface, so cards can be rendered on a background thread.
 /// </summary>
 public static class CardRenderer
 {
     /// <summary>Bump when the card's look changes, so every portrait is redrawn once.</summary>
-    public const int Version = 2; // 2: jerseys and real photos (#350-351)
+    public const int Version = 3; // 2: jerseys and real photos (#350-351); 3: the 2:3 2K-style card (#1036)
 
+    /// <summary>The card in the mock-up's units: 228 wide, 342 tall (2:3).</summary>
+    public const float UW = 228f, UH = 342f;
+
+    /// <summary>The name plate's top edge (units); the art above it is what small avatars show.</summary>
+    public const float PlateTop = UH - 64f;
+
+    /// <summary>The square of the card (units) that small avatars show: the face, the shoulders and the POT badge, no plate.</summary>
+    public static readonly SKRect HeadSquare = new(10, 8, 210, 208);
+
+    /// <summary>The old square card's size, used to place the crest drawing (it was laid out on a 512 canvas).</summary>
     private const float W = 512f;
+
     private static readonly Lazy<(SKTypeface bs, SKTypeface bc)> Fonts = new(LoadFonts);
+    private static readonly Dictionary<string, SKBitmap?> Textures = new();
+
+    private static Stream? Resource(string name)
+    {
+        var asm = Assembly.GetExecutingAssembly();
+        var res = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith(name, StringComparison.Ordinal));
+        return res == null ? null : asm.GetManifestResourceStream(res);
+    }
 
     private static (SKTypeface, SKTypeface) LoadFonts()
     {
         static SKTypeface Load(string name)
         {
-            var asm = Assembly.GetExecutingAssembly();
-            var res = asm.GetManifestResourceNames().First(n => n.EndsWith(name, StringComparison.Ordinal));
-            using var s = asm.GetManifestResourceStream(res)!;
+            using var s = Resource(name) ?? throw new InvalidDataException($"Missing font {name}");
             using var ms = new MemoryStream();
             s.CopyTo(ms);
             return SKTypeface.FromData(SKData.CreateCopy(ms.ToArray()));
@@ -32,11 +52,28 @@ public static class CardRenderer
         return (Load("BigShoulders-900.ttf"), Load("BarlowC-800.ttf"));
     }
 
+    /// <summary>An embedded card texture (Assets/Cards), decoded once; null if missing (the card falls back to a gradient).</summary>
+    private static SKBitmap? Texture(string name)
+    {
+        lock (Textures)
+        {
+            if (Textures.TryGetValue(name, out var b)) return b;
+            try
+            {
+                using var s = Resource("Cards." + name);
+                b = s == null ? null : SKBitmap.Decode(s);
+                b?.SetImmutable(); // shared across render threads, read-only; drawing it then needs no copy
+            }
+            catch (Exception) { b = null; }
+            return Textures[name] = b;
+        }
+    }
+
     /// <summary>Render a card and write it as a PNG (atomically: a temp file, then a rename).</summary>
-    public static void RenderToFile(PortraitCard card, string faceFullPath, string outFile, int size = 256)
+    public static void RenderToFile(PortraitCard card, string faceFullPath, string outFile, int width = 256)
     {
         using var face = SKBitmap.Decode(faceFullPath) ?? throw new InvalidDataException($"Can't read face {faceFullPath}");
-        using var img = Render(card, face, size);
+        using var img = Render(card, face, width);
         using var data = img.Encode(SKEncodedImageFormat.Png, 100);
         Directory.CreateDirectory(Path.GetDirectoryName(outFile)!);
         var tmp = outFile + ".tmp";
@@ -44,346 +81,443 @@ public static class CardRenderer
         File.Move(tmp, outFile, overwrite: true);
     }
 
-    /// <summary>Render a card to a square image of the given size (the card is drawn at 512 and scaled down).</summary>
-    public static SKImage Render(PortraitCard card, SKBitmap face, int size = 256)
+    /// <summary>Render a card <paramref name="width"/> wide and 1.5x as tall (drawn at twice the size, then scaled down).</summary>
+    public static SKImage Render(PortraitCard card, SKBitmap face, int width = 256)
     {
-        using var full = SKSurface.Create(new SKImageInfo(512, 512, SKColorType.Rgba8888, SKAlphaType.Premul));
+        int height = (int)Math.Round(width * UH / UW);
+        int bw = width * 2, bh = height * 2;
+        using var full = SKSurface.Create(new SKImageInfo(bw, bh, SKColorType.Rgba8888, SKAlphaType.Premul));
+        full.Canvas.Clear(SKColors.Transparent);
+        full.Canvas.Scale(bw / UW, bh / UH);
         Draw(full.Canvas, card, face);
-        var big = full.Snapshot();
-        if (size == 512) return big;
-        using (big)
-        using (var bmp = SKBitmap.FromImage(big))
-        using (var small = bmp.Resize(new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High))
-            return SKImage.FromPixelCopy(small.Info, small.GetPixels(), small.RowBytes);
+        using var big = full.Snapshot();
+        using var bmp = SKBitmap.FromImage(big);
+        using var small = bmp.Resize(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High);
+        return SKImage.FromPixelCopy(small.Info, small.GetPixels(), small.RowBytes);
     }
+
+    // ---- the tier bodies ---------------------------------------------------------------------
+    /// <summary>How a body tier is drawn: a metal (three colours) or a texture, a tint at the foot, the frame's edge and the ink.</summary>
+    internal sealed record Material(string? Texture, string Dark, string Base, string Light, string Edge, string Ink, SKColor Tint);
+
+    internal static Material MaterialFor(string tier) => tier switch
+    {
+        "Pearl" => new("foil-pearl.jpg", "#8C96A3", "#D9DFE6", "#FFFFFF", "#FFFFFF", "#1B2430", new SKColor(140, 150, 163, 64)),
+        "Bronze" => new(null, "#3A1A07", "#8A4B22", "#E0A57A", "#E0A57A", "#FFF1E6", new SKColor(60, 25, 5, 64)),
+        "Silver" => new(null, "#2C3746", "#8C9DB1", "#F4F8FC", "#F4F8FC", "#0F1724", new SKColor(20, 30, 45, 46)),
+        "Gold" => new(null, "#7A5200", "#E0AE12", "#FFF3A6", "#FFF3A6", "#2A1C00", new SKColor(90, 60, 0, 26)),
+        "Amethyst" => new("gem-amethyst.jpg", "#2A0F52", "#6D34B3", "#C9A2FF", "#D9B8FF", "#FFFFFF", new SKColor(55, 15, 110, 107)),
+        _ => new("gem-ruby.jpg", "#420606", "#A5161A", "#FF7A6B", "#FFB3A8", "#FFFFFF", new SKColor(120, 8, 20, 140)),
+    };
+
+    /// <summary>The card's outline: angled corners at the top right and bottom left (14% across, 9% down).</summary>
+    private static SKPath Outline(SKRect r) => Poly(r, (0, 0), (.86f, 0), (1, .09f), (1, 1), (.14f, 1), (0, .91f));
 
     // ------------------------------------------------------------------------------------------
     private static void Draw(SKCanvas c, PortraitCard card, SKBitmap face)
     {
         var (bs, bc) = Fonts.Value;
         var ct = PortraitTiers.Body(card.CurrentAbility);
-        bool dia = card.PotentialAbility >= PortraitTiers.Diamond.Lo;
-        var pt = PortraitTiers.Badge(card.PotentialAbility);
-        SKColor cd = Hex(ct.Dark), cb = Hex(ct.Base), cl = Hex(ct.Light);
-        SKColor pd = Hex(pt.Dark), pb = Hex(pt.Base), pl = Hex(pt.Light), pi = Hex(pt.Ink);
+        var m = MaterialFor(ct.Name);
+        var card0 = new SKRect(0, 0, UW, UH);
+        SKColor edge = Hex(m.Edge);
 
-        c.Clear(SKColors.Transparent);
+        using var outline = Outline(card0);
         c.Save();
-        c.ClipRoundRect(new SKRoundRect(new SKRect(0, 0, W, W), 40), SKClipOperation.Intersect, true);
+        c.ClipPath(outline, SKClipOperation.Intersect, true);
 
-        // .bg  radial-gradient(120% 90% at 70% 30%, cl 0%, cb 45%, cd 100%)
+        Body(c, m, card0);
+
+        // .tint: transparent down to 30%, then the tier's tint at the foot.
         using (var p = new SKPaint { IsAntialias = true })
         {
-            var m = SKMatrix.CreateScale(614.4f, 460.8f).PostConcat(SKMatrix.CreateTranslation(358.4f, 153.6f));
-            p.Shader = SKShader.CreateRadialGradient(new SKPoint(0, 0), 1, new[] { cl, cb, cd }, new[] { 0f, .45f, 1f }, SKShaderTileMode.Clamp, m);
-            c.DrawRect(0, 0, W, W, p);
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(0, UH), new[] { m.Tint.WithAlpha(0), m.Tint.WithAlpha(0), m.Tint }, new[] { 0f, .30f, 1f }, SKShaderTileMode.Clamp);
+            c.DrawRect(card0, p);
         }
-
-        // .s1 .s2 .s3 shards
-        Shard(c, 0.55f, Linear(new SKRect(0, 0, W, W), 160, (0, cl), (.70f, cl.WithAlpha(0))), (.38f, 0), (.78f, 0), (.52f, 1), (.18f, 1));
-        Shard(c, 0.35f, Linear(new SKRect(0, 0, W, W), 200, (0, White(.5f)), (.60f, White(0))), (.70f, 0), (1, 0), (1, .45f), (.58f, 1), (.44f, 1));
-        Shard(c, 0.70f, Linear(new SKRect(0, 0, W, W), 0, (0, cd), (1, cd.WithAlpha(0))), (0, .60f), (.30f, 1), (0, 1));
-
-        // .sheen  inset:-20%, two white bands, mix-blend-mode: screen
+        // .sheen: one diagonal white band, screened.
         using (var p = new SKPaint { IsAntialias = true, BlendMode = SKBlendMode.Screen })
         {
-            var box = new SKRect(-102.4f, -102.4f, 614.4f, 614.4f);
-            p.Shader = Linear(box, 115, (0, White(0)), (.30f, White(0)), (.34f, White(.5f)), (.40f, White(0)), (.52f, White(0)), (.55f, White(.22f)), (.60f, White(0)), (1, White(0)));
-            c.DrawRect(box, p);
+            p.Shader = Linear(card0, 115, (0, White(0)), (.30f, White(0)), (.42f, White(.28f)), (.52f, White(0)), (1, White(0)));
+            c.DrawRect(card0, p);
         }
-
-        // .lines  opacity .18; repeating-linear-gradient(135deg, white .55 0 2px, transparent 2px 14px)
-        using (var p = new SKPaint { IsAntialias = true, Color = new SKColor(0, 0, 0, A(.18f)) })
-        {
-            var dir = Dir(135);
-            float len = W * (MathF.Abs(dir.X) + MathF.Abs(dir.Y));
-            var start = new SKPoint(W / 2 - dir.X * len / 2, W / 2 - dir.Y * len / 2);
-            var end = new SKPoint(start.X + dir.X * 14, start.Y + dir.Y * 14);
-            p.Shader = SKShader.CreateLinearGradient(start, end, new[] { White(.55f), White(.55f), White(0), White(0) }, new[] { 0f, 2f / 14, 2f / 14, 1f }, SKShaderTileMode.Repeat);
-            c.DrawRect(0, 0, W, W, p);
-        }
-
-        // .glow  360px circle at (170,40); radial-gradient(circle, white .55, transparent 65%) (farthest-corner radius)
+        // .glow: a soft light behind the head.
         using (var p = new SKPaint { IsAntialias = true })
         {
-            var ctr = new SKPoint(350, 220);
-            p.Shader = SKShader.CreateRadialGradient(ctr, 180 * MathF.Sqrt(2), new[] { White(.55f), White(0) }, new[] { 0f, .65f }, SKShaderTileMode.Clamp);
-            c.DrawCircle(ctr, 180, p);
+            var ctr = new SKPoint(UW / 2, UH * .38f);
+            p.Shader = SKShader.CreateRadialGradient(ctr, UW * .6f, new[] { White(.28f), White(0) }, new[] { 0f, .70f }, SKShaderTileMode.Clamp);
+            c.DrawRect(card0, p);
         }
 
-        if (card.Photo != null) PhotoFace(c, face);
-        else if (card.Jersey is { } kit) JerseyFace(c, face, kit, bc);
+        if (card.Photo != null) PhotoArt(c, face);
         else
         {
-            // .face  430x430 at right:-44 bottom:-6, drop-shadow(0 10px 16px rgba(0,0,0,.45))
-            using var resized = face.Resize(new SKImageInfo(430, 430, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High);
-            using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
-            p.ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 8, 8, new SKColor(0, 0, 0, A(.45f)));
-            c.DrawBitmap(resized ?? face, new SKRect(126, 88, 556, 518), p);
+            UpperBody(c, face, card.Jersey, bs);
+            Face(c, face);
         }
 
-        // .shade  bottom 150px, linear-gradient(0deg, rgba(0,0,0,.45), transparent)
+        // .frame: an inner outline in the tier's edge colour.
+        using (var frame = Outline(new SKRect(7, 7, UW - 7, UH - 7)))
+        using (var p = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2, Color = edge.WithAlpha(A(.75f)) })
+            c.DrawPath(frame, p);
+
+        Badge(c, card.PotentialAbility, bs, bc);
+        if (card.Draft is { } d) DraftStamp(c, $"{d.Year} · R{d.Round} P{d.Pick}", Hex(PortraitTiers.Badge(card.PotentialAbility).Light), bc);
+        if (card.Crest is { } crest)
+        {
+            // The crest's drawing was laid out in a 150x175 box at (22, 315) on the old 512 card; place that box at (12, 234), 38 wide.
+            c.Save();
+            c.Translate(12, PlateTop - 44);
+            c.Scale(38f / 150f);
+            c.Translate(-22, -(W - 22 - 175));
+            Crest(c, crest, bs);
+            c.Restore();
+        }
+        Plate(c, card, edge, bs, bc);
+        c.Restore();
+    }
+
+    private static void Body(SKCanvas c, Material m, SKRect r)
+    {
+        if (m.Texture != null && Texture(m.Texture) is { } tex && tex.Width > 0)
+        {
+            // background: url(...) center/cover
+            float k = Math.Max(r.Width / tex.Width, r.Height / tex.Height);
+            float w = tex.Width * k, h = tex.Height * k;
+            using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
+            c.DrawBitmap(tex, new SKRect(r.MidX - w / 2, r.MidY - h / 2, r.MidX + w / 2, r.MidY + h / 2), p);
+            return;
+        }
+        SKColor dk = Hex(m.Dark), bs = Hex(m.Base), lt = Hex(m.Light);
+        // A polished metal: linear-gradient(155deg, light, base 28%, dark 52%, base 70%, light 86%, base) ...
         using (var p = new SKPaint { IsAntialias = true })
         {
-            p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, W), new SKPoint(0, W - 150), new[] { new SKColor(0, 0, 0, A(.45f)), new SKColor(0, 0, 0, 0) }, null, SKShaderTileMode.Clamp);
-            c.DrawRect(0, W - 150, W, 150, p);
+            p.Shader = Linear(r, 155, (0, lt), (.28f, bs), (.52f, dk), (.70f, bs), (.86f, lt), (1, bs));
+            c.DrawRect(r, p);
         }
-
-        if (!dia) Badge(c, card.PotentialAbility, false, pd, pb, pl, pi, bs, bc);
-        if (card.Draft is { } d) DraftStamp(c, $"{d.Year} · R{d.Round} P{d.Pick}", pl, bc);
-        if (card.Crest is { } crest) Crest(c, crest, bs);
-        Edge(c, cb);
-
-        if (dia)
+        // ... under a brushed grain: repeating-linear-gradient(90deg, white .06 0 1px, black .05 1px 3px).
+        using (var p = new SKPaint { IsAntialias = true })
         {
-            Halo(c);
-            Badge(c, card.PotentialAbility, true, pd, pb, pl, pi, bs, bc);
-            Sparks(c);
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(3, 0), new[] { White(.06f), White(.06f), new SKColor(0, 0, 0, A(.05f)), new SKColor(0, 0, 0, A(.05f)) },
+                new[] { 0f, 1f / 3, 1f / 3, 1f }, SKShaderTileMode.Repeat);
+            c.DrawRect(r, p);
+        }
+    }
+
+    // ---- the art: face, neck, shoulders and tank top (the mock-up's upper_body(); Danny approved it Nov 21) ---------
+    /// <summary>The face: 128 units at (50, 44), its bottom 18% faded out so the neck carries on with no seam.</summary>
+    private static readonly SKRect FaceBox = new(50, 44, 178, 172);
+
+    private static void Face(SKCanvas c, SKBitmap face)
+    {
+        c.SaveLayer(FaceBox, null);
+        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+            c.DrawBitmap(face, FaceBox, p);
+        using (var p = new SKPaint { IsAntialias = true, BlendMode = SKBlendMode.DstIn })
+        {
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, FaceBox.Top), new SKPoint(0, FaceBox.Bottom), new[] { SKColors.Black, SKColors.Black, SKColors.Transparent }, new[] { 0f, .82f, 1f }, SKShaderTileMode.Clamp);
+            c.DrawRect(FaceBox, p);
         }
         c.Restore();
     }
 
-    // ---- badges -------------------------------------------------------------------------------
-    // ---- jersey and photo (#350-351) -----------------------------------------------------------
-
-    /// <summary>A real photo from Danny's graphics pack (a 260x190 head-and-shoulders cut-out, already in his jersey).</summary>
-    private static void PhotoFace(SKCanvas c, SKBitmap photo)
+    /// <summary>A real photo from the graphics pack (a head-and-shoulders cut-out, already in his jersey), standing on the plate.</summary>
+    private static void PhotoArt(SKCanvas c, SKBitmap photo)
     {
-        float w = 480, h = w * photo.Height / photo.Width;
-        var dst = new SKRect(W - w + 34, W - h + 6, W + 34, W + 6);
+        if (photo.Width == 0) return;
+        float w = 250, h = w * photo.Height / photo.Width;
+        var dst = new SKRect(UW / 2 - w / 2, PlateTop - h, UW / 2 + w / 2, PlateTop);
         using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
-        p.ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 8, 8, new SKColor(0, 0, 0, A(.45f)));
+        p.ImageFilter = SKImageFilter.CreateDropShadow(0, 4, 3, 3, new SKColor(0, 0, 0, A(.45f)));
         c.DrawBitmap(photo, dst, p);
     }
 
-    /// <summary>
-    /// The generated face, a little smaller and higher, wearing his club's jersey: the neck carried down from the face,
-    /// then a tank top in the club's colours with trim and his number.
-    /// </summary>
-    private static void JerseyFace(SKCanvas c, SKBitmap face, JerseySpec kit, SKTypeface bc)
-    {
-        const float fs = 372, x0 = 158, y0 = 40;
-        float k = fs / 256f, sx = face.Width / 256f, sy = face.Height / 256f;
-        // Neck: a strip just above the face picture's collar, stretched down under the jersey.
-        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
-        {
-            var src = new SKRect(88 * sx, 226 * sy, 168 * sx, 234 * sy);
-            var dst = new SKRect(x0 + 88 * k, y0 + 226 * k, x0 + 168 * k, y0 + 226 * k + 110);
-            c.Save();
-            c.ClipRoundRect(new SKRoundRect(dst, 14), SKClipOperation.Intersect, true);
-            c.DrawBitmap(face, src, dst, p);
-            c.Restore();
-        }
-        using (var resized = face.Resize(new SKImageInfo((int)fs, (int)fs, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High))
-        using (var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
-        {
-            p.ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 8, 8, new SKColor(0, 0, 0, A(.40f)));
-            c.DrawBitmap(resized ?? face, new SKRect(x0, y0, x0 + fs, y0 + fs), p);
-        }
+    /// <summary>A neutral practice tank for a player with no club kit on his card (free agents, prospects, jerseys off).</summary>
+    private static readonly (string prim, string sec) PlainKit = ("#3A4250", "#9AA3B2");
 
-        SKColor prim = Hex(kit.PrimaryColor), sec = Hex(kit.SecondaryColor);
+    private static void UpperBody(SKCanvas c, SKBitmap face, JerseySpec? kit, SKTypeface bs)
+    {
+        var skin = SkinTone(face);
+        SKColor prim = Hex(kit?.PrimaryColor ?? PlainKit.prim), sec = Hex(kit?.SecondaryColor ?? PlainKit.sec);
         // A trim that disappears into the shirt (e.g. white on white) falls back to dark or light.
         if (Distance(prim, sec) < 90) sec = Luma(prim) > 140 ? Hex("#111418") : SKColors.White;
-        float cx = x0 + fs / 2, top = y0 + 232 * k, sh = 136;
-        float nL = cx - 52, nR = cx + 52, sY = top + 44;
-        using var neck = new SKPath();
-        neck.MoveTo(nL, top);
-        neck.CubicTo(nL + 6, sY, nR - 6, sY, nR, top);
-        using var body = new SKPath();
-        body.MoveTo(cx - sh - 70, W + 40);
-        body.LineTo(cx - sh - 46, top + 64);
-        body.QuadTo(cx - sh - 30, top + 14, cx - sh + 14, top + 6);
-        body.LineTo(nL, top);
-        body.CubicTo(nL + 6, sY, nR - 6, sY, nR, top);
-        body.LineTo(cx + sh - 14, top + 6);
-        body.QuadTo(cx + sh + 30, top + 14, cx + sh + 46, top + 64);
-        body.LineTo(cx + sh + 70, W + 40);
-        body.Close();
-        using (var p = new SKPaint { IsAntialias = true, Color = prim })
-        {
-            p.ImageFilter = SKImageFilter.CreateDropShadow(0, -3, 6, 6, new SKColor(0, 0, 0, A(.35f)));
-            c.DrawPath(body, p);
-        }
-        // Soft shading so the shirt isn't flat: lighter across the chest, darker at the sides.
+
+        c.Save();
+        c.Translate(0, 18); // the mock-up's 228x262 drawing starts 18 units down the card
+        using var skinP = new SKPaint { IsAntialias = true, Color = skin };
+        using var shoulders = Svg("M114 148 C88 150 66 158 44 172 C22 186 10 214 6 262 L222 262 C218 214 206 186 184 172 C162 158 140 150 114 148 Z");
+        c.DrawPath(shoulders, skinP);
+        using (var p = new SKPaint { IsAntialias = true, Color = new SKColor(0, 0, 0, A(.12f)) })
+        using (var traps = Svg("M114 148 C88 150 66 158 44 172 C70 166 92 162 114 162 C136 162 158 166 184 172 C162 158 140 150 114 148 Z"))
+            c.DrawPath(traps, p);
+        // The arms' shading: dark at the outside, a touch of light inside.
+        using (var armL = Svg("M6 262 C10 214 18 190 34 176 L58 186 C50 210 46 236 46 262 Z"))
+        using (var armR = Svg("M222 262 C218 214 210 190 194 176 L170 186 C178 210 182 236 182 262 Z"))
         using (var p = new SKPaint { IsAntialias = true })
         {
-            p.Shader = SKShader.CreateLinearGradient(new SKPoint(cx - sh - 70, 0), new SKPoint(cx + sh + 70, 0),
-                new[] { new SKColor(0, 0, 0, A(.28f)), new SKColor(255, 255, 255, A(.10f)), new SKColor(0, 0, 0, A(.28f)) }, new[] { 0f, .5f, 1f }, SKShaderTileMode.Clamp);
-            c.DrawPath(body, p);
-        }
-        using (var p = new SKPaint { IsAntialias = true, Color = sec, Style = SKPaintStyle.Stroke, StrokeWidth = 10, StrokeCap = SKStrokeCap.Round })
-        {
-            c.DrawPath(neck, p);
-            p.StrokeWidth = 8;
-            using var armL = new SKPath(); armL.MoveTo(cx - sh + 14, top + 6); armL.QuadTo(cx - sh - 8, top + 60, cx - sh - 12, W + 20);
-            using var armR = new SKPath(); armR.MoveTo(cx + sh - 14, top + 6); armR.QuadTo(cx + sh + 8, top + 60, cx + sh + 12, W + 20);
+            var cols = new[] { new SKColor(0, 0, 0, A(.45f)), new SKColor(0, 0, 0, 0), White(.08f) };
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(6, 0), new SKPoint(58, 0), cols, new[] { 0f, .5f, 1f }, SKShaderTileMode.Clamp);
             c.DrawPath(armL, p);
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(222, 0), new SKPoint(170, 0), cols, new[] { 0f, .5f, 1f }, SKShaderTileMode.Clamp);
             c.DrawPath(armR, p);
         }
-        using (var font = new SKFont(bc, 58))
-        using (var p = new SKPaint { IsAntialias = true, Color = sec })
+        // The neck, with a shadow under the jaw and darker sides.
+        using (var neck = Svg("M92 96 C94 124 92 142 80 160 L148 160 C136 142 134 124 136 96 Z"))
         {
-            var text = kit.Number.ToString();
-            float tw = Measure(font, text);
-            using var outline = new SKPaint { IsAntialias = true, Color = new SKColor(0, 0, 0, A(.35f)), Style = SKPaintStyle.Stroke, StrokeWidth = 4 };
-            c.DrawText(text, cx - tw / 2, sY + 58, font, outline);
-            c.DrawText(text, cx - tw / 2, sY + 58, font, p);
+            c.DrawPath(neck, skinP);
+            using var p = new SKPaint { IsAntialias = true };
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, 96), new SKPoint(0, 160), new[] { new SKColor(0, 0, 0, A(.55f)), new SKColor(0, 0, 0, A(.12f)), new SKColor(0, 0, 0, 0) }, new[] { 0f, .45f, 1f }, SKShaderTileMode.Clamp);
+            c.DrawPath(neck, p);
         }
+        using (var p = new SKPaint { IsAntialias = true, Color = new SKColor(0, 0, 0, A(.18f)) })
+        using (var l = Svg("M92 96 C94 124 92 142 80 160 L96 160 C102 142 102 124 100 96 Z"))
+        using (var r = Svg("M136 96 C134 124 136 142 148 160 L132 160 C126 142 126 124 128 96 Z"))
+        {
+            c.DrawPath(l, p);
+            c.DrawPath(r, p);
+        }
+        // The tank top: straps over the traps, armholes that leave the delts bare, a scoop neck with trim.
+        using var tank = Svg("M74 160 C72 168 70 176 66 186 C60 204 58 232 60 262 L168 262 C170 232 168 204 162 186 C158 176 156 168 154 160 " +
+                             "C146 158 142 158 138 160 C134 186 94 186 90 160 C86 158 82 158 74 160 Z");
+        using (var p = new SKPaint { IsAntialias = true, Color = prim })
+            c.DrawPath(tank, p);
+        using (var p = new SKPaint { IsAntialias = true })
+        {
+            // radial-gradient(at .5 .25, r .85): a highlight on the chest, darker edges (over the tank's 60..168 x 158..262 box).
+            var b = tank.Bounds;
+            p.Shader = SKShader.CreateRadialGradient(new SKPoint(b.MidX, b.Top + b.Height * .25f), Math.Max(b.Width, b.Height) * .85f,
+                new[] { White(.16f), new SKColor(0, 0, 0, 0), new SKColor(0, 0, 0, A(.45f)) }, new[] { 0f, .55f, 1f }, SKShaderTileMode.Clamp);
+            c.DrawPath(tank, p);
+        }
+        using (var p = new SKPaint { IsAntialias = true, Color = sec, Style = SKPaintStyle.Stroke, StrokeWidth = 5 })
+        using (var scoop = Svg("M90 160 C94 186 134 186 138 160"))
+        using (var straps = Svg("M74 160 C72 168 70 176 66 186 C60 204 58 232 60 262 M154 160 C156 168 158 176 162 186 C168 204 170 232 168 262"))
+        {
+            c.DrawPath(scoop, p);
+            p.StrokeWidth = 4.5f;
+            c.DrawPath(straps, p);
+        }
+        if (kit != null)
+        {
+            using var font = new SKFont(bs, 40) { Subpixel = true, Edging = SKFontEdging.Antialias };
+            var text = kit.Number.ToString();
+            float tx = 114 - Measure(font, text) / 2;
+            bool light = Luma(prim) > 170;
+            using var stroke = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 4, StrokeJoin = SKStrokeJoin.Round, Color = light ? Hex("#111418") : sec };
+            using var fill = new SKPaint { IsAntialias = true, Color = (light ? sec : SKColors.White).WithAlpha(A(.95f)) };
+            c.DrawText(text, tx, 226, font, stroke);
+            c.DrawText(text, tx, 226, font, fill);
+        }
+        c.Restore();
     }
+
+    /// <summary>
+    /// The player's skin tone, sampled from the neck at the bottom of the face cut-out (rows 226-252, columns 104-152 of a 256 face):
+    /// the opaque pixels between the 55th and 80th brightness percentile, so the jaw's shadow doesn't darken it.
+    /// </summary>
+    public static SKColor SkinTone(SKBitmap face)
+    {
+        var fallback = Hex("#9B6A4C");
+        if (face.Width < 8 || face.Height < 8) return fallback;
+        float sx = face.Width / 256f, sy = face.Height / 256f;
+        var px = new List<(double lum, SKColor c)>();
+        for (int y = (int)(226 * sy); y < Math.Min(face.Height, (int)(252 * sy)); y++)
+            for (int x = (int)(104 * sx); x < Math.Min(face.Width, (int)(152 * sx)); x++)
+            {
+                var c = face.GetPixel(x, y);
+                if (c.Alpha > 200) px.Add(((c.Red + c.Green + c.Blue) / 3.0, c));
+            }
+        if (px.Count < 8) return fallback;
+        px.Sort((a, b) => a.lum.CompareTo(b.lum));
+        double lo = Percentile(px, .55), hi = Percentile(px, .80);
+        var pick = px.Where(p => p.lum >= lo && p.lum <= hi).Select(p => p.c).ToList();
+        if (pick.Count == 0) return fallback;
+        return new SKColor((byte)pick.Average(p => p.Red), (byte)pick.Average(p => p.Green), (byte)pick.Average(p => p.Blue));
+    }
+
+    /// <summary>numpy's default (linear) percentile of a sorted list.</summary>
+    private static double Percentile(List<(double lum, SKColor c)> sorted, double q)
+    {
+        double pos = q * (sorted.Count - 1);
+        int i = (int)Math.Floor(pos);
+        return i + 1 < sorted.Count ? sorted[i].lum + (pos - i) * (sorted[i + 1].lum - sorted[i].lum) : sorted[i].lum;
+    }
+
+    private static SKPath Svg(string d) => SKPath.ParseSvgPathData(d);
+
+    /// <summary>Letters the card fonts lack (they cover Latin-1 only: Ć, Š, Ş, Ž, Ł, Đ …) folded to their base letter,
+    /// so "JOKIĆ" reads "JOKIC" instead of losing a letter. Anything still missing becomes a space.</summary>
+    public static string Fold(string text, SKTypeface face)
+    {
+        if (face.ContainsGlyphs(text)) return text;
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (var ch in text)
+        {
+            if (char.IsSurrogate(ch)) { continue; }
+            if (face.ContainsGlyph(ch)) { sb.Append(ch); continue; }
+            var mapped = ch switch
+            {
+                'Đ' or 'Ð' => "D", 'đ' => "d", 'Ł' => "L", 'ł' => "l", 'İ' => "I", 'ı' => "i", 'Ø' => "O", 'ø' => "o", 'Æ' => "AE", 'æ' => "ae", 'ß' => "SS",
+                _ => new string(ch.ToString().Normalize(System.Text.NormalizationForm.FormD)
+                        .Where(d => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(d) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray()),
+            };
+            foreach (var m in mapped) sb.Append(face.ContainsGlyph(m) ? m : ' ');
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>The card fonts, for tests.</summary>
+    internal static (SKTypeface bigShoulders, SKTypeface barlow) CardFonts => Fonts.Value;
+
+    /// <summary>Whether an embedded card texture loads (tests).</summary>
+    public static bool HasTexture(string name) => Texture(name) != null;
 
     private static double Luma(SKColor c) => 0.299 * c.Red + 0.587 * c.Green + 0.114 * c.Blue;
     private static double Distance(SKColor a, SKColor b) =>
         Math.Sqrt(Math.Pow(a.Red - b.Red, 2) + Math.Pow(a.Green - b.Green, 2) + Math.Pow(a.Blue - b.Blue, 2));
 
-    private static void Badge(SKCanvas c, int pa, bool dia, SKColor pd, SKColor pb, SKColor pl, SKColor pi, SKTypeface bs, SKTypeface bc)
+    // ---- the POT badge, the draft stamp and the name plate ------------------------------------
+    /// <summary>The hex POT badge at the top left (56x64 at (12,12)), in the potential's tier; holographic with a DIAMOND tag at 180+.</summary>
+    private static void Badge(SKCanvas c, int pa, SKTypeface bs, SKTypeface bc)
     {
-        // .badges: left 22, top 22. The hex is wider than the 132px container, so the grid track grows to the hex
-        // and the hex sits at left 22; the DIAMOND tag is centred on that track (measured in Chromium).
-        const float top = 22;
-        float hw = dia ? 146 : 136, hh = dia ? 168 : 156, iw = dia ? 128 : 120, ih = dia ? 150 : 140;
-        float cx = 22 + hw / 2;
-        var outer = new SKRect(cx - hw / 2, top, cx + hw / 2, top + hh);
-        var inner = new SKRect(cx - iw / 2, top + (hh - ih) / 2, cx + iw / 2, top + (hh - ih) / 2 + ih);
-        using var outerPath = HexPath(outer);
-        using var innerPath = HexPath(inner);
-
-        using (var p = new SKPaint { IsAntialias = true })
+        var pt = PortraitTiers.Badge(pa);
+        bool dia = pa >= PortraitTiers.Diamond.Lo;
+        var box = new SKRect(12, 12, 68, 76);
+        using var hex = HexPath(box);
+        using (var shadow = new SKPaint { IsAntialias = true, Color = new SKColor(0, 0, 0, A(.35f)), MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2) })
         {
+            c.Save(); c.Translate(0, 1.5f); c.DrawPath(hex, shadow); c.Restore();
+        }
+        c.Save();
+        c.ClipPath(hex, SKClipOperation.Intersect, true);
+        if (dia && Texture("foil-diamond.jpg") is { } foil && foil.Width > 0)
+        {
+            float k = Math.Max(box.Width / foil.Width, box.Height / foil.Height);
+            float w = foil.Width * k, h = foil.Height * k;
+            using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
+            c.DrawBitmap(foil, new SKRect(box.MidX - w / 2, box.MidY - h / 2, box.MidX + w / 2, box.MidY + h / 2), p);
+        }
+        else
+        {
+            using var p = new SKPaint { IsAntialias = true };
             p.Shader = dia
-                ? Conic(new SKPoint(outer.MidX, outer.MidY), 20, Hex("#FF7AD9"), Hex("#FFD36E"), Hex("#8CFFB4"), Hex("#6EE7FF"), Hex("#9B8CFF"), Hex("#FF7AD9"))
-                : Linear(outer, 160, (0, SKColors.White), (.25f, pl), (.70f, pd), (1, Hex("#05080D")));
-            c.DrawPath(outerPath, p);
+                ? Conic(new SKPoint(box.MidX, box.MidY), 200, Hex("#BFEFFF"), Hex("#FFB8E8"), Hex("#FFE89A"), Hex("#B8FFD6"), Hex("#B8CCFF"), Hex("#E2B8FF"), Hex("#BFEFFF"))
+                : Linear(box, 160, (0, Hex(pt.Base)), (1, Hex(pt.Dark)));
+            c.DrawRect(box, p);
         }
-        using (var p = new SKPaint { IsAntialias = true })
-        {
-            if (dia)
-            {
-                p.Shader = Conic(new SKPoint(inner.Left + inner.Width * .40f, inner.Top + inner.Height * .45f), 200,
-                    Hex("#BFEFFF"), Hex("#FFB8E8"), Hex("#FFE89A"), Hex("#B8FFD6"), Hex("#B8CCFF"), Hex("#E2B8FF"), Hex("#BFEFFF"));
-                c.DrawPath(innerPath, p);
-                p.Shader = Linear(inner, 200, (.55f, White(0)), (.66f, White(.55f)), (.76f, White(0)));
-                c.DrawPath(innerPath, p);
-                p.Shader = Linear(inner, 125, (.20f, White(0)), (.38f, White(.85f)), (.52f, White(0)));
-                c.DrawPath(innerPath, p);
-            }
-            else
-            {
-                p.Shader = Linear(inner, 160, (0, pb), (1, pd));
-                c.DrawPath(innerPath, p);
-            }
-        }
+        // inset 0 0 0 2px rgba(255,255,255,.4)
+        using (var p = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 4, Color = White(.4f) })
+            c.DrawPath(hex, p);
+        c.Restore();
 
-        // Number (Big Shoulders 900 74px) and "POT" (Barlow Condensed 800 20px, letter-spacing .22em, margin-top 6),
-        // stacked and centred vertically in the inner hex. The CSS `font` shorthand resets line-height to normal,
-        // so the .82 on .in never applies: each line is the font's (rounded) ascent + descent.
-        using var numFont = new SKFont(bs, 74) { Subpixel = true, Edging = SKFontEdging.Antialias };
-        using var potFont = new SKFont(bc, 20) { Subpixel = true, Edging = SKFontEdging.Antialias };
-        var (numAsc, numLh) = LineBox(numFont);
+        using var numFont = new SKFont(bs, 26) { Subpixel = true, Edging = SKFontEdging.Antialias };
+        using var potFont = new SKFont(bc, 11) { Subpixel = true, Edging = SKFontEdging.Antialias };
         var (potAsc, potLh) = LineBox(potFont);
-        float stackTop = inner.Top + (ih - (numLh + 6 + potLh)) / 2;
-        float numBase = stackTop + numAsc;
-        float potBase = stackTop + numLh + 6 + potAsc;
+        // line-height 1 for the number: its 26-unit line holds the glyphs' ascent and descent, centred.
+        var nm = numFont.Metrics;
+        float numLh = 26, numBase = 0 + (numLh - (nm.Descent - nm.Ascent)) / 2 - nm.Ascent;
+        float stack = numLh + 1 + potLh, top = box.Top + (box.Height - stack) / 2;
+        var ink = dia ? Hex("#0A1E30") : Hex(pt.Ink);
         var num = pa.ToString();
-        float numX = cx - Measure(numFont, num) / 2;
-        var ink = dia ? Hex("#0A1E30") : pi;
-        using (var p = new SKPaint { IsAntialias = true })
+        using (var p = new SKPaint { IsAntialias = true, Color = dia ? White(.8f) : new SKColor(0, 0, 0, A(.25f)) })
         {
-            if (dia)
-            {
-                p.Color = White(.8f);
-                p.ImageFilter = SKImageFilter.CreateBlur(5, 5);
-                c.DrawText(num, numX, numBase, numFont, p);
-                p.ImageFilter = null;
-                p.Color = White(.9f);
-                c.DrawText(num, numX, numBase + 1, numFont, p);
-            }
-            else
-            {
-                p.Color = new SKColor(0, 0, 0, A(.25f));
-                c.DrawText(num, numX, numBase + 2, numFont, p);
-            }
+            c.DrawText(num, box.MidX - Measure(numFont, num) / 2, top + numBase + (dia ? 0 : 1), numFont, p);
             p.Color = ink;
-            c.DrawText(num, numX, numBase, numFont, p);
-            p.Color = dia ? ink : ink.WithAlpha((byte)(ink.Alpha * .9f));
-            Spaced(c, "POT", cx, potBase, potFont, 20 * .22f, p);
+            c.DrawText(num, box.MidX - Measure(numFont, num) / 2, top + numBase, numFont, p);
+            Spaced(c, "POT", box.MidX, top + numLh + 1 + potAsc, potFont, 1.5f, p);
         }
-
-        if (dia) DiamondTag(c, cx, top + hh + 10, bc);
+        if (dia) DiamondTag(c, box, bc);
     }
 
-    private static void DiamondTag(SKCanvas c, float cx, float top, SKTypeface bc)
+    private static void DiamondTag(SKCanvas c, SKRect badge, SKTypeface bc)
     {
-        using var font = new SKFont(bc, 17) { Subpixel = true, Edging = SKFontEdging.Antialias };
-        const string text = "DIAMOND";
-        float spacing = 17 * .22f;
-        float tw = SpacedWidth(text, font, spacing);
+        using var font = new SKFont(bc, 9) { Subpixel = true, Edging = SKFontEdging.Antialias };
         var (asc, lh) = LineBox(font);
-        float h = lh + 4;
-        var box = new SKRect(cx - (tw + 24) / 2, top, cx + (tw + 24) / 2, top + h);
-        using (var p = new SKPaint { IsAntialias = true, Color = new SKColor(160, 210, 255, A(.9f)) })
+        var box = new SKRect(badge.Left, badge.Bottom + 3, badge.Right, badge.Bottom + 3 + lh + 2);
+        using (var p = new SKPaint { IsAntialias = true })
         {
-            p.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 7);
-            c.DrawRoundRect(box, 4, 4, p);
-        }
-        using (var p = new SKPaint { IsAntialias = true, Color = SKColors.White })
-        {
-            var ring = box; ring.Inflate(2, 2);
-            c.DrawRoundRect(ring, 6, 6, p);
-            p.Shader = Linear(box, 90, (0, Hex("#FFD9F2")), (.25f, Hex("#FFF6CC")), (.5f, Hex("#D9FFE9")), (.75f, Hex("#D6E4FF")), (1, Hex("#F1D9FF")));
-            c.DrawRoundRect(box, 4, 4, p);
+            p.Shader = Linear(box, 90, (0, Hex("#BFE9FF")), (1, Hex("#F4D9FF")));
+            c.DrawRoundRect(box, 3, 3, p);
         }
         using (var p = new SKPaint { IsAntialias = true, Color = Hex("#0A1E30") })
-        {
-            float x = box.Left + 12;
-            DrawSpacedFrom(c, text, x, top + 2 + asc, font, spacing, p);
-        }
+            Spaced(c, "DIAMOND", box.MidX, box.Top + 1 + asc, font, 1.2f, p);
     }
 
-    private static void Halo(SKCanvas c)
-    {
-        // .halo: 240x260 ellipse at (-30,-34), radial-gradient(closest-side, ...), blur(2px)
-        var box = new SKRect(-30, -34, 210, 226);
-        using var p = new SKPaint { IsAntialias = true };
-        var m = SKMatrix.CreateScale(120, 130).PostConcat(SKMatrix.CreateTranslation(box.MidX, box.MidY));
-        p.Shader = SKShader.CreateRadialGradient(new SKPoint(0, 0), 1,
-            new[] { White(.95f), new SKColor(180, 230, 255, A(.75f)), new SKColor(255, 150, 230, A(.45f)), new SKColor(255, 230, 120, A(.25f)), White(0) },
-            new[] { 0f, .35f, .55f, .70f, 1f }, SKShaderTileMode.Clamp, m);
-        p.ImageFilter = SKImageFilter.CreateBlur(2, 2);
-        c.DrawOval(box, p);
-    }
-
-    private static void Sparks(SKCanvas c)
-    {
-        // Four-point stars inside .spark (left/top 12). Their CSS drop-shadows are clipped away by the clip-path, so plain white.
-        (float x, float y, float z)[] stars = { (4, 10, 30), (150, 22, 22), (0, 150, 18), (156, 146, 26), (90, 0, 14), (134, 92, 12), (22, 96, 10), (170, 80, 9) };
-        using var p = new SKPaint { IsAntialias = true, Color = SKColors.White };
-        foreach (var (x, y, z) in stars)
-        {
-            using var path = Poly(new SKRect(12 + x, 12 + y, 12 + x + z, 12 + y + z), (.5f, 0), (.6f, .4f), (1, .5f), (.6f, .6f), (.5f, 1), (.4f, .6f), (0, .5f), (.4f, .4f));
-            c.DrawPath(path, p);
-        }
-    }
-
-    // ---- draft stamp, crest, edge -------------------------------------------------------------
+    /// <summary>The draft stamp at the top right, clear of the angled corner: white on dark glass, edged in the badge's light colour.</summary>
     private static void DraftStamp(SKCanvas c, string text, SKColor border, SKTypeface bc)
     {
-        // .draft: right 18, top 20; 800 22px; padding 3px 10px; border 3px; radius 8; letter-spacing .04em
-        using var font = new SKFont(bc, 22) { Subpixel = true, Edging = SKFontEdging.Antialias };
-        float spacing = 22 * .04f;
+        using var font = new SKFont(bc, 11) { Subpixel = true, Edging = SKFontEdging.Antialias };
+        float spacing = .8f;
         float tw = SpacedWidth(text, font, spacing);
         var (asc, lh) = LineBox(font);
-        var box = new SKRect(W - 18 - (tw + 26), 20, W - 18, 20 + lh + 12);
-        using (var p = new SKPaint { IsAntialias = true, Color = new SKColor(8, 12, 18, A(.85f)) })
-            c.DrawRoundRect(box, 8, 8, p);
-        using (var p = new SKPaint { IsAntialias = true, Color = border, Style = SKPaintStyle.Stroke, StrokeWidth = 3 })
+        var box = new SKRect(UW - 30 - (tw + 12), 14, UW - 30, 14 + lh + 4);
+        using (var p = new SKPaint { IsAntialias = true, Color = new SKColor(8, 12, 18, A(.8f)) })
+            c.DrawRoundRect(box, 3, 3, p);
+        using (var p = new SKPaint { IsAntialias = true, Color = border, Style = SKPaintStyle.Stroke, StrokeWidth = 1.2f })
         {
-            var r = box; r.Inflate(-1.5f, -1.5f);
-            c.DrawRoundRect(r, 6.5f, 6.5f, p);
+            var r = box; r.Inflate(-.6f, -.6f);
+            c.DrawRoundRect(r, 2.5f, 2.5f, p);
         }
         using (var p = new SKPaint { IsAntialias = true, Color = SKColors.White })
-            DrawSpacedFrom(c, text, box.Left + 13, box.Top + 6 + asc, font, spacing, p);
+            DrawSpacedFrom(c, text, box.Left + 6, box.Top + 2 + asc, font, spacing, p);
     }
 
+    /// <summary>The name plate: first name small, LAST NAME large, the position on the right, on a dark glass band edged in the tier's colour.</summary>
+    private static void Plate(SKCanvas c, PortraitCard card, SKColor edge, SKTypeface bs, SKTypeface bc)
+    {
+        var band = new SKRect(0, PlateTop, UW, UH);
+        using (var p = new SKPaint { IsAntialias = true })
+        {
+            p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, band.Top), new SKPoint(0, band.Bottom), new[] { new SKColor(10, 12, 18, A(.55f)), new SKColor(10, 12, 18, A(.88f)) }, null, SKShaderTileMode.Clamp);
+            c.DrawRect(band, p);
+            p.Shader = null; p.Color = edge;
+            c.DrawRect(new SKRect(0, band.Top, UW, band.Top + 2), p);
+        }
+        if (card.LastName is not { Length: > 0 } last) return;
+        float x = 34, right = UW - 14;
+        if (card.Position is { Length: > 0 } pos)
+        {
+            using var pf = new SKFont(bs, 20) { Subpixel = true, Edging = SKFontEdging.Antialias };
+            var (pAsc, _) = LineBox(pf);
+            float pw = Measure(pf, pos);
+            using var p = new SKPaint { IsAntialias = true, Color = edge };
+            c.DrawText(pos, right - pw, band.Top + 14 + pAsc, pf, p);
+            right -= pw + 8;
+        }
+        float room = right - x;
+        using (var ff = new SKFont(bc, 13) { Subpixel = true, Edging = SKFontEdging.Antialias })
+        using (var p = new SKPaint { IsAntialias = true, Color = Hex("#DDE3EC") })
+        {
+            var first = Fold((card.FirstName ?? "").ToUpperInvariant(), bc);
+            var (fAsc0, _) = LineBox(ff);
+            float fw = SpacedWidth(first, ff, 1);
+            if (fw > room) ff.Size = 13 * room / fw;
+            // A shrunken first name keeps the line's 13-unit box: its baseline moves up with the smaller ascent, centred.
+            var (fAsc, _) = LineBox(ff);
+            float lineTop = band.Top + 2 + 7 + (fAsc0 - fAsc) / 2;
+            DrawSpacedFrom(c, first, x, lineTop + fAsc, ff, ff.Size / 13f, p);
+        }
+        using (var lf = new SKFont(bs, 27) { Subpixel = true, Edging = SKFontEdging.Antialias })
+        using (var p = new SKPaint { IsAntialias = true, Color = SKColors.White })
+        {
+            var full = Fold(last.ToUpperInvariant(), bs);
+            var text = full;
+            float lw = SpacedWidth(text, lf, .5f);
+            // A long surname shrinks to fit (never below 60%), then is cut with an ellipsis.
+            float size = 27;
+            if (lw > room) size = Math.Max(27 * .6f, 27 * room / lw);
+            lf.Size = size;
+            float sp = .5f * size / 27;
+            for (int keep = full.Length - 1; keep >= 1 && SpacedWidth(text, lf, sp) > room; keep--)
+                text = full[..keep].TrimEnd(' ', '-') + "…";
+            // line-height 1 below the first name's line (13 * 1.2 = 16 units).
+            var lm = lf.Metrics;
+            float lineTop = band.Top + 2 + 7 + 16 + (27 - size) / 2;
+            float baseline = lineTop + (size - (lm.Descent - lm.Ascent)) / 2 - lm.Ascent;
+            DrawSpacedFrom(c, text, x, baseline, lf, sp, p);
+        }
+    }
+
+    // ---- the crest (drawn in the old 512 card's crest box; Draw() places it) -------------------
     private static readonly Dictionary<string, SKBitmap?> LogoCache = new();
 
     /// <summary>A logo-pack image, decoded once per file (null if unreadable).</summary>
@@ -497,31 +631,7 @@ public static class CardRenderer
         return path;
     }
 
-    private static void Edge(SKCanvas c, SKColor cb)
-    {
-        // box-shadow: inset 0 0 0 6px cb, inset 0 0 0 8px white .55, inset 0 0 0 12px black .25 (last painted first)
-        Ring(c, 12, new SKColor(0, 0, 0, A(.25f)));
-        Ring(c, 8, White(.55f));
-        Ring(c, 6, cb);
-    }
-
-    private static void Ring(SKCanvas c, float spread, SKColor color)
-    {
-        using var path = new SKPath { FillType = SKPathFillType.EvenOdd };
-        path.AddRoundRect(new SKRect(0, 0, W, W), 40, 40);
-        path.AddRoundRect(new SKRect(spread, spread, W - spread, W - spread), 40 - spread, 40 - spread);
-        using var p = new SKPaint { IsAntialias = true, Color = color };
-        c.DrawPath(path, p);
-    }
-
     // ---- helpers ------------------------------------------------------------------------------
-    private static void Shard(SKCanvas c, float opacity, SKShader shader, params (float x, float y)[] poly)
-    {
-        using var path = Poly(new SKRect(0, 0, W, W), poly);
-        using var p = new SKPaint { IsAntialias = true, Shader = shader, Color = new SKColor(0, 0, 0, A(opacity)) };
-        c.DrawPath(path, p);
-    }
-
     private static SKPath HexPath(SKRect r) => Poly(r, (.5f, 0), (1, .25f), (1, .75f), (.5f, 1), (0, .75f), (0, .25f));
 
     private static SKPath Poly(SKRect r, params (float x, float y)[] pts)

@@ -51,6 +51,8 @@
         <CheckBox Content="Players wear their club's jersey on their cards" IsChecked="{Binding CardJerseys}"/>
         <TextBlock Text="The game looks for prographics and collegegraphics folders inside the face pack folder (or the logo folder) every time it starts. Your own logo pack still wins where it has a club."
                    Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+        <TextBlock Text="Card art: HOLOFOIL foils by FRZ Designs · gem facets Vecteezy.com"
+                   Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
       </StackPanel>
     </Border>
     <!-- Name pack: real names for clubs, leagues and conferences, from a file the player keeps (the game ships fictional). -->
