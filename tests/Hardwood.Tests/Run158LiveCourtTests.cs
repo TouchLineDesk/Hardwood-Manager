@@ -43,6 +43,10 @@ public class Run158LiveCourtTests
         Assert.False(LiveGameView.StepAside(1210));   // 1480 with the assistant open
         Assert.False(LiveGameView.StepAside(1138));   // 130% with the assistant closed
         Assert.True(LiveGameView.StepAside(868));     // 130% with the assistant open
+        // A compact page (the window's least width keeps the test from reaching one): the controls' column, under the
+        // score bar, is still reserved at the left (review, run 158).
+        var compact = LiveGameView.CourtReserve(180, 64, leftColumn: true, drawerOpen: false, drawerWidth: 0, compact: true);
+        Assert.Equal(LiveGameView.CornerWidth + 20, compact.Left);
     }
 
     [AvaloniaFact]
@@ -143,11 +147,6 @@ public class Run158LiveCourtTests
                 Assert.True(MatchCourt.Fit(court.Bounds.Size, court.Reserve).Scale > open);
                 Assert.Empty(LayoutCheck.Scan(w).Select(x => x.ToString()));
             }
-            // A compact page (review, run 158): the controls' column sits under the score bar and still keeps off the floor.
-            w.Width = 900; w.Height = 700; Settle(); Settle();
-            Assert.True(view.FindControl<Control>("LeftStack")!.IsEffectivelyVisible);
-            NothingCovers("compact closed");
-            Shot("compact-closed");
             Assert.Null(MatchCourt.LastRenderError);
         }
         finally
