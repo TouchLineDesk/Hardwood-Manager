@@ -199,6 +199,21 @@ public class Run149ChoreographyTests
     }
 
     [Fact]
+    public void A_substitution_after_a_stop_is_not_a_dead_ball()
+    {
+        var input = Input(OffensiveSystem.PickAndRoll, DefensiveScheme.Man, PossessionStart.AfterStop);
+        var (h, _) = Teams();
+        var five = input.Home.ToList();
+        five[1] = h.Roster.Except(input.Home).First();
+        var c = PossessionChoreographer.Build(input with { Home = five });
+        Assert.Contains(c.Actions, x => x.Tag == "sub");
+        Assert.Contains(c.Actions, x => x.Tag == "lanes");
+        // The clock runs from the start: no stopped-clock scene before a push.
+        Assert.True(c.ClockAt(1.0) < 516);
+        Assert.Contains(c.Lines, l => l.Text.StartsWith("Substitution") && l.T > 0);
+    }
+
+    [Fact]
     public void Same_input_draws_the_same_picture()
     {
         var a = PossessionChoreographer.Build(Input(OffensiveSystem.Balanced, DefensiveScheme.Zone23));

@@ -351,9 +351,13 @@ public static class PossessionChoreographer
                     : entering.Any(i => i < 5) && !entering.Any(i => i >= 5);
                 c.Leaving.Add((kv.Key, wasHome, kv.Value));
             }
-            lead = SubTime;
-            c.ExitTime = lead;
-            foreach (var i in entering) { Drift(i, 0, lead, new Spot(47 + (i < 5 ? -3 : 3), 46)); Act(0, "sub", i); }
+            // Review (run 149): the engine also subs after a live-ball stop, so after a rebound or steal there's no dead
+            // ball: the newcomer jogs on as the play runs, the line comes once the push is under way, and the clock runs.
+            bool deadBall = input.How != PossessionStart.AfterStop;
+            lead = deadBall ? SubTime : 0;
+            c.ExitTime = SubTime;
+            if (deadBall) foreach (var i in entering) Drift(i, 0, lead, new Spot(47 + (i < 5 ? -3 : 3), 46));
+            foreach (var i in entering) Act(0, "sub", i);
             // One line for both benches (the bar shows one line at a time).
             var parts = new List<string>();
             foreach (var side in new[] { true, false })
@@ -364,8 +368,8 @@ public static class PossessionChoreographer
                 string team = side ? input.HomeName : input.AwayName;
                 parts.Add(outs.Count > 0 ? $"{team}: {string.Join(" and ", ins)} in for {string.Join(" and ", outs)}" : $"{team}: {string.Join(" and ", ins)} checks in");
             }
-            c.Lines.Add(new(0, (parts.Count > 1 ? "Substitutions. " : "Substitution, ") + string.Join("; ", parts), false));
-            c.ClockPoints.Add((lead, input.StartClock));
+            c.Lines.Add(new(deadBall ? 0 : 1.0, (parts.Count > 1 ? "Substitutions. " : "Substitution, ") + string.Join("; ", parts), false));
+            if (deadBall) c.ClockPoints.Add((lead, input.StartClock));
             t = lead;
         }
 
@@ -470,8 +474,12 @@ public static class PossessionChoreographer
                 double passTime = 0.55;
                 double firstPass = setStart + Math.Max(0.5, span - chain.Count * 1.6 - 0.4);
                 // The set's signature, in the time before the passes (first chance only, when there's time for it).
+                double setDone = 0;
                 if (firstChance && firstPass - 0.2 - setStart >= 2.5)
+                {
                     RunSet(setStart, firstPass - 0.2, from, target, e.Kind == PlayKind.Shot && assister < 0);
+                    setDone = firstPass - 0.2;
+                }
 
                 // Shot spot for the shooter, so he gets there as the ball does.
                 Spot shotSpot = e.Kind == PlayKind.Shot ? ShotSpot(e.Zone, bx, rng) : cur[target];
@@ -507,7 +515,8 @@ public static class PossessionChoreographer
                 if (e.Kind == PlayKind.Shot && assister < 0)
                 {
                     // His own shot: he takes it there off the dribble.
-                    double go = Math.Max(caught, playAt - 2.2);
+                    // Review (run 149): after the set, so its lines don't talk over the drive.
+                    double go = Math.Max(Math.Max(caught, playAt - 2.2), Math.Min(setDone, playAt - 0.6));
                     Go(target, go, playAt - 0.1, shotSpot);
                     if (e.Zone == ShotZone.Rim) { c.Lines.Add(new(go, $"{Last(players[target])} drives to the basket", false)); Act(go, "drive", target); }
                 }
@@ -690,7 +699,7 @@ public static class PossessionChoreographer
             }
         }
         // If nothing happened on the floor (the clock ran out), let the clock run anyway.
-        if (c.ClockPoints.Count == 1 || (lead > 0 && c.ClockPoints.Count == 2)) { c.ClockPoints.Add((Math.Max(t, D + lead), input.EndClock)); t = Math.Max(t, D + lead); }
+        if (c.ClockPoints.Count == 1 || (lead > 0 && c.ClockPoints.Count == 2 && c.ClockPoints[1].T == lead && c.ClockPoints[1].Clock == input.StartClock)) { c.ClockPoints.Add((Math.Max(t, D + lead), input.EndClock)); t = Math.Max(t, D + lead); }
         t += Epilogue;
         // Everybody turns for the other end as the possession ends (the next one moves them).
         c.Length = t;
