@@ -164,7 +164,23 @@ public sealed partial class GameSession
     /// <summary>The table you're ranked in: your NABL conference, or your whole overseas league.</summary>
     public List<TeamRecord> MyTable => InNabl ? Standings.Conference(HumanTeam.Conference) : MyStandings.All();
     public string MyTableName => InNabl ? HumanTeam.Conference.ToString() : HumanLeagueName;
-    public int MyRank => MyTable.FindIndex(r => r.Team == HumanTeam) + 1;
+    /// <summary>
+    /// K20 (run 155): your place as Home and Standings show it. Before a college conference's first game every record is 0-0,
+    /// so those pages order the conference by overall record (H81, H134); the inbox's place now reads the same order
+    /// (Duke was "4th" in the inbox and 2nd on Standings on Dec 24).
+    /// </summary>
+    public int MyRank => MyShownTable.FindIndex(r => r.Team == HumanTeam) + 1;
+
+    /// <summary>K20: <see cref="MyTable"/>, ordered by overall record before college conference play (as Home and Standings show it).</summary>
+    public List<TeamRecord> MyShownTable
+    {
+        get
+        {
+            var t = MyTable;
+            if (!InCollege || t.Count == 0 || t.Any(r => r.Games > 0)) return t;
+            return t.Select(r => CollegeRecord(r.Team)).OrderByDescending(r => r.WinPct).ThenByDescending(r => r.Wins).ThenByDescending(r => r.PointDiff).ToList();
+        }
+    }
 
     /// <summary>Your club's games this season in every competition, in date order.</summary>
     public List<MyGame> MyGames()

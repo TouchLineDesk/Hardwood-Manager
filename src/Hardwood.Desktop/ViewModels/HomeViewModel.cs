@@ -258,11 +258,13 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             double lg = played != null ? played.Average(g => (g.HomePts!.Value + g.AwayPts!.Value) / 2.0) : all.Average(r => (double)r.PointsFor / r.Games);
             var accent = ThemeService.Accent; var grey = Color.Parse("#4A5563");
+            double allow = (double)rec.PointsAgainst / rec.Games;
             Comparison = new[]
             {
                 new Bar { Label = "We score", Value = (double)rec.PointsFor / rec.Games, Color = accent },
                 new Bar { Label = played != null ? "D-I avg" : "League avg", Value = lg, Color = grey },
-                new Bar { Label = "We allow", Value = (double)rec.PointsAgainst / rec.Games, Color = Color.Parse("#F85149") },
+                // H176 (run 155): allowing fewer than the average is good, so it's green then; red only above it.
+                new Bar { Label = "We allow", Value = allow, Color = Color.Parse(allow <= lg ? "#3FB950" : "#F85149") },
             };
         }
         else Comparison = null;

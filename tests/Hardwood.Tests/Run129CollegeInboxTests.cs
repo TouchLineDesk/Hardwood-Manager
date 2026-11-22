@@ -35,7 +35,8 @@ public class Run129CollegeInboxTests
         s.PostPro("Oklahoma City Thunder are champions", "Oklahoma City Thunder defeated New York Knicks in the Finals.");
         s.PostPro("The draft lottery", "The best 30 college graduates go in a one-round draft.", "Draft");
         Assert.Equal(before, s.Inbox.Count);
-        Assert.Equal(digest + 2, s.WorldDigest.Count);
+        // K16 (run 155): the pros' champions don't reach a college coach at all; the draft (his graduates') still does.
+        Assert.Equal(digest + 1, s.WorldDigest.Count);
 
         // March Madness: the round's message carries the Cinderella story.
         s.PostWorld("March Madness: the Sweet 16 is set", "East: 1 Duke, 4 Purdue.");

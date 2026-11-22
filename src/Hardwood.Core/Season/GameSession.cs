@@ -198,7 +198,12 @@ public sealed partial class GameSession
     public DateOnly LastDigest { get; set; }
 
     /// <summary>World news: anything about your club goes straight to the inbox; the rest waits for the weekly "Around the world".</summary>
-    public void PostWorld(string title, string body)
+    /// <remarks>
+    /// K16 (run 155): a college coach's digest carries the college world only. Stories from the pros and abroad (records,
+    /// milestones, transfers, coaching changes, champions) are dropped for him unless <paramref name="college"/> says the
+    /// story is a college one (they're still on the Leagues page). College stories come from <see cref="Hardwood.Core.World.GameWorld.CollegeTitles"/>.
+    /// </remarks>
+    public void PostWorld(string title, string body, bool college = false)
     {
         // CS4 (run 129): a top recruit's national headline about your own program repeats the trail's "commits to you".
         bool ownCommit = Employed && InCollege && TrailOpen && title.EndsWith($"commits to {HumanTeam.FullName}");
@@ -218,6 +223,7 @@ public sealed partial class GameSession
             }
             Post(title, body, "World"); return;
         }
+        if (Employed && InCollege && !college && !World.CollegeTitles.Contains(title)) return;
         WorldDigest.Add(new DigestItem(Today, title, FirstSentence(body)));
         if (WorldDigest.Count > 200) WorldDigest.RemoveRange(0, WorldDigest.Count - 200);
     }
@@ -247,6 +253,9 @@ public sealed partial class GameSession
         WeekRecruiting.Clear();
         LastDigest = Today;
     }
+
+    /// <summary>K18 (run 155): a freshman's potential as the staff's range ("PA 150-168"), never the exact number.</summary>
+    private string NewcomerPotential(Player p) => CollegePotentialOf(p) is { } r ? $"PA {r}" : "potential unknown";
 
     private static string Targets(int n) => n == 1 ? "a target" : $"{n} targets";
 
@@ -514,7 +523,7 @@ public sealed partial class GameSession
         PostCoachNews();
         // Day to day the digest keeps its fortnightly rhythm (review #4: posting whenever there was news made it near-daily).
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: date == DateOnly.MaxValue);
-        World.News.Clear();
+        World.News.Clear(); World.CollegeTitles.Clear();
     }
 
     /// <summary>After loading a save made before the world existed: play the world's season up to yesterday.</summary>
@@ -939,7 +948,7 @@ public sealed partial class GameSession
             if (OpenWhileEmployed(t, successor)) return;
             t.CoachName = successor;
             if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
-                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.");
+                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", college: IsCollegeProgram(t));
             return;
         }
         if (!Employed && t != HumanTeam && !Job.Vacancies.Any(v => v.TeamId == t.Id && v.Status is "open" or "applied" or "offered"))
@@ -953,7 +962,7 @@ public sealed partial class GameSession
             t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
             // Other clubs' coaching changes go to the world digest (run 42, review #12 Top fix 1; a college coach's already did).
             if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
-                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.");
+                PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", college: IsCollegeProgram(t));
         }
     }
 
@@ -1089,7 +1098,7 @@ public sealed partial class GameSession
                 v.Status = "filled";
                 t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
                 // Openings you didn't go for are news, not mail (critic review: 146 of these in one spell out of work).
-                PostWorld($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.");
+                PostWorld($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.", college: IsCollegeProgram(t));
             }
         }
         // Keep the market moving: struggling clubs sometimes change coach mid-season.
@@ -1236,7 +1245,7 @@ public sealed partial class GameSession
             var joined = HumanTeam.Roster.Where(p => !collegeBefore.Contains(p)).OrderByDescending(p => p.CurrentAbility).ToList();
             Post("Graduation and enrollment",
                 (left.Count > 0 ? $"Graduated into the pros: {string.Join(", ", left.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : "Nobody graduated this year.")
-                + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility}/{p.PotentialAbility})"))}." : "No new players enrolled.")
+                + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, CA {p.CurrentAbility}, {NewcomerPotential(p)})"))}." : "No new players enrolled.")
                 + $"\n\nNext season by class: {ClassCounts()}."
                 + $"\n\nRoster: {HumanTeam.Roster.Count} players. The pros' summer runs until the new season; your program has nothing to sign, so press Continue to move it along.", "Roster");
             return;
@@ -1373,7 +1382,7 @@ public sealed partial class GameSession
                 Hardwood.Core.World.WorldMarket.AiMoves(World, Offseason, ControlledTeamId);
                 Offseason.AiFreeAgency(ControlledTeamId);
                 foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(); // run 42: the summer's headlines wait (one digest a summer, at the new season)
-                World.News.Clear();
+                World.News.Clear(); World.CollegeTitles.Clear();
                 var ours = Offseason.Report.Draft.Where(d => d.Team == HumanTeam).ToList();
                 if (InNabl && !League.Finance.OpenMarket) Post("Draft complete", string.Join("\n", ours.Select(d => $"Round {d.Round}, pick {d.Pick}: {d.Player.Name} ({d.Player.PrimaryPosition}, age {d.Player.Age(Offseason.Date)}, {d.Player.CurrentAbility}/{d.Player.PotentialAbility})")) + $"\n\nFree agency is open. You have {HumanTeam.Roster.Count} players; {League.Finance.Describe(ContractMarket.Payroll(HumanTeam))}. Rosters need {League.Finance.RosterMin} to {League.Finance.RosterMax}.", "Draft");
                 break;
@@ -1438,7 +1447,7 @@ public sealed partial class GameSession
         AiTransferRound(15); // the summer transfer market (decision #87)
         if (Employed && !InCollege && _rng.Chance(0.6)) MaybeBidForYourPlayer();
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(); // run 42: the summer's headlines wait (one digest a summer, at the new season)
-        World.News.Clear();
+        World.News.Clear(); World.CollegeTitles.Clear();
         if (Employed && !InCollege) // college programs don't sign pros (C2)
         {
             var grads = League.FreeAgents.Where(p => p.RookieSeason == League.Season + 1).OrderByDescending(p => p.CurrentAbility).Take(6).ToList();
@@ -1470,7 +1479,8 @@ public sealed partial class GameSession
     /// </summary>
     public void PostPro(string title, string body, string category = "League")
     {
-        if (Employed && InCollege) PostWorld(title, body);
+        // K16 (run 155): of the pros' news, a college coach keeps only the draft's (his graduates' night).
+        if (Employed && InCollege) PostWorld(title, body, college: category == "Draft");
         else Post(title, body, category);
     }
 
@@ -1482,7 +1492,7 @@ public sealed partial class GameSession
         RefreshProPitch(); // CP3: the drafted graduates are pros now
         string Row(DraftPick d) => $"{d.Pick}. {d.Team.Abbreviation}: {d.Player.Name} ({d.Player.PrimaryPosition}, {d.Player.CurrentAbility})";
         var first = picks[0];
-        PostWorld($"Draft: {first.Player.Name} goes first to {first.Team.TheFullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.");
+        PostWorld($"Draft: {first.Player.Name} goes first to {first.Team.TheFullName}", string.Join("\n", picks.Select(Row)) + "\n\nEveryone else from this year's class is a free agent.", college: true);
         var ours = picks.Where(d => d.Team == HumanTeam).ToList();
         // CS4 (run 129): a college coach hears where his own graduates went. CP3 (run 132): after a load mid-summer the
         // graduates come from the alumni record, a class with nobody picked hears so too, and the message ends with the
@@ -1544,7 +1554,7 @@ public sealed partial class GameSession
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
         RefreshProPitch(); // CP3: where the graduates signed this summer
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
-        World.News.Clear();
+        World.News.Clear(); World.CollegeTitles.Clear();
         if (Employed)
         {
             if (Abroad && !InCollege) SummerReport();

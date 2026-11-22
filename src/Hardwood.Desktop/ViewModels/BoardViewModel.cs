@@ -393,7 +393,10 @@ public sealed partial class BoardViewModel : PageViewModel
             new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + PrestigeWords(prestige, cw.PrestigeRanks().GetValueOrDefault(t.Id, cw.Programs.Count)), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
             new("National rank", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? $"No. {rank}" : "Unranked", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "in the Top 25 poll" : $"No. {rank} of {cw.Programs.Count} in the ratings", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "good" : ""),
             new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
-            new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
+            // H160 (run 155): before conference play the chip said "0-0" with 14 games played; it says when play starts.
+            conf.Games == 0 && FirstConferenceGame(cw, t) is { } first
+                ? new("Conference", "Not started", $"{s.MyConference!.Short} play starts {first:MMM d}", "")
+                : new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
             new("Graduating", $"{seniors}", "turn pro next summer", "info"),
         };
     }
@@ -401,6 +404,10 @@ public sealed partial class BoardViewModel : PageViewModel
     /// <summary>H136 (run 132): "a blue blood" is the top handful by prestige rank, not every program at 75+ (the No. 50
     /// program read "a blue blood"); the rest of 75+ are power programs.</summary>
     public const int BlueBloods = 8;
+    /// <summary>H160: the date of a program's first unplayed conference game, or null.</summary>
+    private static DateOnly? FirstConferenceGame(Hardwood.Core.College.CollegeWorld cw, Hardwood.Core.Model.Team t) =>
+        cw.GamesOf(t.Id).Where(g => !g.Played && g.Stage == "Conference").Select(g => (DateOnly?)g.Date).Min();
+
     public static string PrestigeWords(double prestige, int prestigeRank) =>
         prestige >= 75 && prestigeRank <= BlueBloods ? "a blue blood" : prestige >= 75 ? "a power program" : prestige >= 55 ? "a known name" : "building a name";
 

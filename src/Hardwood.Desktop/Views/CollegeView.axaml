@@ -364,7 +364,11 @@
             <Button Content="Open player" Command="{Binding OpenProspectCommand}" IsEnabled="{Binding SelectedProspect, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Pick a player in the list first" ToolTip.ShowOnDisabled="True" Margin="0,0,8,4"/>
             <TextBlock Text="Players turn pro at 22, after four years, and join free agency in the summer. Ranges show what your scouts believe." Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
           </WrapPanel>
-          <DataGrid ItemsSource="{Binding Prospects}" SelectedItem="{Binding SelectedProspect}">
+          <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,8,0,0" IsVisible="{Binding !HasProspects}">
+            <TextBlock Text="{Binding ProspectsEmpty}" Classes="muted" TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left"/>
+            <Button Content="Show college players" Command="{Binding ShowCollegeProspectsCommand}" IsVisible="{Binding ProspectsOfferCollege}" HorizontalAlignment="Left"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Prospects}" SelectedItem="{Binding SelectedProspect}" IsVisible="{Binding HasProspects}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="170"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Pos}" Width="66"/>

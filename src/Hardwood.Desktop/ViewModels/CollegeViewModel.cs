@@ -394,6 +394,12 @@ public sealed partial class CollegeViewModel : PageViewModel
             return mine.Name;
         return ConferenceNames.FirstOrDefault() ?? "";
     }
+    /// <summary>H163 (run 155): what the Prospects tab says when its filter has nobody ("" when it has rows).</summary>
+    [ObservableProperty] private string _prospectsEmpty = "";
+    public bool HasProspects => Prospects.Count > 0;
+    public bool ProspectsOfferCollege => !HasProspects && Age == "Turning pro next summer" && Position == "All";
+    [RelayCommand] private void ShowCollegeProspects() => Age = "College (18-22)";
+
     partial void OnAgeChanged(string value) => FillProspects();
     partial void OnPositionChanged(string value) => FillProspects();
     partial void OnHighSchoolClassChanged(string value) => FillHighSchool();
@@ -982,6 +988,12 @@ public sealed partial class CollegeViewModel : PageViewModel
                 Line = st is { G: > 0 } ? $"{st.Ppg:F1} pts · {st.Rpg:F1} reb · {st.Apg:F1} ast" : t == null ? "high school" : "-",
             });
         }
+        // H163 (run 155): after the season the "Turning pro next summer" list was an empty table with a scrollbar under nothing.
+        ProspectsEmpty = Prospects.Count > 0 ? ""
+            : Age == "Turning pro next summer" && Position == "All"
+                ? "Nobody is left in this group: this year's seniors have finished their college careers and turn pro this summer. Next year's seniors are among the college players."
+                : "No players match these filters. Try another position or age group.";
+        OnPropertyChanged(nameof(HasProspects)); OnPropertyChanged(nameof(ProspectsOfferCollege));
     }
 
     [RelayCommand]

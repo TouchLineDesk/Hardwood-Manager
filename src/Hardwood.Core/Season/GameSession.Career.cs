@@ -326,6 +326,6 @@ public sealed partial class GameSession
         Coach.History.Add(JobRecordFor(club, $"Left for {team.FullName}"));
         string successor = Board.NewCoachName(CareerRng(6));
         ReleaseClub(successor);
-        PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left {club.TheFullName} for {team.TheFullName}; {successor} takes over.");
+        PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left {club.TheFullName} for {team.TheFullName}; {successor} takes over.", college: IsCollegeProgram(club));
     }
 }
