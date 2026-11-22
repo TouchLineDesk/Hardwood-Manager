@@ -76,64 +76,8 @@ public class Run140ArenaTests
         Assert.Equal("BONUS", LiveGameViewModel.BonusLabel(2, false));
     }
 
-    [AvaloniaFact]
-    public void The_projection_puts_the_court_on_the_rendered_floor()
-    {
-        var arena = BroadcastArt.Arena;
-        Assert.NotNull(arena.Frame);
-        Assert.NotNull(arena.Mask);
-        Assert.NotNull(arena.Court);
-        var c = arena.Court!;
-        var proj = new CourtProjection(c);
-        // The corners land exactly; the far sideline is shorter than the near one (perspective); centre court is between.
-        var corners = new[] { (0.0, 0.0), (94.0, 0.0), (94.0, 50.0), (0.0, 50.0) };
-        for (int i = 0; i < 4; i++)
-        {
-            var p = proj.Map(corners[i].Item1, corners[i].Item2);
-            Assert.InRange(Math.Abs(p.X - c[i].X) + Math.Abs(p.Y - c[i].Y), 0, 0.01);
-        }
-        Assert.True(c[1].X - c[0].X < c[2].X - c[3].X);
-        var mid = proj.Map(47, 25);
-        Assert.InRange(mid.X, 955, 965);
-        Assert.True(mid.Y > c[0].Y && mid.Y < c[3].Y);
-        // Perspective: centre court sits above the midpoint of the far and near sidelines' screen heights.
-        Assert.True(mid.Y < (c[0].Y + c[3].Y) / 2);
-        Assert.True(proj.Scale(47, 50) > proj.Scale(47, 0) * 1.3, "near players are drawn bigger than far ones");
-        // Every corner is inside the 1920 x 1080 frame.
-        Assert.All(c, p => { Assert.InRange(p.X, 0, 1920); Assert.InRange(p.Y, 0, 1080); });
-    }
-
-    // Run 148 (M1): the perspective arena is retired by the full-screen match court (Danny's answer 2, #1025); its live-page
-    // layout test went with it. Run148MatchViewTests covers the new live page.
-
-    [AvaloniaFact]
-    public void Event_floors_draw_for_a_neutral_site()
-    {
-        // The Final Four floor and a conference tournament floor, drawn on their own for the shots.
-        var home = Program("Kentucky", "Wildcats");
-        foreach (var (name, g) in new[]
-        {
-            ("final-four", new CollegeGame { Date = new DateOnly(2027, 4, 5), Stage = CollegeWorld.Madness, Event = CollegeWorld.Madness, Round = 6 }),
-            ("madness", new CollegeGame { Date = new DateOnly(2027, 3, 21), Stage = CollegeWorld.Madness, Event = CollegeWorld.Madness, Round = 2 }),
-            ("conference", new CollegeGame { Date = new DateOnly(2027, 3, 13), Stage = "Conference tournament", Event = "SEC tournament", Round = 3 }),
-            ("campus", new CollegeGame { Date = new DateOnly(2026, 12, 5), Stage = "Non-conference" }),
-        })
-        {
-            var court = new LiveCourt { Arena = BroadcastArt.Arena, Dress = ArenaDress.For(home, g), Width = 1600, Height = 900 };
-            var window = new Window { Content = court, Width = 1600, Height = 900 };
-            window.Show();
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            Assert.True(court.InArena);
-            Assert.Equal(1600, court.Bounds.Width, 0.5);
-            if (Environment.GetEnvironmentVariable("HW_LAYOUT_SHOTS") is { Length: > 0 } shots)
-            {
-                Directory.CreateDirectory(shots);
-                using var frame = window.CaptureRenderedFrame();
-                frame?.Save(Path.Combine(shots, $"run140-floor-{name}.png"));
-            }
-            window.Close();
-        }
-    }
+    // Run 152 (M5): the perspective arena's classes (LiveCourt.Arena, CourtProjection) and its Blender frame are removed;
+    // the full-screen match court dresses every floor (Run151ArenaDressingTests).
 
     private static void Settle(MainWindow window)
     {
