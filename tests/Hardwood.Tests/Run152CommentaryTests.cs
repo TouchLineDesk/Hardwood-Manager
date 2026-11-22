@@ -53,7 +53,7 @@ public class Run152CommentaryTests
             said.AddRange(calls.For(new[] { Make(h, true, hs, aw) }, hb, ab, before, aw, "Home", "Away", 2, 5));
         }
         // 14-0 by the home side: called at 8 and 12, never at 10 or 14.
-        Assert.Equal(new[] { "That's a 8-0 run for Home", "That's a 12-0 run for Home" }, said.Where(s => s.Contains("run")));
+        Assert.Equal(new[] { "That's an 8-0 run for Home", "That's a 12-0 run for Home" }, said.Where(s => s.Contains("run")));
         Assert.Equal(14, calls.Run);
         // The other side scores: the run ends without a call.
         Assert.DoesNotContain(calls.For(new[] { Make(a, false, hs, aw + 2) }, hb, ab, hs, aw, "Home", "Away", 2, 5), s => s.Contains("run"));
@@ -100,6 +100,11 @@ public class Run152CommentaryTests
         Assert.Equal("Ames has fouled out with 25 points", said[0]);
         // Nothing is said twice.
         Assert.Empty(calls.For(new[] { new PlayEvent(2, 90, PlayKind.Foul, false, a, h, ShotZone.Rim, false, 40, 50) }, hb, ab, 40, 50, "Home", "Away", 2, 5));
+        Assert.Equal("an", GameCalls.Article(11)); Assert.Equal("a", GameCalls.Article(12)); Assert.Equal("an", GameCalls.Article(83));
+        // The drawer and speed keys (code-behind, so a focused picker keeps its letters).
+        Assert.Equal("drawer:7", LiveGameView.KeyAction(Avalonia.Input.Key.O));
+        Assert.Equal("speed:8", LiveGameView.KeyAction(Avalonia.Input.Key.D4));
+        Assert.Null(LiveGameView.KeyAction(Avalonia.Input.Key.Z));
         Assert.Equal("21st", GameCalls.Ordinal(21)); Assert.Equal("12th", GameCalls.Ordinal(12)); Assert.Equal("3rd", GameCalls.Ordinal(3));
     }
 

@@ -61,7 +61,7 @@ public sealed class GameCalls
         if (step > _runCalled)
         {
             _runCalled = step;
-            big.Insert(0, $"That's a {_runPoints}-0 run for {(_runSide > 0 ? homeName : awayName)}");
+            big.Insert(0, $"That's {Article(_runPoints)} {_runPoints}-0 run for {(_runSide > 0 ? homeName : awayName)}");
         }
 
         // Milestones and fouls, for the players in this possession's plays (the others haven't changed).
@@ -94,6 +94,9 @@ public sealed class GameCalls
         if (l.Steals >= 10) parts.Add($"{l.Steals} steals");
         return string.Join(", ", parts);
     }
+
+    /// <summary>"an" before a number said with a vowel sound (8, 11, 18, 80–89), else "a".</summary>
+    public static string Article(int n) => n is 8 or 11 or 18 or (>= 80 and <= 89) ? "an" : "a";
 
     public static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 }

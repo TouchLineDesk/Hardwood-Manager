@@ -193,8 +193,16 @@ public sealed partial class LiveGameViewModel
         // M5: the calls on the last possession are said as this one starts; this one's are kept for the next.
         var calls = _pendingCalls;
         _pendingCalls = _calls.For(events, r.Home, r.Away, homeBefore, awayBefore, Short(HomeTeam), Short(AwayTeam), r.Periods, _live.FoulsToFoulOut);
-        foreach (var c in _pendingCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
         _script = PossessionChoreographer.Build(Input(events, start, end, true, notes, calls));
+        // The log gets this possession's calls when it has played out (after its plays), not before.
+        _logCalls = _pendingCalls.ToList();
+        // Review (run 152): a possession that ends a period or the game has no next possession to say its calls, so
+        // they follow the period's last line, 2 s each.
+        if (_scriptEndsPeriod && _pendingCalls.Count > 0)
+        {
+            foreach (var line in _pendingCalls) { _script.Lines.Add(new CommentaryLine(_script.Length, line, true)); _script.Length += PossessionChoreographer.NoteTime; }
+            _pendingCalls = new();
+        }
         _scriptT = 0;
         _possIndex++;
         ShowFrame();
@@ -209,6 +217,8 @@ public sealed partial class LiveGameViewModel
         bool periodEnded = _scriptEndsPeriod;
         _script = null;
         Refresh();
+        foreach (var c in _logCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
+        _logCalls = new();
         AfterStep(periodEnded);
     }
 
@@ -279,6 +289,7 @@ public sealed partial class LiveGameViewModel
     // M5 (run 152): the commentary's calls across the game (runs, lead changes, milestones, foul trouble).
     private readonly GameCalls _calls = new();
     private List<string> _pendingCalls = new();
+    private List<string> _logCalls = new();
 
     /// <summary>The clutch plan (a team's late-game preset) is on when the engine plays it: the last period or overtime,
     /// five minutes or less to go, within six points (GameSimulator.SetTactics).</summary>

@@ -11,19 +11,6 @@
     <KeyBinding Gesture="Add" Command="{Binding SpeedUpCommand}"/>
     <KeyBinding Gesture="OemMinus" Command="{Binding SpeedDownCommand}"/>
     <KeyBinding Gesture="Subtract" Command="{Binding SpeedDownCommand}"/>
-    <KeyBinding Gesture="D1" Command="{Binding SetSpeedCommand}" CommandParameter="1"/>
-    <KeyBinding Gesture="D2" Command="{Binding SetSpeedCommand}" CommandParameter="2"/>
-    <KeyBinding Gesture="D3" Command="{Binding SetSpeedCommand}" CommandParameter="4"/>
-    <KeyBinding Gesture="D4" Command="{Binding SetSpeedCommand}" CommandParameter="8"/>
-    <KeyBinding Gesture="K" Command="{Binding SetSpeedCommand}" CommandParameter="key"/>
-    <KeyBinding Gesture="B" Command="{Binding OpenDrawerCommand}" CommandParameter="0"/>
-    <KeyBinding Gesture="P" Command="{Binding OpenDrawerCommand}" CommandParameter="1"/>
-    <KeyBinding Gesture="T" Command="{Binding OpenDrawerCommand}" CommandParameter="2"/>
-    <KeyBinding Gesture="S" Command="{Binding OpenDrawerCommand}" CommandParameter="3"/>
-    <KeyBinding Gesture="H" Command="{Binding OpenDrawerCommand}" CommandParameter="4"/>
-    <KeyBinding Gesture="A" Command="{Binding OpenDrawerCommand}" CommandParameter="5"/>
-    <KeyBinding Gesture="G" Command="{Binding OpenDrawerCommand}" CommandParameter="6"/>
-    <KeyBinding Gesture="O" Command="{Binding OpenDrawerCommand}" CommandParameter="7"/>
     <KeyBinding Gesture="Escape" Command="{Binding CloseDrawerCommand}"/>
   </UserControl.KeyBindings>
   <UserControl.Styles>
