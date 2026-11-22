@@ -52,7 +52,15 @@ public class Run119RealNbaLeakTests
         int Count(string line, string band) => int.Parse(System.Text.RegularExpressions.Regex.Match(line, band + @": (\d+)").Groups[1].Value);
         // Stars under contract don't retire in summer one (8 of CA 130+ did on v0.110.3: Leonard, Curry, George...).
         var ret = lines.Single(l => l.TrimStart().StartsWith("retired or left the game:"));
-        Assert.InRange(Count(ret, @"CA 130\+"), 0, 4);
+        // Run 156 (H159): the college schedule moved the shared stream, and two stars whose deals ran out this summer (Butler
+        // 38, McCollum 36) retired too, which the test never meant to forbid. It now counts the CA 130+ retirees who still
+        // had a season left on their deal (the probe lists each with "deal to YYYY"); the band count is only logged.
+        _out.WriteLine($"CA 130+ retired in all: {Count(ret, @"CA 130\+")}");
+        int at = lines.IndexOf(ret), summer = s.League.Season - 1; // the probe played one season on
+        var named = lines.Skip(at + 1).TakeWhile(l => l.StartsWith("      ")).ToList();
+        int underContract = named.Count(l => System.Text.RegularExpressions.Regex.Match(l, @"CA (\d+) .*deal to (\d+)\)") is { Success: true } m
+            && int.Parse(m.Groups[1].Value) >= 130 && int.Parse(m.Groups[2].Value) > summer);
+        Assert.InRange(underContract, 0, 4);
         // Run 128 (D80 A): the world is drawn differently, and Curry (39, CA 156, one season left) now retires on seed 31. At 39
         // under contract his chance is about 15% by design (`ShouldRetire`; the rates are checked above), so only Leonard (36,
         // about 4%) is named here; the CA 130+ count above still holds (3: Durant 39, Curry 39, LeBron 42).
