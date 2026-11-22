@@ -135,7 +135,15 @@ public sealed partial class LiveGameViewModel
         bool late = _live.Period >= r.Periods && end < 120 && Math.Abs(_live.HomeScore - _live.AwayScore) <= 6;
         return new PossessionInput(_possIndex, r.Seed, events, start, end, _live.HomeOnCourt.ToList(), _live.AwayOnCourt.ToList(), _spots,
             BarHomeScore, BarAwayScore, homeBall, Short(HomeTeam), Short(AwayTeam), HomeTeam.Tactic.Scheme, AwayTeam.Tactic.Scheme,
-            _nextStart, r.Periods, late);
+            _nextStart, r.Periods, late)
+        {
+            // M2 (run 149): the sets by system and role, the defence's aggression, transition by pace, tired legs.
+            HomeSystem = HomeTeam.Tactic.System, AwaySystem = AwayTeam.Tactic.System,
+            RoleOf = p => (HomeTeam.Roster.Contains(p) ? HomeTeam : AwayTeam).Tactic.RoleOf(p),
+            EnergyOf = _live.EnergyOf,
+            HomePace = HomeTeam.Tactic.Pace, AwayPace = AwayTeam.Tactic.Pace,
+            HomeAggression = HomeTeam.Tactic.DefensiveAggression, AwayAggression = AwayTeam.Tactic.DefensiveAggression,
+        };
     }
 
     /// <summary>Step the engine one possession and choreograph it (the play then runs on screen).</summary>
