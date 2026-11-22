@@ -130,6 +130,10 @@ public class ReservedWagesTests
         // A renewal whose wage fits the budget only without the reserve is refused, and the refusal says why.
         var fa = s.MyExpiring.First(p => s.CannotTalk(p) == null);
         s.HumanTeam.Money.WageBudget = s.MyCommittedWages + 5_000_000;
+        // D81 (run 159): an NBA club may go past its budget to keep its own players, up to its means; a club in debt can't,
+        // so the budget alone decides here, as this test means.
+        s.HumanTeam.Money.Balance = -1;
+        Assert.Equal(0, s.MyStretchFor(fa));
         var reply = s.Offer(fa, 4_000_000, 2);
         Assert.False(reply.Accepted);
         Assert.Contains("committed college seniors", reply.Text);
@@ -168,6 +172,10 @@ public class RosterFillReserveTests
         // A renewal that fits the budget only by taking the minimum deals' room is refused, and the refusal says why.
         var p0 = s.MyExpiring.First(p => s.CannotTalk(p) == null);
         s.HumanTeam.Money.WageBudget = s.MyCommittedWages + s.MyReservedWages + 5_000_000;
+        // D81 (run 159): an NBA club may go past its budget to keep its own players, up to its means; a club in debt can't,
+        // so the budget alone decides here, as this test means.
+        s.HumanTeam.Money.Balance = -1;
+        Assert.Equal(0, s.MyStretchFor(p0));
         var reply = s.Offer(p0, 4_000_000, 2);
         Assert.False(reply.Accepted);
         Assert.Contains("minimum deals the roster still needs", reply.Text);
