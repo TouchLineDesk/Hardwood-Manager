@@ -47,7 +47,7 @@ public class Run171StackingTests
         _out.WriteLine($"{top.FullName}: {board.Elite.GetValueOrDefault(top.Id)} blue-chips next season");
 
         // Seat and unseat are symmetric (a flip puts everything back).
-        var five = c.ClassOf(cls).First(p => c.Recruits[p.Id].Stars == 5);
+        var five = c.ClassOf(cls).First(p => c.Recruits[p.Id].Stars == 5 && CollegeWorld.PriorityOf(p) != RecruitPriority.PlayingTime);
         var r5 = c.Recruits[five.Id];
         int open = board.Open[top.Id], elite = board.Elite.GetValueOrDefault(top.Id);
         board.Seat(top.Id, five.PrimaryPosition, true, 1);
@@ -64,5 +64,15 @@ public class Run171StackingTests
         double stacked = c.Appeal(top, five, r5, board);
         _out.WriteLine($"five-star No. {r5.Rank} on {top.FullName}: {free:F1} with {CollegeWorld.StackFree} blue-chips, {stacked:F1} with {CollegeWorld.StackFree + 4}");
         Assert.Equal(4 * CollegeWorld.FiveStarStack, free - stacked, 6);
+        // One who cares most about playing time counts his minutes, and so the stacking, twice.
+        var minutesKid = c.ClassOf(cls).FirstOrDefault(p => c.Recruits[p.Id].Stars == 5 && CollegeWorld.PriorityOf(p) == RecruitPriority.PlayingTime);
+        if (minutesKid != null)
+        {
+            var rm = c.Recruits[minutesKid.Id];
+            board.Elite[top.Id] = CollegeWorld.StackFree;
+            double f2 = c.Appeal(top, minutesKid, rm, board);
+            board.Elite[top.Id] = CollegeWorld.StackFree + 4;
+            Assert.Equal(8 * CollegeWorld.FiveStarStack, f2 - c.Appeal(top, minutesKid, rm, board), 6);
+        }
     }
 }

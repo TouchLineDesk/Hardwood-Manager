@@ -359,7 +359,8 @@ public sealed partial class CollegeWorld
     /// season (<see cref="ClassBoard.Elite"/>). Past a few, every one more is a share of the ball he won't get, so the
     /// blue bloods can't keep stacking five-stars year after year and the best players spread to the next tier. It counts
     /// against every program, yours too, as part of the minutes he's promised. A 5-star: <see cref="FiveStarStack"/> a
-    /// blue-chip past <see cref="StackFree"/>; a 4-star: half that, past one more.
+    /// blue-chip past <see cref="StackFree"/>; a 4-star: half that, past one more. A recruit who cares most about early
+    /// playing time counts his minutes twice (#174), so he weighs the stacking twice too (review).
     /// </summary>
     public static double StackCost(Recruit r, int elite) => r.Stars switch
     {

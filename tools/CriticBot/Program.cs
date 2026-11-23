@@ -236,8 +236,10 @@ while (s.League.Season < startYear + seasons)
     var team = s.HumanTeam;
     s.AdvanceDay();
     // CS7 part 2 (run 171, K19's 10-season check): a coach who builds. Whenever the booster fund covers the next level,
-    // build the arena first (more appeal a level), then the gym. HW_CRITIC_NOBUILD=1 plays the same career without building.
-    if (s.HasProgramBuilding && Environment.GetEnvironmentVariable("HW_CRITIC_NOBUILD") == null && s.MyProgramBooks.Ready) // seeds the books
+    // build the arena when the fund covers it (more appeal a level), otherwise the cheaper gym. The books are seeded on the
+    // first day either way, so HW_CRITIC_NOBUILD=1 plays the same career without building (review).
+    if (s.HasProgramBuilding) _ = s.MyProgramBooks;
+    if (s.HasProgramBuilding && Environment.GetEnvironmentVariable("HW_CRITIC_NOBUILD") == null)
         foreach (var k in new[] { Hardwood.Core.Model.FacilityKind.Arena, Hardwood.Core.Model.FacilityKind.Practice })
             if (Hardwood.Core.College.ProgramBuilding.Blocked(s.HumanTeam, k) == null) { L($"  {s.Today}: build: {s.BuildProgramFacility(k)}"); break; }
     if (Environment.GetEnvironmentVariable("HW_TRACE_RECRUIT") != null && s.TrailOpen && s.World.College is { } tr && s.Today.DayOfWeek == DayOfWeek.Monday && s.Today.Month is >= 2 and <= 4)
