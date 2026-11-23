@@ -171,8 +171,14 @@ public sealed partial class CollegeWorld
                                  : $"Round of 64, {date:ddd MMM d}: vs the winner of a First Four game (No. 16).";
             }
             string tag = seed <= 4 ? "a protected seed" : seed >= 12 ? "a long shot, if a dangerous one" : p.LastFourIn.Contains(me) ? "one of the last four in" : "";
+            // Run 166 (calendar moments): Selection Sunday as your own moment, the team's watch party.
+            string party = p.LastFourIn.Contains(me)
+                ? "The team watched the show together, and the room held its breath region after region until our name came up: then it erupted."
+                : p.AutoBids.ContainsKey(me) && seed >= 12 ? "The team watched the show together with the conference trophy on the table, and cheered every second of the reveal."
+                : seed <= 4 ? "The team watched the show together; the cheer was for the draw as much as the seed."
+                : "The team watched the show together and the room erupted when our name came up.";
             CoachNews.Add(($"Selection Sunday: we're a No. {seed} seed",
-                $"{t.FullName} are the No. {seed} seed in the {regionName} region, with {how}{(tag.Length > 0 ? $": {tag}" : "")}.\n{opener}\nThe reveal, region by region, and the whole bracket are on the College page (March Madness → Selection Sunday)."));
+                $"{t.FullName} are the No. {seed} seed in the {regionName} region, with {how}{(tag.Length > 0 ? $": {tag}" : "")}.\n{party}\n{opener}\nThe reveal, region by region, and the whole bracket are on the College page (March Madness → Selection Sunday)."));
         }
         else
         {
@@ -180,7 +186,9 @@ public sealed partial class CollegeWorld
                        : p.NextFourOut.Contains(me) ? "We were among the next four out, close but not close enough."
                        : "We weren't near the bubble this year.";
             string last = p.LastFourIn.Count > 0 ? $" The last team in was {Named(p.LastFourIn[^1])}." : "";
-            CoachNews.Add(("Selection Sunday: we're left out", $"{t.FullName} weren't picked for March Madness. {why}{last}"));
+            string party = p.FirstFourOut.Contains(me) || p.NextFourOut.Contains(me)
+                ? "\nThe team watched the show together; by the last region the room had gone quiet." : "";
+            CoachNews.Add(("Selection Sunday: we're left out", $"{t.FullName} weren't picked for March Madness. {why}{last}{party}"));
         }
     }
 }
