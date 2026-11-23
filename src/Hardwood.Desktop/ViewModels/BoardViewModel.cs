@@ -256,11 +256,12 @@ public sealed partial class BoardViewModel : PageViewModel
             ConfidenceRecent = Recent(job);
             RefreshFacilities();
             RefreshBusiness();
+            RefreshProgram();
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = s.InCollege ? "AD confidence" : "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }
 
-        else { HasFacilities = false; HasBusiness = false; }
+        else { HasFacilities = false; HasBusiness = false; HasProgram = false; }
         CoachName = coach.Name;
         // K14 (run 133): a coaching licence is a pro thing; a college head coach's line leaves it out.
         CoachBio = $"Age {coach.Age(s.Today)} · {coach.Nationality} · {Bio(coach.Background)}" + (s.InCollege ? "" : $" · licence {coach.Licence}");
@@ -321,6 +322,60 @@ public sealed partial class BoardViewModel : PageViewModel
     partial void OnConfirmingResignChanged(bool value) { if (Session.Employed) ResignNote = value
         ? $"Resign as head coach of {Session.HumanTeam.TheFullName}? You'll be out of work (reputation −2) and can apply for open jobs."
         : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work."; }
+
+    // CS7 (run 170, K19): the college program's boosters and facilities.
+    [ObservableProperty] private bool _hasProgram;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _programBuildChips = new();
+    [ObservableProperty] private string _programAppeal = "";
+    [ObservableProperty] private string _programStatus = "";
+    [ObservableProperty] private string _programLastSummer = "";
+    [ObservableProperty] private string _buildGymText = "";
+    [ObservableProperty] private string _buildArenaText = "";
+    [ObservableProperty] private string _buildGymTip = "";
+    [ObservableProperty] private string _buildArenaTip = "";
+    [ObservableProperty] private bool _canBuildGym;
+    [ObservableProperty] private bool _canBuildArena;
+
+    [RelayCommand] private void BuildGym() { ProgramStatus = Session.BuildProgramFacility(Hardwood.Core.Model.FacilityKind.Practice); Refresh(); }
+    [RelayCommand] private void BuildArena() { ProgramStatus = Session.BuildProgramFacility(Hardwood.Core.Model.FacilityKind.Arena); Refresh(); }
+
+    private void RefreshProgram()
+    {
+        var s = Session;
+        HasProgram = s.HasProgramBuilding;
+        if (!HasProgram) return;
+        var t = s.HumanTeam; var b = s.MyProgramBooks; var f = t.Money.Facilities;
+        string M(long v) => Hardwood.Core.College.ProgramBuilding.Money(v);
+        string Built(Hardwood.Core.Model.FacilityKind k) => Hardwood.Core.College.ProgramBuilding.Built(t, k) is var n && n > 0 ? $"+{n} built" : "as you found it";
+        string Pending(Hardwood.Core.Model.FacilityKind k) => b.Pending == k ? " · next level opens next summer" : "";
+        ProgramBuildChips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Booster fund", M(b.Fund), b.LastGift > 0 ? $"to spend · {M(b.LastGift)} last summer" : "to spend", "team"),
+            new("Boosters", Hardwood.Core.College.ProgramBuilding.Mood(b.Boosters), $"{b.Boosters:0}/100 · winning and rivalry wins please them", b.Boosters >= 60 ? "good" : b.Boosters < 30 ? "warn" : ""),
+            new("Practice gym", $"Level {f.Practice.Level}", Built(Hardwood.Core.Model.FacilityKind.Practice) + Pending(Hardwood.Core.Model.FacilityKind.Practice), f.Practice.Level >= 4 ? "good" : f.Practice.Level <= 2 ? "warn" : ""),
+            new("Arena", $"Level {f.Arena.Level}", Built(Hardwood.Core.Model.FacilityKind.Arena) + Pending(Hardwood.Core.Model.FacilityKind.Arena), f.Arena.Level >= 4 ? "good" : f.Arena.Level <= 2 ? "warn" : ""),
+        };
+        double appeal = Hardwood.Core.College.ProgramBuilding.Appeal(t);
+        int gymBuilt = Hardwood.Core.College.ProgramBuilding.Built(t, Hardwood.Core.Model.FacilityKind.Practice);
+        ProgramAppeal = appeal > 0
+            ? $"What you've built adds +{appeal:0} to your appeal with every recruit (two neighbouring programs are about 4 apart)"
+              + (gymBuilt > 0 ? $", and the practice gym lifts training quality by +{gymBuilt * Hardwood.Core.College.ProgramBuilding.GymEdge * 0.4:0.0}." : ".")
+            : $"Nothing built yet. Each arena level adds +{Hardwood.Core.College.ProgramBuilding.ArenaAppeal:0} appeal with recruits; each practice gym level +{Hardwood.Core.College.ProgramBuilding.GymAppeal:0}, and faster growth for your players.";
+        (BuildGymText, CanBuildGym, BuildGymTip) = BuildButton(t, Hardwood.Core.Model.FacilityKind.Practice);
+        (BuildArenaText, CanBuildArena, BuildArenaTip) = BuildButton(t, Hardwood.Core.Model.FacilityKind.Arena);
+        ProgramLastSummer = b.LastLines.Count > 0 ? "Last summer: " + string.Join(" ", b.LastLines)
+            : s.ProgramBuildsNow ? "A project paid for now is ready for the season." : "A project paid for during the season opens next summer.";
+    }
+
+    private static (string, bool, string) BuildButton(Hardwood.Core.Model.Team t, Hardwood.Core.Model.FacilityKind k)
+    {
+        var lvl = t.Money.Facilities.Get(k).Level;
+        string name = Hardwood.Core.College.ProgramBuilding.Name(k);
+        if (lvl >= 5) return ($"{name}: top level", false, $"The {name.ToLowerInvariant()} is already the best in the country.");
+        var why = Hardwood.Core.College.ProgramBuilding.Blocked(t, k);
+        return ($"Build {name.ToLowerInvariant()} level {lvl + 1} · {Hardwood.Core.College.ProgramBuilding.Money(Hardwood.Core.College.ProgramBuilding.Cost(k, lvl))}", why == null,
+                why ?? (k == Hardwood.Core.Model.FacilityKind.Arena ? "Recruits notice a better arena." : "Recruits notice it, and your players grow faster."));
+    }
 
     // D81 (run 169): the revenue levers.
     [ObservableProperty] private bool _hasBusiness;
