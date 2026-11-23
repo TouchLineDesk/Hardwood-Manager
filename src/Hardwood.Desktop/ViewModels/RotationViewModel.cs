@@ -119,7 +119,7 @@ public sealed partial class RotationViewModel : PageViewModel
             Rows.Add(new RotationRow
             {
                 Player = p, Owner = this, Healthy = healthy, Team = team,
-                Health = healthy ? "" : $"Out {p.Injury!.DaysOut(Session.Today)}d",
+                Health = p.OutShort(Session.Today),
                 IsStarter = chart.Starters.Contains(p.Id),
                 Minutes = chart.MinutesTargets.GetValueOrDefault(p.Id),
             });

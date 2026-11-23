@@ -128,6 +128,7 @@ public sealed partial class GameSession
         if (Phase == SessionPhase.Offseason && Offseason is { Phase: OffseasonPhase.ReSigning } o && League.Teams.Contains(club)) o.AiReSign(club);
         Job.Employed = false;
         Job.Current = null;
+        SyncAcademics(); // CS7 part 2c review: the program you leave drops its academic list
         Promises.Clear();
         // H109 (run 117): the old club's unposted results and knocks go with the job (the sacking message closes that chapter).
         WeekResults.Clear();

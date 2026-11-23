@@ -210,7 +210,7 @@ public sealed partial class InboxViewModel : PageViewModel
         var s = Session;
         var rec = s.MyRecord;
         int rank = s.MyRank;
-        var hurt = s.HumanTeam.Roster.Where(p => !p.IsAvailable(s.Today)).ToList();
+        var hurt = s.HumanTeam.Roster.Where(p => p.IsHurt(s.Today)).ToList();
         // H15b (run 81): out of work, the summary isn't your old club's.
         if (!s.Employed) { Summary = $"{s.Coach.Name} · out of work · open jobs are on the Board page"; return; }
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
