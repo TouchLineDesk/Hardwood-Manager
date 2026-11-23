@@ -171,7 +171,7 @@ public sealed partial class GameSession
             title = $"Championship Week: we're not in the {ev}";
             body = $"Only the top eight of the {conf.Name} play in its tournament, and {HumanTeam.FullName} finished {Ordinal(place)}. "
                 + (p.In(HumanTeam.Id) ? "We'll wait for Selection Sunday: " + stakes : "Our season is over unless the committee surprises everyone.")
-                + $"\nThe {ev} runs {start:MMM d}-{start.AddDays(2):d}.";
+                + $"\nThe {ev} runs {start:MMM d}-{start.AddDays(2).Day}.";
         }
         else
         {
@@ -247,7 +247,7 @@ public sealed partial class GameSession
         var cinderella = s.Seeds.Where(kv => kv.Value >= 10).Select(kv => (Id: kv.Key, Seed: kv.Value, Reached: c.MadnessReached(kv.Key)))
             .Where(x => x.Reached >= 3).OrderByDescending(x => x.Reached).ThenByDescending(x => x.Seed).FirstOrDefault();
         if (cinderella.Id != 0)
-            lines.Add($"Cinderella: {Name(cinderella.Id)} reached the {(cinderella.Reached >= 5 ? "Final Four" : cinderella.Reached == 4 ? "Elite Eight" : "Sweet 16")}.");
+            lines.Add($"Cinderella: {Name(cinderella.Id)} {(cinderella.Reached == 7 ? "won the whole thing" : "reached the " + (cinderella.Reached == 6 ? "final" : cinderella.Reached >= 5 ? "Final Four" : cinderella.Reached == 4 ? "Elite Eight" : "Sweet 16"))}.");
         // Your March.
         int mine = c.MadnessReached(HumanTeam.Id);
         string ours = mine switch
