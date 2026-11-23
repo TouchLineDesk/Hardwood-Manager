@@ -131,9 +131,7 @@ public sealed partial class CollegeWorld
             if (FlipRoll(p.Id, day) >= FlipChance) continue;
             var from = Program(at);
             if (from == null) continue;
-            var key = (at, p.PrimaryPosition);
-            board.Open[at]++;
-            board.AtPosition[key] = board.AtPosition.GetValueOrDefault(key) - 1;
+            board.Seat(at, p.PrimaryPosition, IsElite(p), -1);
             double stay = Appeal(from, p, r, board, null, ranks);
             Team? best = null; double top = double.MinValue;
             foreach (var t in Programs)
@@ -144,8 +142,7 @@ public sealed partial class CollegeWorld
             }
             if (best == null || top - stay < FlipGap)
             {
-                board.Open[at]--;
-                board.AtPosition[key] = board.AtPosition.GetValueOrDefault(key) + 1;
+                board.Seat(at, p.PrimaryPosition, IsElite(p), 1);
                 continue;
             }
             r.CommittedTo = null; r.CommittedOn = null;

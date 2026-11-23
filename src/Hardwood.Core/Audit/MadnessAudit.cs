@@ -34,6 +34,7 @@ public sealed class MadnessTally
     public List<double> TopTenPrestigeStrength { get; } = new();
     public List<double> BubbleStrength { get; } = new();
     public List<double> FiveStarsAtTopTwenty { get; } = new();
+    public List<double> BlueChipsTopTen { get; } = new();
     public List<double> ProgramsAt99 { get; } = new();
     /// <summary>Points a side: quick results (everyone else's season) and the full engine (March Madness).</summary>
     public List<double> QuickPoints { get; } = new();
@@ -88,6 +89,8 @@ public sealed class MadnessTally
             var top20 = cw.Programs.OrderByDescending(t => cw.Prestige[t.Id]).Take(20).Select(t => t.Id).ToHashSet();
             var fives = cw.Recruits.Values.Where(r => r.ClassOf == s.Year + 1 && r.Stars >= 5 && r.CommittedTo != null).ToList();
             if (fives.Count > 0) FiveStarsAtTopTwenty.Add(fives.Count(r => top20.Contains(r.CommittedTo!.Value)) / (double)fives.Count);
+            // CS7 part 2 (run 171): how many blue-chips the ten most prestigious programs carry (H173's stacking).
+            BlueChipsTopTen.Add(cw.Programs.OrderByDescending(t => cw.Prestige[t.Id]).Take(10).Average(t => t.Roster.Count(cw.IsElite)));
         }
 
         var quick = s.Games.Where(g => g.Played && g.Event != CollegeWorld.Madness && g.HomeId != cw.ManagedProgramId && g.AwayId != cw.ManagedProgramId).ToList();
@@ -115,6 +118,8 @@ public sealed class MadnessTally
         m.Add(new(g, "Strength: 60th-68th best programs", "0.0", BubbleStrength, null, null, ""));
         if (FiveStarsAtTopTwenty.Count > 0)
             m.Add(new(g, "Five-stars signing with a top-20 prestige program", "0.00", FiveStarsAtTopTwenty, null, null, "real: most 5-stars go to blue bloods"));
+        if (BlueChipsTopTen.Count > 0)
+            m.Add(new(g, "Blue-chips (path 115+) on a top-10 prestige roster", "0.0", BlueChipsTopTen, null, null, "run 171: H173's stacking"));
         m.Add(new(g, "Best record (win share)", "0.000", BestRecord, null, null, "NCAA: usually 30-3 to 34-1 (.91-.97)"));
         m.Add(new(g, "Programs at prestige 99", "0.0", ProgramsAt99, null, null, "review #7: eight after 8 seasons"));
         m.Add(new(g, "Points per team per game (quick results)", "0.0", QuickPoints, 66, 78, "NCAA D-I ~70-74"));
