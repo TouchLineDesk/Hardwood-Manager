@@ -51,7 +51,7 @@ public class Run96ConferenceStyleTests
         var nonConf = cw.Season.Games.First(g => g.Stage == "Non-conference");
         Assert.Null(cw.StyleConference(nonConf));
         Assert.Equal(Rules.College.PaceScale, cw.GameRules(nonConf).PaceScale);
-        Assert.Equal(Rules.CollegeNeutral, cw.GameRules(new CollegeGame { Event = CollegeWorld.Madness, HomeId = Id("Purdue"), AwayId = Id("Duke") }));
+        Assert.Equal(Rules.CollegeMadness, cw.GameRules(new CollegeGame { Event = CollegeWorld.Madness, HomeId = Id("Purdue"), AwayId = Id("Duke") })); // K21 (run 163): March's own rules, no conference style
 
         // The engine's config follows the style without changing the shared default arrays; the pros are untouched.
         var cfg = new EngineConfig();

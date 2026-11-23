@@ -67,7 +67,7 @@ public class Run156CollegeScheduleTests
     {
         Assert.Equal(16, CollegeWorld.NonConferenceTarget(14, false)); // an eight-team league: 14 + 16 = 30
         Assert.Equal(10, CollegeWorld.NonConferenceTarget(20, false));
-        Assert.Equal(8, CollegeWorld.NonConferenceTarget(20, true));
+        Assert.Equal(7, CollegeWorld.NonConferenceTarget(20, true)); // H171 (run 163): an invited program books 3 for its bracket
         for (int y = 2026; y <= 2060; y++) Assert.True(CollegeWorld.NonConferenceDates(y).Count >= 18, $"{y}");
     }
 }

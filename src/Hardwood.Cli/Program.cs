@@ -132,6 +132,55 @@ public static class Program
             return 0;
         }
 
+        if (cmd == "madtune")
+        {
+            // K21 (run 163): replay one season's real 64-team field many times at several team-form spreads. Quicker than
+            // `madness` for tuning Rules.MadnessTeamFormSd: same field, same rosters, only the tournament's spread changes.
+            int brackets = int.Parse(ArgValue(args, "--brackets") ?? "40");
+            var sds = (ArgValue(args, "--sds") ?? "0,0.08,0.12,0.16,0.2").Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var tss = (ArgValue(args, "--ts") ?? Rules.CollegeMadness.TalentScale.ToString(System.Globalization.CultureInfo.InvariantCulture)).Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var rng = new Rng(seed);
+            var gen = new PlayerGenerator(new Rng(seed ^ 0x51), 2_000_000);
+            var cw = Hardwood.Core.College.CollegeWorld.Generate(gen, rng, new DateOnly(2026, 10, 1), real: true);
+            var sim = new GameSimulator();
+            cw.PlayThrough(new DateOnly(2027, 4, 30), sim, rng);
+            var field = cw.Season.Bracket.ToList();
+            var seedOf = cw.Season.Seeds;
+            var day = new DateOnly(2027, 3, 20);
+            Console.WriteLine("strength by seed (quick-sim points a strength point = 0.52): " + string.Join(" ", Enumerable.Range(1, 16).Select(i =>
+                $"{i}:{field.Where(id => seedOf[id] == i).Average(id => Hardwood.Core.World.QuickSim.Strength(cw.Program(id)!, day)):0.0}")));
+            foreach (var ts in tss)
+            foreach (var sd in sds)
+            {
+                var rules = Rules.CollegeMadness with { TeamFormSd = sd, TalentScale = ts };
+                var rr = new Rng(seed * 31 + 7);
+                var titles = new int[17]; int g116 = 0, w116 = 0, g512 = 0, w512 = 0;
+                for (int b = 0; b < brackets; b++)
+                {
+                    var cur = field.ToList();
+                    while (cur.Count > 1)
+                    {
+                        var next = new List<int>();
+                        for (int i = 0; i < cur.Count; i += 2)
+                        {
+                            int h = cur[i], a = cur[i + 1];
+                            var r = sim.Simulate(cw.Program(h)!, cw.Program(a)!, rules, rr.NextULong(), false, new DateOnly(2027, 3, 20));
+                            int w = r.Home.Points > r.Away.Points ? h : a;
+                            int sh = seedOf[h], sa = seedOf[a], hi = Math.Min(sh, sa), lo = Math.Max(sh, sa);
+                            bool hiWon = seedOf[w] == hi && hi != lo;
+                            if (hi == 1 && lo == 16) { g116++; if (hiWon) w116++; }
+                            if (hi == 5 && lo == 12) { g512++; if (hiWon) w512++; }
+                            next.Add(w);
+                        }
+                        cur = next;
+                    }
+                    titles[seedOf[cur[0]]]++;
+                }
+                Console.WriteLine($"ts {ts:0.00} sd {sd:0.00}: 1-seed titles {titles[1] / (double)brackets:P0} · 5v12 {w512 / (double)Math.Max(1, g512):P0} ({g512}) · 1v16 {w116 / (double)Math.Max(1, g116):P1} ({g116}) · 5+ champs {titles.Skip(5).Sum()} · by seed {string.Join(" ", Enumerable.Range(1, 8).Select(i => titles[i]))}");
+            }
+            return 0;
+        }
+
         switch (cmd)
         {
             case "season": return RunSeason(league, seed, today);

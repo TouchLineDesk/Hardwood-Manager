@@ -251,8 +251,14 @@ public sealed record Rules(
     double ThreeLogitShift = 0,
     double CommonFoulScale = 1.0,
     int DoubleBonusFouls = 0,
-    bool FoulsCarryIntoOvertime = false)
+    bool FoulsCarryIntoOvertime = false,
+    double TeamFormSd = 0)
 {
+    /// <summary>K21 (run 163): a whole team's shooting night, drawn once per side per game (sd in shot logits; 0 = none, and
+    /// then no random number is drawn, so every other competition plays exactly as before). Used for March Madness only:
+    /// a single elimination game on a strange court is where a team runs hot or cold together.</summary>
+    public bool HasTeamForm => TeamFormSd > 0;
+
     /// <summary>K11 (run 134): the bonus is a one-and-one from <see cref="TeamFoulBonusThreshold"/> team fouls in a half and two
     /// shots from <see cref="DoubleBonusFouls"/> (college). 0 = two shots from the threshold (the pros, FIBA).</summary>
     public bool OneAndOne => DoubleBonusFouls > TeamFoulBonusThreshold;
@@ -283,4 +289,12 @@ public sealed record Rules(
         CommonFoulScale: 1.6, DoubleBonusFouls: 10, FoulsCarryIntoOvertime: true);
     /// <summary>College events (invitationals, showcases, conference tournaments, March Madness) are on neutral courts: no home edge.</summary>
     public static readonly Rules CollegeNeutral = College with { NeutralSite = true };
+    /// <summary>K21 (run 163): March Madness, a neutral court, a team-wide shooting night (see <see cref="TeamFormSd"/>) and
+    /// talent gaps that count a little less than in the season (1.6, not 1.9: nerves, a strange arena, a week to prepare).
+    /// Neither lever alone reached real March: the night on its own barely moved the 1-seeds, and a lower talent scale on
+    /// its own cut 1 v 16 before 5 v 12. Tuned with `hardwood madness` (150 tournaments) on seeds 31, 77 and 2026: 1-seed
+    /// titles 59-62% (was 73-75%), 5 v 12 66-71% (72-75%), 1 v 16 97-98%, and a 5-seed-or-worse champion in every 150.</summary>
+    public static readonly Rules CollegeMadness = CollegeNeutral with { TeamFormSd = MadnessTeamFormSd, TalentScale = MadnessTalentScale };
+    public const double MadnessTalentScale = 1.6;
+    public const double MadnessTeamFormSd = 0.20;
 }

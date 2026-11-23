@@ -52,6 +52,8 @@ public sealed class EngineConfig
     public double ScoreEffectPerPoint { get; set; } = 0.010;
     /// <summary>Per-game, per-player random form; scaled by (21 - Consistency).</summary>
     public double FormSd { get; set; } = 0.035;
+    /// <summary>K21 (run 163): a team-wide shooting night per game, in shot logits (0 = none; set from <see cref="Model.Rules.TeamFormSd"/>).</summary>
+    public double TeamFormSd { get; set; }
 
     // --- Free throws
     public double FtBaseLogit { get; set; } = 1.12; // ≈ 78%
@@ -160,8 +162,10 @@ public sealed class EngineConfig
     public EngineConfig For(Model.Rules rules)
     {
         if (rules.TalentScale == 1.0 && !rules.NeutralSite && rules.HomeScale == 1.0 && rules.ShotLogitShift == 0 && rules.FoulScale == 1.0
-            && rules.OffRebShift == 0 && rules.TurnoverShift == 0 && rules.ThreeRateScale == 1.0 && rules.ThreeLogitShift == 0 && rules.CommonFoulScale == 1.0) return this;
+            && rules.OffRebShift == 0 && rules.TurnoverShift == 0 && rules.ThreeRateScale == 1.0 && rules.ThreeLogitShift == 0 && rules.CommonFoulScale == 1.0
+            && rules.TeamFormSd == 0) return this;
         var c = rules.TalentScale == 1.0 ? (EngineConfig)MemberwiseClone() : ForTalentScale(rules.TalentScale);
+        c.TeamFormSd = rules.TeamFormSd; // K21 (run 163)
         if (rules.NeutralSite) c.HomeLogit = 0;
         else c.HomeLogit *= rules.HomeScale; // C5 part 2: a college arena's home court
         // C5 (run 96): a conference's style. The arrays are copied, never changed in place (the clone shares them).

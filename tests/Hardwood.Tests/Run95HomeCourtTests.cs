@@ -38,7 +38,8 @@ public class Run95HomeCourtTests
         var rules = cw.GameRules(conf);
         Assert.False(rules.NeutralSite);
         Assert.Equal(cw.HomeCourtPoints(Id("Duke")), rules.HomePoints, 6);
-        Assert.Equal(Rules.CollegeNeutral, cw.GameRules(new CollegeGame { Event = CollegeWorld.Madness, HomeId = Id("Duke") }));
+        Assert.Equal(Rules.CollegeMadness, cw.GameRules(new CollegeGame { Event = CollegeWorld.Madness, HomeId = Id("Duke") })); // K21 (run 163): neutral, with March's spread
+        Assert.Equal(0, Rules.CollegeMadness.HomePoints);
         Assert.Equal(0, Rules.CollegeNeutral.HomePoints);
         Assert.Equal(2.5, Rules.Nba.HomePoints);
         // The engine's home logit scales with it; the pros are untouched.
