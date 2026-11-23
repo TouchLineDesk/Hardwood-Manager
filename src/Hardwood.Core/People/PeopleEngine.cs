@@ -64,13 +64,13 @@ public static class PeopleEngine
 
     /// <summary>
     /// K9 (run 165): how much of the team's winning a college player feels part of (1 = all of it). A player getting well
-    /// under the minutes he expects (15+) enjoys the wins less: at a third of them, a third of the lift. The pros keep 1.
+    /// under the minutes he expects (8+, the top eleven) enjoys the wins less: at a third of them, a third of the lift. The pros keep 1.
     /// </summary>
     public static double Involvement(Player p, Team team, PlayerSeasonStats? stats)
     {
         if (stats is not { Games: >= 3 }) return 1;
         double expected = ExpectedMinutes(p, team);
-        return expected >= 15 && stats.Mpg < expected ? Math.Clamp(stats.Mpg / expected, 0.25, 1) : 1;
+        return expected >= 8 && stats.Mpg < expected ? Math.Clamp(stats.Mpg / expected, 0.25, 1) : 1;
     }
 
     /// <summary>What's driving a player's mood this week, each with its effect on his target morale.</summary>
