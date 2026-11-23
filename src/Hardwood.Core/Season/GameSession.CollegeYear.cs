@@ -19,6 +19,7 @@ public sealed partial class GameSession
         if (!Employed || !InCollege || World.College is not { } c || Phase == SessionPhase.Offseason) return;
         PreseasonPolls(c);
         SeniorNight(c);
+        CollegeMoments(c); // run 166: Midnight Madness, early signing, poll Monday, Championship Week, court storms, One Shining Moment
     }
 
     private bool PostedThisSchoolYear(string titleStart) =>
