@@ -44,6 +44,8 @@ public sealed class ClubFinance
 
     /// <summary>The revenue levers (D81): ticket, food and parking prices and fan appreciation days.</summary>
     public ClubBusiness Business { get; set; } = new();
+    /// <summary>CS7 (run 170): a college program's boosters and the facilities they pay for.</summary>
+    public Hardwood.Core.College.ProgramBooks Program { get; set; } = new();
 
     /// <summary>Money in for a season: revenue, what the match-day plan adds or costs (0 at standard prices), and any parachute.</summary>
     public long Income => Revenue + Hardwood.Core.Season.Business.Change(this) + Parachute;

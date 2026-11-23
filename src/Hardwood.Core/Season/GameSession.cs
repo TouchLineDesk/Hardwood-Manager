@@ -1250,6 +1250,7 @@ public sealed partial class GameSession
             var left = collegeBefore.Where(p => !now.Contains(p)).ToList();
             _myGraduates = left.Select(p => p.Id).ToHashSet();
             var joined = HumanTeam.Roster.Where(p => !collegeBefore.Contains(p)).OrderByDescending(p => p.CurrentAbility).ToList();
+            BoostersSummerNote(); // CS7 (run 170)
             Post("Graduation and enrollment",
                 (left.Count > 0 ? $"Graduated into the pros: {string.Join(", ", left.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : "Nobody graduated this year.")
                 + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, CA {p.CurrentAbility}, {NewcomerPotential(p)})"))}." : "No new players enrolled.")

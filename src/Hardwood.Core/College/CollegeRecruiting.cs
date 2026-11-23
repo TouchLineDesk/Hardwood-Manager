@@ -280,7 +280,7 @@ public sealed partial class CollegeWorld
             RecruitPriority.PlayingTime => minutes,
             _ => winning,
         };
-        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r) + PitchAppeal(p, r, t) + PromiseAppealOf(r, t) + WordPenalty;
+        if (t.Id == ManagedProgramId) a += CourtingEdge(r, t.Id, InterestIn(r, t)) + ReachCredit(t, r, ranks, scale) + PitchFor(r) + PitchAppeal(p, r, t) + PromiseAppealOf(r, t) + WordPenalty + ProgramBuilding.Appeal(t); // CS7: what you've built
         return a + (rng?.NextGaussian(0, 14) ?? 0);
     }
 
