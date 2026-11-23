@@ -186,6 +186,7 @@ public sealed partial class LiveGameViewModel
         int homeBefore = _live.HomeScore, awayBefore = _live.AwayScore;
         // M5 (run 152): the clutch plan, read as the engine reads it at the start of the possession (GameSimulator.SetTactics).
         var clutchNotes = ClutchNotes();
+        int timeoutsBefore = r.Timeouts.Count;
         _live.Step();
         var events = r.Plays.Skip(before).ToList();
         double duration = Math.Max(0, r.Elapsed - elapsed);
@@ -195,7 +196,9 @@ public sealed partial class LiveGameViewModel
         BarHomeScore = homeBefore; BarAwayScore = awayBefore;
         if (events.FirstOrDefault() is { } first && first.Period > 0) BarPeriod = BugPeriodName(first.Period, r.Periods);
         // M3: the levers the engine just played with are the ones drawn, and any change since the last possession is said.
-        var notes = TakeChangeNotes();
+        // #1064 (run 168): a timeout comes first, at the dead ball before the possession.
+        var notes = TimeoutNotes(timeoutsBefore);
+        notes.AddRange(TakeChangeNotes());
         notes.AddRange(clutchNotes);
         // M5: the calls on the last possession are said as this one starts; this one's are kept for the next.
         var calls = _pendingCalls;

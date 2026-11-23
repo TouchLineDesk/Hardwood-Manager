@@ -46,7 +46,9 @@ public class CharacterizationTests
     public void A_seeded_game_gives_the_pinned_box_score()
     {
         var r = OneGame(keepLog: false);
-        Pin("box score, seed 12345", "57B9CC42DA383737", Box(r));
+        // Run 168: re-pinned (with the play-by-play and the career pins) for timeouts (#1064): benches call them and the
+        // five on the floor rest, so results move. The audit rows stayed in range.
+        Pin("box score, seed 12345", "0BD0A48B3B08FEDE", Box(r));
     }
 
     [Fact]
@@ -62,9 +64,9 @@ public class CharacterizationTests
     {
         var r = OneGame(keepLog: true);
         Assert.NotEmpty(r.PlayLog);
-        Pin("play-by-play, seed 12345", "68DDC00764BE741A", r.PlayLog);
+        Pin("play-by-play, seed 12345", "6E157BF757A41AF1", r.PlayLog);
         // The game flow (the chart's points) is part of what the live screen shows.
-        Pin("game flow, seed 12345", "FA2877F94D5E4596", r.Flow.Select(f => $"{f.Elapsed:F1} {f.Period} {f.Home}-{f.Away} {f.Scorer?.Id}").ToList());
+        Pin("game flow, seed 12345", "53DDDAC34F1DA8D7", r.Flow.Select(f => $"{f.Elapsed:F1} {f.Period} {f.Home}-{f.Away} {f.Scorer?.Id}").ToList());
     }
 
     [Fact]
@@ -100,8 +102,8 @@ public class CharacterizationTests
     // Run 118 (H110): the SuperSonics and Aces are stocked by an expansion draft of real players (every real club loses one
     // bench player), so the league's teams changed (was 22605263 / 22482269; seasons 294868 / 295503; game 5AB24971…,
     // log 24A8AB7F…, career 23333733…).
-    [InlineData(2026UL, 22742473L)]
-    [InlineData(77UL, 22553468L)]
+    [InlineData(2026UL, 22904708L)]   // run 168: re-pinned for timeouts (#1064), which rest the five on the floor
+    [InlineData(77UL, 22686573L)]
     public void The_bench_games_match_the_baseline(ulong seed, long expected)
     {
         // The same loop as `Bench.Run`'s game table: a warm-up game, then 200 pairs rotating through the league.
@@ -126,8 +128,8 @@ public class CharacterizationTests
     // run 113 (H105): stars take more shots (scoring -0.3%); the title goes to Philadelphia (was 295611 / 295512).
     // Run 116: the AI doubles and shadows the go-to man the engine feeds (not simply the best-rated player): points -0.25% / -0.003%; seed 2026's title goes to Detroit (a different playoff draw).
     // Run 118 (H110): the expansion draft (see above): points +0.15% / -0.4%; the titles go to OKC / Golden State (different playoff draws).
-    [InlineData(2026UL, "OKC", 295295L)]
-    [InlineData(77UL, "GSW", 294326L)]
+    [InlineData(2026UL, "DET", 297074L)]   // run 168: re-pinned for timeouts (#1064); DET, was OKC
+    [InlineData(77UL, "DET", 296042L)]   // run 168: DET (was GSW) after timeouts
     public void The_bench_season_matches_the_baseline(ulong seed, string champion, long expected)
     {
         var (league, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026);
@@ -192,7 +194,7 @@ public class CharacterizationTests
         // Run 163 (H171, on purpose with K21): re-pinned (was 2F5E2E304E34C26C since run 156). An invited program books one
         // fewer non-conference game (7 for a 20-game conference), so November's college schedule and its quick-sim draws on the
         // shared stream move. March's shooting night isn't reached in a month. The NBA's schedule and odds are unchanged.
-        Pin("career seed 2026, 30 days, no saves", "E1C1FAE0F0E5152E", Session(s));
+        Pin("career seed 2026, 30 days, no saves", "249C3CAD0011DCF3", Session(s));
     }
 
     [Fact]

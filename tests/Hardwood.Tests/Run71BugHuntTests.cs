@@ -90,7 +90,10 @@ public class Run71BugHuntTests
                     vm.Navigate("Home"); Snap("run71-topbar-out.png");
                 }
             }
-            Assert.NotNull(seen);
+            // Run 168: after timeouts this club can play the last series of the season (the final, or the third-place final);
+            // the season ends with it, so there's no day of "out" while the league plays on.
+            bool lastDay = hl.Season.ChampionId == teamId || hl.Season.RunnerUpId == teamId || hl.Season.ThirdPlaceId == teamId || hl.Season.ThirdPlaceRunnerUpId == teamId;
+            Assert.True(seen != null || lastDay, $"no season-over line: champion {hl.Season.ChampionId}, runner-up {hl.Season.RunnerUpId}, third {hl.Season.ThirdPlaceId}/{hl.Season.ThirdPlaceRunnerUpId} (us: {teamId})");
 
             // H15: out of work, no club in the top bar.
             s.Fire();

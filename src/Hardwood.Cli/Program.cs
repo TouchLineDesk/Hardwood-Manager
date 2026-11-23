@@ -122,6 +122,32 @@ public static class Program
             return 0;
         }
 
+        if (cmd == "timeouts")
+        {
+            // #1064 (run 168): how often benches call timeouts under the full engine, and why. NBA games from the league's
+            // own clubs; college games from the season's own schedule.
+            int n = int.Parse(ArgValue(args, "--games") ?? "400");
+            var sim = new GameSimulator(); var rr = new Rng(seed + 11);
+            void Report(string name, IEnumerable<GameResult> results)
+            {
+                var list = results.ToList();
+                int sides = list.Count * 2;
+                var calls = list.SelectMany(r => r.Timeouts).ToList();
+                double pts = list.Average(r => (r.Home.Points + r.Away.Points) / 2.0);
+                Console.WriteLine($"{name}: {list.Count} games · timeouts a side {calls.Count / (double)sides:0.00} " +
+                    $"(stop a run {calls.Count(c => c.Reason == TimeoutReason.StopRun) / (double)sides:0.00}, last play {calls.Count(c => c.Reason == TimeoutReason.LastPlay) / (double)sides:0.00}, late {calls.Count(c => c.Reason == TimeoutReason.LatePlay) / (double)sides:0.00}, breather {calls.Count(c => c.Reason == TimeoutReason.Breather) / (double)sides:0.00}) · " +
+                    $"games with none {100.0 * list.Count(r => r.Timeouts.Count == 0) / list.Count:0}% · points a side {pts:0.0} · OT {100.0 * list.Count(r => r.Overtimes > 0) / list.Count:0.0}%");
+            }
+            var nbaTeams = league.Teams.ToList();
+            Report("NBA", Enumerable.Range(0, n).Select(i => { var h = nbaTeams[i % nbaTeams.Count]; var a = nbaTeams[(i * 7 + 3) % nbaTeams.Count]; if (a == h) a = nbaTeams[(i + 1) % nbaTeams.Count]; return sim.Simulate(h, a, Rules.Nba, rr.NextULong()); }));
+            var fibaTeams = nbaTeams;
+            Report("FIBA rules", Enumerable.Range(0, n / 2).Select(i => { var h = fibaTeams[i % fibaTeams.Count]; var a = fibaTeams[(i * 5 + 1) % fibaTeams.Count]; if (a == h) a = fibaTeams[(i + 1) % fibaTeams.Count]; return sim.Simulate(h, a, Rules.Fiba, rr.NextULong()); }));
+            var cw = gameWorld.College!;
+            Report("College", cw.Season.Games.Where(Hardwood.Core.College.CollegeWorld.IsRegularSeason).Take(n)
+                .Select(g => sim.Simulate(cw.Program(g.HomeId)!, cw.Program(g.AwayId)!, cw.GameRules(g), rr.NextULong())));
+            return 0;
+        }
+
         if (cmd == "madness")
         {
             int n = int.Parse(ArgValue(args, "--tournaments") ?? "100");

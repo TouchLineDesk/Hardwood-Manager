@@ -80,7 +80,10 @@
                     <TextBlock Grid.Column="1" Text="{Binding TileOpponent}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="12.5"/>
                   </Grid>
                   <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding TileScore}" FontSize="19" FontWeight="Bold"/>
+                    <!-- Run 168: a three-digit double-overtime score ("W 143-139 2OT") is 3 px wider than the tile; it shrinks to fit. -->
+                    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+                      <TextBlock Text="{Binding TileScore}" FontSize="19" FontWeight="Bold"/>
+                    </Viewbox>
                     <TextBlock Grid.Column="1" Text="{Binding Record}" Classes="muted" VerticalAlignment="Bottom" Margin="6,0,0,3"/>
                   </Grid>
                   <TextBlock Text="{Binding TileFoot}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasEvent}"/>
