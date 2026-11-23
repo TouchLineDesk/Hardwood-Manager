@@ -112,7 +112,7 @@ public static class RealFightSongs
         foreach (var raw in text.Split('\n'))
         {
             string line = raw.TrimStart().StartsWith('#') ? "" : raw;   // a comment line ('#' elsewhere is a sharp)
-            line = line.Split('%')[0].Trim();
+            line = line.Trim();   // ('%' is a chord repeat, and URLs carry it, so it never starts a comment)
             if (line.Length == 0) continue;
             if (line.Equals("melody:", StringComparison.OrdinalIgnoreCase)) { into = melodyText; continue; }
             if (line.Equals("chords:", StringComparison.OrdinalIgnoreCase)) { into = chordText; continue; }
@@ -211,7 +211,8 @@ public static class RealFightSongs
         if (twice)
         {
             Strain(notes, song, start, bigFrom: double.MaxValue);
-            double second = start + song.Length;
+            // The second pass's bars line up with the first's: with a pickup, it sits at the end of an added bar.
+            double second = start + song.Length + (song.Pickup > 0 ? song.Bar - song.Pickup : 0);
             hit = second;
             Strain(notes, song, second, bigFrom: 0);
             start = second;
@@ -221,7 +222,8 @@ public static class RealFightSongs
             // The big half starts at the bar nearest the middle.
             double mid = song.Pickup + Math.Round((song.Length - song.Pickup) / 2 / song.Bar) * song.Bar;
             Strain(notes, song, start, bigFrom: mid);
-            hit = start + mid;
+            // The hit takes in the pickup notes that lead into the big half (review, run 167).
+            hit = start + mid - song.Pickup;
         }
         double end = start + song.Length;
         // The tag: the tonic chord, everyone, held.

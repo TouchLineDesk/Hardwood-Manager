@@ -8,25 +8,31 @@ lyrics are separate copyrights. The chords are our own arrangement. The research
 
 ## The format
 ```
-# a comment line
-program: Michigan            # the school as ncaa_programs.json writes it
+# a comment line (only whole lines starting with '#'; there are no end-of-line comments)
+program: Michigan
 title: The Victors
 composer: Louis Elbel
-published: 1898              # the first publication year (must be 1930 or earlier)
-status: …                    # why it is public domain
-source: https://…            # the confirming source
-notes-from: …                # where the notes were typed from
-checked: …                   # how they were checked
-meter: 4                     # quarter-note beats in a bar (2 for 2/4, 4 for 4/4 or 2/2)
-pickup: 1                    # optional: beats before the first full bar
-tempo: 144                   # quarter notes a minute
-key: Eb                      # the tonic (the tune must end on it)
-style: March                 # the band's accompaniment: March (oom-pah) or Swing/Shuffle
+published: 1898
+status: public domain (…)
+source: https://…
+notes-from: …
+checked: …
+meter: 4
+pickup: 1
+tempo: 144
+key: Eb
+style: March
 melody:
-G4:2 Eb4:1 F4:1 | …          # note:beats, C4 = middle C; r = a rest; _ = hold the last note over the bar line
+G4:2 Eb4:1 F4:1 | …
 chords:
-Eb | Eb | Bb7 | …            # one group per melody bar, splitting it evenly; Eb, Cm, Bb7, Am7, F#dim, C6, Cmaj7, C+, %
+Eb | Eb | Bb7 | % | …
 ```
+- **program:** the school as `ncaa_programs.json` writes it. **published:** the first publication year (1930 or earlier).
+  **status / source / notes-from / checked:** why it's public domain, the confirming source, where the notes came from and how they were checked.
+- **meter:** quarter-note beats in a bar (2 for 2/4, 4 for 4/4 or 2/2). **pickup** (optional): beats before the first full bar.
+  **tempo:** quarter notes a minute. **key:** the tonic (the tune must end on it). **style:** `March` (oom-pah) or `Swing`/`Shuffle`.
+- **melody:** `note:beats` with C4 = middle C; `r` is a rest; `_` holds the last note over the bar line.
+- **chords:** one group per melody bar, splitting it evenly: Eb, Cm, Bb7, Am7, F#dim, C6, Cmaj7, C+; `%` repeats the last chord.
 A bar that doesn't add up to `meter` beats, or a chord line with a different number of bars, fails the tests
 (`Run167RealFightSongTests`) with the bar's number.
 

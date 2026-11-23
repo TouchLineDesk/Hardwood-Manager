@@ -60,6 +60,18 @@ public class Run167RealFightSongTests
                                         "melody:\nD4:1 | G4:2 | _:1 r:1 | G4:2 |\nchords:\nD7 | G | G | G |\n");
         Assert.Equal(new[] { (0.0, 1.0, 62), (1.0, 3.0, 67), (5.0, 2.0, 67) }, tied.Melody.ToArray());
         Assert.Equal(7.0, tied.Length);
+        // '%' repeats a chord (and isn't a comment: a URL keeps it).
+        var rep = RealFightSongs.Parse("program: X\ntitle: T\ncomposer: C\npublished: 1900\nsource: https://x/a%20b.pdf\nmeter: 2\npickup: 1\ntempo: 120\nkey: G\nstyle: March\n" +
+                                      "melody:\nD4:1 | G4:2 | B4:2 | G4:2 |\nchords:\nD7 | G | % | G |\n");
+        Assert.Equal("https://x/a%20b.pdf", rep.Source);
+        Assert.Equal(7, rep.Chords[2].Root);
+        // A short song plays twice, and with a pickup the second pass's downbeats land on the first's bar lines.
+        var twice = RealFightSongs.Arrange(rep);
+        var leads = twice.Notes.Where(n => n.Part == BandPart.Lead && n.Midi % 12 == 7 && n.Beats > 1.5).Select(n => n.Beat).ToList();
+        Assert.True(leads.Count >= 4, $"{leads.Count}");
+        Assert.All(leads, b => Assert.Equal(0, (b - 8) % 2, 6));   // pickup ends at beat 8; bars are 2 beats
+        // The hit starts with the second pass's pickup note.
+        Assert.Contains(twice.Notes, n => n.Part == BandPart.Lead && Math.Abs(n.Beat - twice.HitFromBeat) < 1e-6 && n.Midi % 12 == 2);
     }
 
     [Fact]
@@ -77,6 +89,9 @@ public class Run167RealFightSongTests
             Assert.All(lead, n => Assert.InRange(n.Midi, 58, 86));
             Assert.Contains(score.Notes, n => n.Part == BandPart.Glock && n.Beat >= score.HitFromBeat);
             Assert.Contains(score.Notes, n => n.Part == BandPart.Counter);
+            Assert.Contains(score.Notes, n => n.Part == BandPart.Lead && Math.Abs(n.Beat - score.HitFromBeat) < 1e-6);
+            Assert.StartsWith("https://", s.Source);
+            Assert.DoesNotContain(' ', s.Source);
         }
         var michigan = RealFightSongs.Arrange(RealFightSongs.For("Michigan")!);
         var sw = Stopwatch.StartNew();
