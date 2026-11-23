@@ -105,13 +105,13 @@
               <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Shield" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding OwnerTitle}" Classes="h2" Margin="0"/></StackPanel>
               <TextBlock Text="{Binding OwnerName}" FontSize="18" FontWeight="SemiBold"/>
               <TextBlock Text="{Binding OwnerStyle}" Classes="muted"/>
-              <Grid ColumnDefinitions="80,*,30" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+              <Grid ColumnDefinitions="80,*,Auto" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
                 <TextBlock Text="Patience" Classes="muted"/>
                 <ProgressBar Grid.Column="1" MinWidth="0" Value="{Binding Patience}" Maximum="20" Height="6" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding Patience}" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="2" Text="{Binding PatienceText}" Margin="10,0,0,0" HorizontalAlignment="Left"/>
                 <TextBlock Grid.Row="1" Text="Ambition" Classes="muted"/>
                 <ProgressBar Grid.Row="1" Grid.Column="1" MinWidth="0" Value="{Binding Ambition}" Maximum="20" Height="6" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Ambition}" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding AmbitionText}" Margin="10,0,0,0" HorizontalAlignment="Left"/>
               </Grid>
             </StackPanel>
           </Grid>

@@ -10,16 +10,27 @@ public sealed class Owner
     public int Patience { get; set; } = 10;
     public int Ambition { get; set; } = 10;
 
+    /// <summary>H169 (run 172): one set of lines for every word about an owner or AD (the style, the scale words and the
+    /// confidence panel's "impatient" line), so the words never disagree with each other or with the bars.</summary>
+    public const int ImpatientLine = 6, PatientLine = 15, CarefulLine = 6, WinNowLine = 15;
+
     public string Style => (Patience, Ambition) switch
     {
-        ( <= 6, >= 14) => "Ruthless and demanding",
-        ( <= 6, _) => "Impatient",
-        ( >= 15, <= 8) => "Patient and careful with money",
-        ( >= 15, _) => "Patient",
-        (_, >= 15) => "Wants to win now",
-        (_, <= 6) => "Careful with money",
+        ( <= ImpatientLine, >= WinNowLine) => "Ruthless and demanding",
+        ( <= ImpatientLine, _) => "Impatient",
+        ( >= PatientLine, <= CarefulLine) => "Patient and careful with money",
+        ( >= PatientLine, _) => "Patient",
+        (_, >= WinNowLine) => "Wants to win now",
+        (_, <= CarefulLine) => "Careful with money",
         _ => "Reasonable",
     };
+
+    /// <summary>H169: the patience bar's word (out of 20).</summary>
+    public string PatienceWord => Patience <= ImpatientLine ? "impatient" : Patience >= PatientLine ? "patient" : "average";
+    /// <summary>H169: the ambition bar's word (out of 20).</summary>
+    public string AmbitionWord => Ambition >= WinNowLine ? "wants to win now" : Ambition <= CarefulLine ? "careful" : "average";
+    public bool Impatient => Patience <= ImpatientLine;
+    public bool IsPatient => Patience >= PatientLine;
 }
 
 /// <summary>How far a team got: also the scale for season goals.</summary>
@@ -416,6 +427,10 @@ public static class Board
 
     /// <summary>Owner patience at or above which the goal is set a step lower (H70).</summary>
     public const int PatientOwner = 15;
+    /// <summary>H179 (run 172): the college rank down to which an ambitious AD asks for the tournament; below it, progress.</summary>
+    public const int AmbitiousReach = 120;
+    /// <summary>H179: the extra wins an ambitious AD asks of a program below <see cref="AmbitiousReach"/>.</summary>
+    public const int AmbitiousExtraWins = 3;
 
     /// <summary>The goals a league's season can end on, lowest first (the ladder goals move along).</summary>
     public static List<SeasonGoal> Ladder(LeagueContext ctx) =>
@@ -502,11 +517,21 @@ public static class Board
         var e = new Expectations { Season = season, Goal = goal, TargetWins = target };
         if (ctx.IsCollege)
         {
-            // No wages and no veterans in college: an ambitious AD simply wants the tournament (#168).
+            // No wages and no veterans in college: an ambitious AD simply wants the tournament (#168)...
             if (o.Ambition >= 15 && goal < SeasonGoal.Playoffs)
             {
-                e.Goal = SeasonGoal.Playoffs;
-                e.TargetWins = Math.Max(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.6));
+                if (r <= AmbitiousReach)
+                {
+                    e.Goal = SeasonGoal.Playoffs;
+                    e.TargetWins = Math.Max(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.6));
+                }
+                else
+                {
+                    // ...but H179 (run 172): not at a program far from the bubble (Sacred Heart, No. 348, was asked for
+                    // March Madness and 19 wins after an 8-23 season). There an ambitious AD asks for progress: a few more wins
+                    // than the program's rank suggests, up to a .500 record.
+                    e.TargetWins = Math.Min(e.TargetWins + AmbitiousExtraWins, Math.Max(e.TargetWins, (int)Math.Round(ctx.SeasonGames * 0.5)));
+                }
             }
             return e;
         }

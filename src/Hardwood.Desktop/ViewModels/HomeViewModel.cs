@@ -136,6 +136,18 @@ public sealed partial class HomeViewModel : PageViewModel
             OnPropertyChanged(n);
     }
 
+    /// <summary>
+    /// K22/H181: the summer by whose ages a college roster is put in classes. In the offseason before July, once the seniors have
+    /// graduated and the new class has enrolled, that is next season's summer (Home's chart and the Board's Graduating chip).
+    /// </summary>
+    public static (DateOnly summer, bool nextSeason) ClassSummer(Hardwood.Core.Season.GameSession s)
+    {
+        int schoolYear = Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today);
+        bool nextSeason = s.Phase == SessionPhase.Offseason && s.Today.Month < 7;
+        if (nextSeason) schoolYear++;
+        return (Hardwood.Core.College.CollegeWorld.SummerAfter(schoolYear), nextSeason);
+    }
+
     public override void Refresh()
     {
         var s = Session; var team = Team; var rec = s.MyRecord;
@@ -275,10 +287,8 @@ public sealed partial class HomeViewModel : PageViewModel
             // No wages in college: the roster by class instead, so the coach sees who graduates when (C2).
             // K22 (run 162): once the seniors have graduated and the new class has enrolled (the summer), the chart shows next
             // season's classes, as the "Graduation and enrollment" message does; it says so in its caption.
-            int schoolYear = Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today);
-            bool nextSeason = s.Phase == SessionPhase.Offseason && s.Today.Month < 7;
-            if (nextSeason) schoolYear++;
-            var summer = Hardwood.Core.College.CollegeWorld.SummerAfter(schoolYear); // the same school year as the cards
+            var (summer, nextSeason) = ClassSummer(s); // the same school year as the cards
+            int schoolYear = summer.Year - 1;
             // By age next summer: 19 = freshmen ... 22 = seniors, who turn pro then (D80 A, run 128; CS3, H132). In a career from
             // before four-year college, last year's juniors are 23 next summer and graduate with the seniors: they count as seniors.
             string[] names = Hardwood.Core.College.CollegeWorld.ClassShort;

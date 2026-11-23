@@ -489,6 +489,9 @@ public sealed partial class CollegeViewModel : PageViewModel
     private string ClassLabel(CollegeWorld c, int year) => $"Class of {year}" + (year == c.SeniorClass ? " (seniors)" : " (rising seniors)");
     private int ClassYear => int.TryParse(HighSchoolClass.Replace("Class of ", "").Split(' ')[0], out var y) ? y : 0;
 
+    /// <summary>H177: the High school table lists at most this many prospects of a class.</summary>
+    public const int HighSchoolTable = 300;
+
     private void FillHighSchool()
     {
         HighSchoolers.Clear(); HighSchoolCards.Clear(); HighSchoolChips.Clear(); ClassRanks.Clear(); HighSchoolCardNote = "";
@@ -499,16 +502,17 @@ public sealed partial class CollegeViewModel : PageViewModel
         int committed = all.Count(x => x.r.CommittedTo != null);
         var signing = CollegeWorld.SigningDay(year);
         HighSchoolChips.Add(new Chip("Class", $"{year}", year == c.SeniorClass ? "seniors: enroll next summer" : "rising seniors: commit from Sep 1", "info"));
-        HighSchoolChips.Add(new Chip("Committed", $"{committed} of {all.Count}", today < CollegeWorld.CommitmentsOpen(year) ? $"commitments open {CollegeWorld.CommitmentsOpen(year):MMM d, yyyy}" : "tracked prospects", committed > 0 ? "good" : ""));
+        HighSchoolChips.Add(new Chip("Committed", $"{committed} of {all.Count:N0}", today < CollegeWorld.CommitmentsOpen(year) ? $"commitments open {CollegeWorld.CommitmentsOpen(year):MMM d, yyyy}" : "tracked prospects", committed > 0 ? "good" : ""));
         HighSchoolChips.Add(new Chip("Five-stars signed", $"{all.Count(x => x.r.Stars == 5 && x.r.CommittedTo != null)} of {CollegeWorld.FiveStars}", "the top 25 in the class", "info"));
         HighSchoolChips.Add(new Chip("Signing day", $"{signing:MMM d}", today > signing ? "done: the class is set" : $"{(signing.DayNumber - today.DayNumber)} days away", today > signing ? "good" : "warn"));
         var ranking = c.ClassRanking(year);
         if (ranking.Count > 0) HighSchoolChips.Add(new Chip("Top class", ranking[0].Program.FullName, $"{ranking[0].Points} pts · {ranking[0].FiveStars}× 5-star", ""));
-        foreach (var (p, r) in all.Where(x => StarFilter switch
+        var shown = all.Where(x => StarFilter switch
                  {
                      "5-star" => x.r.Stars == 5, "4-star" => x.r.Stars == 4, "3-star" => x.r.Stars == 3, "2-star" => x.r.Stars == 2,
                      "Uncommitted" => x.r.CommittedTo == null, "Committed" => x.r.CommittedTo != null, _ => true,
-                 }).Take(300))
+                 }).ToList();
+        foreach (var (p, r) in shown.Take(HighSchoolTable))
             HighSchoolers.Add(new HighSchoolRow
             {
                 Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", Age = p.Age(today), HighSchool = r.HighSchool,
@@ -519,7 +523,10 @@ public sealed partial class CollegeViewModel : PageViewModel
         string which = StarFilter == "All" ? "" : $" ({StarFilter.ToLowerInvariant()})";
         HighSchoolCardNote = HighSchoolers.Count == 0 ? $"No prospects{which} in the Class of {year}. Pick another filter."
             : HighSchoolers.Count <= CollegeCards.CardCount ? $"All {HighSchoolers.Count} prospects{which} in the Class of {year}, best first. Pick a card, then Open player."
-            : $"The best {CollegeCards.CardCount} of {HighSchoolers.Count}{which} in the Class of {year}. Pick a card, then Open player; the full table lists them all.";
+            // H177 (run 172): the note counts the whole class, as the Committed chip does ("0 of 1429" beside "of 300").
+            : shown.Count > HighSchoolTable
+                ? $"The best {CollegeCards.CardCount} of {shown.Count:N0}{which} in the Class of {year}. Pick a card, then Open player; the table lists the top {HighSchoolTable}."
+                : $"The best {CollegeCards.CardCount} of {shown.Count:N0}{which} in the Class of {year}. Pick a card, then Open player; the full table lists them all.";
         int rank = 1;
         foreach (var x in ranking.Take(50))
             ClassRanks.Add(new ClassRankRow { Rank = rank++, Team = x.Program, Conference = ConfName(c, x.Program), Commits = x.Commits, FiveStars = x.FiveStars, FourStars = x.FourStars, Points = x.Points });

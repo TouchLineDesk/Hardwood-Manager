@@ -92,7 +92,9 @@ public class Run68CollegeCardTests
             Assert.Equal(CollegeCards.CardCount, col.HighSchoolCards.Count);
             Assert.Equal(col.HighSchoolers.Take(CollegeCards.CardCount), col.HighSchoolCards);
             Assert.True(col.HighSchoolCards.Select(r => r.Rank).SequenceEqual(col.HighSchoolCards.Select(r => r.Rank).Order()));
-            Assert.Contains($"of {col.HighSchoolers.Count}", col.HighSchoolCardNote);
+            // H177 (run 172): a class longer than the table counts the whole class and says the table is its top 300.
+            if (col.HighSchoolCardNote.Contains("the table lists the top")) Assert.Equal(CollegeViewModel.HighSchoolTable, col.HighSchoolers.Count);
+            else Assert.Contains($"of {col.HighSchoolers.Count:N0}", col.HighSchoolCardNote);
             Assert.All(col.HighSchoolCards, r => Assert.Equal(5, r.StarsOn.Length + r.StarsOff.Length));
             Assert.All(col.HighSchoolCards, r => Assert.Equal(r.HasCommit, r.Committed != "Uncommitted"));
             var cards = window.GetVisualDescendants().OfType<ItemsControl>().First(c => c.Name == "HighSchoolCards");

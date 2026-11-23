@@ -84,6 +84,8 @@ public sealed partial class BoardViewModel : PageViewModel
     public const string CollegeConfidenceNote = "Confidence follows your regular-season pace against the target each week (faster with an impatient athletic director). After March Madness the AD reviews the season against the goal and your seed: a run past your seed counts for a lot; conference tournament and March games don't count toward the win target.";
     [ObservableProperty] private int _patience;
     [ObservableProperty] private int _ambition;
+    [ObservableProperty] private string _patienceText = "";
+    [ObservableProperty] private string _ambitionText = "";
     [ObservableProperty] private string _goal = "";
     [ObservableProperty] private string _pace = "";
     public ObservableCollection<DemandRow> Demands { get; } = new();
@@ -185,8 +187,15 @@ public sealed partial class BoardViewModel : PageViewModel
         if (job.HiredOn == default) return false;
         if (job.HiredSeason > s.League.Season) return true;   // H80 (run 105): a summer hire is hired for next season
         if (job.HiredSeason != s.League.Season) return false;
-        var mine = s.Schedule.Where(g => g.Home == t || g.Away == t).Select(g => g.Date).ToList();
+        // H180 (run 172): a college program's games are on the college season, not the pro schedule (the fallback below kept a
+        // summer hire's own season "before you came" for a whole year).
+        var mine = s.InCollege
+            ? s.World.College!.GamesOf(t.Id).Where(g => g.Played).Select(g => g.Date).ToList()
+            : s.Schedule.Where(g => g.Home == t || g.Away == t).Select(g => g.Date).ToList();
+        // Review of run 172: a mid-season college hire has regular-season games still to play, so the season is his.
+        if (s.InCollege && s.World.College!.GamesOf(t.Id).Any(g => !g.Played && Hardwood.Core.College.CollegeWorld.IsRegularSeason(g))) return false;
         if (mine.Count > 0) return job.HiredOn > mine.Max();
+        if (s.InCollege) return false;   // no game played yet this season: it is all yours
         return job.HiredOn.Month is >= 5 and <= 9;   // a league whose games aren't on your schedule: after the spring
     }
 
@@ -199,6 +208,8 @@ public sealed partial class BoardViewModel : PageViewModel
         {
             var t = s.HumanTeam; var o = t.Owner; var rec = s.MyBoardRecord; var ctx = s.ContextOf(t);
             OwnerName = o.Name; OwnerStyle = o.Style; Patience = o.Patience; Ambition = o.Ambition;
+            // H169 (run 172): the bars say what they're out of, and each has the word its style uses.
+            PatienceText = $"{o.Patience} of 20 · {o.PatienceWord}"; AmbitionText = $"{o.Ambition} of 20 · {o.AmbitionWord}";
             var e = job.Current;
             Goal = e == null ? "" : $"{(e.Survive ? (e.SurviveNote is { } note ? $"Stay up: {note}" : "Stay up (newly promoted)") : Board.Describe(e.Goal, ctx))} · around {e.TargetWins} wins";
             bool over = s.Phase is Hardwood.Core.Season.SessionPhase.Postseason or Hardwood.Core.Season.SessionPhase.Offseason;
@@ -247,12 +258,13 @@ public sealed partial class BoardViewModel : PageViewModel
                 ? "College players are paid nothing (the classic era): the program's pull is its prestige, its conference and its winning. The athletic director judges the season by March Madness."
                 : "Revenue comes from the league, the arena, the fans and results. The owner sets the wage budget from it each summer: ambitious owners spend more, careful ones keep a margin.";
             if (s.InCollege) FinanceChips = ProgramChips(s);
-            var outlook = Board.Outlook(job, ctx, t, rec.Wins, rec.Losses, s.MyStats, s.Today);
+            // H180 (run 172): the record of a season you were hired after isn't yours, so nothing is judged on it.
+            var outlook = HiredAfterSeason(s) ? null : Board.Outlook(job, ctx, t, rec.Wins, rec.Losses, s.MyStats, s.Today);
             ConfidenceDrivers = outlook == null ? new() : DriverChips(outlook);
             ConfidenceHeading = outlook == null
                 ? $"The {(s.InCollege ? "athletic director" : "board")} starts judging the season after five games."
                 : $"Heading toward {outlook.Level:0} (now {job.Confidence:0}): each week it closes {outlook.Rate * 100:0}% of the gap. "
-                  + (o.Patience <= 7 ? $"An impatient {s.BossTitle}: it moves fast." : o.Patience >= 14 ? $"A patient {s.BossTitle}: it moves slowly." : "");
+                  + (o.Impatient ? $"An impatient {s.BossTitle}: it moves fast." : o.IsPatient ? $"A patient {s.BossTitle}: it moves slowly." : "");
             ConfidenceRecent = Recent(job);
             RefreshFacilities();
             RefreshBusiness();
@@ -512,7 +524,10 @@ public sealed partial class BoardViewModel : PageViewModel
         double prestige = cw.Prestige.GetValueOrDefault(t.Id, 50);
         int rank = cw.PollPosition(t.Id); // H153 (run 136): the poll's rank, as the Top 25 shows it (was the rating alone)
         var rec = s.MyRecord; var conf = s.MyStandings[t];
-        int seniors = t.Roster.Count(p => p.Age(new DateOnly(cw.Season.Year + 1, 7, 1)) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
+        // H181 (run 172): after graduation day the chip counts next season's seniors, as Home's chart does (K22); it read
+        // "Graduating 0" all summer while Home showed four seniors.
+        var (summer, nextSeason) = HomeViewModel.ClassSummer(s);
+        int seniors = t.Roster.Count(p => p.Age(summer) >= Hardwood.Core.College.CollegeWorld.GraduateAge);
         return new List<Hardwood.Desktop.Controls.Chip>
         {
             // CS2 (run 126, #166): prestige as a letter, the number beside it.
@@ -523,7 +538,7 @@ public sealed partial class BoardViewModel : PageViewModel
             conf.Games == 0 && FirstConferenceGame(cw, t) is { } first
                 ? new("Conference", "Not started", $"{s.MyConference!.Short} play starts {first:MMM d}", "")
                 : new("Conference", $"{conf.Wins}-{conf.Losses}", s.MyConference!.Short, conf.Games > 0 && conf.WinPct >= 0.6 ? "good" : ""),
-            new("Graduating", $"{seniors}", "turn pro next summer", "info"),
+            new("Graduating", $"{seniors}", nextSeason ? "next season's seniors" : "turn pro next summer", "info"),
         };
     }
 
