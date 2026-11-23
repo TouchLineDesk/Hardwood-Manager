@@ -235,6 +235,11 @@ while (s.League.Season < startYear + seasons)
     bool wasEmployed = s.Employed;
     var team = s.HumanTeam;
     s.AdvanceDay();
+    // CS7 part 2 (run 171, K19's 10-season check): a coach who builds. Whenever the booster fund covers the next level,
+    // build the arena first (more appeal a level), then the gym. HW_CRITIC_NOBUILD=1 plays the same career without building.
+    if (s.HasProgramBuilding && Environment.GetEnvironmentVariable("HW_CRITIC_NOBUILD") == null && s.MyProgramBooks.Ready) // seeds the books
+        foreach (var k in new[] { Hardwood.Core.Model.FacilityKind.Arena, Hardwood.Core.Model.FacilityKind.Practice })
+            if (Hardwood.Core.College.ProgramBuilding.Blocked(s.HumanTeam, k) == null) { L($"  {s.Today}: build: {s.BuildProgramFacility(k)}"); break; }
     if (Environment.GetEnvironmentVariable("HW_TRACE_RECRUIT") != null && s.TrailOpen && s.World.College is { } tr && s.Today.DayOfWeek == DayOfWeek.Monday && s.Today.Month is >= 2 and <= 4)
     {
         int c = tr.RecruitingClass(s.Today);
@@ -266,6 +271,11 @@ while (s.League.Season < startYear + seasons)
         {
             var conf = s.MyStandings[s.HumanTeam];
             int reached = cw.MadnessReached(s.HumanTeam.Id);
+            if (s.HasProgramBuilding)
+            {
+                var pb = s.MyProgramBooks;
+                L($"program {cw.Season.Year}: prestige {cw.Prestige[s.HumanTeam.Id]:F0}, boosters {pb.Boosters:F0}, fund {Hardwood.Core.College.ProgramBuilding.Money(pb.Fund)}, raised {Hardwood.Core.College.ProgramBuilding.Money(pb.TotalRaised)}, arena {s.HumanTeam.Money.Facilities.Arena.Level}, gym {s.HumanTeam.Money.Facilities.Practice.Level}{(pb.Pending is { } pk ? $" (+{pk} pending)" : "")}, built appeal +{Hardwood.Core.College.ProgramBuilding.Appeal(s.HumanTeam):F0}");
+            }
             L($"college {cw.Season.Year}: conference {conf.Wins}-{conf.Losses}, seed {(cw.Season.Seeds.TryGetValue(s.HumanTeam.Id, out var sd) ? sd.ToString() : "-")}, March Madness {(reached < 0 ? "missed" : reached == 7 ? "CHAMPIONS" : Hardwood.Core.College.CollegeWorld.RoundName(reached))}, champion {cw.Program(cw.Season.ChampionId ?? 0)?.FullName}, roster {s.HumanTeam.Roster.Count}, full-engine box scores {s.CollegeResults.Count}");
         }
     }

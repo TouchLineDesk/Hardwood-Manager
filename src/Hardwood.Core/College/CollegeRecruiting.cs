@@ -225,7 +225,22 @@ public sealed partial class CollegeWorld
     {
         public Dictionary<int, int> Open { get; } = new();
         public Dictionary<(int, Position), int> AtPosition { get; } = new();
+        /// <summary>CS7 part 2 (run 171, K21/H173): each program's blue-chip players next season (path at 22 of
+        /// <see cref="EliteLine"/> or better): returning players, signed classes and this class's commitments.</summary>
+        public Dictionary<int, int> Elite { get; } = new();
+        /// <summary>Seat (d = 1) or unseat (d = -1) a player at a program: his scholarship, his position and, if he's a
+        /// blue-chip, the program's blue-chip count.</summary>
+        public void Seat(int team, Position pos, bool elite, int d)
+        {
+            Open[team] -= d;
+            AtPosition[(team, pos)] = AtPosition.GetValueOrDefault((team, pos)) + d;
+            if (elite) Elite[team] = Elite.GetValueOrDefault(team) + d;
+        }
     }
+
+    /// <summary>CS7 part 2 (run 171): a blue-chip, by his path at 22 (the five-star band starts at 118).</summary>
+    public const int EliteLine = 115;
+    public bool IsElite(Player p) => Destined.TryGetValue(p.Id, out var d) && d >= EliteLine;
 
     public ClassBoard BoardFor(int classOf)
     {
@@ -239,6 +254,7 @@ public sealed partial class CollegeWorld
                 if (x.Age(summer) >= GraduateAge || WalkOnIds.Contains(x.Id)) continue;
                 returning++;
                 b.AtPosition[(t.Id, x.PrimaryPosition)] = b.AtPosition.GetValueOrDefault((t.Id, x.PrimaryPosition)) + 1;
+                if (IsElite(x)) b.Elite[t.Id] = b.Elite.GetValueOrDefault(t.Id) + 1;
             }
             b.Open[t.Id] = Scholarships - returning;
         }
@@ -247,16 +263,10 @@ public sealed partial class CollegeWorld
         foreach (var p in Prospects)
             if (Recruits.TryGetValue(p.Id, out var signed) && signed.ClassOf < classOf && signed.CommittedTo is { } at
                 && b.Open.ContainsKey(at) && p.Age(summer) < GraduateAge)
-            {
-                b.Open[at]--;
-                b.AtPosition[(at, p.PrimaryPosition)] = b.AtPosition.GetValueOrDefault((at, p.PrimaryPosition)) + 1;
-            }
+                b.Seat(at, p.PrimaryPosition, IsElite(p), 1);
         foreach (var p in ClassOf(classOf))
             if (Recruits[p.Id].CommittedTo is { } to)
-            {
-                b.Open[to]--;
-                b.AtPosition[(to, p.PrimaryPosition)] = b.AtPosition.GetValueOrDefault((to, p.PrimaryPosition)) + 1;
-            }
+                b.Seat(to, p.PrimaryPosition, IsElite(p), 1);
         return b;
     }
 
@@ -339,10 +349,26 @@ public sealed partial class CollegeWorld
         string home = HomeState(t);
         double near = home == r.State ? 14 : RegionOf(home) == RegionOf(r.State) ? 6 : 0;
         int crowd = board.AtPosition.GetValueOrDefault((t.Id, p.PrimaryPosition));
-        double minutes = -3 * Math.Max(0, crowd - 2);
+        double minutes = -3 * Math.Max(0, crowd - 2) - StackCost(r, board.Elite.GetValueOrDefault(t.Id));
         double winning = Season.Elo.TryGetValue(t.Id, out var elo) ? Math.Clamp((elo - 1500) / 12, -10, 10) : 0;
         return (Prestige[t.Id], near, minutes, winning);
     }
+
+    /// <summary>
+    /// CS7 part 2 (run 171; K21's 25-season drift, H173): a four- or five-star weighs the blue-chips already there next
+    /// season (<see cref="ClassBoard.Elite"/>). Past a few, every one more is a share of the ball he won't get, so the
+    /// blue bloods can't keep stacking five-stars year after year and the best players spread to the next tier. It counts
+    /// against every program, yours too, as part of the minutes he's promised. A 5-star: <see cref="FiveStarStack"/> a
+    /// blue-chip past <see cref="StackFree"/>; a 4-star: half that, past one more.
+    /// </summary>
+    public static double StackCost(Recruit r, int elite) => r.Stars switch
+    {
+        >= 5 => FiveStarStack * Math.Max(0, elite - StackFree),
+        4 => FiveStarStack * 0.5 * Math.Max(0, elite - StackFree - 1),
+        _ => 0,
+    };
+    public const int StackFree = 2;
+    public const double FiveStarStack = 6;
 
     /// <summary>What a prospect weighs most (fixed for life, from his id so older saves get one too).</summary>
     public static RecruitPriority PriorityOf(Player p) => (RecruitPriority)((uint)(p.Id * 2654435761u) >> 8 & 0x3);
@@ -396,8 +422,7 @@ public sealed partial class CollegeWorld
     private void Commit(Player p, Recruit r, Team t, DateOnly on, ClassBoard board, Team? flippedFrom = null)
     {
         r.CommittedTo = t.Id; r.CommittedOn = on;
-        board.Open[t.Id]--;
-        board.AtPosition[(t.Id, p.PrimaryPosition)] = board.AtPosition.GetValueOrDefault((t.Id, p.PrimaryPosition)) + 1;
+        board.Seat(t.Id, p.PrimaryPosition, IsElite(p), 1);
         TellCoach(p, r, t, flippedFrom: flippedFrom);
         if (flippedFrom != null)
         {
@@ -454,8 +479,7 @@ public sealed partial class CollegeWorld
             var pick = Choose(p, r, board, rng, null, 2); // no reach for the computer on signing day; your credit at the spring reach
             if (pick == null) break;
             r.CommittedTo = pick.Id; r.CommittedOn = day;
-            board.Open[pick.Id]--;
-            board.AtPosition[(pick.Id, p.PrimaryPosition)] = board.AtPosition.GetValueOrDefault((pick.Id, p.PrimaryPosition)) + 1;
+            board.Seat(pick.Id, p.PrimaryPosition, IsElite(p), 1);
             TellCoach(p, r, pick, signingDay: true);
         }
         var top = ClassRanking(cls).Take(5).ToList();
