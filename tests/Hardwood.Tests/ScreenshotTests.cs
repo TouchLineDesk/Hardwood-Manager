@@ -120,6 +120,15 @@ public class ScreenshotTests
                     .Where(x => x.IsEffectivelyVisible && x.Extent.Height > x.Viewport.Height + 1))
                     sv.Offset = new Vector(0, 520);
                 Snap(window, Path.Combine(dir, $"{n++:00}-facilities-proposals.png"));
+                // D81 (run 169): the revenue levers, with a plan set.
+                session.SetBusiness(new Hardwood.Core.Model.BusinessPlan { Tickets = 1, Parking = -1, FanDays = 2 });
+                vm.Navigate("Board");
+                window.UpdateLayout();
+                var bizTitle = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.TextBlock>().First(x => x.Text == "Match-day business");
+                var bizScroll = Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<Avalonia.Controls.ScrollViewer>(bizTitle)!;
+                if (bizTitle.TranslatePoint(new Point(0, 0), bizScroll) is { } bizAt) bizScroll.Offset = new Vector(0, bizScroll.Offset.Y + bizAt.Y - 40);
+                window.UpdateLayout();
+                Snap(window, Path.Combine(dir, $"{n++:00}-match-day-business.png"));
             }
             if (session.Employed)
             {

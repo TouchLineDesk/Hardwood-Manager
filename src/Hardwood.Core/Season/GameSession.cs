@@ -1559,6 +1559,9 @@ public sealed partial class GameSession
         AgreedFees.Clear(); IncomingBids.Clear(); BidsWindowShut(); // the summer window shuts
         Phase = SessionPhase.Preseason;
         World.EndSummer(League.Season, _sim, League.FreeAgents); // normally already run at the end of free agency
+        // D81: the plan set for this season is in force (an older save loaded mid-summer may not have rolled it in), and changes
+        // from opening night wait for next season.
+        foreach (var t in League.Teams.Concat(World.Clubs)) { var b = t.Money.Business; b.Now = Business.Clamp(b.Next); b.BooksClosed = false; }
         RefreshProPitch(); // CP3: where the graduates signed this summer
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
         World.News.Clear(); World.CollegeTitles.Clear();

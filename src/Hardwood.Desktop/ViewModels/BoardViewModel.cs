@@ -230,7 +230,8 @@ public sealed partial class BoardViewModel : PageViewModel
                        + $"transfer budget {M(m.TransferBudget)} · bank balance {M(m.Balance)} · fan base {m.FanBase:0}/100";
             FinanceChips = new List<Hardwood.Desktop.Controls.Chip>
             {
-                new("Revenue", M(m.Revenue), "a season", "team"),
+                // D81 (run 169): revenue includes what your prices add or cost.
+                new("Revenue", M(m.Revenue + Hardwood.Core.Season.Business.Change(m)), Hardwood.Core.Season.Business.Change(m) is var bc && bc != 0 ? $"a season · {(bc > 0 ? "+" : "-")}{M(Math.Abs(bc))} from your prices" : "a season", "team"),
                 new("Wages", M(wages), wagesNote, wages > m.WageBudget ? "bad" : wages > m.WageBudget * 0.95 ? "warn" : "good"),
                 new("Wage room", M(Math.Max(0, m.WageBudget - wages)), wages > m.WageBudget ? $"{M(wages - m.WageBudget)} over" : "to spend on wages", wages > m.WageBudget ? "bad" : ""),
                 new("Transfer budget", M(m.TransferBudget), "for transfer fees"),
@@ -254,11 +255,12 @@ public sealed partial class BoardViewModel : PageViewModel
                   + (o.Patience <= 7 ? $"An impatient {s.BossTitle}: it moves fast." : o.Patience >= 14 ? $"A patient {s.BossTitle}: it moves slowly." : "");
             ConfidenceRecent = Recent(job);
             RefreshFacilities();
+            RefreshBusiness();
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = s.InCollege ? "AD confidence" : "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }
 
-        else HasFacilities = false;
+        else { HasFacilities = false; HasBusiness = false; }
         CoachName = coach.Name;
         // K14 (run 133): a coaching licence is a pro thing; a college head coach's line leaves it out.
         CoachBio = $"Age {coach.Age(s.Today)} · {coach.Nationality} · {Bio(coach.Background)}" + (s.InCollege ? "" : $" · licence {coach.Licence}");
@@ -319,6 +321,75 @@ public sealed partial class BoardViewModel : PageViewModel
     partial void OnConfirmingResignChanged(bool value) { if (Session.Employed) ResignNote = value
         ? $"Resign as head coach of {Session.HumanTeam.TheFullName}? You'll be out of work (reputation −2) and can apply for open jobs."
         : "Bigger clubs and programs come for coaches who beat expectations. You can also resign and look for work."; }
+
+    // D81 (run 169): the revenue levers.
+    [ObservableProperty] private bool _hasBusiness;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _businessChips = new();
+    public IReadOnlyList<string> TicketChoices => Hardwood.Core.Season.Business.TicketNames;
+    public IReadOnlyList<string> FoodChoices => Hardwood.Core.Season.Business.FoodNames;
+    public IReadOnlyList<string> ParkingChoices => Hardwood.Core.Season.Business.ParkingNames;
+    public IReadOnlyList<string> FanDayChoices { get; } = new[] { "None", "1 a season", "2 a season", "3 a season", "4 a season" };
+    [ObservableProperty] private string _ticket = "Standard";
+    [ObservableProperty] private string _food = "Standard";
+    [ObservableProperty] private string _parking = "Standard";
+    [ObservableProperty] private string _fanDays = "None";
+    [ObservableProperty] private string _businessPreview = "";
+    [ObservableProperty] private string _businessWhen = "";
+    [ObservableProperty] private string _businessStatus = "";
+    // A blank selection (a template swap) is never taken for the cheapest level.
+    partial void OnTicketChanged(string value) { if (value != null) ApplyBusiness(); }
+    partial void OnFoodChanged(string value) { if (value != null) ApplyBusiness(); }
+    partial void OnParkingChanged(string value) { if (value != null) ApplyBusiness(); }
+    partial void OnFanDaysChanged(string value) { if (value != null) ApplyBusiness(); }
+
+    private Hardwood.Core.Model.BusinessPlan PickedPlan() => new()
+    {
+        Tickets = Level(Hardwood.Core.Season.Business.TicketNames, Ticket),
+        Food = Level(Hardwood.Core.Season.Business.FoodNames, Food),
+        Parking = Level(Hardwood.Core.Season.Business.ParkingNames, Parking),
+        FanDays = Math.Max(0, Array.IndexOf((string[])FanDayChoices, FanDays)),
+    };
+
+    /// <summary>A choice's level (-1 first); anything not in the list is standard.</summary>
+    private static int Level(string[] names, string? v) => Array.IndexOf(names, v) is var i && i >= 0 ? i - 1 : 0;
+
+    private void ApplyBusiness()
+    {
+        if (_refreshing || !HasBusiness) return;
+        BusinessStatus = Session.SetBusiness(PickedPlan());
+        Refresh();
+    }
+
+    private void RefreshBusiness()
+    {
+        var s = Session;
+        HasBusiness = s.HasBusiness;
+        if (!HasBusiness) return;
+        var m = s.HumanTeam.Money;
+        string M(long v) => Hardwood.Core.Season.Budgets.Money(v);
+        string Signed(long v) => (v >= 0 ? "+" : "-") + M(Math.Abs(v));
+        var now = s.MyMatchDay();
+        var next = s.MyNextPlan;
+        BusinessChips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Match day", M(now.Total), now.Change == 0 ? "this season · standard prices" : $"this season · {Signed(now.Change)} on standard", now.Change > 0 ? "good" : now.Change < 0 ? "warn" : "team"),
+            new("Arena", $"{now.Fill * 100:0}%", $"full · {(int)Math.Round(now.Fill * s.HumanTeam.ArenaCapacity):N0} of {s.HumanTeam.ArenaCapacity:N0}", now.Fill >= 0.95 ? "good" : now.Fill < 0.8 ? "warn" : ""),
+            new("Fans", Hardwood.Core.Season.Business.FanDelta(s.MyPlan) is var fd && Math.Abs(fd) < 0.05 ? "±0" : $"{fd:+0.0;-0.0}", "fan base next summer, from prices", fd > 0.05 ? "good" : fd < -0.05 ? "warn" : ""),
+        };
+        _refreshing = true;
+        Ticket = Hardwood.Core.Season.Business.TicketName(next.Tickets);
+        Food = Hardwood.Core.Season.Business.FoodName(next.Food);
+        Parking = Hardwood.Core.Season.Business.ParkingName(next.Parking);
+        FanDays = FanDayChoices[Math.Clamp(next.FanDays, 0, 4)];
+        _refreshing = false;
+        var md = s.MyMatchDay(next);
+        BusinessPreview = $"At these prices: tickets {M(md.Tickets)}, food and drink {M(md.Food)}, parking {M(md.Parking)}"
+            + (md.FanDayCost > 0 ? $", fan days cost {M(md.FanDayCost)}" : "")
+            + $". Match day {M(md.Total)} ({(md.Change == 0 ? "standard" : Signed(md.Change) + " on standard")}), the arena {md.Fill * 100:0}% full.";
+        BusinessWhen = s.BusinessChangesNow ? "Changes take effect this season."
+            : next.Same(s.MyPlan) ? "Season tickets are sold: a change now starts next season."
+            : $"Next season's prices are set. This season stays at tickets {Hardwood.Core.Season.Business.TicketName(s.MyPlan.Tickets).ToLower()}, food {Hardwood.Core.Season.Business.FoodName(s.MyPlan.Food).ToLower()}, parking {Hardwood.Core.Season.Business.ParkingName(s.MyPlan.Parking).ToLower()}, {s.MyPlan.FanDays} fan day{(s.MyPlan.FanDays == 1 ? "" : "s")}.";
+    }
 
     private void RefreshFacilities()
     {
