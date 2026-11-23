@@ -369,7 +369,7 @@ public sealed partial class CollegeWorld
         _ => 0,
     };
     public const int StackFree = 2;
-    public const double FiveStarStack = 6;
+    public const double FiveStarStack = 4;
 
     /// <summary>What a prospect weighs most (fixed for life, from his id so older saves get one too).</summary>
     public static RecruitPriority PriorityOf(Player p) => (RecruitPriority)((uint)(p.Id * 2654435761u) >> 8 & 0x3);
