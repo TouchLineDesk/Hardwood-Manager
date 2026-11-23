@@ -522,7 +522,7 @@
                                 <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis" MaxWidth="150"/>
                               </Border>
                             </Grid>
-                            <TextBlock Text="{Binding NoReason}" FontSize="11" Foreground="#E0A030" IsVisible="{Binding HasNoReason}" TextWrapping="Wrap" ToolTip.Tip="Why he would turn you down today. The prospect panel breaks it down factor by factor."/>
+                            <TextBlock Text="{Binding NoReason}" FontSize="11" Foreground="#E0A030" IsVisible="{Binding HasNoReason}" TextWrapping="Wrap" MaxLines="2" ToolTip.Tip="Why he would turn you down today. The prospect panel breaks it down factor by factor."/>
                           </StackPanel>
                         </Border>
                       </Button>

@@ -58,22 +58,30 @@ public sealed partial class CollegeWorld
 
     /// <summary>
     /// Why he would say no to the coached program today, in a few words for his card; "" when he leans your way with an
-    /// offer made, or has committed or signed. Examples: "No offer yet: he can't commit to you", "Says no: Kentucky leads
-    /// by 12 (prestige)", "No scholarship left in his class".
+    /// offer made, or has committed or signed. Examples: "Says no: Kentucky leads by 12 (prestige)", "No offer yet: he can't
+    /// commit to you" (you'd top his list on appeal, but haven't offered), "Says no: no scholarship left in his class".
     /// </summary>
     public string SaysNo(Team me, Player p, Recruit r, ClassBoard board, Team? lean, Dictionary<int, int>? ranks = null)
     {
         if (r.CommittedTo != null) return "";
         if (OpenScholarships(me, r.ClassOf) <= 0) return "Says no: no scholarship left in his class";
         bool offered = r.CourtedBy == me.Id && r.Offered;
-        if (lean == me || lean == null) return offered ? "" : "Leans you, but can't commit: no offer yet";
-        ranks ??= PrestigeRanks();
-        var mine = AppealBreakdown(me, p, r, board, ranks);
-        var theirs = AppealBreakdown(lean, p, r, board, ranks);
-        double gap = theirs.Sum(x => x.Value) - mine.Sum(x => x.Value);
-        var top = mine.Select((m, i) => (m.Factor, Lead: (i < theirs.Count ? theirs[i].Value : 0) - m.Value))
-                      .Where(x => x.Lead >= 0.5).OrderByDescending(x => x.Lead).Take(2).Select(x => x.Factor).ToList();
-        string why = top.Count > 0 ? $" ({string.Join(", ", top)})" : "";
-        return $"Says no: {lean.City} leads by {Math.Max(1, gap):0}{why}";
+        // The coached program can only be his lean once it has offered (CanTake), so a lean elsewhere may just be the
+        // missing offer: name the rival only when he'd still pick the rival on appeal (run 164 review).
+        if (lean != null && lean != me)
+        {
+            ranks ??= PrestigeRanks();
+            var mine = AppealBreakdown(me, p, r, board, ranks);
+            var theirs = AppealBreakdown(lean, p, r, board, ranks);
+            double gap = theirs.Sum(x => x.Value) - mine.Sum(x => x.Value);
+            if (gap > 0)
+            {
+                var top = mine.Select((m, i) => (m.Factor, Lead: (i < theirs.Count ? theirs[i].Value : 0) - m.Value))
+                              .Where(x => x.Lead >= 0.5).OrderByDescending(x => x.Lead).Take(2).Select(x => x.Factor).ToList();
+                string why = top.Count > 0 ? $" ({string.Join(", ", top)})" : "";
+                return $"Says no: {lean.City} leads by {Math.Max(1, gap):0}{why}";
+            }
+        }
+        return offered ? "" : "No offer yet: he can't commit to you";
     }
 }

@@ -81,10 +81,16 @@ public class Run164RecruitingGuideTests
         _out.WriteLine(no);
         Assert.StartsWith($"Says no: {lean!.City} leads by ", no);
         Assert.Matches(@"\(.+\)$", no);
-        // Leaning your way without an offer: he can't commit yet.
-        Assert.Equal("Leans you, but can't commit: no offer yet", c.SaysNo(me, five.p, five.r, board, me, ranks));
+        // Nobody can take him today (no lean) and no offer from you: the offer is the reason.
+        Assert.Equal("No offer yet: he can't commit to you", c.SaysNo(me, five.p, five.r, board, null, ranks));
+        // A rival leans ahead only because you haven't offered (you'd lead on appeal): the offer is the reason, not "leads by".
+        CollegeWorld.Courting(five.r, me); five.r.Interest = 100; five.r.Scouted = true; five.r.Calls = 5; five.r.HomeVisit = true;
+        five.r.Pitch = CollegeWorld.PriorityOf(five.p);
+        var weak = c.Programs.OrderBy(t => c.Prestige[t.Id]).First(t => t != me);
+        if (c.Appeal(me, five.p, five.r, board, null, ranks) > c.Appeal(weak, five.p, five.r, board, null, ranks))
+            Assert.Equal("No offer yet: he can't commit to you", c.SaysNo(me, five.p, five.r, board, weak, ranks));
         // With an offer and leaning your way, nothing to say.
-        CollegeWorld.Courting(five.r, me); five.r.Offered = true;
+        five.r.Offered = true;
         Assert.Equal("", c.SaysNo(me, five.p, five.r, board, me, ranks));
     }
 
