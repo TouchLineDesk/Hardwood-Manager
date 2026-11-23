@@ -85,6 +85,68 @@ public sealed class GameCalls
 
     private bool Say(Player p, string what) => _said.Add((p, what));
 
+    /// <summary>K25 (run 174): a name as a broadcaster says it: "Miami (FL)" is "Miami", unless the other side would then
+    /// sound the same ("Miami (OH)" against "Miami (FL)").</summary>
+    public static string BroadcastName(string name, string other)
+    {
+        static string Strip(string n) { int k = n.IndexOf(" ("); return k > 0 && n.EndsWith(')') ? n[..k] : n; }
+        string s = Strip(name);
+        return s != name && s == Strip(other) ? name : s;
+    }
+
+    /// <summary>K25 (run 174): what the game meant, for the result call.</summary>
+    /// <param name="Stage">March: the round just won ("Round of 64" … "Championship"); null otherwise.</param>
+    /// <param name="NextStage">March: the round the winner goes on to ("Sweet 16"); null after the final.</param>
+    /// <param name="WinnerSeed">March seeds (0 when not seeded).</param>
+    /// <param name="WinnerRank">Top 25 ranks at tip-off (null: unranked).</param>
+    /// <param name="Rivalry">The rivalry's name, if the two are rivals.</param>
+    public sealed record Occasion(string? Stage = null, string? NextStage = null, int WinnerSeed = 0, int LoserSeed = 0,
+        int? WinnerRank = null, int? LoserRank = null, string? Rivalry = null);
+
+    /// <summary>K25 (run 174): the call at the final horn, then up to two lines of context (a comeback, overtime, a March
+    /// result or an upset, a rivalry). Read from the plays only; the engine and its random stream are never touched.</summary>
+    /// <param name="plays">The whole game's plays, for the biggest deficit the winner came back from.</param>
+    public static List<string> Final(IReadOnlyList<PlayEvent> plays, string homeName, string awayName, int homeScore, int awayScore,
+        int periods, Occasion? occasion = null)
+    {
+        var lines = new List<string>();
+        if (homeScore == awayScore) return lines;
+        bool homeWon = homeScore > awayScore;
+        string w = homeWon ? homeName : awayName, l = homeWon ? awayName : homeName;
+        int ws = Math.Max(homeScore, awayScore), ls = Math.Min(homeScore, awayScore), margin = ws - ls;
+        int down = 0;   // the most the winner trailed by
+        foreach (var e in plays) down = Math.Max(down, homeWon ? e.AwayScore - e.HomeScore : e.HomeScore - e.AwayScore);
+        // Review (run 174): a winner who wasn't ahead before the last score (a walk-off) didn't "hold on".
+        int lastScore = -1;
+        for (int k = plays.Count - 1; k >= 0 && lastScore < 0; k--)
+            if (k == 0 ? plays[k].HomeScore + plays[k].AwayScore > 0 : plays[k].HomeScore != plays[k - 1].HomeScore || plays[k].AwayScore != plays[k - 1].AwayScore) lastScore = k;
+        bool walkOff = lastScore > 0 && (homeWon ? plays[lastScore - 1].HomeScore <= plays[lastScore - 1].AwayScore : plays[lastScore - 1].AwayScore <= plays[lastScore - 1].HomeScore)
+            && plays[lastScore].Period >= periods && plays[lastScore].Clock <= 30;
+        int ots = plays.Count == 0 ? 0 : Math.Max(0, plays.Max(e => e.Period) - periods);
+        var o = occasion ?? new Occasion();
+        bool champion = o.Stage == "Championship";
+        string verb = champion ? "are national champions"
+            : down >= 10 ? "complete the comeback"
+            : walkOff ? "steal it at the death"
+            : margin <= 3 ? "hold on"
+            : margin >= 20 ? "roll"
+            : "win it";
+        lines.Add($"{w.ToUpperInvariant()} {verb.ToUpperInvariant()}! Final: {w} {ws}, {l} {ls}{(ots == 1 ? " in overtime" : ots > 1 ? $" in {ots} overtimes" : "")}");
+
+        var context = new List<string>();
+        if (down >= 10 && !champion) context.Add($"{w} were down {down} and came all the way back");
+        else if (down >= 10) context.Add($"From {down} down: {w} came all the way back to win it all");
+        if (o.Stage != null && !champion && o.NextStage != null) context.Add($"{w} advance to the {o.NextStage}");
+        if (o.WinnerSeed > 0 && o.LoserSeed > 0 && o.WinnerSeed - o.LoserSeed >= 4)
+            context.Add($"An upset: the {o.WinnerSeed}-seed knocks out the {o.LoserSeed}-seed. Their season is over");
+        else if (o.Stage != null && !champion && o.LoserSeed > 0) context.Add($"{l}'s season is over");
+        else if (o.Stage == null && o.LoserRank is int lr && (o.WinnerRank == null || o.WinnerRank - lr >= 10))
+            context.Add(o.WinnerRank == null ? $"An upset: unranked {w} take down No. {lr} {l}" : $"No. {o.WinnerRank} {w} take down No. {lr} {l}");
+        if (o.Rivalry != null) context.Add($"{o.Rivalry}: this one goes to {w}");
+        lines.AddRange(context.Take(2));
+        return lines;
+    }
+
     private static string Statline(PlayerLine l)
     {
         var parts = new List<string> { $"{l.Points} points" };

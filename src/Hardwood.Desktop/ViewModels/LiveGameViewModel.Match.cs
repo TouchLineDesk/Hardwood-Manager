@@ -23,6 +23,8 @@ public sealed partial class LiveGameViewModel
     private bool _scriptEndsPeriod;
     private int _possIndex;
     private Dictionary<Player, Spot>? _spots;
+    /// <summary>K25: the result call and its context, for the play-by-play log once the last possession has played out.</summary>
+    private List<string> _finalCalls = new();
     private PossessionStart _nextStart = PossessionStart.PeriodStart;
     private readonly Stopwatch _sw = new();
     private TimeSpan _lastFrame;
@@ -151,7 +153,35 @@ public sealed partial class LiveGameViewModel
         return c.Sample(0);
     }
 
-    private string Short(Team t) => Session.InCollege ? t.City : t.Name;
+    /// <summary>The side's name as the commentary says it. K25 (run 174): a broadcast name ("Miami", not "Miami (FL)").</summary>
+    private string Short(Team t) => Session.InCollege
+        ? GameCalls.BroadcastName(t.City, (t == HomeTeam ? AwayTeam : HomeTeam).City)
+        : t.Name;
+
+    /// <summary>K25 (run 174): every commentary line of the game so far, in order, and the late live-ball sub lines (for tests).</summary>
+    public List<CommentaryLine> SaidForTest { get; } = new();
+    public int LateLiveSubLinesForTest { get; private set; }
+
+    /// <summary>K25: who had the ball as the last possession ended.</summary>
+    private Player? _ballWith;
+
+    /// <summary>K25 (run 174): what this game means, for the result call: the March round and seeds, the Top 25 ranks and
+    /// the rivalry (college only).</summary>
+    private GameCalls.Occasion? FinalOccasion(bool homeWon)
+    {
+        if (!Session.InCollege || Session.World.College is not { } cw) return null;
+        var g = cw.GameOn(Us.Id, Session.Today);
+        if (g == null) return null;
+        int wId = homeWon ? HomeTeam.Id : AwayTeam.Id, lId = homeWon ? AwayTeam.Id : HomeTeam.Id;
+        bool march = g.Event == Hardwood.Core.College.CollegeWorld.Madness;
+        string? stage = march ? Hardwood.Core.College.CollegeWorld.RoundName(g.Round) : null;
+        string? next = march && g.Round < 6 ? Hardwood.Core.College.CollegeWorld.RoundName(g.Round + 1) : null;
+        // Review (run 174): the game's stamped ranks are written when the day is recorded, after the live game, so read
+        // the poll as it stands at the tip.
+        int? Rank(int id) => (id == g.HomeId ? g.HomeRank : id == g.AwayId ? g.AwayRank : null) ?? cw.Rank(id);
+        return new GameCalls.Occasion(stage, next, march ? cw.SeedOf(wId) : 0, march ? cw.SeedOf(lId) : 0,
+            Rank(wId), Rank(lId), cw.RivalryOf(HomeTeam.Id, AwayTeam.Id)?.Title);
+    }
 
     private PossessionInput Input(IReadOnlyList<PlayEvent> events, double start, double end, bool homeBall, IReadOnlyList<string>? notes = null, IReadOnlyList<string>? calls = null)
     {
@@ -173,6 +203,7 @@ public sealed partial class LiveGameViewModel
             HomeDouble = HomeTeam.Tactic.DoubleStar, AwayDouble = AwayTeam.Tactic.DoubleStar,
             Notes = notes ?? Array.Empty<string>(),
             Calls = calls ?? Array.Empty<string>(),
+            BallWith = _ballWith,
         };
     }
 
@@ -213,6 +244,20 @@ public sealed partial class LiveGameViewModel
             foreach (var line in _pendingCalls) { _script.Lines.Add(new CommentaryLine(_script.Length, line, true)); _script.Length += PossessionChoreographer.NoteTime; }
             _pendingCalls = new();
         }
+        // K25 (run 174): the game's over: the result call, then what it meant (2 s each), last on the bar.
+        if (_live.Complete)
+        {
+            var final = GameCalls.Final(r.Plays, Short(HomeTeam), Short(AwayTeam), _live.HomeScore, _live.AwayScore, r.Periods,
+                FinalOccasion(_live.HomeScore > _live.AwayScore));
+            for (int n = 0; n < final.Count; n++) { _script.Lines.Add(new CommentaryLine(_script.Length, final[n], n == 0)); _script.Length += PossessionChoreographer.NoteTime; }
+            // Review: the result is what stays on the bar, so after its context it's said once more.
+            if (final.Count > 1) { _script.Lines.Add(new CommentaryLine(_script.Length, final[0], true)); _script.Length += PossessionChoreographer.NoteTime; }
+            _finalCalls = final;
+        }
+        // K25 (run 174): what was said, for tests (the whole game's lines in order).
+        SaidForTest.AddRange(_script.Lines);
+        if (_script.Input.How == PossessionStart.AfterStop && events.FirstOrDefault() is { } fb && fb.Period >= r.Periods && start <= PossessionChoreographer.LateLiveClock
+            && _script.Lines.Any(l => l.Text.StartsWith("Substitution"))) LateLiveSubLinesForTest++;
         _scriptT = 0;
         _possIndex++;
         PlanSound();   // M6 (run 153): the crowd's reactions to this possession's events, at their playback times
@@ -224,12 +269,15 @@ public sealed partial class LiveGameViewModel
     {
         if (_script == null) return;
         _spots = _script.FinalSpots();
+        _ballWith = _script.EndHolder;
         _nextStart = _script.Next;
         bool periodEnded = _scriptEndsPeriod;
         _script = null;
         Refresh();
         foreach (var c in _logCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
         _logCalls = new();
+        foreach (var c in _finalCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
+        _finalCalls = new();
         AfterStep(periodEnded);
     }
 

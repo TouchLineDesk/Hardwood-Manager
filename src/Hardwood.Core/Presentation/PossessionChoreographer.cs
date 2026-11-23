@@ -84,6 +84,9 @@ public sealed record PossessionInput(int Index, ulong Seed, IReadOnlyList<PlayEv
     public IReadOnlyList<string> Calls { get; init; } = Array.Empty<string>();
     /// <summary>Everything said before the bring-up line: the benches' changes, then the calls.</summary>
     public IReadOnlyList<string> Said => Calls.Count == 0 ? Notes : Notes.Concat(Calls).ToList();
+    /// <summary>K25 (run 174): who had the ball as the last possession ended (the outlet's target, a stealer), so the push
+    /// after a stop starts with him. Null: the point guard.</summary>
+    public Player? BallWith { get; init; }
 }
 
 /// <summary>How the possession began: from the tip or a period's start, after a make (an inbound under the basket),
@@ -126,6 +129,8 @@ public sealed class Choreography
     public bool HomeOffense { get; set; }
     /// <summary>How the next possession starts.</summary>
     public PossessionStart Next { get; set; } = PossessionStart.DeadBall;
+    /// <summary>K25 (run 174): who holds the ball as the possession ends, or null (the next push starts with him).</summary>
+    public Player? EndHolder { get; set; }
 
     /// <summary>The Dunk rating at which a made shot at the rim is called (and heard) as a dunk (run 157).</summary>
     public const int DunkRating = 14;
@@ -280,6 +285,10 @@ public static class PossessionChoreographer
             if (e.Other != null) Place(e.Other, e.Kind is PlayKind.Shot && e.Made ? (e.Home ? home : away) : e.Kind is PlayKind.Shot or PlayKind.Steal or PlayKind.Foul ? (e.Home ? away : home) : (e.Home ? home : away), actors);
         }
         var players = home.Concat(away).ToArray();
+        // K25 (run 174): a surname two players share (on the floor or just coming off) is said with a first initial.
+        var named = players.Concat(input.Start?.Keys ?? Enumerable.Empty<Player>()).Distinct().ToList();
+        var shared = named.GroupBy(p => p.LastName).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
+        string N(Player? p) => p == null ? "" : shared.Contains(p.LastName) && p.FirstName.Length > 0 ? $"{p.FirstName[0]}. {p.LastName}" : p.LastName;
         var c = new Choreography { Input = input, Players = players, HomeOffense = homeOff };
         int Slot(Player? p) => p == null ? -1 : Array.IndexOf(players, p);
         int offBase = homeOff ? 0 : 5, defBase = homeOff ? 5 : 0;
@@ -387,6 +396,8 @@ public static class PossessionChoreographer
         c.ClockPoints.Add((0, input.StartClock));
         double t = 0;
         int handler = offBase;   // the point guard brings it up
+        // K25 (run 174): after a rebound or a steal, the man who has the ball (the outlet's target, the stealer) pushes it.
+        if (input.How == PossessionStart.AfterStop && input.BallWith is { } bw && Slot(bw) is var bs && bs >= offBase && bs < offBase + 5) handler = bs;
 
         // 0. A substitution at the dead ball: those coming off walk to the scorer's table, those coming on walk out
         // (the clock is stopped).
@@ -413,13 +424,15 @@ public static class PossessionChoreographer
             var parts = new List<string>();
             foreach (var side in new[] { true, false })
             {
-                var ins = entering.Where(i => (i < 5) == side).Select(i => Last(players[i])).ToList();
-                var outs = c.Leaving.Where(l => l.Home == side).Select(l => Last(l.Who)).ToList();
+                var ins = entering.Where(i => (i < 5) == side).Select(i => N(players[i])).ToList();
+                var outs = c.Leaving.Where(l => l.Home == side).Select(l => N(l.Who)).ToList();
                 if (ins.Count == 0) continue;
                 string team = side ? input.HomeName : input.AwayName;
                 parts.Add(outs.Count > 0 ? $"{team}: {string.Join(" and ", ins)} in for {string.Join(" and ", outs)}" : $"{team}: {string.Join(" and ", ins)} checks in");
             }
-            c.Lines.Add(new(deadBall ? 0 : 1.0, (parts.Count > 1 ? "Substitutions. " : "Substitution, ") + string.Join("; ", parts), false));
+            // K25 (run 174): in the last two minutes, a sub made while play is live isn't read over the play (the walk-on shows it).
+            bool lateLive = !deadBall && firstBall != null && firstBall.Period >= input.Periods && input.StartClock <= LateLiveClock;
+            if (!lateLive) c.Lines.Add(new(deadBall ? 0 : 1.0, (parts.Count > 1 ? "Substitutions. " : "Substitution, ") + string.Join("; ", parts), false));
             if (deadBall) c.ClockPoints.Add((lead, input.StartClock));
             t = lead;
         }
@@ -448,9 +461,14 @@ public static class PossessionChoreographer
             }
             c.Lines.Add(new(lead + NoteTime * said.Count, input.How switch
             {
-                PossessionStart.AfterStop => $"{Last(players[handler])} pushes it up the floor for {offName}",
+                // K25 (run 174): the same walk-up said three ways (by the possession's number, never the random stream),
+                // one with the score, so the bar doesn't read the same line every trip.
+                PossessionStart.AfterStop => Vary(input.Index, $"{N(players[handler])} pushes it up the floor for {offName}",
+                    $"{N(players[handler])} pushes the pace", $"{N(players[handler])} out in front, {offName} running"),
                 PossessionStart.PeriodStart => $"{offName} have the ball to start the period",
-                _ => $"{Last(players[handler])} brings it up for {offName}",
+                _ => Vary(input.Index, $"{N(players[handler])} brings it up for {offName}",
+                    $"{N(players[handler])} walks it up. {ScoreLine(input, input.StartHomeScore, input.StartAwayScore)}",
+                    $"{offName} in the half court, {N(players[handler])} with it"),
             }, false));
         }
 
@@ -475,7 +493,8 @@ public static class PossessionChoreographer
                 var back = new[] { S(16, 25), S(10, 12), S(10, 38), S(6, 19), S(4, 27) };
                 for (int k = 0; k < 5; k++) Drift(defBase + k, t, mid, back[k]);
                 Act(t, "lanes", -1); Act(t, "get-back", -1);
-                c.Lines.Add(new(said.Count > 0 ? Math.Max(t + 0.3, lead + NoteTime * said.Count + 1.2) : t + 0.3, paceK > 0.2 ? $"{offName} run, and {defName} scramble back" : $"{offName} in transition, {defName} get back", false));
+                // K25 (run 174): the push line already says they're running; only a fast side's break gets a second line.
+                if (paceK > 0.2) c.Lines.Add(new(said.Count > 0 ? Math.Max(t + 0.3, lead + NoteTime * said.Count + 1.2) : t + 0.3, $"{offName} run, and {defName} scramble back", false));
                 t = mid;
             }
             for (int k = 0; k < 5; k++)
@@ -500,6 +519,7 @@ public static class PossessionChoreographer
         double clockNow = input.StartClock;
         bool firstChance = true;
         bool inFreeThrows = false;
+        int passesSaid = 0;   // K25: the first pass of a possession is called, the second folds, the rest go unsaid
         for (int i = 0; i < ev.Count; i++)
         {
             var e = ev[i];
@@ -567,9 +587,10 @@ public static class PossessionChoreographer
                         break;
                     }
                     c.Ball.Add(new BallSegment(tt, tt + passTime, BallMode.Pass, holder, to, default, default, 0.25));
-                    c.Lines.Add(new(tt, last && assister >= 0 && to == target
-                        ? $"{Last(players[holder])} finds {Last(players[to])} {Where(e.Zone)}"
-                        : $"{Last(players[holder])} swings it to {Last(players[to])}", false));
+                    if (last && assister >= 0 && to == target)
+                        c.Lines.Add(new(tt, $"{N(players[holder])} finds {N(players[to])} {Where(e.Zone)}", false));
+                    else if (PassCall(passesSaid++, input.Index, N(players[holder]), N(players[to]), offName) is { } call)
+                        c.Lines.Add(new(tt, call, false));
                     holder = to;
                     tt += passTime + 0.9;
                 }
@@ -581,7 +602,7 @@ public static class PossessionChoreographer
                     // Review (run 149): after the set, so its lines don't talk over the drive.
                     double go = Math.Max(Math.Max(caught, playAt - 2.2), Math.Min(setDone, playAt - 0.6));
                     Go(target, go, playAt - 0.1, shotSpot);
-                    if (e.Zone == ShotZone.Rim) { c.Lines.Add(new(go, $"{Last(players[target])} drives to the basket", false)); Act(go, "drive", target); }
+                    if (e.Zone == ShotZone.Rim) { c.Lines.Add(new(go, Vary(input.Index / 2, $"{N(players[target])} drives to the basket", $"{N(players[target])} puts it on the floor and goes", $"{N(players[target])} gets downhill"), false)); Act(go, "drive", target); }
                 }
                 // The defence follows its men and the ball through the set.
                 for (int k = 0; k < 5; k++) Drift(defBase + k, setStart + 0.5, Math.Max(setStart + 0.6, playAt - 0.2), DefSpot(k, cur[target]));
@@ -598,7 +619,7 @@ public static class PossessionChoreographer
                     case PlayKind.Shot:
                     {
                         bool three = e.Zone is ShotZone.CornerThree or ShotZone.AboveBreakThree;
-                        c.Lines.Add(new(t, three ? $"{Last(e.Actor)} rises for three..." : e.Zone == ShotZone.Rim ? $"{Last(e.Actor)} goes up at the rim..." : $"{Last(e.Actor)} pulls up from {(e.Zone == ShotZone.LongMid ? "the elbow" : "short range")}...", false));
+                        c.Lines.Add(new(t, three ? Vary(input.Index / 2, $"{N(e.Actor)} rises for three...", $"{N(e.Actor)} lets it go from deep...", $"{N(e.Actor)} for three...") : e.Zone == ShotZone.Rim ? $"{N(e.Actor)} goes up at the rim..." : $"{N(e.Actor)} pulls up from {(e.Zone == ShotZone.LongMid ? "the elbow" : "short range")}...", false));
                         if (e.Blocked)
                         {
                             int bl = Slot(e.Other);
@@ -607,7 +628,7 @@ public static class PossessionChoreographer
                             c.Ball.Add(new BallSegment(t, t + 0.3, BallMode.Shot, target, -1, default, Spot.Lerp(cur[target], rim, 0.15), 1.5));
                             c.Ball.Add(new BallSegment(t + 0.3, t + 0.9, BallMode.Loose, -1, -1, Spot.Lerp(cur[target], rim, 0.15), deflect.Clamp(), 0.8));
                             c.Bursts.Add(new Burst(t + 0.3, Spot.Lerp(cur[target], rim, 0.15), false));
-                            c.Lines.Add(new(t + 0.3, $"REJECTED! {Last(e.Other)} blocks {Last(e.Actor)}", true));
+                            c.Lines.Add(new(t + 0.3, $"REJECTED! {N(e.Other)} blocks {N(e.Actor)}", true));
                             c.Moments.Add((t + 0.3, e));
                             c.Key = true;
                             t += 0.9;
@@ -618,19 +639,20 @@ public static class PossessionChoreographer
                             c.Ball.Add(new BallSegment(t, t + flight, BallMode.Shot, target, -1, default, rim, three ? 6 : e.Zone == ShotZone.Rim ? 1.5 : 4));
                             t += flight;
                             c.Moments.Add((t, e));
+                            bool buzzer = AtTheBuzzer(ev, i);
                             if (e.Made)
                             {
                                 c.Scores.Add((t, e.HomeScore, e.AwayScore));
                                 c.Bursts.Add(new Burst(t, rim, true));
-                                string who = Last(e.Actor).ToUpperInvariant();
-                                c.Lines.Add(new(t, $"{who}! {(three ? $"The {(e.Zone == ShotZone.CornerThree ? "corner " : "")}three is good" : e.Zone == ShotZone.Rim ? (Choreography.IsDunk(e) ? "He throws it down" : "He finishes at the rim") : "The jumper is good")}. {ScoreLine(input, e.HomeScore, e.AwayScore)}", true));
+                                string who = N(e.Actor).ToUpperInvariant();
+                                c.Lines.Add(new(t, $"{who}{(buzzer ? " AT THE BUZZER" : "")}! {(three ? $"The {(e.Zone == ShotZone.CornerThree ? "corner " : "")}three is good" : e.Zone == ShotZone.Rim ? (Choreography.IsDunk(e) ? "He throws it down" : "He finishes at the rim") : "The jumper is good")}. {ScoreLine(input, e.HomeScore, e.AwayScore)}", true));
                                 c.Key = true;
                                 c.Ball.Add(new BallSegment(t, t + 0.5, BallMode.Loose, -1, -1, rim, new Spot(bx + o * 2, 25 + J(rng, 3)), 0.3));
                                 c.Next = PossessionStart.AfterMake;
                             }
                             else
                             {
-                                c.Lines.Add(new(t, three ? $"{Last(e.Actor)}'s three is off the mark" : $"{Last(e.Actor)} misses", false));
+                                c.Lines.Add(new(t, buzzer ? $"{N(e.Actor)}'s {(three ? "three" : "shot")} at the buzzer... no good" : three ? Vary(input.Index / 3, $"{N(e.Actor)}'s three is off the mark", "No good", "Rims out") : Vary(input.Index / 3, $"{N(e.Actor)} misses", "It won't go", $"Off the iron, {N(e.Actor)} can't get it to fall"), buzzer));
                             }
                         }
                         break;
@@ -639,7 +661,7 @@ public static class PossessionChoreographer
                     {
                         var outSpot = new Spot(cur[target].X + J(rng, 3), cur[target].Y < 25 ? 0.2 : 49.8);
                         c.Ball.Add(new BallSegment(t, t + 0.6, BallMode.Loose, -1, -1, cur[target], outSpot, 0.5));
-                        c.Lines.Add(new(t, $"{Last(e.Actor)} turns it over. {(e.Home ? input.AwayName : input.HomeName)} ball", false));
+                        c.Lines.Add(new(t, $"{N(e.Actor)} turns it over. {(e.Home ? input.AwayName : input.HomeName)} ball", false));
                         c.Moments.Add((t, e));
                         t += TurnoverTime;
                         c.Next = PossessionStart.DeadBall;
@@ -647,7 +669,7 @@ public static class PossessionChoreographer
                     }
                     case PlayKind.Steal:
                     {
-                        c.Lines.Add(new(t, $"Stolen! {Last(e.Actor)} picks off {Last(e.Other)}", true));
+                        c.Lines.Add(new(t, $"Stolen! {N(e.Actor)} picks off {N(e.Other)}", true));
                         c.Moments.Add((t, e));
                         c.Key = true;
                         int st = Slot(e.Actor);
@@ -661,7 +683,7 @@ public static class PossessionChoreographer
                     {
                         int fo = Slot(e.Actor);
                         if (fo >= 0) Go(fo, t - 0.4, t + 0.2, Spot.Lerp(cur[fo], cur[target], 0.7));
-                        c.Lines.Add(new(t, e.Other != null ? $"Whistle: foul on {Last(e.Actor)}, {Last(e.Other)} was hit" : $"Whistle: foul on {Last(e.Actor)}", false));
+                        c.Lines.Add(new(t, e.Other != null ? $"Whistle: foul on {N(e.Actor)}, {N(e.Other)} was hit" : $"Whistle: foul on {N(e.Actor)}", false));
                         c.Moments.Add((t, e));
                         c.Ball.Add(new BallSegment(t, t + FoulTime, BallMode.Held, target, -1, default, default, 0));
                         t += FoulTime;
@@ -695,7 +717,7 @@ public static class PossessionChoreographer
                     c.Ball.Add(new BallSegment(t, t + 0.5, BallMode.Loose, -1, -1, rim, at, 1.2));
                     if (r >= 0) c.Ball.Add(new BallSegment(t + 0.5, t + ReboundTime, BallMode.Held, r, -1, default, default, 0));
                     bool off = e.Kind == PlayKind.OffensiveRebound;
-                    c.Lines.Add(new(t + 0.4, off ? $"Offensive board, {Last(e.Actor)}!" : $"{Last(e.Actor)} secures the rebound for {(e.Home ? input.HomeName : input.AwayName)}", off));
+                    c.Lines.Add(new(t + 0.4, off ? $"Offensive board, {N(e.Actor)}!" : Vary(input.Index, $"{N(e.Actor)} secures the rebound for {(e.Home ? input.HomeName : input.AwayName)}", $"{N(e.Actor)} pulls it down", $"Rebound, {N(e.Actor)}"), off));
                     c.Moments.Add((t + 0.4, e));
                     t += ReboundTime;
                     if (off) { firstChance = false; handler = r >= 0 ? r : handler; c.Ball.Add(new BallSegment(t, t + 0.01, BallMode.Held, handler, -1, default, default, 0)); }
@@ -707,7 +729,7 @@ public static class PossessionChoreographer
                         {
                             Go(pg, t - 0.5, t + 0.4, new Spot(bx + o * 18, cur[r].Y < 25 ? 12 : 38));
                             c.Ball.Add(new BallSegment(t, t + 0.5, BallMode.Pass, r, pg, default, default, 0.25));
-                            c.Lines.Add(new(t + 0.1, $"Outlet to {Last(players[pg])}", false));
+                            c.Lines.Add(new(t + 0.1, Vary(input.Index, $"Outlet to {N(players[pg])}", $"{N(players[r])} finds {N(players[pg])} on the outlet", $"{N(players[pg])} takes the outlet"), false));
                             t += 0.5;
                         }
                         c.Next = PossessionStart.AfterStop;
@@ -717,7 +739,7 @@ public static class PossessionChoreographer
                 case PlayKind.Foul:
                 {
                     // A foul inside a free-throw trip (a lane violation is not modelled): just the whistle.
-                    c.Lines.Add(new(t, $"Foul on {Last(e.Actor)}", false));
+                    c.Lines.Add(new(t, $"Foul on {N(e.Actor)}", false));
                     c.Moments.Add((t, e));
                     t += 0.6;
                     break;
@@ -741,7 +763,7 @@ public static class PossessionChoreographer
                             if (li < 4 && (k / 5 != shooterSide || li >= 2)) Drift(k, t, t + LineUpTime, lane[li++]);
                             else Drift(k, t, t + LineUpTime, S(28 + J(rng, 2), 25 + J(rng, 14)));
                         }
-                        c.Lines.Add(new(t, $"{Last(e.Actor)} goes to the line", false));
+                        c.Lines.Add(new(t, $"{N(e.Actor)} goes to the line", false));
                         Act(t, "line-up", sh);
                         if (sh >= 0) c.Ball.Add(new BallSegment(t, t + LineUpTime, BallMode.Held, sh, -1, default, default, 0));
                         t += LineUpTime;
@@ -752,7 +774,7 @@ public static class PossessionChoreographer
                     c.Moments.Add((t, e));
                     if (e.Made) { c.Scores.Add((t, e.HomeScore, e.AwayScore)); c.Bursts.Add(new Burst(t, rim, true)); }
                     bool more = i + 1 < ev.Count && ev[i + 1].Kind == PlayKind.FreeThrow && ev[i + 1].Actor == e.Actor;
-                    c.Lines.Add(new(t, e.Made ? (more ? $"{Last(e.Actor)} makes the first" : $"{Last(e.Actor)} knocks it down. {ScoreLine(input, e.HomeScore, e.AwayScore)}") : $"{Last(e.Actor)} misses from the line", false));
+                    c.Lines.Add(new(t, e.Made ? (more ? $"{N(e.Actor)} makes the first" : $"{N(e.Actor)} knocks it down. {ScoreLine(input, e.HomeScore, e.AwayScore)}") : $"{N(e.Actor)} misses from the line", false));
                     if (!more)
                     {
                         inFreeThrows = false;
@@ -762,6 +784,8 @@ public static class PossessionChoreographer
                 }
                 case PlayKind.PeriodEnd:
                 {
+                    // K25 (run 174): the last shot's result stays up before the horn's line (the bar shows one line at a time).
+                    if (c.Lines.Count > 0 && c.Lines.Max(l => l.T) > t - ResultHold) t = c.Lines.Max(l => l.T) + ResultHold;
                     c.ClockPoints.Add((t, 0));
                     clockNow = 0;
                     string name = PeriodName(e.Period, input.Periods);
@@ -778,6 +802,10 @@ public static class PossessionChoreographer
                 }
             }
         }
+        // K25: who has the ball as the possession ends (the next push starts with him).
+        c.EndHolder = c.Ball.Count == 0 ? null
+            : c.Ball[^1] is { Mode: BallMode.Pass, To: >= 0 } pass ? players[pass.To]
+            : c.Ball[^1] is { Mode: BallMode.Held, Holder: >= 0 } held ? players[held.Holder] : null;
         // If nothing happened on the floor (the clock ran out), let the clock run anyway.
         if (c.ClockPoints.Count == 1 || (lead > 0 && c.ClockPoints.Count == 2 && c.ClockPoints[1].T == lead && c.ClockPoints[1].Clock == input.StartClock)) { c.ClockPoints.Add((Math.Max(t, D + lead), input.EndClock)); t = Math.Max(t, D + lead); }
         t += Epilogue;
@@ -807,18 +835,18 @@ public static class PossessionChoreographer
                     var screen = new Spot(h.X - o * 1.5, h.Y + side * 2.5);
                     Go(sc, w0, w0 + 0.35 * L, screen);
                     Act(w0 + 0.35 * L, "screen", sc);
-                    c.Lines.Add(new(w0 + 0.1, $"{Last(players[sc])} comes up to set the ball screen for {Last(players[from])}", false));
+                    c.Lines.Add(new(w0 + 0.1, $"{N(players[sc])} comes up to set the ball screen for {N(players[from])}", false));
                     Go(from, w0 + 0.4 * L, w0 + 0.65 * L, new Spot(h.X + o * 6, h.Y + side * 5));
                     var after = pop ? S(21, h.Y < 25 ? 14 : 36) : S(5, h.Y < 25 ? 22 : 28);
                     Go(sc, w0 + 0.5 * L, w0 + 0.85 * L, after);
                     Act(w0 + 0.5 * L, pop ? "pop" : "roll", sc);
-                    c.Lines.Add(new(w0 + 0.5 * L, pop ? $"{Last(players[sc])} pops out for the jumper" : $"{Last(players[sc])} rolls hard to the rim", false));
+                    c.Lines.Add(new(w0 + 0.5 * L, pop ? $"{N(players[sc])} pops out for the jumper" : $"{N(players[sc])} rolls hard to the rim", false));
                     int dS = DefOf(sc), dH = DefOf(from);
                     if (scheme == DefensiveScheme.Drop)
                     {
                         Go(dS, w0 + 0.3 * L, w0 + 0.6 * L, S(10, 25));
                         Act(w0 + 0.35 * L, "drop", dS);
-                        c.Lines.Add(new(w0 + 0.38 * L, $"{Last(players[dS])} drops back into the paint", false));
+                        c.Lines.Add(new(w0 + 0.38 * L, $"{N(players[dS])} drops back into the paint", false));
                     }
                     else if (scheme == DefensiveScheme.SwitchEverything)
                     {
@@ -827,7 +855,7 @@ public static class PossessionChoreographer
                         Go(dS, w0 + 0.4 * L, w0 + 0.65 * L, Spot.Lerp(cur[from], rim, 0.15));
                         Go(dH, w0 + 0.4 * L, w0 + 0.8 * L, Spot.Lerp(cur[sc], rim, 0.2));
                         Act(w0 + 0.4 * L, "switch", dS);
-                        c.Lines.Add(new(w0 + 0.4 * L, $"{defName} switch it: {Last(players[dS])} picks up {Last(players[from])}", false));
+                        c.Lines.Add(new(w0 + 0.4 * L, $"{defName} switch it: {N(players[dS])} picks up {N(players[from])}", false));
                     }
                     else if (scheme == DefensiveScheme.Man)
                     {
@@ -848,12 +876,12 @@ public static class PossessionChoreographer
                     Go(screener, w0, w0 + 0.35 * L, new Spot(cs.X - o * 1.5, cs.Y + (cs.Y < 25 ? 2 : -2)));
                     Act(w0 + 0.35 * L, "screen", screener);
                     Go(curler, w0 + 0.4 * L, w0 + 0.75 * L, S(20, cs.Y < 25 ? 17 : 33));
-                    c.Lines.Add(new(w0 + 0.35 * L, $"{Last(players[curler])} comes off a down screen from {Last(players[screener])}", false));
+                    c.Lines.Add(new(w0 + 0.35 * L, Vary(input.Index / 3, $"{N(players[curler])} comes off a down screen from {N(players[screener])}", $"{N(players[screener])} screens for {N(players[curler])}", $"{N(players[curler])} curls off {N(players[screener])}"), false));
                     var cy = cur[cutter].Y;
                     Go(cutter, w0 + 0.15 * L, w0 + 0.5 * L, S(5, 25));
                     Go(cutter, w0 + 0.5 * L, w0 + 0.95 * L, S(19, cy < 25 ? 43 : 7));
                     Act(w0 + 0.15 * L, "cut", cutter);
-                    c.Lines.Add(new(w0 + 0.15 * L, $"{Last(players[cutter])} cuts through the lane", false));
+                    c.Lines.Add(new(w0 + 0.15 * L, Vary(input.Index / 2, $"{N(players[cutter])} cuts through the lane", $"{N(players[cutter])} slashes through", $"Cut from {N(players[cutter])}"), false));
                     Drift(screener, w0 + 0.5 * L, w0 + L, S(13, cur[screener].Y < 25 ? 18 : 32));
                     break;
                 }
@@ -863,7 +891,7 @@ public static class PossessionChoreographer
                     var block = S(5, cur[post].Y < 25 ? 19 : 31);
                     Go(post, w0, w0 + 0.45 * L, block);
                     Act(w0 + 0.45 * L, "post-up", post);
-                    c.Lines.Add(new(w0 + 0.1, $"{Last(players[post])} posts up on the block", false));
+                    c.Lines.Add(new(w0 + 0.1, $"{N(players[post])} posts up on the block", false));
                     // The others space the floor round him.
                     var space = new[] { S(23, 25), S(19, block.Y < 25 ? 44 : 6), S(3, block.Y < 25 ? 47 : 3), S(17, block.Y < 25 ? 8 : 42) };
                     int si = 0;
@@ -876,19 +904,19 @@ public static class PossessionChoreographer
                 {
                     // Four out round the arc, the fifth in the dunker spot or out too.
                     Act(w0, "four-out", -1);
-                    c.Lines.Add(new(w0 + 0.05, $"{offName} spread the floor, four out", false));
+                    c.Lines.Add(new(w0 + 0.05, Vary(input.Index, $"{offName} spread the floor, four out", $"Four out for {offName}, {N(players[from])} up top", $"{offName} space it out for {N(players[from])}"), false));
                     if (transition)
                     {
                         int big = Pick(offBase + 4, offBase + 3);
                         Go(big, w0, w0 + 0.3 * L, new Spot(cur[from].X - o * 1.5, cur[from].Y + 2));
                         Act(w0 + 0.3 * L, "drag", big);
-                        c.Lines.Add(new(w0 + 0.2 * L, $"Early drag screen from {Last(players[big])}", false));
+                        c.Lines.Add(new(w0 + 0.2 * L, $"Early drag screen from {N(players[big])}", false));
                         Drift(big, w0 + 0.35 * L, w0 + 0.7 * L, S(4, 32));
                     }
                     var h = cur[from];
                     Go(from, w0 + 0.45 * L, w0 + 0.85 * L, S(13, h.Y + (h.Y < 25 ? 3 : -3)));
                     Act(w0 + 0.45 * L, "drive", from);
-                    c.Lines.Add(new(w0 + 0.45 * L, $"{Last(players[from])} attacks the gap", false));
+                    c.Lines.Add(new(w0 + 0.45 * L, Vary(input.Index / 2, $"{N(players[from])} attacks the gap", $"{N(players[from])} probes the defence", $"{N(players[from])} looks to get to the rim"), false));
                     break;
                 }
                 case OffensiveSystem.Isolation:
@@ -903,7 +931,7 @@ public static class PossessionChoreographer
                     int wi = 0;
                     for (int s = offBase; s < offBase + 5; s++) if (s != iso && s != from && wi < spotsWeak.Length) Drift(s, w0 + 0.3 * L, w0 + 0.75 * L, spotsWeak[wi++]);
                     Act(w0 + 0.3 * L, "clear-out", iso);
-                    c.Lines.Add(new(w0 + 0.3 * L, $"{offName} clear out for {Last(players[iso])}", false));
+                    c.Lines.Add(new(w0 + 0.3 * L, $"{offName} clear out for {N(players[iso])}", false));
                     break;
                 }
             }
@@ -913,6 +941,35 @@ public static class PossessionChoreographer
             if (scheme == DefensiveScheme.Zone23) Act(w0, "zone", -1);
         }
     }
+
+    /// <summary>K25 (run 174): how long a shot's result stays on the bar before the horn's line.</summary>
+    public const double ResultHold = 1.4;
+    /// <summary>K25: a live-ball substitution in the last period's final two minutes isn't read out.</summary>
+    public const double LateLiveClock = 120;
+
+    /// <summary>K25 (run 174): the passes of a possession. The first is called (four wordings, chosen by the possession's
+    /// number, never the random stream, so the picture doesn't move); the rest go unsaid (the ball on the court shows
+    /// them).</summary>
+    public static string? PassCall(int said, int index, string from, string to, string offName) => said switch
+    {
+        0 => (index % 4) switch
+        {
+            0 => $"{from} swings it to {to}",
+            1 => $"{from} kicks it to {to}",
+            2 => $"{from} moves it to {to}",
+            _ => $"{from} hits {to}",
+        },
+        _ => null,
+    };
+
+    /// <summary>K25 (run 174): one of a line's wordings, by the possession's number (never the random stream).</summary>
+    public static string Vary(int index, params string[] ways) => ways[((index % ways.Length) + ways.Length) % ways.Length];
+
+    /// <summary>K25: the shot at <paramref name="i"/> is the period's last (only a rebound before the horn, with a second
+    /// or less left).</summary>
+    public static bool AtTheBuzzer(IReadOnlyList<PlayEvent> ev, int i) =>
+        ev[i].Clock <= 1.0 && ev.Skip(i + 1).Any(x => x.Kind == PlayKind.PeriodEnd)
+        && ev.Skip(i + 1).TakeWhile(x => x.Kind != PlayKind.PeriodEnd).All(x => x.Kind is PlayKind.OffensiveRebound or PlayKind.DefensiveRebound);
 
     /// <summary>A dead ball for a substitution (seconds at 1×, the clock stopped).</summary>
     public const double SubTime = 1.6;
