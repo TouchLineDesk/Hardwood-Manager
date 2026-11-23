@@ -117,6 +117,20 @@ public sealed partial class CollegeWorld
     /// <summary>R3: a real program's long-run standing (its starting prestige); prestige drifts back toward it rather than a
     /// conference's level. Empty in fictional worlds and older saves, which keep the conference levels (68 power, 42 others).</summary>
     public Dictionary<int, double> Tradition { get; } = new();
+    /// <summary>
+    /// CS7 part 2b (run 173, #166 "prestige with a long memory"): each program's last <see cref="PrestigeMemory"/> season marks,
+    /// oldest first. Prestige moves each summer by their average over five seasons (a missing season counts as 0), so one great
+    /// season moves it a fifth as far, five summers running, and a program has to keep winning to climb. Empty in a fresh world
+    /// and in saves before v0.161.0.
+    /// </summary>
+    public Dictionary<int, List<double>> Form { get; } = new();
+    /// <summary>The seasons prestige remembers.</summary>
+    public const int PrestigeMemory = 5;
+    /// <summary>A season's mark: the record against .500 (±5), +1.5 a March Madness win and +4 for the title.</summary>
+    public static double SeasonMark(int wins, int losses, int madnessWins, bool champion) =>
+        (wins + losses > 0 ? (wins / (double)(wins + losses) - 0.5) * 10 : 0) + madnessWins * 1.5 + (champion ? 4 : 0);
+    /// <summary>A program's five-season form: what its remembered marks move prestige by each summer.</summary>
+    public double FormOf(int id) => Form.TryGetValue(id, out var m) ? m.Sum() / PrestigeMemory : 0;
     /// <summary>Where prestige drifts back to each summer.</summary>
     public double Baseline(Team t, ConferenceInfo conf) => Tradition.TryGetValue(t.Id, out var b) ? b : conf.Power ? 68 : 42;
     /// <summary>A real world's programs (R3).</summary>
@@ -476,13 +490,18 @@ public sealed partial class CollegeWorld
             }
         }
         // Prestige: winning and tournament runs raise it; it drifts back toward the conference's level.
+        // CS7 part 2b (run 173): with a long memory. This season's mark joins the last four, and prestige moves by their
+        // five-season average (it moved by this season's mark alone, so one Final Four run lifted a program 12+ points at once).
         var s = Season;
         foreach (var t in Programs)
         {
             var conf = Conferences.First(x => x.Key == ConferenceOf[t.Id]);
             var (w, l) = Record(t.Id);
-            double runs = s.Games.Count(g => g.Event == Madness && g.Round >= 1 && g.WinnerId == t.Id);
-            double change = (w + l > 0 ? (w / (double)(w + l) - 0.5) * 10 : 0) + runs * 1.5 + (s.ChampionId == t.Id ? 4 : 0);
+            int runs = s.Games.Count(g => g.Event == Madness && g.Round >= 1 && g.WinnerId == t.Id);
+            if (!Form.TryGetValue(t.Id, out var marks)) Form[t.Id] = marks = new List<double>();
+            marks.Add(SeasonMark(w, l, runs, s.ChampionId == t.Id));
+            if (marks.Count > PrestigeMemory) marks.RemoveRange(0, marks.Count - PrestigeMemory);
+            double change = FormOf(t.Id);
             // C4 step 0 (#186): gains shrink near the top, so only a run of titles holds a program at the very top
             // (review #7: after 8 seasons eight programs sat at 99, and the Elo prestige bonus seeded them all alike).
             if (change > 0) change *= Math.Clamp((100 - Prestige[t.Id]) / 30.0, 0, 1);

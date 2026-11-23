@@ -339,6 +339,8 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private bool _hasProgram;
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _programBuildChips = new();
     [ObservableProperty] private string _programAppeal = "";
+    /// <summary>CS7 part 2b (run 173): how prestige's five-season memory moves it.</summary>
+    [ObservableProperty] private string _programPrestige = "";
     [ObservableProperty] private string _programStatus = "";
     [ObservableProperty] private string _programLastSummer = "";
     [ObservableProperty] private string _buildGymText = "";
@@ -373,10 +375,23 @@ public sealed partial class BoardViewModel : PageViewModel
             ? $"What you've built adds +{appeal:0} to your appeal with every recruit (two neighbouring programs are about 4 apart)"
               + (gymBuilt > 0 ? $", and the practice gym lifts training quality by +{gymBuilt * Hardwood.Core.College.ProgramBuilding.GymEdge * 0.4:0.0}." : ".")
             : $"Nothing built yet. Each arena level adds +{Hardwood.Core.College.ProgramBuilding.ArenaAppeal:0} appeal with recruits; each practice gym level +{Hardwood.Core.College.ProgramBuilding.GymAppeal:0}, and faster growth for your players.";
+        ProgramPrestige = PrestigeMemoryLine(s.World.College!, t.Id);
         (BuildGymText, CanBuildGym, BuildGymTip) = BuildButton(t, Hardwood.Core.Model.FacilityKind.Practice);
         (BuildArenaText, CanBuildArena, BuildArenaTip) = BuildButton(t, Hardwood.Core.Model.FacilityKind.Arena);
         ProgramLastSummer = b.LastLines.Count > 0 ? "Last summer: " + string.Join(" ", b.LastLines)
             : s.ProgramBuildsNow ? "A project paid for now is ready for the season." : "A project paid for during the season opens next summer.";
+    }
+
+    /// <summary>CS7 part 2b (run 173): prestige's long memory in words: the five-season form and the remembered marks, newest first.</summary>
+    public static string PrestigeMemoryLine(Hardwood.Core.College.CollegeWorld cw, int programId)
+    {
+        const string how = "one great season lifts it a fifth as far, five summers running";
+        if (!cw.Form.TryGetValue(programId, out var marks) || marks.Count == 0)
+            return $"Prestige remembers {Hardwood.Core.College.CollegeWorld.PrestigeMemory} seasons: each summer it moves by the average of their marks (the record, March wins and titles), so {how}.";
+        static string Signed(double v) => v >= 0.05 ? $"+{v:0.0}" : v <= -0.05 ? $"\u2212{-v:0.0}" : "0.0";
+        double form = cw.FormOf(programId);
+        string list = string.Join(", ", Enumerable.Reverse(marks).Select(Signed));
+        return $"Prestige remembers {Hardwood.Core.College.CollegeWorld.PrestigeMemory} seasons: together they move it {Signed(form)} a summer (marks {list}, newest first), so {how}.";
     }
 
     private static (string, bool, string) BuildButton(Hardwood.Core.Model.Team t, Hardwood.Core.Model.FacilityKind k)
