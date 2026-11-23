@@ -44,6 +44,7 @@ public sealed partial class GameSession
         ChampionshipWeek(c);
         CourtStorms(c);
         OneShiningMoment(c);
+        AcademicCalendar(c); // CS7 part 2c (run 175)
     }
 
     // ------------------------------------------------------------------------------------------

@@ -25,6 +25,17 @@ public sealed class ProgramBooks
     public List<string> LastLines { get; set; } = new();
     /// <summary>Every dollar the boosters have given since the program was seeded.</summary>
     public long TotalRaised { get; set; }
+
+    // CS7 part 2c (run 175): academics (see Academics).
+    /// <summary>The academic-support center's level (0-3), paid for from the booster fund.</summary>
+    public int AcademicCenter { get; set; }
+    /// <summary>Players in study hall this term (cleared at each term's grades).</summary>
+    public List<int> StudyHall { get; set; } = new();
+    /// <summary>Academically ineligible players and the first day each may play again.</summary>
+    public Dictionary<int, DateOnly> Ineligible { get; set; } = new();
+    /// <summary>The last term's grades for the program's players (player id → GPA), for the Board page.</summary>
+    public Dictionary<int, double> LastGrades { get; set; } = new();
+    public string LastTerm { get; set; } = "";
 }
 
 /// <summary>CS7 part 1: the rules (no RNG, constants here for Danny's veto check).</summary>

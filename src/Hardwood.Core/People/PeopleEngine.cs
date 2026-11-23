@@ -112,7 +112,8 @@ public static class PeopleEngine
         else if (stars < 2) f.Add(($"Doesn't suit his role ({Roles.Info(team.Tactic.RoleOf(p)).Name})", -6));
         double chem = (team.Chemistry - Neutral) * 0.15;
         if (Math.Abs(chem) >= 2) f.Add((team.Chemistry >= Neutral ? "Likes the team spirit" : "Unsettled in the locker room", chem));
-        if (p.Injury != null && !p.IsAvailable(today)) f.Add(("Frustrated by his injury", -3));
+        if (p.IsHurt(today)) f.Add(("Frustrated by his injury", -3));
+        if (p.IsIneligible(today)) f.Add(("Ineligible: his grades", -4)); // CS7 part 2c (run 175)
         if (p.TradeRequested) f.Add(("Wants out", -8));
         if (team.Coach is { MoraleBonus: var mb } && Math.Abs(mb) >= 1) f.Add((mb > 0 ? "Plays for his coach" : "Not inspired by the coach", mb));
         if (p.BoostUntil is { } until && until > today && p.MoodBoost != 0) f.Add((p.BoostReason ?? "Settled", p.MoodBoost));

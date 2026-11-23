@@ -237,8 +237,10 @@ public sealed partial class HomeViewModel : PageViewModel
         if (Pulse.Count == 0) Pulse.Add(new HomeRow { Icon = "Smile", IconBrush = Good, Title = "Everyone is content", Detail = "" });
 
         Injuries.Clear();
-        foreach (var p in team.Roster.Where(p => !p.IsAvailable(s.Today)).OrderBy(p => p.Injury!.ReturnDate))
+        foreach (var p in team.Roster.Where(p => p.IsHurt(s.Today)).OrderBy(p => p.Injury!.ReturnDate))
             Injuries.Add(new HomeRow { Icon = "Bandage", IconBrush = Bad, Title = p.Name, Detail = $"{p.Injury!.Name}, back {p.Injury.ReturnDate:MMM d}" });
+        foreach (var p in team.Roster.Where(p => p.IsIneligible(s.Today)).OrderBy(p => p.IneligibleUntil)) // CS7 part 2c (run 175)
+            Injuries.Add(new HomeRow { Icon = "GraduationCap", IconBrush = Bad, Title = p.Name, Detail = $"Academically ineligible, back {p.IneligibleUntil:MMM d}" });
         if (Injuries.Count == 0) Injuries.Add(new HomeRow { Icon = "Activity", IconBrush = Good, Title = "No injuries", Detail = "" });
 
         News.Clear();

@@ -21,6 +21,9 @@ public sealed partial class CollegeWorld
 
     /// <summary>Hours left this week (saved; refilled each Monday by <see cref="NewTrailWeek"/>).</summary>
     public int TrailHours { get; set; }
+    /// <summary>CS7 part 2c (run 175): hours a week the coaches spend on study hall (not saved; the session sets it from the
+    /// program's books on load and whenever study hall changes).</summary>
+    public int HoursHeld { get; set; }
     /// <summary>The Monday the hours were last refilled (null: never, so the first access fills them).</summary>
     public DateOnly? TrailWeek { get; set; }
 
@@ -33,7 +36,7 @@ public sealed partial class CollegeWorld
     public int HoursLeft(DateOnly today)
     {
         var monday = MondayOf(today);
-        if (TrailWeek != monday) { TrailWeek = monday; TrailHours = WeeklyHours; }
+        if (TrailWeek != monday) { TrailWeek = monday; TrailHours = Math.Max(0, WeeklyHours - HoursHeld); }
         return TrailHours;
     }
 

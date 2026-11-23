@@ -47,6 +47,17 @@ public sealed class FacilityRow
     public IBrush StatusBrush { get; init; } = Brushes.Gray;
 }
 
+/// <summary>CS7 part 2c (run 175): one of your players' grades this term.</summary>
+public sealed class AcademicRow
+{
+    public string Name { get; init; } = "";
+    public string Detail { get; init; } = "";
+    public string Standing { get; init; } = "";
+    public IBrush StandingBrush { get; init; } = Brushes.Gray;
+    public string ButtonText { get; init; } = "";
+    public required IRelayCommand Toggle { get; init; }
+}
+
 /// <summary>Item M (#281): a project the front office proposes.</summary>
 public sealed class ProposalRow
 {
@@ -269,6 +280,7 @@ public sealed partial class BoardViewModel : PageViewModel
             RefreshFacilities();
             RefreshBusiness();
             RefreshProgram();
+            RefreshAcademics();
             HasTrend = job.History.Count >= 2;
             ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = s.InCollege ? "AD confidence" : "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
         }
@@ -402,6 +414,67 @@ public sealed partial class BoardViewModel : PageViewModel
         var why = Hardwood.Core.College.ProgramBuilding.Blocked(t, k);
         return ($"Build {name.ToLowerInvariant()} level {lvl + 1} · {Hardwood.Core.College.ProgramBuilding.Money(Hardwood.Core.College.ProgramBuilding.Cost(k, lvl))}", why == null,
                 why ?? (k == Hardwood.Core.Model.FacilityKind.Arena ? "Recruits notice a better arena." : "Recruits notice it, and your players grow faster."));
+    }
+
+    // CS7 part 2c (run 175): academics.
+    [ObservableProperty] private bool _hasAcademics;
+    [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _academicChips = new();
+    [ObservableProperty] private List<AcademicRow> _academicRows = new();
+    [ObservableProperty] private string _academicSummary = "";
+    [ObservableProperty] private string _academicStatus = "";
+    [ObservableProperty] private string _buildCenterText = "";
+    [ObservableProperty] private string _buildCenterTip = "";
+    [ObservableProperty] private bool _canBuildCenter;
+
+    [RelayCommand] private void BuildCenter() { AcademicStatus = Session.BuildAcademicCenter(); Refresh(); }
+
+    /// <summary>How many of the term's rows the panel lists: everyone at risk, then the lowest projections up to this.</summary>
+    public const int AcademicRowsShown = 5;
+
+    private void RefreshAcademics()
+    {
+        var s = Session;
+        HasAcademics = s.HasAcademics;
+        if (!HasAcademics) return;
+        var b = s.HumanTeam.Money.Program;
+        var term = s.AcademicTerm;
+        var roster = s.AcademicRoster();
+        int risk = roster.Count(x => x.Standing != Hardwood.Core.College.Academics.Standing.Fine);
+        var ineligible = s.HumanTeam.Roster.Where(p => p.IsIneligible(s.Today)).ToList();
+        int hall = roster.Count(x => x.StudyHall);
+        AcademicChips = new List<Hardwood.Desktop.Controls.Chip>
+        {
+            new("Term", term is { } t ? char.ToUpperInvariant(Hardwood.Core.College.Academics.TermName(t)[0]) + Hardwood.Core.College.Academics.TermName(t)[1..] : "Summer", term is { } t2 ? $"grades {(t2.Fall ? Hardwood.Core.College.Academics.FallGrades(t2.Year) : Hardwood.Core.College.Academics.SpringGrades(t2.Year)):MMM d}" : "classes start in the fall", "team"),
+            new("At risk", risk.ToString(), term == null ? "no classes" : risk == 0 ? "everyone on track" : $"under {Hardwood.Core.College.Academics.PassMark:0.0} possible", risk > 0 ? "warn" : "good"),
+            new("Ineligible", ineligible.Count.ToString(), ineligible.Count == 0 ? "nobody sitting out" : string.Join(", ", ineligible.Select(p => p.LastName)), ineligible.Count > 0 ? "bad" : ""),
+            new("Study hall", hall.ToString(), $"{hall * Hardwood.Core.College.Academics.StudyHallHours} recruiting h a week", ""),
+            new("Academic center", $"Level {b.AcademicCenter}", b.AcademicCenter > 0 ? $"+{Hardwood.Core.College.Academics.CenterLift * b.AcademicCenter:0.00} on grades" : "not built", b.AcademicCenter >= 2 ? "good" : ""),
+        };
+        var good = (IBrush)new SolidColorBrush(Color.Parse("#3FB37F")); var warn = (IBrush)new SolidColorBrush(Color.Parse("#E0A33A")); var bad = (IBrush)new SolidColorBrush(Color.Parse("#E05A4F"));
+        AcademicRows = roster.Where((x, i) => x.Standing != Hardwood.Core.College.Academics.Standing.Fine || x.StudyHall || i < 3).Take(Math.Max(AcademicRowsShown, risk))
+            .Select(x =>
+            {
+                var player = x.Player;
+                return new AcademicRow
+                {
+                    Name = $"{x.Player.Name} ({x.Player.PrimaryPosition})",
+                    Detail = $"Projected {x.Projected:0.00}" + (x.StudyHall ? " · in study hall" : "") + (x.Player.IsIneligible(s.Today) ? $" · ineligible to {x.Player.IneligibleUntil:MMM d}" : ""),
+                    Standing = Hardwood.Core.College.Academics.Word(x.Standing),
+                    StandingBrush = x.Standing == Hardwood.Core.College.Academics.Standing.Failing ? bad : x.Standing == Hardwood.Core.College.Academics.Standing.AtRisk ? warn : good,
+                    ButtonText = x.StudyHall ? "Out of study hall" : "Study hall",
+                    Toggle = new RelayCommand(() => { AcademicStatus = Session.ToggleStudyHall(player); Refresh(); }),
+                };
+            }).ToList();
+        AcademicSummary = term == null
+            ? (b.LastTerm != "" ? $"Last term ({b.LastTerm}): team average {(b.LastGrades.Count > 0 ? b.LastGrades.Values.Average() : 0):0.00}. " : "") + "Classes start again in the fall; the midterm report comes out on Nov 20."
+            : risk == 0 ? $"Everyone is on track to stay eligible this term (the mark is {Hardwood.Core.College.Academics.PassMark:0.0}). The lowest projections are listed."
+            : $"{risk} player{(risk == 1 ? " is" : "s are")} at risk: under {Hardwood.Core.College.Academics.PassMark:0.0} at the grades, a player sits out " + (term.Value.Fall ? "until mid-February." : "until December.")
+              + $" Study hall (+{Hardwood.Core.College.Academics.StudyHallLift:0.0}) gets anyone at risk through.";
+        if (Hardwood.Core.College.Academics.CenterBlocked(b) is { } why && b.AcademicCenter >= Hardwood.Core.College.Academics.MaxCenter)
+            (BuildCenterText, CanBuildCenter, BuildCenterTip) = ("Academic center: top level", false, why);
+        else
+            (BuildCenterText, CanBuildCenter, BuildCenterTip) = ($"Build academic center level {b.AcademicCenter + 1} · {Hardwood.Core.College.ProgramBuilding.Money(Hardwood.Core.College.Academics.CenterCost(b.AcademicCenter))}",
+                Hardwood.Core.College.Academics.CenterBlocked(b) == null, Hardwood.Core.College.Academics.CenterBlocked(b) ?? $"Tutors and advisers: +{Hardwood.Core.College.Academics.CenterLift:0.00} on every player's grades, from this term.");
     }
 
     // D81 (run 169): the revenue levers.

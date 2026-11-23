@@ -63,7 +63,8 @@ public sealed class PlayerRow
     public static PlayerRow From(Player p, GameSession s, string? team = null, bool prospect = false)
     {
         (p.TeamId == s.HumanTeam.Id ? s.MyStats : s.Stats).TryGetValue(p.Id, out var st);
-        string status = p.IsAvailable(s.Today) ? "" : $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)";
+        string status = p.IsHurt(s.Today) ? $"{p.Injury!.Name} ({p.Injury.DaysOut(s.Today)}d)"
+            : p.IsIneligible(s.Today) ? $"Ineligible to {p.IneligibleUntil:MMM d}" : ""; // CS7 part 2c (run 175)
         var club = p.TeamId is { } cid ? s.FindTeam(cid) : null;
         bool before = club != null && !s.ContractsCounted(club);
         var cls = s.ClassYearOf(p);

@@ -90,7 +90,16 @@ public sealed class Player
 
     public Injury? Injury { get; set; }
     public List<Injury> InjuryHistory { get; } = new();
-    public bool IsAvailable(DateOnly on) => Injury == null || !Injury.IsOut(on);
+    public bool IsAvailable(DateOnly on) => !IsHurt(on) && !IsIneligible(on);
+    /// <summary>Out injured (the injury still keeps him off the floor).</summary>
+    public bool IsHurt(DateOnly on) => Injury != null && Injury.IsOut(on);
+    /// <summary>CS7 part 2c (run 175): academically ineligible until this day (kept in the program's books, <c>ProgramBooks.Ineligible</c>,
+    /// and copied here when the career loads or the grades come out).</summary>
+    public DateOnly? IneligibleUntil { get; set; }
+    public bool IsIneligible(DateOnly on) => IneligibleUntil is { } u && on < u;
+    /// <summary>Why he can't play, short ("Out 12d", "Ineligible 40d"), or "" when he can.</summary>
+    public string OutShort(DateOnly on) =>
+        IsHurt(on) ? $"Out {Injury!.DaysOut(on)}d" : IsIneligible(on) ? $"Ineligible {IneligibleUntil!.Value.DayNumber - on.DayNumber}d" : "";
 
     public int Age(DateOnly on)
     {

@@ -78,6 +78,33 @@
             <TextBlock Text="College players are paid nothing: the boosters' money goes into the program. They give each summer, more at a bigger program and more when they're happy (winning, March runs and rivalry wins). Each level costs more than the last." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
+        <!-- CS7 part 2c (run 175): academics -->
+        <Border Classes="panel" IsVisible="{Binding HasAcademics}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ClipboardPen" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Academics" Classes="h2" Margin="0"/></StackPanel>
+            <c:StatStrip ItemsSource="{Binding AcademicChips}" Accent="{Binding Accent}"/>
+            <TextBlock Text="{Binding AcademicSummary}" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding AcademicRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AcademicRow">
+                  <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                    <StackPanel Spacing="0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2"/>
+                      <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" MaxLines="2"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Standing}" Foreground="{Binding StandingBrush}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0"/>
+                    <Button Grid.Column="2" Content="{Binding ButtonText}" Command="{Binding Toggle}" VerticalAlignment="Center" MinWidth="130"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <WrapPanel Orientation="Horizontal" Margin="0,2,0,0">
+              <Button Content="{Binding BuildCenterText}" Command="{Binding BuildCenterCommand}" IsEnabled="{Binding CanBuildCenter}" ToolTip.Tip="{Binding BuildCenterTip}" Margin="0,0,8,6"/>
+            </WrapPanel>
+            <TextBlock Text="{Binding AcademicStatus}" Classes="accent" TextWrapping="Wrap"/>
+            <TextBlock Text="Each term the advisers project every player's grades from his work habits. A midterm report (Nov 20 and Mar 2) names anyone who could fall under 2.0; nobody else can. Study hall gets an at-risk player through and costs the coaches a recruiting hour a week. The academic-support center, paid for from the booster fund, lifts everyone's grades." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
         <!-- D81 (run 169): the revenue levers -->
         <Border Classes="panel" IsVisible="{Binding HasBusiness}">
           <StackPanel Spacing="6">
