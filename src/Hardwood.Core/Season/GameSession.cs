@@ -1141,7 +1141,7 @@ public sealed partial class GameSession
             People.PeopleEngine.Weekly(League, Today, t => Standings[t].Games > 0 ? Standings[t].WinPct : 0.5, Stats, null);
             var rec = MyRecord;
             events = People.PeopleEngine.Weekly(new[] { HumanTeam }, League.Finance, HumanLeague?.Profile.SalaryScale ?? 1, FindTeam, Today,
-                _ => rec.Games > 0 ? rec.WinPct : 0.5, MyStats, ControlledTeamId, Promises, allowRequests: !InCollege);
+                _ => rec.Games > 0 ? rec.WinPct : 0.5, MyStats, ControlledTeamId, Promises, allowRequests: !InCollege, college: InCollege);
         }
         MoodHistory.Add(new People.MoodSnapshot(Today, Math.Round(HumanTeam.Chemistry, 1), Math.Round(HumanTeam.Roster.Select(p => p.Morale).DefaultIfEmpty(60).Average(), 1)));
         if (MoodHistory.Count > 120) MoodHistory.RemoveAt(0);
@@ -1154,6 +1154,7 @@ public sealed partial class GameSession
                 People.PeopleEventKind.PromiseKept => $"Promise kept: {e.Player.Name}",
                 People.PeopleEventKind.PromiseBroken => $"Promise broken: {e.Player.Name}",
                 People.PeopleEventKind.Settled => $"{e.Player.Name} settles",
+                People.PeopleEventKind.DressingRoom => "The dressing room",
                 _ => e.Player.Name,
             };
             Post(title, InCollege ? CollegeWording(e) : e.Text, "Squad");
@@ -1190,7 +1191,7 @@ public sealed partial class GameSession
         if (People.Talks.Unavailable(p, Today) is { } why) return new(why, 0, false);
         MyStats.TryGetValue(p.Id, out var st);
         double wp = MyRecord.Games > 0 ? MyRecord.WinPct : 0.5;
-        var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng, Coach);
+        var r = People.Talks.Hold(p, HumanTeam, topic, Today, wp, st, League.Finance, Promises, _rng, Coach, InCollege);
         Coach.SeasonTalks++;
         SaveNow();
         return r;

@@ -237,7 +237,10 @@ public static class Assistant
             var unhappy = team.Roster.Where(p => p.Morale < 35).OrderBy(p => p.Morale).ToList();
             if (unhappy.Count > 0)
                 yield return new($"morale-{string.Join('.', unhappy.Select(p => p.Id))}", 15, $"{Names(unhappy.Take(2))} {(unhappy.Count == 1 ? "is" : "are")} unhappy",
-                    "Unhappy players play worse and want out. A talk on the Squad page shows why; a promise (minutes, a role) helps if you can keep it.", "Squad");
+                    s.InCollege
+                        // K9 (run 165): a college player can't leave, so the mood stays in the room.
+                        ? "Unhappy players play below themselves, and in college they can't leave, so it spreads through the locker room. A talk on the Squad page shows why; a promise (minutes, a role) helps if you can keep it."
+                        : "Unhappy players play worse and want out. A talk on the Squad page shows why; a promise (minutes, a role) helps if you can keep it.", "Squad");
         }
 
         // ---- the recruiting trail (C3, #177): open scholarships with too few offers out, when you're recruiting alone.

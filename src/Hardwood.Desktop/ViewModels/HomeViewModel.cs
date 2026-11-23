@@ -216,7 +216,7 @@ public sealed partial class HomeViewModel : PageViewModel
         foreach (var p in team.Roster.Where(p => p.TradeRequested || p.Morale < 45).OrderBy(p => p.Morale).Take(5))
         {
             Session.MyStats.TryGetValue(p.Id, out var pst);
-            var worst = PeopleEngine.Factors(p, team, winPct, pst, Session.League.Finance, s.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect).FirstOrDefault();
+            var worst = PeopleEngine.Factors(p, team, winPct, pst, Session.League.Finance, s.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1, Session.InCollege).OrderBy(x => x.effect).FirstOrDefault();
             string why = worst.reason != null && worst.effect < 0 ? worst.reason : "";
             string mood = p.TradeRequested && !Session.InCollege ? "Wants a trade" : PeopleEngine.Mood(p.Morale); // no college transfers (Danny, Nov 22)
             Pulse.Add(new HomeRow { Icon = p.Morale < 38 ? "Frown" : "Meh", IconBrush = p.Morale < 38 ? Bad : Warn, Title = p.Name,

@@ -158,7 +158,7 @@ public sealed partial class RosterViewModel : PageViewModel
             var k = team == s.HumanTeam ? 1.0 : StaffEffects.ScoutingKnowledge(s.HumanTeam);
             chips.Add(new("Best player", best.Name.Split(' ').Last(), $"{best.PrimaryPosition} · ability {Scouting.Ability(best, k)}", "info"));
             int unhappy = roster.Count(p => p.TradeRequested || p.Morale < 50); // "Unhappy" or worse in the Mood column
-            chips.Add(new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody is unsettled" : "unhappy or want out",
+            chips.Add(new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody is unsettled" : s.InCollege ? "unhappy" : "unhappy or want out",
                 roster.Any(p => p.TradeRequested || p.Morale < 35) ? "bad" : unhappy > 0 ? "warn" : "good"));
         }
         return chips;
