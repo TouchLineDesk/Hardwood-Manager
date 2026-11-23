@@ -707,7 +707,7 @@ public sealed partial class CollegeWorld
     /// <summary>
     /// H166 (run 144): the regular-season games a program plays this season (<see cref="IsRegularSeason"/>), the count the
     /// athletic director's target and pace use. From the schedule once it exists: its non-conference and conference games,
-    /// the invitational games actually played (2 while an invited program's bracket is still going) and a showcase once drawn.
+    /// the invitational games actually played (3, <see cref="InvitationalAllowance"/>, while an invited program's bracket is still going) and a showcase once drawn.
     /// Before a schedule exists: <see cref="NonConferenceTarget"/> plus <see cref="ConferenceGames"/> (about 30; H159, run 156).
     /// </summary>
     public int RegularSeasonGames(int id, int? conferenceSize = null)

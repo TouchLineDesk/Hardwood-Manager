@@ -137,8 +137,8 @@ public static class Program
             // K21 (run 163): replay one season's real 64-team field many times at several team-form spreads. Quicker than
             // `madness` for tuning Rules.MadnessTeamFormSd: same field, same rosters, only the tournament's spread changes.
             int brackets = int.Parse(ArgValue(args, "--brackets") ?? "40");
-            var sds = (ArgValue(args, "--sds") ?? "0,0.08,0.12,0.16,0.2").Split(',').Select(double.Parse).ToArray();
-            var tss = (ArgValue(args, "--ts") ?? Rules.CollegeMadness.TalentScale.ToString(System.Globalization.CultureInfo.InvariantCulture)).Split(',').Select(double.Parse).ToArray();
+            var sds = (ArgValue(args, "--sds") ?? "0,0.08,0.12,0.16,0.2").Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var tss = (ArgValue(args, "--ts") ?? Rules.CollegeMadness.TalentScale.ToString(System.Globalization.CultureInfo.InvariantCulture)).Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
             var rng = new Rng(seed);
             var gen = new PlayerGenerator(new Rng(seed ^ 0x51), 2_000_000);
             var cw = Hardwood.Core.College.CollegeWorld.Generate(gen, rng, new DateOnly(2026, 10, 1), real: true);
