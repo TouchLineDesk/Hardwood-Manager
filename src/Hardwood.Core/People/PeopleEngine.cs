@@ -8,7 +8,7 @@ public sealed record PeopleEvent(Player Player, Team Team, PeopleEventKind Kind,
 /// <summary>A week's reading of a team's mood: chemistry and average morale.</summary>
 public sealed record MoodSnapshot(DateOnly Date, double Chemistry, double Morale);
 
-public enum PeopleEventKind { WantsTalk, TradeRequest, PromiseKept, PromiseBroken, Settled }
+public enum PeopleEventKind { WantsTalk, TradeRequest, PromiseKept, PromiseBroken, Settled, DressingRoom }
 
 /// <summary>A promise the coach made a player (decision #64): more minutes over his next ten games.</summary>
 public sealed class Promise
@@ -36,6 +36,13 @@ public sealed class Promise
 public static class PeopleEngine
 {
     public const double Neutral = 60;
+    /// <summary>K9 (run 165): below this morale a player counts as unhappy in the room (the weekly unhappy spell's line too).</summary>
+    public const double UnhappyLine = 38;
+    /// <summary>K9 (run 165): what each unhappy college player costs the chemistry target.</summary>
+    public const double SulkCost = 4;
+
+    /// <summary>K9 (run 165): the team's unhappy players, unhappiest first.</summary>
+    public static List<Player> Sulking(Team team) => team.Roster.Where(p => p.Morale < UnhappyLine).OrderBy(p => p.Morale).ThenBy(p => p.Id).ToList();
 
     /// <summary>Minutes a player expects from where he ranks on the roster by ability.</summary>
     public static double ExpectedMinutes(Player p, Team team)
@@ -46,25 +53,50 @@ public static class PeopleEngine
         return baseMins;
     }
 
+    /// <summary>
+    /// K9 (run 165, the dressing room): how much a college player's class year weighs on his wish for minutes. A freshman
+    /// accepts waiting his turn; a senior in his last season doesn't (Fr 0.8, So 1.0, Jr 1.2, Sr 1.4).
+    /// </summary>
+    public static double ClassWeight(Player p, DateOnly today) =>
+        College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today))?.Year switch { 1 => 0.8, 3 => 1.2, 4 => 1.4, _ => 1.0 };
+
+    /// <summary>
+    /// K9 (run 165): how much of the team's winning a college player feels part of (1 = all of it). A player getting well
+    /// under the minutes he expects (15+) enjoys the wins less: at a third of them, a third of the lift. The pros keep 1.
+    /// </summary>
+    public static double Involvement(Player p, Team team, PlayerSeasonStats? stats)
+    {
+        if (stats is not { Games: >= 3 }) return 1;
+        double expected = ExpectedMinutes(p, team);
+        return expected >= 15 && stats.Mpg < expected ? Math.Clamp(stats.Mpg / expected, 0.25, 1) : 1;
+    }
+
     /// <summary>What's driving a player's mood this week, each with its effect on his target morale.</summary>
+    /// <param name="college">K9 (run 165): a college player weighs minutes by his class year, and winning lifts him only as
+    /// far as he's part of it (<see cref="ClassWeight"/>, <see cref="Involvement"/>).</param>
     public static List<(string reason, double effect)> Factors(Player p, Team team, double winPct, PlayerSeasonStats? stats, Finance finance, DateOnly today,
-                                                               double salaryScale = 1)
+                                                               double salaryScale = 1, bool college = false)
     {
         var f = new List<(string, double)>();
         var h = p.Hidden;
+        double involvement = college ? Involvement(p, team, stats) : 1;
         if (stats is { Games: >= 3 })
         {
             double expected = ExpectedMinutes(p, team);
             double gap = stats.Mpg - expected;
-            double weight = 0.6 + (h.Ego + h.Ambition) / 40.0;
+            double cw = college ? ClassWeight(p, today) : 1;
+            double weight = (0.6 + (h.Ego + h.Ambition) / 40.0) * (gap < 0 ? cw : 1);
             double e = Math.Clamp(gap * 1.7, -32, 4) * weight;
             if (Math.Abs(e) >= 2)
-                f.Add((gap < 0 ? $"Wants more minutes ({stats.Mpg:0} a game; expects about {expected:0})" : $"Happy with his minutes ({stats.Mpg:0} a game)", e));
+                f.Add((gap < 0
+                    ? (cw >= 1.4 ? $"A senior who wants his turn ({stats.Mpg:0} a game; expects about {expected:0})" : $"Wants more minutes ({stats.Mpg:0} a game; expects about {expected:0})")
+                    : $"Happy with his minutes ({stats.Mpg:0} a game)", e));
         }
         if (stats is { Games: >= 5 } || winPct > 0)
         {
             double e = (winPct - 0.5) * 44 * (0.5 + h.Ambition / 20.0);
-            if (Math.Abs(e) >= 2) f.Add((winPct >= 0.5 ? "Enjoying winning" : "Frustrated by losing", e));
+            if (e > 0) e *= involvement;
+            if (Math.Abs(e) >= 2) f.Add((winPct >= 0.5 ? (involvement < 0.6 ? "Winning, but he isn't part of it" : "Enjoying winning") : "Frustrated by losing", e));
         }
         if (p.Contract is { } c && c.Salary > 0)
         {
@@ -101,9 +133,9 @@ public static class PeopleEngine
     public const int RequestWeeks = 8;
 
     /// <summary>A boost that lifts his target to about "content" (48), whatever is still bothering him.</summary>
-    private static double SettleBoost(Player p, Team team, double wp, PlayerSeasonStats? st, Finance finance, DateOnly today, double salaryScale)
+    private static double SettleBoost(Player p, Team team, double wp, PlayerSeasonStats? st, Finance finance, DateOnly today, double salaryScale, bool college = false)
     {
-        var without = Factors(p, team, wp, st, finance, today, salaryScale).Where(x => x.reason != p.BoostReason || p.BoostUntil is not { } u || u <= today);
+        var without = Factors(p, team, wp, st, finance, today, salaryScale, college).Where(x => x.reason != p.BoostReason || p.BoostUntil is not { } u || u <= today);
         return Math.Clamp(50 - Target(without) + (p.TradeRequested ? 8 : 0), 10, 34);
     }
 
@@ -122,7 +154,9 @@ public static class PeopleEngine
     /// Chemistry target for a team: continuity of the rotation, average morale, leaders and team-first players, and
     /// big egos (several egos together clash).
     /// </summary>
-    public static List<(string reason, double effect)> ChemistryFactors(Team team)
+    /// <param name="college">K9 (run 165): in college, every unhappy player (morale under <see cref="UnhappyLine"/>) costs the
+    /// locker room <see cref="SulkCost"/>, named, up to four: nobody can leave, so the mood stays in the room.</param>
+    public static List<(string reason, double effect)> ChemistryFactors(Team team, bool college = false)
     {
         var rot = team.Roster.OrderByDescending(p => p.CurrentAbility).Take(9).ToList();
         var f = new List<(string, double)>();
@@ -140,6 +174,8 @@ public static class PeopleEngine
         if (team.Coach is { ChemistryBonus: var cb } && Math.Abs(cb) >= 1) f.Add((cb > 0 ? "A disciplined locker room" : "A loose locker room", cb));
         int requests = team.Roster.Count(p => p.TradeRequested);
         if (requests > 0) f.Add(("A player wants out", -5 * requests));
+        if (college && Sulking(team) is { Count: > 0 } sulk)
+            f.Add((sulk.Count == 1 ? $"{sulk[0].Name} is sulking" : $"{sulk.Count} unhappy players in the locker room", -SulkCost * Math.Min(4, sulk.Count)));
         return f;
     }
 
@@ -154,7 +190,7 @@ public static class PeopleEngine
     /// <summary>The weekly update for any set of clubs (a club abroad judges wages by its league's market: <paramref name="salaryScale"/>).</summary>
     public static List<PeopleEvent> Weekly(IEnumerable<Team> teams, Finance finance, double salaryScale, Func<int, Team?> teamById, DateOnly today,
         Func<Team, double> winPct, IReadOnlyDictionary<int, PlayerSeasonStats> stats, int? humanTeamId, List<Promise>? promises = null,
-        bool allowRequests = true)
+        bool allowRequests = true, bool college = false)
     {
         var events = new List<PeopleEvent>();
         var teamList = teams.ToList();
@@ -170,7 +206,7 @@ public static class PeopleEngine
                 if (w == 1 && team.WeeksTogether.Count > 1 && team.WeeksTogether.Values.Any(x => x > 1)) Joined(p); // a new arrival
             }
 
-            double chemTarget = Math.Clamp(Neutral + ChemistryFactors(team).Sum(x => x.effect), 10, 98);
+            double chemTarget = Math.Clamp(Neutral + ChemistryFactors(team, college).Sum(x => x.effect), 10, 98);
             team.Chemistry += (chemTarget - team.Chemistry) * 0.25;
 
             double wp = winPct(team);
@@ -179,7 +215,7 @@ public static class PeopleEngine
             {
                 stats.TryGetValue(p.Id, out var st);
                 if (st != null && st.TeamId != team.Id) st = null; // stats from another team don't count here
-                double target = Target(Factors(p, team, wp, st, finance, today, salaryScale));
+                double target = Target(Factors(p, team, wp, st, finance, today, salaryScale, college));
                 double rate = 0.2 + (21 - p.Hidden.Temperament) / 100.0;
                 p.Morale = Math.Clamp(p.Morale + (target - p.Morale) * rate, 0, 100);
 
@@ -196,7 +232,7 @@ public static class PeopleEngine
                 {
                     if (human && (p.LastTalk == null || today.DayNumber - p.LastTalk.Value.DayNumber >= 21) && today.DayNumber % 14 < 7)
                     {
-                        var worst = Factors(p, team, wp, st, finance, today, salaryScale).OrderBy(x => x.effect).FirstOrDefault();
+                        var worst = Factors(p, team, wp, st, finance, today, salaryScale, college).OrderBy(x => x.effect).FirstOrDefault();
                         events.Add(new(p, team, PeopleEventKind.WantsTalk, $"{p.Name} is unhappy and wants to talk. {(worst.reason != null ? worst.reason + "." : "")}"));
                     }
                 }
@@ -209,7 +245,7 @@ public static class PeopleEngine
                 }
                 else if (!p.TradeRequested && p.UnhappyWeeks >= DecideWeeks)
                 {
-                    Boost(p, SettleBoost(p, team, wp, st, finance, today, salaryScale), season, "Has accepted his situation", today);
+                    Boost(p, SettleBoost(p, team, wp, st, finance, today, salaryScale, college), season, "Has accepted his situation", today);
                     p.UnhappyWeeks = 0; p.Morale = Math.Max(p.Morale, 40);
                     if (human) events.Add(new(p, team, PeopleEventKind.Settled,
                         $"{p.Name} has accepted his situation for now and will keep working. It still matters: fix the cause (minutes, role, contract) and he'll be happier still."));
@@ -217,20 +253,48 @@ public static class PeopleEngine
                 else if (p.TradeRequested && p.UnhappyWeeks >= DecideWeeks + RequestWeeks && !(promises?.Any(x => x.PlayerId == p.Id && x.Kind == "trade") ?? false))
                 {
                     p.TradeRequested = false; p.UnhappyWeeks = 0; p.Morale = Math.Max(p.Morale, 40);
-                    Boost(p, SettleBoost(p, team, wp, st, finance, today, salaryScale), season, "Withdrew his trade request", today);
+                    Boost(p, SettleBoost(p, team, wp, st, finance, today, salaryScale, college), season, "Withdrew his trade request", today);
                     if (human) events.Add(new(p, team, PeopleEventKind.Settled,
                         $"{p.Name} has withdrawn his trade request and will see out the season. He hasn't forgotten; expect the question again in the summer."));
                 }
                 else if (human && p.Morale < 38 && !p.TradeRequested && (p.LastTalk == null || today.DayNumber - p.LastTalk.Value.DayNumber >= 21)
                          && today.DayNumber % 14 < 7 /* not every week */)
                 {
-                    var worst = Factors(p, team, wp, st, finance, today, salaryScale).OrderBy(x => x.effect).FirstOrDefault();
+                    var worst = Factors(p, team, wp, st, finance, today, salaryScale, college).OrderBy(x => x.effect).FirstOrDefault();
                     events.Add(new(p, team, PeopleEventKind.WantsTalk, $"{p.Name} is unhappy and wants to talk. {(worst.reason != null ? worst.reason + "." : "")}"));
                 }
             }
+            // K9 (run 165): in college the mood stays in the room, so a restless dressing room is news (about once in four weeks).
+            if (human && college && DressingRoomNote(team, wp, st => stats.TryGetValue(st.Id, out var x) && x.TeamId == team.Id ? x : null, finance, today, salaryScale) is { } note
+                && today.DayNumber % 28 < 7)
+                events.Add(new(note.first, team, PeopleEventKind.DressingRoom, note.text));
         }
         if (promises != null) events.AddRange(CheckPromises(teamList.SelectMany(t => t.Roster), teamById, today, stats, promises));
         return events;
+    }
+
+    /// <summary>
+    /// K9 (run 165): the dressing room's word when two or more of the rotation (the nine best) are unhappy: who, why, and
+    /// what it costs (chemistry, and unhappy players play below themselves). Null when the room is calm.
+    /// </summary>
+    public static (Player first, string text)? DressingRoomNote(Team team, double winPct, Func<Player, PlayerSeasonStats?> statsOf, Finance finance, DateOnly today, double salaryScale = 1)
+    {
+        var rotation = team.Roster.OrderByDescending(x => x.CurrentAbility).ThenBy(x => x.Id).Take(9).ToHashSet();
+        var sulk = Sulking(team).Where(rotation.Contains).ToList();
+        if (sulk.Count < 2) return null;
+        string Why(Player p)
+        {
+            var worst = Factors(p, team, winPct, statsOf(p), finance, today, salaryScale, college: true).OrderBy(x => x.effect).FirstOrDefault();
+            if (worst.reason == null || worst.effect >= 0) return "";
+            string r = worst.reason.Split(" (")[0]; // "A senior who wants his turn (6 a game; ...)" -> "a senior who wants his turn"
+            return $" ({char.ToLowerInvariant(r[0])}{r[1..]})";
+        }
+        var named = sulk.Take(3).Select(p => p.Name + Why(p)).ToList();
+        string who = named.Count == 2 ? $"{named[0]} and {named[1]}" : $"{named[0]}, {named[1]} and {named[2]}";
+        string record = winPct >= 0.6 ? "Winning hasn't fixed it. " : "";
+        return (sulk[0], $"The dressing room is restless: {who} {(sulk.Count <= 3 ? "are unhappy" : $"are among {sulk.Count} unhappy players")}. {record}"
+            + $"It costs the team: chemistry is {team.Chemistry:0} and each unhappy player pulls it down, and an unhappy player plays below himself on the floor. "
+            + "Talk to them on the Squad page, or change the rotation.");
     }
 
     private static IEnumerable<PeopleEvent> CheckPromises(IEnumerable<Player> players, Func<int, Team?> teamById, DateOnly today, IReadOnlyDictionary<int, PlayerSeasonStats> stats, List<Promise> promises)

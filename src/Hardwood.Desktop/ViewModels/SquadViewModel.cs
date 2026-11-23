@@ -139,7 +139,7 @@ public sealed partial class SquadViewModel : PageViewModel
         ChemistryNumber = $"{team.Chemistry:0} / 100";
         ChemistryColor = Avalonia.Media.Color.Parse(team.Chemistry >= 62 ? "#3FB950" : team.Chemistry >= 48 ? "#D29922" : "#F85149");
         ChemistryFactors.Clear();
-        var factors = PeopleEngine.ChemistryFactors(team).Concat(Session.SpiritFactors()).OrderByDescending(x => Math.Abs(x.effect)).ToList();
+        var factors = PeopleEngine.ChemistryFactors(team, Session.InCollege).Concat(Session.SpiritFactors()).OrderByDescending(x => Math.Abs(x.effect)).ToList();
         double big = factors.Count == 0 ? 1 : Math.Max(1, factors.Max(x => Math.Abs(x.effect)));
         foreach (var (r, e) in factors)
             ChemistryFactors.Add(new FactorRow { Reason = r, Effect = e, BarWidth = Math.Max(3, FactorBarMax * Math.Abs(e) / big) });
@@ -149,7 +149,7 @@ public sealed partial class SquadViewModel : PageViewModel
         foreach (var p in team.Roster.OrderBy(p => p.Morale))
         {
             Session.MyStats.TryGetValue(p.Id, out var st);
-            var worst = PeopleEngine.Factors(p, team, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect).FirstOrDefault();
+            var worst = PeopleEngine.Factors(p, team, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1, Session.InCollege).OrderBy(x => x.effect).FirstOrDefault();
             var promise = Session.Promises.FirstOrDefault(x => x.PlayerId == p.Id);
             Players.Add(new MoodRow
             {
@@ -202,7 +202,7 @@ public sealed partial class SquadViewModel : PageViewModel
         // Bug list #14: the score is its own unwrapped text, so "(61/100)" never breaks mid-number in the narrow panel.
         PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested && !Session.InCollege ? ", wants a trade" : "");
         PlayerScore = $"{p.Morale:0}/100";
-        foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1).OrderBy(x => x.effect))
+        foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1, Session.InCollege).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });
         var blocked = Talks.Unavailable(p, Session.Today);
         foreach (var topic in Talks.Available(p, Session.InCollege))
