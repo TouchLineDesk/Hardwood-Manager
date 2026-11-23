@@ -443,6 +443,7 @@ public sealed class GameSimulator
                 side.Box.Timeouts = side.TimeoutsLeft;
                 side.TimeoutRequested &= side.TimeoutsLeft > 0;
                 side.LastLateCallClock = double.MaxValue;
+                side.RunAgainst = 0;   // review (run 168): a break ends a run, so no "10-0 run" timeout early in the third
             }
 
             // Alternate opening possession by period (jump ball simplified).
@@ -596,7 +597,7 @@ public sealed class GameSimulator
             }
             var call = new TimeoutCall(_period, _clock, side.IsHome, reason, run, side.TimeoutsLeft, Score(_home), Score(_away));
             _result.Timeouts.Add(call);
-            Log($"Timeout, {side.Team.Abbreviation} ({call.Why}; {call.LeftText})");
+            if (_pbp != null) Log($"Timeout, {side.Team.Abbreviation} ({call.Why}; {call.LeftText})");   // a quick game builds no strings (#614)
         }
 
         /// <summary>Ask for a specific five at the next dead ball. Players who are hurt, fouled out or not on the roster are ignored.</summary>

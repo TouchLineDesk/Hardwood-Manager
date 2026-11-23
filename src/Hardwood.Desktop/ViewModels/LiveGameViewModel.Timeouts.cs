@@ -43,8 +43,7 @@ public sealed partial class LiveGameViewModel
         {
             var t = all[i];
             var line = TimeoutLine(Short(t.Home ? HomeTeam : AwayTeam), t);
-            notes.Add(line);
-            Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {line}");
+            notes.Add(line);   // the log already has the engine's own line, stamped with the right clock (review, run 168)
         }
         if (notes.Count > 0) RaiseTimeoutProps();
         return notes;
