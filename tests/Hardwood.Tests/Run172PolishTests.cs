@@ -68,6 +68,10 @@ public class Run172PolishTests
         Assert.Equal("Patient and careful with money", o.Style);
         Assert.Equal("patient", o.PatienceWord);
         Assert.Equal("careful", o.AmbitionWord);
+        // Review of run 172: the style's two-part words use the same lines as the bars.
+        Assert.Equal("Impatient", new Owner { Patience = 5, Ambition = 14 }.Style);
+        Assert.Equal("Patient", new Owner { Patience = 15, Ambition = 8 }.Style);
+        Assert.Equal("Ruthless and demanding", new Owner { Patience = 5, Ambition = 15 }.Style);
     }
 
     [AvaloniaFact]

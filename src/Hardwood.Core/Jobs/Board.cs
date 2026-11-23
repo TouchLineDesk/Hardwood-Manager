@@ -16,9 +16,9 @@ public sealed class Owner
 
     public string Style => (Patience, Ambition) switch
     {
-        ( <= ImpatientLine, >= 14) => "Ruthless and demanding",
+        ( <= ImpatientLine, >= WinNowLine) => "Ruthless and demanding",
         ( <= ImpatientLine, _) => "Impatient",
-        ( >= PatientLine, <= 8) => "Patient and careful with money",
+        ( >= PatientLine, <= CarefulLine) => "Patient and careful with money",
         ( >= PatientLine, _) => "Patient",
         (_, >= WinNowLine) => "Wants to win now",
         (_, <= CarefulLine) => "Careful with money",

@@ -192,6 +192,8 @@ public sealed partial class BoardViewModel : PageViewModel
         var mine = s.InCollege
             ? s.World.College!.GamesOf(t.Id).Where(g => g.Played).Select(g => g.Date).ToList()
             : s.Schedule.Where(g => g.Home == t || g.Away == t).Select(g => g.Date).ToList();
+        // Review of run 172: a mid-season college hire has regular-season games still to play, so the season is his.
+        if (s.InCollege && s.World.College!.GamesOf(t.Id).Any(g => !g.Played && Hardwood.Core.College.CollegeWorld.IsRegularSeason(g))) return false;
         if (mine.Count > 0) return job.HiredOn > mine.Max();
         if (s.InCollege) return false;   // no game played yet this season: it is all yours
         return job.HiredOn.Month is >= 5 and <= 9;   // a league whose games aren't on your schedule: after the spring
