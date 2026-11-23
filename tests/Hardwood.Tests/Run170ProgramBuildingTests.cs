@@ -65,6 +65,9 @@ public class Run170ProgramBuildingTests
         Assert.Contains("opens next summer", line);
         Assert.Equal(2, t.Money.Facilities.Practice.Level);
         Assert.Contains("already under way", ProgramBuilding.Build(t, FacilityKind.Arena, openNow: false));
+        // Review: a project at a program the coach has left still opens.
+        Assert.Contains("opened: level 3", ProgramBuilding.OpenPending(t));
+        Assert.Null(t.Money.Program.Pending);
     }
 
     [Fact]

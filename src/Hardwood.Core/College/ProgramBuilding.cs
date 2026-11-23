@@ -53,7 +53,8 @@ public static class ProgramBuilding
     public static string Name(FacilityKind k) => k == FacilityKind.Arena ? "Arena" : "Practice gym";
 
     /// <summary>Seed a program's books the first time they're used: facilities from prestige, boosters from prestige
-    /// (40 at a 50 program), and two summers' gifts in the fund (enough for one gym level on day one).</summary>
+    /// (40 at a 50 program), and two summers' gifts in the fund (enough for one gym level on day one; a save from before
+    /// run 170 seeded at its first summer also gets that summer's gift).</summary>
     public static ProgramBooks Ensure(Team t, double prestige)
     {
         var b = t.Money.Program;
@@ -122,12 +123,7 @@ public static class ProgramBuilding
         double prestige = c.Prestige.GetValueOrDefault(t.Id, 50);
         var b = Ensure(t, prestige);
         var lines = new List<string>();
-        if (b.Pending is { } k)
-        {
-            var f = t.Money.Facilities.Get(k);
-            f.Level = Math.Min(5, f.Level + 1); b.Pending = null;
-            lines.Add($"The new {Name(k).ToLowerInvariant()} opened: level {f.Level}.");
-        }
+        if (OpenPending(t) is { } opened) lines.Add(opened);
         ApplyEdges(t);
         var (w, l) = c.Record(t.Id);
         var s = c.Season;
@@ -151,6 +147,17 @@ public static class ProgramBuilding
         b.Fund += b.LastGift; b.TotalRaised += b.LastGift;
         lines.Add($"The boosters gave {Money(b.LastGift)}; the fund holds {Money(b.Fund)}.");
         b.LastLines = lines;
+    }
+
+    /// <summary>A project paid for during the season opens (review, run 170: also at a program the coach has since left, so
+    /// the money isn't lost). Returns the line, or null if nothing was pending.</summary>
+    public static string? OpenPending(Team t)
+    {
+        var b = t.Money.Program;
+        if (b.Pending is not { } k) return null;
+        var f = t.Money.Facilities.Get(k);
+        f.Level = Math.Min(5, f.Level + 1); b.Pending = null;
+        return $"The new {Name(k).ToLowerInvariant()} opened: level {f.Level}.";
     }
 
     /// <summary>The boosters' mood in a word.</summary>

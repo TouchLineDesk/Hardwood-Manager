@@ -489,6 +489,7 @@ public sealed partial class CollegeWorld
             Prestige[t.Id] = Math.Clamp(Prestige[t.Id] + change + (Baseline(t, conf) - Prestige[t.Id]) * 0.08, 10, 99);
         }
         // CS7 (run 170): the coached program's boosters give, and a project paid for during the season opens. No RNG.
+        foreach (var t in Programs) if (t.Id != ManagedProgramId) ProgramBuilding.OpenPending(t); // a program you left
         if (ManagedProgramId is { } me && Program(me) is { } mine) ProgramBuilding.Summer(mine, this);
         if (Recruiting)
         {
