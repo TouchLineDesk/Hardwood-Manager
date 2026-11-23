@@ -116,11 +116,18 @@ public sealed class GameCalls
         int ws = Math.Max(homeScore, awayScore), ls = Math.Min(homeScore, awayScore), margin = ws - ls;
         int down = 0;   // the most the winner trailed by
         foreach (var e in plays) down = Math.Max(down, homeWon ? e.AwayScore - e.HomeScore : e.HomeScore - e.AwayScore);
+        // Review (run 174): a winner who wasn't ahead before the last score (a walk-off) didn't "hold on".
+        int lastScore = -1;
+        for (int k = plays.Count - 1; k >= 0 && lastScore < 0; k--)
+            if (k == 0 ? plays[k].HomeScore + plays[k].AwayScore > 0 : plays[k].HomeScore != plays[k - 1].HomeScore || plays[k].AwayScore != plays[k - 1].AwayScore) lastScore = k;
+        bool walkOff = lastScore > 0 && (homeWon ? plays[lastScore - 1].HomeScore <= plays[lastScore - 1].AwayScore : plays[lastScore - 1].AwayScore <= plays[lastScore - 1].HomeScore)
+            && plays[lastScore].Period >= periods && plays[lastScore].Clock <= 30;
         int ots = plays.Count == 0 ? 0 : Math.Max(0, plays.Max(e => e.Period) - periods);
         var o = occasion ?? new Occasion();
         bool champion = o.Stage == "Championship";
         string verb = champion ? "are national champions"
             : down >= 10 ? "complete the comeback"
+            : walkOff ? "steal it at the death"
             : margin <= 3 ? "hold on"
             : margin >= 20 ? "roll"
             : "win it";

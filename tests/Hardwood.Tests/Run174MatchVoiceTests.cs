@@ -140,6 +140,9 @@ public class Run174MatchVoiceTests
         var back = GameCalls.Final(new[] { P(30, 42), P(80, 80), P(90, 86, 3) }, "Notre Dame", "Miami", 90, 86, 2);
         Assert.Equal("NOTRE DAME COMPLETE THE COMEBACK! Final: Notre Dame 90, Miami 86 in overtime", back[0]);
         Assert.Equal("Notre Dame were down 12 and came all the way back", back[1]);
+        // A walk-off: down 2, a three with 1 s left. Not "hold on".
+        PlayEvent L(int hs, int aw, double clock) => new(2, clock, PlayKind.Shot, true, null, null, ShotZone.Rim, true, hs, aw);
+        Assert.StartsWith("NOTRE DAME STEAL IT AT THE DEATH!", GameCalls.Final(new[] { L(70, 72, 20), L(73, 72, 1) }, "Notre Dame", "Miami", 73, 72, 2)[0]);
         // March: an upset that advances, and the title.
         var march = GameCalls.Final(new[] { P(60, 64) }, "Virginia", "Creighton", 60, 64, 2,
             new GameCalls.Occasion("Round of 64", "Round of 32", WinnerSeed: 12, LoserSeed: 5));

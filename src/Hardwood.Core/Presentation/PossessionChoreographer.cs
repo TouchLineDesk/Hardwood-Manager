@@ -965,10 +965,10 @@ public static class PossessionChoreographer
     /// <summary>K25 (run 174): one of a line's wordings, by the possession's number (never the random stream).</summary>
     public static string Vary(int index, params string[] ways) => ways[((index % ways.Length) + ways.Length) % ways.Length];
 
-    /// <summary>K25: the shot at <paramref name="i"/> is the period's last (only a rebound or free throws before the horn,
-    /// with under two seconds left).</summary>
+    /// <summary>K25: the shot at <paramref name="i"/> is the period's last (only a rebound before the horn, with a second
+    /// or less left).</summary>
     public static bool AtTheBuzzer(IReadOnlyList<PlayEvent> ev, int i) =>
-        ev[i].Clock <= 2.0 && ev.Skip(i + 1).Any(x => x.Kind == PlayKind.PeriodEnd)
+        ev[i].Clock <= 1.0 && ev.Skip(i + 1).Any(x => x.Kind == PlayKind.PeriodEnd)
         && ev.Skip(i + 1).TakeWhile(x => x.Kind != PlayKind.PeriodEnd).All(x => x.Kind is PlayKind.OffensiveRebound or PlayKind.DefensiveRebound);
 
     /// <summary>A dead ball for a substitution (seconds at 1×, the clock stopped).</summary>

@@ -176,7 +176,9 @@ public sealed partial class LiveGameViewModel
         bool march = g.Event == Hardwood.Core.College.CollegeWorld.Madness;
         string? stage = march ? Hardwood.Core.College.CollegeWorld.RoundName(g.Round) : null;
         string? next = march && g.Round < 6 ? Hardwood.Core.College.CollegeWorld.RoundName(g.Round + 1) : null;
-        int? Rank(int id) => id == g.HomeId ? g.HomeRank : id == g.AwayId ? g.AwayRank : null;
+        // Review (run 174): the game's stamped ranks are written when the day is recorded, after the live game, so read
+        // the poll as it stands at the tip.
+        int? Rank(int id) => (id == g.HomeId ? g.HomeRank : id == g.AwayId ? g.AwayRank : null) ?? cw.Rank(id);
         return new GameCalls.Occasion(stage, next, march ? cw.SeedOf(wId) : 0, march ? cw.SeedOf(lId) : 0,
             Rank(wId), Rank(lId), cw.RivalryOf(HomeTeam.Id, AwayTeam.Id)?.Title);
     }
@@ -248,6 +250,8 @@ public sealed partial class LiveGameViewModel
             var final = GameCalls.Final(r.Plays, Short(HomeTeam), Short(AwayTeam), _live.HomeScore, _live.AwayScore, r.Periods,
                 FinalOccasion(_live.HomeScore > _live.AwayScore));
             for (int n = 0; n < final.Count; n++) { _script.Lines.Add(new CommentaryLine(_script.Length, final[n], n == 0)); _script.Length += PossessionChoreographer.NoteTime; }
+            // Review: the result is what stays on the bar, so after its context it's said once more.
+            if (final.Count > 1) { _script.Lines.Add(new CommentaryLine(_script.Length, final[0], true)); _script.Length += PossessionChoreographer.NoteTime; }
             _finalCalls = final;
         }
         // K25 (run 174): what was said, for tests (the whole game's lines in order).
