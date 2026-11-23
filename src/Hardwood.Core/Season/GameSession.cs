@@ -1042,6 +1042,7 @@ public sealed partial class GameSession
         team.Coach = Coach;
         team.CoachName = Coach.Name;
         Job.Employed = true;
+        SyncAcademics(); // CS7 part 2c review: only the program you coach keeps academics
         Job.Confidence = 70;
         Job.WarningLevel = 0;
         // H80 (run 105): a coach hired after the club's last game is hired for the coming season, not the one just finished

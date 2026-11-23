@@ -163,7 +163,7 @@ public sealed partial class GameSession
     {
         if (!Delegated.Training || !Employed) return;
         var t = HumanTeam;
-        int hurt = t.Roster.Count(p => !p.IsAvailable(Today));
+        int hurt = t.Roster.Count(p => p.IsHurt(Today));
         t.Training.Intensity = hurt >= 3 ? 35 : hurt == 2 ? 45 : 60;
         int changed = 0;
         foreach (var p in t.Roster)

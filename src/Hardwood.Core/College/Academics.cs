@@ -52,9 +52,10 @@ public static class Academics
     public static string TermName((bool Fall, int Year) t) => t.Fall ? $"fall {t.Year}" : $"spring {t.Year + 1}";
     private static string Key((bool Fall, int Year) t) => (t.Fall ? "F" : "S") + t.Year;
 
-    /// <summary>The term's work, from -1 to 1 (part 0 is known at the midterm, part 1 only at the grades).</summary>
+    /// <summary>The term's work, from -1 to 1 (part 0 is known at the midterm, part 1 only at the grades). The part comes first in
+    /// the key: FNV-1a barely mixes a last character, so the two halves would be almost the same (review).</summary>
     public static double Work(int playerId, (bool Fall, int Year) term, int part) =>
-        Presentation.FightSongs.Hash($"academics|{playerId}|{Key(term)}|{part}") / (double)uint.MaxValue * 2 - 1;
+        Presentation.FightSongs.Hash($"{part}|academics|{playerId}|{Key(term)}") / (double)uint.MaxValue * 2 - 1;
 
     /// <summary>What the midterm report shows: everything but the last half of the term's work.</summary>
     public static double Projected(Player p, ProgramBooks b, (bool Fall, int Year) term, bool freshman) =>

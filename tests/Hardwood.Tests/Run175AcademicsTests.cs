@@ -87,8 +87,7 @@ public class Run175AcademicsTests
             var term = Academics.TermOf(s.Today)!.Value;
             // Make two players poor students: one we leave alone, one we put in study hall.
             var ordered = t.Roster.OrderByDescending(p => p.CurrentAbility).ToList();
-            var lazy = ordered[1];
-            lazy.Hidden.Professionalism = 1;
+            var lazy = ordered.Skip(1).First(p => { int keep = p.Hidden.Professionalism; p.Hidden.Professionalism = 1; bool f = s.AcademicOutlook(p)!.Value.Standing == Academics.Standing.Failing; if (!f) p.Hidden.Professionalism = keep; return f; });
             Assert.Equal(Academics.Standing.Failing, s.AcademicOutlook(lazy)!.Value.Standing);
             // One who would fail without help but is only "at risk": study hall gets him through.
             Player? saved = null;
@@ -153,6 +152,28 @@ public class Run175AcademicsTests
             Assert.False(lazyBack.IsAvailable(back.Today));
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void Only_the_program_you_coach_keeps_an_academic_list()
+    {
+        // Review: a program you've left (now the computer's) must not keep sitting a player out for his grades.
+        var s = Career("Providence", 77);
+        var c = s.World.College!;
+        var other = c.Programs.First(t => t.Id != s.HumanTeam.Id && t.Roster.Count > 0);
+        var p = other.Roster[0];
+        other.Money.Program.Ineligible[p.Id] = new DateOnly(2027, 2, 14);
+        other.Money.Program.StudyHall.Add(p.Id);
+        s.SyncAcademics();
+        Assert.Empty(other.Money.Program.Ineligible);
+        Assert.Empty(other.Money.Program.StudyHall);
+        Assert.Null(p.IneligibleUntil);
+        Assert.True(p.IsAvailable(new DateOnly(2027, 1, 10)) || p.IsHurt(new DateOnly(2027, 1, 10)));
+        // Your own program's list is applied.
+        var mine = s.HumanTeam.Roster[0];
+        s.HumanTeam.Money.Program.Ineligible[mine.Id] = new DateOnly(2027, 2, 14);
+        s.SyncAcademics();
+        Assert.Equal(new DateOnly(2027, 2, 14), mine.IneligibleUntil);
     }
 
     [Fact]

@@ -160,7 +160,7 @@ public sealed partial class TeamViewModel : PageViewModel
             });
         }
 
-        int injured = t.Roster.Count(p => !p.IsAvailable(today));
+        int injured = t.Roster.Count(p => p.IsHurt(today));
         RosterNote = $"{t.Roster.Count} players, most minutes first" + (injured > 0 ? $" · {injured} injured" : "")
             + (IsYours ? "" : " · ability as your scouts believe") + ". Click to flip, double-click to open.";
 

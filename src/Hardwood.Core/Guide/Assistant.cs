@@ -229,7 +229,7 @@ public static class Assistant
             var chart = team.DepthChart;
             if (chart != null)
             {
-                var hurt = chart.Starters.Select(id => team.Roster.FirstOrDefault(p => p.Id == id)).OfType<Player>().Where(p => !p.IsAvailable(today)).ToList();
+                var hurt = chart.Starters.Select(id => team.Roster.FirstOrDefault(p => p.Id == id)).OfType<Player>().Where(p => p.IsHurt(today)).ToList();
                 if (hurt.Count > 0)
                     yield return new($"hurt-{string.Join('.', hurt.Select(p => p.Id))}", 10, $"{Names(hurt)} {(hurt.Count == 1 ? "is" : "are")} injured but still starting",
                         "Pick a healthy starter and move the minutes on the Rotation page, or reset to the automatic rotation.", "Rotation");

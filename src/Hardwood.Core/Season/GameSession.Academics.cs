@@ -81,12 +81,15 @@ public sealed partial class GameSession
 
     /// <summary>Copy the books' ineligible list onto the players (on load and after the grades), and hold the study-hall
     /// hours out of the coaches' week.</summary>
-    internal void SyncAcademics()
+    public void SyncAcademics()
     {
         if (World.College is not { } c) return;
         foreach (var t in c.Programs)
         {
             var b = t.Money.Program;
+            // Only the program you coach has academics (review): a program you've left, or any program while you're out of
+            // work, drops its list, so the computer never plays without a player for his grades.
+            if (!HasAcademics || t != HumanTeam) { b.Ineligible.Clear(); b.StudyHall.Clear(); }
             foreach (var p in t.Roster) p.IneligibleUntil = b.Ineligible.TryGetValue(p.Id, out var until) ? until : null;
         }
         c.HoursHeld = HasAcademics ? AcademicBooks(HumanTeam).StudyHall.Count(id => HumanTeam.Roster.Any(p => p.Id == id)) * Academics.StudyHallHours : 0;
@@ -120,7 +123,7 @@ public sealed partial class GameSession
         Post($"Midterm grades: {flagged.Count} player{(flagged.Count == 1 ? "" : "s")} at risk of being ineligible",
             $"The academic advisers' midterm report for the {name} term: " + string.Join("; ", flagged.Select(Line)) + ". "
             + $"A player under {Academics.PassMark:0.0} when the grades come out on {due:MMM d} sits out until {back:MMM d}."
-            + $"\n\nStudy hall lifts a player's grades by {Academics.StudyHallLift:0.0} (enough for anyone at risk) and takes {Academics.StudyHallHours} of the coaches' recruiting hours a week. "
+            + $"\n\nStudy hall lifts a player's grades by {Academics.StudyHallLift:0.0} (enough for anyone at risk, though not always for a player already failing) and takes {Academics.StudyHallHours} of the coaches' recruiting hours a week. "
             + "Put players in it on the Board page, where the academic-support center can also be built with booster money.", "Board");
     }
 

@@ -469,7 +469,7 @@ public sealed partial class BoardViewModel : PageViewModel
             ? (b.LastTerm != "" ? $"Last term ({b.LastTerm}): team average {(b.LastGrades.Count > 0 ? b.LastGrades.Values.Average() : 0):0.00}. " : "") + "Classes start again in the fall; the midterm report comes out on Nov 20."
             : risk == 0 ? $"Everyone is on track to stay eligible this term (the mark is {Hardwood.Core.College.Academics.PassMark:0.0}). The lowest projections are listed."
             : $"{risk} player{(risk == 1 ? " is" : "s are")} at risk: under {Hardwood.Core.College.Academics.PassMark:0.0} at the grades, a player sits out " + (term.Value.Fall ? "until mid-February." : "until December.")
-              + $" Study hall (+{Hardwood.Core.College.Academics.StudyHallLift:0.0}) gets anyone at risk through.";
+              + $" Study hall (+{Hardwood.Core.College.Academics.StudyHallLift:0.0}) gets anyone at risk through; a failing player may need the academic center too.";
         if (Hardwood.Core.College.Academics.CenterBlocked(b) is { } why && b.AcademicCenter >= Hardwood.Core.College.Academics.MaxCenter)
             (BuildCenterText, CanBuildCenter, BuildCenterTip) = ("Academic center: top level", false, why);
         else
