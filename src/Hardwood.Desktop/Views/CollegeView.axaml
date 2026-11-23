@@ -452,6 +452,28 @@
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding TrailNote}" Classes="muted" TextWrapping="Wrap"/>
             <c:StatStrip ItemsSource="{Binding TrailChips}" Accent="{DynamicResource HwAccent}"/>
+            <!-- Run 164 (critic review #21 item 5): the first week on the trail in three steps; gone once all three are done. -->
+            <Border x:Name="TrailGuidePanel" Classes="panel" IsVisible="{Binding HasTrailGuide}">
+              <StackPanel Spacing="6">
+                <TextBlock x:Name="TrailGuideHeaderText" Text="{Binding TrailGuideHeader}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <ItemsControl x:Name="TrailGuideSteps" ItemsSource="{Binding TrailGuide}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GuideStepRow">
+                      <Grid ColumnDefinitions="Auto,*" Margin="0,0,12,0" Opacity="{Binding Faded}">
+                        <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource HwAccent}" VerticalAlignment="Top" Margin="0,0,8,0">
+                          <TextBlock Text="{Binding Mark}" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                          <TextBlock Text="{Binding How}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
             <WrapPanel>
               <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding TrailClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding TrailViews}" SelectedItem="{Binding TrailView}" MinWidth="170" Margin="0,0,8,4"/>
@@ -482,7 +504,7 @@
                               <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Spacing="1">
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
                                 <TextBlock Text="{Binding CardLine}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding CaresText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HwAccent}" IsVisible="{Binding HasCares}" TextTrimming="CharacterEllipsis" ToolTip.Tip="What he weighs most when he picks a school (your scouts found out)"/>
+                                <TextBlock Text="{Binding CaresText}" FontSize="11" FontWeight="SemiBold" Classes="muted" IsVisible="{Binding HasCares}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding CaresTip}"/>
                                 <TextBlock FontSize="15" ToolTip.Tip="{Binding StarTip}"><Run Text="{Binding StarsOn}" Foreground="#FFC83D"/><Run Text="{Binding StarsOff}" Foreground="#3A4452"/></TextBlock>
                               </StackPanel>
                             </Grid>
@@ -500,6 +522,7 @@
                                 <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis" MaxWidth="150"/>
                               </Border>
                             </Grid>
+                            <TextBlock Text="{Binding NoReason}" FontSize="11" Foreground="#E0A030" IsVisible="{Binding HasNoReason}" TextWrapping="Wrap" MaxLines="2" ToolTip.Tip="Why he would turn you down today. The prospect panel breaks it down factor by factor."/>
                           </StackPanel>
                         </Border>
                       </Button>
@@ -531,7 +554,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                   </DataGridTemplateColumn>
                   <DataGridTextColumn Header="Leaning" Binding="{Binding Leaning}" Width="150"/>
-                  <DataGridTextColumn Header="Cares about" Binding="{Binding Cares}" Width="110"/>
+                  <DataGridTextColumn Header="Cares about" Binding="{Binding CaresCell}" Width="110"/>
                   <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*" MinWidth="130"/>
                 </DataGrid.Columns>
               </DataGrid>

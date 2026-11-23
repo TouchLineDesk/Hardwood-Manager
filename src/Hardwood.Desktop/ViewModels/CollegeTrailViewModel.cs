@@ -27,8 +27,17 @@ public sealed partial class TrailRow : ObservableObject
     public string HighSchool { get; init; } = "";
     /// <summary>K15a (run 146): what he cares about most, once your staff has scouted him ("" before).</summary>
     public string Cares { get; init; } = "";
-    public bool HasCares => Cares.Length > 0;
-    public string CaresText => HasCares ? $"Cares about {Cares}" : "";
+    /// <summary>Run 164: before your staff scouts him, the recruiting services' word on what he cares about ("" once scouted).</summary>
+    public string Word { get; init; } = "";
+    public bool HasCares => Cares.Length > 0 || Word.Length > 0;
+    public string CaresText => Cares.Length > 0 ? $"Cares about {Cares}" : Word.Length > 0 ? $"Word is: {Word}?" : "";
+    public string CaresTip => Cares.Length > 0 ? "What he weighs most when he picks a school (your scouts found out)"
+        : $"The recruiting services' word on what he weighs most. It's right about {CollegeWorld.WordAccuracy * 10:0} times in 10: scout him to be sure.";
+    /// <summary>The table's "Cares about" column: confirmed, or the word with a question mark.</summary>
+    public string CaresCell => Cares.Length > 0 ? Cares : Word.Length > 0 ? $"{Word}?" : "";
+    /// <summary>Run 164 (critic review #21 item 5): why he'd say no to you today, on his card ("" when he wouldn't).</summary>
+    public string NoReason { get; init; } = "";
+    public bool HasNoReason => NoReason.Length > 0;
     [ObservableProperty] private bool _picked;
     public string RankText => $"#{Rank}";
     public string StarsOn => CollegeCards.On(StarCount);
@@ -40,6 +49,12 @@ public sealed partial class TrailRow : ObservableObject
     public string LeaningText => LeaningTeam == null ? "No leader yet" : $"Leans {Leaning}";
     public Avalonia.Media.IBrush StatusBrush => CollegeCards.StatusBrush(Status);
     public Avalonia.Media.IBrush InterestBrush => CollegeCards.InterestBrush(Interest);
+}
+
+/// <summary>Run 164: one line of the first-week guide.</summary>
+public sealed record GuideStepRow(string Mark, string Title, string How, bool Done)
+{
+    public double Faded => Done ? 0.6 : 1;
 }
 
 /// <summary>The recruiting trail on the College page, for a college coach (slice C3, decisions #173-#178).</summary>
@@ -141,6 +156,8 @@ public sealed partial class CollegeViewModel
                 _ => x.r.CommittedTo == null,
             }).OrderBy(x => x.r.Rank).Take(150),
         };
+        var ranks = c.PrestigeRanks();
+        int n = 0;
         foreach (var (p, r) in rows)
         {
             double interest = CollegeWorld.InterestIn(r, me);
@@ -150,6 +167,8 @@ public sealed partial class CollegeViewModel
                 Player = p, Rank = r.Rank, Stars = r.Stars > 0 ? new string('★', r.Stars) : "–", State = r.State,
                 StarCount = r.Stars, LeaningTeam = lean, HighSchool = r.HighSchool,
                 Cares = r.CourtedBy == me.Id && r.Scouted ? CollegeWorld.PriorityShort(CollegeWorld.PriorityOf(p)) : "",
+                Word = r.CourtedBy == me.Id && r.Scouted ? "" : CollegeWorld.PriorityShort(CollegeWorld.WordOf(p)),
+                NoReason = n++ < CollegeCards.CardCount || p == keep ? c.SaysNo(me, p, r, board, lean, ranks) : "",
                 Interest = interest, InterestText = $"{interest:0}",
                 Leaning = lean == null ? "-" : lean == me ? "You" : lean.City,
                 Status = r.CommittedTo is { } to ? (CollegeWorld.Signed(r, Session.Today) ? (to == me.Id ? "Signed with you" : $"Signed: {c.Program(to)!.City}")
@@ -184,7 +203,9 @@ public sealed partial class CollegeViewModel
             : open == 0 ? $"No scholarships left in the Class of {year}: next year's seniors can be recruited after signing day ({CollegeWorld.SigningDay(year):MMM d}). "
             // CS1 (run 125): the calendar for the class you're chasing.
             : $"{open} scholarship{(open == 1 ? "" : "s")} open in the Class of {year}: seniors commit through the season, many in the November early period, and the rest sign on signing day ({CollegeWorld.SigningDay(year):MMM d}). ";
-        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year) + "A prospect can only commit to you once you've offered.";
+        TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year)
+                    + PlacesNote(c.OffersOut(me, year), c.OfferLimit(me, year), open) + "A prospect can only commit to you once you've offered.";
+        FillGuide(c, me, year);
         foreach (var r in TrailRows.Take(CollegeCards.CardCount)) TrailCards.Add(r);
         if (keep != null && !TrailCards.Any(r => r.Player == keep) && TrailRows.FirstOrDefault(r => r.Player == keep) is { } further) TrailCards.Add(further);
         TrailEmpty = TrailRows.Count > 0 ? ""
@@ -200,8 +221,26 @@ public sealed partial class CollegeViewModel
         TrailCardNote = TrailView == LeaningElsewhere ? OffersLeaningNote(c, me, year, board).Trim()
             : TrailRows.Count <= CollegeCards.CardCount ? $"{TrailRows.Count} prospects in \"{TrailView}\". Pick a card to recruit him."
             : $"The first {CollegeCards.CardCount} of {TrailRows.Count} in \"{TrailView}\". Pick a card to recruit him; the full table lists them all.";
-        SelectedTrail = keep == null ? null : TrailRows.FirstOrDefault(x => x.Player == keep);
+        // H178 (run 164): the detail pane opens on the first card instead of an empty column.
+        SelectedTrail = keep == null ? TrailCards.FirstOrDefault() : TrailRows.FirstOrDefault(x => x.Player == keep) ?? TrailCards.FirstOrDefault();
         FillTrailPanel();
+    }
+
+    /// <summary>Run 164: the first-week guide's steps (scout, offer, visit) for the class on screen; empty once all three are done.</summary>
+    [ObservableProperty] private List<GuideStepRow> _trailGuide = new();
+    [ObservableProperty] private string _trailGuideHeader = "";
+    public bool HasTrailGuide => TrailGuide.Count > 0;
+    partial void OnTrailGuideChanged(List<GuideStepRow> value) => OnPropertyChanged(nameof(HasTrailGuide));
+
+    private void FillGuide(CollegeWorld c, Team me, int year)
+    {
+        var steps = c.FirstWeekGuide(me, year, Session.Today);
+        if (steps.Count == 0 || steps.All(s => s.Done)) { TrailGuide = new(); TrailGuideHeader = ""; return; }
+        int done = steps.Count(s => s.Done);
+        var top = TrailView == "Best fits" ? TrailRows.FirstOrDefault() : null;
+        TrailGuideHeader = $"Your first week on the trail · {done} of {steps.Count} done"
+            + (top != null && done == 0 ? $" · start with No. {top.Rank} {top.Name}, your best fit" : "");
+        TrailGuide = steps.Select((s, i) => new GuideStepRow(s.Done ? "✓" : $"{i + 1}", s.Title, s.How, s.Done)).ToList();
     }
 
     /// <summary>
@@ -248,7 +287,8 @@ public sealed partial class CollegeViewModel
         {
             new("Your interest", $"{interest:0}", ours ? $"{r.Calls} call{(r.Calls == 1 ? "" : "s")}{(r.HomeVisit ? " · home visit" : "")}{(r.OfficialVisit ? " · official visit" : "")}" : "not recruited yet", interest >= 50 ? "good" : interest > 0 ? "" : "warn"),
             new("Leaning", lean == null ? "-" : lean == me ? "You" : lean.City, r.CommittedTo != null ? "committed" : "if he chose today", lean == me ? "good" : "warn"),
-            new("Cares most about", ours && r.Scouted ? CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p)) : "?", ours && r.Scouted ? "it weighs extra with him" : "scout him to find out", "info"),
+            new("Cares most about", ours && r.Scouted ? CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p)) : $"{CollegeWorld.PriorityShort(CollegeWorld.WordOf(p))}?",
+                ours && r.Scouted ? "it weighs extra with him" : $"the word (right {CollegeWorld.WordAccuracy * 10:0} in 10) · scout to be sure", "info"),
             new("Your staff project", ours && r.Scouted ? $"{c.StaffProjection(p, r)}" : "?", ours && r.Scouted ? "ability at 22" : $"services: {r.Projection}", ""),
             new("Your pitch", ours && r.Pitch is { } pk ? CollegeWorld.PitchName(pk) : "None",
                 !(ours && r.Pitch != null) ? "pick one below" : !r.Scouted ? "scout him to know if it fits" : CollegeWorld.PitchMatches(p, r) == true ? $"fits · contacts land {(CollegeWorld.PitchMatch - 1) * 100:0}% better" : $"misses · contacts land {(1 - CollegeWorld.PitchMiss) * 100:0}% worse",
@@ -273,7 +313,7 @@ public sealed partial class CollegeViewModel
         _pitchLoading = true; TrailPitch = CollegeWorld.PitchName(ours ? r.Pitch : null); _pitchLoading = false;
         TrailPitchNote = "What your calls and visits sell him. " + (ours && r.Scouted
             ? $"He cares most about {CollegeWorld.PriorityText(CollegeWorld.PriorityOf(p))}: the right pitch lands {(CollegeWorld.PitchMatch - 1) * 100:0}% better, a wrong one {(1 - CollegeWorld.PitchMiss) * 100:0}% worse."
-            : "Scout him first to learn what he cares about; a wrong pitch lands worse than none.");
+            : $"The word is he cares about {CollegeWorld.PriorityText(CollegeWorld.WordOf(p))}, and it's right about {CollegeWorld.WordAccuracy * 10:0} times in 10. Scout him to be sure: a wrong pitch lands worse than none.");
     }
 
     private void AfterTrail(string reply)
@@ -304,6 +344,13 @@ public sealed partial class CollegeViewModel
         if (limit == 0) return new("Offers out", $"{offersOut} out", "no scholarships open", "warn");
         return new("Offers out", $"{offersOut} of {limit}", "over: no new offers yet", "warn");
     }
+
+    /// <summary>
+    /// H178 (run 164): more offers out than places (but within the limit): "5 offers out for 2 places: the first 2 to
+    /// commit take them, and the rest can't commit to you once the class is full."
+    /// </summary>
+    public static string PlacesNote(int offersOut, int limit, int open) => open <= 0 || offersOut <= open || offersOut > limit ? ""
+        : $"{offersOut} offers out for {open} place{(open == 1 ? "" : "s")}: the first {(open == 1 ? "one" : open.ToString())} to commit take{(open == 1 ? "s it" : " them")}, and the rest can't commit to you once the class is full. ";
 
     /// <summary>H22: why the offers out can pass the limit, in the trail's note.</summary>
     public static string OverOffersNote(int offersOut, int limit, int open, int year) => offersOut <= limit ? ""
