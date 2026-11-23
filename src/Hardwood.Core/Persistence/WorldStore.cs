@@ -29,7 +29,8 @@ public static class WorldStore
         if (world.College is { } col)
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college', $v)", ("$v", SaveFile.ToJson(new CollegeState(
                 col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
-                    col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic), col.Tradition.GetValueOrDefault(t.Id))).ToList(),
+                    col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic), col.Tradition.GetValueOrDefault(t.Id),
+                    FormText(col.Form.GetValueOrDefault(t.Id)))).ToList(),
                 col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards, col.RealAlumniSeeded, col.Pledges, col.BrokenWordUntil))));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
             ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));
@@ -49,9 +50,16 @@ public static class WorldStore
         tx.Commit();
     }
 
+    /// <summary>CS7 part 2b: a program's season marks as text ("1.5;-0.25"), kept as a string so the record compares by value
+    /// (run 151's lesson); invariant culture, round-trip.</summary>
+    public static string? FormText(List<double>? marks) =>
+        marks is { Count: > 0 } ? string.Join(";", marks.Select(m => m.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) : null;
+    public static List<double> ParseForm(string? text) =>
+        string.IsNullOrEmpty(text) ? new() : text.Split(';').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToList();
+
     /// <summary>Rebuild the world from a save, or null if the save predates it (the session then generates one).</summary>
     private sealed record ProgramState(int Id, string City, string Name, string Abbr, string Division, int Capacity, string Primary, string Secondary, int Logo,
-                                       string Conference, double Prestige, string Tactic, double Tradition = 0);
+                                       string Conference, double Prestige, string Tactic, double Tradition = 0, string? Form = null);
     /// <summary>College in world_meta. The recruiting fields (decision #162, format 12) are missing from older saves,
     /// which load with the old 30-man rosters from 14.</summary>
     private sealed record CollegeState(List<ProgramState> Programs, Dictionary<int, int> Destined, Hardwood.Core.College.CollegeSeason Season,
@@ -156,6 +164,7 @@ public static class WorldStore
                     col.ConferenceOf[t.Id] = ps.Conference;
                     col.Prestige[t.Id] = ps.Prestige;
                     if (ps.Tradition > 0) col.Tradition[t.Id] = ps.Tradition; // R3; zero in fictional worlds and older saves
+                    if (ParseForm(ps.Form) is { Count: > 0 } form) col.Form[t.Id] = form; // CS7 part 2b (run 173); missing before v0.161.0
                 }
                 foreach (var (k, v) in cs.Destined ?? new()) col.Destined[k] = v;
                 col.History.AddRange(cs.History ?? new());
