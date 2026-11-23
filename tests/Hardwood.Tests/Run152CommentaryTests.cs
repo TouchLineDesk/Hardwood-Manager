@@ -142,7 +142,8 @@ public class Run152CommentaryTests
         Assert.True(run.Big);
         Assert.Contains(c.Actions, a => a.Tag == "call");
         // The bring-up comes after both.
-        Assert.True(c.Lines.First(l => l.Text.Contains("brings it up") || l.Text.Contains("pushes it")).T >= run.T + 1.9);
+        // (Run 174, K25: the bring-up is said three ways, by the possession's number.)
+        Assert.True(c.Lines.First(l => l.Text.Contains("brings it up") || l.Text.Contains("walks it up") || l.Text.Contains("in the half court") || l.Text.Contains("pushes it")).T >= run.T + 1.9);
     }
 
     [Avalonia.Headless.XUnit.AvaloniaFact]
