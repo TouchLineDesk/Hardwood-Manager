@@ -182,6 +182,13 @@ public sealed class GameSimulator
 
         public void Finish() { while (Step()) { } }
 
+        /// <summary>#1064 (run 168): call a timeout at the next dead ball. False when none are left or the game is over.</summary>
+        public bool RequestTimeout(Team team) => _game.RequestTimeout(team == Result.Home.Team);
+        /// <summary>True while a requested timeout waits for the next dead ball. Reads state only.</summary>
+        public bool TimeoutPending(Team team) => _game.TimeoutPending(team == Result.Home.Team);
+        /// <summary>Timeouts a side has left right now. Reads state only.</summary>
+        public int TimeoutsLeft(bool home) => _game.TimeoutsLeft(home);
+
         public void RequestLineup(Team team, IEnumerable<Player> five) => _game.RequestLineup(team == Result.Home.Team, five);
         /// <summary>True while a requested five waits for the next dead ball (H55, run 86). Reads state only.</summary>
         public bool LineupPending(Team team) => _game.LineupPending(team == Result.Home.Team);
@@ -231,6 +238,14 @@ public sealed class GameSimulator
         public double ChemTurnover { get; }
         public int TeamFouls { get; set; }
         public int Possessions { get; set; }
+        /// <summary>Timeouts (#1064, run 168): how many are left, the other side's unanswered points, a drawn-up play waiting
+        /// for this side's next possession, the last period this bench called one for the last play, and a coach's request.</summary>
+        public int TimeoutsLeft { get; set; }
+        public int RunAgainst { get; set; }
+        public bool AfterTimeout { get; set; }
+        public int LastPlayCallPeriod { get; set; }
+        public double LastLateCallClock { get; set; } = double.MaxValue;
+        public bool TimeoutRequested { get; set; }
         /// <summary>While the game clock (elapsed seconds) is below this, the coach's hand-picked five stays out there barring fouls.</summary>
         public double ManualHoldUntil { get; set; } = -1;
         /// <summary>The tactics in force this possession (the team's, or its late-game preset).</summary>
@@ -336,6 +351,7 @@ public sealed class GameSimulator
         /// <summary>The commentary (#614): null when the game keeps no log, so a quick game builds no strings at all.</summary>
         private readonly PlayByPlay? _pbp;
         private readonly List<int> _homeByPeriod = new(), _awayByPeriod = new();
+        private readonly TimeoutRules _to;
 
         private int _period;
         private double _clock;        // seconds remaining in period
@@ -346,6 +362,8 @@ public sealed class GameSimulator
         public GameState(Side home, Side away, Rules rules, Rng rng, EngineConfig cfg, GameResult result, bool log)
         {
             _home = home; _away = away; _rules = rules; _rng = rng; _cfg = cfg; _result = result; _log = log;
+            _to = TimeoutRules.For(rules);
+            foreach (var side in new[] { home, away }) { side.TimeoutsLeft = _to.AtTip; side.Box.Timeouts = _to.AtTip; }
             if (log) _pbp = new PlayByPlay(result, rules);
             _offense = home; _defense = away;
             result.Periods = rules.Periods; result.PeriodSeconds = rules.MinutesPerPeriod * 60; result.OvertimeSeconds = cfg.OvertimeMinutes * 60;
@@ -389,6 +407,7 @@ public sealed class GameSimulator
 
             ApplyLineupRequest(_home, ref _homeRequest);
             ApplyLineupRequest(_away, ref _awayRequest);
+            Timeouts();
 
             RunPossession();
             (_offense, _defense) = (_defense, _offense);
@@ -418,6 +437,13 @@ public sealed class GameSimulator
             // K11: in college, team fouls carry from the second half into overtime.
             if (!(_period > _rules.Periods && _rules.FoulsCarryIntoOvertime)) { _home.TeamFouls = 0; _away.TeamFouls = 0; }
             _periodHomeStart = Score(_home); _periodAwayStart = Score(_away);
+            foreach (var side in new[] { _home, _away })
+            {
+                side.TimeoutsLeft = _to.AtPeriodStart(_period, _rules.Periods, side.TimeoutsLeft);
+                side.Box.Timeouts = side.TimeoutsLeft;
+                side.TimeoutRequested &= side.TimeoutsLeft > 0;
+                side.LastLateCallClock = double.MaxValue;
+            }
 
             // Alternate opening possession by period (jump ball simplified).
             if (_period % 2 == 1) { _offense = _home; _defense = _away; } else { _offense = _away; _defense = _home; }
@@ -489,6 +515,90 @@ public sealed class GameSimulator
         public (OffensiveSystem system, DefensiveScheme scheme)? HalftimeRead(bool home) =>
             home ? Read(_home, _away) : Read(_away, _home);
 
+        /// <summary>#1064: the coach watching live asks for a timeout at the next dead ball. False with none left.</summary>
+        public bool RequestTimeout(bool home)
+        {
+            var side = home ? _home : _away;
+            if (Complete || side.TimeoutsLeft <= 0) return false;
+            side.TimeoutRequested = true;
+            return true;
+        }
+
+        public bool TimeoutPending(bool home) => (home ? _home : _away).TimeoutRequested;
+        public int TimeoutsLeft(bool home) => (home ? _home : _away).TimeoutsLeft;
+
+        /// <summary>
+        /// #1064 (run 168): timeouts at the dead ball before a possession. A coach's request first; otherwise a bench calls
+        /// one to stop a run of <see cref="TimeoutRules.RunToStop"/> unanswered points (keeping its late-game reserve until
+        /// the last 4 minutes), or, with the ball in the last shot-clock of a close game it trails or is tied in, to set up
+        /// the last play (once a period). At most one a dead ball. Rule-based: no random numbers are drawn.
+        /// </summary>
+        private void Timeouts()
+        {
+            if (_transition) return;   // a live ball after a steal: no dead ball to call it in
+            var off = _offense; var def = _defense;
+            foreach (var side in new[] { off, def })
+                if (side.TimeoutRequested)
+                {
+                    side.TimeoutRequested = false;
+                    if (side.TimeoutsLeft > 0) { CallTimeout(side, TimeoutReason.Coach, 0); return; }
+                }
+            bool lateWindow = _period > _rules.Periods || (_period == _rules.Periods && _clock <= 240);
+            int full = _period <= _rules.Periods ? _rules.MinutesPerPeriod * 60 : _cfg.OvertimeMinutes * 60;
+            if (_clock >= full) return;   // a period just opened: the break was the timeout
+            int diff = Score(off) - Score(def);
+            if (_period >= _rules.Periods && _clock <= _rules.ShotClockSeconds + 2 && _clock > 1 && diff is >= -3 and <= 0
+                && off.TimeoutsLeft > 0 && off.LastPlayCallPeriod != _period)
+            {
+                off.LastPlayCallPeriod = _period;
+                CallTimeout(off, TimeoutReason.LastPlay, 0);
+                return;
+            }
+            // The last two minutes: a side behind by one to six with the ball draws up a play (at most one every 30 s of clock).
+            if (_period >= _rules.Periods && _clock <= 120 && diff is >= -6 and <= -1 && off.TimeoutsLeft > 0 && off.LastLateCallClock - _clock >= 30)
+            {
+                off.LastLateCallClock = _clock;
+                CallTimeout(off, TimeoutReason.LatePlay, 0);
+                return;
+            }
+            foreach (var side in new[] { off, def })
+            {
+                int spare = side.TimeoutsLeft - (lateWindow ? 0 : _to.Reserve);
+                if (side.RunAgainst >= TimeoutRules.RunToStop && spare > 0)
+                {
+                    CallTimeout(side, TimeoutReason.StopRun, side.RunAgainst);
+                    return;
+                }
+            }
+            // A breather: the five on the floor are worn down (below the sub-out line on average) and the bench can spare one.
+            foreach (var side in new[] { off, def })
+            {
+                int spare = side.TimeoutsLeft - (lateWindow ? 0 : _to.Reserve);
+                if (spare > 0 && side.OnCourt.Average(p => side.Energy[p]) < _cfg.SubOutEnergy + TimeoutRules.BreatherMargin)
+                {
+                    CallTimeout(side, TimeoutReason.Breather, 0);
+                    return;
+                }
+            }
+        }
+
+        private void CallTimeout(Side side, TimeoutReason reason, int run)
+        {
+            side.TimeoutsLeft--; side.Box.Timeouts = side.TimeoutsLeft; side.Box.TimeoutsUsed++;
+            side.RunAgainst = 0; side.AfterTimeout = true;
+            // Everyone on the floor sits for the timeout's length (the bench's recovery rate); the clock doesn't move.
+            double possFraction = _to.Seconds / 14.0;
+            foreach (var s in new[] { _home, _away })
+            foreach (var p in s.OnCourt)
+            {
+                double rec = _cfg.EnergyRecoverPerPossession * possFraction * (0.7 + p.Attributes[Attr.NaturalFitness] / 20.0);
+                s.Energy[p] = Math.Min(1.0, s.Energy[p] + rec);
+            }
+            var call = new TimeoutCall(_period, _clock, side.IsHome, reason, run, side.TimeoutsLeft, Score(_home), Score(_away));
+            _result.Timeouts.Add(call);
+            Log($"Timeout, {side.Team.Abbreviation} ({call.Why}; {call.LeftText})");
+        }
+
         /// <summary>Ask for a specific five at the next dead ball. Players who are hurt, fouled out or not on the roster are ignored.</summary>
         public void RequestLineup(bool home, IEnumerable<Player> five)
         {
@@ -535,6 +645,8 @@ public sealed class GameSimulator
             SetTactics(off); SetTactics(def);
             _offStar = Star(off);
             _fitLogit = FitFor(off, def) * (off.Team.Coach?.FitMultiplier ?? 1);
+            // #1064: the play drawn up in a timeout this side called.
+            if (off.AfterTimeout) { _fitLogit += TimeoutRules.AfterTimeoutLogit; off.AfterTimeout = false; }
             // Fourth-quarter game flow: a team well ahead eases off (rests starters, runs clock, loses focus) and the
             // team behind presses; leads shrink. Without it overtime came in ~3% of games, half the NBA's rate (critic review #2).
             // The last quarter of the game's length: a whole fourth quarter, but only the last 10 minutes of a college
@@ -648,6 +760,7 @@ public sealed class GameSimulator
 
             // Plus/minus for everyone on court
             int delta = Score(off) - pointsBefore;
+            if (delta > 0) { def.RunAgainst += delta; off.RunAgainst = 0; }
             if (delta != 0)
             {
                 foreach (var p in off.OnCourt) off.Line(p).PlusMinus += delta;

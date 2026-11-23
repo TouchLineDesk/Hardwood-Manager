@@ -49,6 +49,9 @@
             <TextBlock Grid.Column="3" Text="{Binding HomeName}" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Right"/>
           </Grid>
         </Border>
+        <!-- #1064 (run 168): timeouts left, away on the left and home on the right, under the clock. -->
+        <TextBlock x:Name="TimeoutsText" Grid.Row="1" Grid.Column="1" Text="{Binding TimeoutsLine}" FontSize="11.5" FontWeight="Bold" Foreground="#AAB3C2"
+                   HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,5,0,0" ToolTip.Tip="Timeouts left: the away side's, then the home side's"/>
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,5,0,0" Spacing="3">
           <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
             <TextBlock Text="{Binding AwayFouls}" FontSize="11.5" FontWeight="Bold" Foreground="#AAB3C2" VerticalAlignment="Center"/>
@@ -109,6 +112,11 @@
       <StackPanel Spacing="4">
         <Button x:Name="ShoutsToggle" Classes="tab" Command="{Binding ToggleShoutsCommand}" HorizontalAlignment="Stretch" ToolTip.Tip="Show or fold the shouts">
           <TextBlock Text="{Binding ShoutsHeader}" FontWeight="SemiBold"/>
+        </Button>
+        <!-- #1064 (run 168): call a timeout at the next dead ball. -->
+        <Button x:Name="TimeoutButton" Classes="speed" Command="{Binding CallTimeoutCommand}" IsEnabled="{Binding CanCallTimeout}"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="4,3" ToolTip.Tip="{Binding TimeoutTip}">
+          <TextBlock Text="{Binding TimeoutButtonText}" FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"/>
         </Button>
         <ItemsControl x:Name="ShoutButtons" ItemsSource="{Binding ShoutRows}" IsVisible="{Binding ShoutsOpen}">
           <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>

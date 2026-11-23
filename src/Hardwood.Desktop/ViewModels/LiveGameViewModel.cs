@@ -305,6 +305,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public string BugClock => _live.Complete || BetweenPeriods ? "" : _live.Period == 0 ? $"{_live.MinutesPerPeriod}:00" : _live.ClockText;
     public string AwayFouls => $"FOULS {_live.AwayTeamFouls}";
     public string HomeFouls => $"FOULS {_live.HomeTeamFouls}";
+    /// <summary>#1064 (run 168): timeouts left, under the clock between the two sides ("4 · TOL · 3", away first).</summary>
+    public string TimeoutsLine => $"{_live.TimeoutsLeft(false)} · TOL · {_live.TimeoutsLeft(true)}";
     /// <summary>"BONUS" (a one-and-one in college) or "DBL BONUS" beside the side that shoots free throws on a common foul.</summary>
     public static string BonusLabel(int shots, bool oneAndOne) => shots == 0 ? "" : oneAndOne && shots == 1 ? "BONUS" : oneAndOne ? "DBL BONUS" : "BONUS";
     public string AwayBonus => _live.Complete ? "" : BonusLabel(_live.BonusFor(homeShoots: false), _live.OneAndOne);
@@ -359,7 +361,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     }
     private static readonly string[] BoardProps = { nameof(BoardTitle), nameof(HomeOffence), nameof(AwayTag), nameof(HomeTag), nameof(AwayOnOffence), nameof(HomeOnOffence), nameof(AwayTagOpacity), nameof(HomeTagOpacity) };
 
-    private static readonly string[] BugProps = { nameof(BugPeriod), nameof(BugClock), nameof(AwayFouls), nameof(HomeFouls), nameof(AwayBonus), nameof(HomeBonus),
+    private static readonly string[] BugProps = { nameof(BugPeriod), nameof(BugClock), nameof(AwayFouls), nameof(HomeFouls), nameof(TimeoutsLine), nameof(AwayBonus), nameof(HomeBonus),
         nameof(AwayInBonus), nameof(HomeInBonus), nameof(AwayRank), nameof(HomeRank), nameof(AwayRanked), nameof(HomeRanked) };
 
     partial void OnRunningChanged(bool value) { UpdateBed(); OnPropertyChanged(nameof(MotionMs)); OnPropertyChanged(nameof(PlayPauseText)); OnPropertyChanged(nameof(PlayPauseIcon)); OnPropertyChanged(nameof(CanStep)); }
@@ -585,6 +587,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
             : BetweenPeriods ? ((_live.Period - 1) * 2 == _live.Result.Periods ? "HALFTIME" : "BREAK") : null;
         Clock = breakText ?? $"{_live.PeriodText}  {_live.ClockText}";
         foreach (var n in BugProps) OnPropertyChanged(n);   // M1: the score bar on every game reads these
+        OnPropertyChanged(nameof(TimeoutButtonText)); OnPropertyChanged(nameof(CanCallTimeout));
         Shell.Guide.LiveTick();
         var r = _live.Result;
         PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";

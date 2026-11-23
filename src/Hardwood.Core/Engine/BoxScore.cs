@@ -49,7 +49,10 @@ public sealed class TeamBox
     public int[] PointsByPeriod { get; set; } = Array.Empty<int>();
     public int Possessions { get; set; }
     public int TeamFoulsThisPeriod { get; set; }
+    /// <summary>Timeouts left (#1064, run 168: kept up to date by the engine as periods open and timeouts are called).</summary>
     public int Timeouts { get; set; } = 7;
+    /// <summary>Timeouts this side called in the game.</summary>
+    public int TimeoutsUsed { get; set; }
 
     /// <summary>Set when a result is restored from a save without its box score.</summary>
     public int? FixedPoints { get; set; }
@@ -93,6 +96,8 @@ public sealed class GameResult
     public double PregameEdge { get; set; }
     public double MarginSpread { get; set; } = 13;
     public List<(Player player, Injury injury)> Injuries { get; } = new();
+    /// <summary>Every timeout called, in order (#1064, run 168). Not saved.</summary>
+    public List<TimeoutCall> Timeouts { get; } = new();
 
     public TeamBox Winner => Home.Points > Away.Points ? Home : Away;
     public TeamBox Loser => Home.Points > Away.Points ? Away : Home;
