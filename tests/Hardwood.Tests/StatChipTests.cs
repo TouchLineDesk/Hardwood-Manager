@@ -122,7 +122,7 @@ public class StatChipTests
             var sv = (SquadViewModel)vm.CurrentPage!;
             Assert.Equal($"{team.Chemistry:0}", C(sv.Chips, "Chemistry").Value);
             Assert.Equal(team.Roster.Count(p => p.TradeRequested).ToString(), C(sv.Chips, "Trade requests").Value);
-            Assert.Equal(team.Roster.Count(p => !p.TradeRequested && Hardwood.Core.People.PeopleEngine.Mood(p.Morale) is "Unhappy" or "Very unhappy").ToString(), C(sv.Chips, "Unhappy").Value);
+            Assert.Equal(team.Roster.Count(p => !p.TradeRequested && MoodRow.Band(p.Morale) == 0).ToString(), C(sv.Chips, "Unhappy").Value);   // run 168: the cards' lanes (49.6 shows as 50, Content)
             Assert.Equal(team.Roster.Count(p => Hardwood.Core.People.PeopleEngine.Mood(p.Morale) is "Happy" or "Delighted").ToString(), C(sv.Chips, "Happy").Value);
 
             // Box score: the top scorer chip is the game's highest scorer; team chips compare the two sides.
