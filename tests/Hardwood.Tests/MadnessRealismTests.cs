@@ -64,7 +64,8 @@ public class MadnessRealismTests
         Assert.Equal(0, cfg.For(Rules.CollegeNeutral).HomeLogit);
         Assert.Same(cfg, cfg.For(Rules.Nba)); // the pros are untouched
         Assert.Same(cfg, cfg.For(Rules.Fiba));
-        Assert.Equal(Rules.CollegeNeutral, CollegeWorld.RulesFor(new CollegeGame { Event = CollegeWorld.Madness }));
+        Assert.Equal(Rules.CollegeMadness, CollegeWorld.RulesFor(new CollegeGame { Event = CollegeWorld.Madness })); // K21 (run 163)
+        Assert.Equal(Rules.CollegeNeutral, CollegeWorld.RulesFor(new CollegeGame { Event = "Island Classic" }));
         Assert.Equal(Rules.College, CollegeWorld.RulesFor(new CollegeGame { Stage = "Conference" }));
     }
 

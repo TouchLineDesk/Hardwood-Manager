@@ -224,6 +224,8 @@ public sealed class GameSimulator
         public Dictionary<Player, double> TargetSeconds { get; } = new();
         public Dictionary<Player, double> Energy { get; } = new();
         public Dictionary<Player, double> Form { get; } = new();
+        /// <summary>K21 (run 163): this side's team-wide shooting night (0 outside March Madness).</summary>
+        public double TeamForm { get; }
         /// <summary>Team chemistry's effect on shot quality (logit) and turnovers, fixed for the game.</summary>
         public double ChemLogit { get; }
         public double ChemTurnover { get; }
@@ -254,12 +256,15 @@ public sealed class GameSimulator
             var healthy = (date is { } d ? team.Roster.Where(p => p.IsAvailable(d)) : team.Roster).OrderByDescending(p => p.Overall).ToList();
             var available = healthy.Count >= 8 ? healthy : team.Roster.OrderByDescending(p => p.Overall).ToList();
             Dressed.AddRange(available);
+            // K21 (run 163): the team's shooting night (March Madness only). No draw when it's off, so other games keep their stream.
+            double night = cfg.TeamFormSd > 0 ? rng.NextGaussian(0, cfg.TeamFormSd) : 0;
+            TeamForm = night;
             foreach (var p in available)
             {
                 Box.Lines.Add(new PlayerLine { Player = p });
                 Energy[p] = 1.0;
                 double sd = cfg.FormSd * (21 - p.Hidden.Consistency) / 10.0;
-                Form[p] = rng.NextGaussian(0, sd) + (p.Morale - People.PeopleEngine.Neutral) / 40.0 * cfg.MoraleLogit;
+                Form[p] = rng.NextGaussian(0, sd) + (p.Morale - People.PeopleEngine.Neutral) / 40.0 * cfg.MoraleLogit + night;
             }
             ChemLogit = (team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryLogit + (team.Coach?.ShotLogit ?? 0);
             ChemTurnover = -(team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryTurnover;

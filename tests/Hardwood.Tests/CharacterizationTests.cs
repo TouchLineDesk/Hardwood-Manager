@@ -189,7 +189,10 @@ public class CharacterizationTests
         // Run 156 (H159, a full college schedule): re-pinned (was 03E88F9310A12021 since run 147). Every program plays about
         // 30 regular-season games from November 3 and the invitationals are drawn first, so the college world uses different
         // draws on the shared stream. The NBA's schedule and odds are unchanged.
-        Pin("career seed 2026, 30 days, no saves", "2F5E2E304E34C26C", Session(s));
+        // Run 163 (H171, on purpose with K21): re-pinned (was 2F5E2E304E34C26C since run 156). An invited program books one
+        // fewer non-conference game (7 for a 20-game conference), so November's college schedule and its quick-sim draws on the
+        // shared stream move. March's shooting night isn't reached in a month. The NBA's schedule and odds are unchanged.
+        Pin("career seed 2026, 30 days, no saves", "E1C1FAE0F0E5152E", Session(s));
     }
 
     [Fact]

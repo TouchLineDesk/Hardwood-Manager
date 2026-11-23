@@ -664,15 +664,17 @@ public sealed partial class CollegeWorld
 
     /// <summary>H159 (run 156): the regular season a program is scheduled to (non-conference plus conference plus its bracket).</summary>
     public const int TargetRegularSeason = 30;
-    /// <summary>H159: the invitational games an invited program counts on (one to three in a bracket of eight).</summary>
-    public const int InvitationalAllowance = 2;
+    /// <summary>H159: the invitational games an invited program counts on (one to three in a bracket of eight). H171 (run 163):
+    /// 3, the most it can play, so a deep run (and a top-30 program's December showcase) no longer pushes a champion to 42
+    /// games: a 20-game conference's invited program now books 7 non-conference games and plays 30-31 before March.</summary>
+    public const int InvitationalAllowance = 3;
     /// <summary>H159: how much a program's non-conference games lean to the early days (1 = evenly spread).</summary>
     public const double FrontLoad = 1.6;
 
     /// <summary>H159 (run 156): non-conference games for a program with <paramref name="conferenceGames"/> conference games,
-    /// filling its season to <see cref="TargetRegularSeason"/> (8 to 16).</summary>
+    /// filling its season to <see cref="TargetRegularSeason"/> (7 to 16; H171, run 163).</summary>
     public static int NonConferenceTarget(int conferenceGames, bool invited) =>
-        Math.Clamp(TargetRegularSeason - conferenceGames - (invited ? InvitationalAllowance : 0), 8, 16);
+        Math.Clamp(TargetRegularSeason - conferenceGames - (invited ? InvitationalAllowance : 0), 7, 16); // H171: 7 (was 8)
 
     /// <summary>H159 (run 156): non-conference game days. Tuesdays and Fridays from November 3 to December 18 (and November's
     /// Saturdays), skipping
@@ -718,7 +720,7 @@ public sealed partial class CollegeWorld
         if (inv.Count > 0)
         {
             bool settled = inv.All(g => g.Played) && (inv.Any(g => g.WinnerId != id) || Season!.EventWinners.ContainsKey(inv[0].Event ?? ""));
-            games += settled ? inv.Count : Math.Max(inv.Count, 2);
+            games += settled ? inv.Count : Math.Max(inv.Count, InvitationalAllowance); // H171 (run 163): what the schedule was built on
         }
         return games;
     }
@@ -817,11 +819,12 @@ public sealed partial class CollegeWorld
     }
 
     /// <summary>College rules for a game: events (invitationals, showcases, tournaments) are on a neutral court.</summary>
-    public static Rules RulesFor(CollegeGame g) => g.Event != null ? Rules.CollegeNeutral : Rules.College;
+    public static Rules RulesFor(CollegeGame g) => g.Event == Madness ? Rules.CollegeMadness : g.Event != null ? Rules.CollegeNeutral : Rules.College; // K21 (run 163)
 
     /// <summary>College rules for a game in this world: a neutral court for events, else the home program's own arena (C5 part 2).</summary>
     public Rules GameRules(CollegeGame g) =>
-        StyleOf(g).Apply(g.Event != null ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 }); // C5: + the conference's style
+        StyleOf(g).Apply(g.Event == Madness ? Rules.CollegeMadness // K21 (run 163): March's single-game spread
+            : g.Event != null ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 }); // C5: + the conference's style
 
     /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
     public int? ManagedProgramId { get; set; }
