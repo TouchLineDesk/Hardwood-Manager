@@ -1,0 +1,24 @@
+# Fight songs B (run 167): tier 1, a public-domain song played from new note data. Format: README.md.
+program: Navy
+title: Anchors Aweigh
+composer: Charles A. Zimmermann
+published: 1906
+status: public domain (published 1906; IMSLP lists the 1906 edition and the 1930 revision)
+source: https://imslp.org/wiki/Anchors_Aweigh_(Zimmermann,_Charles_A.)
+notes-from: the chorus as engraved on en.wikipedia.org/wiki/Anchors_Aweigh (written in 2/2; here in quarter beats), converted with lily2fs.py
+checked: 32 bars, each adds up; one note per syllable of the chorus's words; the tune matches the chorus bar by bar
+harmony: our own arrangement (chords below)
+meter: 4
+tempo: 216
+key: C
+style: March
+melody:
+C4:4 | E4:2 G4:2 | A4:3 E4:1 | A4:4 | C5:3 C5:1 | D5:2 G4:2 | C5:4 | _:4 |
+A4:4 | C5:2 A4:2 | G4:2 A4:2 | B4:2 C5:2 | F#4:2 A4:2 | D5:2 C5:2 | B4:2 G4:2 | F4:2 D4:2 |
+C4:4 | E4:2 G4:2 | A4:3 E4:1 | A4:4 | C5:4 | D5:2 G4:2 | C5:4 | _:4 |
+A4:4 | C5:2 A4:2 | G4:2 A4:2 | B4:2 C5:2 | E5:1 r:1/2 G4:1/2 F#4:1 G4:1 | D5:1 r:1/2 G4:1/2 F#4:1 G4:1 | C5:4 | _:4 |
+chords:
+C | C | F | D7 | C | G7 | C | C |
+F | F | C Am | G7 C | D7 | D7 | G | G7 |
+C | C | F | D7 | C | G7 | C | C |
+F | F | C Am | G7 C | C | G7 | C | C |

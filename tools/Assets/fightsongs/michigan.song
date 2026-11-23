@@ -1,0 +1,22 @@
+# Fight songs B (run 167): tier 1, a public-domain song played from new note data. Format: README.md.
+program: Michigan
+title: The Victors
+composer: Louis Elbel
+published: 1898
+status: public domain (U.S. Copyright Office, Copyright Lore, May 2019: "now in the public domain")
+source: https://www.copyright.gov/history/lore/pdfs/201905%20CLore_May2019.pdf
+notes-from: the chorus as engraved on en.wikipedia.org/wiki/The_Victors (from the 1898 sheet music), converted with lily2fs.py
+checked: 16 bars, each adds up; one note per syllable of the chorus's words; the tune matches the chorus bar by bar
+harmony: our own arrangement (chords below)
+meter: 4
+tempo: 144
+key: Eb
+style: March
+melody:
+G4:2 Eb4:1 F4:1 | G4:1 Eb4:1 F4:1 G4:1 | Ab4:2 F4:1 G4:1 | Ab4:1 F4:1 G4:1 Ab4:1 |
+Bb4:2 C5:3/2 G4:1/2 | G4:1 Ab4:1 Eb4:1 F4:1 | G4:2 F4:1 Eb4:1 | Bb4:4 |
+G4:2 Eb4:1 F4:1 | G4:1 Eb4:1 F4:1 G4:1 | Ab4:2 F4:1 G4:1 | Ab4:1 F4:1 G4:1 Ab4:1 |
+Bb4:2 C5:3/2 G4:1/2 | G4:1 Ab4:1 Eb4:1 F4:1 | G4:1 Bb4:1 G4:3/2 F4:1/2 | Eb4:4 |
+chords:
+Eb | Eb | Bb7 | Bb7 | Eb Ab | Eb Ab Cm Bb7 | Eb F7 | Bb7 |
+Eb | Eb | Bb7 | Bb7 | Eb Ab | Eb Ab Cm Bb7 | Eb Eb Eb Bb7 | Eb |

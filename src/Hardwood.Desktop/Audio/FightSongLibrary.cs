@@ -12,7 +12,8 @@ public sealed record BandSong(string Program, float[] Song, float[] Hit, string 
 /// <list type="number">
 /// <item>Tier 3: Danny's own file in <see cref="CustomFolder"/> (<c>&lt;school&gt;.ogg</c>, <c>.wav</c> or, on Windows,
 /// <c>.mp3</c>). Runs never fill this folder; it lives on his PC and is never committed or shipped.</item>
-/// <item>Tier 1 (fight songs B): a public-domain song typed from its score. None yet.</item>
+/// <item>Tier 1 (fight songs B, run 167): a real song whose music is public domain, played from new note data
+/// (<see cref="RealFightSongs"/>), rendered on first use like tier 2.</item>
 /// <item>Tier 2: the composer's original song for the program (<see cref="FightSongs"/>), rendered on first use and kept
 /// for the session.</item>
 /// </list>
@@ -79,11 +80,13 @@ public static class FightSongLibrary
         catch (Exception) { return 0; }
     }
 
-    /// <summary>The program's song: Danny's file if he has one, else its own composed song (rendered once a session).</summary>
+    /// <summary>The program's song: Danny's file if he has one, else its real public-domain song if it has one, else its
+    /// own composed song (each rendered once a session).</summary>
     public static BandSong For(string school, FightSongSpec spec)
     {
         string? custom = CustomFile(school);
-        string key = school + "|" + (custom ?? spec.Describe());
+        var real = custom == null ? RealFightSongs.For(school) : null;
+        string key = school + "|" + (custom ?? real?.Describe() ?? spec.Describe());
         lock (_gate) if (_cache.TryGetValue(key, out var hit)) return hit;
         BandSong song;
         var file = custom == null ? null : Load(custom);
@@ -94,6 +97,11 @@ public static class FightSongLibrary
             var hitClip = file[^tail..];
             Fade(hitClip, Synth.Rate / 10, fadeIn: true);
             song = new BandSong(school, file, hitClip, Path.GetFileName(custom!));
+        }
+        else if (real != null)
+        {
+            var score = RealFightSongs.Arrange(real);
+            song = new BandSong(school, BandRenderer.Render(score), BandRenderer.Render(score, score.HitFromBeat), real.Describe());
         }
         else
         {
