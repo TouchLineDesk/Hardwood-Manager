@@ -8,6 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="RealWorld/Data/*.json" />
+    <!-- Fight songs B (run 167): the tier 1 note data (public-domain tunes, our own chords). -->
+    <EmbeddedResource Include="../../tools/Assets/fightsongs/*.song" LogicalName="Hardwood.FightSongs.%(Filename).song" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />

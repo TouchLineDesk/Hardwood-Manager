@@ -66,6 +66,16 @@ public sealed partial class SettingsViewModel : PageViewModel
     }
     public string FightSongsFolder => Audio.FightSongLibrary.CustomFolder;
 
+    /// <summary>Fight songs B (run 167): the real public-domain songs the band knows so far (tier 1).</summary>
+    public string RealFightSongsText
+    {
+        get
+        {
+            var real = Hardwood.Core.Presentation.RealFightSongs.All.Values.OrderBy(s => s.Program).ToList();
+            return real.Count == 0 ? "" : $"Real fight songs so far ({real.Count}): " + string.Join(", ", real.Select(s => $"{s.Program}, {s.Describe()}")) + ".";
+        }
+    }
+
     [CommunityToolkit.Mvvm.Input.RelayCommand]
     private void OpenFightSongs()
     {
