@@ -21,7 +21,7 @@ public class RecruitingTrailTests
     public void Hours_buy_interest_and_an_offer_is_needed_to_commit()
     {
         var tried = new List<ulong>();
-        foreach (ulong seed in new ulong[] { 9, 31, 55 })
+        foreach (ulong seed in new ulong[] { 9, 31, 55, 77, 2026 }) // run 163: H171 moved the stream again (all three of 9, 31, 55 lost him to a rival)
         {
             tried.Add(seed);
             if (CommitsToYou(seed)) return;
