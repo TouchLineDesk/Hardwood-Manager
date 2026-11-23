@@ -42,6 +42,9 @@ public sealed class ClubFinance
     /// <summary>Money buys things (item M, #281): the club's facilities, projects and proposals.</summary>
     public ClubFacilities Facilities { get; set; } = new();
 
-    /// <summary>Money in for a season: revenue plus any parachute.</summary>
-    public long Income => Revenue + Parachute;
+    /// <summary>The revenue levers (D81): ticket, food and parking prices and fan appreciation days.</summary>
+    public ClubBusiness Business { get; set; } = new();
+
+    /// <summary>Money in for a season: revenue, what the match-day plan adds or costs (0 at standard prices), and any parachute.</summary>
+    public long Income => Revenue + Hardwood.Core.Season.Business.Change(this) + Parachute;
 }

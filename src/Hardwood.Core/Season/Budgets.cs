@@ -105,7 +105,11 @@ public static class Budgets
             m.Balance += m.Income - ContractMarket.Payroll(t) - staff;
             // Item M (#281): running costs, projects, ageing, and the owner's investments (or your proposals).
             Franchise.Summer(t, lr, typical, endedSeason + 1);
-            m.FanBase = Math.Clamp(m.FanBase + (wp - 0.5) * 10 + (champion(t) ? 3 : 0) + (50 - m.FanBase) * 0.06 + 0.6 * m.Facilities.Arena.Edge, 5, 100);
+            // D81 (run 169): the season's match-day plan moves the fan base (0 at standard), then next season's prices come in.
+            m.FanBase = Math.Clamp(m.FanBase + (wp - 0.5) * 10 + (champion(t) ? 3 : 0) + (50 - m.FanBase) * 0.06 + 0.6 * m.Facilities.Arena.Edge
+                + Business.FanDelta(m.Business.Now), 5, 100);
+            m.Business.Now = Business.Clamp(m.Business.Next);
+            m.Business.BooksClosed = true;
             m.Revenue = Revenue(t, lr, typical, wp);
             // K1 (run 111): an EPL-style parachute pays the next share of its schedule; an older save's (no base) halves as before.
             if (m.ParachuteYears > 0)

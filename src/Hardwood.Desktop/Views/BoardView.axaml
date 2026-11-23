@@ -62,6 +62,27 @@
             <TextBlock Text="Each facility counts against the league's average: keeping up holds your ground, getting ahead pays. Facilities date and drop a level unless they're renewed (levels 4 and 5 sooner), and they cost money to run; the top levels cost more to build. Only an ambitious owner builds well past the league's average. The owner keeps a reserve in the bank (less if he's ambitious) and funds projects from the rest." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
+        <!-- D81 (run 169): the revenue levers -->
+        <Border Classes="panel" IsVisible="{Binding HasBusiness}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="DollarSign" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Match-day business" Classes="h2" Margin="0"/></StackPanel>
+            <c:StatStrip ItemsSource="{Binding BusinessChips}" Accent="{Binding Accent}"/>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,4,0,0">
+              <TextBlock Grid.Row="0" Text="Ticket prices" VerticalAlignment="Center" Margin="0,0,12,4"/>
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding TicketChoices}" SelectedItem="{Binding Ticket}" MinWidth="160" Margin="0,0,0,4" ToolTip.Tip="Cheap 80%, high 115%, premium 130% of the standard price. A big, loyal support fills the arena at any price; a small one stays home."/>
+              <TextBlock Grid.Row="1" Text="Food and drink" VerticalAlignment="Center" Margin="0,0,12,4"/>
+              <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FoodChoices}" SelectedItem="{Binding Food}" MinWidth="160" Margin="0,0,0,4" ToolTip.Tip="A value menu sells more at less each (85% of the takings); premium earns 112% and costs a little goodwill."/>
+              <TextBlock Grid.Row="2" Text="Parking" VerticalAlignment="Center" Margin="0,0,12,4"/>
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ParkingChoices}" SelectedItem="{Binding Parking}" MinWidth="160" Margin="0,0,0,4" ToolTip.Tip="Free parking gives up the lots' takings for goodwill; premium earns 125%."/>
+              <TextBlock Grid.Row="3" Text="Fan appreciation days" VerticalAlignment="Center" Margin="0,0,12,0"/>
+              <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding FanDayChoices}" SelectedItem="{Binding FanDays}" MinWidth="160" ToolTip.Tip="Giveaways, open practices and autographs: each costs about 0.4% of revenue and grows the fan base (less for each extra day)."/>
+            </Grid>
+            <TextBlock Text="{Binding BusinessPreview}" TextWrapping="Wrap" FontSize="11.5"/>
+            <TextBlock Text="{Binding BusinessWhen}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+            <TextBlock Text="{Binding BusinessStatus}" Classes="accent" TextWrapping="Wrap"/>
+            <TextBlock Text="The match day is about 30% of revenue: tickets, food and drink, parking. Higher prices earn more now and cost fans; cheaper ones, free parking and fan days grow the fan base, and revenue grows with the fans. Arena upgrades are in Facilities." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
         <Border Classes="panel" IsVisible="{Binding Employed}">
           <Grid ColumnDefinitions="Auto,*">
             <c:TeamLogo Team="{Binding Team}" Width="72" Height="72" VerticalAlignment="Top" Margin="0,0,14,0"/>

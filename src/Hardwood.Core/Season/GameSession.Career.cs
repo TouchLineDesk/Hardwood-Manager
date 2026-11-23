@@ -118,6 +118,12 @@ public sealed partial class GameSession
         club.Tactic.Auto = true;
         club.DepthChart = null;
         club.CoachName = successor;
+        // D81 (run 169 review): the computer runs the club you leave at standard prices: next season at once, this season too
+        // if it hasn't started (a season already under way keeps the tickets it sold).
+        var biz = club.Money.Business;
+        bool before = Phase == SessionPhase.Preseason || biz.BooksClosed;
+        biz.Next = new();
+        if (before) biz.Now = new();
         // Mid-summer, the club you leave still re-signs its own players (it was left out of the computer's pass for you).
         if (Phase == SessionPhase.Offseason && Offseason is { Phase: OffseasonPhase.ReSigning } o && League.Teams.Contains(club)) o.AiReSign(club);
         Job.Employed = false;

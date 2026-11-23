@@ -295,6 +295,8 @@ public sealed record Rules(
     /// its own cut 1 v 16 before 5 v 12. Tuned with `hardwood madness` (150 tournaments) on seeds 31, 77 and 2026: 1-seed
     /// titles 59-62% (was 73-75%), 5 v 12 66-71% (72-75%), 1 v 16 97-98%, and a 5-seed-or-worse champion in every 150.</summary>
     public static readonly Rules CollegeMadness = CollegeNeutral with { TeamFormSd = MadnessTeamFormSd, TalentScale = MadnessTalentScale };
-    public const double MadnessTalentScale = 1.6;
+    /// <remarks>Run 169 (K21 re-check): after timeouts (run 168) 1.6 gave 1-seed titles 71% and 66% on seeds 31 and 77 (150
+    /// tournaments each), above the 45-65% band, so 1.55.</remarks>
+    public const double MadnessTalentScale = 1.55;
     public const double MadnessTeamFormSd = 0.20;
 }
