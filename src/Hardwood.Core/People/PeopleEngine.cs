@@ -58,7 +58,9 @@ public static class PeopleEngine
     /// accepts waiting his turn; a senior in his last season doesn't (Fr 0.8, So 1.0, Jr 1.2, Sr 1.4).
     /// </summary>
     public static double ClassWeight(Player p, DateOnly today) =>
-        College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today))?.Year switch { 1 => 0.8, 3 => 1.2, 4 => 1.4, _ => 1.0 };
+        // An incoming freshman (enrolled before July 1) counts in next year, as the program's own count does.
+        (College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today))
+         ?? College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today) + 1))?.Year switch { 1 => 0.8, 3 => 1.2, 4 => 1.4, _ => 1.0 };
 
     /// <summary>
     /// K9 (run 165): how much of the team's winning a college player feels part of (1 = all of it). A player getting well
@@ -265,8 +267,8 @@ public static class PeopleEngine
                 }
             }
             // K9 (run 165): in college the mood stays in the room, so a restless dressing room is news (about once in four weeks).
-            if (human && college && DressingRoomNote(team, wp, st => stats.TryGetValue(st.Id, out var x) && x.TeamId == team.Id ? x : null, finance, today, salaryScale) is { } note
-                && today.DayNumber % 28 < 7)
+            if (human && college && today.DayNumber % 28 < 7
+                && DressingRoomNote(team, wp, pl => stats.TryGetValue(pl.Id, out var x) && x.TeamId == team.Id ? x : null, finance, today, salaryScale) is { } note)
                 events.Add(new(note.first, team, PeopleEventKind.DressingRoom, note.text));
         }
         if (promises != null) events.AddRange(CheckPromises(teamList.SelectMany(t => t.Roster), teamById, today, stats, promises));

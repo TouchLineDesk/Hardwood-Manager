@@ -132,6 +132,18 @@ public class Run165DressingRoomTests
         var no = Talks.Patience(senior, Day);
         Assert.Equal(-6, no.MoraleChange);
         Assert.Contains("this is my last year", no.Reply);
+        // Review: it only lands with a player short of minutes, and said again within eight weeks it rings hollow.
+        Assert.Equal("Ty looks puzzled. \"Coach, I'm already playing.\"", Talks.Patience(fresh, Day, mpg: 30, expected: 22).Reply);
+        var team = new Team { Id = 9, City = "Wake Forest", Name = "Demon Deacons", Abbreviation = "WAKE", Division = "ACC" };
+        fresh.TeamId = 9; team.Roster.Add(fresh);
+        for (int i = 0; i < 9; i++) team.Roster.Add(new Player { Id = 10 + i, FirstName = "P", LastName = $"L{i}", TeamId = 9, CurrentAbility = 90 });
+        var st = new PlayerSeasonStats { PlayerId = 1, TeamId = 9, Games = 10, Minutes = 20 };
+        var first = Talks.Hold(fresh, team, TalkTopic.AskForPatience, Day, 0.7, st, Money, new List<Promise>(), new Hardwood.Core.Rng(1), college: true);
+        Assert.True(first.Positive);
+        Assert.Equal(Talks.PatienceReason, fresh.BoostReason);
+        var again = Talks.Hold(fresh, team, TalkTopic.AskForPatience, Day.AddDays(14), 0.7, st, Money, new List<Promise>(), new Hardwood.Core.Rng(1), college: true);
+        Assert.False(again.Positive);
+        Assert.Contains("You told me that already", again.Reply);
         Assert.Contains(TalkTopic.AskForPatience, Talks.Available(fresh, college: true));
         Assert.DoesNotContain(TalkTopic.AskForPatience, Talks.Available(fresh));
         Assert.Equal("His time will come", Talks.Label(TalkTopic.AskForPatience));

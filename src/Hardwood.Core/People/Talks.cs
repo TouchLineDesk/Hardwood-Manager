@@ -47,12 +47,18 @@ public static class Talks
     /// <summary>
     /// K9 (run 165, college): asking a player to wait his turn. A freshman or sophomore who is professional or loyal (11+)
     /// takes it well; a junior only if he's loyal (13+); a senior in his last season hears it as a brush-off. No dice.
+    /// Review (run 165): it only lands with a player short of his minutes, and only once in <see cref="PatienceDays"/>: said
+    /// again, it rings hollow. A kept word gives its own lasting lift (<see cref="PatienceReason"/>), not the usual talk boost.
     /// </summary>
-    public static TalkResult Patience(Player p, DateOnly today)
+    public static TalkResult Patience(Player p, DateOnly today, double mpg = 0, double expected = 99)
     {
         var h = p.Hidden;
         string name = p.FirstName;
-        int year = College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today))?.Year ?? 2;
+        if (mpg >= expected) return new($"{name} looks puzzled. \"Coach, I'm already playing.\"", 0, false);
+        if (p.BoostReason == PatienceReason && p.BoostUntil is { } bu && bu > today)
+            return new($"{name} sighs. \"You told me that already, coach.\"", -2, false);
+        int year = (College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today))
+                    ?? College.CollegeWorld.ClassYearOf(p, College.CollegeWorld.SchoolYear(today) + 1))?.Year ?? 2;
         return year switch
         {
             4 => new($"{name} shakes his head. \"Coach, this is my last year. I don't have time to wait.\"", -6, false),
@@ -64,6 +70,10 @@ public static class Talks
                 : new($"{name} hears you, but he came here to play. \"How long?\"", -1, false),
         };
     }
+
+    /// <summary>The lift a player keeps after "His time will come" lands, and how long before it can be said again.</summary>
+    public const string PatienceReason = "Waiting his turn";
+    public const int PatienceDays = 56;
 
     public static TalkResult Hold(Player p, Team team, TalkTopic topic, DateOnly today, double winPct, PlayerSeasonStats? stats,
                                   Finance finance, List<Promise> promises, Rng rng, Jobs.Coach? coach = null, bool college = false)
@@ -129,7 +139,8 @@ public static class Talks
                 r = new($"{name} is not happy. \"Then I'll make you regret it.\"" + (h.Ego >= 15 ? " The locker room has noticed his mood." : ""), -10, false);
                 break;
             case TalkTopic.AskForPatience:
-                r = Patience(p, today);
+                r = Patience(p, today, stats is { Games: >= 3 } ? stats.Mpg : 0, PeopleEngine.ExpectedMinutes(p, team));
+                if (r.Positive) PeopleEngine.Boost(p, r.MoraleChange * 0.6, today.AddDays(PatienceDays), PatienceReason, today);
                 break;
             default: // ConvinceToStay
             {
@@ -147,7 +158,7 @@ public static class Talks
         if (coach != null) r = r with { MoraleChange = Math.Round(r.MoraleChange * coach.TalkMultiplier(r.MoraleChange >= 0), 1) };
         p.Morale = Math.Clamp(p.Morale + r.MoraleChange, 0, 100);
         // A conversation that lands lasts a few weeks rather than fading within days (critic review #3).
-        if (r.Positive && r.MoraleChange >= 3) PeopleEngine.Boost(p, Math.Min(10, r.MoraleChange * 0.8), today.AddDays(28), "Encouraged by your talk", today);
+        if (r.Positive && r.MoraleChange >= 3 && topic != TalkTopic.AskForPatience) PeopleEngine.Boost(p, Math.Min(10, r.MoraleChange * 0.8), today.AddDays(28), "Encouraged by your talk", today);
         p.LastTalk = today;
         return r;
     }
