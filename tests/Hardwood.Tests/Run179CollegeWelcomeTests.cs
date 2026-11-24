@@ -76,4 +76,13 @@ public class Run179CollegeWelcomeTests
         Assert.Contains(s.Inbox, m => m.Title == "Welcome to the job" && m.Body.Contains("general manager") && m.Body.Contains("New York Knicks"));
         Assert.Null(s.RivalLine());
     }
+
+    [Fact]
+    public void A_summer_hire_with_no_game_left_reads_once()
+    {
+        var line = GameSession.FirstGameSentence("", null);
+        Assert.DoesNotContain("press Continue", line);
+        Assert.Contains("next season", line);
+        NoProWords(line, "the summer hire's line");
+    }
 }

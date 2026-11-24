@@ -55,9 +55,13 @@ public sealed partial class GameSession
             + "Your assistant spends any hours you leave unused (Staff page, delegation).";
     }
 
-    private string CollegeFirstGameLine(string lead)
+    private string CollegeFirstGameLine(string lead) => FirstGameSentence(lead, NextMyGame);
+
+    /// <summary>"Your first game is at the Kentucky Wildcats on Tue, Nov 3: …", or, with no game left this season (a summer
+    /// hire, review of run 179), a line that doesn't repeat itself.</summary>
+    public static string FirstGameSentence(string lead, MyGame? g)
     {
-        if (NextMyGame is not { } g) return $"{lead}Set your rotation and tactics, then press Continue.";
+        if (g == null) return $"{lead}Your schedule for next season comes out in the fall; until then, the summer is for recruiting and your roster.";
         string where = g.Neutral ? $"against {g.Opponent.TheFullName} on a neutral court" : g.Home ? $"at home to {g.Opponent.TheFullName}" : $"at {g.Opponent.TheFullName}";
         return $"{lead}Your first game is {where} on {g.Date:ddd, MMM d}: set your rotation and tactics, then press Continue.";
     }
@@ -85,7 +89,7 @@ public sealed partial class GameSession
         var conf = MyConference;
         var text = $"Athletic director {HumanTeam.Owner.Name} has hired you as head coach of {HumanTeam.TheFullName}{(conf != null ? $" ({conf.Name})" : "")}."
             + (RivalLine() is { } rival ? " " + rival : "")
-            + "\n\n" + CollegeFirstGameLine("Check your rotation and tactics. ").Replace("Check your rotation and tactics. Your first game", "Your first game");
+            + "\n\n" + CollegeFirstGameLine("");
         return text + CollegeRecruitingLine();
     }
 
