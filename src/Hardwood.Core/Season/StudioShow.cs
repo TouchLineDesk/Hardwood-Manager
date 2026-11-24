@@ -151,7 +151,8 @@ public sealed partial class GameSession
         else if (neutralFloor) line = $"{cg!.Event}: {date.DayOfWeek} night in {date:MMMM}";
         var rng = new Rng((ulong)(date.DayNumber * 7919L + home.Id * 131L + away.Id * 17L + 1));
         var table = MyStandings;
-        string Rec(Team t) { var r = RecordOf(t); return r.Games > 0 || table.Has(t) ? $"{r.Wins}-{r.Losses}" : ""; }
+        // Run 187: in college every program has a record, 0-0 included (a non-conference opponent's read "" on opening night).
+        string Rec(Team t) { var r = RecordOf(t); return r.Games > 0 || table.Has(t) || InCollege ? $"{r.Wins}-{r.Losses}" : ""; }
 
         double hs = QuickSim.Strength(home, date), as_ = QuickSim.Strength(away, date);
         bool college = InCollege;

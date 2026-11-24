@@ -25,6 +25,18 @@ public static class DeskReel
             new("Record", s.AwayRecord, s.HomeRecord),
             new("Win chance", $"{100 - Math.Round(s.HomeChance * 100):0}%", $"{Math.Round(s.HomeChance * 100):0}%", Math.Sign(s.HomeChance - 0.5)),
         };
+        // K29 (run 187): the opening screen, which every game starts with, was three rows on a mostly empty wall. It also
+        // carries the form lines from the tape (last 10, streak, strength, injuries, the series), up to MinRows.
+        string[] opener = { "Last 10", "Streak", "Top-8 strength", "Out injured", "Season series" };
+        var form = opener.SelectMany(l => s.Tape.Where(t => t.Label == l)).Select(t => new DeskRow(t.Label, t.Away, t.Home, t.Edge));
+        // On opening night there's no form yet, so the screen also says how each side plays.
+        var style = new List<DeskRow>();
+        if (s.Away.Tactic is { } ta && s.Home.Tactic is { } th)
+        {
+            style.Add(new("Offense", Systems.Name(ta.System), Systems.Name(th.System)));
+            style.Add(new("Defense", Systems.Name(ta.Scheme), Systems.Name(th.Scheme)));
+        }
+        HalftimeDesk.Fill(match, form.Concat(style), HalftimeDesk.MinRows + 1);
         // The segments: the open, keys to the game, off the court. One beat per line; the screen keeps the matchup.
         foreach (var seg in s.Segments)
         {

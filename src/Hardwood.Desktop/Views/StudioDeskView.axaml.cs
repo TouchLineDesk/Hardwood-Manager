@@ -60,13 +60,20 @@ public partial class StudioDeskView : UserControl
         if (e.PropertyName is nameof(DeskReelViewModel.Index)) PlaceBubble();
     }
 
+    /// <summary>Run 187: the host's bubble width and its gap from his head, in stage pixels.</summary>
+    public const double HostBubbleWidth = 390, HostBubbleGap = 110;
+
     /// <summary>The bubble sits beside the speaker, over the desk, with its tail pointing at his head.</summary>
     private void PlaceBubble()
     {
         bool left = _vm?.BubbleLeft ?? true;
         var head = At(left ? _set.HostHead : _set.AnalystHead);
-        double w = Bubble.Width, h = Math.Max(Bubble.Bounds.Height, 120);
-        double x = left ? head.X - 60 - w : head.X + 60;
+        // Run 187: on the host's side the bubble is narrower and further out, so it no longer covers his arm (the desk's
+        // speech bubble sat over the host's gesturing arm at every size, since the stage is a fixed 1440 × 810 canvas).
+        double want = left ? HostBubbleWidth : 440;
+        if (Bubble.Width != want) Bubble.Width = want;
+        double w = want, h = Math.Max(Bubble.Bounds.Height, 120);
+        double x = left ? head.X - HostBubbleGap - w : head.X + 60;
         x = Math.Clamp(x, 16, Crop.Width - 16 - w);
         double y = Math.Min(head.Y + 30, Crop.Height - 16 - h);
         Canvas.SetLeft(Bubble, x); Canvas.SetTop(Bubble, y);

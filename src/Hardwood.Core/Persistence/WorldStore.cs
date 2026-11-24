@@ -202,7 +202,9 @@ public static class WorldStore
             if (cmd.ExecuteScalar() is string aj && SaveFile.FromJson<Dictionary<int, List<int>>>(aj) is { } awaiting)
                 foreach (var (teamId, ids) in awaiting)
                     if (world.TeamById(teamId) is { } club)
-                        world.AwaitingDecision[teamId] = club.Roster.Where(p => ids.Contains(p.Id)).ToList();
+                        // Run 187 (run 185's review, Low 2): in the order saved, which is the live list's order, so the summer's
+                        // decisions run in the same order after a reload (the roster comes back in id order).
+                        world.AwaitingDecision[teamId] = ids.Select(id => club.Roster.FirstOrDefault(p => p.Id == id)).OfType<Player>().ToList();
         }
         return world;
     }

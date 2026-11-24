@@ -250,7 +250,7 @@ public static class SessionStore
                 var expiring = new Dictionary<int, List<Player>>();
                 using (var c2 = conn.CreateCommand())
                 {
-                    c2.CommandText = "SELECT team_id, player_id FROM offseason_expiring";
+                    c2.CommandText = "SELECT team_id, player_id FROM offseason_expiring ORDER BY rowid" /* run 187: the order saved, the live list's */;
                     using var r2 = c2.ExecuteReader();
                     while (r2.Read())
                     {
