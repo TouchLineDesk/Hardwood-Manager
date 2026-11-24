@@ -25,6 +25,20 @@ public static class DeskReel
             new("Record", s.AwayRecord, s.HomeRecord),
             new("Win chance", $"{100 - Math.Round(s.HomeChance * 100):0}%", $"{Math.Round(s.HomeChance * 100):0}%", Math.Sign(s.HomeChance - 0.5)),
         };
+        // K29 (run 187): the opening screen, which every game starts with, was three rows on a mostly empty wall. It also
+        // carries the form lines from the tape (last 10, streak, strength, injuries, the series), up to MinRows.
+        string[] opener = { "Last 10", "Streak", "Top-8 strength", "Out injured", "Season series" };
+        var form = opener.SelectMany(l => s.Tape.Where(t => t.Label == l)).Select(t => new DeskRow(t.Label, t.Away, t.Home, t.Edge));
+        // On opening night there's no form yet, so the screen also says how each side plays.
+        var style = new List<DeskRow>();
+        // The review of PR #256: an AI side's Tactic is only set at tip-off (CoachAi.Prepare), so the screen shows the plan
+        // Prepare will pick (the same read, no random numbers, nothing changed); a coach's own fixed plan as it stands.
+        (OffensiveSystem sys, DefensiveScheme sch) Plan(Team t, Team opp) =>
+            t.Tactic.Auto || t.Tactic.AssistantPlans ? CoachAi.PlanFor(t, opp, s.Date) : (t.Tactic.System, t.Tactic.Scheme);
+        var (pa, ph) = (Plan(s.Away, s.Home), Plan(s.Home, s.Away));
+        style.Add(new("Offense", Systems.Name(pa.sys), Systems.Name(ph.sys)));
+        style.Add(new("Defense", Systems.Name(pa.sch), Systems.Name(ph.sch)));
+        HalftimeDesk.Fill(match, form.Concat(style), HalftimeDesk.MinRows + 1);
         // The segments: the open, keys to the game, off the court. One beat per line; the screen keeps the matchup.
         foreach (var seg in s.Segments)
         {
