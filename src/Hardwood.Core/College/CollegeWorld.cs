@@ -689,12 +689,15 @@ public sealed partial class CollegeWorld
     /// <summary>H159: the invitational games an invited program counts on (one to three in a bracket of eight). H171 (run 163):
     /// 3, the most it can play, so a deep run (and a top-30 program's December showcase) no longer pushes a champion to 42
     /// games: a 20-game conference's invited program now books 7 non-conference games and plays 30-31 before March.</summary>
-    public const int InvitationalAllowance = 3;
+    /// H159 (run 176): 2, the bracket's expected games rounded up (1 + 1/2 + 1/4 ≈ 1.75). With 3, a first-round loser played
+    /// 28 (Virginia Tech 12-16, Providence's 20 Big East + 7 + 1); now an invited program books one more non-conference game
+    /// and plays 29 (out first) to 31 (champion), 32 with a December showcase.
+    public const int InvitationalAllowance = 2;
     /// <summary>H159: how much a program's non-conference games lean to the early days (1 = evenly spread).</summary>
     public const double FrontLoad = 1.6;
 
     /// <summary>H159 (run 156): non-conference games for a program with <paramref name="conferenceGames"/> conference games,
-    /// filling its season to <see cref="TargetRegularSeason"/> (7 to 16; H171, run 163).</summary>
+    /// filling its season to <see cref="TargetRegularSeason"/> (7 to 16; H171, run 163; an invited program books 8 in a 20-game conference from run 176).</summary>
     public static int NonConferenceTarget(int conferenceGames, bool invited) =>
         Math.Clamp(TargetRegularSeason - conferenceGames - (invited ? InvitationalAllowance : 0), 7, 16); // H171: 7 (was 8)
 

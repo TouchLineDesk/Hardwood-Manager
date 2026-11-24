@@ -111,6 +111,11 @@ public sealed class JobState
     public int SeasonStartSeason { get; set; }
     /// <summary>H70 (run 123): whether the last reviewed season was a winning one (for the mood label before a ball is bounced).</summary>
     public bool? LastSeasonWinning { get; set; }
+    /// <summary>
+    /// H182 (run 176): the last reviewed season's share of regular-season games won, for the college grace's collapse rule
+    /// (<see cref="Board.CollegeGraced"/>). Null in older saves and on a new job.
+    /// </summary>
+    public double? LastSeasonPct { get; set; }
 }
 
 public sealed record ConfidencePoint(DateOnly Date, double Confidence);
@@ -565,6 +570,20 @@ public static class Board
     /// </summary>
     /// <summary>Win share at or above which the board won't sack you (it can still be disappointed).</summary>
     public const double WinningRecord = 0.58;
+    /// <summary>
+    /// H182 (run 176): a college coach isn't sacked before the end of his third season at a program (Providence's coach was
+    /// let go after 17-13 and 13-16 in the Big East; real programs give four or five years), unless the program collapses:
+    /// under <see cref="CollegeCollapse"/> of its games won in this season and the last.
+    /// </summary>
+    public const int CollegeGraceSeasons = 3;
+    public const double CollegeCollapse = 0.30;
+
+    /// <summary>H182: whether a college coach in his first <see cref="CollegeGraceSeasons"/> seasons is safe from the sack.</summary>
+    /// The season review that ends the third season may sack (<paramref name="midSeason"/> false: the first two reviews are
+    /// graced); a weekly check is graced through the whole third season (the review of PR #245).
+    public static bool CollegeGraced(JobState job, LeagueContext ctx, int season, double pct, bool midSeason = false) =>
+        ctx.IsCollege && job.HiredSeason != 0 && season - job.HiredSeason < (midSeason ? CollegeGraceSeasons : CollegeGraceSeasons - 1)
+        && !(season > job.HiredSeason && pct < CollegeCollapse && job.LastSeasonPct is < CollegeCollapse);
     /// <summary>In a protected season (<see cref="JobState.ProtectedSeason"/>) the board keeps you while you win at least this share.</summary>
     public const double ProtectedFloor = 0.40;
     /// <summary>Wins above the target (per 82 games) that earn the next season's protection on their own; meeting the goal
@@ -680,7 +699,9 @@ public static class Board
         bool winning = wins / (double)games >= WinningRecord;
         // The season after a big overshoot, and a relegated club's first season down, are never mid-season sackings.
         bool shielded = job.ProtectedSeason == season && season != 0;
-        if (!honeymoon && !winning && !shielded && games >= full * 30 / 82 && job.Confidence < line)
+        // H182 (run 176): a college coach isn't sacked mid-season in his first three seasons unless the program has collapsed.
+        bool graced = CollegeGraced(job, ctx, season, wins / (double)games, midSeason: true);
+        if (!honeymoon && !winning && !shielded && !graced && games >= full * 30 / 82 && job.Confidence < line)
             return ("You have been sacked", $"{team.Owner.Name} has run out of patience. With the team {wins}-{losses} against a target of {e.TargetWins} wins, you have been relieved of your duties.", true);
         int level = job.Confidence < 20 ? 2 : job.Confidence < 35 ? 1 : 0;
         if (level > job.WarningLevel)
@@ -903,6 +924,10 @@ public static class Board
         if (seedOver >= 1) job.Confidence = Math.Max(job.Confidence, ContentLine + 5);
         // A .500 record isn't a losing one, the same rule as the mood label in season.
         job.LastSeasonWinning = !relegated && wins >= losses;
+        // H182: the grace is judged on the season before this one, then this season's share is kept for next year.
+        double seasonPct = wins / Math.Max(1.0, wins + losses);
+        bool graced = CollegeGraced(job, ctx, season, seasonPct);
+        job.LastSeasonPct = seasonPct;
         // Success in a smaller league counts for less with clubs elsewhere.
         double weight = ctx.IsNabl ? 1 : Math.Clamp(1 + ctx.PrestigeOffset / 40, 0.4, 1);
         coach.Reputation = Math.Clamp(coach.Reputation + ((wins / Math.Max(1.0, wins + losses) - 0.5) * 10
@@ -920,7 +945,10 @@ public static class Board
         bool shielded = protectedNow && !relegated
             && wins / Math.Max(1.0, wins + losses) >= ProtectedFloor;
         double sackLine = 25 - (team.Owner.Patience - 10);
-        bool sacked = !firstSeason && !winning && !shielded && job.Confidence < sackLine;
+        bool sacked = !firstSeason && !graced && !winning && !shielded && job.Confidence < sackLine;
+        // The review of PR #245: the warning is decided before the floor, so a patient AD (sack line 20 or lower) still says it.
+        bool graceWarning = graced && !firstSeason && job.Confidence < sackLine;
+        if (graceWarning) job.Confidence = Math.Max(job.Confidence, 20);
         if (shielded && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
         // the title at 59-23 was sacked the next May at 41-41).
@@ -961,6 +989,8 @@ public static class Board
 
         string Verdict() => sacked ? $"{owner} has decided to make a change. You have been sacked."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{owner} is giving you another season, but expects much better. Consider this a final warning."
+            // H182 (run 176): a college coach's second season is never his last; the AD says so.
+            : graceWarning ? $"{owner} is giving you a third season to turn the program around, but expects much better. Consider this a final warning. AD confidence: {job.Confidence:0}/100."
             : shielded && diff < 0 && job.Confidence <= 25 ? (job.ProtectedReason == "rebuild"
                 ? $"{owner} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
                 : $"{owner} hasn't forgotten last season, and that bought you time. It won't happen twice.")
@@ -1000,6 +1030,8 @@ public static class Board
     public static string TargetPhrase(int wins, int losses, int target) =>
         wins >= target ? $"{wins}-{losses} reached the {target}-win target"
         : target - wins <= 2 ? $"{wins}-{losses} is just short of the {target}-win target"
+        // H185 (run 176): 3-4 wins short is short, not "well short" (Virginia Tech's 16-14 against 19).
+        : target - wins <= 4 ? $"{wins}-{losses} is {target - wins} wins short of the {target}-win target"
         : $"{wins}-{losses} is well short of the {target}-win target";
 
     /// <summary>CS2: "an 8-seed", "an 11-seed", "a 1-seed".</summary>

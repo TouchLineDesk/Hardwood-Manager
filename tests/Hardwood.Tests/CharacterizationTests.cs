@@ -194,7 +194,10 @@ public class CharacterizationTests
         // Run 163 (H171, on purpose with K21): re-pinned (was 2F5E2E304E34C26C since run 156). An invited program books one
         // fewer non-conference game (7 for a 20-game conference), so November's college schedule and its quick-sim draws on the
         // shared stream move. March's shooting night isn't reached in a month. The NBA's schedule and odds are unchanged.
-        Pin("career seed 2026, 30 days, no saves", "249C3CAD0011DCF3", Session(s));
+        // Run 176 (H159 again): re-pinned (was 249C3CAD0011DCF3 since run 163). An invited program books one more
+        // non-conference game (8 for a 20-game conference; a first-round invitational loser played 28), so November's college
+        // schedule and its quick-sim draws on the shared stream move. The NBA's schedule and odds are unchanged.
+        Pin("career seed 2026, 30 days, no saves", "96C84F8D7D7572A6", Session(s));
     }
 
     [Fact]

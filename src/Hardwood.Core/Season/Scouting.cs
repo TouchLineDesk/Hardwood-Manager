@@ -72,6 +72,24 @@ public static class Scouting
         return new Range(low, high);
     }
 
+    /// <summary>
+    /// H119 (run 176): a college player's current ability as a scouting range ("118-130"), half as wide as his potential's
+    /// for the same knowledge, stable per player, always containing the truth, and never reaching above the potential range.
+    /// </summary>
+    public static Range CollegeAbility(Player p, double knowledge)
+    {
+        int width = Math.Max(MinCollegeWidth, (int)Math.Round((1 - Math.Clamp(knowledge, 0, 1)) * 20));
+        int ca = p.CurrentAbility;
+        int centre = ca + (int)Math.Round(Bias(p.Id, 98) * width / 3.0);
+        int low = centre - width / 2, high = low + width;
+        if (low > ca) { low = ca; high = low + width; }
+        if (high < ca) { high = ca; low = high - width; }
+        int cap = CollegePotential(p, knowledge).High;
+        if (high > cap) { high = Math.Max(cap, ca); low = Math.Min(low, high - width); }
+        low = Math.Clamp(low, 1, ca); high = Math.Clamp(high, ca, 200);
+        return new Range(low, high);
+    }
+
     /// <summary>The narrowest a college potential range gets (your own senior, scouted every day for four years).</summary>
     public const int MinCollegeWidth = 4;
 

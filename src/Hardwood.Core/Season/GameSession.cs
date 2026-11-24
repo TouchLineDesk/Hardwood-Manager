@@ -1057,6 +1057,7 @@ public sealed partial class GameSession
         Job.SeasonStartConfidence = null;
         Job.SeasonStartSeason = 0;
         Job.LastSeasonWinning = null;
+        Job.LastSeasonPct = null;
         Job.Current = Jobs.Board.NextExpectations(ContextOf(team), team, forSeason, null, MyLeagueKey, 0, 0, PromotionPlayoffFor(team), TopLeagueDrops());
         if (Abroad) EnsureStaff(team);
         if (InCollege) Delegated.Recruiting = true; // your assistant recruits until you take it over, as in a new college career
@@ -1254,7 +1255,7 @@ public sealed partial class GameSession
             BoostersSummerNote(); // CS7 (run 170)
             Post("Graduation and enrollment",
                 (left.Count > 0 ? $"Graduated into the pros: {string.Join(", ", left.Select(p => $"{p.Name} ({p.PrimaryPosition}, {p.CurrentAbility})"))}." : "Nobody graduated this year.")
-                + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, CA {p.CurrentAbility}, {NewcomerPotential(p)})"))}." : "No new players enrolled.")
+                + "\n\n" + (joined.Count > 0 ? $"Your new class: {string.Join(", ", joined.Select(p => $"{p.Name} ({p.PrimaryPosition}, CA {p.CurrentAbility}, {NewcomerPotential(p)}{(World.College?.WalkOnIds.Contains(p.Id) == true ? ", walk-on" : "")})"))}." : "No new players enrolled.")
                 + $"\n\nNext season by class: {ClassCounts()}."
                 + $"\n\nRoster: {HumanTeam.Roster.Count} players. The pros' summer runs until the new season; your program has nothing to sign, so press Continue to move it along.", "Roster");
             return;
