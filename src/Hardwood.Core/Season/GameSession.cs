@@ -144,6 +144,9 @@ public sealed partial class GameSession
         session.PlayWorld(session.Today.AddDays(-1));
         session.PostExpectations();
         var first = session.NextMyGame;
+        // K26 (run 179): a college coach's first day is written for a college coach, not a GM.
+        if (session.InCollege) session.Post("Welcome to the job", session.CollegeWelcomeBody(), "Board");
+        else
         session.Post("Welcome to the job", $"You are the new head coach and general manager of {session.HumanTeam.TheFullName} ({session.HumanLeagueName}). "
             + (first != null ? $"Your first game is on {first.Date:MMM d}: set your rotation and tactics, then press Continue." : "Set your rotation and tactics, then press Continue.")
             + (Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last
@@ -768,8 +771,8 @@ public sealed partial class GameSession
         var e = Job.Current!;
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
-            $"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} {(InCollege ? "regular-season " : "")}wins)."
-            + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : ""), "Board");
+            Boss($"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} {(InCollege ? "regular-season " : "")}wins)."
+            + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : "")), "Board");
     }
 
     /// <summary>K7 (run 115): a top-league club's last place is decided by the promotion playoff (run 102), not straight relegation.</summary>
@@ -1082,6 +1085,8 @@ public sealed partial class GameSession
         MoodHistory.Clear();
         // H56 (run 87): the contracts you inherit were signed before you came, so an owner who isn't in debt funds them.
         long funded = Budgets.OwnerFunds(team, MyCommittedWages);
+        if (InCollege) Post($"Welcome to {team.TheFullName}", CollegeHiredBody(), "Board"); // K26 (run 179)
+        else
         Post($"Welcome to {team.TheFullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game."
             + (funded > 0 ? $" The contracts you inherit come to ${MyCommittedWages / 1e6:F1}M, so the owner has raised the wage budget by ${funded / 1e6:F1}M to cover them." : ""), "Board");
         PostExpectations();
@@ -1602,6 +1607,8 @@ public sealed partial class GameSession
         Midseason = null;
         BuildSeason();
         var last = League.History.Last();
+        if (InCollege && Employed) Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}", CollegeSeasonWelcomeBody(), "Board"); // K26 (run 179)
+        else
         Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}",
             $"Last season's {Hardwood.Core.Names.Brand.Top} champions: {League.TeamById(last.ChampionTeamId).FullName}. " + (NextMyGame is { } g ? $"Your first game is on {g.Date:MMM d}." : $"Opening night is {OpeningNight:MMM d}.") + " Review your rotation before the first game.", "Board");
         // Money news for your club (critic review, Nov 10): parachute payments and the debt embargo.
