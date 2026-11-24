@@ -314,7 +314,8 @@ public sealed partial class BoardViewModel : PageViewModel
             Vacancies.Add(new VacancyRow
             {
                 Team = t,
-                Detail = $"{vctx.Name} · owner: {t.Owner.Name} ({t.Owner.Style.ToLower()}) · {vrec.Wins}-{vrec.Losses} · " + (chance >= 0.6 ? "good chance" : chance >= 0.3 ? "worth a try" : "long shot"),
+                // H183 (run 176): a college opening's boss is its athletic director, not an owner.
+                Detail = $"{vctx.Name} · {(s.IsCollegeProgram(t) ? "AD" : "owner")}: {t.Owner.Name} ({t.Owner.Style.ToLower()}) · {vrec.Wins}-{vrec.Losses} · " + (chance >= 0.6 ? "good chance" : chance >= 0.3 ? "worth a try" : "long shot"),
                 Status = v.Status switch
                 {
                     "applied" => summer ? "Applied · they answer at the next step of the summer" : $"Applied · decision by {v.DecideOn:MMM d}",

@@ -51,7 +51,9 @@ public sealed partial class ProspectRow : ObservableObject
     public int Age { get; init; }
     public string Height => PlayerRow.FormatHeight(Player.HeightCm);
     public double Knowledge { get; init; } = 1.0;
-    public string CA => Scouting.Ability(Player, Knowledge).ToString();
+    public string CA => CaText ?? Scouting.Ability(Player, Knowledge).ToString();
+    /// <summary>H119 (run 176): in a college career a graduate's current ability is a scouting range too.</summary>
+    public string? CaText { get; init; }
     /// <summary>CP3 (run 132, H119's college half): in a college career the graduates' potential is a scouting range.</summary>
     public string? PaText { get; init; }
     public string PA => PaText ?? Scouting.Potential(Player, Knowledge).ToString();
@@ -462,7 +464,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
         bool college = s.InCollege;
         Scouting.Range Pa(Player p) => college ? s.CollegePotentialOf(p) ?? Scouting.CollegePotential(p, Scouting.Knowledge(team, p)) : Scouting.Potential(p, Scouting.Knowledge(team, p));
         foreach (var p in o.Prospects.OrderByDescending(p => Pa(p).Mid).ThenByDescending(p => p.CurrentAbility))
-            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Of = o.Prospects.Count, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p), PaText = college ? Pa(p).ToString() : null });
+            DraftPool.Add(new ProspectRow { Player = p, Rank = rank++, Of = o.Prospects.Count, Age = p.Age(DraftAgeDay(Session.Today)), Knowledge = Scouting.Knowledge(team, p), PaText = college ? Pa(p).ToString() : null,
+                CaText = college ? s.CollegeAbilityOf(p)?.ToString() : null });
         foreach (var r in DraftPool.Take(SummerCards.DraftCount)) DraftCards.Add(r);
         if (keep != null && !DraftCards.Any(r => r.Player == keep) && DraftPool.FirstOrDefault(r => r.Player == keep) is { } further) DraftCards.Add(further);
         DraftNote = DraftPool.Count == 0 ? "Every graduate has been drafted."

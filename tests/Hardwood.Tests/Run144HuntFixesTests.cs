@@ -84,7 +84,8 @@ public class Run144HuntFixesTests
     [InlineData(15, 17, 15, "15-17 reached the 15-win target")]
     [InlineData(14, 17, 15, "14-17 is just short of the 15-win target")]
     [InlineData(13, 17, 15, "13-17 is just short of the 15-win target")]
-    [InlineData(12, 19, 15, "12-19 is well short of the 15-win target")]
+    [InlineData(12, 19, 15, "12-19 is 3 wins short of the 15-win target")] // H185 (run 176)
+    [InlineData(10, 21, 15, "10-21 is well short of the 15-win target")]
     public void The_verdict_is_worded_by_the_margin(int wins, int losses, int target, string expected) =>
         Assert.Equal(expected, Board.TargetPhrase(wins, losses, target));
 }

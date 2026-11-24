@@ -185,7 +185,10 @@ public static class Assistant
         var today = s.Today;
         if (!s.Employed)
         {
-            yield return new("job", 1, "Apply for a job", "The board let us go. Open jobs are on the Board page; clubs choose by your reputation against their prestige, so smaller clubs answer first.", "Board");
+            // H183 (run 176): out of a college job, the assistant speaks college.
+            yield return new("job", 1, "Apply for a job", s.RecentlySackedFromCollege
+                ? "The athletic director let us go. Open jobs are on the Board page; programs and clubs choose by your reputation against their prestige, so smaller programs answer first."
+                : "The board let us go. Open jobs are on the Board page; clubs choose by your reputation against their prestige, so smaller clubs answer first.", "Board");
             yield break;
         }
 
@@ -233,6 +236,12 @@ public static class Assistant
                 if (hurt.Count > 0)
                     yield return new($"hurt-{string.Join('.', hurt.Select(p => p.Id))}", 10, $"{Names(hurt)} {(hurt.Count == 1 ? "is" : "are")} injured but still starting",
                         "Pick a healthy starter and move the minutes on the Rotation page, or reset to the automatic rotation.", "Rotation");
+                // Run 176 (academics' polish): an ineligible starter gets his own line; he can't play until his date.
+                var benched = chart.Starters.Select(id => team.Roster.FirstOrDefault(p => p.Id == id)).OfType<Player>()
+                    .Where(p => !p.IsHurt(today) && p.IsIneligible(today)).ToList();
+                if (benched.Count > 0)
+                    yield return new($"inelig-{string.Join('.', benched.Select(p => p.Id))}", 10, $"{Names(benched)} {(benched.Count == 1 ? "is" : "are")} academically ineligible but still starting",
+                        $"{(benched.Count == 1 ? "He sits" : "They sit")} out until {benched.Min(p => p.IneligibleUntil!.Value):MMM d} for {(benched.Count == 1 ? "his" : "their")} grades. Pick another starter on the Rotation page, or reset to the automatic rotation.", "Rotation");
             }
             var unhappy = team.Roster.Where(p => p.Morale < 35).OrderBy(p => p.Morale).ToList();
             if (unhappy.Count > 0)
@@ -281,7 +290,7 @@ public static class Assistant
         var important = s.Inbox.Where(m => !m.Read && m.Date.DayNumber >= today.DayNumber - 14 && m.Category is "Board" or "Medical" or "Transactions" or "Squad" or "Staff").ToList();
         if (important.Count > 0)
             yield return new($"inbox-{important.Max(m => m.Id)}", 22, $"{important.Count} message{(important.Count == 1 ? "" : "s")} that need{(important.Count == 1 ? "s" : "")} you",
-                $"Latest: {important[0].Title}. Board, medical, squad and transfer news is worth reading; results and world news can wait.", "Inbox");
+                $"Latest: {important[0].Title}. {(s.InCollege ? "AD, medical, squad and recruiting" : "Board, medical, squad and transfer")} news is worth reading; results and world news can wait.", "Inbox");
 
         // ---- game day
         if (s.Phase is SessionPhase.RegularSeason or SessionPhase.Postseason && s.NextMyGame is { } next && next.Date <= today.AddDays(1) && stage != GuideStage.Strategy)

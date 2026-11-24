@@ -30,7 +30,18 @@ public sealed partial class GameSession
 {
     /// <summary>A college player's or high-school recruit's potential as you see it (a range); null for anyone else,
     /// whose potential stays exact (#119).</summary>
-    public Scouting.Range? CollegePotentialOf(Player p)
+    public Scouting.Range? CollegePotentialOf(Player p) =>
+        CollegeKnowledgeOf(p) is { } k ? Scouting.CollegePotential(p, k) : null;
+
+    /// <summary>
+    /// H119 (run 176, its college half's last part): a college player's current ability as your scouts read it, a range that
+    /// narrows with the same knowledge as his potential; null for anyone a college coach knows exactly (pros, #119).
+    /// </summary>
+    public Scouting.Range? CollegeAbilityOf(Player p) =>
+        CollegeKnowledgeOf(p) is { } k ? Scouting.CollegeAbility(p, k) : null;
+
+    /// <summary>What you know of a college player, recruit or this summer's graduate (null: not a college player).</summary>
+    private double? CollegeKnowledgeOf(Player p)
     {
         if (World.College is not { } c) return null;
         var cy = c.ClassYearOf(p, Today);
@@ -38,10 +49,10 @@ public sealed partial class GameSession
         // This summer's graduates in the pros' draft are still read as college players (the review of PR #196): the draft
         // board and his page agree (college careers only; a pro coach keeps exact numbers). Your own graduate is known as a senior.
         if (cy == null && r == null && InCollege && p.TeamId == null && Offseason?.Prospects.Contains(p) == true && c.Alumni.TryGetValue(p.Id, out var a))
-            return Scouting.CollegePotential(p, a.ProgramId == HumanTeam.Id ? 0.85 : Scouting.CollegeKnowledge(HumanTeam, p, 0));
+            return a.ProgramId == HumanTeam.Id ? 0.85 : Scouting.CollegeKnowledge(HumanTeam, p, 0);
         if (cy == null && r == null) return null;
         bool scouted = r is { Scouted: true } && r.CourtedBy == HumanTeam.Id;
-        return Scouting.CollegePotential(p, Scouting.CollegeKnowledge(HumanTeam, p, (cy?.Year ?? 1) - 1, scouted));
+        return Scouting.CollegeKnowledge(HumanTeam, p, (cy?.Year ?? 1) - 1, scouted);
     }
 
     /// <summary>A program's graduates who turned pro, newest class first, then best first.</summary>

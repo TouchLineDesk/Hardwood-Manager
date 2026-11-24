@@ -185,7 +185,10 @@ public sealed partial class PlayerViewModel : PageViewModel
         var s = Session;
         var chips = new List<Hardwood.Desktop.Controls.Chip>
         {
-            s.ClassYearOf(p) is { } cls
+            // H187 (run 176): after graduation day (the offseason before July) the chip reads next season's class, as Home does.
+            NextSeasonClass(s, p) is { } nx
+                ? new("Class", nx.Short, nx.Final ? $"final season next · age {p.Age(s.Today)}" : $"{nx.Long.ToLowerInvariant()} next season · age {p.Age(s.Today)}", nx.Final ? "info" : "")
+            : s.ClassYearOf(p) is { } cls
                 ? new("Class", cls.Short, cls.Final ? $"final season · age {p.Age(s.Today)}" : $"{cls.Long.ToLowerInvariant()} · age {p.Age(s.Today)}", cls.Final ? "info" : "")
                 : new("Age", p.Age(s.Today).ToString(), $"born {p.BirthDate:MMM d, yyyy}"),
             new("Height", PlayerRow.FormatHeight(p.HeightCm), $"{p.HeightCm} cm · {p.WingspanCm} span · {p.WeightKg} kg"),
@@ -230,5 +233,13 @@ public sealed partial class PlayerViewModel : PageViewModel
     private static string Pretty(Attr a) => System.Text.RegularExpressions.Regex.Replace(a.ToString(), "(?<=[a-z])([A-Z])", " $1");
 
     /// <summary>CP3 (run 132): a college player's or recruit's potential is a range; a pro's stays exact (#119).</summary>
+    /// <summary>H187 (run 176): a rostered college player's class next season, once this season's seniors have graduated
+    /// (<see cref="HomeViewModel.ClassSummer"/>); null otherwise.</summary>
+    internal static Hardwood.Core.College.ClassYear? NextSeasonClass(GameSession s, Player p)
+    {
+        if (s.ClassYearOf(p) == null || !HomeViewModel.ClassSummer(s).nextSeason) return null;
+        return Hardwood.Core.College.CollegeWorld.ClassYearOf(p, Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today) + 1);
+    }
+
     internal static string PotentialText(GameSession s, Player p, double k) => s.CollegePotentialOf(p)?.ToString() ?? Scouting.Potential(p, k).ToString();
 }

@@ -35,13 +35,18 @@ public class Run156CollegeScheduleTests
             var mine = games.Where(g => g.HomeId == t.Id || g.AwayId == t.Id).ToList();
             int n = mine.Count(g => g.Stage is "Non-conference" or "Conference");
             bool invited = mine.Any(g => g.Stage == "Invitational");
-            return (t, n, invited, total: n + (invited ? CollegeWorld.InvitationalAllowance : 0));
+            return (t, n, invited, total: n + (invited ? CollegeWorld.InvitationalAllowance : 0), least: n + (invited ? 1 : 0), most: n + (invited ? 3 : 0));
         }).ToList();
         var hist = counts.GroupBy(x => x.total).OrderBy(g => g.Key).Select(g => $"{g.Key}:{g.Count()}");
         _out.WriteLine($"seed {seed} {year}: " + string.Join(" ", hist));
         foreach (var x in counts.Where(x => x.total < 29 || x.total > 32))
             _out.WriteLine($"  {x.t.FullName} {x.total} (invited {x.invited})");
         Assert.All(counts, x => Assert.InRange(x.total, 29, 32));
+        // H159 (run 176): whatever the bracket does (out first: 1 game; champion: 3), the season stays in 29-32.
+        foreach (var x in counts.Where(x => x.least < 29 || x.most > 32))
+            _out.WriteLine($"  bracket range {x.t.FullName} {x.least}-{x.most}");
+        Assert.All(counts, x => Assert.InRange(x.least, 29, 32));
+        Assert.All(counts, x => Assert.InRange(x.most, 29, 32));
 
         // One game a day at most; non-conference games stay out of the showcase days and before conference play.
         var byDay = games.SelectMany(g => new[] { (g.Date, g.HomeId), (g.Date, g.AwayId) }).GroupBy(x => x).Where(g => g.Count() > 1).ToList();
@@ -67,7 +72,7 @@ public class Run156CollegeScheduleTests
     {
         Assert.Equal(16, CollegeWorld.NonConferenceTarget(14, false)); // an eight-team league: 14 + 16 = 30
         Assert.Equal(10, CollegeWorld.NonConferenceTarget(20, false));
-        Assert.Equal(7, CollegeWorld.NonConferenceTarget(20, true)); // H171 (run 163): an invited program books 3 for its bracket
+        Assert.Equal(8, CollegeWorld.NonConferenceTarget(20, true)); // H159 (run 176): an invited program books 2 for its bracket (H171's 3 left 28)
         for (int y = 2026; y <= 2060; y++) Assert.True(CollegeWorld.NonConferenceDates(y).Count >= 18, $"{y}");
     }
 }
