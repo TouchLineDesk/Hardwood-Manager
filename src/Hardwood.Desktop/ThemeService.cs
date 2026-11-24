@@ -19,6 +19,8 @@ public static class ThemeService
         return 0.2126 * Lin(c.R) + 0.7152 * Lin(c.G) + 0.0722 * Lin(c.B);
     }
 
+    private static readonly Color Ink = Color.Parse("#14171C");
+
     /// <summary>The WCAG contrast ratio of two colours (1 to 21).</summary>
     public static double Contrast(Color a, Color b)
     {
@@ -31,8 +33,7 @@ public static class ThemeService
     public static Color ReadableOn(Color background, Color preferred)
     {
         if (Contrast(preferred, background) >= 3) return preferred;
-        var ink = Color.Parse("#14171C");
-        return Contrast(Colors.White, background) >= Contrast(ink, background) ? Colors.White : ink;
+        return Contrast(Colors.White, background) >= Contrast(Ink, background) ? Colors.White : Ink;
     }
 
     private static Color Lighten(Color c, double t) =>
