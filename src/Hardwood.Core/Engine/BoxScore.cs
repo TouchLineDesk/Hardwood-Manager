@@ -98,6 +98,11 @@ public sealed class GameResult
     public List<(Player player, Injury injury)> Injuries { get; } = new();
     /// <summary>Every timeout called, in order (#1064, run 168). Not saved.</summary>
     public List<TimeoutCall> Timeouts { get; } = new();
+    /// <summary>K28 (run 177): every intentional foul, in order. Not saved.</summary>
+    public List<LateFoulCall> LateFouls { get; } = new();
+    /// <summary>K28: college possessions that started in the last minute of the final period (or overtime) with the side
+    /// with the ball ahead by four to ten, outside a transition break: the trips where the trailing side should foul. Not saved.</summary>
+    public int LateFoulChances { get; set; }
 
     public TeamBox Winner => Home.Points > Away.Points ? Home : Away;
     public TeamBox Loser => Home.Points > Away.Points ? Away : Home;

@@ -577,7 +577,12 @@ public sealed class GameSimulator
                 int spare = side.TimeoutsLeft - (lateWindow ? 0 : _to.Reserve);
                 if (spare > 0 && side.OnCourt.Average(p => side.Energy[p]) < _cfg.SubOutEnergy + TimeoutRules.BreatherMargin)
                 {
-                    CallTimeout(side, TimeoutReason.Breather, 0);
+                    // K28 (run 177): in the last two minutes a timeout is about the clock and the next play, not the legs
+                    // (only the words change; when and whether it is called is as before).
+                    var why = TimeoutReason.Breather;
+                    if (_period >= _rules.Periods && _clock <= 120)
+                        why = side == off ? TimeoutReason.LatePlay : Score(side) < Score(off) ? TimeoutReason.StopClock : TimeoutReason.SetDefense;
+                    CallTimeout(side, why, 0);
                     return;
                 }
             }
@@ -675,10 +680,18 @@ public sealed class GameSimulator
             _needThree = false;
             _wantTwo = false;
             bool intentionalFoul = false;
-            if (_period >= _rules.Periods && _clock <= 40 && !wasTransition && Score(off) - Score(def) is >= 1 and <= 6 && _clock > 2)
+            // K28 (run 177): college benches foul earlier and further back (LateGame). The pros keep the 40-second window.
+            bool finalPeriod = _period >= _rules.Periods;
+            var lateFoul = wasTransition ? LateGame.Foul.None
+                : LateGame.ShouldFoul(_rules.OneAndOne, finalPeriod, _clock, Score(off) - Score(def), _rules.BonusShots(def.TeamFouls + 1) == 1);
+            if (finalPeriod && !wasTransition && _rules.OneAndOne && _clock <= LateGame.FoulWindowSeconds && _clock > 2
+                && Score(off) - Score(def) is >= LateGame.FoulMin and <= LateGame.FoulMax)
+                _result.LateFoulChances++;
+            if (lateFoul != LateGame.Foul.None)
             {
                 intentionalFoul = true;
                 seconds = Math.Min(_clock - 1, 2 + _rng.NextDouble() * 3);
+                _result.LateFouls.Add(new LateFoulCall(_period, _clock, !off.IsHome, Score(off) - Score(def), lateFoul));
             }
             else if (_period >= _rules.Periods && _clock <= _rules.ShotClockSeconds + 2 && !wasTransition)
             {
@@ -691,6 +704,14 @@ public sealed class GameSimulator
                     _needThree = diff == -3;
                     _wantTwo = diff == -2 && _rng.Chance(0.75); // down two: usually play for the tie
                 }
+            }
+
+            // K28: college, the last minute, down four to ten with the ball: shoot early, and look for a three when it's needed.
+            if (!intentionalFoul && !wasTransition)
+            {
+                var (hurried, three) = LateGame.Hurry(_rules.OneAndOne, finalPeriod, _clock, Score(off) - Score(def), seconds);
+                seconds = hurried;
+                _needThree |= three;
             }
 
             // Last possession of a period: use whatever time is left.
@@ -725,7 +746,9 @@ public sealed class GameSimulator
                     var target = off.OnCourt[_rng.Next(5)];
                     Play(PlayKind.Foul, def, fouler, target);
                     ShootBonus(off, def, target);
-                    Log($"{fouler.LastName} fouls {target.LastName} to stop the clock");
+                    Log(lateFoul == LateGame.Foul.OneAndOne
+                        ? $"{fouler.LastName} fouls {target.LastName}, sending him to the one-and-one"
+                        : $"{fouler.LastName} fouls {target.LastName} to stop the clock");
                 }
                 possessionLive = false;
             }
