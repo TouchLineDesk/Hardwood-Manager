@@ -193,7 +193,9 @@ public class Run145PostgameTests
             string rec = $"{before.Wins + (won ? 1 : 0)}-{before.Losses + (won ? 0 : 1)}";
             Assert.Equal(rec, us == box.Home.Team ? meaning.Rows.Single(x => x.Label == "Record").Home : meaning.Rows.Single(x => x.Label == "Record").Away);
             Assert.Contains(rec, meaning.Line!.Text);
-            Assert.Contains(desk.Beats, b => b.Kicker == "TURNING POINT");
+            // K29 (run 181): the turning point is part of the full show (a ranked, rivalry or postseason game) only.
+            if (session.DeskContextFor(box, final: true).Full) Assert.Contains(desk.Beats, b => b.Kicker == "TURNING POINT");
+            else Assert.DoesNotContain(desk.Beats, b => b.Kicker == "TURNING POINT");
             foreach (var w in Words(desk.Beats)) foreach (var n in RealNetworks) Assert.DoesNotContain(n, w);
             foreach (var (width, scale) in new[] { (1480, 1.0), (1280, 1.0), (1280, 1.3) })
             {

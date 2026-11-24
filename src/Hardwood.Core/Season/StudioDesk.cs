@@ -125,6 +125,44 @@ public static class HalftimeDesk
         _ => "keep the pressure on and turn mistakes into points",
     };
 
+    /// <summary>K29 (run 181): the most rows the big screen shows, and the fewest a data beat shows.</summary>
+    public const int MaxRows = 9, MinRows = 6;
+
+    /// <summary>K29: box-score rows a beat can fall back on to fill the screen, in order (a label already shown is skipped).</summary>
+    internal static IEnumerable<DeskRow> Filler(GameResult r)
+    {
+        TeamBox a = r.Away, h = r.Home;
+        static string Pct(int m, int n) => n == 0 ? "-" : $"{m}-{n} ({100.0 * m / n:0}%)";
+        yield return new("Field goals", Pct(a.FGM, a.FGA), Pct(h.FGM, h.FGA), Math.Sign((h.FGA == 0 ? 0 : (double)h.FGM / h.FGA) - (a.FGA == 0 ? 0 : (double)a.FGM / a.FGA)));
+        yield return new("Threes", $"{a.ThreePM}-{a.ThreePA}", $"{h.ThreePM}-{h.ThreePA}", Math.Sign(h.ThreePM - a.ThreePM));
+        yield return new("Rebounds", (a.OReb + a.DReb).ToString(), (h.OReb + h.DReb).ToString(), Math.Sign(h.OReb + h.DReb - a.OReb - a.DReb));
+        yield return new("Assists", a.Assists.ToString(), h.Assists.ToString(), Math.Sign(h.Assists - a.Assists));
+        yield return new("Turnovers", a.Turnovers.ToString(), h.Turnovers.ToString(), -Math.Sign(h.Turnovers - a.Turnovers));
+        yield return new("Fouls", a.Fouls.ToString(), h.Fouls.ToString());
+    }
+
+    /// <summary>K29: tops a beat's rows up to <see cref="MinRows"/> from <paramref name="extra"/> (labels not yet shown), at most <see cref="MaxRows"/>.</summary>
+    internal static List<DeskRow> Fill(List<DeskRow> rows, IEnumerable<DeskRow> extra, int upTo = MinRows)
+    {
+        foreach (var x in extra)
+        {
+            if (rows.Count >= Math.Min(upTo, MaxRows)) break;
+            if (x.Label != "" && rows.Any(r => r.Label == x.Label)) continue;
+            rows.Add(x);
+        }
+        return rows;
+    }
+
+    /// <summary>K29: the score timeline's rows (biggest lead each way, lead changes, times tied); empty without a play log.</summary>
+    internal static IEnumerable<DeskRow> FlowRows(GameResult r)
+    {
+        if (r.Flow.Count == 0) yield break;
+        var (lh, la) = GameFlow.BiggestLeads(r);
+        yield return new("Biggest lead", la.ToString(), lh.ToString(), Math.Sign(lh - la));
+        yield return new("Lead changes", GameFlow.LeadChanges(r).ToString(), "");
+        yield return new("Times tied", GameFlow.TimesTied(r).ToString(), "");
+    }
+
     private static string AroundLine(IReadOnlyList<string> around)
     {
         int finals = around.Count(a => a.StartsWith("Final")), later = around.Count - finals;
@@ -134,8 +172,9 @@ public static class HalftimeDesk
     }
 
     public static List<DeskBeat> Build(GameResult r, double homeChance, IReadOnlyList<string>? around = null,
-        Func<Team, (OffensiveSystem system, DefensiveScheme scheme)?>? read = null)
+        Func<Team, (OffensiveSystem system, DefensiveScheme scheme)?>? read = null, DeskContext? ctx = null)
     {
+        ctx ??= DeskContext.None;
         TeamBox a = r.Away, h = r.Home;
         int margin = h.Points - a.Points;
         var leader = margin > 0 ? h : margin < 0 ? a : null;
@@ -149,6 +188,8 @@ public static class HalftimeDesk
         string Name(PlayerLine? l) => l == null ? "-" : l.Player.Name;
         string Line(PlayerLine? l) => l == null ? "-" : $"{l.Points} pts · {l.Rebounds} reb · {l.Assists} ast";
         var storyRows = new List<DeskRow> { score, new("Leading scorer", Name(ta), Name(th)), new("", Line(ta), Line(th)) };
+        // K29: the screen also carries the matchup (records, ranks, form) and the half's shape.
+        Fill(storyRows, ctx.Matchup.Concat(FlowRows(r)).Concat(Filler(r)), MaxRows - 1);
         string story = leader == null
             ? $"All square at the break, {a.Points}-{h.Points}. Nobody has blinked."
             : $"{leader.Team.FullName} lead {trailer!.Team.FullName} {leader.Points}-{trailer.Points} at the half"
@@ -170,23 +211,35 @@ public static class HalftimeDesk
         beats.Add(new("BY THE NUMBERS", "The stat that decided it", rows, new StudioLine(Numbers, why)));
 
         // 3. Each bench's adjustment: the trailing side fixes the deciding stat, the leading side keeps at it.
-        var adj = new List<DeskRow>();
+        // K29: the screen shows both benches side by side (away, home): where they stand, what they run, and the numbers
+        // the adjustment is about.
+        string Stand(TeamBox b) => leader == null ? "level" : b == leader ? $"up {Math.Abs(margin)}" : $"down {Math.Abs(margin)}";
+        string Off(TeamBox b) => b.Team.Tactic is { } t ? Systems.Name(t.System) : "-";
+        string Def(TeamBox b) => b.Team.Tactic is { } t ? Systems.Name(t.Scheme) : "-";
+        var adj = new List<DeskRow>
+        {
+            new("", a.Team.FullName, h.Team.FullName),
+            new("Score", Stand(a), Stand(h), Math.Sign(margin), true),
+            new("Offense", Off(a), Off(h)),
+            new("Defense", Def(a), Def(h)),
+            rows.First(x => x.Label == d.Label) with { Key = false },
+            new("Points at the rim", PostgameDesk.RimPoints(a).ToString(), PostgameDesk.RimPoints(h).ToString(), Math.Sign(PostgameDesk.RimPoints(h) - PostgameDesk.RimPoints(a))),
+        };
+        Fill(adj, Filler(r));
         var lines = new List<StudioLine>();
         foreach (var b in new[] { trailer ?? a, leader ?? h })
         {
             bool behind = trailer != null ? b == trailer : b == a;
             string plan = behind ? Fix(d.Key) : Keep(d.Key);
             var t = b.Team.Tactic;
-            string now = t == null ? "" : $"{Systems.Name(t.System)} · {Systems.Name(t.Scheme)}";
             string switchTo = read?.Invoke(b.Team) is { } c && t != null && (c.system != t.System || c.scheme != t.Scheme)
                 ? $" The counter is there: switch to {Systems.Name(c.system).ToLower()} and {Systems.Name(c.scheme).ToLower()}." : "";
-            adj.Add(new DeskRow(b.Team.Abbreviation, now, behind && trailer != null ? $"down {Math.Abs(margin)}" : leader == null ? "level" : $"up {Math.Abs(margin)}", Key: behind));
             lines.Add(new StudioLine(Big, $"{b.Team.FullName}: {plan}.{switchTo}"));
         }
         foreach (var l in lines) beats.Add(new("ADJUSTMENTS", "What each bench changes", adj, l));
 
-        // 4. Around college: the night's other scores (only when there are some).
-        if (around is { Count: > 0 })
+        // 4. Around college: the night's other scores (only when there are some, and only on the full show: K29).
+        if (around is { Count: > 0 } && ctx.Full)
         {
             var arows = around.Take(6).Select(s => new DeskRow("", s, "")).ToList();
             beats.Add(new("AROUND COLLEGE", "Elsewhere tonight", arows, new StudioLine(Host, AroundLine(around))));
@@ -198,6 +251,11 @@ public static class HalftimeDesk
         int by = Math.Max(1, (int)Math.Round(Math.Abs(margin) * 0.7 + (pc - 0.5) * 12));
         bool comeback = leader != null && pick != leader;
         var prow = new List<DeskRow> { score, new("Win chance", $"{100 - Math.Round(homeChance * 100):0}%", $"{Math.Round(homeChance * 100):0}%", Math.Sign(homeChance - 0.5), true) };
+        // K29: what the second half starts from: foul trouble, timeouts, and the half's shape.
+        static int Trouble(TeamBox b) => b.Lines.Count(l => l.Fouls >= 3);
+        prow.Add(new("Foul trouble (3+)", Trouble(a).ToString(), Trouble(h).ToString(), -Math.Sign(Trouble(h) - Trouble(a))));
+        prow.Add(new("Timeouts left", a.Timeouts.ToString(), h.Timeouts.ToString()));
+        Fill(prow, FlowRows(r).Concat(Filler(r)));
         string ptxt = comeback ? $"I'm going against the scoreboard: {pick.Team.FullName} come back and win by {by}."
             : leader == null ? $"Coin flip, but I'll take {pick.Team.FullName} by {by}."
             : $"{pick.Team.FullName} hold on. {pick.Team.Abbreviation} by {by}.";
@@ -233,8 +291,10 @@ public static class PostgameDesk
     public static int RimPoints(TeamBox b) => b.Lines.Sum(l => l.ZoneMakes[0]) * 2;
     public static int BenchPoints(TeamBox b) => b.Lines.Where(l => !l.Started).Sum(l => l.Points);
 
-    public static List<DeskBeat> Build(GameResult r, IReadOnlyList<DeskRow>? table = null, string? tableLine = null, IReadOnlyList<string>? around = null)
+    public static List<DeskBeat> Build(GameResult r, IReadOnlyList<DeskRow>? table = null, string? tableLine = null, IReadOnlyList<string>? around = null,
+        DeskContext? ctx = null)
     {
+        ctx ??= DeskContext.None;
         TeamBox a = r.Away, h = r.Home;
         var win = r.Winner; var lose = r.Loser;
         int margin = h.Points - a.Points;
@@ -256,7 +316,23 @@ public static class PostgameDesk
         else if (gap >= 20) story += ". It was never close.";
         else if (gap <= 3) story += ": it came down to the last possession.";
         else story += ".";
-        beats.Add(new("POSTGAME", "The final", new List<DeskRow> { score, new("Leading scorer", Name(ta), Name(th)), new("", Line(ta), Line(th)) }, new StudioLine(Host, story)));
+        // H193 / K29: the host says what kind of night it was: the rivalry, or a win over a ranked side (on the road).
+        bool winHome = win == h;
+        int? loserRank = winHome ? ctx.AwayRank : ctx.HomeRank;
+        if (ctx.Rivalry != null) story += $" That's {ctx.Rivalry}, and it goes to {win.Team.Name}.";
+        else if (loserRank is { } lr) story += winHome || ctx.Neutral ? $" A win over No. {lr} {lose.Team.Name}." : $" A road win at No. {lr} {lose.Team.Name}.";
+        // K29: the screen shows the game's shape (each period), the leading scorers and the biggest leads.
+        var finalRows = new List<DeskRow> { score };
+        if (r.Flow.Count > 0)
+        {
+            var (sh, sa) = GameFlow.Splits(r);
+            for (int i = 0; i < sh.Length && finalRows.Count < 7; i++)   // review: two halves or four quarters plus two OTs
+                finalRows.Add(new(GameFlow.PeriodName(r, i + 1), sa[i].ToString(), sh[i].ToString(), Math.Sign(sh[i] - sa[i])));
+        }
+        finalRows.Add(new("Leading scorer", Name(ta), Name(th)));
+        finalRows.Add(new("", Line(ta), Line(th)));
+        HalftimeDesk.Fill(finalRows, HalftimeDesk.FlowRows(r).Concat(HalftimeDesk.Filler(r)));
+        beats.Add(new("POSTGAME", ctx.Occasion == "" ? "The final" : $"The final · {ctx.Occasion}", finalRows, new StudioLine(Host, story)));
 
         // 2. The player of the game.
         if (PlayerOfTheGame(r) is var (pb, pl))
@@ -301,8 +377,8 @@ public static class PostgameDesk
         if (rimWin >= rimLose + 10) why += $" Add {rimWin}-{rimLose} at the rim.";
         beats.Add(new("BY THE NUMBERS", "How it was won", how, new StudioLine(Numbers, why)));
 
-        // 4. The turning point: the biggest run on the score timeline (games with a play log only).
-        if (r.Flow.Count > 0)
+        // 4. The turning point: the biggest run on the score timeline (games with a play log only; the full show only, K29).
+        if (r.Flow.Count > 0 && ctx.Full)
         {
             var runs = GameFlow.Runs(r);
             var best = runs.OrderByDescending(x => x.For - x.Against).ThenBy(x => x.StartElapsed).FirstOrDefault();
@@ -313,7 +389,9 @@ public static class PostgameDesk
                 new("Biggest lead", leadA.ToString(), leadH.ToString(), Math.Sign(leadH - leadA)),
                 new("Lead changes", changes.ToString(), ""),
             };
+            rows.Add(new("Times tied", GameFlow.TimesTied(r).ToString(), ""));
             if (best != null) rows.Add(new("Biggest run", best.Home ? "" : best.Score, best.Home ? best.Score : "", best.Home ? 1 : -1, true));
+            HalftimeDesk.Fill(rows, HalftimeDesk.Filler(r));
             string turn = best == null
                 ? (changes >= 8 ? $"No real run either way, and {changes} lead changes. A street fight." : "Nobody went on a run. It was a grind, basket for basket.")
                 : $"The game turned on {GameFlow.Describe(r, best)}." + ((best.Home ? h : a) == win ? "" : " They still couldn't finish it.")
@@ -322,11 +400,17 @@ public static class PostgameDesk
         }
 
         // 5. What it means: the table as it stands now (supplied by the session).
+        // K29: plus the matchup rows the table doesn't already show (the conference record, recent form, the series), above "Next".
         if (table is { Count: > 0 })
-            beats.Add(new("WHAT IT MEANS", "The standings now", table, tableLine == null ? null : new StudioLine(Host, tableLine)));
+        {
+            var means = table.Where(x => x.Label != "Next").ToList();
+            HalftimeDesk.Fill(means, ctx.Matchup, HalftimeDesk.MaxRows - 1);
+            means.AddRange(table.Where(x => x.Label == "Next"));
+            beats.Add(new("WHAT IT MEANS", "The standings now", means, tableLine == null ? null : new StudioLine(Host, tableLine)));
+        }
 
-        // 6. Around college: tonight's other ranked games.
-        if (around is { Count: > 0 })
+        // 6. Around college: tonight's other ranked games (the full show only, K29).
+        if (around is { Count: > 0 } && ctx.Full)
         {
             var shown = around.Take(6).ToList();   // review (run 145): the line counts the rows on the screen
             int finals = shown.Count(x => x.StartsWith("Final"));

@@ -106,10 +106,10 @@ HOST = (-1.45, 1.0, 0.24); ANALYST = (1.45, 1.0, 0.24)  # on a riser behind the 
 SCALE = 1.2
 mpfb_people.presenter(hs, "host", gender=1.0, age=0.55, race={"asian": 0.0, "caucasian": 0.15, "african": 0.85},
                       skin="middleage_african_male", suit="male_elegantsuit01", hair="short02", height=0.55,
-                      loc=HOST, turn=math.radians(12))
+                      loc=HOST, turn=math.radians(12), arms=(50, 47), forearms=(56, 46), inward=(5, 9))  # K29: a relaxed idle
 mpfb_people.presenter(hs, "analyst", gender=0.0, age=0.45, race={"asian": 0.2, "caucasian": 0.8, "african": 0.0},
                       skin="young_caucasian_female", suit="female_elegantsuit01", hair="bob02", hair_rgb=(0.35, 0.22, 0.12),
-                      height=0.5, loc=ANALYST, turn=math.radians(-12))
+                      height=0.5, loc=ANALYST, turn=math.radians(-12), arms=(47, 51), forearms=(44, 58), inward=(8, 4))
 for o in bpy.data.objects:
     if o.type == 'ARMATURE':
         o.scale = (SCALE, SCALE, SCALE)

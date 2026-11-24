@@ -33,9 +33,32 @@ def _tint(obj, rgb):
                 nt.links.new(mix.outputs[2], n.inputs["Base Color"])
 
 
+def _rotate_about_head(rig, name, axis, degrees):
+    """Rotate a pose bone about its own head, around an armature-space axis (K29, run 181). The run-139 pose turned the
+    upper arms about their own long axis (a twist), which left the rig's arms straight out: the 'mannequin' pose."""
+    from mathutils import Matrix
+    pb = rig.pose.bones[name]
+    bpy.context.view_layer.update()
+    m = pb.matrix.copy()
+    head = m.translation.copy()
+    r = Matrix.Translation(head) @ Matrix.Rotation(math.radians(degrees), 4, axis) @ Matrix.Translation(-head)
+    pb.matrix = r @ m
+    bpy.context.view_layer.update()
+
+
+def pose_arms(rig, arms, forearms, inward):
+    """Arms down at the sides, elbows bent so the forearms come forward to the desk. The rig faces -Y; its left arm is +X."""
+    for i, (side, sg) in enumerate((("L", 1), ("R", -1))):
+        _rotate_about_head(rig, "upperarm01." + side, 'Y', arms[i] * sg)        # drop the arm toward the hip
+        _rotate_about_head(rig, "lowerarm01." + side, 'X', -forearms[i])        # forearm forward (toward -Y)
+        _rotate_about_head(rig, "lowerarm01." + side, 'Z', -inward[i] * sg)     # and in toward the body
+
+
 def presenter(hs, name, *, gender, age, race, skin, suit, hair, hair_rgb=(0.08, 0.06, 0.05), height=0.5, weight=0.5,
-              loc=(0, 0, 0), turn=0.0, arms=80.0, forearms=70.0):
-    """A dressed, standing presenter with the arms lowered and the forearms forward (hands at the desk)."""
+              loc=(0, 0, 0), turn=0.0, arms=(50.0, 50.0), forearms=(55.0, 55.0), inward=(5.0, 5.0)):
+    """A dressed, standing presenter with the arms lowered and the forearms forward (hands at the desk).
+    arms / forearms / inward are (left, right) degrees: how far each upper arm drops from the rig's T-pose, how far each
+    forearm swings forward at the elbow, and how far it turns in toward the body. Uneven values read as a relaxed idle."""
     macro = {"gender": gender, "age": age, "muscle": 0.5, "weight": weight, "proportions": 0.6, "height": height,
              "cupsize": 0.5, "firmness": 0.5, "race": race}
     body = hs.create_human(macro_detail_dict=macro, scale=0.1)
@@ -53,9 +76,7 @@ def presenter(hs, name, *, gender, age, race, skin, suit, hair, hair_rgb=(0.08, 
         for o in bpy.data.objects:
             if o.name.startswith(name + "." + hair):
                 _tint(o, hair_rgb)
-    for side, sg in (("L", 1), ("R", -1)):
-        ua = rig.pose.bones["upperarm01." + side]; ua.rotation_mode = 'XYZ'; ua.rotation_euler = (0, math.radians(arms * sg), 0)
-        la = rig.pose.bones["lowerarm01." + side]; la.rotation_mode = 'XYZ'; la.rotation_euler = (0, 0, math.radians(forearms * sg))
+    pose_arms(rig, arms, forearms, inward)
     rig.location = loc
     rig.rotation_euler = (0, 0, turn)
     return body, rig
