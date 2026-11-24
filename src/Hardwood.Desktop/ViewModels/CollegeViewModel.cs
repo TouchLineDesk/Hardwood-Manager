@@ -456,7 +456,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         FillConference();
         // Between Selection Sunday and the first game, March Madness opens on the reveal.
         // (The page is kept while the game is open, so this is decided once per season.) Once the games start, a page
-        // still on the reveal moves to your region's bracket (or the East).
+        // still on the reveal moves to the full bracket (run 190).
         bool madnessStarted = s.Games.Any(g => g.Event == CollegeWorld.Madness && g.Played);
         if (s.Selected && !madnessStarted && _revealOpenedFor != s) { _revealOpenedFor = s; BracketView = SelectionView; }
         if (madnessStarted && _bracketOpenedFor != s)

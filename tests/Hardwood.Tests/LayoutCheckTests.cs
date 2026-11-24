@@ -621,6 +621,8 @@ public class LayoutCheckTests
                     }
                     // Run 90: the Final Four view is the weekend page (four teams, the semis and the final), not two bracket columns.
                     Assert.Equal(view == "Final Four" ? 0 : 4, college.BracketColumns.Count);
+                    // Run 190: a region view draws that region (the bars on screen), the weekend page none.
+                    Assert.Equal(view == "Final Four" ? null : Hardwood.Core.College.MadnessBracket.Regions.ToList().IndexOf(view), college.MadnessField?.Region);
                     if (view == "Final Four") Assert.True(college.ShowFinalFour && college.WeekendGames.Count == 3 && college.WeekendTeams.Count == 4);
                     foreach (var p in LayoutCheck.Scan(window)) problems.Add($"{width}px {view} | {p}");
                 }

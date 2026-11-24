@@ -126,10 +126,12 @@ public sealed class MadnessBracketView : Canvas
         var finB = new Rect(centreX, mid + 3, CentreW, fh);
         AddBar(finA, fin?.TeamA, fin?.SeedA ?? 0, fin?.ScoreA, Lost(fin, fin?.TeamA), false, m, m.Font + 1);
         AddBar(finB, fin?.TeamB, fin?.SeedB ?? 0, fin?.ScoreB, Lost(fin, fin?.TeamB), false, m, m.Font + 1);
-        Link(east, finA, false, IsMine(semis.ElementAtOrDefault(0)?.TeamA));
-        Link(west, finA, true, IsMine(semis.ElementAtOrDefault(0)?.TeamB));
-        Link(south, finB, false, IsMine(semis.ElementAtOrDefault(1)?.TeamA));
-        Link(midwest, finB, true, IsMine(semis.ElementAtOrDefault(1)?.TeamB));
+        // Review (run 190): a semi-final's line lights up only for the side that won it, like every other round's.
+        bool Won(BracketBox? b, int? id) => IsMine(id) && b is { Played: true } && b.Winner == id;
+        Link(east, finA, false, Won(semis.ElementAtOrDefault(0), semis.ElementAtOrDefault(0)?.TeamA));
+        Link(west, finA, true, Won(semis.ElementAtOrDefault(0), semis.ElementAtOrDefault(0)?.TeamB));
+        Link(south, finB, false, Won(semis.ElementAtOrDefault(1), semis.ElementAtOrDefault(1)?.TeamA));
+        Link(midwest, finB, true, Won(semis.ElementAtOrDefault(1), semis.ElementAtOrDefault(1)?.TeamB));
         // Our own emblem above the final, the champion's plate below.
         int year = _boxes.FirstOrDefault(b => b.Date != null)?.Date?.Year ?? DateTime.Now.Year;
         Emblem(centreX, finA.Y - 150, year);
@@ -274,6 +276,8 @@ public sealed class MadnessBracketView : Canvas
         // A narrow later-round bar with a score: the crest gives way before the name does.
         bool showCrest = Measure(name, font) <= room;
         if (!showCrest && Measure(team.City.ToUpperInvariant(), font) <= room + crest + 4) name = team.City.ToUpperInvariant();
+        // The last resort (review): a smaller type size until even the code fits without the crest.
+        while (!showCrest && font > 8 && Measure(name, font) > room + crest + 4) font -= 0.5;
         if (showCrest)
         {
             var logo = new TeamLogo { Team = team, Width = crest, Height = crest, ShowText = false, ShowRank = false, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0) };
