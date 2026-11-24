@@ -158,6 +158,18 @@ public static class GameFlow
         return (h, a);
     }
 
+    /// <summary>K29 (run 181): how many times a basket tied the score (0-0 at the tip doesn't count).</summary>
+    public static int TimesTied(GameResult r)
+    {
+        int ties = 0, h = 0, a = 0;
+        foreach (var p in r.Flow)
+        {
+            if ((p.Home != h || p.Away != a) && p.Home == p.Away && p.Home > 0) ties++;
+            h = p.Home; a = p.Away;
+        }
+        return ties;
+    }
+
     /// <summary>How many times the lead changed hands.</summary>
     public static int LeadChanges(GameResult r)
     {

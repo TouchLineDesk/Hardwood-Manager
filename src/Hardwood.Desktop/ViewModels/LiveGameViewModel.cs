@@ -466,13 +466,14 @@ public sealed partial class LiveGameViewModel : PageViewModel
             var wp = Hardwood.Core.Engine.GameFlow.WinProbability(r);
             double home = wp.Count == 0 ? 0.5 : wp[^1].Percent / 100.0;
             HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.HalftimeDesk.Build(r, home, Session.HalftimeAround(r.Home.Team, r.Away.Team),
-                t => _live.HalftimeRead(t)), r.Away.Team, r.Home.Team, "Halftime");
+                t => _live.HalftimeRead(t), Session.DeskContextFor(r, final: false)), r.Away.Team, r.Home.Team, "Halftime");
             DeskShown = true;
         }
         else if (final && AppSettings.Current.StudioShow)
         {
             var (rows, line) = Session.PostgameTable(r);
-            HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.PostgameDesk.Build(r, rows, line, Session.HalftimeAround(r.Home.Team, r.Away.Team)),
+            HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.PostgameDesk.Build(r, rows, line, Session.HalftimeAround(r.Home.Team, r.Away.Team),
+                Session.DeskContextFor(r, final: true)),
                 r.Away.Team, r.Home.Team, "Postgame");
             DeskShown = true;
         }
