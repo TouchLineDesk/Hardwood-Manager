@@ -264,6 +264,24 @@ public sealed partial class LiveGameViewModel
         ShowFrame();
     }
 
+    /// <summary>
+    /// K25's leftover (run 182): simmed to the end, the game still gets its result call. The bar kept the last line it had
+    /// said ("RUTLEDGE! He finishes at the rim. George Mason lead 39-37" under FINAL); now it says the result, and the log
+    /// gets the result and what it meant, as a game watched to the end does.
+    /// </summary>
+    private void CallTheResult()
+    {
+        var r = _live.Result;
+        _pendingCalls = new(); _logCalls = new(); _finalCalls = new();
+        var final = GameCalls.Final(r.Plays, Short(HomeTeam), Short(AwayTeam), _live.HomeScore, _live.AwayScore, r.Periods,
+            FinalOccasion(_live.HomeScore > _live.AwayScore));
+        if (final.Count == 0) return;
+        Commentary = final[0]; CommentaryBig = true;
+        if (Log.Any(l => l.EndsWith(final[0], StringComparison.Ordinal))) return; // already said: the last possession had played out
+        foreach (var c in final) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
+        SaidForTest.AddRange(final.Select((t, n) => new CommentaryLine(0, t, n == 0)));
+    }
+
     /// <summary>The possession on screen has played out: hand everything else the engine's state, then go on.</summary>
     private void FinishPossession()
     {

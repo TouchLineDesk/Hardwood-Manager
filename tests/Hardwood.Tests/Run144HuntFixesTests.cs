@@ -66,15 +66,19 @@ public class Run144HuntFixesTests
             s.Coach.Reputation = 24;
             var pro = s.League.Teams.OrderBy(t => Board.Prestige(s.ContextOf(t), t)).First();
             var college = s.World.College!.Programs.Where(p => p.Id != id).OrderBy(p => Board.Prestige(s.ContextOf(p), p)).First();
-            Assert.Equal(Board.HireChance(s.Coach, s.ContextOf(pro), pro), s.HireChanceFor(pro)); // in work: unchanged
+            // H194 (run 182): in work, a college coach below reputation 70 is a long shot for a pro bench too (a quarter of the
+            // chance with no season judged yet).
+            Assert.Equal(Board.HireChance(s.Coach, s.ContextOf(pro), pro) * Hardwood.Core.Season.GameSession.CollegeToProFactor, s.HireChanceFor(pro), 9);
             s.Fire();
             Assert.True(s.RecentlySackedFromCollege);
             double baseChance = Board.HireChance(s.Coach, s.ContextOf(pro), pro);
             Assert.Equal(baseChance * Hardwood.Core.Season.GameSession.SackedCollegeCoachProFactor, s.HireChanceFor(pro), 6);
             Assert.Equal(Board.HireChance(s.Coach, s.ContextOf(college), college), s.HireChanceFor(college)); // college jobs: unchanged
             _out.WriteLine($"{pro.FullName}: {baseChance:P0} → {s.HireChanceFor(pro):P0}; {college.FullName}: {s.HireChanceFor(college):P0}");
-            // A high reputation still gets a pro club's ear.
+            // A middling reputation is still a long shot (H194, run 182); a high one gets a pro club's ear.
             s.Coach.Reputation = 60;
+            Assert.True(s.HireChanceFor(pro) <= Board.HireChance(s.Coach, s.ContextOf(pro), pro) * Hardwood.Core.Season.GameSession.CollegeToProFactor + 1e-9);
+            s.Coach.Reputation = Hardwood.Core.Season.GameSession.CollegeToProReputation;
             Assert.Equal(Board.HireChance(s.Coach, s.ContextOf(pro), pro), s.HireChanceFor(pro));
         }
         finally { try { Directory.Delete(dir, true); } catch { } }

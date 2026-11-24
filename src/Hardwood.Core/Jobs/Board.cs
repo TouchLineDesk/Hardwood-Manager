@@ -415,8 +415,16 @@ public static class Board
             if ((int)e.Goal < (int)floorGoal) e.Goal = floorGoal;
             if (e.TargetWins < previous.TargetWins) e.TargetWins = previous.TargetWins;
         }
+        // H189 (run 182): a "build the program" target starts from the season just played. Virginia Tech went 14-16 and was
+        // asked for 20; Providence 14-15 and 20 again, and was sacked short of it. Progress is last season's regular-season
+        // wins and a few more, never below a .400 season nor above what the program's rank would ask.
+        if (ctx.IsCollege && e.Goal == SeasonGoal.Develop && !e.Survive && previous.Wins is { } lastRegular)
+            e.TargetWins = Math.Min(e.TargetWins, Math.Max(lastRegular + CollegeProgressWins, (int)Math.Round(ctx.SeasonGames * 0.4)));
         return e;
     }
+
+    /// <summary>H189 (run 182): the wins past last season that a "build the program" target asks for.</summary>
+    public const int CollegeProgressWins = 3;
 
     /// <summary>K7 (run 115): the least a relegation costs in board confidence, and in a season the board had protected.</summary>
     public const double RelegationCost = 20, RelegationProtectedCost = 30;
@@ -868,6 +876,11 @@ public static class Board
         // Round of 32. An exit rounds before the seed's expectation costs up to 12; reaching it is no loss.
         bool earlyExit = ctx.IsCollege && seed > 0 && seedOver <= -1.5;
         bool onPar = ctx.IsCollege && seed > 0 && seedOver >= 0;
+        // H188 (run 182): out before the seed's mark, but not early enough to be an early exit.
+        // A half round short (a 2-seed out in the Sweet 16) after a regular season past the target still reads "pleased with
+        // the regular season"; without that season, or a full round short, it's a disappointment.
+        bool shortOfSeed = ctx.IsCollege && seed > 0 && madnessRound >= 0 && !earlyExit && seedOver < 0 && !e.Survive
+            && (seedOver <= -1 || !j.BeatTarget);
         // H166 (run 144): what an early exit costs; the floors below keep it, so a 1-seed out in the Round of 32 never lands on
         // the same number as one that reached the Elite Eight (both read 64 once the AD counted the real 31-game season).
         double marchCost = ctx.IsCollege && seed > 0 && !e.Survive ? MarchWeight * -Math.Clamp(seedOver, -2, 0) : 0;
@@ -1006,7 +1019,13 @@ public static class Board
                 ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
                 : $"{owner} accepts the result, but there is ground to make up. Board confidence: {job.Confidence:0}/100.")
             : diff >= 1 ? $"{owner} is delighted."
+            // H188 (run 182): half a college step past the goal (the Elite Eight against a Sweet 16 goal) is a goal beaten,
+            // not "about what the seed promised" (Florida, a 2-seed, read "hoped for more").
+            : diff > 0 && ctx.IsCollege ? $"{owner} is pleased: {result}, past the goal ({goalText}). AD confidence: {job.Confidence:0}/100."
             // H137 (run 138): Miami missed its 20-win target and March at 18-11 and read "satisfied" with nothing else.
+            // H188 (run 182): the goal met with a regular season clearly past the target is better than "satisfied" (a 2-seed's
+            // Elite Eight read "satisfied" while a round less read "pleased with the regular season").
+            : diff == 0 && ctx.IsCollege && j.BeatTarget ? $"{owner} is pleased: {result}, and the regular season was {ahead} {(ahead == 1 ? "win" : "wins")} past the target. AD confidence: {job.Confidence:0}/100."
             : diff == 0 && ctx.IsCollege && wins < e.TargetWins ? $"{owner} is satisfied with the progress, though {TargetPhrase(wins, losses, e.TargetWins)}{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
             : diff == 0 ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
@@ -1014,6 +1033,11 @@ public static class Board
             // H137: a college season is told by March as well. An early exit for the seed is a disappointment, however good
             // the regular season; a run as far as the seed promised is close to par.
             : earlyExit && !relegated ? $"{owner} is disappointed: {SeedPhrase(seed)} {ExitPhrase(madnessRound)} is well short of what the seed promised{(j.BeatTarget ? ", whatever the regular season did" : "")}. AD confidence: {job.Confidence:0}/100."
+            // H188 (run 182): an exit a round before the seed's mark is short of it, and never reads better than a run as far as
+            // the seed promised (Duke, a 1-seed out in the Sweet 16, read "pleased"; North Carolina, out in the Elite Eight,
+            // "hoped for more"). The regular season is still credited in the line.
+            : shortOfSeed && !relegated ? $"{owner} is disappointed: {SeedPhrase(seed)} {ExitPhrase(madnessRound)} falls short of what the seed promised{(j.BeatTarget ? $", though the regular season was {ahead} {(ahead == 1 ? "win" : "wins")} past the target" : "")}. AD confidence: {job.Confidence:0}/100."
+            : onPar && !relegated && j.BeatTarget ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), and {SeedPhrase(seed)} {ExitPhrase(madnessRound)} is about what the seed promised, though the goal was to {goalText}. AD confidence: {job.Confidence:0}/100."
             : onPar && !relegated ? $"{owner} hoped for more, but {SeedPhrase(seed)} {ExitPhrase(madnessRound)} is about what the seed promised. AD confidence: {job.Confidence:0}/100."
             : !relegated && j.BeatTarget ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), but hoped to go further. Board confidence: {job.Confidence:0}/100."
             : !relegated && winsVsTarget >= 0 ? (reachedPost
