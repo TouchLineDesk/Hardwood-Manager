@@ -13,11 +13,11 @@ public sealed partial class MoodRow : ObservableObject
     public DateOnly Today { get; init; }
     public string Name => Player.Name;
     public string Pos => Player.PrimaryPosition.ToString();
-    public string Mood => PeopleEngine.Mood(Morale);   // the shown number, so a 49.6 shown as 50 reads "Content" (code review)
-    public int Morale => (int)Math.Round(Player.Morale);
+    public string Mood => PeopleEngine.Mood(Morale);   // the shown number (run 188: rounded down, so 49.6 reads "49 · Unhappy" here and on the Roster)
+    public int Morale => PeopleEngine.MoraleShown(Player.Morale);
     /// <summary>Run 74: the face and colour follow the mood word's bands (PeopleEngine.Mood and the chips: Happy 68+,
     /// Content 50+, Unhappy below 50); before, the face turned green at 60, so a "Content" 62 looked happy.</summary>
-    public static int Band(double morale) => Math.Round(morale) >= 68 ? 2 : Math.Round(morale) >= 50 ? 1 : 0;
+    public static int Band(double morale) => PeopleEngine.MoraleShown(morale) >= 68 ? 2 : PeopleEngine.MoraleShown(morale) >= 50 ? 1 : 0;
     public static string BandColor(double morale) => Band(morale) switch { 2 => "#3FB950", 1 => "#D29922", _ => "#F85149" };
     public string MoodIcon => Band(Player.Morale) switch { 2 => "Smile", 1 => "Meh", _ => "Frown" };
     public Avalonia.Media.IBrush MoodBrush => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(BandColor(Player.Morale)));
@@ -120,7 +120,7 @@ public sealed partial class SquadViewModel : PageViewModel
         {
             new("Chemistry", $"{team.Chemistry:0}", chemistryLabel + " · out of 100", team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "" : "bad"),
             new("Happy", happy.ToString(), $"of {roster.Count} players", happy >= roster.Count / 2 ? "good" : ""),
-            new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody unsettled" : lowest != null ? $"lowest: {lowest.Name.Split(' ').Last()} ({lowest.Morale:0})" : "",
+            new("Unhappy", unhappy.ToString(), unhappy == 0 ? "nobody unsettled" : lowest != null ? $"lowest: {lowest.Name.Split(' ').Last()} ({PeopleEngine.MoraleShown(lowest.Morale)})" : "",
                 roster.Any(p => p.Morale < 35 && !p.TradeRequested) ? "bad" : unhappy > 0 ? "warn" : "good"),
         };
         // Danny, Nov 22: no college transfers, so a college program has no "wants out" count.
@@ -201,7 +201,7 @@ public sealed partial class SquadViewModel : PageViewModel
         Session.MyStats.TryGetValue(p.Id, out var st);
         // Bug list #14: the score is its own unwrapped text, so "(61/100)" never breaks mid-number in the narrow panel.
         PlayerHeadline = $"{p.Name}: {PeopleEngine.Mood(p.Morale).ToLower()}" + (p.TradeRequested && !Session.InCollege ? ", wants a trade" : "");
-        PlayerScore = $"{p.Morale:0}/100";
+        PlayerScore = $"{PeopleEngine.MoraleShown(p.Morale)}/100";
         foreach (var (r, e) in PeopleEngine.Factors(p, Session.HumanTeam, WinPct, st, Session.League.Finance, Session.Today, Session.HumanLeague?.Profile.SalaryScale ?? 1, Session.InCollege).OrderBy(x => x.effect))
             PlayerFactors.Add(new FactorRow { Reason = r, Effect = e });
         var blocked = Talks.Unavailable(p, Session.Today);

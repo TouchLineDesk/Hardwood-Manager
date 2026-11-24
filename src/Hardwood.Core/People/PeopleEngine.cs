@@ -144,6 +144,10 @@ public static class PeopleEngine
 
     public static double Target(IEnumerable<(string reason, double effect)> factors) => Math.Clamp(Neutral + factors.Sum(x => x.effect), 5, 98);
 
+    /// <summary>Run 188: the morale number shown beside <see cref="Mood"/>, rounded down so it never crosses a word's line
+    /// (49.6 read "50/100" beside "Unhappy").</summary>
+    public static int MoraleShown(double morale) => (int)Math.Floor(morale);
+
     public static string Mood(double morale) => morale switch
     {
         >= 82 => "Delighted",
