@@ -100,6 +100,16 @@ public sealed class Offseason
     {
         Team Find(int id) => findTeam?.Invoke(id) ?? league.TeamById(id);
         var outcome = new SeasonOutcome { Standings = new Standings(league) };
+        // Run 185: the season's records, from the summary written when the summer began. Without them every club's last
+        // win% read as .500 after a mid-summer load, so re-signing and free agency (which lean to winners) chose differently
+        // than the career that saved.
+        if (league.History.LastOrDefault(h => h.Season == league.Season) is { Records: { } records })
+            foreach (var (id, w, l) in records)
+                if (league.Teams.FirstOrDefault(t => t.Id == id) is { } t && outcome.Standings.Has(t))
+                {
+                    outcome.Standings[t].Wins = w;
+                    outcome.Standings[t].Losses = l;
+                }
         var o = new Offseason(league, outcome, new Dictionary<int, PlayerSeasonStats>(), rng)
         {
             Phase = phase,

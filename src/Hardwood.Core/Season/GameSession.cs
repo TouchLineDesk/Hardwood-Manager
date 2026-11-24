@@ -79,6 +79,35 @@ public sealed partial class GameSession
         if (_savedSeed is { } x) _rng.Reseed(x);
         _savedSeed = null;
         World.RestartFromSave();
+        PutPlayersInSavedOrder();
+    }
+
+    /// <summary>
+    /// Run 185: a load reads players by id, so every roster, the free-agent pool, the retired list and the draft and
+    /// recruiting classes come back in id order, while a career that just saved kept them in the order they were added.
+    /// Choices that break ties by list order (free agency's best fit, the draft board) then differed after a reload
+    /// (found by a summer save in a college career). After a save goes through, the live lists take the order a load
+    /// gives them. No random numbers.
+    /// </summary>
+    private void PutPlayersInSavedOrder()
+    {
+        // Sorted only when out of order: List.Sort bumps the list's version even when nothing moves, which would break any
+        // loop over these lists that saves part-way (review, run 185).
+        static void ById(List<Player> list)
+        {
+            for (int i = 1; i < list.Count; i++)
+                if (list[i - 1].Id > list[i].Id) { list.Sort((a, b) => a.Id.CompareTo(b.Id)); return; }
+        }
+        foreach (var t in League.Teams) ById(t.Roster);
+        ById(League.FreeAgents);
+        ById(League.Retired);
+        if (Phase == SessionPhase.Offseason && Offseason != null) ById(Offseason.Prospects);
+        foreach (var t in World.Clubs) ById(t.Roster);
+        if (World.College is { } cw)
+        {
+            foreach (var t in cw.Programs) ById(t.Roster);
+            ById(cw.Prospects);
+        }
     }
     /// <summary>Back to the start of the session's and the world's streams (their seeds as loaded).</summary>
     private void RestartStreams() { _rng.Reseed(_rng.Seed); World.RestartStream(); }
@@ -1682,6 +1711,14 @@ public sealed partial class GameSession
     {
         SyncHeadToHead(); // the day's results into the head-to-head book (#529)
         if (Save == null) return;
+        // Run 185: the world's headlines wait in World.News until the next day or summer step drains them, and they aren't
+        // saved. A save made between (the summer's steps) lost them, so the reloaded career's digest was a story short.
+        // Move them into the digest, which is saved, as the next drain would.
+        if (World.News.Count > 0)
+        {
+            foreach (var (title, body) in World.News) PostWorld(title, body);
+            World.News.Clear(); World.CollegeTitles.Clear();
+        }
         HealDuplicatePlayers();
         LastSaved = Today; LastSavedAt = DateTime.Now; _lastSavedPhase = Phase;
         // A college program you coach keeps its staff in the save like a club abroad (C2).
