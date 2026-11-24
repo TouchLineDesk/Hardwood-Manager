@@ -320,13 +320,13 @@ public static class PostgameDesk
         bool winHome = win == h;
         int? loserRank = winHome ? ctx.AwayRank : ctx.HomeRank;
         if (ctx.Rivalry != null) story += $" That's {ctx.Rivalry}, and it goes to {win.Team.Name}.";
-        else if (loserRank is { } lr) story += winHome ? $" A win over No. {lr} {lose.Team.Name}." : $" A road win at No. {lr} {lose.Team.Name}.";
+        else if (loserRank is { } lr) story += winHome || ctx.Neutral ? $" A win over No. {lr} {lose.Team.Name}." : $" A road win at No. {lr} {lose.Team.Name}.";
         // K29: the screen shows the game's shape (each period), the leading scorers and the biggest leads.
         var finalRows = new List<DeskRow> { score };
         if (r.Flow.Count > 0)
         {
             var (sh, sa) = GameFlow.Splits(r);
-            for (int i = 0; i < sh.Length && finalRows.Count < 6; i++)
+            for (int i = 0; i < sh.Length && finalRows.Count < 7; i++)   // review: two halves or four quarters plus two OTs
                 finalRows.Add(new(GameFlow.PeriodName(r, i + 1), sa[i].ToString(), sh[i].ToString(), Math.Sign(sh[i] - sa[i])));
         }
         finalRows.Add(new("Leading scorer", Name(ta), Name(th)));

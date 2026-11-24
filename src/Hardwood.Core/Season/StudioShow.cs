@@ -359,6 +359,21 @@ public sealed partial class GameSession
     /// <summary>Last ten games (wins, losses) and the current streak for any club, from this season's results.</summary>
     private (int w, int l, int streak) Form(Team t)
     {
+        var recent = RecentResults(t);
+        int streak = 0;
+        foreach (var won in recent)
+        {
+            int sign = won ? 1 : -1;
+            if (streak != 0 && Math.Sign(streak) != sign) break;
+            streak += sign;
+        }
+        var ten = recent.Take(10).ToList();
+        return (ten.Count(g => g), ten.Count(g => !g), streak);
+    }
+
+    /// <summary>This season's results for any club, newest first (true: a win).</summary>
+    private List<bool> RecentResults(Team t)
+    {
         var games = new List<(DateOnly date, bool won)>();
         if (t == HumanTeam) games.AddRange(MyGames().Where(g => g.Played).Select(g => (g.Date, g.Won)));
         else if (InNabl && League.Teams.Contains(t))
@@ -371,16 +386,7 @@ public sealed partial class GameSession
                 foreach (var r in se.Games)
                     games.Add((r.Date ?? Today, (r.Home.Team == t ? r.Home.Points - r.Away.Points : r.Away.Points - r.Home.Points) > 0));
         }
-        var recent = games.OrderByDescending(g => g.date).ToList();
-        int streak = 0;
-        foreach (var g in recent)
-        {
-            int sign = g.won ? 1 : -1;
-            if (streak != 0 && Math.Sign(streak) != sign) break;
-            streak += sign;
-        }
-        var ten = recent.Take(10).ToList();
-        return (ten.Count(g => g.won), ten.Count(g => !g.won), streak);
+        return games.OrderByDescending(g => g.date).Select(g => g.won).ToList();
     }
 
     private static string StyleClash(Team home, Team away)

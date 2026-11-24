@@ -13,7 +13,7 @@ public enum DeskShowLength { Short, Full }
 /// conference records, recent form, the series). Rows are away, home. Pure data: the session builds it, the desks read it.
 /// </summary>
 public sealed record DeskContext(DeskShowLength Length, string Occasion, IReadOnlyList<DeskRow> Matchup,
-    string? Rivalry = null, int? AwayRank = null, int? HomeRank = null)
+    string? Rivalry = null, int? AwayRank = null, int? HomeRank = null, bool Neutral = false)
 {
     /// <summary>No session (tests, old callers): the full show with nothing extra on the screen.</summary>
     public static readonly DeskContext None = new(DeskShowLength.Full, "", Array.Empty<DeskRow>());
@@ -34,6 +34,7 @@ public sealed partial class GameSession
         string occasion = "";
         string? rivalryLabel = null;
         int? rankA = null, rankH = null;
+        bool neutral = false;
         bool full;
         int? Won(Team t) => counts ? (r.Winner.Team == t ? 1 : 0) : null;
 
@@ -51,6 +52,7 @@ public sealed partial class GameSession
             var rivalry = cw.RivalryOf(a.Id, h.Id);
             (rivalryLabel, rankA, rankH) = (rivalry?.Label, rkA, rkH);
             bool postseason = g != null && !College.CollegeWorld.IsRegularSeason(g);
+            neutral = g?.Event != null || postseason;   // tournaments, showcases and March are on a neutral floor
             // A ranked opponent makes it a big night; your own ranking alone doesn't (No. 1 at home to a low-major is ordinary).
             int? oppRank = HumanTeam == h ? rkA : HumanTeam == a ? rkH : rkA ?? rkH;
             full = oppRank != null || rivalry != null || postseason;
@@ -78,11 +80,13 @@ public sealed partial class GameSession
                 return last.Count == 0 ? "-" : $"{last.Count(x => x)}-{last.Count(x => !x)}";
             }
             rows.Add(new("Last 5", Last5(a), Last5(h)));
-            if (rivalry != null && cw.SeriesOf(a.Id, h.Id) is { Games: > 0 } s)
+            if (rivalry != null)
             {
-                int aw = a.Id < h.Id ? s.LoWins : s.HiWins, hw = s.Games - aw;
+                // Review (run 181): a first meeting still shows the series once tonight counts.
+                var s = cw.SeriesOf(a.Id, h.Id);
+                int aw = s == null ? 0 : a.Id < h.Id ? s.LoWins : s.HiWins, hw = (s?.Games ?? 0) - aw;
                 if (Won(a) is { } win) { aw += win; hw += 1 - win; }
-                rows.Add(new("Series", aw.ToString(), hw.ToString(), Math.Sign(hw - aw)));
+                if (aw + hw > 0) rows.Add(new("Series", aw.ToString(), hw.ToString(), Math.Sign(hw - aw)));
             }
         }
         else
@@ -92,12 +96,15 @@ public sealed partial class GameSession
             rows.Add(new("Record", Rec(a), Rec(h)));
             string Form10(Team t)
             {
-                var (w, l, _) = Form(t);
-                return w + l == 0 ? "-" : $"{w}-{l}";
+                // Review (run 181): tonight counts in the postgame, as the record does; the window stays ten games.
+                var recent = RecentResults(t);
+                if (Won(t) is { } win) recent.Insert(0, win == 1);
+                var ten = recent.Take(10).ToList();
+                return ten.Count == 0 ? "-" : $"{ten.Count(x => x)}-{ten.Count(x => !x)}";
             }
             rows.Add(new("Last 10", Form10(a), Form10(h)));
         }
-        return new DeskContext(full ? DeskShowLength.Full : DeskShowLength.Short, occasion, rows, rivalryLabel, rankA, rankH);
+        return new DeskContext(full ? DeskShowLength.Full : DeskShowLength.Short, occasion, rows, rivalryLabel, rankA, rankH, neutral);
     }
 
     private static string Cap(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];

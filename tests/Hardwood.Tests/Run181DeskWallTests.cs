@@ -89,6 +89,8 @@ public class Run181DeskWallTests
         Assert.Contains("That's the Battle of the Bluegrass, and it goes to Wildcats.", fin.Line!.Text);
         Assert.EndsWith("A road win at No. 12 Cardinals.", PostgameDesk.Build(r, table, null, null, Ranked)[0].Line!.Text);
         Assert.DoesNotContain("No. 12", shortShow[0].Line!.Text);
+        // Review (run 181): on a neutral floor (a tournament, March) it's a win over a ranked side, not a road win.
+        Assert.EndsWith("A win over No. 12 Cardinals.", PostgameDesk.Build(r, table, null, null, Ranked with { Neutral = true })[0].Line!.Text);
         // What it means: the table's rows, then the matchup it didn't have, and Next stays last.
         var means = full.Single(b => b.Kicker == "WHAT IT MEANS");
         Assert.Equal("5-0", means.Rows.Single(x => x.Label == "Record").Away);
