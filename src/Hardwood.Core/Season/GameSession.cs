@@ -142,6 +142,9 @@ public sealed partial class GameSession
         session.SeedRealAlumni(); // K12b (run 137): a real program's NBA alumni from day one
         session.RefreshProPitch(); // CP3: the pitch (a real program's alumni count from day one)
         session.PlayWorld(session.Today.AddDays(-1));
+        // H195 (run 182): the inbox lists the newest first, so the hand-back's news goes in before the goal and the Welcome,
+        // and the Welcome leads ("1 recruit has reopened his recruitment" sat on top of it).
+        session.HandBackOnHire();
         session.PostExpectations();
         var first = session.NextMyGame;
         // K26 (run 179): a college coach's first day is written for a college coach, not a GM.
@@ -154,7 +157,6 @@ public sealed partial class GameSession
                 + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players on real rosters who hadn't played yet this season are rated from last season (everyone starts healthy). Careers before this season are real for the league's leading veterans (checked {Hardwood.Core.RealWorld.RealCareers.Checked}), so the records book and the NBA's records to beat start from the real past."
                 + (session.World.College?.IsReal == true ? $" College basketball has every Division I program in its 2026-27 conference, with its real name, colours and tournament history (checked {Hardwood.Core.RealWorld.RealColleges.Checked}); the college players and coaches are made up." : "") : "")
             + (session.TrailOpen ? $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation)." : ""), "Board");
-        session.HandBackOnHire();
         session.SaveNow();
         return session;
     }
@@ -1087,12 +1089,14 @@ public sealed partial class GameSession
         MoodHistory.Clear();
         // H56 (run 87): the contracts you inherit were signed before you came, so an owner who isn't in debt funds them.
         long funded = Budgets.OwnerFunds(team, MyCommittedWages);
+        // H195 (run 182): the inbox lists the newest first, so the hand-back's news and the goal go in first and the Welcome
+        // leads (the review of #189 had them after it, which put the news on top).
+        HandBackOnHire();
+        PostExpectations();
         if (InCollege) Post($"Welcome to {team.TheFullName}", CollegeHiredBody(), "Board"); // K26 (run 179)
         else
         Post($"Welcome to {team.TheFullName}", $"{team.Owner.Name} has hired you as head coach ({HumanLeagueName}). Check your rotation and tactics before the next game."
             + (funded > 0 ? $" The contracts you inherit come to ${MyCommittedWages / 1e6:F1}M, so the owner has raised the wage budget by ${funded / 1e6:F1}M to cover them." : ""), "Board");
-        PostExpectations();
-        HandBackOnHire(); // after the welcome, so the inbox reads in order (review of #189)
     }
 
     /// <summary>While you're out of work: clubs answer applications, unanswered jobs get filled, and new jobs open now and then.</summary>
@@ -1589,6 +1593,7 @@ public sealed partial class GameSession
         RefreshProPitch(); // CP3: where the graduates signed this summer
         foreach (var (title, body) in World.News) PostWorld(title, body); MaybePostDigest(now: true);
         World.News.Clear(); World.CollegeTitles.Clear();
+        bool postGoal = false;
         if (Employed)
         {
             if (Abroad && !InCollege) SummerReport();
@@ -1599,11 +1604,14 @@ public sealed partial class GameSession
             {
                 Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
                     MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
-                PostExpectations();
+                postGoal = true;
             }
             Job.WarningLevel = 0;
         }
         Today = CareerYearStart();
+        // H185 (run 182): next season's goal is dated the day the season starts. The date stands still all summer, so it was
+        // dated the day of the Season review ("Expectations for 2027-28" and the review both on May 8) and sorted above it.
+        if (postGoal) PostExpectations();
         PlayWorld(Today.AddDays(-1));
         HumanTeam.DepthChart = null;
         Midseason = null;

@@ -48,9 +48,30 @@ public sealed partial class GameSession
     public double HireChanceFor(Team t)
     {
         double chance = Board.HireChance(Coach, ContextOf(t), t);
-        return RecentlySackedFromCollege && !IsCollegeProgram(t) && Coach.Reputation < SackedCollegeCoachProReputation
-            ? chance * SackedCollegeCoachProFactor : chance;
+        if (IsCollegeProgram(t)) return chance;
+        if (RecentlySackedFromCollege && Coach.Reputation < SackedCollegeCoachProReputation) chance *= SackedCollegeCoachProFactor;
+        // H194 (run 182): a college coach's reputation and a pro club's standing aren't one scale. George Mason's coach went
+        // 9-21 with the AD at "Critical" and was offered the Portland job. A pro bench wants a college record: a reputation
+        // that only titles and deep March runs build. Without one it's a long shot, and after a losing season almost none.
+        else if (CollegeCoach && Coach.Reputation < CollegeToProReputation)
+            chance *= CollegeLosingSeason ? CollegeToProLosingFactor : CollegeToProFactor;
+        return chance;
     }
+
+    /// <summary>H194: the reputation at which a college coach is a real candidate for a pro head job.</summary>
+    public const double CollegeToProReputation = 70;
+
+    /// <summary>H194: what a college coach's chance at a pro club is scaled by below <see cref="CollegeToProReputation"/>,
+    /// and after a losing season.</summary>
+    public const double CollegeToProFactor = 0.25, CollegeToProLosingFactor = 0.04;
+
+    /// <summary>H194: coaching a college program now, or out of work with a college program as the last job.</summary>
+    private bool CollegeCoach => Employed ? InCollege
+        : Coach.History.LastOrDefault() is { } last && World.College?.Programs.Any(p => p.Id == last.TeamId) == true;
+
+    /// <summary>H194: the college season just judged (or the last job's record, out of work) was a losing one.</summary>
+    private bool CollegeLosingSeason => Employed ? Job.LastSeasonWinning == false
+        : Coach.History.LastOrDefault() is { } last && last.Wins < last.Losses;
 
     /// <summary>H167: out of work, and the last job was a college program that sacked you this season (or this summer).</summary>
     public bool RecentlySackedFromCollege =>
@@ -212,7 +233,7 @@ public sealed partial class GameSession
         foreach (var (v, t) in openings)
         {
             if (offers.Count >= MaxApproaches) break;
-            double chance = Board.HireChance(Coach, ContextOf(t!), t!) * (overachieved ? 0.6 : 0.08);
+            double chance = HireChanceFor(t!) * (overachieved ? 0.6 : 0.08); // H194: a college coach's pro chances too
             if (!rng.Chance(chance)) continue;
             v.Status = "offered"; v.Approach = true; v.DecideOn = Today.AddDays(7);
             offers.Add(t!);
@@ -244,7 +265,7 @@ public sealed partial class GameSession
             if (FindTeam(v.TeamId) is not { } t) { v.Status = "filled"; continue; }
             if (v.Status == "applied" && (summer || v.DecideOn <= Today))
             {
-                if (rng.Chance(Board.HireChance(Coach, ContextOf(t), t)))
+                if (rng.Chance(HireChanceFor(t))) // H194: an NBA club answers a losing college coach's application, usually no
                 {
                     v.Status = "offered"; v.DecideOn = Today.AddDays(7);
                     Post($"Job offer: {t.FullName}", $"{t.Owner.Name} wants you as head coach of {t.TheFullName}. Accept or decline on the Board page"

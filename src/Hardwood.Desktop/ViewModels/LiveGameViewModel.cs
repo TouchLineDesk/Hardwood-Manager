@@ -723,6 +723,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         Refresh();
         Complete = true;
         Status = $"Final: {AwayName} {AwayScore}, {HomeName} {HomeScore}.";
+        CallTheResult();
         ShowBreakCard(final: true);
     }
 
