@@ -129,7 +129,12 @@ public class Run182LaunchMediumsTests
                 var prev = new Expectations { Season = 2026, Goal = SeasonGoal.Develop, TargetWins = 20, Wins = lastWins, Achieved = SeasonGoal.Develop, TeamId = team.Id, League = "college" };
                 var next = Board.NextExpectations(ctx, team, 2027, prev, "college", 0, 0);
                 Assert.Equal(SeasonGoal.Develop, next.Goal);
-                Assert.InRange(next.TargetWins, Math.Min(floor, Board.SetExpectations(ctx, team, 2027).TargetWins), Math.Max(lastWins + Board.CollegeProgressWins, floor));
+                int rankTarget = Board.SetExpectations(ctx, team, 2027).TargetWins;
+                Assert.InRange(next.TargetWins, Math.Min(floor, rankTarget), Math.Max(lastWins + Board.CollegeProgressWins, floor));
+                // The review of PR #251: the target really starts from last season (it was 20 after 14 wins), and the rank's
+                // own target stays the ceiling.
+                if (lastWins + Board.CollegeProgressWins < 20 && floor < 20) Assert.True(next.TargetWins < 20, $"{team.FullName}: {lastWins} wins → {next.TargetWins}");
+                Assert.True(next.TargetWins <= Math.Max(rankTarget, 20), $"{team.FullName}: {next.TargetWins} > {rankTarget}");
                 seen++;
             }
         }

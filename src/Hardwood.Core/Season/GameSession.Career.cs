@@ -49,13 +49,15 @@ public sealed partial class GameSession
     {
         double chance = Board.HireChance(Coach, ContextOf(t), t);
         if (IsCollegeProgram(t)) return chance;
-        if (RecentlySackedFromCollege && Coach.Reputation < SackedCollegeCoachProReputation) chance *= SackedCollegeCoachProFactor;
+        double factor = 1;
+        if (RecentlySackedFromCollege && Coach.Reputation < SackedCollegeCoachProReputation) factor = SackedCollegeCoachProFactor;
         // H194 (run 182): a college coach's reputation and a pro club's standing aren't one scale. George Mason's coach went
         // 9-21 with the AD at "Critical" and was offered the Portland job. A pro bench wants a college record: a reputation
         // that only titles and deep March runs build. Without one it's a long shot, and after a losing season almost none.
-        else if (CollegeCoach && Coach.Reputation < CollegeToProReputation)
-            chance *= CollegeLosingSeason ? CollegeToProLosingFactor : CollegeToProFactor;
-        return chance;
+        // The review of PR #251: the stricter of the two rules, so a sacked losing coach isn't better placed than a kept one.
+        if (CollegeCoach && Coach.Reputation < CollegeToProReputation)
+            factor = Math.Min(factor, CollegeLosingSeason ? CollegeToProLosingFactor : CollegeToProFactor);
+        return chance * factor;
     }
 
     /// <summary>H194: the reputation at which a college coach is a real candidate for a pro head job.</summary>

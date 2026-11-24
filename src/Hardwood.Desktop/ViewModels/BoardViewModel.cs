@@ -307,7 +307,7 @@ public sealed partial class BoardViewModel : PageViewModel
         {
             var t = s.FindTeam(v.TeamId)!;
             var vctx = s.ContextOf(t);
-            double chance = s.Employed ? Board.HireChance(coach, vctx, t) : s.HireChanceFor(t); // H167
+            double chance = s.HireChanceFor(t); // H167; H194 (run 182): in work too, as the club decides on it
             var vrec = s.League.Teams.Contains(t) ? s.Standings[t] : s.World.LeagueOf(t) is { } lc ? s.TableOf(lc)[t]
                 : s.IsCollegeProgram(t) ? s.CollegeRecord(t) : new Hardwood.Core.Season.TeamRecord { Team = t };
             int id = v.TeamId;
@@ -333,6 +333,8 @@ public sealed partial class BoardViewModel : PageViewModel
         JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
         JobsNote = s.Employed
             ? $"These clubs changed coach and would be a step up from {s.HumanTeam.TheFullName}. Apply without leaving your job; if an offer comes and you accept it, you move at once and your history goes with you. Openings close when the new season starts."
+              + (s.InCollege && s.Coach.Reputation < Hardwood.Core.Season.GameSession.CollegeToProReputation
+                  ? " Pro clubs hire college coaches with a record: titles and deep March runs build the reputation they look for." : "")
             : "Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team."
               + (s.World.College == null ? ""
                   : summer ? " College programs posted theirs when the season ended; more open as their coaches move."
