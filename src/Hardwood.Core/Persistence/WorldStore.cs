@@ -16,7 +16,7 @@ public static class WorldStore
         CreateSchema(conn);
         using var tx = conn.BeginTransaction();
         SaveFile.Exec(conn, "DELETE FROM world_meta; DELETE FROM world_comp; DELETE FROM world_team;");
-        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('rng_seed', $v)", ("$v", ((long)world.NextRngSeed()).ToString()));
+        SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('rng_seed', $v)", ("$v", ((long)world.SaveRngSeed()).ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_started', $v)", ("$v", world.SummerStarted.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('summer_ended', $v)", ("$v", world.SummerEnded.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('departed', $v)", ("$v", SaveFile.ToJson(world.Departed)));
@@ -32,6 +32,8 @@ public static class WorldStore
                     col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic), col.Tradition.GetValueOrDefault(t.Id),
                     FormText(col.Form.GetValueOrDefault(t.Id)))).ToList(),
                 col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards, col.RealAlumniSeeded, col.Pledges, col.BrokenWordUntil))));
+        if (world.College != null) // K30 (run 178): the college record's own format, next to its JSON (ADR-1)
+            SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college_format', $v)", ("$v", CollegeMigrations.Current.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
             ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));
         int order = 0;
@@ -148,8 +150,13 @@ public static class WorldStore
             }
         using (var cmd = conn.CreateCommand())
         {
+            // K30 (run 178): a save from before v0.166.0 has no college_format row (format 0). A newer format refuses to load,
+            // loudly, rather than dropping fields it doesn't know; an older one goes through the ordered migrations first.
+            cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'college_format'";
+            int collegeFormat = cmd.ExecuteScalar() is string fv && int.TryParse(fv, out var f) ? f : 0;
             cmd.CommandText = "SELECT value FROM world_meta WHERE key = 'college'";
-            if (cmd.ExecuteScalar() is string cj && SaveFile.FromJson<CollegeState>(cj) is { } cs)
+            if (cmd.ExecuteScalar() is string raw && CollegeMigrations.Upgrade(raw, collegeFormat) is var cj
+                && SaveFile.FromJson<CollegeState>(cj) is { } cs)
             {
                 var col = new Hardwood.Core.College.CollegeWorld { Season = cs.Season ?? new() };
                 foreach (var ps in cs.Programs)

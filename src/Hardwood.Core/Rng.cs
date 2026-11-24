@@ -8,9 +8,14 @@ public sealed class Rng
 {
     private ulong _s0, _s1, _s2, _s3;
 
-    public ulong Seed { get; }
+    public ulong Seed { get; private set; }
 
-    public Rng(ulong seed)
+    public Rng(ulong seed) => Reseed(seed);
+
+    /// <summary>Restart this stream from <paramref name="seed"/>, in place (anything holding this Rng follows), exactly as
+    /// <c>new Rng(seed)</c> would. K30 (run 178): a save writes a fresh seed and reseeds the live stream with it, so playing
+    /// on after a save and playing on after loading that save draw the same numbers.</summary>
+    public void Reseed(ulong seed)
     {
         Seed = seed;
         // SplitMix64 to expand the seed.

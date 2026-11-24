@@ -15,6 +15,7 @@
   <ItemGroup>
     <!-- Real saves made by each past version of the game (see SaveCompatibilityTests). -->
     <None Include="SaveFixtures\*.hwsave" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SaveFixtures\*.hwsave.gz" CopyToOutputDirectory="PreserveNewest" />
     <None Include="AudioFixtures\*.ogg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
