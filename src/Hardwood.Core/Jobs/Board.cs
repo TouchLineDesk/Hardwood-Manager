@@ -1019,7 +1019,7 @@ public static class Board
             // credits that season, so a 9-seed's Round of 32 never reads below the same team's Round of 64 exit ("pleased with
             // the regular season … hoped to go further").
             : diff >= 0 && job.Confidence < ContentLine && ctx.IsCollege && !e.Survive && j.BeatTarget
-                ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), and {(seed > 0 && madnessRound >= 0 && seedOver > 0 ? $"{SeedPhrase(seed)} {ExitPhrase(madnessRound)} beat what the seed promised" : "the goal was met")}, but there is ground to make up. AD confidence: {job.Confidence:0}/100."
+                ? $"{owner} is pleased with the regular season ({ahead} {(ahead == 1 ? "win" : "wins")} past the target), and {(seed > 0 && madnessRound >= 0 && seedOver > 0 ? $"{(MarchPhrase(madnessRound) is var mp && mp.StartsWith("in the ", StringComparison.Ordinal) ? "reaching " + mp[3..] : mp)} as {SeedPhrase(seed)} beat expectations" : "the goal was met")}, but there is ground to make up. AD confidence: {job.Confidence:0}/100."
             : diff >= 0 && job.Confidence < ContentLine ? (winsVsTarget < 0
                 ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
                 : $"{owner} accepts the result, but there is ground to make up. Board confidence: {job.Confidence:0}/100.")

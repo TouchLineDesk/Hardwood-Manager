@@ -95,7 +95,7 @@ public class Run188LaunchLowsTests
         }
         string r64 = Review(1), r32 = Review(2);
         Assert.Contains("is pleased with the regular season", r32);
-        Assert.Contains("beat what the seed promised", r32);
+        Assert.Contains("and winning a game as a 9-seed beat expectations", r32);
         Assert.True(Rank(r32) >= Rank(r64), $"{r32} / {r64}");
     }
 

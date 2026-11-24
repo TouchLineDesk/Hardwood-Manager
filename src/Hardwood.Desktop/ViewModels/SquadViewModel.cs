@@ -172,7 +172,7 @@ public sealed partial class SquadViewModel : PageViewModel
             if (rows.Count > 0)
                 Lanes.Add(new MoodLane { Title = $"{title} ({rows.Count})", Note = note, Color = MoodRow.BandColor(band switch { 2 => 100, 1 => 50, _ => 0 }), Rows = rows });
         }
-        MoraleSummary = team.Roster.Count == 0 ? "" : $"Average morale {team.Roster.Average(p => p.Morale):0} · " +
+        MoraleSummary = team.Roster.Count == 0 ? "" : $"Average morale {PeopleEngine.MoraleShown(team.Roster.Average(p => p.Morale))} · " +
             string.Join(" · ", Lanes.Select(l => l.Title.ToLower()));
         Selected = Players.FirstOrDefault(r => r.Player == keep) ?? Players.FirstOrDefault();
         PromisesText = Session.Promises.Count == 0 ? "No promises outstanding." : string.Join("\n", Session.Promises.Select(pr =>
