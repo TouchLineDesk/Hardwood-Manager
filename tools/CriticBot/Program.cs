@@ -254,7 +254,10 @@ while (s.League.Season < startYear + seasons)
         int cls = tw.Season.Year + 1;
         var ours = tw.ClassOf(cls).Select(p => tw.Recruits[p.Id]).Where(r => r.CommittedTo == team.Id).ToList();
         var ranking = tw.ClassRanking(cls);
-        L($"recruiting class of {cls}: {ours.Count} signed ({ours.Count(r => r.Stars == 5)}x5, {ours.Count(r => r.Stars == 4)}x4, {ours.Count(r => r.Stars == 3)}x3, {ours.Count(r => r.Stars <= 2)}x2), best No. {(ours.Count > 0 ? ours.Min(r => r.Rank) : 0)}, class rank {(ranking.FindIndex(x => x.Program == team) is var cr and >= 0 ? $"{cr + 1} of {ranking.Count}" : "none (no class)")}; places left unfilled {tw.OpenScholarships(team, cls)}; offered {tw.Recruits.Values.Count(r => r.ClassOf == cls && r.CourtedBy == team.Id && r.Offered)}; five-stars in class signed {tw.ClassOf(cls).Count(p => tw.Recruits[p.Id].Stars == 5 && tw.Recruits[p.Id].CommittedTo != null)}; {s.Delegated.LastRecruiting}");
+        L($"recruiting class of {cls}: {ours.Count} signed ({ours.Count(r => r.Stars == 5)}x5, {ours.Count(r => r.Stars == 4)}x4, {ours.Count(r => r.Stars == 3)}x3, {ours.Count(r => r.Stars <= 2)}x2), best No. {(ours.Count > 0 ? ours.Min(r => r.Rank) : 0)}, class rank {(ranking.FindIndex(x => x.Program == team) is var cr and >= 0 ? $"{cr + 1} of {tw.Programs.Count} ({ranking.Count} signed anyone)" : "none (no class)")}; places left unfilled {tw.OpenScholarships(team, cls)}; offered {tw.Recruits.Values.Count(r => r.ClassOf == cls && r.CourtedBy == team.Id && r.Offered)}; five-stars in class signed {tw.ClassOf(cls).Count(p => tw.Recruits[p.Id].Stars == 5 && tw.Recruits[p.Id].CommittedTo != null)}; {s.Delegated.LastRecruiting}");
+        // H186 (run 183): where our offers went on signing day.
+        L("  offers: " + string.Join(", ", tw.ClassOf(cls).Where(p => tw.Recruits[p.Id].CourtedBy == team.Id && tw.Recruits[p.Id].Offered).Select(p => tw.Recruits[p.Id]).OrderBy(r => r.Rank)
+            .Select(r => $"No.{r.Rank} -> {(r.CommittedTo is { } to ? tw.Program(to)?.City : "unsigned")} {r.CommittedOn:MM/dd}")));
         var bd = tw.BoardFor(cls);
         foreach (var p in tw.ClassOf(cls).Where(p => tw.Recruits[p.Id].CommittedTo == team.Id).OrderBy(p => tw.Recruits[p.Id].Rank))
         {

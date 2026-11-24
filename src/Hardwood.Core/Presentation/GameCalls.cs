@@ -67,10 +67,11 @@ public sealed class GameCalls
         // Milestones and fouls, for the players in this possession's plays (the others haven't changed).
         var involved = new HashSet<Player>();
         foreach (var e in events) { if (e.Actor != null) involved.Add(e.Actor); if (e.Other != null) involved.Add(e.Other); }
+        var shared = SharedSurnames(home.Lines.Concat(away.Lines).Select(l => l.Player));
         foreach (var line in home.Lines.Concat(away.Lines))
         {
             if (!involved.Contains(line.Player)) continue;
-            string who = PossessionChoreographer.Last(line.Player);
+            string who = CallName(line.Player, shared);
             if (line.FouledOut && Say(line.Player, "out")) big.Insert(0, $"{who} has fouled out with {line.Points} points");
             else if (line.Fouls == foulOut - 1 && foulOut > 1 && Say(line.Player, "trouble"))
                 small.Add($"{who} picks up his {Ordinal(line.Fouls)} foul: one more and he's done");
@@ -84,6 +85,15 @@ public sealed class GameCalls
     }
 
     private bool Say(Player p, string what) => _said.Add((p, what));
+
+    /// <summary>K25's leftover (run 183): the surnames two players in this game share (either side's box score).</summary>
+    public static HashSet<string> SharedSurnames(IEnumerable<Player> players) =>
+        players.Distinct().GroupBy(p => p.LastName).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
+
+    /// <summary>K25's leftover (run 183): a milestone or foul call says "J. Smith" when two players in the game are Smiths,
+    /// as the possession's lines already do (run 174).</summary>
+    public static string CallName(Player p, IReadOnlySet<string> shared) =>
+        shared.Contains(p.LastName) && p.FirstName.Length > 0 ? $"{p.FirstName[0]}. {p.LastName}" : p.LastName;
 
     /// <summary>K25 (run 174): a name as a broadcaster says it: "Miami (FL)" is "Miami", unless the other side would then
     /// sound the same ("Miami (OH)" against "Miami (FL)").</summary>

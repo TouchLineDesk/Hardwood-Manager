@@ -75,7 +75,7 @@
             </WrapPanel>
             <TextBlock Text="{Binding ProgramStatus}" Classes="accent" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding ProgramLastSummer}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
-            <TextBlock Text="College players are paid nothing: the boosters' money goes into the program. They give each summer, more at a bigger program and more when they're happy (winning, March runs and rivalry wins). Each level costs more than the last." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Text="The boosters' money goes into the program. They give each summer, more at a bigger program and more when they're happy (winning, March runs and rivalry wins). Each level costs more than the last." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
         <!-- CS7 part 2c (run 175): academics -->

@@ -38,6 +38,11 @@ public sealed class TableRow
     public string Record { get; init; } = "";
     public string Diff { get; init; } = "";
     public bool Ours { get; init; }
+    /// <summary>H196 (run 183): a marker row for teams the snapshot leaves out ("… 2 more").</summary>
+    public bool Gap { get; init; }
+    public bool NotGap => !Gap;
+    public string RankText => Gap ? "" : Rank.ToString();
+    public static TableRow GapOf(int n) => new() { Gap = true, Label = $"… {n} more" };
 }
 
 /// <summary>
@@ -213,12 +218,17 @@ public sealed partial class HomeViewModel : PageViewModel
             conf = conf.Select(r => s.CollegeRecord(r.Team)).OrderByDescending(r => r.WinPct).ThenByDescending(r => r.Wins).ThenByDescending(r => r.PointDiff).ToList();
             TableNote = "Overall records until conference play";
         }
+        int skipped = 0;
         foreach (var r in conf)
         {
             i++;
-            if (i > 8 && r.Team != team) continue;
+            if (i > 8 && r.Team != team) { skipped++; continue; }
+            // H196 (run 183): rows left out between the top 8 and yours get a marker ("… 1 more"), so "10" never follows "8".
+            if (skipped > 0) { Table.Add(TableRow.GapOf(skipped)); skipped = 0; }
             Table.Add(new TableRow { Rank = i, Team = r.Team, Label = s.InCollege ? r.Team.City : null, Record = $"{r.Wins}-{r.Losses}", Diff = $"{(r.PointDiff >= 0 ? "+" : "")}{r.PointDiff:0.0}", Ours = r.Team == team && s.Employed });
         }
+
+        if (skipped > 0) Table.Add(TableRow.GapOf(skipped)); // and the ones below the last row shown
 
         string chem = team.Chemistry >= 75 ? "excellent" : team.Chemistry >= 62 ? "good" : team.Chemistry >= 48 ? "average" : "poor";
         ChemistryText = $"Chemistry {chem} ({team.Chemistry:0})";

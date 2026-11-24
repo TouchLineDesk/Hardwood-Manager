@@ -135,8 +135,14 @@ public sealed partial class GuideViewModel : ObservableObject
     public void SetLive(Func<(string Headline, string Title, IReadOnlyList<string> Why)>? read)
     {
         _liveRead = read;
-        if (read == null) Refresh(); else LiveTick();
+        Refresh(); // run 183: also drops the game-day "Next up" card while this game is on (Refresh ends with LiveTick)
     }
+
+    /// <summary>
+    /// Run 183 (the launch list): the game-day card ("Next up: vs X … press Continue to play") is about the game you are
+    /// watching, so it goes while a live game is on, final included; it named tonight's opponent beside the final score.
+    /// </summary>
+    public static bool HiddenInLiveGame(GuideTask t) => t.Key.StartsWith("scout-", StringComparison.Ordinal);
 
     /// <summary>The live game moved on: refresh only the live lines (cheap; called every few possessions).</summary>
     public void LiveTick()
@@ -189,7 +195,7 @@ public sealed partial class GuideViewModel : ObservableObject
         PageTitle = advice.PageTitle;
         PageTip = advice.PageTip;
         Tasks.Clear();
-        foreach (var t in advice.Tasks.Take(6))
+        foreach (var t in advice.Tasks.Where(t => _liveRead == null || !HiddenInLiveGame(t)).Take(6))
             Tasks.Add(new GuideTaskRow
             {
                 Task = t,
