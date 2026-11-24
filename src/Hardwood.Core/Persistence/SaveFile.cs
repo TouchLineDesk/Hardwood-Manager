@@ -389,7 +389,10 @@ public sealed class SaveFile
             }
         }
 
-        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(LoadedProspects).Concat(LoadedOverseas).ToDictionary(p => p.Id);
+        // Run 185 (High): college players' injuries are written like everyone's but weren't read back, so an injured college
+        // player came back healthy (and with no injury history) after every load.
+        var allPlayers = league.AllActivePlayers.Concat(league.FreeAgents).Concat(league.Retired).Concat(LoadedProspects).Concat(LoadedOverseas).Concat(LoadedCollege)
+            .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = "SELECT player_id, name, severity, occurred, return_date, attr_loss, current FROM injury ORDER BY occurred";

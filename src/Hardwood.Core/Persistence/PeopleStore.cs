@@ -23,9 +23,11 @@ public static class PeopleStore
         SaveFile.Exec(conn, "DELETE FROM people_meta;");
         // Clubs abroad: only the one you coach has moods worth keeping.
         var abroad = s.Abroad ? new[] { s.HumanTeam } : Array.Empty<Team>();
+        // Run 185: kept to the last bit (they were rounded to 2 places), so a reloaded career makes the same mood-driven
+        // choices as the career that saved it (the summer market drew differently after a reload).
         var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(abroad.SelectMany(t => t.Roster)).DistinctBy(p => p.Id)
-            .ToDictionary(p => p.Id, p => new PlayerMood(Math.Round(p.Morale, 2), p.UnhappyWeeks, p.TradeRequested, p.LastTalk, p.DistrustUntil, p.MoodBoost, p.BoostUntil, p.BoostReason));
-        var teams = s.League.Teams.Concat(abroad).DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => new TeamMood(Math.Round(t.Chemistry, 2), t.WeeksTogether));
+            .ToDictionary(p => p.Id, p => new PlayerMood(p.Morale, p.UnhappyWeeks, p.TradeRequested, p.LastTalk, p.DistrustUntil, p.MoodBoost, p.BoostUntil, p.BoostReason));
+        var teams = s.League.Teams.Concat(abroad).DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => new TeamMood(t.Chemistry, t.WeeksTogether));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('players', $v)", ("$v", SaveFile.ToJson(players)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('teams', $v)", ("$v", SaveFile.ToJson(teams)));
         SaveFile.Exec(conn, "INSERT INTO people_meta(key, value) VALUES('promises', $v)", ("$v", SaveFile.ToJson(s.Promises)));
@@ -45,7 +47,9 @@ public static class PeopleStore
             return cmd.ExecuteScalar() as string;
         }
         if (Get("players") is { } pj && SaveFile.FromJson<Dictionary<int, PlayerMood>>(pj) is { } players)
-            foreach (var p in s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.World.Players))
+            // Run 185 (High): the program you coach is saved above (Abroad is true in college) but its players live in the
+            // college world, not World.Players, so their morale, unhappy weeks and mood boosts were reset to 60 on every load.
+            foreach (var p in s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.World.Players).Concat(s.World.College?.Players ?? Enumerable.Empty<Player>()))
                 if (players.TryGetValue(p.Id, out var m))
                 {
                     p.Morale = m.Morale; p.UnhappyWeeks = m.UnhappyWeeks; p.TradeRequested = m.TradeRequested;
@@ -53,7 +57,7 @@ public static class PeopleStore
                     p.MoodBoost = m.MoodBoost; p.BoostUntil = m.BoostUntil; p.BoostReason = m.BoostReason;
                 }
         if (Get("teams") is { } tj && SaveFile.FromJson<Dictionary<int, TeamMood>>(tj) is { } teams)
-            foreach (var t in s.League.Teams.Concat(s.World.Clubs))
+            foreach (var t in s.League.Teams.Concat(s.World.Clubs).Concat(s.World.College?.Programs ?? Enumerable.Empty<Team>()))
                 if (teams.TryGetValue(t.Id, out var m)) { t.Chemistry = m.Chemistry; t.WeeksTogether = m.WeeksTogether ?? new(); }
         if (Get("promises") is { } prj && SaveFile.FromJson<List<Promise>>(prj) is { } promises)
         {
