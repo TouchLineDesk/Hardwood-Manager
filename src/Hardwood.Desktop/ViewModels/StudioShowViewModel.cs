@@ -57,6 +57,7 @@ public sealed partial class StudioShowViewModel : PageViewModel
     public string AwayRecord => Show.AwayRecord;
     public string HomeRecord => Show.HomeRecord;
     public string Stakes => Show.Stakes;
+    public string Versus => Show.Versus;
     public bool HasStakes => Show.Stakes != "";
     public string Chance => $"{Show.Away.Abbreviation} {(1 - Show.HomeChance) * 100:0}% · {Show.Home.Abbreviation} {Show.HomeChance * 100:0}%";
     public bool CanTipOff => _live != null;

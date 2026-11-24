@@ -465,7 +465,10 @@ public static class PossessionChoreographer
                 // one with the score, so the bar doesn't read the same line every trip.
                 PossessionStart.AfterStop => Vary(input.Index, $"{N(players[handler])} pushes it up the floor for {offName}",
                     $"{N(players[handler])} pushes the pace", $"{N(players[handler])} out in front, {offName} running"),
-                PossessionStart.PeriodStart => $"{offName} have the ball to start the period",
+                // K32 (run 186): the opening possession is the tip; later periods say which one.
+                PossessionStart.PeriodStart => firstBall?.Period is 1 or null ? $"{offName} win the tip"
+                    : firstBall.Period > input.Periods ? $"{offName} have the ball to start overtime"
+                    : $"{offName} have the ball to start the {(input.Periods == 2 ? "second half" : PeriodWord(firstBall.Period))}",
                 _ => Vary(input.Index, $"{N(players[handler])} brings it up for {offName}",
                     $"{N(players[handler])} walks it up. {ScoreLine(input, input.StartHomeScore, input.StartAwayScore)}",
                     $"{offName} in the half court, {N(players[handler])} with it"),
@@ -474,7 +477,9 @@ public static class PossessionChoreographer
 
         // How the build-up is split: bring it up, then the set (its signature, then a pass or two), then the play.
         bool transition = input.How == PossessionStart.AfterStop;
-        double walk = transition ? Math.Min(4, D * 0.3) * (1 - 0.25 * paceK) : Math.Min(7, D * 0.4);
+        // K32 (run 186): a period's first trip doesn't stand still for 8 s: the walk-up is a transition's length.
+        double walk = transition ? Math.Min(4, D * 0.3) * (1 - 0.25 * paceK)
+            : input.How == PossessionStart.PeriodStart ? Math.Min(4, D * 0.3) : Math.Min(7, D * 0.4);
         walk = Math.Max(walk + lead, t);
         var spots = OffSpots();
         if (firstBall != null && D > 0.5)
@@ -725,7 +730,9 @@ public static class PossessionChoreographer
                     {
                         // The outlet: the rebounder looks for the point guard.
                         int pg = defBase;
-                        if (r >= 0 && r != pg)
+                        // K25's leftover (run 186): a rebound at the horn has no outlet; the period's end is the next line.
+                        bool horn = i + 1 < ev.Count && ev[i + 1].Kind == PlayKind.PeriodEnd;
+                        if (r >= 0 && r != pg && !horn)
                         {
                             Go(pg, t - 0.5, t + 0.4, new Spot(bx + o * 18, cur[r].Y < 25 ? 12 : 38));
                             c.Ball.Add(new BallSegment(t, t + 0.5, BallMode.Pass, r, pg, default, default, 0.25));
@@ -970,6 +977,8 @@ public static class PossessionChoreographer
     public static bool AtTheBuzzer(IReadOnlyList<PlayEvent> ev, int i) =>
         ev[i].Clock <= 1.0 && ev.Skip(i + 1).Any(x => x.Kind == PlayKind.PeriodEnd)
         && ev.Skip(i + 1).TakeWhile(x => x.Kind != PlayKind.PeriodEnd).All(x => x.Kind is PlayKind.OffensiveRebound or PlayKind.DefensiveRebound);
+
+    private static string PeriodWord(int period) => period switch { 2 => "second quarter", 3 => "third quarter", 4 => "fourth quarter", _ => "quarter" };
 
     /// <summary>A dead ball for a substitution (seconds at 1×, the clock stopped).</summary>
     public const double SubTime = 1.6;

@@ -68,6 +68,12 @@ public sealed class StudioShow
     public string AwayRecord { get; init; } = "";
     public string HomeRecord { get; init; } = "";
     public string Stakes { get; init; } = "";
+    /// <summary>K31 (run 186): a neutral floor (an invitational, a conference tournament, March): "v", never "at" or "visit".</summary>
+    public bool Neutral { get; init; }
+    /// <summary>K31: the March round ("First Four", "Round of 64" …), or "" outside March Madness.</summary>
+    public string MarchRound { get; init; } = "";
+    /// <summary>The word between the two teams on the show's header: "AT", or "V" on a neutral floor.</summary>
+    public string Versus => Neutral ? "V" : "AT";
     public required StudioAnalyst Host { get; init; }
     public required List<StudioAnalyst> Panel { get; init; }
     public List<StudioSegment> Segments { get; } = new();
@@ -131,6 +137,18 @@ public sealed partial class GameSession
         var mine = MyGames();
         bool firstGame = !mine.Any(g => g.Played && g.Stage == "Regular season");
         var (set, name, line, accent, second) = StudioShow.SetFor(date, InCollege, Abroad && MyLevel == 0 && !InCollege, series, firstGame && series == null);
+        // K31 (run 186): a college game on a neutral floor, and March Madness's round and seeds, are named on the show.
+        var cg = InCollege && World.College is { } cwShow ? cwShow.GameOn(us.Id, date) : null;
+        bool neutralFloor = cg?.Event != null;
+        string marchRound = "";
+        if (cg != null && cg.Event == College.CollegeWorld.Madness && World.College is { } cwm)
+        {
+            marchRound = College.CollegeWorld.RoundName(cg.Round);
+            string Seeded(Team t) => cwm.SeedOf(t.Id) is > 0 and var sd ? $"No. {sd} {t.City}" : t.City;
+            name = "HSN March Madness";
+            line = $"{marchRound} · {Seeded(away)} v {Seeded(home)}";
+        }
+        else if (neutralFloor) line = $"{cg!.Event}: {date.DayOfWeek} night in {date:MMMM}";
         var rng = new Rng((ulong)(date.DayNumber * 7919L + home.Id * 131L + away.Id * 17L + 1));
         var table = MyStandings;
         string Rec(Team t) { var r = RecordOf(t); return r.Games > 0 || table.Has(t) ? $"{r.Wins}-{r.Losses}" : ""; }
@@ -151,6 +169,7 @@ public sealed partial class GameSession
             Venue = venue, AwayRecord = Rec(away), HomeRecord = Rec(home), Host = StudioShow.HostDesk, Panel = panel, HomeChance = homeChance,
             TipTime = set == StudioSet.Christmas ? "12:00 PM ET" : date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "6:00 PM ET" : "7:30 PM ET",
             Stakes = series != null ? SeriesLine(series, us) : "",
+            Neutral = neutralFloor, MarchRound = marchRound,
         };
         var host = show.Host;
         var big = StudioShow.BigMan; var num = StudioShow.Numbers; var guard = StudioShow.Guard; var coach = StudioShow.Coach;
@@ -188,10 +207,13 @@ public sealed partial class GameSession
             StudioSet.Finals => "Two teams left. Welcome to the Finals.",
             StudioSet.ThirdPlace => "Not the bracket anybody wanted, but there's a trophy and real money on the table tonight.",
             StudioSet.International => "Good evening from the HSN World Feed.",
+            StudioSet.College when marchRound != "" => $"Welcome to March Madness on HSN: the {marchRound}{(marchRound == "Championship" ? " game" : "")}.",
+            StudioSet.College when neutralFloor => $"Welcome to college basketball on HSN, from the {cg!.Event}.",
             StudioSet.College => "Welcome to college basketball night on HSN.",
             _ => Pick("Good evening and welcome to HSN Tip-Off.", "Welcome in. Another night, another big one.", "Evening, everybody. We've got a good one for you."),
         };
-        open.Add(new(host, $"{greeting} {away.FullName}{(show.AwayRecord != "" ? $" ({show.AwayRecord})" : "")} visit {home.FullName}{(show.HomeRecord != "" ? $" ({show.HomeRecord})" : "")}" +
+        string awayIntro = $"{away.FullName}{(show.AwayRecord != "" ? $" ({show.AwayRecord})" : "")}", homeIntro = $"{home.FullName}{(show.HomeRecord != "" ? $" ({show.HomeRecord})" : "")}";
+        open.Add(new(host, $"{greeting} " + (neutralFloor ? $"{awayIntro} and {homeIntro} meet on a neutral floor" : $"{awayIntro} visit {homeIntro}") +
                            (venue != "" ? $" at {venue}." : ".") + (show.Stakes != "" ? $" {show.Stakes}." : "")));
         var fav = margin >= 0 ? home : away;
         double favChance = Math.Max(homeChance, 1 - homeChance);

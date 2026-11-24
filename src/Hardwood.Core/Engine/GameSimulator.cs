@@ -555,8 +555,12 @@ public sealed class GameSimulator
                 CallTimeout(off, TimeoutReason.LastPlay, 0);
                 return;
             }
+            // K34 (run 186): college, the last 4:00 of a one-possession game. A tired five's timeout is about the next play or
+            // the clock, not the legs, and the bench keeps one for the last minute.
+            bool closeLate = _rules.Periods == 2 && lateWindow && _clock <= 240 && Math.Abs(diff) <= 3;
+            int keepForLastMinute = closeLate && _clock > 60 ? 1 : 0;
             // The last two minutes: a side behind by one to six with the ball draws up a play (at most one every 30 s of clock).
-            if (_period >= _rules.Periods && _clock <= 120 && diff is >= -6 and <= -1 && off.TimeoutsLeft > 0 && off.LastLateCallClock - _clock >= 30)
+            if (_period >= _rules.Periods && _clock <= 120 && diff is >= -6 and <= -1 && off.TimeoutsLeft > keepForLastMinute && off.LastLateCallClock - _clock >= 30)
             {
                 off.LastLateCallClock = _clock;
                 CallTimeout(off, TimeoutReason.LatePlay, 0);
@@ -564,7 +568,7 @@ public sealed class GameSimulator
             }
             foreach (var side in new[] { off, def })
             {
-                int spare = side.TimeoutsLeft - (lateWindow ? 0 : _to.Reserve);
+                int spare = side.TimeoutsLeft - (lateWindow ? keepForLastMinute : _to.Reserve);
                 if (side.RunAgainst >= TimeoutRules.RunToStop && spare > 0)
                 {
                     CallTimeout(side, TimeoutReason.StopRun, side.RunAgainst);
@@ -574,13 +578,13 @@ public sealed class GameSimulator
             // A breather: the five on the floor are worn down (below the sub-out line on average) and the bench can spare one.
             foreach (var side in new[] { off, def })
             {
-                int spare = side.TimeoutsLeft - (lateWindow ? 0 : _to.Reserve);
+                int spare = side.TimeoutsLeft - (lateWindow ? keepForLastMinute : _to.Reserve);
                 if (spare > 0 && side.OnCourt.Average(p => side.Energy[p]) < _cfg.SubOutEnergy + TimeoutRules.BreatherMargin)
                 {
                     // K28 (run 177): in the last two minutes a timeout is about the clock and the next play, not the legs
                     // (only the words change; when and whether it is called is as before).
                     var why = TimeoutReason.Breather;
-                    if (_period >= _rules.Periods && _clock <= 120)
+                    if ((_period >= _rules.Periods && _clock <= 120) || closeLate)
                         why = side == off ? TimeoutReason.LatePlay : Score(side) < Score(off) ? TimeoutReason.StopClock : TimeoutReason.SetDefense;
                     CallTimeout(side, why, 0);
                     return;
@@ -746,9 +750,15 @@ public sealed class GameSimulator
                     var target = off.OnCourt[_rng.Next(5)];
                     Play(PlayKind.Foul, def, fouler, target);
                     ShootBonus(off, def, target);
-                    Log(lateFoul == LateGame.Foul.OneAndOne
-                        ? $"{fouler.LastName} fouls {target.LastName}, sending him to the one-and-one"
-                        : $"{fouler.LastName} fouls {target.LastName} to stop the clock");
+                    if (_pbp != null)
+                    {
+                        // K25's leftover (run 186): two players who share a surname are told apart by a first initial.
+                        bool twins = fouler.LastName == target.LastName;
+                        string a = twins ? Initialled(fouler) : fouler.LastName, b = twins ? Initialled(target) : target.LastName;
+                        Log(lateFoul == LateGame.Foul.OneAndOne
+                            ? $"{a} fouls {b}, sending him to the one-and-one"
+                            : $"{a} fouls {b} to stop the clock");
+                    }
                 }
                 possessionLive = false;
             }
@@ -1309,6 +1319,7 @@ public sealed class GameSimulator
         }
 
         private void Log(string s) => _pbp?.Line(_period, _clock, s);
+        private static string Initialled(Player p) => p.FirstName.Length > 0 ? $"{p.FirstName[0]}. {p.LastName}" : p.LastName;
 
         /// <summary>Record a play as data for the tracker (logged games only; reads no random numbers, run 80).</summary>
         private void Play(PlayKind kind, Side side, Player? actor, Player? other = null, ShotZone zone = ShotZone.Rim, bool made = false)
