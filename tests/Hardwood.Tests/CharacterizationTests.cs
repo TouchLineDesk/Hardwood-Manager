@@ -261,11 +261,13 @@ public class CharacterizationTests
     }
 
     [Fact]
-    public void Saving_draws_from_the_random_streams()
+    public void Saving_draws_from_the_random_streams_and_a_reload_plays_on_the_same()
     {
         // An invariant for Phase 2 (D74): each save takes one number from the session's and the world's random streams
-        // (the seeds a reload starts from), so a career that saves plays a different future from one that doesn't, and
-        // carrying on after a save differs from loading that save. A faster save must keep drawing them, or results move.
+        // (the seeds a reload starts from), so a career that saves plays a different future from one that doesn't. A faster
+        // save must keep drawing them, or results move. Since K30 (run 178) the save also restarts both streams from the
+        // seeds it wrote, and a load restarts them after its own steps, so carrying on after a save and loading that save
+        // play the same future (it was a different one before v0.166.0).
         var id = BenchClub(77);
         var path = TempSave();
         try
@@ -277,7 +279,7 @@ public class CharacterizationTests
             Days(plain, 10); Days(saving, 10);
             Assert.NotEqual(Hash(Session(plain)), Hash(Session(saving)));
 
-            // Loading a save and carrying on in memory: different futures from the same day. (The day loop saves every
+            // Loading a save and carrying on in memory: the same future from the same day (K30). (The day loop saves every
             // 7 days since D74 B, #635, so save today first.)
             saving.SaveNow();
             var copy = CopyOf(path);
@@ -286,7 +288,7 @@ public class CharacterizationTests
                 var loaded = GameSession.Load(copy);
                 Assert.True(FirstDifference(Session(saving), Session(loaded)) == null, FirstDifference(Session(saving), Session(loaded)));
                 Days(saving, 5); Days(loaded, 5);
-                Assert.NotEqual(Hash(Session(saving)), Hash(Session(loaded)));
+                Assert.True(FirstDifference(Session(saving), Session(loaded)) == null, FirstDifference(Session(saving), Session(loaded)));
             }
             finally { Clean(copy); }
         }

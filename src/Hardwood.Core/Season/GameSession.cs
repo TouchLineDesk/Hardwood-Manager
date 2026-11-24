@@ -68,6 +68,11 @@ public sealed partial class GameSession
     public DateOnly AllStarDate => new(League.Season + 1, 2, 14);
     /// <summary>A fresh seed for the RNG on reload, so a loaded game doesn't replay the same future.</summary>
     public ulong NextRngSeed => _rng.NextULong();
+    /// <summary>The seed a save writes: drawn from the stream, which then restarts from it, so the career plays on exactly as
+    /// it would after loading that save (K30, run 178).</summary>
+    internal ulong SaveRngSeed() { var x = _rng.NextULong(); _rng.Reseed(x); return x; }
+    /// <summary>Back to the start of the session's and the world's streams (their seeds as loaded).</summary>
+    private void RestartStreams() { _rng.Reseed(_rng.Seed); World.RestartStream(); }
     public bool TradeDeadlinePassed => Phase != SessionPhase.RegularSeason && Phase != SessionPhase.Preseason || Today > TradeDeadline;
 
     public DateOnly OpeningNight => new(League.Season, 10, 21);
@@ -1700,6 +1705,9 @@ public sealed partial class GameSession
         session.SeedRealAlumni(); // K12b: saves from before v0.125.0 get the real alumni once
         session.RefreshProPitch(); // CP3: the pitch isn't saved; it's read from the alumni
         session.LastSavedAt = File.Exists(path) ? File.GetLastWriteTime(path) : DateTime.Now;
+        // K30 (run 178): the steps above may draw from the random streams; start both again from the seeds the save wrote,
+        // so a loaded career plays on exactly as the career that saved it would have (the save restarts its streams too).
+        session.RestartStreams();
         if (save.UpgradedFrom is { } old)
         {
             session.Post("Save upgraded", $"This career was saved by an older version of the game (save format {old}) and has been upgraded to format {SaveFile.SchemaVersion}. "

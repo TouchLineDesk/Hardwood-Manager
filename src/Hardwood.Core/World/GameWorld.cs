@@ -63,6 +63,10 @@ public sealed class GameWorld
 
     /// <summary>A seed to restore the world's random stream from (saved with the game).</summary>
     public ulong NextRngSeed() => _rng.NextULong();
+    /// <summary>The seed a save writes; the stream restarts from it (see <see cref="Hardwood.Core.Season.GameSession.SaveRngSeed"/>).</summary>
+    internal ulong SaveRngSeed() { var x = _rng.NextULong(); _rng.Reseed(x); return x; }
+    /// <summary>Back to the start of the world's stream (its seed as loaded or last saved).</summary>
+    internal void RestartStream() => _rng.Reseed(_rng.Seed);
 
     public WorldCompetition this[string key] => Competitions.First(c => c.Key == key);
     public IEnumerable<WorldCompetition> Playing => Competitions.Where(c => c.Plays);
