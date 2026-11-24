@@ -232,7 +232,6 @@ public sealed partial class PlayerViewModel : PageViewModel
 
     private static string Pretty(Attr a) => System.Text.RegularExpressions.Regex.Replace(a.ToString(), "(?<=[a-z])([A-Z])", " $1");
 
-    /// <summary>CP3 (run 132): a college player's or recruit's potential is a range; a pro's stays exact (#119).</summary>
     /// <summary>H187 (run 176): a rostered college player's class next season, once this season's seniors have graduated
     /// (<see cref="HomeViewModel.ClassSummer"/>); null otherwise.</summary>
     internal static Hardwood.Core.College.ClassYear? NextSeasonClass(GameSession s, Player p)
@@ -241,5 +240,6 @@ public sealed partial class PlayerViewModel : PageViewModel
         return Hardwood.Core.College.CollegeWorld.ClassYearOf(p, Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today) + 1);
     }
 
+    /// <summary>CP3 (run 132): a college player's or recruit's potential is a range; a pro's stays exact (#119).</summary>
     internal static string PotentialText(GameSession s, Player p, double k) => s.CollegePotentialOf(p)?.ToString() ?? Scouting.Potential(p, k).ToString();
 }

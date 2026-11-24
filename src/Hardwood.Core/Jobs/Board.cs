@@ -579,8 +579,10 @@ public static class Board
     public const double CollegeCollapse = 0.30;
 
     /// <summary>H182: whether a college coach in his first <see cref="CollegeGraceSeasons"/> seasons is safe from the sack.</summary>
-    public static bool CollegeGraced(JobState job, LeagueContext ctx, int season, double pct) =>
-        ctx.IsCollege && job.HiredSeason != 0 && season - job.HiredSeason < CollegeGraceSeasons - 1
+    /// The season review that ends the third season may sack (<paramref name="midSeason"/> false: the first two reviews are
+    /// graced); a weekly check is graced through the whole third season (the review of PR #245).
+    public static bool CollegeGraced(JobState job, LeagueContext ctx, int season, double pct, bool midSeason = false) =>
+        ctx.IsCollege && job.HiredSeason != 0 && season - job.HiredSeason < (midSeason ? CollegeGraceSeasons : CollegeGraceSeasons - 1)
         && !(season > job.HiredSeason && pct < CollegeCollapse && job.LastSeasonPct is < CollegeCollapse);
     /// <summary>In a protected season (<see cref="JobState.ProtectedSeason"/>) the board keeps you while you win at least this share.</summary>
     public const double ProtectedFloor = 0.40;
@@ -697,8 +699,8 @@ public static class Board
         bool winning = wins / (double)games >= WinningRecord;
         // The season after a big overshoot, and a relegated club's first season down, are never mid-season sackings.
         bool shielded = job.ProtectedSeason == season && season != 0;
-        // H182 (run 176): a college coach isn't sacked mid-season in his first two seasons unless the program has collapsed.
-        bool graced = CollegeGraced(job, ctx, season, wins / (double)games);
+        // H182 (run 176): a college coach isn't sacked mid-season in his first three seasons unless the program has collapsed.
+        bool graced = CollegeGraced(job, ctx, season, wins / (double)games, midSeason: true);
         if (!honeymoon && !winning && !shielded && !graced && games >= full * 30 / 82 && job.Confidence < line)
             return ("You have been sacked", $"{team.Owner.Name} has run out of patience. With the team {wins}-{losses} against a target of {e.TargetWins} wins, you have been relieved of your duties.", true);
         int level = job.Confidence < 20 ? 2 : job.Confidence < 35 ? 1 : 0;
@@ -944,7 +946,9 @@ public static class Board
             && wins / Math.Max(1.0, wins + losses) >= ProtectedFloor;
         double sackLine = 25 - (team.Owner.Patience - 10);
         bool sacked = !firstSeason && !graced && !winning && !shielded && job.Confidence < sackLine;
-        if (graced && !firstSeason && job.Confidence < sackLine) job.Confidence = Math.Max(job.Confidence, 20);
+        // The review of PR #245: the warning is decided before the floor, so a patient AD (sack line 20 or lower) still says it.
+        bool graceWarning = graced && !firstSeason && job.Confidence < sackLine;
+        if (graceWarning) job.Confidence = Math.Max(job.Confidence, 20);
         if (shielded && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
         // Meet the goal, or beat the win target clearly, and next season is protected (critic review #5: a coach who won
         // the title at 59-23 was sacked the next May at 41-41).
@@ -986,7 +990,7 @@ public static class Board
         string Verdict() => sacked ? $"{owner} has decided to make a change. You have been sacked."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{owner} is giving you another season, but expects much better. Consider this a final warning."
             // H182 (run 176): a college coach's second season is never his last; the AD says so.
-            : graced && !firstSeason && job.Confidence < sackLine ? $"{owner} is giving you a third season to turn the program around, but expects much better. Consider this a final warning. AD confidence: {job.Confidence:0}/100."
+            : graceWarning ? $"{owner} is giving you a third season to turn the program around, but expects much better. Consider this a final warning. AD confidence: {job.Confidence:0}/100."
             : shielded && diff < 0 && job.Confidence <= 25 ? (job.ProtectedReason == "rebuild"
                 ? $"{owner} accepts that this was a rebuilding year after relegation, but expects a promotion push next season."
                 : $"{owner} hasn't forgotten last season, and that bought you time. It won't happen twice.")

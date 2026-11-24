@@ -71,6 +71,10 @@ public class Run176PolishTests
     {
         var (ctx, team) = College();
         var job = Job(team, 2028, 2026, 10, lastPct: 13 / 29.0);
+        // The review of PR #245: no weekly sacking during the third season either; its review may sack.
+        var weekly = Job(team, 2028, 2026, 2, lastPct: 13 / 29.0);
+        var (_, _, firedWeekly) = Board.Weekly(weekly, ctx, team, 6, 14, None, new DateOnly(2029, 2, 10), 2028);
+        Assert.False(firedWeekly);
         var (_, _, sacked) = Board.SeasonReview(job, new Coach(), ctx, team, SeasonGoal.Develop, 11, 18, None, new DateOnly(2029, 4, 7), 2028);
         Assert.True(sacked);
         // The pros are unchanged: a second NBA season can end in the sack.
