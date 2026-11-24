@@ -68,8 +68,8 @@ public class Run186MarchShowTests
             guard = 0;
             while ((g = cw.Season.Games.Where(x => !x.Played && x.Event == CollegeWorld.Madness && (x.HomeId == s.HumanTeam.Id || x.AwayId == s.HumanTeam.Id))
                        .OrderBy(x => x.Date).FirstOrDefault()) == null && guard++ < 3) s.AdvanceDay();
-            if (g == null) { _out.WriteLine($"{s.HumanTeam.FullName} isn't in the field: the show part is skipped"); return; }
-            var home = s.FindTeam(g.HomeId)!; var away = s.FindTeam(g.AwayId)!;
+            Assert.True(g != null, $"{s.HumanTeam.FullName} should be in the field on seed 31 (the First Four)");
+            var home = s.FindTeam(g!.HomeId)!; var away = s.FindTeam(g.AwayId)!;
             var show = s.BuildStudioShow(home, away, g.Date);
             var open = show.Segments[0].Lines[0].Text;
             _out.WriteLine($"{show.ShowName} · {show.SetLine} | {show.Versus} | {open}");

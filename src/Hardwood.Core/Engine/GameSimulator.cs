@@ -531,7 +531,7 @@ public sealed class GameSimulator
         /// <summary>
         /// #1064 (run 168): timeouts at the dead ball before a possession. A coach's request first; otherwise a bench calls
         /// one to stop a run of <see cref="TimeoutRules.RunToStop"/> unanswered points (keeping its late-game reserve until
-        /// the last 4 minutes), or, with the ball in the last shot-clock of a close game it trails or is tied in, to set up
+        /// the last 4 minutes; in college, K34 (run 186), keeping one for the last minute of a one-possession game), or, with the ball in the last shot-clock of a close game it trails or is tied in, to set up
         /// the last play (once a period). At most one a dead ball. Rule-based: no random numbers are drawn.
         /// </summary>
         private void Timeouts()

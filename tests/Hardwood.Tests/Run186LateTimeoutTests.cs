@@ -21,7 +21,7 @@ public class Run186LateTimeoutTests
     {
         var league = new WorldGenerator(new Rng(17)).Generate("L", 2026, new DateOnly(2026, 10, 1));
         var sim = new GameSimulator();
-        int lateCalls = 0, kept = 0, closeAtMinute = 0, twins = 0;
+        int lateCalls = 0, kept = 0, twins = 0;
         for (int g = 0; g < 200; g++)
         {
             var r = sim.Simulate(league.Teams[g % 10], league.Teams[10 + g % 10], Rules.College, (ulong)(1860 + g), keepLog: true, date: Day);
@@ -44,10 +44,10 @@ public class Run186LateTimeoutTests
                 Assert.DoesNotMatch(@"\b([A-Z][\w'-]+) fouls \1\b", line);
                 if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\. (\S+) fouls .\. \1")) twins++;
             }
-            if (r.Timeouts.Count > 0) closeAtMinute++;
         }
         _out.WriteLine($"200 college games: {lateCalls} timeouts in the last 4:00 within 3; {kept} tired-five calls before the last minute kept one; {twins} same-surname fouls told apart");
         Assert.True(lateCalls > 0);
+        Assert.True(kept > 0, "some tired-five calls came before the last minute");
     }
 
     [Fact]

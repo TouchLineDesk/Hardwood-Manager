@@ -481,6 +481,8 @@ public static class PossessionChoreographer
         double walk = transition ? Math.Min(4, D * 0.3) * (1 - 0.25 * paceK)
             : input.How == PossessionStart.PeriodStart ? Math.Min(4, D * 0.3) : Math.Min(7, D * 0.4);
         walk = Math.Max(walk + lead, t);
+        // Review (run 186): with notes said first (changes at a break), the period-start line still gets its own beat.
+        if (input.How == PossessionStart.PeriodStart) walk = Math.Max(walk, lead + NoteTime * (said.Count + 1));
         var spots = OffSpots();
         if (firstBall != null && D > 0.5)
         {
