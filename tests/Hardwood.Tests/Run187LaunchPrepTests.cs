@@ -60,6 +60,11 @@ public class Run187LaunchPrepTests
             Assert.Contains(open.Rows, r => r.Label == "Record" && r.Away == "0-0" && r.Home == "0-0");
             Assert.Contains(open.Rows, r => r.Label == "Win chance");
             Assert.Equal(open.Rows.Count, open.Rows.Select(r => r.Label).Distinct().Count());
+            // The review of PR #256: an AI side shows the plan it will run tonight, not its last game's (or the default).
+            var them = studio.Show.Home == s.HumanTeam ? studio.Show.Away : studio.Show.Home;
+            var plan = Hardwood.Core.Engine.CoachAi.PlanFor(them, s.HumanTeam, s.Today);
+            var off = open.Rows.Single(r => r.Label == "Offense");
+            Assert.Equal(Hardwood.Core.Model.Systems.Name(plan.system), them == studio.Show.Home ? off.Home : off.Away);
 
             // The host speaks first: his bubble is the narrow one, and it ends well short of his head.
             for (int i = 0; i < 4; i++) { window.UpdateLayout(); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); }
