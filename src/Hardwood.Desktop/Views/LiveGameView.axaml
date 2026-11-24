@@ -500,7 +500,7 @@
               <Button Classes="primary" Content="Play on" Command="{Binding PlayPauseCommand}" IsVisible="{Binding !Complete}" Padding="10,1" Margin="6,0,0,2" ToolTip.Tip="Put the desk away and play the next period"/>
               <Button Classes="primary" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding Complete}" Padding="10,1" Margin="6,0,0,2" ToolTip.Tip="Record the result and move on"/>
             </WrapPanel>
-            <v:StudioDeskView x:Name="HalftimeSet" DataContext="{Binding HalftimeReel}" HorizontalAlignment="Left"/>
+            <v:StudioDeskView x:Name="HalftimeSet" DataContext="{Binding HalftimeReel}" HorizontalAlignment="Left" NextIsPrimary="False"/>
           </StackPanel>
           <ScrollViewer x:Name="BreakCard" IsVisible="{Binding CardUp}" MaxHeight="{x:Static v:LiveGameView.BreakCardMax}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <Border Background="#141920" BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0"

@@ -448,7 +448,8 @@
       </TabItem>
       <!-- The recruiting trail (C3, #173): a college coach's own high-school recruiting. -->
       <TabItem Header="Recruiting" IsVisible="{Binding IsCollegeCoach}">
-        <ScrollViewer>
+        <!-- H198 (run 184): the scroll bar stays shown, so a detail pane that runs past the bottom (Promise, Board) has a cue. -->
+        <ScrollViewer x:Name="TrailPageScroll" AllowAutoHide="False">
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding TrailNote}" Classes="muted" TextWrapping="Wrap"/>
             <c:StatStrip ItemsSource="{Binding TrailChips}" Accent="{DynamicResource HwAccent}"/>
@@ -494,7 +495,10 @@
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><c:CardGrid MinItemWidth="270" MaxColumns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TrailRow">
+                      <!-- H198 (run 184): every card fills its grid cell (the Fluent button centres itself), so a card with a "Says no" line
+                           doesn't stagger its row. -->
                       <Button Classes="marketCard" Classes.picked="{Binding Picked}" Margin="0,0,10,10" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              VerticalAlignment="Stretch" VerticalContentAlignment="Stretch"
                               Click="OnTrailClick" ToolTip.Tip="Pick him to recruit him">
                         <Border BorderBrush="{Binding StarBrush}" BorderThickness="4,0,0,0" CornerRadius="3" Padding="8,6">
                           <StackPanel Spacing="5">

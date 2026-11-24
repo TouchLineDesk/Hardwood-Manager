@@ -318,7 +318,7 @@ public sealed class MatchCourt : Control
             bool dark = (i + offset) % 2 == 1;
             var r = new Rect(band.X + i * w, band.Y, w - 1, band.Height);
             ctx.FillRectangle(dark ? BoardDark : new SolidColorBrush(paint), r);
-            var t = Text(texts[(i + offset) % texts.Count], size, dark ? Colors.White : trim, true);
+            var t = Text(texts[(i + offset) % texts.Count], size, dark ? Colors.White : ThemeService.ReadableOn(paint, trim), true); // H193 (run 184)
             if (t.Width > r.Width - 8) continue;
             ctx.DrawText(t, new Point(r.Center.X - t.Width / 2, r.Y + (r.Height - t.Height) / 2));
         }

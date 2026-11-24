@@ -107,6 +107,24 @@ public class Run79CollegeSummerTests
             Assert.DoesNotContain("owner", page.Instructions);
             Assert.Contains("no contracts", page.Instructions);
             Assert.Contains("Class of", page.CollegeSummerText);
+            // H192 (run 184): the roster line names the coming season, and the open places are next summer's class.
+            if (s.World.College is { Recruiting: true })
+            {
+                Assert.Contains($" for {s.Offseason!.Season + 1}-{(s.Offseason.Season + 2) % 100:00} · ", page.CapText);
+                Assert.Contains("enroll next summer", page.CollegeSummerText);
+            }
+            // H187 (run 184): before July the cards, the roster's Yr column and the player page's Class chip all read next
+            // season's class.
+            if (s.Today.Month < 7)
+            {
+                int next = Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today) + 1;
+                foreach (var p in s.HumanTeam.Roster)
+                {
+                    var want = Hardwood.Core.College.CollegeWorld.ClassYearOf(p, next)?.Short;
+                    Assert.Equal(want, PlayerViewModel.ShownClass(s, p)?.Short);
+                    Assert.Equal(want, Hardwood.Desktop.Controls.PlayerCard.ClassYear?.Invoke(p));
+                }
+            }
             Assert.Contains("College page", page.CollegeSummerText);
             Assert.Contains("Graduation and enrollment", page.CollegeSummerText);   // he coached here when the summer began
             Assert.Equal(s.HumanTeam.Roster.Count, page.Roster.Count);

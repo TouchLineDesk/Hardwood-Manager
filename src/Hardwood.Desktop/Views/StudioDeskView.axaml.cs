@@ -34,6 +34,19 @@ public partial class StudioDeskView : UserControl
 
     private DeskReelViewModel? _vm;
 
+    /// <summary>H193 (run 184): whether the show's Next is the page's primary button. In the live game the desk's own header
+    /// carries the way on (Play on / Continue), so there Next is an ordinary button and only one button reads primary.</summary>
+    public static readonly StyledProperty<bool> NextIsPrimaryProperty =
+        AvaloniaProperty.Register<StudioDeskView, bool>(nameof(NextIsPrimary), true);
+
+    public bool NextIsPrimary { get => GetValue(NextIsPrimaryProperty); set => SetValue(NextIsPrimaryProperty, value); }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == NextIsPrimaryProperty) NextButton?.Classes.Set("primary", change.GetNewValue<bool>());
+    }
+
     private void Hook()
     {
         if (_vm != null) _vm.PropertyChanged -= OnVm;

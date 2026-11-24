@@ -67,7 +67,7 @@ public sealed class PlayerRow
             : p.IsIneligible(s.Today) ? $"Ineligible to {p.IneligibleUntil:MMM d}" : ""; // CS7 part 2c (run 175)
         var club = p.TeamId is { } cid ? s.FindTeam(cid) : null;
         bool before = club != null && !s.ContractsCounted(club);
-        var cls = s.ClassYearOf(p);
+        var cls = PlayerViewModel.ShownClass(s, p); // H187 (run 184): the same class as the card
         return new PlayerRow
         {
             ClassYear = cls?.Short ?? "", ClassOrder = cls?.Year ?? 0, PaText = cls != null ? s.CollegePotentialOf(p)?.ToString() : null,
