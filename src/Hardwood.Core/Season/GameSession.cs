@@ -91,7 +91,13 @@ public sealed partial class GameSession
     /// </summary>
     private void PutPlayersInSavedOrder()
     {
-        static void ById(List<Player> list) => list.Sort((a, b) => a.Id.CompareTo(b.Id));
+        // Sorted only when out of order: List.Sort bumps the list's version even when nothing moves, which would break any
+        // loop over these lists that saves part-way (review, run 185).
+        static void ById(List<Player> list)
+        {
+            for (int i = 1; i < list.Count; i++)
+                if (list[i - 1].Id > list[i].Id) { list.Sort((a, b) => a.Id.CompareTo(b.Id)); return; }
+        }
         foreach (var t in League.Teams) ById(t.Roster);
         ById(League.FreeAgents);
         ById(League.Retired);
