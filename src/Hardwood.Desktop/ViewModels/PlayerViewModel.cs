@@ -210,7 +210,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         if (p.TeamId != null)
         {
             var mood = Hardwood.Core.People.PeopleEngine.Mood(p.Morale);
-            chips.Add(new("Mood", mood, p.TradeRequested && !InCollegeProgram(s, p) ? "has asked to be traded" : $"morale {p.Morale:0}/100",
+            chips.Add(new("Mood", mood, p.TradeRequested && !InCollegeProgram(s, p) ? "has asked to be traded" : $"morale {Hardwood.Core.People.PeopleEngine.MoraleShown(p.Morale)}/100",
                 (p.TradeRequested && !InCollegeProgram(s, p)) || p.Morale < 35 ? "bad" : p.Morale < 50 ? "warn" : "good"));
         }
         // CP2 (run 131): your college players' growth this summer, at their minutes, with what your program adds.
