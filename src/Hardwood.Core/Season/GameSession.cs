@@ -815,6 +815,8 @@ public sealed partial class GameSession
                 (string title, string body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
                     relegated: GoingDown(), wonDivision: wonDivision, madnessRound: InCollege ? World.College!.MadnessReached(HumanTeam.Id) : -1,
                     goingUp: GoingUp(), seed: InCollege ? World.College!.SeedOf(HumanTeam.Id) : 0, overall: (all.Wins, all.Losses));
+                // K27 (run 180): the program's arc, said where the season is judged (the summer applies it tomorrow).
+                if (InCollege && !sacked && World.College!.Prestige.ContainsKey(HumanTeam.Id)) body += "\n" + World.College.PrestigeReviewLine(HumanTeam.Id);
                 Post(Boss(title), Boss(body), "Board");
             }
             if (RelegationTiebreak() is { } tie)

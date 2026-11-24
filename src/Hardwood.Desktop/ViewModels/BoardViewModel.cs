@@ -395,16 +395,17 @@ public sealed partial class BoardViewModel : PageViewModel
             : s.ProgramBuildsNow ? "A project paid for now is ready for the season." : "A project paid for during the season opens next summer.";
     }
 
-    /// <summary>CS7 part 2b (run 173): prestige's long memory in words: the five-season form and the remembered marks, newest first.</summary>
+    /// <summary>CS7 part 2b (run 173): prestige's long memory in words: the five-season form and the remembered marks, newest
+    /// first. K27 (run 180): the newest season counts most.</summary>
     public static string PrestigeMemoryLine(Hardwood.Core.College.CollegeWorld cw, int programId)
     {
-        const string how = "one great season lifts it a fifth as far, five summers running";
+        const string how = "the newest season counts most (40%), and each season keeps counting for five summers";
         if (!cw.Form.TryGetValue(programId, out var marks) || marks.Count == 0)
-            return $"Prestige remembers {Hardwood.Core.College.CollegeWorld.PrestigeMemory} seasons: each summer it moves by the average of their marks (the record, March wins and titles), so {how}.";
-        static string Signed(double v) => v >= 0.05 ? $"+{v:0.0}" : v <= -0.05 ? $"\u2212{-v:0.0}" : "0.0";
+            return $"Prestige remembers {Hardwood.Core.College.CollegeWorld.PrestigeMemory} seasons: each summer their marks (the record, the conference record, March wins and titles) move it; {how}.";
+        static string Signed(double v) => Hardwood.Core.College.CollegeWorld.Signed(v);
         double form = cw.FormOf(programId);
         string list = string.Join(", ", Enumerable.Reverse(marks).Select(Signed));
-        return $"Prestige remembers {Hardwood.Core.College.CollegeWorld.PrestigeMemory} seasons: together they move it {Signed(form)} a summer (marks {list}, newest first), so {how}.";
+        return $"Prestige remembers {Hardwood.Core.College.CollegeWorld.PrestigeMemory} seasons: five-season form {Signed(form)} (marks {list}, newest first); {how}.";
     }
 
     private static (string, bool, string) BuildButton(Hardwood.Core.Model.Team t, Hardwood.Core.Model.FacilityKind k)
@@ -620,7 +621,7 @@ public sealed partial class BoardViewModel : PageViewModel
         return new List<Hardwood.Desktop.Controls.Chip>
         {
             // CS2 (run 126, #166): prestige as a letter, the number beside it.
-            new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0}/100, " + PrestigeWords(prestige, cw.PrestigeRanks().GetValueOrDefault(t.Id, cw.Programs.Count)), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
+            new("Prestige", Hardwood.Core.College.CollegeWorld.PrestigeLetter(prestige), $"{prestige:0.0}/100, " + PrestigeWords(prestige, cw.PrestigeRanks().GetValueOrDefault(t.Id, cw.Programs.Count)), prestige >= 75 ? "good" : prestige < 40 ? "warn" : "team"),
             new("National rank", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? $"No. {rank}" : "Unranked", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "in the Top 25 poll" : $"No. {rank} of {cw.Programs.Count} in the ratings", rank <= Hardwood.Core.College.CollegeWorld.PollSize ? "good" : ""),
             new("Overall", $"{rec.Wins}-{rec.Losses}", "this season", rec.Games > 0 && rec.WinPct >= 0.6 ? "good" : rec.Games > 0 && rec.WinPct < 0.4 ? "bad" : ""),
             // H160 (run 155): before conference play the chip said "0-0" with 14 games played; it says when play starts.

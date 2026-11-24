@@ -37,7 +37,7 @@ public class Run173PrestigeMemoryTests
         Assert.Equal((30 / 35.0 - 0.5) * 10 + 6, mark, 9);
         var cw = new CollegeWorld();
         cw.Form[1] = new List<double> { mark };
-        Assert.Equal(mark / CollegeWorld.PrestigeMemory, cw.FormOf(1), 9);
+        Assert.Equal(mark * CollegeWorld.FormWeights[0], cw.FormOf(1), 9); // K27 (run 180): the newest season counts 40%
         // Five steady seasons move it by the mark itself: a program that keeps winning climbs as fast as before.
         cw.Form[2] = Enumerable.Repeat(2.0, CollegeWorld.PrestigeMemory).ToList();
         Assert.Equal(2.0, cw.FormOf(2), 9);
@@ -71,8 +71,9 @@ public class Run173PrestigeMemoryTests
                     marks = c.Programs.ToDictionary(t => t.Id, t =>
                     {
                         var (w, l) = c.Record(t.Id);
+                        var (cw, cl) = c.ConferenceRecord(t.Id); // K27 (run 180): the conference record too
                         int runs = c.Season.Games.Count(g => g.Event == CollegeWorld.Madness && g.Round >= 1 && g.WinnerId == t.Id);
-                        return CollegeWorld.SeasonMark(w, l, runs, c.Season.ChampionId == t.Id);
+                        return CollegeWorld.SeasonMark(w, l, cw, cl, runs, c.Season.ChampionId == t.Id);
                     });
                 }
                 s.AdvanceDay();
@@ -85,9 +86,9 @@ public class Run173PrestigeMemoryTests
             {
                 var m = Assert.Single(c.Form[t.Id]);
                 Assert.Equal(marks![t.Id], m, 9);
-                // The move: a fifth of the mark (scaled near the top when it's a gain), then the drift toward the baseline.
+                // The move: 40% of the mark (K27, run 180; it was a fifth) (scaled near the top when it's a gain), then the drift toward the baseline.
                 var conf = CollegeWorld.Conferences.First(x => x.Key == c.ConferenceOf[t.Id]);
-                double change = m / CollegeWorld.PrestigeMemory, was = before![t.Id];
+                double change = m * CollegeWorld.FormWeights[0], was = before![t.Id];
                 if (change > 0) change *= Math.Clamp((100 - was) / 30.0, 0, 1);
                 double expect = Math.Clamp(was + change + (c.Baseline(t, conf) - was) * 0.08, 10, 99);
                 Assert.Equal(expect, c.Prestige[t.Id], 6);
@@ -125,14 +126,14 @@ public class Run173PrestigeMemoryTests
             void Settle() { for (int i = 0; i < 3; i++) { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window!.UpdateLayout(); } }
             Settle();
             _out.WriteLine(board.ProgramPrestige);
-            Assert.StartsWith("Prestige remembers 5 seasons: each summer", board.ProgramPrestige);
+            Assert.StartsWith("Prestige remembers 5 seasons: each summer their marks", board.ProgramPrestige);
             // Three remembered seasons, as after three summers.
             c.Form[s.HumanTeam.Id] = new List<double> { 6.2, -1.5, 0.8 };
             vm.Navigate("Home"); vm.Navigate("Board");
             board = Assert.IsType<BoardViewModel>(vm.CurrentPage);
             Settle();
             _out.WriteLine(board.ProgramPrestige);
-            Assert.Contains("together they move it +1.1 a summer (marks +0.8, −1.5, +6.2, newest first)", board.ProgramPrestige);
+            Assert.Contains("five-season form +0.9 (marks +0.8, −1.5, +6.2, newest first); the newest season counts most", board.ProgramPrestige);
             Assert.Empty(LayoutCheck.Scan(window));
             var title = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.TextBlock>().First(x => x.Text == "Program building");
             var scroll = Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<Avalonia.Controls.ScrollViewer>(title)!;
