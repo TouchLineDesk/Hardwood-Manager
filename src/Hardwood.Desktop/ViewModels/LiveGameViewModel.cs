@@ -279,7 +279,10 @@ public sealed partial class LiveGameViewModel : PageViewModel
             Lineup.Add(slot);
         }
         // K10 (run 136): the assistant's panel reads this game while it's on.
-        Shell.Guide.SetLive(() => Hardwood.Core.Guide.Assistant.LiveRead(_live.Result, Us, _live.PeriodText, _live.ClockText, _live.Complete));
+        // K32 (run 186): the period and clock the score bug shows (before the tip: the first period at its full clock).
+        Shell.Guide.SetLive(() => Hardwood.Core.Guide.Assistant.LiveRead(_live.Result, Us,
+            _live.Period == 0 ? (_live.Result.Periods == 2 ? "H1" : "Q1") : _live.PeriodText,
+            string.IsNullOrEmpty(BarClock) ? _live.ClockText : BarClock, _live.Complete));
         InitMatch();
         Refresh();
         Status = "Press Play to tip off. Pause at any time to change your five or your tactics.";

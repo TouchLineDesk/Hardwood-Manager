@@ -340,7 +340,7 @@ public sealed partial class MainViewModel : ViewModelBase
         SeasonOver = outText != null;
         InCollegeSpring = CollegeSpring(s);
         PhaseText = s.InCollege && s.Employed && s.World.College is { } cw && cw.Season.Year == s.League.Season
-            ? $"{s.MyConference!.Short} · {(cw.Season.ChampionId != null ? "season over" : cw.StageText.ToLower())}"
+            ? $"{s.MyConference!.Short} · {(cw.Season.ChampionId != null ? "season over" : CollegeStageWords(cw.StageText))}"
             : s.Abroad && s.Phase != SessionPhase.Offseason && s.HumanLeague is { } hl
             ? $"{hl.Profile.Name} · {(hl.Season.IsComplete ? "season over" : outText ?? hl.Season.Stage.ToLower())}"
             : s.Phase switch
@@ -418,6 +418,11 @@ public sealed partial class MainViewModel : ViewModelBase
         var lastSeries = mine[^1];
         return lastSeries.LoserId == me.Id ? $"out in the {RoundName(lastSeries.Round)}" : null;
     }
+
+    /// <summary>K33 (run 186): the college stage under the program's name: "March Madness · First Four" in title case (the
+    /// event's name), every other stage in lower case as before ("conference tournament").</summary>
+    public static string CollegeStageWords(string stage) =>
+        stage.StartsWith(Hardwood.Core.College.CollegeWorld.Madness, StringComparison.Ordinal) ? stage.Replace(": ", " · ") : stage.ToLower();
 
     private static string RoundName(string round)
     {

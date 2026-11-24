@@ -211,6 +211,8 @@ public sealed partial class LiveGameViewModel
     private void BeginPossession()
     {
         if (_live.Complete) { _script = null; return; }
+        // K32 (run 186): the game is under way, so the tip-off hint goes (however play began).
+        if (Status?.StartsWith("Press Play to tip off", StringComparison.Ordinal) == true) Status = "";
         var r = _live.Result;
         int before = r.Plays.Count;
         double elapsed = r.Elapsed;
@@ -250,8 +252,8 @@ public sealed partial class LiveGameViewModel
             var final = GameCalls.Final(r.Plays, Short(HomeTeam), Short(AwayTeam), _live.HomeScore, _live.AwayScore, r.Periods,
                 FinalOccasion(_live.HomeScore > _live.AwayScore));
             for (int n = 0; n < final.Count; n++) { _script.Lines.Add(new CommentaryLine(_script.Length, final[n], n == 0)); _script.Length += PossessionChoreographer.NoteTime; }
-            // Review: the result is what stays on the bar, so after its context it's said once more.
-            if (final.Count > 1) { _script.Lines.Add(new CommentaryLine(_script.Length, final[0], true)); _script.Length += PossessionChoreographer.NoteTime; }
+            // K25's leftover (run 186): the result is said once; it goes back on the bar when the possession has played
+            // out (FinishPossession), not as a second line.
             _finalCalls = final;
         }
         // K25 (run 174): what was said, for tests (the whole game's lines in order).
@@ -295,6 +297,7 @@ public sealed partial class LiveGameViewModel
         foreach (var c in _logCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
         _logCalls = new();
         foreach (var c in _finalCalls) Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {c}");
+        if (_finalCalls.Count > 0) { Commentary = _finalCalls[0]; CommentaryBig = true; }   // the result is what stays on the bar
         _finalCalls = new();
         AfterStep(periodEnded);
     }

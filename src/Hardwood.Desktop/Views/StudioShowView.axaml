@@ -46,7 +46,7 @@
               </Grid>
               <Border Grid.Column="1" Background="#C0101318" CornerRadius="8" Padding="14,6" Margin="10,0" VerticalAlignment="Center">
                 <StackPanel>
-                  <TextBlock Text="AT" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{Binding AccentBrush}" LetterSpacing="2"/>
+                  <TextBlock Text="{Binding Versus}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{Binding AccentBrush}" LetterSpacing="2"/>
                   <TextBlock Text="{Binding Chance}" FontSize="11" Classes="muted" HorizontalAlignment="Center"/>
                 </StackPanel>
               </Border>
