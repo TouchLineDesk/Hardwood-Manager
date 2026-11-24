@@ -473,16 +473,38 @@ public sealed partial class CollegeWorld
     private void SignAll(int cls, DateOnly day, Rng rng)
     {
         var board = BoardFor(cls);
+        var managed = ManagedProgramId is int id ? Program(id) : null;
         foreach (var p in ClassOf(cls).OrderBy(p => Recruits[p.Id].Rank).ToList())
         {
             var r = Recruits[p.Id];
             if (r.CommittedTo != null) continue;
+            // H186 (run 183): a prospect with your offer who the Recruiting page says leans your way signs with you. Signing
+            // day's own pick (the computer's reach, no spring credit) gave No. 110 (leaning Virginia Tech, interest 82 on
+            // Apr 9) to Arizona and No. 112 to Virginia, and two places went to walk-ons. The draw is still made, so the
+            // random stream takes the same steps for him.
+            var lean = managed != null && r.Offered && r.CourtedBy == managed.Id && board.Open[managed.Id] > 0 ? LeaningTo(p, r, board) : null;
             var pick = Choose(p, r, board, rng, null, 2); // no reach for the computer on signing day; your credit at the spring reach
+            if (lean != null && lean == managed) pick = managed;
             if (pick == null) break;
             r.CommittedTo = pick.Id; r.CommittedOn = day;
             board.Seat(pick.Id, p.PrimaryPosition, IsElite(p), 1);
             TellCoach(p, r, pick, signingDay: true);
         }
+        // H186 (run 183): the walk down the board stops at the first prospect nobody can take, so an offered prospect
+        // leaning to the coached program, ranked below that point, never signed and his place went to a walk-on
+        // (Virginia Tech's class of 2029: 5 offers out leaning its way on Apr 9, 2 places left unfilled). They sign now.
+        // Deterministic (no random draw), so the shared stream doesn't move.
+        if (managed is { } me)
+            foreach (var p in ClassOf(cls).Where(p => Recruits[p.Id] is { CommittedTo: null, Offered: true } x && x.CourtedBy == me.Id)
+                                          .OrderBy(p => Recruits[p.Id].Rank).ToList())
+            {
+                if (board.Open[me.Id] <= 0) break;
+                var r = Recruits[p.Id];
+                if (LeaningTo(p, r, board) != me) continue;
+                r.CommittedTo = me.Id; r.CommittedOn = day;
+                board.Seat(me.Id, p.PrimaryPosition, IsElite(p), 1);
+                TellCoach(p, r, me, signingDay: true);
+            }
         var top = ClassRanking(cls).Take(5).ToList();
         if (top.Count > 0)
             News.Add(($"Signing day: the top recruiting classes of {cls}",

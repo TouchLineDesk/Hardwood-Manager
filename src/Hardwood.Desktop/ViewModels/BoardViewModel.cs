@@ -368,6 +368,8 @@ public sealed partial class BoardViewModel : PageViewModel
     [RelayCommand] private void BuildGym() { ProgramStatus = Session.BuildProgramFacility(Hardwood.Core.Model.FacilityKind.Practice); Refresh(); }
     [RelayCommand] private void BuildArena() { ProgramStatus = Session.BuildProgramFacility(Hardwood.Core.Model.FacilityKind.Arena); Refresh(); }
 
+    private static string Cap(string w) => w.Length == 0 ? w : char.ToUpperInvariant(w[0]) + w[1..];
+
     private void RefreshProgram()
     {
         var s = Session;
@@ -380,7 +382,8 @@ public sealed partial class BoardViewModel : PageViewModel
         ProgramBuildChips = new List<Hardwood.Desktop.Controls.Chip>
         {
             new("Booster fund", M(b.Fund), b.LastGift > 0 ? $"to spend · {M(b.LastGift)} last summer" : "to spend", "team"),
-            new("Boosters", Hardwood.Core.College.ProgramBuilding.Mood(b.Boosters), $"{b.Boosters:0}/100 · winning and rivalry wins please them", b.Boosters >= 60 ? "good" : b.Boosters < 30 ? "warn" : ""),
+            new("Boosters", Cap(Hardwood.Core.College.ProgramBuilding.Mood(b.Boosters)), // H199 (run 183): "Content", like "Level 3"
+                $"{b.Boosters:0}/100 · winning and rivalry wins please them", b.Boosters >= 60 ? "good" : b.Boosters < 30 ? "warn" : ""),
             new("Practice gym", $"Level {f.Practice.Level}", Built(Hardwood.Core.Model.FacilityKind.Practice) + Pending(Hardwood.Core.Model.FacilityKind.Practice), f.Practice.Level >= 4 ? "good" : f.Practice.Level <= 2 ? "warn" : ""),
             new("Arena", $"Level {f.Arena.Level}", Built(Hardwood.Core.Model.FacilityKind.Arena) + Pending(Hardwood.Core.Model.FacilityKind.Arena), f.Arena.Level >= 4 ? "good" : f.Arena.Level <= 2 ? "warn" : ""),
         };
@@ -393,8 +396,16 @@ public sealed partial class BoardViewModel : PageViewModel
         ProgramPrestige = PrestigeMemoryLine(s.World.College!, t.Id);
         (BuildGymText, CanBuildGym, BuildGymTip) = BuildButton(t, Hardwood.Core.Model.FacilityKind.Practice);
         (BuildArenaText, CanBuildArena, BuildArenaTip) = BuildButton(t, Hardwood.Core.Model.FacilityKind.Arena);
+        // H191 (run 183): say what building does now, not "a project paid for", beside "Nothing built yet".
         ProgramLastSummer = b.LastLines.Count > 0 ? "Last summer: " + string.Join(" ", b.LastLines)
-            : s.ProgramBuildsNow ? "A project paid for now is ready for the season." : "A project paid for during the season opens next summer.";
+            : s.ProgramBuildsNow ? "Build now and it's ready for the season." : "Build during the season and it opens next summer.";
+        // H199 (run 183): the fund may pay for one build but not both; say so beside the two buttons.
+        if (CanBuildGym && CanBuildArena && b.Pending == null)
+        {
+            long gym = Hardwood.Core.College.ProgramBuilding.Cost(Hardwood.Core.Model.FacilityKind.Practice, f.Practice.Level);
+            long arena = Hardwood.Core.College.ProgramBuilding.Cost(Hardwood.Core.Model.FacilityKind.Arena, f.Arena.Level);
+            if (b.Fund < gym + arena) ProgramLastSummer += $" The {M(b.Fund)} fund pays for one of these, not both.";
+        }
     }
 
     /// <summary>CS7 part 2b (run 173): prestige's long memory in words: the five-season form and the remembered marks, newest
@@ -451,7 +462,7 @@ public sealed partial class BoardViewModel : PageViewModel
             new("Term", term is { } t ? char.ToUpperInvariant(Hardwood.Core.College.Academics.TermName(t)[0]) + Hardwood.Core.College.Academics.TermName(t)[1..] : "Summer", term is { } t2 ? $"grades {(t2.Fall ? Hardwood.Core.College.Academics.FallGrades(t2.Year) : Hardwood.Core.College.Academics.SpringGrades(t2.Year)):MMM d}" : "classes start in the fall", "team"),
             new("At risk", risk.ToString(), term == null ? "no classes" : risk == 0 ? "everyone on track" : $"under {Hardwood.Core.College.Academics.PassMark:0.0} possible", risk > 0 ? "warn" : "good"),
             new("Ineligible", ineligible.Count.ToString(), ineligible.Count == 0 ? "nobody sitting out" : string.Join(", ", ineligible.Select(p => p.LastName)), ineligible.Count > 0 ? "bad" : ""),
-            new("Study hall", hall.ToString(), $"{hall * Hardwood.Core.College.Academics.StudyHallHours} recruiting h a week", ""),
+            new("Study hall", hall.ToString(), hall == 0 ? "nobody in it" : $"costs {hall * Hardwood.Core.College.Academics.StudyHallHours} recruiting hours a week", ""), // H199 (run 183)
             new("Academic center", $"Level {b.AcademicCenter}", b.AcademicCenter > 0 ? $"+{Hardwood.Core.College.Academics.CenterLift * b.AcademicCenter:0.00} on grades" : "not built", b.AcademicCenter >= 2 ? "good" : ""),
         };
         var good = (IBrush)new SolidColorBrush(Color.Parse("#3FB37F")); var warn = (IBrush)new SolidColorBrush(Color.Parse("#E0A33A")); var bad = (IBrush)new SolidColorBrush(Color.Parse("#E05A4F"));

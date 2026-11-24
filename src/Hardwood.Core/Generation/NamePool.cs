@@ -3,6 +3,9 @@ namespace Hardwood.Core.Generation;
 /// <summary>Name pools for the default fictional world. All names are generic; the best-known real NBA surnames were taken out in run 21 (#263), and a full name that matches a real NBA player is re-rolled (<see cref="RealNames"/>).</summary>
 public static class NamePool
 {
+    /// <summary>H190 (run 183): a first name that is also the surname ("Brock Brock", "Russell Russell").</summary>
+    public static bool SameName(string first, string last) => string.Equals(first, last, StringComparison.OrdinalIgnoreCase);
+
     public static readonly string[] FirstNames =
     {
         "Marcus","Jalen","Darius","Tyrese","Andre","Devin","Cameron","Isaiah","Malik","Jordan",

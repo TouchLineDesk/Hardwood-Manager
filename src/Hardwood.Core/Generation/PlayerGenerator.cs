@@ -46,6 +46,12 @@ public sealed class PlayerGenerator
         var heritage = heritageOverride ?? Heritages.Pick(side);
 
         string first = _rng.Pick(heritage.FirstNames), last = _rng.Pick(heritage.LastNames);
+        // H190 (run 183): no "Brock Brock". Some names are on both lists; the re-roll has its own stream, as below.
+        if (NamePool.SameName(first, last))
+        {
+            var twin = Heritages.StreamFor(_rng.Seed ^ 0x5457494E53UL, id);
+            for (int tries = 0; tries < 12 && NamePool.SameName(first, last); tries++) last = twin.Pick(heritage.LastNames);
+        }
         // No made-up player carries a real NBA player's full name (#263). The re-roll has its own stream, so the main
         // sequence (ratings, results) and the heritage stream don't move.
         if (RealWorld.RealNames.IsReal(first, last))
@@ -63,7 +69,7 @@ public sealed class PlayerGenerator
                 for (int tries = 0; tries < 60; tries++)
                 {
                     string f = unique.Pick(heritage.FirstNames), l = unique.Pick(heritage.LastNames);
-                    if (Names.Taken(f, l) || RealWorld.RealNames.IsReal(f, l)) continue;
+                    if (Names.Taken(f, l) || RealWorld.RealNames.IsReal(f, l) || NamePool.SameName(f, l)) continue;
                     (first, last) = (f, l);
                     break;
                 }

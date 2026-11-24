@@ -13,10 +13,10 @@ public sealed class StaffGenerator
         int id = league.NextStaffId++;
         string first = _rng.Pick(NamePool.FirstNames), last = _rng.Pick(NamePool.LastNames);
         // No made-up coach carries a real NBA name either (#263); the re-roll uses its own stream so the main one doesn't move.
-        if (RealWorld.RealNames.IsReal(first, last))
+        if (RealWorld.RealNames.IsReal(first, last) || NamePool.SameName(first, last)) // H190 (run 183): nor "Brock Brock"
         {
             var side = new Rng(unchecked(_rng.Seed * 0x9E3779B97F4A7C15UL ^ (ulong)id * 0xC2B2AE3D27D4EB4FUL));
-            for (int tries = 0; tries < 12 && RealWorld.RealNames.IsReal(first, last); tries++) last = side.Pick(NamePool.LastNames);
+            for (int tries = 0; tries < 12 && (RealWorld.RealNames.IsReal(first, last) || NamePool.SameName(first, last)); tries++) last = side.Pick(NamePool.LastNames);
         }
         var s = new Staff
         {

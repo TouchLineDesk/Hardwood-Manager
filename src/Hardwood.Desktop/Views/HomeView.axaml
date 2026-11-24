@@ -137,8 +137,8 @@
                         <ColumnDefinition Width="22"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto" SharedSizeGroup="Rec"/><ColumnDefinition Width="Auto" SharedSizeGroup="Diff"/>
                       </Grid.ColumnDefinitions>
-                      <TextBlock Text="{Binding Rank}" Classes="muted"/>
-                      <c:TeamLogo Grid.Column="1" Team="{Binding Team}" ShowText="False" Width="18" Height="18" HorizontalAlignment="Left"/>
+                      <TextBlock Text="{Binding RankText}" Classes="muted"/>
+                      <c:TeamLogo Grid.Column="1" Team="{Binding Team}" ShowText="False" Width="18" Height="18" HorizontalAlignment="Left" IsVisible="{Binding NotGap}"/>
                       <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="{Binding Ours, Converter={x:Static vm:HomeConverters.Bold}}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
                       <TextBlock Grid.Column="3" Text="{Binding Record}" HorizontalAlignment="Right" Margin="6,0,0,0"/>
                       <TextBlock Grid.Column="4" Text="{Binding Diff}" Classes="muted" HorizontalAlignment="Right" Margin="10,0,0,0"/>
