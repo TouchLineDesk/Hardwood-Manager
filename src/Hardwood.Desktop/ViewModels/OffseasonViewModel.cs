@@ -412,8 +412,9 @@ public sealed partial class OffseasonViewModel : PageViewModel
                      + "The pros' draft and free agency run until the new season: press Continue to move the summer along.";
         var c = s.World.College;
         int walkOns = c == null ? 0 : team.Roster.Count(p => c.WalkOnIds.Contains(p.Id));
+        // H192 (run 184): the roster is next season's (the class has enrolled), so the line names that season.
         CapText = c is { Recruiting: true }
-            ? $"Roster {team.Roster.Count} of {Hardwood.Core.College.CollegeWorld.Squad} · {team.Roster.Count - walkOns} on scholarship (of {Hardwood.Core.College.CollegeWorld.Scholarships})"
+            ? $"Roster {team.Roster.Count} of {Hardwood.Core.College.CollegeWorld.Squad} for {o.Season + 1}-{(o.Season + 2) % 100:00} · {team.Roster.Count - walkOns} on scholarship (of {Hardwood.Core.College.CollegeWorld.Scholarships})"
               + (walkOns > 0 ? $" · {walkOns} walk-on{(walkOns == 1 ? "" : "s")}" : "")
             : $"Roster {team.Roster.Count} players";
         foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
@@ -422,7 +423,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
         {
             int cls = c.RecruitingClass(s.Today);
             int open = c.OpenScholarships(team, cls), commits = c.Commits(team, cls);
-            lines.Add($"Class of {cls}: {commits} committed to you, {open} scholarship{(open == 1 ? "" : "s")} still open.");
+            // H192 (run 184): this class joins NEXT summer, so its open places sit beside a full roster for the coming season.
+            lines.Add($"Class of {cls} (they enroll next summer, when this season's seniors leave): {commits} committed to you, {open} scholarship{(open == 1 ? "" : "s")} still open.");
             lines.Add("Recruit the class on the College page (Recruiting). Rising seniors can be courted now; they commit from September 1.");
         }
         if (s.Inbox.Any(m => m.Title == "Graduation and enrollment" && m.Date.Year == o.Season + 1))

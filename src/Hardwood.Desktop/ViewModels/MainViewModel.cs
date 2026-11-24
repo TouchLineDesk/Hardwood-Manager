@@ -100,7 +100,7 @@ public sealed partial class MainViewModel : ViewModelBase
         session.Saved += () => Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (Session == session) (SavedText, SavedTip) = SaveLine(session); });
         Controls.PlayerCard.BackSource = pl => Hardwood.Core.Season.CollectorCard.BackOf(session, pl);
         Controls.PlayerCard.Today = () => session.Today;
-        Controls.PlayerCard.ClassYear = p => session.ClassYearOf(p)?.Short; // CS3 (run 127)
+        Controls.PlayerCard.ClassYear = p => PlayerViewModel.ShownClass(session, p)?.Short; // CS3 (run 127); H187 (run 184)
         // The college Top 25 rank travels with the team (#528): logos and team links read it from the live poll.
         Controls.CollegeRank.Of = t => session.World.College is { } cw && t.Id >= Hardwood.Core.College.CollegeWorld.FirstId ? cw.Rank(t.Id) : null;
         Controls.Portraits.UseSave(session.Save?.Path);

@@ -240,6 +240,10 @@ public sealed partial class PlayerViewModel : PageViewModel
         return Hardwood.Core.College.CollegeWorld.ClassYearOf(p, Hardwood.Core.College.CollegeWorld.SchoolYear(s.Today) + 1);
     }
 
+    /// <summary>H187 (run 184): the class every card, roster row and chip shows: next season's after graduation day, else this
+    /// season's, so the player page's card and its Class chip agree.</summary>
+    public static Hardwood.Core.College.ClassYear? ShownClass(GameSession s, Player p) => NextSeasonClass(s, p) ?? s.ClassYearOf(p);
+
     /// <summary>CP3 (run 132): a college player's or recruit's potential is a range; a pro's stays exact (#119).</summary>
     internal static string PotentialText(GameSession s, Player p, double k) => s.CollegePotentialOf(p)?.ToString() ?? Scouting.Potential(p, k).ToString();
 }

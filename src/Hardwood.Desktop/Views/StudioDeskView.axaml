@@ -64,7 +64,7 @@
     </Border>
     <WrapPanel>
       <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,4"/>
-      <Button Content="Next" Command="{Binding NextCommand}" IsEnabled="{Binding CanNext}" Classes="primary" Margin="0,0,8,4"/>
+      <Button x:Name="NextButton" Content="Next" Command="{Binding NextCommand}" IsEnabled="{Binding CanNext}" Classes="primary" Margin="0,0,8,4"/>
       <Button Content="{Binding AutorunText}" Command="{Binding AutorunCommand}" Margin="0,0,8,4"/>
       <Button Content="Skip to the end" Command="{Binding SkipToEndCommand}" Margin="0,0,12,4"/>
       <TextBlock Text="{Binding Progress}" Classes="muted" VerticalAlignment="Center" Margin="0,0,0,4"/>

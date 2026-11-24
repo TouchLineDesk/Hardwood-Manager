@@ -19,6 +19,23 @@ public static class ThemeService
         return 0.2126 * Lin(c.R) + 0.7152 * Lin(c.G) + 0.0722 * Lin(c.B);
     }
 
+    private static readonly Color Ink = Color.Parse("#14171C");
+
+    /// <summary>The WCAG contrast ratio of two colours (1 to 21).</summary>
+    public static double Contrast(Color a, Color b)
+    {
+        double la = Luminance(a), lb = Luminance(b);
+        return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
+    }
+
+    /// <summary>H193 (run 184): <paramref name="preferred"/> on <paramref name="background"/> when it reads (contrast 3+, large
+    /// text), else white or near-black, whichever reads better (Louisville's red trim on its red boards).</summary>
+    public static Color ReadableOn(Color background, Color preferred)
+    {
+        if (Contrast(preferred, background) >= 3) return preferred;
+        return Contrast(Colors.White, background) >= Contrast(Ink, background) ? Colors.White : Ink;
+    }
+
     private static Color Lighten(Color c, double t) =>
         Color.FromRgb((byte)(c.R + (255 - c.R) * t), (byte)(c.G + (255 - c.G) * t), (byte)(c.B + (255 - c.B) * t));
 
