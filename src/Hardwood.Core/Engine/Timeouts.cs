@@ -54,7 +54,8 @@ public enum TimeoutReason
     StopRun,
     /// <summary>The last possession of a close game: set up the final play.</summary>
     LastPlay,
-    /// <summary>The last two minutes, behind by one to six with the ball: draw up a play.</summary>
+    /// <summary>The last two minutes with the ball: behind by one to six (drawn up), or, from K28 (run 177), a tired five's
+    /// timeout, which late in a game is about the next play, not the legs.</summary>
     LatePlay,
     /// <summary>The five on the floor are worn down: a breather.</summary>
     Breather,

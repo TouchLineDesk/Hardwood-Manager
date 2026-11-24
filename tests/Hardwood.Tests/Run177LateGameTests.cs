@@ -28,6 +28,17 @@ public class Run177LateGameTests
     [InlineData(true, true, 35, 2, false, LateGame.Foul.StopClock)]    // the old window
     [InlineData(true, false, 20, 7, false, LateGame.Foul.None)]        // the first half
     [InlineData(true, true, 2, 7, false, LateGame.Foul.None)]          // too late to matter
+    // The edges (review): 60 s and 120 s are in, 61 s and 121 s are out; leads 3/4, 10/11, 12/13.
+    [InlineData(true, true, 60, 4, false, LateGame.Foul.StopClock)]
+    [InlineData(true, true, 61, 4, false, LateGame.Foul.None)]
+    [InlineData(true, true, 50, 3, false, LateGame.Foul.None)]
+    [InlineData(true, true, 40, 6, false, LateGame.Foul.StopClock)]
+    [InlineData(true, true, 120, 12, true, LateGame.Foul.OneAndOne)]
+    [InlineData(true, true, 121, 12, true, LateGame.Foul.None)]
+    [InlineData(true, true, 120, 7, true, LateGame.Foul.OneAndOne)]
+    [InlineData(true, true, 120, 6, true, LateGame.Foul.None)]
+    [InlineData(false, true, 40, 6, false, LateGame.Foul.StopClock)]
+    [InlineData(false, true, 41, 6, false, LateGame.Foul.None)]
     [InlineData(false, true, 17, 7, false, LateGame.Foul.None)]        // the NBA keeps its rules
     [InlineData(false, true, 35, 5, false, LateGame.Foul.StopClock)]
     [InlineData(false, true, 100, 9, false, LateGame.Foul.None)]
@@ -73,7 +84,8 @@ public class Run177LateGameTests
                 r.PlayLog.Count(l => l.Contains("sending him to the one-and-one")));
         }
         Assert.True(chances >= 30, $"only {chances} late trips in 160 games");
-        // Every trip the trailing side could foul on, it did (before K28, only the last 40 s and down one to six).
+        // Every trip the trailing side could foul on, it did (before K28, only the last 40 s and down one to six). The
+        // counter and the decision share a window, so this guards the wiring (a foul recorded for every chance), not the rule.
         Assert.Equal(chances, inWindow);
         Assert.True(deep > 0 && oneAndOne > 0, $"down 7-10: {deep}, one-and-one: {oneAndOne}");
     }
