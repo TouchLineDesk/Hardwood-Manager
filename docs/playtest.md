@@ -41,7 +41,6 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Blue bloods recruit too well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
-- The bracket page is plain text, with no crests.
 - National teams, FIBA and the Olympics aren't built yet; international play starts after the college plan.
 
 ## How to leave notes

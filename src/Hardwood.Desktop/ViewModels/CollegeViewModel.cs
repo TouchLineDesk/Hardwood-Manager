@@ -237,8 +237,14 @@ public sealed partial class CollegeViewModel : PageViewModel
     public ObservableCollection<string> Bracket { get; } = new();
     // March Madness as a bracket (college depth part 2): pick a region or the Final Four.
     public const string SelectionView = "Selection Sunday";
-    public List<string> BracketViews { get; } = MadnessBracket.Regions.Prepend(SelectionView).Append("Final Four").ToList();
-    [ObservableProperty] private string _bracketView = "East";
+    /// <summary>Run 190 (Danny, Nov 24, `claude/bracket-redesign.md`): the whole field of 64 on one screen, the TV graphic.</summary>
+    public const string FullView = "Full bracket";
+    public List<string> BracketViews { get; } = MadnessBracket.Regions.Prepend(FullView).Prepend(SelectionView).Append("Final Four").ToList();
+    [ObservableProperty] private string _bracketView = FullView;
+    /// <summary>Run 190: what the drawn bracket shows (the whole field or one region); null on the reveal and the weekend page.</summary>
+    [ObservableProperty] private Hardwood.Desktop.Controls.MadnessFieldData? _madnessField;
+    public bool ShowField => MadnessField != null;
+    partial void OnMadnessFieldChanged(Hardwood.Desktop.Controls.MadnessFieldData? value) => OnPropertyChanged(nameof(ShowField));
     [ObservableProperty] private List<BracketColumn> _bracketColumns = new();
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _madnessChips = new();
     public bool HasBracket => BracketColumns.Count > 0;
@@ -456,11 +462,8 @@ public sealed partial class CollegeViewModel : PageViewModel
         if (madnessStarted && _bracketOpenedFor != s)
         {
             _bracketOpenedFor = s;
-            if (BracketView == SelectionView)
-            {
-                int region = Session.Employed && Session.InCollege ? c.RegionOf(Session.HumanTeam.Id) : -1;
-                BracketView = region >= 0 ? MadnessBracket.Regions[region] : MadnessBracket.Regions[0];
-            }
+            // Run 190: the whole field, as on TV (it was your region's four columns).
+            if (BracketView == SelectionView) BracketView = FullView;
         }
         // Once the Final Four is set, the page opens on the weekend (once a season, so you can still look back at a region).
         bool fourSet = s.Games.Count(g => g.Event == CollegeWorld.Madness && g.Round == 4 && g.Played) == 4;
@@ -633,7 +636,7 @@ public sealed partial class CollegeViewModel : PageViewModel
     private void FillBracket()
     {
         Bracket.Clear();
-        BracketColumns = new(); MadnessChips = new();
+        BracketColumns = new(); MadnessChips = new(); MadnessField = null;
         if (Session.World.College is not { } c) return;
         var s = c.Season;
         SeedLines = new(); Bubble = new(); BracketologyChips = new();
@@ -661,7 +664,12 @@ public sealed partial class CollegeViewModel : PageViewModel
                 return new BracketColumn(CollegeWorld.RoundName(r), cards, cards.Count);
             }).ToList();
         BracketHeight = 620;
-        if (region < 0) FillFinalFour(c, boxes);
+        if (region >= 0 || BracketView == FullView)
+            MadnessField = new Hardwood.Desktop.Controls.MadnessFieldData
+            {
+                World = c, Mine = Session.Employed && Session.InCollege ? Session.HumanTeam.Id : null, Region = region,
+            };
+        if (BracketView == FinalFourView) FillFinalFour(c, boxes);
         // The tournament at a glance.
         var played = boxes.Where(b => b.Played).ToList();
         var cinderella = boxes.Where(b => b.Round >= 3).SelectMany(b => new[] { (b.TeamA, b.SeedA), (b.TeamB, b.SeedB) })

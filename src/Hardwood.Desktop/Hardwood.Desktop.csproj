@@ -25,6 +25,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.ttf" />
+    <!-- Run 190: the March bracket draws its bars in the same condensed type (avares://HardwoodManager/Assets/Fonts/…). -->
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
     <EmbeddedResource Include="Assets\Broadcast\*.jpg" />
     <EmbeddedResource Include="Assets\Broadcast\*.json" />
     <EmbeddedResource Include="Assets\Broadcast\*.png" />
