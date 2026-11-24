@@ -16,6 +16,7 @@ namespace Hardwood.Cli;
 ///   hardwood audit [--seed N] [--seasons N] [--out report.md] [--full-sim]
 ///                                        play N seasons (the NBA + world) and check the results against real basketball
 ///   hardwood collegebox [--seed N] [--games N]   K11: the college box score under the full engine (ORB%, TOV%, FTA/FGA, 3PA rate)
+///   hardwood lategame [--seed N] [--games N]   K28: intentional fouls late in college and NBA games
 ///   hardwood madness [--seed N] [--tournaments N] [--out report.md]
 ///                                        the real Division I alone: March Madness seed results over many tournaments
 ///   hardwood bench [--seeds 2026,77] [--games 200] [--seasons 5] [--repeat 3] [--out baseline.md] [--skip-career]
@@ -135,13 +136,40 @@ public static class Program
                 var calls = list.SelectMany(r => r.Timeouts).ToList();
                 double pts = list.Average(r => (r.Home.Points + r.Away.Points) / 2.0);
                 Console.WriteLine($"{name}: {list.Count} games · timeouts a side {calls.Count / (double)sides:0.00} " +
-                    $"(stop a run {calls.Count(c => c.Reason == TimeoutReason.StopRun) / (double)sides:0.00}, last play {calls.Count(c => c.Reason == TimeoutReason.LastPlay) / (double)sides:0.00}, late {calls.Count(c => c.Reason == TimeoutReason.LatePlay) / (double)sides:0.00}, breather {calls.Count(c => c.Reason == TimeoutReason.Breather) / (double)sides:0.00}) · " +
+                    $"(stop a run {calls.Count(c => c.Reason == TimeoutReason.StopRun) / (double)sides:0.00}, last play {calls.Count(c => c.Reason == TimeoutReason.LastPlay) / (double)sides:0.00}, late {calls.Count(c => c.Reason == TimeoutReason.LatePlay) / (double)sides:0.00}, breather {calls.Count(c => c.Reason == TimeoutReason.Breather) / (double)sides:0.00}, clock {calls.Count(c => c.Reason is TimeoutReason.StopClock or TimeoutReason.SetDefense) / (double)sides:0.00}) · " +
                     $"games with none {100.0 * list.Count(r => r.Timeouts.Count == 0) / list.Count:0}% · points a side {pts:0.0} · OT {100.0 * list.Count(r => r.Overtimes > 0) / list.Count:0.0}%");
             }
             var nbaTeams = league.Teams.ToList();
             Report("NBA", Enumerable.Range(0, n).Select(i => { var h = nbaTeams[i % nbaTeams.Count]; var a = nbaTeams[(i * 7 + 3) % nbaTeams.Count]; if (a == h) a = nbaTeams[(i + 1) % nbaTeams.Count]; return sim.Simulate(h, a, Rules.Nba, rr.NextULong()); }));
             var fibaTeams = nbaTeams;
             Report("FIBA rules", Enumerable.Range(0, n / 2).Select(i => { var h = fibaTeams[i % fibaTeams.Count]; var a = fibaTeams[(i * 5 + 1) % fibaTeams.Count]; if (a == h) a = fibaTeams[(i + 1) % fibaTeams.Count]; return sim.Simulate(h, a, Rules.Fiba, rr.NextULong()); }));
+            var cw = gameWorld.College!;
+            Report("College", cw.Season.Games.Where(Hardwood.Core.College.CollegeWorld.IsRegularSeason).Take(n)
+                .Select(g => sim.Simulate(cw.Program(g.HomeId)!, cw.Program(g.AwayId)!, cw.GameRules(g), rr.NextULong())));
+            return 0;
+        }
+
+        if (cmd == "lategame")
+        {
+            // K28 (run 177): late-game fouling under the full engine. College games from the season's own schedule; the NBA
+            // from the league's clubs (its window is the old one, so its numbers shouldn't move).
+            int n = int.Parse(ArgValue(args, "--games") ?? "600");
+            var sim = new GameSimulator(); var rr = new Rng(seed + 13);
+            void Report(string name, IEnumerable<GameResult> results)
+            {
+                var list = results.ToList();
+                var fouls = list.SelectMany(r => r.LateFouls).ToList();
+                int chances = list.Sum(r => r.LateFoulChances);
+                int inWindow = fouls.Count(f => f.Clock <= LateGame.FoulWindowSeconds && f.Margin is >= LateGame.FoulMin and <= LateGame.FoulMax);
+                Console.WriteLine($"{name}: {list.Count} games · intentional fouls a game {fouls.Count / (double)list.Count:0.00} " +
+                    $"(stop the clock {fouls.Count(f => f.Kind == LateGame.Foul.StopClock)}, one-and-one {fouls.Count(f => f.Kind == LateGame.Foul.OneAndOne)}) · " +
+                    $"games with one {100.0 * list.Count(r => r.LateFouls.Count > 0) / list.Count:0.0}% · " +
+                    (chances > 0 ? $"down 4-10 in the last minute: {chances} trips, fouled on {100.0 * inWindow / chances:0}% · " : "") +
+                    $"down 7-10 {fouls.Count(f => f.Margin >= 7 && f.Margin <= 10)} · points a side {list.Average(r => (r.Home.Points + r.Away.Points) / 2.0):0.0} · " +
+                    $"FTA a side {list.Average(r => (r.Home.FTA + r.Away.FTA) / 2.0):0.0} · margin {list.Average(r => Math.Abs(r.Home.Points - r.Away.Points)):0.0} · OT {100.0 * list.Count(r => r.Overtimes > 0) / list.Count:0.0}%");
+            }
+            var nbaTeams = league.Teams.ToList();
+            Report("NBA", Enumerable.Range(0, n).Select(i => { var h = nbaTeams[i % nbaTeams.Count]; var a = nbaTeams[(i * 7 + 3) % nbaTeams.Count]; if (a == h) a = nbaTeams[(i + 1) % nbaTeams.Count]; return sim.Simulate(h, a, Rules.Nba, rr.NextULong()); }));
             var cw = gameWorld.College!;
             Report("College", cw.Season.Games.Where(Hardwood.Core.College.CollegeWorld.IsRegularSeason).Take(n)
                 .Select(g => sim.Simulate(cw.Program(g.HomeId)!, cw.Program(g.AwayId)!, cw.GameRules(g), rr.NextULong())));

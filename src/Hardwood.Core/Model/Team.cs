@@ -283,10 +283,11 @@ public sealed record Rules(
     /// K11 (run 134, critic review #18): the college box score, not the NBA's. More offensive rebounds, turnovers and
     /// whistles, more threes at a lower make rate, the one-and-one from the 7th team foul in a half and two shots from the
     /// 10th (fouls carry into overtime). Tuned with `hardwood collegebox` against D-I norms: ORB% ≈ 29-30, TOV% ≈ 17-18,
-    /// FTA/FGA ≈ 32, 3PA rate ≈ 39-40, about 72 points a side.
+    /// FTA/FGA ≈ 32, 3PA rate ≈ 39-40, about 72 points a side. K28 (run 177): late-game fouling added about 1.5 free throws
+    /// a side, so the common-foul scale went 1.6 → 1.45 to keep FTA/FGA where it was (33.6 on 1,500 games of seed 77).
     public static readonly Rules College = new("College", 2, 20, 30, 5, 7, 6.75, PaceScale: 0.9, TalentScale: 1.9,
         FoulScale: 1.2, OffRebShift: 0.10, TurnoverShift: 0.035, ThreeRateScale: 1.55, ThreeLogitShift: -0.12,
-        CommonFoulScale: 1.6, DoubleBonusFouls: 10, FoulsCarryIntoOvertime: true);
+        CommonFoulScale: 1.45, DoubleBonusFouls: 10, FoulsCarryIntoOvertime: true);
     /// <summary>College events (invitationals, showcases, conference tournaments, March Madness) are on neutral courts: no home edge.</summary>
     public static readonly Rules CollegeNeutral = College with { NeutralSite = true };
     /// <summary>K21 (run 163): March Madness, a neutral court, a team-wide shooting night (see <see cref="TeamFormSd"/>) and

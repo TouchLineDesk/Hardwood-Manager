@@ -54,12 +54,17 @@ public enum TimeoutReason
     StopRun,
     /// <summary>The last possession of a close game: set up the final play.</summary>
     LastPlay,
-    /// <summary>The last two minutes, behind by one to six with the ball: draw up a play.</summary>
+    /// <summary>The last two minutes with the ball: behind by one to six (drawn up), or, from K28 (run 177), a tired five's
+    /// timeout, which late in a game is about the next play, not the legs.</summary>
     LatePlay,
     /// <summary>The five on the floor are worn down: a breather.</summary>
     Breather,
     /// <summary>The coach watching live pressed the button.</summary>
     Coach,
+    /// <summary>K28 (run 177): the last two minutes, a tired side without the ball that trails: the timeout stops the clock.</summary>
+    StopClock,
+    /// <summary>K28: the last two minutes, a tired side without the ball that leads or is level: it sets its defence.</summary>
+    SetDefense,
 }
 
 /// <summary>A timeout called in a game (kept on <see cref="GameResult.Timeouts"/>; not saved).</summary>
@@ -71,8 +76,10 @@ public sealed record TimeoutCall(int Period, double Clock, bool Home, TimeoutRea
     {
         TimeoutReason.StopRun => $"to stop a {Run}-0 run",
         TimeoutReason.LastPlay => "to set up the last play",
-        TimeoutReason.LatePlay => "to draw up a play",
+        TimeoutReason.LatePlay => "to set up a play",
         TimeoutReason.Breather => "to give his five a breather",
+        TimeoutReason.StopClock => "to stop the clock",
+        TimeoutReason.SetDefense => "to set his defense",
         _ => "called by the coach",
     };
 
