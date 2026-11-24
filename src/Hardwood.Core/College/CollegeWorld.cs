@@ -119,18 +119,97 @@ public sealed partial class CollegeWorld
     public Dictionary<int, double> Tradition { get; } = new();
     /// <summary>
     /// CS7 part 2b (run 173, #166 "prestige with a long memory"): each program's last <see cref="PrestigeMemory"/> season marks,
-    /// oldest first. Prestige moves each summer by their average over five seasons (a missing season counts as 0), so one great
-    /// season moves it a fifth as far, five summers running, and a program has to keep winning to climb. Empty in a fresh world
-    /// and in saves before v0.161.0.
+    /// oldest first. K27 (run 180): prestige moves each summer by their weighted sum (<see cref="FormWeights"/>, newest first; a
+    /// missing season counts as 0). The weights add to 1, so each season still moves prestige by its whole mark over five
+    /// summers and a program has to keep winning to climb, but the newest season counts most, so a coach's first seasons show.
+    /// Empty in a fresh world and in saves before v0.161.0.
     /// </summary>
     public Dictionary<int, List<double>> Form { get; } = new();
     /// <summary>The seasons prestige remembers.</summary>
     public const int PrestigeMemory = 5;
-    /// <summary>A season's mark: the record against .500 (±5), +1.5 a March Madness win and +4 for the title.</summary>
-    public static double SeasonMark(int wins, int losses, int madnessWins, bool champion) =>
-        (wins + losses > 0 ? (wins / (double)(wins + losses) - 0.5) * 10 : 0) + madnessWins * 1.5 + (champion ? 4 : 0);
+    /// <summary>K27 (run 180): what each remembered season counts for, newest first (they add to 1). Was a flat fifth each.</summary>
+    public static readonly double[] FormWeights = { 0.40, 0.25, 0.15, 0.12, 0.08 };
+    /// <summary>
+    /// A season's mark: the record against .500 (±5), +1.5 a March Madness win and +4 for the title. K27 (run 180): with a
+    /// conference schedule of 8+ games the record part is 40% the overall record and 60% the conference record, so a power
+    /// program that goes 6-13 in its league after a soft November isn't marked as a .500 team (Virginia Tech went 16-14
+    /// with 6-13 in the ACC, marked +0.3, and its prestige read 69 → 69 → 69).
+    /// </summary>
+    public static double SeasonMark(int wins, int losses, int confWins, int confLosses, int madnessWins, bool champion)
+    {
+        double Pct(int w, int l) => w / (double)(w + l) - 0.5;
+        double record = wins + losses == 0 ? 0
+            : confWins + confLosses >= 8 ? Pct(wins, losses) * 4 + Pct(confWins, confLosses) * 6
+            : Pct(wins, losses) * 10;
+        return record + madnessWins * 1.5 + (champion ? 4 : 0);
+    }
+    /// <summary>The mark without a conference record (the overall record only): run 173's formula.</summary>
+    public static double SeasonMark(int wins, int losses, int madnessWins, bool champion) => SeasonMark(wins, losses, 0, 0, madnessWins, champion);
     /// <summary>A program's five-season form: what its remembered marks move prestige by each summer.</summary>
-    public double FormOf(int id) => Form.TryGetValue(id, out var m) ? m.Sum() / PrestigeMemory : 0;
+    public double FormOf(int id) => Form.TryGetValue(id, out var m) ? FormOfMarks(m) : 0;
+    /// <summary>The weighted form of a list of marks, oldest first.</summary>
+    public static double FormOfMarks(IReadOnlyList<double> marks)
+    {
+        double sum = 0;
+        for (int i = 0; i < Math.Min(marks.Count, PrestigeMemory); i++) sum += marks[marks.Count - 1 - i] * FormWeights[i];
+        return sum;
+    }
+    /// <summary>A program's regular-season conference record this season (conference games only).</summary>
+    public (int wins, int losses) ConferenceRecord(int id)
+    {
+        int w = 0, l = 0;
+        foreach (var g in Season.Games)
+        {
+            if (!g.Played || g.Stage != "Conference" || (g.HomeId != id && g.AwayId != id)) continue;
+            if (g.WinnerId == id) w++; else l++;
+        }
+        return (w, l);
+    }
+    /// <summary>This season's mark for a program, read from the season so far (the summer reads it once the season is over).</summary>
+    public double SeasonMarkOf(int id)
+    {
+        var (w, l) = Record(id);
+        var (cw, cl) = ConferenceRecord(id);
+        int runs = Season.Games.Count(g => g.Event == Madness && g.Round >= 1 && g.WinnerId == id);
+        return SeasonMark(w, l, cw, cl, runs, Season.ChampionId == id);
+    }
+    /// <summary>
+    /// K27 (run 180): what this summer does to a program's prestige, without changing anything: this season's mark joins the
+    /// memory, the form moves it (gains shrink near the top), then it drifts 8% toward its baseline. <see cref="Summer"/>
+    /// applies exactly this, and the Season review (posted the day before) quotes it.
+    /// </summary>
+    public (double Before, double Mark, double Form, double After) PrestigeMove(int id)
+    {
+        var t = Program(id)!;
+        var conf = Conferences.First(x => x.Key == ConferenceOf[id]);
+        double before = Prestige[id], mark = SeasonMarkOf(id);
+        var marks = Form.TryGetValue(id, out var m) ? new List<double>(m) : new List<double>();
+        marks.Add(mark);
+        if (marks.Count > PrestigeMemory) marks.RemoveRange(0, marks.Count - PrestigeMemory);
+        double form = FormOfMarks(marks), change = form;
+        // C4 step 0 (#186): gains shrink near the top, so only a run of titles holds a program at the very top
+        // (review #7: after 8 seasons eight programs sat at 99, and the Elo prestige bonus seeded them all alike).
+        if (change > 0) change *= Math.Clamp((100 - before) / 30.0, 0, 1);
+        double after = Math.Clamp(before + change + (Baseline(t, conf) - before) * 0.08, 10, 99);
+        return (before, mark, form, after);
+    }
+    /// <summary>A signed number with one decimal and a real minus sign ("+1.2", "−0.4", "0.0").</summary>
+    public static string Signed(double v) => v >= 0.05 ? $"+{v:0.0}" : v <= -0.05 ? $"\u2212{-v:0.0}" : "0.0";
+    /// <summary>
+    /// K27 (run 180): the Season review's prestige line: before → after (with the letter when it changes), the five-season
+    /// form that moved it, and this season's mark with the conference record behind it.
+    /// </summary>
+    public string PrestigeReviewLine(int id)
+    {
+        var (before, mark, form, after) = PrestigeMove(id);
+        string lb = PrestigeLetter(before), la = PrestigeLetter(after);
+        string letters = lb == la ? $"({la})" : $"({lb} \u2192 {la})";
+        var conf = Conferences.First(x => x.Key == ConferenceOf[id]);
+        var (cw, cl) = ConferenceRecord(id);
+        string league = cw + cl > 0 ? $", {cw}-{cl} in the {conf.Name}" : "";
+        return $"Program prestige: {before:0.0} \u2192 {after:0.0} {letters} this summer. Five-season form {Signed(form)}; this season's mark is {Signed(mark)}{league}, "
+            + "and it counts most (40%), with the four seasons before it at 25, 15, 12 and 8%.";
+    }
     /// <summary>Where prestige drifts back to each summer.</summary>
     public double Baseline(Team t, ConferenceInfo conf) => Tradition.TryGetValue(t.Id, out var b) ? b : conf.Power ? 68 : 42;
     /// <summary>A real world's programs (R3).</summary>
@@ -492,20 +571,14 @@ public sealed partial class CollegeWorld
         // Prestige: winning and tournament runs raise it; it drifts back toward the conference's level.
         // CS7 part 2b (run 173): with a long memory. This season's mark joins the last four, and prestige moves by their
         // five-season average (it moved by this season's mark alone, so one Final Four run lifted a program 12+ points at once).
-        var s = Season;
+        // K27 (run 180): weighted toward the newest season, with the conference record in the mark (PrestigeMove).
         foreach (var t in Programs)
         {
-            var conf = Conferences.First(x => x.Key == ConferenceOf[t.Id]);
-            var (w, l) = Record(t.Id);
-            int runs = s.Games.Count(g => g.Event == Madness && g.Round >= 1 && g.WinnerId == t.Id);
+            var move = PrestigeMove(t.Id);
             if (!Form.TryGetValue(t.Id, out var marks)) Form[t.Id] = marks = new List<double>();
-            marks.Add(SeasonMark(w, l, runs, s.ChampionId == t.Id));
+            marks.Add(move.Mark);
             if (marks.Count > PrestigeMemory) marks.RemoveRange(0, marks.Count - PrestigeMemory);
-            double change = FormOf(t.Id);
-            // C4 step 0 (#186): gains shrink near the top, so only a run of titles holds a program at the very top
-            // (review #7: after 8 seasons eight programs sat at 99, and the Elo prestige bonus seeded them all alike).
-            if (change > 0) change *= Math.Clamp((100 - Prestige[t.Id]) / 30.0, 0, 1);
-            Prestige[t.Id] = Math.Clamp(Prestige[t.Id] + change + (Baseline(t, conf) - Prestige[t.Id]) * 0.08, 10, 99);
+            Prestige[t.Id] = move.After;
         }
         // CS7 (run 170): the coached program's boosters give, and a project paid for during the season opens. No RNG.
         foreach (var t in Programs) if (t.Id != ManagedProgramId) ProgramBuilding.OpenPending(t); // a program you left
