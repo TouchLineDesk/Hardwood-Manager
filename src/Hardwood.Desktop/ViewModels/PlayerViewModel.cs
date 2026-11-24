@@ -103,8 +103,10 @@ public sealed partial class PlayerViewModel : PageViewModel
         TierLine = string.Join(" · ", CollectorCard.Badges(p, Scouting.Knowledge(s.HumanTeam, p))) + "  ·  click his card to flip it";
         double k = Scouting.Knowledge(s.HumanTeam, p);
         // CS3 (run 127): a college player's class year leads his line ("Senior · age 21 …").
-        var cy = s.ClassYearOf(p);
-        Bio = (cy is { } y ? $"{y.Long}{(y.Final ? " (final season: turns pro next summer)" : "")} · " : "") + $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {PotentialText(s, p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
+        // H187 (run 189): after graduation day the line reads next season's class, as the card and the Class chip do.
+        var nx = NextSeasonClass(s, p);
+        var cy = nx ?? s.ClassYearOf(p);
+        Bio = (cy is { } y ? $"{y.Long}{(nx != null ? " next season" : "")}{(y.Final ? (nx != null ? " (his final season)" : " (final season: turns pro next summer)") : "")} · " : "") + $"Age {p.Age(s.Today)} ({p.BirthDate:MMM d, yyyy}) · {PlayerRow.FormatHeight(p.HeightCm)} ({p.HeightCm} cm) · {p.WingspanCm} cm wingspan · {p.WeightKg} kg · Ability {Scouting.Ability(p, k)} / potential {PotentialText(s, p, k)}" + (k >= 0.999 ? $" · Overall {p.Overall:F1}" : $" · scouting knowledge {k * 100:F0}%");
         Contract = p.Contract is { } c ? $"${c.Salary / 1e6:F2}M per year, {(c.Years <= 0 ? "expiring" : $"{c.Years} season{(c.Years == 1 ? "" : "s")} remaining")}{(c.TeamOption ? ", team option" : "")}" : "No contract";
         InjuryText = p.Injury is { } inj && inj.IsOut(s.Today)
             ? $"{inj.Name} ({inj.Severity}) · out {inj.DaysOut(s.Today)} more days, back {inj.ReturnDate:MMM d}"

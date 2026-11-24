@@ -124,6 +124,11 @@ public class Run79CollegeSummerTests
                     Assert.Equal(want, PlayerViewModel.ShownClass(s, p)?.Short);
                     Assert.Equal(want, Hardwood.Desktop.Controls.PlayerCard.ClassYear?.Invoke(p));
                 }
+                // H187 (run 189): the player page's first line names the same class, as next season's.
+                var first = s.HumanTeam.Roster.First(p => PlayerViewModel.ShownClass(s, p) != null);
+                var bio = new PlayerViewModel(vm, first).Bio;
+                Assert.StartsWith($"{PlayerViewModel.ShownClass(s, first)!.Long} next season", bio);
+                Assert.DoesNotContain("turns pro next summer", bio);
             }
             Assert.Contains("College page", page.CollegeSummerText);
             Assert.Contains("Graduation and enrollment", page.CollegeSummerText);   // he coached here when the summer began

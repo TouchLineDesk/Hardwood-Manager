@@ -40,7 +40,7 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **The Top 25 re-ranks every day**, while the inbox calls it "Poll Monday" (K35, after launch).
 - **Blue bloods recruit too well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
-- **Sound:** the crowd is still mostly walla, with no court sounds or band yet (your "restaurant" note stays open).
+- **Sound:** the release zip plays the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band (a drumline, brass stabs and a fight song for every school, the real one where it's public domain and an original tune otherwise, on a simple synthesized band). Nobody has tuned it by ear yet, players' shouts and a crowd "aww" are still missing, and a build made from the source without the licensed pack falls back to the older walla crowd. Your "restaurant" note stays open until it sounds right to you.
 - The bracket page is plain text, with no crests.
 - National teams, FIBA and the Olympics aren't built yet; international play starts after the college plan.
 
