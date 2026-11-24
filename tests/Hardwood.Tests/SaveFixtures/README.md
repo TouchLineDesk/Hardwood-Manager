@@ -28,8 +28,8 @@ is newer than the build is refused with a clear message and left untouched.
 
 **The rule for any change to the college record:**
 - A new field with a safe default (null, zero, empty) needs nothing more, but don't rename, retype or remove one: the
-  record is read by name, and `Every_field_an_old_college_save_wrote_is_still_read` fails if a key an old save wrote is
-  no longer read.
+  record is read by name, and `Every_field_an_old_college_save_wrote_is_still_read` reads the old record with today's code and
+  fails if any key it wrote, at any depth, no longer comes back.
 - A change to what a field means (renamed, retyped, moved): bump `CollegeMigrations.Current`, add a `Step` that rewrites
   the old JSON, and add a fixture made with the *previous* build's code as `college-v<version>.hwsave.gz` (run
   `Make_a_college_fixture_when_asked` with `HW_MAKE_COLLEGE_FIXTURE=<file>` on that build), with a row in the table above.

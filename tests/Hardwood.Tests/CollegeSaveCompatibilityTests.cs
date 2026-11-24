@@ -127,6 +127,31 @@ public class CollegeSaveCompatibilityTests
             foreach (var (key, _) in root) Assert.True(cp.Contains(key), $"the college record no longer reads '{key}' (add a CollegeMigrations step)");
             var pp = Params(program);
             foreach (var (key, _) in root["Programs"]!.AsArray()[0]!.AsObject()) Assert.True(pp.Contains(key), $"a program no longer reads '{key}'");
+
+            // All the way down (recruits, the season, pledges, series, alumni, awards): read the old JSON with today's
+            // record and write it back. Every key the old save wrote must come back, and nothing it held may come back null.
+            var opts = new JsonSerializerOptions { IncludeFields = true };
+            var again = JsonNode.Parse(JsonSerializer.Serialize(JsonSerializer.Deserialize(CollegeMigrations.Upgrade(json, 0), college, opts), college, opts))!;
+            var lost = new List<string>();
+            static void Walk(JsonNode? old, JsonNode? now, string at, List<string> lost)
+            {
+                if (old is null) return;
+                if (now is null) { lost.Add(at); return; }
+                if (old is JsonObject o)
+                {
+                    if (now is not JsonObject n) { lost.Add(at); return; }
+                    foreach (var (k, v) in o)
+                        if (!n.ContainsKey(k)) lost.Add($"{at}.{k}");
+                        else Walk(v, n[k], $"{at}.{k}", lost);
+                }
+                else if (old is JsonArray a)
+                {
+                    if (now is not JsonArray n || n.Count != a.Count) { lost.Add(at); return; }
+                    for (int i = 0; i < a.Count; i++) Walk(a[i], n[i], $"{at}[{i}]", lost);
+                }
+            }
+            Walk(root, again, "college", lost);
+            Assert.True(lost.Count == 0, $"{lost.Count} values an old save holds are no longer read, e.g. {string.Join(", ", lost.Take(5))} (add a CollegeMigrations step)");
         }
         finally { Clean(dir); }
     }
