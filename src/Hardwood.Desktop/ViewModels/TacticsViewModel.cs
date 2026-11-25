@@ -438,7 +438,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         Tac.System = CoachAi.BestSystem(rot, theirScheme);
         Tac.Scheme = CoachAi.BestScheme(rot, theirSystem, College);
         if (College) Tac.FullCourtPress = CoachAi.Presses(rot, true);
-        var (star, dbl) = CoachAi.TheirStar(opp, next.Date, team);
+        var (star, dbl) = CoachAi.TheirStar(opp, next.Date, team, College);
         Tac.StarStopperId = star != null ? CoachAi.Stopper(rot)?.Id : null;
         Tac.DoubleStar = dbl;
         bool same = PlanKey(false) == before;

@@ -55,12 +55,12 @@ public static class CoachAi
     /// <param name="us">The team they play. Given, an AI opponent is judged in the system it will pick against us
     /// (<see cref="PlanFor"/>, the same choice its own <see cref="Prepare"/> makes, whichever bench is prepared first);
     /// a human-run team in the system it has set.</param>
-    public static (Player? star, bool worthDoubling) TheirStar(Team opp, DateOnly? on, Team? us = null)
+    public static (Player? star, bool worthDoubling) TheirStar(Team opp, DateOnly? on, Team? us = null, bool college = false)
     {
         var rot = Rotation(opp, on);
         if (rot.Count == 0) return (null, false);
         var tac = opp.Tactic;
-        OffensiveSystem system = us != null && (tac.Auto || tac.AssistantPlans) ? PlanFor(opp, us, on).system : tac.System;
+        OffensiveSystem system = us != null && (tac.Auto || tac.AssistantPlans) ? PlanFor(opp, us, on, college).system : tac.System;
         // Highest weight first; a tie goes to the better player.
         var star = rot.OrderByDescending(p => GameSimulator.GoToWeight(p, tac, system)).ThenByDescending(p => p.CurrentAbility).First();
         if (rot.Count < 2) return (star, false);
@@ -137,7 +137,7 @@ public static class CoachAi
         // The press is the auto coach's own call; a manual coach whose assistant plans keeps his own press setting.
         if (t.Auto) t.FullCourtPress = Presses(rot, college);
         if (t.Auto) t.Roles.Clear();
-        var (star, dbl) = TheirStar(opp, on, team);
+        var (star, dbl) = TheirStar(opp, on, team, college);
         t.StarStopperId = star != null ? Stopper(rot)?.Id : null;
         t.DoubleStar = dbl;
     }
@@ -182,7 +182,7 @@ public static class CoachAi
         var ourRot = Rotation(us, on);
         if (oppRot.Count == 0) return new();
         var (theirSystem, theirScheme) = TheirPlan(opp, us, on, college);
-        var (star, dbl) = TheirStar(opp, on, us);
+        var (star, dbl) = TheirStar(opp, on, us, college);
         var ourScheme = BestScheme(ourRot, theirSystem, college);
         var ourSystem = BestSystem(ourRot, theirScheme);
         var stopper = Stopper(ourRot);
@@ -194,12 +194,12 @@ public static class CoachAi
             lines.Add($"Their go-to scorer is {star.Name} ({star.PrimaryPosition}). " + (dbl ? "He dominates their offense: consider doubling him." : "He isn't dominant enough to double; put a stopper on him.")
                       + (stopper != null ? $" Best stopper: {stopper.Name}." : ""));
         // Run 194: a pressing college opponent is named in the report (the press is chosen from the roster, so it's scoutable).
-        if (college && Presses(oppRot, true))
+        if (college && (opp.Tactic.Auto ? Presses(oppRot, true) : opp.Tactic.FullCourtPress))
             lines.Add("Expect them to press full court after every basket: take care of the ball, and a broken press means layups.");
         lines.Add($"Assistant's suggestion: {Systems.Name(ourSystem).ToLower()} on offense, {Systems.Name(ourScheme).ToLower()} on defense"
                   + (college && Presses(ourRot, true) ? ", and press them full court." : "."));
         // K2: the same matchup model as the Tactics page; a poor side says why it's still his pick.
-        var read = new MatchupRead(theirSystem, theirScheme);
+        var read = new MatchupRead(theirSystem, theirScheme, college);
         if (read.Defence(ourScheme) >= MatchupRead.Notable) lines.Add($"{Systems.Name(ourScheme)} is a good answer to {Systems.Name(theirSystem).ToLower()}.");
         if (read.WhySystem(ourSystem) is { Length: > 0 } ws) lines.Add(ws);
         if (read.WhyScheme(ourScheme) is { Length: > 0 } wd) lines.Add(wd);

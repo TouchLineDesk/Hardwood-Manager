@@ -732,7 +732,8 @@ public sealed class GameSimulator
             DrainEnergy(off, seconds); DrainEnergy(def, seconds);
             int pointsBefore = Score(off);
 
-            // Run 194: the full-court press, after a basket or a dead ball (not in transition, not on a late foul). It draws no
+            // Run 194: the full-court press, whenever the offence doesn't come in transition (after a basket, a dead ball, and the
+            // 82% of defensive rebounds that aren't run out; not on a late foul). It draws no
             // extra random numbers, so a game without a press plays exactly as before.
             _pressed = def.Tac.FullCourtPress && !wasTransition && !intentionalFoul;
             if (_pressed) { _result.PressedPossessions[off.IsHome ? 0 : 1]++; DrainEnergy(def, seconds * (Tactics.PressEnergyDrain - 1), clockless: true); }
@@ -792,6 +793,7 @@ public sealed class GameSimulator
                     }
                     // Otherwise play on: a little more clock burns.
                     BurnClock(Math.Clamp(_rng.NextGaussian(8, 3), 1, 14));
+                    _pressed = false; // run 194's review: the inbound after a reach-in is in the front court
                     continue;
                 }
 
