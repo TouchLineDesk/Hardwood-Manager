@@ -452,8 +452,10 @@ public sealed partial class CollegeViewModel : PageViewModel
             ? "Final poll: the champion first, then the record and the rating with every March Madness win counted"
             : started
             ? (s.PollRelease.Count > 0 && s.PollDay is { } released
-                ? $"Released every Monday, on the rating and the record · this poll: {released:ddd MMM d} · arrows: since the week before"
-                : $"Re-ranked after every game until the first Monday release, on the rating and the record")
+                ? s.PollBefore.Count == 0
+                    ? $"Released every Monday, on the rating and the record · this poll: {released:ddd MMM d}, the first of the season (arrows from next week's)"
+                    : $"Released every Monday, on the rating and the record · this poll: {released:ddd MMM d} · arrows: since the week before"
+                : "Ranked on the rating and the record; the next poll comes out with the next day of games")
             : "Preseason: ranked on the rating. Once the season tips off, a new poll comes out every Monday, on the rating and the record.");
         FillConference();
         // Between Selection Sunday and the first game, March Madness opens on the reveal.

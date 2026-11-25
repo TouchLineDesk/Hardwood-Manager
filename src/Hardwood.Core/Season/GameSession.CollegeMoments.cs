@@ -163,7 +163,7 @@ public sealed partial class GameSession
         {
             title = $"Championship Week: we're not in the {ev}";
             body = $"Only the top eight of the {conf.Name} play in its tournament, and {HumanTeam.FullName} finished {Ordinal(place)}. "
-                + (p.In(HumanTeam.Id) ? "We'll wait for Selection Sunday: " + stakes : "Our season is over unless the committee surprises everyone.")
+                + (p.In(HumanTeam.Id) ? "We'll wait for Selection Sunday: " + stakes : "March Madness is gone unless the committee surprises everyone; the NIT takes the 32 best teams left out.")
                 + $"\nThe {ev} runs {start:MMM d}-{start.AddDays(2).Day}.";
         }
         else
@@ -184,7 +184,7 @@ public sealed partial class GameSession
 
     private void CourtStorms(CollegeWorld c)
     {
-        foreach (var g in c.Season.Games.Where(g => g.Date == Today && g.Played && g.Event == null && g.HomeRank == null && g.AwayRank is <= StormRank && g.WinnerId == g.HomeId))
+        foreach (var g in c.Season.Games.Where(g => g.Date == Today && g.Played && !g.IsNeutral() && g.HomeRank == null && g.AwayRank is <= StormRank && g.WinnerId == g.HomeId))
         {
             var home = c.Program(g.HomeId)!; var away = c.Program(g.AwayId)!;
             int r = g.AwayRank!.Value;
