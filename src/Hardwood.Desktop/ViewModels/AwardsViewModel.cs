@@ -375,6 +375,16 @@ public sealed partial class AwardsViewModel : PageViewModel
         }
         if (a.CoachProgramId is { } cid && cw.Program(cid) is { } cprog)
             ExtraCards.Add(Card("Coach of the Year", "ClipboardList", null, cprog, a.CoachName.Length > 0 ? a.CoachName : cprog.FullName, $"Head coach, {cprog.FullName}", a.CoachNote, coach: true));
+        // CS11 (run 195): the two All-American games' MVPs, with the score.
+        foreach (var kind in new[] { Hardwood.Core.College.CollegeWorld.SeniorGame, Hardwood.Core.College.CollegeWorld.HighSchoolGame })
+        {
+            if (cw.AllAmericanOf(kind, year) is not { Played: true, MvpId: { } gm } g) continue;
+            var club = g.ProgramOf.TryGetValue(gm, out var pid) ? cw.Program(pid) : null;
+            string from = kind == Hardwood.Core.College.CollegeWorld.SeniorGame ? club?.FullName ?? "-"
+                : g.SchoolOf.GetValueOrDefault(gm, "") + (club != null ? $" · {club.City} commit" : "");
+            ExtraCards.Add(Card($"{g.Title} MVP", kind == Hardwood.Core.College.CollegeWorld.SeniorGame ? "Star" : "GraduationCap", P(gm), club, g.NameOf(gm), from,
+                $"{g.LineOf(gm)} · {g.ScoreLine}"));
+        }
     }
 
     /// <summary>In a real career before the first awards: who won them last season, for real.</summary>

@@ -36,6 +36,10 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Selection Sunday and March Madness:** your seed arrives in the inbox; the studio and the arena name the round.
   Left out? The 32 best teams left out play the **NIT**: the better seed hosts the first three rounds, and the
   semi-finals and the final are in Indianapolis.
+- **The All-American games:** on February 1 the 24 best high-school seniors are named for the Hardwood All-American
+  Classic (March 31, Chicago); the Monday after the Elite Eight the 20 best seniors outside the Final Four are named for
+  the College All-American Game (the Friday before the semi-finals). East plays West; your picks, signees and
+  recruits on your board are in your inbox, and the MVPs are on the Awards page and in the players' honours.
 - **April to the summer:** the AD's season review (the verdict and the program's prestige move), your seniors' draft
   night, graduation, the new class enrolling, and the next season's expectations in October.
 - **The coaching carousel (May):** after the reviews, 40–70 programs change coach (let go, retired, or hired away by a
