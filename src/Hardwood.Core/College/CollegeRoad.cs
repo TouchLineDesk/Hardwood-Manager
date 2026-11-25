@@ -52,7 +52,7 @@ public sealed partial class CollegeWorld
         RoadEvent.SpringEvaluation => "Spring evaluation period",
         RoadEvent.Camp => "Summer camp",
         RoadEvent.JulyEvaluation => "July evaluation period",
-        _ => "Midnight Madness visit weekend",
+        _ => "Official visit weekend",
     };
 
     /// <summary>The first day of the event (for its "when").</summary>
@@ -61,7 +61,7 @@ public sealed partial class CollegeWorld
         RoadEvent.SpringEvaluation => new(classOf - 1, 4, 24),
         RoadEvent.Camp => new(classOf - 1, 6, 15),
         RoadEvent.JulyEvaluation => new(classOf - 1, 7, 10),
-        _ => MadnessFriday(classOf - 1),
+        _ => VisitFriday(classOf - 1),
     };
 
     /// <summary>The day the event happens (its choice locks then).</summary>
@@ -70,8 +70,19 @@ public sealed partial class CollegeWorld
         RoadEvent.SpringEvaluation => new(classOf - 1, 4, 26),
         RoadEvent.Camp => new(classOf - 1, 6, 17),
         RoadEvent.JulyEvaluation => new(classOf - 1, 7, 26),
-        _ => MadnessFriday(classOf - 1),
+        _ => VisitFriday(classOf - 1),
     };
+
+    /// <summary>
+    /// The visit weekend: Midnight Madness, unless that falls before the college season's first day (Oct 14; the summer
+    /// jumps straight there, review of run 197), then the Friday a week later, so it always runs on a played day after
+    /// September's commitments.
+    /// </summary>
+    public static DateOnly VisitFriday(int seasonYear)
+    {
+        var d = MadnessFriday(seasonYear);
+        return d < new DateOnly(seasonYear, 10, 14) ? d.AddDays(7) : d;
+    }
 
     /// <summary>The first Friday on or after October 10 (as the session's Midnight Madness).</summary>
     public static DateOnly MadnessFriday(int seasonYear)
@@ -99,9 +110,9 @@ public sealed partial class CollegeWorld
     {
         RoadEvent.Camp => $"{EliteCamp}: the {EliteCampInvites} best seniors on your board come to campus (scouted, interest +{EliteCampInterest:0}). "
                         + $"{TeamCamp}: your staff see {TeamCampLooks} of the best seniors from your state and region (scouted); those from your state join your board with interest +{TeamCampInterest:0}.",
-        RoadEvent.VisitWeekend => $"Up to {VisitWeekendGuests} seniors with your offer take their official visit on Midnight Madness weekend, free of coach hours; a loud crowd helps. "
+        RoadEvent.VisitWeekend => $"Up to {VisitWeekendGuests} seniors with your offer take their official visit around Midnight Madness, free of coach hours; a loud crowd helps. "
                         + $"{BringStars}: the highest-ranked. {BringLikely}: the ones closest to saying yes.",
-        _ => $"Your staff watch the {EvaluationLooks} best uncommitted seniors in one region: each is scouted, your board's prospects there see you courtside (interest +{CourtsideInterest:0}), and sleepers the services missed join your board.",
+        _ => $"Your staff watch the {EvaluationLooks} best uncommitted prospects of the class you recruit (rising seniors) in one region: each is scouted, your board's prospects there see you courtside (interest +{CourtsideInterest:0}), and sleepers the services missed join your board.",
     };
 
     public RoadChoice? RoadEntry(int programId, int classOf, RoadEvent e) =>
@@ -154,14 +165,14 @@ public sealed partial class CollegeWorld
         };
         entry.Result = body;
         string who = entry.ByStaff ? "Your staff chose" : "You chose";
-        string pick = e is RoadEvent.SpringEvaluation or RoadEvent.JulyEvaluation ? $"the {choice}" : choice.ToLowerInvariant();
+        string pick = e == RoadEvent.VisitWeekend ? choice.ToLowerInvariant() : $"the {(e == RoadEvent.Camp ? choice.ToLowerInvariant() : choice)}";
         return ($"{RoadTitle(e)}: {Short(e, choice)}", $"{who} {pick}. {body}");
     }
 
     private static string Short(RoadEvent e, string choice) => e switch
     {
         RoadEvent.Camp => choice == EliteCamp ? "the elite camp" : "the team camp",
-        RoadEvent.VisitWeekend => "official visitors on campus",
+        RoadEvent.VisitWeekend => "recruits on campus",
         _ => $"your staff in the {choice}",
     };
 
@@ -176,10 +187,11 @@ public sealed partial class CollegeWorld
         foreach (var (p, r) in seen)
         {
             bool mine = r.CourtedBy == t.Id;
+            bool known = mine && (r.Scouted || r.Interest > 0); // review: one he already knew (or took off his board) isn't a new sleeper
             Courting(r, t);
             if (!r.Scouted) { r.Scouted = true; scouted++; }
             if (mine && r.OnBoard) { Gain(r, CourtsideInterest * ContactScale(r)); courtside++; }
-            if (r.Stars <= 3 && StaffProjection(p, r) - r.Projection >= SleeperEdge && sleepers.Count < 3 && !r.OnBoard)
+            if (r.Stars <= 3 && StaffProjection(p, r) - r.Projection >= SleeperEdge && sleepers.Count < 3 && !r.OnBoard && !known)
             {
                 r.OnBoard = true;
                 sleepers.Add($"{StarText(r.Stars)} {p.PrimaryPosition} {p.Name} (No. {r.Rank}, {StateName(r.State)}): your staff project {StaffProjection(p, r)}, the services {r.Projection}");
@@ -236,7 +248,7 @@ public sealed partial class CollegeWorld
         var offered = ClassOf(cls).Select(p => (p, r: Recruits[p.Id]))
             .Where(x => x.r.CourtedBy == t.Id && x.r.Offered && !x.r.OfficialVisit && x.r.CommittedTo != t.Id
                         && (x.r.CommittedTo == null || x.r.FlipOffer)).ToList();
-        if (offered.Count == 0) return "Nobody came: no senior with your offer had an official visit left. Offer scholarships before Midnight Madness to fill the weekend.";
+        if (offered.Count == 0) return "Nobody came: no senior with your offer had an official visit left. Offer scholarships before the visit weekend to fill it.";
         var board = BoardFor(cls);
         var guests = (choice == BringStars
                 ? offered.OrderBy(x => x.r.Rank)
@@ -252,7 +264,7 @@ public sealed partial class CollegeWorld
             Gain(r, VisitInterest * ContactScale(r) * crowd, p);
             lines.Add($"{p.Name} ({StarText(r.Stars)}, {before:0} → {r.Interest:0})");
         }
-        string house = crowd >= 1.25 ? "A packed house sold the weekend" : crowd > 1 ? "A big crowd helped" : "The crowd was thin, so the weekend sold itself";
-        return $"{guests.Count} took their official visit for Midnight Madness: {string.Join(", ", lines)}. {house}. No coach hours spent.";
+        string house = crowd >= 1.25 ? "A packed house sold the weekend" : crowd > 1 ? "A big crowd helped" : "The crowd was quiet, so the visits counted for no more than usual";
+        return $"{guests.Count} took their official visit: {string.Join(", ", lines)}. {house}. No coach hours spent.";
     }
 }

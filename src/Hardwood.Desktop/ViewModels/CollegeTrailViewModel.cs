@@ -71,7 +71,7 @@ public sealed partial class RoadTile : ObservableObject
     public string Help => Row.Help;
     public string Result => Row.Result ?? "";
     public string State => Row.Open ? (Row.Choice == null ? "Not picked: your staff will decide" : "Your pick")
-        : Row.Choice == null ? "Passed" : Row.ByStaff ? "Done · your staff's pick" : "Done · your pick";
+          : Row.Result == null || Row.Result.StartsWith("Not run") ? "Passed" : Row.ByStaff ? "Done · your staff's pick" : "Done · your pick";
     [ObservableProperty] private string? _choice;
     partial void OnChoiceChanged(string? value)
     {
@@ -266,7 +266,7 @@ public sealed partial class CollegeViewModel
     {
         RoadTiles.Clear();
         var rows = Session.RoadCalendar();
-        foreach (var r in rows) RoadTiles.Add(new RoadTile(r, (e, choice) => { RoadReply = Session.ChooseRoad(e, choice); FillRoad(); }));
+        foreach (var r in rows) RoadTiles.Add(new RoadTile(r, (e, choice) => { RoadReply = Session.ChooseRoad(e, choice); Avalonia.Threading.Dispatcher.UIThread.Post(FillRoad); }));
         int cls = Session.TrailWorld?.RecruitingClass(Session.Today) ?? 0;
         int open = rows.Count(r => r.Open);
         RoadHeader = rows.Count == 0 ? "" : $"On the road · the Class of {cls}" + (open > 0 ? $" · {open} still to come" : " · all done for this class");

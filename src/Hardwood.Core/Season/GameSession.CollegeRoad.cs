@@ -19,7 +19,7 @@ public sealed partial class GameSession
         {
             var entry = c.RoadEntry(HumanTeam.Id, cls, e);
             bool open = entry?.Result == null && Today <= CollegeWorld.RoadDay(e, cls);
-            string? result = entry?.Result ?? (open ? null : "Before you took the job.");
+            string? result = entry?.Result ?? (open ? null : "Not run: it came before your job here (or before this save kept a road calendar).");
             return new RoadRow(e, CollegeWorld.RoadTitle(e), CollegeWorld.RoadWhen(e, cls), CollegeWorld.RoadOptions(e),
                 entry?.Choice, result, open, entry?.ByStaff ?? false, CollegeWorld.RoadHelp(e));
         }).ToList();
@@ -67,7 +67,8 @@ public sealed partial class GameSession
     /// <summary>The summer's jump to the new season (see <see cref="RunRoad(CollegeWorld, DateOnly, DateOnly)"/>).</summary>
     private void RoadOverSummer(DateOnly summer, DateOnly newYear)
     {
-        if (!TrailOpen || newYear <= summer.AddDays(1)) return;
-        RunRoad(TrailWorld!, summer.AddDays(1), newYear.AddDays(-1));
+        if (!TrailOpen || newYear <= summer) return;
+        // From the summer's own first day: the day the season ended rolls into the summer without its calendar running.
+        RunRoad(TrailWorld!, summer, newYear.AddDays(-1));
     }
 }

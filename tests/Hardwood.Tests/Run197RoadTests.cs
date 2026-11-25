@@ -31,6 +31,14 @@ public class Run197RoadTests
         Assert.True(days[0] > CollegeWorld.SigningDay(2027));
         Assert.Equal(DayOfWeek.Friday, days[3].DayOfWeek);
         Assert.Equal(GameSession.MidnightMadnessDay(2027), days[3]);
+        // Review: when Midnight Madness falls before the college season's first day (Oct 14), the summer jumps past it,
+        // so the visit weekend moves a week on (2028: Madness Fri Oct 13 → visits Fri Oct 20) and runs on a played day.
+        Assert.Equal(new DateOnly(2028, 10, 20), CollegeWorld.RoadDay(RoadEvent.VisitWeekend, 2029));
+        for (int y = 2026; y < 2060; y++)
+        {
+            var v = CollegeWorld.RoadDay(RoadEvent.VisitWeekend, y + 1);
+            Assert.True(v >= new DateOnly(y, 10, 14) && v.DayOfWeek == DayOfWeek.Friday, $"{y}: {v}");
+        }
         Assert.Equal(CollegeWorld.RoadRegions, CollegeWorld.RoadOptions(RoadEvent.SpringEvaluation));
         Assert.Equal(new[] { CollegeWorld.EliteCamp, CollegeWorld.TeamCamp }, CollegeWorld.RoadOptions(RoadEvent.Camp));
         Assert.Equal("Apr 24–Apr 26", CollegeWorld.RoadWhen(RoadEvent.SpringEvaluation, 2028));
@@ -67,7 +75,7 @@ public class Run197RoadTests
         var interest = board.Select(x => x.r.Interest).ToList();
         var camp = c.RunRoad(t, RoadEvent.Camp, cls, CollegeWorld.RoadDay(RoadEvent.Camp, cls))!.Value;
         _out.WriteLine(camp.Title + "\n" + camp.Body);
-        Assert.StartsWith("Your staff chose elite camp", camp.Body);
+        Assert.StartsWith("Your staff chose the elite camp", camp.Body);
         Assert.True(c.RoadEntry(t.Id, cls, RoadEvent.Camp)!.ByStaff);
         Assert.All(board.Select((x, i) => (x, i)), q => Assert.True(q.x.r.Interest > interest[q.i] && q.x.r.Scouted));
 
@@ -99,12 +107,12 @@ public class Run197RoadTests
             Assert.Equal(4, cal.Count);
             Assert.False(cal[0].Open);
             Assert.True(cal[3].Open);
-            Assert.Contains("Midnight Madness", s.ChooseRoad(RoadEvent.VisitWeekend, CollegeWorld.BringStars));
+            Assert.Contains("Official visit weekend", s.ChooseRoad(RoadEvent.VisitWeekend, CollegeWorld.BringStars));
 
             int guard = 0;
             var weekend = CollegeWorld.RoadDay(RoadEvent.VisitWeekend, 2027);
             while (s.Today <= weekend && guard++ < 60) s.AdvanceDay();
-            var visit = s.Inbox.Single(m => m.Title.StartsWith("Midnight Madness visit weekend"));
+            var visit = s.Inbox.Single(m => m.Title.StartsWith("Official visit weekend"));
             _out.WriteLine(visit.Title + "\n" + visit.Body);
             Assert.StartsWith("You chose the stars", visit.Body);
 
@@ -132,7 +140,7 @@ public class Run197RoadTests
             var campMsg = s.Inbox.Single(m => m.Title.StartsWith("Summer camp"));
             var july = s.Inbox.Single(m => m.Title.StartsWith("July evaluation period"));
             _out.WriteLine(campMsg.Title + "\n" + campMsg.Body + "\n" + july.Title + "\n" + july.Body);
-            Assert.StartsWith("You chose team camp", campMsg.Body);
+            Assert.StartsWith("You chose the team camp", campMsg.Body);
             Assert.StartsWith("Your staff chose", july.Body);
             Assert.All(s.RoadCalendar().Take(3), r => Assert.False(r.Open));
         }
