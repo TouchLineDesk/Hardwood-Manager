@@ -164,23 +164,30 @@ public sealed partial class CollegeWorld
     /// on load).</summary>
     public List<BenchCoach> Benches { get; } = new();
 
-    /// <summary>The bench entry for a program's computer coach (seeded the first time it's asked for; none for your own).</summary>
+    /// <summary>The bench entry for a program's computer coach (none for yours or an interim). Read-only: a program with no
+    /// entry, or one whose coach has changed since, reads a temporary entry that isn't kept (review of PR #269: the pages call
+    /// this while the day runs, so only <see cref="EnsureBenches"/> writes the book, on the sim's side).</summary>
     public BenchCoach? BenchOf(int programId)
     {
         if (Program(programId) is not { } t || t.Coach != null || t.CoachName is "" or "Interim coach") return null;
         var b = Benches.FirstOrDefault(x => x.ProgramId == programId);
         if (b != null && b.Name == t.CoachName) return b;
-        // A program with no entry has had this coach since before the career (a new world, or an older save): seed his past.
-        // A different name means a new coach came in some other way (after you left it): he starts at 0-0.
-        if (b == null) Benches.Add(b = RivalCoaches.Seeded(t, Prestige.GetValueOrDefault(t.Id, 50)));
-        else { NewBench(programId, t.CoachName, null); b = Benches[^1]; }
-        return b;
+        return b == null ? RivalCoaches.Seeded(t, Prestige.GetValueOrDefault(t.Id, 50)) : new BenchCoach { ProgramId = programId, Name = t.CoachName };
     }
 
-    /// <summary>Every program's computer coach gets a bench entry (a new world, or an older save's first load).</summary>
-    public void EnsureBenches()
+    /// <summary>Every program's computer coach gets a bench entry. <paramref name="seedPast"/> (a new world, or an older save's
+    /// first load) gives a coach with no entry his past; otherwise (the carousel) a coach who came in some other way since the
+    /// last spring, such as your successor when you left, starts at 0-0.</summary>
+    public void EnsureBenches(bool seedPast)
     {
-        foreach (var t in Programs) BenchOf(t.Id);
+        foreach (var t in Programs)
+        {
+            if (t.Coach != null || t.CoachName is "" or "Interim coach") continue;
+            var b = Benches.FirstOrDefault(x => x.ProgramId == t.Id);
+            if (b != null && b.Name == t.CoachName) continue;
+            if (b == null && seedPast) Benches.Add(RivalCoaches.Seeded(t, Prestige.GetValueOrDefault(t.Id, 50)));
+            else NewBench(t.Id, t.CoachName, null);
+        }
     }
 
     /// <summary>A coach's reputation at his program (1-99).</summary>

@@ -69,7 +69,7 @@ public sealed partial class GameSession
         var fixedTeams = League.Teams.Append(HumanTeam);
         var renamable = World.Clubs.Concat(World.College?.Programs ?? new List<Team>()).Where(t => t != HumanTeam);
         int n = Board.UniqueBenchNames(fixedTeams, renamable, seed ^ 0xBE4C4);
-        World.College?.EnsureBenches();
+        World.College?.EnsureBenches(seedPast: true);
         return n;
     }
 
@@ -87,6 +87,8 @@ public sealed partial class GameSession
         foreach (var t in League.Teams) names.Add(t.CoachName);
         foreach (var t in World.Clubs) names.Add(t.CoachName);
         if (World.College is { } cw) foreach (var t in cw.Programs) names.Add(t.CoachName);
+        // A vacancy's chosen successor is spoken for too (review of PR #269).
+        foreach (var v in Job.Vacancies) if (v.NextCoach is { Length: > 0 } nc) names.Add(nc);
         names.Remove(""); names.Remove("Interim coach");
         return names;
     }
@@ -126,11 +128,13 @@ public sealed partial class GameSession
         int? exclude = ControlledTeamId ?? mine?.Id;
         // H202 (run 200): an athletic director's patience. A coach's first two seasons are safe, a winning season with a
         // tournament bid is safe, and one poor season rarely costs a job: a run of them does (see CarouselFireChance).
-        cw.EnsureBenches();
+        cw.EnsureBenches(seedPast: false);
         var poorRun = new Dictionary<int, int>();
         foreach (var t in cw.Programs.Where(t => t.Id != exclude))
         {
             var (w, l) = record[t.Id];
+            // An interim job (a vacancy still open) has no coach to let go (review of PR #269); the draw keeps its place.
+            if (t.CoachName == "Interim coach") { rng.Chance(0); continue; }
             var e = Board.SetExpectations(ctx, t, League.Season);
             var b = cw.BenchOf(t.Id);
             double shortfall = Math.Max(0, e.TargetWins - w) * 82.0 / Math.Max(1, ctx.SeasonGames);
@@ -140,7 +144,8 @@ public sealed partial class GameSession
             if (rng.Chance(p)) { queue.Add((t, "fired", null)); changed.Add(t.Id); }
         }
         // Every bench counts the season (the record, bids, a title and the run of poor seasons) before anyone moves.
-        foreach (var t in cw.Programs)
+        // Not your old program, if you were let go at this review: its next coach isn't judged on your season.
+        foreach (var t in cw.Programs.Where(t => t != mine))
             if (cw.BenchOf(t.Id) is { } b)
             {
                 var (w, l) = record[t.Id];
