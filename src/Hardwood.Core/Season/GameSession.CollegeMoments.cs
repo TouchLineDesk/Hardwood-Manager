@@ -45,6 +45,7 @@ public sealed partial class GameSession
         CourtStorms(c);
         OneShiningMoment(c);
         AcademicCalendar(c); // CS7 part 2c (run 175)
+        RecruitingRoad(c); // run 197: evaluation periods, the summer camp, the Midnight Madness visit weekend
     }
 
     // ------------------------------------------------------------------------------------------

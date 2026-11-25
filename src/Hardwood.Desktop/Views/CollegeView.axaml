@@ -458,6 +458,27 @@
                 </ItemsControl>
               </StackPanel>
             </Border>
+            <!-- Run 197: recruiting on the road: the class's four calendar events, each with a pick until its day. -->
+            <Border x:Name="RoadPanel" Classes="panel" IsVisible="{Binding HasRoad}">
+              <StackPanel Spacing="6">
+                <TextBlock x:Name="RoadHeaderText" Text="{Binding RoadHeader}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <ItemsControl x:Name="RoadTilesList" ItemsSource="{Binding RoadTiles}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RoadTile">
+                      <StackPanel Spacing="3" Margin="0,0,12,0" ToolTip.Tip="{Binding Help}">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2"/>
+                        <TextBlock Text="{Binding When}" Classes="muted" FontSize="11"/>
+                        <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Choice}" IsVisible="{Binding Open}" PlaceholderText="Pick…" HorizontalAlignment="Stretch" MinWidth="0"/>
+                        <TextBlock Text="{Binding State}" Classes="muted" FontSize="11" TextWrapping="Wrap" MaxLines="2"/>
+                        <TextBlock Text="{Binding Result}" FontSize="11" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" IsVisible="{Binding Done}" ToolTip.Tip="{Binding Result}"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding RoadReply}" Classes="accent" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding RoadReply, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+              </StackPanel>
+            </Border>
             <WrapPanel>
               <ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding TrailClass}" MinWidth="220" Margin="0,0,8,4"/>
               <ComboBox ItemsSource="{Binding TrailViews}" SelectedItem="{Binding TrailView}" MinWidth="170" Margin="0,0,8,4"/>

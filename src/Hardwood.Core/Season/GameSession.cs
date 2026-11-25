@@ -1650,7 +1650,9 @@ public sealed partial class GameSession
             }
             Job.WarningLevel = 0;
         }
+        var summerDay = Today;
         Today = CareerYearStart();
+        RoadOverSummer(summerDay, Today); // run 197: the June camp and the July evaluation period
         // H185 (run 182): next season's goal is dated the day the season starts. The date stands still all summer, so it was
         // dated the day of the Season review ("Expectations for 2027-28" and the review both on May 8) and sorted above it.
         if (postGoal) PostExpectations();

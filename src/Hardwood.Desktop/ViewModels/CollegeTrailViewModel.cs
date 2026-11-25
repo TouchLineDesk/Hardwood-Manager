@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.College;
 using Hardwood.Core.Model;
+using Hardwood.Core.Season;
 using Hardwood.Desktop.Controls;
 using System.Linq;
 
@@ -49,6 +50,34 @@ public sealed partial class TrailRow : ObservableObject
     public string LeaningText => LeaningTeam == null ? "No leader yet" : $"Leans {Leaning}";
     public Avalonia.Media.IBrush StatusBrush => CollegeCards.StatusBrush(Status);
     public Avalonia.Media.IBrush InterestBrush => CollegeCards.InterestBrush(Interest);
+}
+
+/// <summary>Run 197: one road event on the Recruiting tab (the spring and July evaluation periods, the camp, the visit weekend).</summary>
+public sealed partial class RoadTile : ObservableObject
+{
+    private readonly Action<RoadEvent, string>? _choose;
+    private bool _loading;
+    public RoadTile(RoadRow row, Action<RoadEvent, string>? choose)
+    {
+        Row = row; _choose = choose;
+        _loading = true; _choice = row.Choice; _loading = false;
+    }
+    public RoadRow Row { get; }
+    public string Title => Row.Title;
+    public string When => Row.When;
+    public IReadOnlyList<string> Options => Row.Options;
+    public bool Open => Row.Open;
+    public bool Done => !Row.Open;
+    public string Help => Row.Help;
+    public string Result => Row.Result ?? "";
+    public string State => Row.Open ? (Row.Choice == null ? "Not picked: your staff will decide" : "Your pick")
+          : Row.Result == null || Row.Result.StartsWith("Not run") ? "Passed" : Row.ByStaff ? "Done · your staff's pick" : "Done · your pick";
+    [ObservableProperty] private string? _choice;
+    partial void OnChoiceChanged(string? value)
+    {
+        if (_loading || value == null) return;
+        _choose?.Invoke(Row.Event, value);
+    }
 }
 
 /// <summary>Run 164: one line of the first-week guide.</summary>
@@ -206,6 +235,7 @@ public sealed partial class CollegeViewModel
         TrailNote = full + OverOffersNote(c.OffersOut(me, year), c.OfferLimit(me, year), open, year)
                     + PlacesNote(c.OffersOut(me, year), c.OfferLimit(me, year), open) + "A prospect can only commit to you once you've offered.";
         FillGuide(c, me, year);
+        RoadReply = ""; FillRoad();
         foreach (var r in TrailRows.Take(CollegeCards.CardCount)) TrailCards.Add(r);
         if (keep != null && !TrailCards.Any(r => r.Player == keep) && TrailRows.FirstOrDefault(r => r.Player == keep) is { } further) TrailCards.Add(further);
         TrailEmpty = TrailRows.Count > 0 ? ""
@@ -224,6 +254,23 @@ public sealed partial class CollegeViewModel
         // H178 (run 164): the detail pane opens on the first card instead of an empty column.
         SelectedTrail = keep == null ? TrailCards.FirstOrDefault() : TrailRows.FirstOrDefault(x => x.Player == keep) ?? TrailCards.FirstOrDefault();
         FillTrailPanel();
+    }
+
+    /// <summary>Run 197: the recruiting class's road calendar (four events), with a pick for each still to come.</summary>
+    public ObservableCollection<RoadTile> RoadTiles { get; } = new();
+    [ObservableProperty] private string _roadHeader = "";
+    [ObservableProperty] private string _roadReply = "";
+    public bool HasRoad => RoadTiles.Count > 0;
+
+    private void FillRoad()
+    {
+        RoadTiles.Clear();
+        var rows = Session.RoadCalendar();
+        foreach (var r in rows) RoadTiles.Add(new RoadTile(r, (e, choice) => { RoadReply = Session.ChooseRoad(e, choice); Avalonia.Threading.Dispatcher.UIThread.Post(FillRoad); }));
+        int cls = Session.TrailWorld?.RecruitingClass(Session.Today) ?? 0;
+        int open = rows.Count(r => r.Open);
+        RoadHeader = rows.Count == 0 ? "" : $"On the road · the Class of {cls}" + (open > 0 ? $" · {open} still to come" : " · all done for this class");
+        OnPropertyChanged(nameof(HasRoad));
     }
 
     /// <summary>Run 164: the first-week guide's steps (scout, offer, visit) for the class on screen; empty once all three are done.</summary>
