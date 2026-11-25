@@ -102,6 +102,18 @@ public sealed partial class GameSession
         ById(League.FreeAgents);
         ById(League.Retired);
         if (Phase == SessionPhase.Offseason && Offseason != null) ById(Offseason.Prospects);
+        // H201 (run 198): a load reads each competition's clubs in id order too, while promotion and relegation (and a new
+        // world's pyramid) leave them in the order they joined. The world steps every club in list order, drawing as it
+        // goes, so a career saved after a summer of moves and the same career reloaded developed and signed different
+        // players abroad, then drew a different college schedule and recruiting at the next season's start.
+        // The NBA's own team list the same: a promoted club joins it at the end, and a load reads it in id order.
+        static void TeamsById(List<Team> list)
+        {
+            for (int i = 1; i < list.Count; i++)
+                if (list[i - 1].Id > list[i].Id) { list.Sort((a, b) => a.Id.CompareTo(b.Id)); return; }
+        }
+        TeamsById(League.Teams);
+        foreach (var c in World.Competitions) TeamsById(c.Clubs);
         foreach (var t in World.Clubs) ById(t.Roster);
         if (World.College is { } cw)
         {
