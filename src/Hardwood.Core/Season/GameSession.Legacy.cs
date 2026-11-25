@@ -29,7 +29,7 @@ public sealed partial class GameSession
         var lines = new List<string>
         {
             $"The program's Hall of Fame takes its class of {cls[0].Class} tonight."
-                + (cls.Any(h => h.Jersey != null) ? " The best of them will never see their number worn here again." : ""),
+                + (cls.Any(h => h.Jersey != null) ? " The best of them see their numbers raised to the rafters." : ""),
         };
         foreach (var h in cls)
             lines.Add($"{h.Name} ({h.Pos}, {h.Years})" + (h.Jersey is { } n ? $": No. {n} is retired and goes into the rafters." : ":")

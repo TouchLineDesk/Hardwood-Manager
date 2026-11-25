@@ -53,9 +53,8 @@ public class Run199LegacyTests
                 Assert.NotEmpty(h.Why);
                 Assert.Equal(year + 1, h.Class);
             });
-            var numbers = book.Hall.Where(h => h.Jersey != null).Select(h => h.Jersey!.Value).ToList();
-            Assert.Equal(numbers.Count, numbers.Distinct().Count());
-            Assert.All(numbers, n => Assert.Contains(n, ProgramLegacy.Numbers));
+            // A retired number is the one on his card.
+            Assert.All(book.Hall.Where(h => h.Jersey != null), h => Assert.Equal(Hardwood.Core.Portraits.JerseySpec.NumberFor(h.PlayerId), h.Jersey));
             // The book keeps the top of each column.
             Assert.True(book.Seasons.Count <= 3 * ProgramLegacy.Keep);
         }
@@ -67,7 +66,10 @@ public class Run199LegacyTests
         Assert.InRange(hall.Count, 1, seniorsAll / 5); // an honour, not a graduation present
         var top = hall.OrderByDescending(h => h.Score).First();
         var topProgram = c.Program(c.Legacy.First(b => b.Hall.Contains(top)).TeamId)!;
-        Assert.StartsWith(top.Jersey != null ? $"No. {top.Jersey} retired by {topProgram.FullName}" : $"{topProgram.FullName} Hall of Fame, class of {year + 1}", c.HonoursOf(top.PlayerId)[0]);
+        var honours = c.HonoursOf(top.PlayerId);
+        Assert.Contains($"{topProgram.FullName} Hall of Fame, class of {year + 1}", honours);
+        if (top.Jersey != null) Assert.Contains($"No. {top.Jersey} retired by {topProgram.FullName}", honours);
+        Assert.DoesNotContain("Hall of Fame", honours[0]); // his awards first (the farewell shows four)
         if (hall.Any(h => h.Jersey != null)) Assert.Contains(c.News, n => n.Title.StartsWith("Into the rafters"));
 
         // Once a night: playing on changes nothing, and the books round-trip through JSON (the save).
@@ -80,13 +82,9 @@ public class Run199LegacyTests
     }
 
     [Fact]
-    public void The_score_adds_honours_team_runs_and_totals_and_a_jersey_number_is_stable_and_never_reused()
+    public void A_retired_number_is_the_one_he_wore_and_spans_read_as_seasons()
     {
-        var book = new ProgramLegacy { TeamId = 1 };
-        int a = book.JerseyFor(12345);
-        Assert.Equal(a, book.JerseyFor(12345));
-        book.Hall.Add(new LegacyInductee { PlayerId = 12345, Name = "A", Jersey = a, Class = 2028 });
-        Assert.NotEqual(a, book.JerseyFor(12345));
+        Assert.Equal(Hardwood.Core.Portraits.JerseySpec.NumberFor(12345), ProgramLegacy.JerseyFor(12345));
         Assert.Equal("2026-27", ProgramLegacy.Span(2026, 2026));
         Assert.Equal("2026-30", ProgramLegacy.Span(2026, 2029));
     }

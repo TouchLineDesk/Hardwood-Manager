@@ -47,7 +47,7 @@ public class Run199LegacySessionTests
             var col = s.World.College!;
             var book = col.LegacyOf(s.HumanTeam.Id);
             Assert.Equal(2026, book.FirstYear);
-            Assert.True(book.Careers.Any(c => c.Done && c.First == 2026 && c.Last == 2027 || c.Last > c.First), "a career spans seasons");
+            Assert.Contains(book.Careers, c => c.Last > c.First); // a career spans seasons
             var hall = col.Legacy.SelectMany(b => b.Hall).ToList();
             _out.WriteLine($"after {seen} springs: {hall.Count} Hall of Famers, {hall.Count(h => h.Jersey != null)} jerseys retired; Duke's leader {book.Leaders(c => c.Pts, 1).FirstOrDefault()?.Name} {book.Leaders(c => c.Pts, 1).FirstOrDefault()?.Pts}");
 

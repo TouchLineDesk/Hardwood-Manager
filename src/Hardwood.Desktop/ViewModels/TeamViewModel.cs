@@ -237,7 +237,7 @@ public sealed partial class TeamViewModel : PageViewModel
         tables.Add(Single("Rebounds in a season", x => x.Reb));
         tables.Add(Single("Assists in a season", x => x.Ast));
         // The team's best seasons by record (the season honours keep every program's record).
-        var best = cw.Awards.Where(a => a.Records.TryGetValue(t.Id, out var r) && r.Length >= 3 && r[0] + r[1] > 0)
+        var best = cw.Awards.Where(a => (book.FirstYear == 0 || a.Year >= book.FirstYear) && a.Records.TryGetValue(t.Id, out var r) && r.Length >= 3 && r[0] + r[1] > 0)
             .Select(a => (a.Year, R: a.Records[t.Id])).OrderByDescending(x => x.R[0] - x.R[1]).ThenByDescending(x => x.R[0]).ThenBy(x => x.Year).Take(5).ToList();
         tables.Add(new LegacyTable("Best seasons", best.Select((b, i) => new LegacyRecordRow(i + 1, $"{b.R[0]}-{b.R[1]}", Hardwood.Core.College.CollegeAwards.SeasonText(b.Year),
             b.R[2] >= 1 ? Hardwood.Core.College.CollegeAwardsText.Reached(b.R[2]) : b.R[2] == 0 ? "the First Four" : "", false)).ToList()));

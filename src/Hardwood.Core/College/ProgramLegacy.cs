@@ -82,8 +82,6 @@ public sealed class ProgramLegacy
 {
     public const double HallScore = 7, JerseyScore = 14;
     public const int Keep = 5;
-    /// <summary>The numbers a college player can wear (digits 0-5 only).</summary>
-    public static readonly int[] Numbers = { 0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35, 40, 41, 42, 43, 44, 45, 50, 51, 52, 53, 54, 55 };
 
     public int TeamId { get; init; }
     /// <summary>The last college season the book counted (the year it began; 0: none yet).</summary>
@@ -107,27 +105,18 @@ public sealed class ProgramLegacy
     public List<LegacySeason> BestSeasons(Func<LegacySeason, int> of, int take = Keep) =>
         Seasons.Where(s => of(s) > 0).OrderByDescending(of).ThenBy(s => s.Year).ThenBy(s => s.PlayerId).Take(take).ToList();
 
-    /// <summary>A jersey number for a player, the same every time (from his id), skipping the numbers already retired here.</summary>
-    public int JerseyFor(int playerId)
-    {
-        var taken = Hall.Where(h => h.Jersey != null).Select(h => h.Jersey!.Value).ToHashSet();
-        uint h = unchecked((uint)playerId * 2654435761u);
-        for (int i = 0; i < Numbers.Length; i++)
-        {
-            int n = Numbers[(int)((h + (uint)i) % (uint)Numbers.Length)];
-            if (!taken.Contains(n)) return n;
-        }
-        return Numbers[(int)(h % (uint)Numbers.Length)];
-    }
+    /// <summary>The number he wore (his card's number, <see cref="Hardwood.Core.Portraits.JerseySpec.NumberFor"/>). Review (run 199):
+    /// it was a separate pick that matched the card only 2% of the time. Two legends can share a retired number, as real programs do.</summary>
+    public static int JerseyFor(int playerId) => Hardwood.Core.Portraits.JerseySpec.NumberFor(playerId);
 
-    /// <summary>Drop finished careers and seasons outside every column's top <see cref="Keep"/> (Hall members stay).</summary>
+    /// <summary>Drop finished careers and seasons outside every column's top <see cref="Keep"/>.</summary>
     internal void Prune()
     {
         var keepCareers = new HashSet<LegacyCareer>(Careers.Where(c => !c.Done));
         foreach (var of in new Func<LegacyCareer, int>[] { c => c.Pts, c => c.Reb, c => c.Ast })
             keepCareers.UnionWith(Leaders(of));
-        var hall = Hall.Select(h => h.PlayerId).ToHashSet();
-        Careers = Careers.Where(c => keepCareers.Contains(c) || hall.Contains(c.PlayerId)).ToList();
+        // Review (run 199): a Hall member's career isn't kept outside the top: his inductee entry holds the line.
+        Careers = Careers.Where(keepCareers.Contains).ToList();
         var keepSeasons = new HashSet<LegacySeason>();
         foreach (var of in new Func<LegacySeason, int>[] { s => s.Pts, s => s.Reb, s => s.Ast })
             keepSeasons.UnionWith(BestSeasons(of));
@@ -141,10 +130,9 @@ public sealed partial class CollegeWorld
     /// books at its next national final).</summary>
     public List<ProgramLegacy> Legacy { get; } = new();
 
-    private static readonly ProgramLegacy NoLegacy = new();
 
     /// <summary>A program's legacy book (an empty one if it has none yet; not added).</summary>
-    public ProgramLegacy LegacyOf(int teamId) => Legacy.FirstOrDefault(l => l.TeamId == teamId) ?? NoLegacy;
+    public ProgramLegacy LegacyOf(int teamId) => Legacy.FirstOrDefault(l => l.TeamId == teamId) ?? new ProgramLegacy { TeamId = teamId };
 
     private ProgramLegacy LegacyBook(int teamId)
     {
@@ -160,6 +148,8 @@ public sealed partial class CollegeWorld
     {
         var s = Season;
         var inducted = new List<(Team, LegacyInductee)>();
+        // Review (run 199): one pass over the season's lines, by player id (a fixed order, whatever the dictionary's).
+        var lines = s.Stats.Where(kv => kv.Value.G > 0).OrderBy(kv => kv.Key).GroupBy(kv => kv.Value.TeamId).ToDictionary(g => g.Key, g => g.ToList());
         foreach (var t in Programs)
         {
             var book = LegacyBook(t.Id);
@@ -167,17 +157,18 @@ public sealed partial class CollegeWorld
             book.LastYear = s.Year;
             if (book.FirstYear == 0) book.FirstYear = s.Year;
             var roster = t.Roster.ToDictionary(p => p.Id);
-            foreach (var (pid, st) in s.Stats)
+            var careers = book.Careers.ToDictionary(x => x.PlayerId);
+            foreach (var (pid, st) in lines.GetValueOrDefault(t.Id) ?? new())
             {
-                if (st.TeamId != t.Id || st.G <= 0 || !roster.TryGetValue(pid, out var p)) continue;
-                var c = book.Careers.FirstOrDefault(x => x.PlayerId == pid);
+                if (!roster.TryGetValue(pid, out var p)) continue;
+                var c = careers.GetValueOrDefault(pid);
                 if (c == null) book.Careers.Add(c = new LegacyCareer { PlayerId = pid, First = s.Year });
                 c.Name = p.Name; c.Pos = p.PrimaryPosition.ToString(); c.Last = s.Year;
                 c.G += st.G; c.Pts += st.Pts; c.Reb += st.Reb; c.Ast += st.Ast; c.Stl += st.Stl; c.Blk += st.Blk;
                 book.Seasons.Add(new LegacySeason { Year = s.Year, PlayerId = pid, Name = p.Name, G = st.G, Pts = st.Pts, Reb = st.Reb, Ast = st.Ast });
             }
             var graduating = FinalYear(t).Select(p => p.Id).ToHashSet();
-            foreach (var c in book.Careers.Where(c => !c.Done && (graduating.Contains(c.PlayerId) || !roster.ContainsKey(c.PlayerId))).ToList())
+            foreach (var c in book.Careers.Where(c => !c.Done && (graduating.Contains(c.PlayerId) || !roster.ContainsKey(c.PlayerId))).OrderBy(c => c.PlayerId).ToList())
             {
                 c.Done = true;
                 if (!graduating.Contains(c.PlayerId)) continue; // gone from the program without finishing: no ceremony
@@ -187,7 +178,7 @@ public sealed partial class CollegeWorld
                 {
                     PlayerId = c.PlayerId, Name = c.Name, Pos = c.Pos, Class = s.Year + 1, First = c.First, Last = c.Last,
                     G = c.G, Pts = c.Pts, Reb = c.Reb, Ast = c.Ast, Score = Math.Round(score, 1), Why = why,
-                    Jersey = score >= ProgramLegacy.JerseyScore ? book.JerseyFor(c.PlayerId) : null,
+                    Jersey = score >= ProgramLegacy.JerseyScore ? ProgramLegacy.JerseyFor(c.PlayerId) : null,
                 };
                 book.Hall.Add(who);
                 inducted.Add((t, who));
@@ -240,7 +231,7 @@ public sealed partial class CollegeWorld
         return (why.Sum(w => w.Pts), why.OrderByDescending(w => w.Pts).Select(w => w.Text).ToList());
     }
 
-    /// <summary>A player's legacy honours ("Program Hall of Fame 2028, Duke", "No. 23 retired by Duke"), for <see cref="HonoursOf"/>.</summary>
+    /// <summary>A player's legacy honours ("No. 23 retired by Duke Blue Devils", "Duke Blue Devils Hall of Fame, class of 2028"), for <see cref="HonoursOf"/>.</summary>
     public IEnumerable<string> LegacyHonoursOf(int playerId)
     {
         foreach (var book in Legacy)
