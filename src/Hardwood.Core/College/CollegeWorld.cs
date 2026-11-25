@@ -670,6 +670,7 @@ public sealed partial class CollegeWorld
         // Invitationals (Thanksgiving week): eight brackets of eight, invited by prestige with some luck. H159 (run 156): drawn
         // before the non-conference rounds, so an invited program's non-conference count can allow for its bracket games.
         var invited = ids.OrderByDescending(i => Prestige[i] + rng.NextGaussian(0, 15)).Take(64).OrderBy(_ => rng.NextDouble()).ToList();
+        ApplyHoliday(invited, year); // run 192: the coached program's holiday choice (no random draws)
         var invitedSet = invited.ToHashSet();
         // H159 (run 156): non-conference games fill each program's season to about 30 regular-season games (real D-I plays
         // 29-32), not a flat ten (a small conference's season was 24-28 games). Dates: Tuesdays and Fridays from November 3
@@ -691,6 +692,7 @@ public sealed partial class CollegeWorld
             bool aHome = (year + rv.A + rv.B) % 2 == 0;
             rivalGames.Add((r, aHome ? rv.A : rv.B, aHome ? rv.B : rv.A));
         }
+        BookPlanned(year, ncRounds, owed, booked, rivalGames); // run 192: the coached program's buy games and home-and-homes
         for (int round = 0; round < ncRounds; round++)
         {
             var day = ncDates[round];
@@ -1036,6 +1038,14 @@ public sealed partial class CollegeWorld
         if (!s.Games.Any(g => g.Stage == "Showcase") && s.Games.Where(g => g.Stage is "Non-conference" or "Invitational" && g.Date < new DateOnly(s.Year, 12, 19)).All(g => g.Played))
         {
             var top = Programs.Select(t => t.Id).OrderByDescending(i => s.Elo[i]).Take(30).ToList();
+            // Run 192: a coached program that asked for a showcase when the schedule was drawn gets a top-30 opponent (neutral floor).
+            // Run 192 review: moved near the front, so it is paired whatever its rating (only 24 of the 30 get a game).
+            if (ManagedProgramId is { } asker && PlanOf(asker) is { DrawnShowcase: true } ask && ask.DrawnYear == s.Year && Program(asker) != null
+                && top.IndexOf(asker) is var at && (at < 0 || at >= 2 * Showcases.Length - 2))
+            {
+                if (at >= 0) top.RemoveAt(at); else top.RemoveAt(top.Count - 1);
+                top.Insert(1, asker);
+            }
             var day = new DateOnly(s.Year, 12, 19);
             int n = 0;
             while (top.Count >= 2 && n < Showcases.Length)

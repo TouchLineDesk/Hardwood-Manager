@@ -42,6 +42,9 @@ public sealed class Expectations
     public int Season { get; set; }
     public SeasonGoal Goal { get; set; }
     public int TargetWins { get; set; }
+    /// <summary>Run 192: the wins the AD added (+1) or allowed (−1) for the season's non-conference plan; taken back out
+    /// before next season's target is set, so the shift never compounds.</summary>
+    public int ScheduleShift { get; set; }
     public List<Demand> Demands { get; set; } = new();
     /// <summary>The club and league the goal was set for (to tell a promotion from a normal summer).</summary>
     public int TeamId { get; set; }

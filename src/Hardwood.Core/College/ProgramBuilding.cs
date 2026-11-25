@@ -36,6 +36,9 @@ public sealed class ProgramBooks
     /// <summary>The last term's grades for the program's players (player id → GPA), for the Board page.</summary>
     public Dictionary<int, double> LastGrades { get; set; } = new();
     public string LastTerm { get; set; } = "";
+
+    /// <summary>Run 192: the non-conference plan (null: none chosen; the draw as before).</summary>
+    public NonConferencePlan? Schedule { get; set; }
 }
 
 /// <summary>CS7 part 1: the rules (no RNG, constants here for Danny's veto check).</summary>

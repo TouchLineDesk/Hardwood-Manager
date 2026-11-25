@@ -803,6 +803,7 @@ public sealed partial class GameSession
         var o = HumanTeam.Owner;
         Post($"Expectations for {e.Season}-{(e.Season + 1) % 100:00}",
             Boss($"{(InCollege ? "Athletic director " : "")}{o.Name} ({o.Style.ToLower()}) has set your goal: {(e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam))))} (around {e.TargetWins} {(InCollege ? "regular-season " : "")}wins)."
+            + (InCollege && World.College?.ScheduleTargetNote(HumanTeam.Id, e.Season) is { } note ? " " + note : "")
             + (e.Demands.Count > 0 ? "\n\nThe owner also asks you to:\n" + string.Join("\n", e.Demands.Select(d => "• " + Jobs.Board.Describe(d))) : "")), "Board");
     }
 
@@ -1633,8 +1634,16 @@ public sealed partial class GameSession
             bool setThisSummer = Job.Current is { } cur && cur.Season == League.Season && cur.TeamId == HumanTeam.Id && cur.League == MyLeagueKey;
             if (!setThisSummer)
             {
+                if (Job.Current is { ScheduleShift: not 0 } drawn) { drawn.TargetWins -= drawn.ScheduleShift; drawn.ScheduleShift = 0; } // run 192 review
                 Job.Current = Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, League.Season, Job.Current,
                     MyLeagueKey, MyLevel, Job.Current?.League is { Length: > 0 } was ? LevelOf(was) : 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
+                // Run 192: the AD reads the non-conference plan drawn this summer (one win more for buy games, one fewer for power series).
+                if (InCollege && World.College is { } plan && plan.ScheduleTargetShift(HumanTeam.Id, League.Season) is var shift and not 0)
+                {
+                    int before = Job.Current.TargetWins;
+                    Job.Current.TargetWins = Math.Max(1, before + shift);
+                    Job.Current.ScheduleShift = Job.Current.TargetWins - before;
+                }
                 postGoal = true;
             }
             Job.WarningLevel = 0;

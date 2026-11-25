@@ -62,6 +62,25 @@
             <TextBlock Text="Each facility counts against the league's average: keeping up holds your ground, getting ahead pays. Facilities date and drop a level unless they're renewed (levels 4 and 5 sooner), and they cost money to run; the top levels cost more to build. Only an ambitious owner builds well past the league's average. The owner keeps a reserve in the bank (less if he's ambitious) and funds projects from the rest." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
+        <!-- Run 192 (slice 2 of the revised launch plan): a college coach plans next season's non-conference schedule. -->
+        <Border x:Name="Plan" Classes="panel" IsVisible="{Binding HasPlan}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding PlanTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Text="Drawn when the schedule is made at the end of the summer." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="Non-conference games" Classes="muted" FontSize="11.5"/>
+            <ComboBox x:Name="PlanMixBox" ItemsSource="{Binding PlanMixes}" SelectedItem="{Binding PlanMix}" HorizontalAlignment="Stretch" ToolTip.Tip="How your open dates are filled"/>
+            <TextBlock Text="{Binding PlanEffect}" TextWrapping="Wrap" FontSize="12.5"/>
+            <TextBlock Text="Holiday tournament (Thanksgiving week)" Classes="muted" FontSize="11.5"/>
+            <ComboBox x:Name="PlanHolidayBox" ItemsSource="{Binding PlanHolidays}" SelectedItem="{Binding PlanHoliday}" HorizontalAlignment="Stretch" ToolTip.Tip="An eight-team bracket on a neutral floor: two or three games"/>
+            <TextBlock Text="{Binding PlanHolidayNote}" Foreground="{DynamicResource HwAccentBrush}" TextWrapping="Wrap" FontSize="12.5"
+                       IsVisible="{Binding PlanHolidayNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <CheckBox x:Name="PlanShowcaseBox" IsChecked="{Binding PlanShowcase}" ToolTip.Tip="December 19-21: a top-30 opponent on a neutral floor, an extra game">
+              <TextBlock Text="Ask for a December showcase game" TextWrapping="Wrap"/>
+            </CheckBox>
+            <TextBlock Text="{Binding PlanSeries}" TextWrapping="Wrap" FontSize="12.5" IsVisible="{Binding PlanSeries, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="{Binding PlanNow}" Classes="muted" TextWrapping="Wrap" FontSize="11.5" IsVisible="{Binding PlanNow, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+        </Border>
         <!-- CS7 (run 170, K19): the college program's boosters and facilities -->
         <Border Classes="panel" IsVisible="{Binding HasProgram}">
           <StackPanel Spacing="6">
