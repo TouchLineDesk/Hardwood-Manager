@@ -37,6 +37,10 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **The coaching carousel (May):** after the reviews, 40–70 programs change coach (let go, retired, or hired away by a
   bigger program, which opens that job in turn). One inbox story lists your conference's and rival's changes first;
   the Board page has the whole spring. A bigger job that opens may come to you if you beat your goal.
+- **Your non-conference schedule (Board page, any time before the summer ends):** let the conference office draw it,
+  book 5 buy games at home (the AD expects one more win) or sign 3 home-and-home series with power programs (the AD
+  allows one win; the return games come the next season); pick a holiday tournament (the three biggest invite B
+  programs or better) and ask for a December showcase. The season's welcome names your slate and strength of schedule.
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 
 ## Known issues (not worth a note unless they bother you)

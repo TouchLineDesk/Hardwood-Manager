@@ -352,6 +352,7 @@ public sealed partial class BoardViewModel : PageViewModel
         }
         HasVacancies = Vacancies.Count > 0;
         RefreshCarousel();
+        RefreshPlan();
         ShowJobs = !s.Employed || HasVacancies;
         JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
         JobsNote = s.Employed
@@ -395,6 +396,83 @@ public sealed partial class BoardViewModel : PageViewModel
 
     /// <summary>CS9 (run 191): the newest spring's coaching changes. In college your conference and your rivals come first,
     /// then the biggest jobs; each row says who left, why, and who came in.</summary>
+    // Run 192 (slice 2 of the revised launch plan): a college coach plans next season's non-conference schedule with the AD (the Board page scrolls; the Schedule page's side column didn't have the room).
+    public const string MixDraw = "The conference office's draw";
+    public const string MixBuy = "Buy games: 5 at home";
+    public const string MixTough = "Home-and-homes: 3 series";
+    public const string HolidayAny = "Take an invitation if one comes";
+    public const string HolidayNone = "No holiday tournament";
+    public string[] PlanMixes { get; } = { MixDraw, MixBuy, MixTough };
+    public ObservableCollection<string> PlanHolidays { get; } = new();
+    [ObservableProperty] private bool _hasPlan;
+    [ObservableProperty] private string _planTitle = "";
+    [ObservableProperty] private string? _planMix;
+    [ObservableProperty] private string? _planHoliday;
+    [ObservableProperty] private bool _planShowcase;
+    [ObservableProperty] private string _planEffect = "";
+    [ObservableProperty] private string _planHolidayNote = "";
+    [ObservableProperty] private string _planNow = "";
+    [ObservableProperty] private string _planSeries = "";
+    private bool _planLoading;
+
+    partial void OnPlanMixChanged(string? value) => SavePlan();
+    partial void OnPlanHolidayChanged(string? value) => SavePlan();
+    partial void OnPlanShowcaseChanged(bool value) => SavePlan();
+
+    private static string HolidayLabel(Hardwood.Core.College.CollegeWorld c, int id, string name) =>
+        Hardwood.Core.College.CollegeWorld.IsMajorHoliday(name)
+            ? $"{name} ({Hardwood.Core.College.CollegeWorld.PrestigeLetter(Hardwood.Core.College.CollegeWorld.MajorHolidayPrestige)} or better)" : name;
+
+    private void SavePlan()
+    {
+        if (_planLoading || Session is not { } s || s.World.College is not { } c || !HasPlan) return;
+        var books = s.HumanTeam.Money.Program;
+        var plan = books.Schedule ??= new Hardwood.Core.College.NonConferencePlan();
+        plan.Mix = PlanMix switch { MixBuy => Hardwood.Core.College.ScheduleMix.BuyGames, MixTough => Hardwood.Core.College.ScheduleMix.Tough, _ => Hardwood.Core.College.ScheduleMix.Balanced };
+        plan.Showcase = PlanShowcase;
+        string? pick = PlanHoliday switch { null or HolidayAny => null, HolidayNone => "", var h => Hardwood.Core.College.CollegeWorld.HolidayEvents.FirstOrDefault(e => h.StartsWith(e)) };
+        if (pick is { Length: > 0 } ev && c.HolidayBlocked(s.HumanTeam.Id, ev) is { } why)
+        {
+            PlanHolidayNote = why + " The choice stays as it was.";
+            _planLoading = true; PlanHoliday = plan.Holiday == null ? HolidayAny : plan.Holiday.Length == 0 ? HolidayNone : HolidayLabel(c, s.HumanTeam.Id, plan.Holiday); _planLoading = false;
+        }
+        else { plan.Holiday = pick; PlanHolidayNote = ""; }
+        PlanEffect = EffectText(plan.Mix);
+    }
+
+    private static string EffectText(Hardwood.Core.College.ScheduleMix mix) => mix switch
+    {
+        Hardwood.Core.College.ScheduleMix.BuyGames => "Five low-majors (prestige under C-) are paid to come to your gym: near-certain wins. The AD expects one more win, and they barely move your rating, so your strength of schedule falls.",
+        Hardwood.Core.College.ScheduleMix.Tough => "Three power programs (prestige B or better), one game this season and the return next season. The AD allows one win for them; a win moves your rating most, and your strength of schedule rises.",
+        _ => "The conference office fills the dates, leaning to home games against smaller names. The AD's target is set as usual.",
+    };
+
+    private void RefreshPlan()
+    {
+        var s = Session;
+        HasPlan = s != null && s.Employed && s.InCollege && s.World.College != null;
+        if (!HasPlan) return;
+        var c = s!.World.College!;
+        int me = s.HumanTeam.Id, next = c.Season.Year + 1;
+        var plan = s.HumanTeam.Money.Program.Schedule;
+        _planLoading = true;
+        PlanTitle = $"Your non-conference schedule for {next}-{(next + 1) % 100:00}";
+        PlanHolidays.Clear();
+        PlanHolidays.Add(HolidayAny); PlanHolidays.Add(HolidayNone);
+        foreach (var h in Hardwood.Core.College.CollegeWorld.HolidayEvents) PlanHolidays.Add(HolidayLabel(c, me, h));
+        PlanMix = plan?.Mix switch { Hardwood.Core.College.ScheduleMix.BuyGames => MixBuy, Hardwood.Core.College.ScheduleMix.Tough => MixTough, _ => MixDraw };
+        PlanHoliday = plan?.Holiday switch { null => HolidayAny, "" => HolidayNone, var h => HolidayLabel(c, me, h) };
+        PlanShowcase = plan?.Showcase == true;
+        _planLoading = false;
+        PlanEffect = EffectText(plan?.Mix ?? Hardwood.Core.College.ScheduleMix.Balanced);
+        PlanHolidayNote = "";
+        var st = c.ScheduleStrength(me);
+        string slate = c.NonConferenceSummary(me);
+        PlanNow = slate.Length == 0 ? "" : $"This season: {slate}" + (st is { } x ? $" Strength of schedule {Hardwood.Core.Presentation.GameCalls.Ordinal(x.Rank)} of {x.Of} (non-conference {Hardwood.Core.Presentation.GameCalls.Ordinal(x.NonConfRank)})." : "");
+        var returns = plan?.Series.Where(x => x.FirstYear == c.Season.Year).ToList() ?? new();
+        PlanSeries = returns.Count == 0 ? "" : "Returns next season: " + string.Join(", ", returns.Select(x => $"{(x.HomeFirst ? "at" : "vs")} {c.Program(x.OpponentId)?.FullName}")) + ".";
+    }
+
     private void RefreshCarousel()
     {
         var s = Session;

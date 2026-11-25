@@ -99,6 +99,14 @@ public sealed partial class GameSession
         var c = World.College!;
         var champ = c.History.LastOrDefault();
         string lead = champ != null ? $"Last season's national champions: {champ.Champion} (over {champ.RunnerUp}). " : "";
-        return CollegeFirstGameLine(lead) + (RivalLine() is { } rival ? "\n\n" + rival : "");
+        return CollegeFirstGameLine(lead) + (RivalLine() is { } rival ? "\n\n" + rival : "") + (ScheduleLine() is { } sched ? "\n\n" + sched : "");
+    }
+
+    /// <summary>Run 192: the season's non-conference slate and strength of schedule, and where next season's is planned.</summary>
+    public string? ScheduleLine()
+    {
+        if (World.College is not { } c || c.NonConferenceSummary(HumanTeam.Id) is not { Length: > 0 } slate) return null;
+        string sos = c.ScheduleStrength(HumanTeam.Id) is { } st ? $" Strength of schedule: {Hardwood.Core.Presentation.GameCalls.Ordinal(st.Rank)} of {st.Of}." : "";
+        return $"Your schedule: {slate}{sos} Next season's non-conference plan is on the Board page.";
     }
 }
