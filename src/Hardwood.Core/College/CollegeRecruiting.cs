@@ -600,6 +600,7 @@ public sealed partial class CollegeWorld
             var t = Program(Recruits[p.Id].CommittedTo!.Value)!;
             t.Roster.Add(p); p.TeamId = t.Id;
         }
+        WalkOnScholarship(on); // slice 11 (run 202): a walk-on who earned his minutes takes an open scholarship first
         var left = seniors.Where(p => Recruits[p.Id].CommittedTo == null).OrderBy(p => Recruits[p.Id].Rank).ToList();
         // Late scholarships first (a program short of 13), then walk-ons, the biggest names choosing first.
         foreach (var walkOn in new[] { false, true })
@@ -615,7 +616,11 @@ public sealed partial class CollegeWorld
                 }
             }
         foreach (var p in left) Destined.Remove(p.Id); // unsigned: they leave the game world (Danny, #162)
-        foreach (var p in seniors) { Prospects.Remove(p); Recruits.Remove(p.Id); }
+        foreach (var p in seniors)
+        {
+            if (p.TeamId is { } to && Program(to) != null) KeepOrigin(p, Recruits[p.Id]); // slice 11 (run 202)
+            Prospects.Remove(p); Recruits.Remove(p.Id);
+        }
         FillLateSignings(on, gen, rng);
         // A new class of 14-year-olds; every class is re-ranked as the services learn more.
         Prospects.AddRange(NewClass(gen, rng, YoungestAge, on, cls + 4, ClassSize));

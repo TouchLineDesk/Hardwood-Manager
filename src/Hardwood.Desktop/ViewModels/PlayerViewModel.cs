@@ -61,6 +61,8 @@ public sealed partial class PlayerViewModel : PageViewModel
     public string MoodText { get; private set; } = "";
     public string Tendencies { get; private set; } = "";
     public string Honours { get; private set; } = "";
+    /// <summary>Slice 11 (run 202): where a college player came from, and the stories told about him ("2026-27 · The freshman phenom").</summary>
+    public string Story { get; private set; } = "";
     public List<AttrGroupVm> Groups { get; private set; } = new();
     /// <summary>Roadmap 1: the broadcast stat strip (age, size, ability, money, health, mood, this season).</summary>
     public List<Hardwood.Desktop.Controls.Chip> Chips { get; private set; } = new();
@@ -133,6 +135,15 @@ public sealed partial class PlayerViewModel : PageViewModel
         if (hall != null) bits.Add($"Hall of Fame ({hall.Year})");
         if (retiredBy.Count > 0) bits.Add($"Number retired by {string.Join(", ", retiredBy)}");
         Honours = bits.Count == 0 ? "" : string.Join(" · ", bits);
+        var story = new List<string>();
+        if (s.World.College is { } cw)
+        {
+            if (InCollegeProgram(s, p) && cw.OriginOf(p.Id) is { } origin)
+                story.Add(Hardwood.Core.College.PlayerStories.OriginLine(origin, cw.WalkOnIds.Contains(p.Id)));
+            foreach (var st in s.StoriesOf(p.Id))
+                story.Add($"{st.Year}-{(st.Year + 1) % 100:00} · {st.Title.Split(':')[0]}");
+        }
+        Story = string.Join("\n", story);
 
         var t = p.Tendencies;
         Tendencies = $"Three-point rate {t.ThreePointRate} · drives {t.DriveRate} · post-ups {t.PostUpRate} · isolation {t.IsolationRate} · pass-first {t.PassFirst} · crash glass {t.CrashGlass}";

@@ -29,6 +29,7 @@
         <StackPanel Grid.Column="1" Spacing="6">
           <c:StatStrip ItemsSource="{Binding Chips}" Accent="{Binding Accent}"/>
           <TextBlock Text="{Binding Honours}" Classes="accent" TextWrapping="Wrap" IsVisible="{Binding Honours, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <TextBlock Text="{Binding Story}" TextWrapping="Wrap" MaxLines="5" FontSize="12" IsVisible="{Binding Story, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <TextBlock Text="{Binding Tendencies}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
           <Button Content="Talk to him" Command="{Binding TalkToHimCommand}" IsVisible="{Binding CanTalk}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
           <c:RadarChart Values="{Binding RadarValues}" Labels="{Binding RadarLabels}" Accent="{Binding Accent}" Height="250" Width="440" HorizontalAlignment="Left"/>

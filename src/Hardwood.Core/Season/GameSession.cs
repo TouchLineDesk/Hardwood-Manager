@@ -168,6 +168,8 @@ public sealed partial class GameSession
         if (World.College != null) Jobs.Board.EnsureOwnersAndCoaches(World.College.Programs, seed);
         // H203 and slice 9 (run 200): a new career's benches each have their own coach, and his past.
         if (rngState == null) UniqueBenches(seed);
+        // Slice 11 (run 202): every rostered college player's origin (a new career; an older save's first load). No random draw.
+        World.College?.EnsureOrigins();
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
         Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
