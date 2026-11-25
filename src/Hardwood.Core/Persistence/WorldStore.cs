@@ -31,7 +31,7 @@ public static class WorldStore
                 col.Programs.Select(t => new ProgramState(t.Id, t.City, t.Name, t.Abbreviation, t.Division, t.ArenaCapacity, t.PrimaryColor, t.SecondaryColor, t.LogoStyle,
                     col.ConferenceOf[t.Id], col.Prestige[t.Id], SaveFile.ToJson(t.Tactic), col.Tradition.GetValueOrDefault(t.Id),
                     FormText(col.Form.GetValueOrDefault(t.Id)))).ToList(),
-                col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards, col.RealAlumniSeeded, col.Pledges, col.BrokenWordUntil, col.AllAmerican, col.Captains, col.Road, col.Legacy, col.Benches))));
+                col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards, col.RealAlumniSeeded, col.Pledges, col.BrokenWordUntil, col.AllAmerican, col.Captains, col.Road, col.Legacy, col.Benches, col.MyCareer))));
         if (world.College != null) // K30 (run 178): the college record's own format, next to its JSON (ADR-1)
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college_format', $v)", ("$v", CollegeMigrations.Current.ToString()));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
@@ -77,7 +77,8 @@ public static class WorldStore
                                        List<Hardwood.Core.College.CaptainSeason>? Captains = null,
                                        List<Hardwood.Core.College.RoadChoice>? Road = null,
                                        List<Hardwood.Core.College.ProgramLegacy>? Legacy = null,
-                                       List<Hardwood.Core.College.BenchCoach>? Benches = null);
+                                       List<Hardwood.Core.College.BenchCoach>? Benches = null,
+                                       Hardwood.Core.College.CoachBook? MyCareer = null);
 
     public static GameWorld? LoadWorld(this SaveFile file, League nabl, IEnumerable<Player> overseasPlayers, IEnumerable<Player>? collegePlayers = null)
     {
@@ -194,6 +195,7 @@ public static class WorldStore
                 col.Road.AddRange(cs.Road ?? new()); // run 197; missing before v0.185.0
                 col.Legacy.AddRange(cs.Legacy ?? new()); // run 199; missing before v0.187.0
                 col.Benches.AddRange(cs.Benches ?? new()); // run 200; missing before v0.188.0 (the career's load seeds them)
+                col.MyCareer = cs.MyCareer ?? new(); // run 201; missing before v0.189.0 (the book counts from the next season)
                 col.RealAlumniSeeded = cs.RealAlumniSeeded; // K12b (run 137); false before v0.125.0, so the session seeds them once
                 var byId = col.Programs.ToDictionary(t => t.Id);
                 foreach (var p in collegePlayers ?? Enumerable.Empty<Player>())

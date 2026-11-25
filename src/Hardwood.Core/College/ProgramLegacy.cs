@@ -58,9 +58,13 @@ public sealed class LegacyInductee
     public List<string> Why { get; init; } = new();
     /// <summary>His jersey number, when the program retired it (null: inducted, jersey still worn).</summary>
     public int? Jersey { get; init; }
+    /// <summary>Slice 10 (run 201): a head coach inducted when he left the program (no player id, no jersey).</summary>
+    public bool IsCoach { get; init; }
+    /// <summary>A coach's line: "312-140 in 14 seasons, 9 NCAA bids, 1 national title".</summary>
+    public string? CoachRecord { get; init; }
 
     [JsonIgnore] public string Years => ProgramLegacy.Span(First, Last);
-    [JsonIgnore] public string Line => G == 0 ? "" : $"{Pts:N0} points, {Reb:N0} rebounds, {Ast:N0} assists in {G} games";
+    [JsonIgnore] public string Line => IsCoach ? CoachRecord ?? "" : G == 0 ? "" : $"{Pts:N0} points, {Reb:N0} rebounds, {Ast:N0} assists in {G} games";
 }
 
 /// <summary>
@@ -235,7 +239,7 @@ public sealed partial class CollegeWorld
     public IEnumerable<string> LegacyHonoursOf(int playerId)
     {
         foreach (var book in Legacy)
-            foreach (var h in book.Hall.Where(h => h.PlayerId == playerId))
+            foreach (var h in book.Hall.Where(h => !h.IsCoach && h.PlayerId == playerId))
             {
                 string name = Program(book.TeamId)?.FullName ?? "his program";
                 if (h.Jersey is { } n) yield return $"No. {n} retired by {name}";

@@ -29,6 +29,9 @@ public sealed class BenchCoach
     public int Titles { get; set; }
     /// <summary>Seasons in a row below his athletic director's target (the carousel's patience).</summary>
     public int PoorRun { get; set; }
+    /// <summary>Slice 10 (run 201): bids and titles at this program (for the coaches' Hall of Fame; 0 in a v0.188.0 save).</summary>
+    public int BidsHere { get; set; }
+    public int TitlesHere { get; set; }
 
     [JsonIgnore] public CoachStyle Style => RivalCoaches.StyleOf(Name);
     [JsonIgnore] public string Record => $"{Wins}-{Losses}";
@@ -116,6 +119,7 @@ public static class RivalCoaches
         {
             ProgramId = program.Id, Name = program.CoachName, Seasons = seasons, Wins = wins, Losses = seasons * 31 - wins,
             CareerWins = careerWins, CareerLosses = games - careerWins, Bids = bids, Titles = titles,
+            BidsHere = Math.Min(bids, (int)Math.Round(seasons * bidShare)), TitlesHere = titles,
             // Some arrive on the hot seat: up to two poor seasons already behind them (not in their first two seasons).
             PoorRun = seasons >= 2 ? (int)((h >> 40) % 3) : 0,
         };

@@ -12,7 +12,7 @@ namespace Hardwood.Core.Season;
 /// <see cref="FromProgramId"/> is where the new coach came from when another program's coach was hired away.
 /// </summary>
 public sealed record CarouselMove(int Year, int ProgramId, string Program, string Out, string In, string Why, string Record = "",
-                                  int? FromProgramId = null, int? ToProgramId = null, bool OpenToYou = false);
+                                  int? FromProgramId = null, int? ToProgramId = null, bool OpenToYou = false, string? FromStaffOf = null);
 
 /// <summary>
 /// CS9, the coaching carousel (run 191; `claude/college-depth-plan.md`): college jobs open and close each spring with reasons.
@@ -150,8 +150,8 @@ public sealed partial class GameSession
             {
                 var (w, l) = record[t.Id];
                 b.Seasons++; b.Wins += w; b.Losses += l; b.CareerWins += w; b.CareerLosses += l;
-                if (cw.Season.Seeds.ContainsKey(t.Id)) b.Bids++;
-                if (cw.Season.ChampionId == t.Id) b.Titles++;
+                if (cw.Season.Seeds.ContainsKey(t.Id)) { b.Bids++; b.BidsHere++; }
+                if (cw.Season.ChampionId == t.Id) { b.Titles++; b.TitlesHere++; }
                 b.PoorRun = poorRun.GetValueOrDefault(t.Id);
             }
         foreach (var t in cw.Programs)
@@ -162,17 +162,24 @@ public sealed partial class GameSession
         queue = queue.OrderByDescending(x => CarouselSize(x.T)).ToList();
         int poaches = 0;
         var benches = AllBenchNames();
+        var hall = new List<(Team Program, LegacyInductee Who)>();
+        TreeBranch? branch = null;
         for (int i = 0; i < queue.Count; i++)
         {
             var (t, why, to) = queue[i];
             string old = t.CoachName;
             var (w, l) = record[t.Id];
+            // Slice 10 (run 201): a coach who leaves a program after a long, winning spell joins its Hall of Fame.
+            if (cw.BenchOf(t.Id) is { Seasons: > 0 } gone && gone.Name == old
+                && cw.InductCoach(t.Id, old, League.Season - gone.Seasons + 1, League.Season, gone.Seasons, gone.Wins, gone.Losses, gone.BidsHere, gone.TitlesHere, year) is { } ind)
+                hall.Add((t, ind));
             // A new name: not the coach he replaces, and not one already on another bench (the name lists are short).
             // H203 (run 200): the name lists are long now, and a name already on any bench (college or pro) isn't used.
             string successor = Board.NewCoachName(rng, n => n == old || benches.Contains(n));
             bool open = Employed ? OpenWhileEmployed(t, successor) : OpenWhileOut(t, successor, old);
             int? from = null;
             BenchCoach? hiredFrom = null;
+            string? staffOf = null;
             if (!open)
             {
                 double prestige = CarouselSize(t);
@@ -189,12 +196,23 @@ public sealed partial class GameSession
                     int at = queue.FindIndex(i + 1, x => CarouselSize(x.T) < CarouselSize(q));
                     if (at < 0) queue.Add(entry); else queue.Insert(at, entry);
                 }
+                // Slice 10 (run 201): your coaching tree. No poach: the program may hire your assistant (a fixed hash, so no
+                // draw moves), at most one a spring.
+                if (from == null && branch == null && TreeHire(cw, t, year, benches) is { } asst)
+                {
+                    successor = asst.Name;
+                    staffOf = HumanTeam.FullName;
+                    HumanTeam.Staff.Remove(asst); asst.TeamId = null;
+                    branch = new TreeBranch { Name = asst.Name, Year = year, FromProgramId = HumanTeam.Id, FromProgram = HumanTeam.FullName, ProgramId = t.Id, Program = t.FullName };
+                    cw.MyCareer.Tree.Add(branch);
+                }
                 t.CoachName = successor;
                 benches.Add(successor);
                 cw.NewBench(t.Id, successor, hiredFrom);
             }
-            moves.Add(new CarouselMove(year, t.Id, t.FullName, old, successor, why, $"{w}-{l}", from, to, open));
+            moves.Add(new CarouselMove(year, t.Id, t.FullName, old, successor, why, $"{w}-{l}", from, to, open, staffOf));
         }
+        PostCoachingLegacy(cw, hall, branch);
         if (moves.Count == 0) return;
         Carousel.RemoveAll(m => m.Year == year);
         Carousel.InsertRange(0, moves);
@@ -269,6 +287,7 @@ public sealed partial class GameSession
             && now.CoachName != "Interim coach" ? now.CoachName : m.In;
         string came = stillOpen ? "the job is open (interim coach)"
             : m.FromProgramId is { } f && FindTeam(f) is { } ft ? $"hired {hired} from {ft.FullName}"
+            : m.FromStaffOf is { } sf ? $"hired {hired}, an assistant at {sf}"
             : $"promoted {hired}";
         return $"{prog}: {left}; {came}";
     }

@@ -142,6 +142,15 @@ public sealed partial class BoardViewModel : PageViewModel
     public ObservableCollection<CarouselRow> RivalCoachRows { get; } = new();
     [ObservableProperty] private bool _hasRivalCoaches;
     [ObservableProperty] private string _rivalCoachesNote = "";
+    /// <summary>Slice 10 (run 201): your college coaching career: the record, your seasons, milestones and coaching tree.</summary>
+    [ObservableProperty] private bool _hasMyCareer;
+    [ObservableProperty] private string _myCareerHeadline = "";
+    [ObservableProperty] private string _myCareerNote = "";
+    public ObservableCollection<string> MyCareerSeasons { get; } = new();
+    public ObservableCollection<string> MyCareerMilestones { get; } = new();
+    public ObservableCollection<string> MyCareerTree { get; } = new();
+    [ObservableProperty] private bool _hasMyMilestones;
+    [ObservableProperty] private bool _hasMyTree;
     [CommunityToolkit.Mvvm.Input.RelayCommand] private void ToggleCarousel() { CarouselAll = !CarouselAll; RefreshCarousel(); }
 
     // Item M (#281): facilities.
@@ -357,6 +366,7 @@ public sealed partial class BoardViewModel : PageViewModel
         HasVacancies = Vacancies.Count > 0;
         RefreshCarousel();
         RefreshRivalCoaches();
+        RefreshMyCareer();
         RefreshPlan();
         ShowJobs = !s.Employed || HasVacancies;
         JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
@@ -547,6 +557,47 @@ public sealed partial class BoardViewModel : PageViewModel
         HasRivalCoaches = RivalCoachRows.Count > 0;
         RivalCoachesNote = "The men on the other benches: your rivals first, then your conference by reputation. A coach's style is how he wins "
             + "and how he recruits; his quotes follow your rivalry games, and he's named when he beats you to a recruit.";
+    }
+
+    /// <summary>Slice 10 (run 201): your college career as the coaching book keeps it (read-only: nothing here writes the book).</summary>
+    private void RefreshMyCareer()
+    {
+        var s = Session;
+        MyCareerSeasons.Clear(); MyCareerMilestones.Clear(); MyCareerTree.Clear();
+        var cw = s.World.College;
+        var book = s.MyCoachBook;
+        bool live = s.Employed && s.InCollege && cw != null;
+        HasMyCareer = cw != null && (live || book.Seasons.Count > 0);
+        HasMyMilestones = HasMyTree = false;
+        if (!HasMyCareer) return;
+        int w = book.Wins, l = book.Losses, n = book.Seasons.Count;
+        string Plural(int k, string one, string many) => k == 1 ? $"1 {one}" : $"{k} {many}";
+        MyCareerHeadline = n == 0 ? $"{s.Coach.Name}: your first college season is under way."
+            : $"{s.Coach.Name}: {w}-{l} ({(w / (double)Math.Max(1, w + l)):.000}) in {Plural(n, "season", "seasons")}"
+              + $" · {Plural(book.Bids, "NCAA bid", "NCAA bids")}" + (book.FinalFours > 0 ? $" · {Plural(book.FinalFours, "Final Four", "Final Fours")}" : "")
+              + (book.Titles > 0 ? $" · {Plural(book.Titles, "national title", "national titles")}" : "");
+        if (live && !book.Seasons.Any(x => x.Year == s.League.Season))
+        {
+            var rec = s.MyRecord;
+            MyCareerSeasons.Add($"{Hardwood.Core.College.CollegeAwards.SeasonText(s.League.Season)} · {s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses} so far");
+        }
+        foreach (var x in book.Seasons.OrderByDescending(x => x.Year))
+            MyCareerSeasons.Add($"{Hardwood.Core.College.CollegeAwards.SeasonText(x.Year)} · {x.Program} · {x.Wins}-{x.Losses}"
+                + (x.Seed > 0 ? $" · {x.Seed} seed, {Hardwood.Core.College.CollegeAwardsText.Reached(x.Reached)}" : ""));
+        foreach (var m in book.Milestones.OrderByDescending(m => m.Date).Take(8))
+            MyCareerMilestones.Add($"{m.Date:MMM d, yyyy} · {m.Text}");
+        foreach (var b in book.Tree)
+        {
+            var now = cw!.BenchNamed(b.Name);
+            MyCareerTree.Add(now != null && cw.Program(now.ProgramId) is { } t
+                ? $"{b.Name}: head coach at {t.FullName}, {now.SeasonText} ({now.Record}; reputation {cw.ReputationOf(now)}). From your staff, spring {b.Year}."
+                : $"{b.Name}: left your staff for {b.Program} in spring {b.Year}; no longer a head coach.");
+        }
+        HasMyMilestones = MyCareerMilestones.Count > 0;
+        HasMyTree = MyCareerTree.Count > 0;
+        MyCareerNote = "Your college seasons count the day the athletic director reviews them. Milestones are told once, in your inbox and the news. "
+            + "An assistant of yours (coaching 11+) may take a head job after you've had two seasons together; a coach who leaves a program after "
+            + $"{Hardwood.Core.College.CoachingLegacy.HallSeasons}+ winning seasons, or a title, joins its Hall of Fame. You too.";
     }
 
     private static string UpperFirst(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
