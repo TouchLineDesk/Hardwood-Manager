@@ -622,7 +622,6 @@ public sealed partial class CollegeWorld
             Prospects.Remove(p); Recruits.Remove(p.Id);
         }
         FillLateSignings(on, gen, rng);
-        EnsureOrigins(); // the late signings, and the graduates' origins dropped
         // A new class of 14-year-olds; every class is re-ranked as the services learn more.
         Prospects.AddRange(NewClass(gen, rng, YoungestAge, on, cls + 4, ClassSize));
         for (int c = cls + 1; c <= cls + 4; c++) Rerank(c, on, rng);

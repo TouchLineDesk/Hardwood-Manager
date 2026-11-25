@@ -18,17 +18,19 @@ public sealed partial class GameSession
     {
         var book = c.Stories;
         // A summer story (the walk-on's scholarship) is told on the first day of the next season.
-        foreach (var s in book.Told.Where(s => !s.Posted && s.TeamId == HumanTeam.Id).ToList())
+        // Review (PR #271): one from a program you've since left is marked told without a message.
+        foreach (var s in book.Told.Where(s => !s.Posted).ToList())
         {
             s.Posted = true;
-            Post(s.Title, s.Text + StoryFooter, "Roster");
+            if (s.TeamId == HumanTeam.Id) Post(s.Title, s.Text + StoryFooter, "Roster");
         }
         if (!CoachingThisCollegeSeason || c.Season.Year != CollegeWorld.SchoolYear(Today)) return;
         var t = HumanTeam;
         var lines = t.Roster.Select(p => (p, st: c.Season.Stats.GetValueOrDefault(p.Id)))
                             .Where(x => x.st != null && x.st.TeamId == t.Id).ToList();
         if (lines.Count == 0) return;
-        int topScorer = lines.OrderByDescending(x => x.st!.Ppg).ThenBy(x => x.p.Id).First().p.Id;
+        // Review (PR #271): the leader is among players with enough games to count.
+        int topScorer = lines.Where(x => x.st!.G >= PlayerStories.MinGames).OrderByDescending(x => x.st!.Ppg).ThenBy(x => x.p.Id).FirstOrDefault().p?.Id ?? -1;
         var legacy = c.LegacyOf(t.Id);
         foreach (var (p, st) in lines.OrderBy(x => x.p.Id))
         {

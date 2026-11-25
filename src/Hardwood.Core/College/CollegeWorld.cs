@@ -609,6 +609,7 @@ public sealed partial class CollegeWorld
         int needed = Programs.Sum(t => RosterSize - t.Roster.Count);
         Recruit(NewCohort(gen, rng, YoungestAge, on, needed, int.MaxValue), rng);
         }
+        EnsureOrigins(); // slice 11 (run 202): the new class and late signings get origins, the graduates' are dropped (either model)
         if (grads.Count > 0)
         {
             var top = grads.OrderByDescending(p => p.CurrentAbility).Take(5).ToList();

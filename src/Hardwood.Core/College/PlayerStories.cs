@@ -128,9 +128,9 @@ public static class PlayerStories
         if (a.PlayerOfYearId == id) list.Add("National Player of the Year");
         int team = a.AllAmerica.FindIndex(x => x.Contains(id));
         if (team >= 0) list.Add($"All-America {CollegeAwardsText.TeamName(team)}");
-        foreach (var (key, pid) in a.ConferencePlayer)
+        foreach (var (key, pid) in a.ConferencePlayer.OrderBy(kv => kv.Key, StringComparer.Ordinal))
             if (pid == id) list.Add($"{confName(key)} Player of the Year");
-        foreach (var (key, five) in a.AllConference)
+        foreach (var (key, five) in a.AllConference.OrderBy(kv => kv.Key, StringComparer.Ordinal))
             if (five.Contains(id) && a.ConferencePlayer.GetValueOrDefault(key) != id) list.Add($"All-{confName(key)} first team");
         return list;
     }
