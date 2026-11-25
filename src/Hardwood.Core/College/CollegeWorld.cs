@@ -80,6 +80,9 @@ public sealed class CollegeSeason
     public List<int> PollRelease { get; set; } = new();
     /// <summary>Run 193: the NIT's 32 teams, best first (empty when the season had none, or before v0.181.0).</summary>
     public List<int> NitField { get; set; } = new();
+    /// <summary>K39 (run 204): March on the real weekdays (<see cref="MarchCalendar"/>). False for a season started before
+    /// v0.192.0, which keeps its fixed day numbers.</summary>
+    public bool Weekdays { get; set; }
 }
 
 public sealed record CollegeChampion(int Year, int ChampionId, string Champion, int RunnerUpId, string RunnerUp);
@@ -672,7 +675,7 @@ public sealed partial class CollegeWorld
 
     public void StartSeason(int year, Rng rng)
     {
-        var s = new CollegeSeason { Year = year };
+        var s = new CollegeSeason { Year = year, Weekdays = true };
         foreach (var t in Programs)
             s.Elo[t.Id] = 1500 + (QuickSim.Strength(t) - 85) * 8 + (Prestige[t.Id] - 50) * 2;
         var ids = Programs.Select(t => t.Id).ToList();
@@ -1052,7 +1055,9 @@ public sealed partial class CollegeWorld
             var date = dateIndex < dates.Count ? dates[dateIndex] : current.Max(g => g.Date).AddDays(1);
             for (int i = 0; i < current.Count; i += 2)
             {
-                var ng = new CollegeGame { Date = date, HomeId = current[i].WinnerId!.Value, AwayId = current[i + 1].WinnerId!.Value, Stage = current[i].Stage, Event = name, Round = next, Slot = i / 2 };
+                // K39 (run 204): March Madness's early rounds are split over two days, half the bracket each.
+                var day = name == Madness && MarchCalendar.SplitRound(next, s.Weekdays) ? MarchCalendar.SecondDay(date, i / 2, current.Count / 2) : date;
+                var ng = new CollegeGame { Date = day, HomeId = current[i].WinnerId!.Value, AwayId = current[i + 1].WinnerId!.Value, Stage = current[i].Stage, Event = name, Round = next, Slot = i / 2 };
                 if (name == Nit) NitHost(ng);
                 s.Games.Add(ng);
             }
@@ -1089,7 +1094,7 @@ public sealed partial class CollegeWorld
         // Conference tournaments: the top eight of each conference, after the regular season.
         if (!s.Games.Any(g => g.Stage == "Conference tournament") && s.Games.Where(g => g.Stage == "Conference").All(g => g.Played) && s.Games.Any(g => g.Stage == "Conference"))
         {
-            var dates = new List<DateOnly> { new(s.Year + 1, 3, 10), new(s.Year + 1, 3, 11), new(s.Year + 1, 3, 12) };
+            var dates = MarchCalendar.ConferenceTournament(s.Year, s.Weekdays);
             foreach (var conf in Active)
             {
                 var table = ConferenceTable(conf.Key).Take(8).Select(r => r.TeamId).ToList();
@@ -1260,6 +1265,11 @@ public sealed partial class CollegeWorld
         if (name.EndsWith("tournament")) News.Add(($"{w.FullName} win the {name}", $"{w.FullName} take the {name} and the automatic bid to March Madness."));
     }
 
+    /// <summary>K39 (run 204): a First Four game is on the Tuesday when its winner plays on Thursday (the bracket's top half),
+    /// and on the Wednesday when he plays on Friday. One day in a season started before v0.192.0.</summary>
+    private static DateOnly FirstFourDay(CollegeSeason s, List<DateOnly> dates, int slot) =>
+        s.Weekdays ? MarchCalendar.SecondDay(dates[0], slot, 64) : dates[0];
+
     /// <summary>Selection: one automatic bid per conference (its tournament champion) and the rest of the 68 at-large by rating; the bottom eight play the First Four.</summary>
     private void Select(Rng rng)
     {
@@ -1273,7 +1283,7 @@ public sealed partial class CollegeWorld
         // Seed lines 1-15: four teams each, snaked across four regions; line 16: the First Four winners.
         int[] order = { 1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15 };
         int y = s.Year + 1;
-        var dates = new List<DateOnly> { new(y, 3, 17), new(y, 3, 19), new(y, 3, 21), new(y, 3, 26), new(y, 3, 28), new(y, 4, 4), new(y, 4, 6) };
+        var dates = MarchCalendar.Madness(s.Year, s.Weekdays);
         s.RoundDates[Madness] = dates;
         // Seed lines from the projection, best first; a line of six (the real First Four, #305) puts its two direct teams
         // in the regions the snake gives them and its two First Four games in the other two.
@@ -1296,7 +1306,7 @@ public sealed partial class CollegeWorld
                 foreach (int seed in order) s.Bracket.Add(seed == 16 ? 0 : regions[r][seed - 1]);
             var slots = Enumerable.Range(0, 64).Where(i => s.Bracket[i] == 0).ToList();
             for (int i = 0; i < 4; i++)
-                s.Games.Add(new CollegeGame { Date = dates[0], HomeId = firstFour[i * 2], AwayId = firstFour[i * 2 + 1], Stage = Madness, Event = Madness, Round = 0, Slot = slots[i] });
+                s.Games.Add(new CollegeGame { Date = FirstFourDay(s, dates, slots[i]), HomeId = firstFour[i * 2], AwayId = firstFour[i * 2 + 1], Stage = Madness, Event = Madness, Round = 0, Slot = slots[i] });
         }
         else
         {
@@ -1320,7 +1330,7 @@ public sealed partial class CollegeWorld
             for (int r = 0; r < 4; r++)
                 foreach (int seed in order) s.Bracket.Add(grid[r, seed - 1]);
             foreach (var (a, b, r, seed) in playIns.OrderBy(x => x.Seed))
-                s.Games.Add(new CollegeGame { Date = dates[0], HomeId = a, AwayId = b, Stage = Madness, Event = Madness, Round = 0, Slot = r * 16 + Array.IndexOf(order, seed) });
+                s.Games.Add(new CollegeGame { Date = FirstFourDay(s, dates, r * 16 + Array.IndexOf(order, seed)), HomeId = a, AwayId = b, Stage = Madness, Event = Madness, Round = 0, Slot = r * 16 + Array.IndexOf(order, seed) });
         }
         s.Selected = true;
         var ones = field.Take(4).Select(i => Program(i)!.FullName);

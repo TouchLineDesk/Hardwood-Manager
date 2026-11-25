@@ -25,8 +25,9 @@ public sealed partial class GameSession
     /// <summary>Other programs' court storms reach your digest only when the visitor was ranked this high or better.</summary>
     public const int StormRankNational = 5;
 
-    /// <summary>The day the conference tournaments begin (<see cref="CollegeWorld"/> schedules them March 10-12).</summary>
-    public static DateOnly ConferenceTournamentDay(int seasonYear) => new(seasonYear + 1, 3, 10);
+    /// <summary>The day the conference tournaments begin: the Friday before Selection Sunday (K39, run 204; March 10 in a
+    /// season started before v0.192.0).</summary>
+    public static DateOnly ConferenceTournamentDay(int seasonYear, bool weekdays = true) => MarchCalendar.ConferenceTournament(seasonYear, weekdays)[0];
 
     /// <summary>The first Friday on or after October 10 of a season's year: Midnight Madness.</summary>
     public static DateOnly MidnightMadnessDay(int seasonYear)
@@ -140,7 +141,7 @@ public sealed partial class GameSession
 
     private void ChampionshipWeek(CollegeWorld c)
     {
-        var start = ConferenceTournamentDay(c.Season.Year);
+        var start = ConferenceTournamentDay(c.Season.Year, c.Season.Weekdays);
         if (Today != start.AddDays(-1)) return;
         var conf = MyConference;
         if (conf == null) return;

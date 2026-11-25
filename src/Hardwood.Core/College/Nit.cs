@@ -92,11 +92,7 @@ public sealed partial class CollegeWorld
     // The NIT
 
     /// <summary>The NIT's dates: the first round (two days), the second round, the quarter-finals, the semi-finals and the final.</summary>
-    public static List<DateOnly> NitDates(int seasonYear)
-    {
-        int y = seasonYear + 1;
-        return new List<DateOnly> { new(y, 3, 18), new(y, 3, 22), new(y, 3, 25), new(y, 4, 1), new(y, 4, 3) };
-    }
+    public static List<DateOnly> NitDates(int seasonYear, bool weekdays = true) => MarchCalendar.Nit(seasonYear, weekdays);
 
     /// <summary>"First round", "Second round", "Quarter-finals", "Semi-finals", "Final".</summary>
     public static string NitRoundName(int round) => round switch
@@ -119,7 +115,7 @@ public sealed partial class CollegeWorld
         var pool = Programs.Select(t => t.Id).Where(id => !p.In(id)).OrderByDescending(Winning).ThenBy(id => net[id]).Take(NitSize).ToList();
         if (pool.Count < NitSize) return;
         s.NitField = pool;
-        var dates = NitDates(s.Year);
+        var dates = NitDates(s.Year, s.Weekdays);
         var bracket = Seeded(pool);
         s.RoundDates[Nit] = dates;
         // The first round over two days (the top half first), the better seed at home.
