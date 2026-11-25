@@ -58,6 +58,16 @@ public sealed class AcademicRow
     public required IRelayCommand Toggle { get; init; }
 }
 
+/// <summary>CS9 (run 191): one change on the college coaching carousel.</summary>
+public sealed class CarouselRow
+{
+    public required Team Team { get; init; }
+    public string Name => Team.FullName;
+    public string Detail { get; init; } = "";
+    public string Tag { get; init; } = "";
+    public bool HasTag => Tag.Length > 0;
+}
+
 /// <summary>Item M (#281): a project the front office proposes.</summary>
 public sealed class ProposalRow
 {
@@ -117,6 +127,18 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private string _jobHistory = "";
 
     public ObservableCollection<VacancyRow> Vacancies { get; } = new();
+
+    // CS9 (run 191): the college coaching carousel, the newest spring.
+    public ObservableCollection<CarouselRow> CarouselRows { get; } = new();
+    [ObservableProperty] private bool _hasCarousel;
+    [ObservableProperty] private string _carouselTitle = "";
+    [ObservableProperty] private string _carouselNote = "";
+    [ObservableProperty] private bool _hasCarouselMore;
+    [ObservableProperty] private bool _carouselAll;
+    [ObservableProperty] private string _carouselToggle = "";
+    /// <summary>The carousel panel shows 10 changes until you ask for all.</summary>
+    public const int CarouselShown = 10;
+    [CommunityToolkit.Mvvm.Input.RelayCommand] private void ToggleCarousel() { CarouselAll = !CarouselAll; RefreshCarousel(); }
 
     // Item M (#281): facilities.
     [ObservableProperty] private bool _hasFacilities;
@@ -329,6 +351,7 @@ public sealed partial class BoardViewModel : PageViewModel
             });
         }
         HasVacancies = Vacancies.Count > 0;
+        RefreshCarousel();
         ShowJobs = !s.Employed || HasVacancies;
         JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
         JobsNote = s.Employed
@@ -369,6 +392,45 @@ public sealed partial class BoardViewModel : PageViewModel
     [RelayCommand] private void BuildArena() { ProgramStatus = Session.BuildProgramFacility(Hardwood.Core.Model.FacilityKind.Arena); Refresh(); }
 
     private static string Cap(string w) => w.Length == 0 ? w : char.ToUpperInvariant(w[0]) + w[1..];
+
+    /// <summary>CS9 (run 191): the newest spring's coaching changes. In college your conference and your rivals come first,
+    /// then the biggest jobs; each row says who left, why, and who came in.</summary>
+    private void RefreshCarousel()
+    {
+        var s = Session;
+        CarouselRows.Clear();
+        var spring = s.LatestCarousel;
+        HasCarousel = s.World.College != null && spring.Count > 0;
+        if (!HasCarousel) return;
+        var cw = s.World.College!;
+        bool mine = s.Employed && s.InCollege;
+        string? conf = mine ? cw.ConferenceOf[s.HumanTeam.Id] : null;
+        var rivals = mine ? cw.RivalsOf(s.HumanTeam.Id).Select(r => r.RivalId).ToHashSet() : new HashSet<int>();
+        bool Ours(Hardwood.Core.Season.CarouselMove m) => rivals.Contains(m.ProgramId) || (conf != null && cw.ConferenceOf.GetValueOrDefault(m.ProgramId) == conf);
+        var ordered = spring.Where(m => s.FindTeam(m.ProgramId) != null)
+            .OrderByDescending(m => m.Why == "you" || (mine && m.ProgramId == s.HumanTeam.Id))
+            .ThenByDescending(Ours)
+            .ThenByDescending(m => s.CarouselSize(s.FindTeam(m.ProgramId)!)).ToList();
+        foreach (var m in CarouselAll ? ordered : ordered.Take(CarouselShown))
+        {
+            var t = s.FindTeam(m.ProgramId)!;
+            string line = s.CarouselLine(m);
+            string detail = line.StartsWith(t.FullName + ": ") ? line[(t.FullName.Length + 2)..] : line;
+            CarouselRows.Add(new CarouselRow
+            {
+                Team = t, Detail = UpperFirst(detail),
+                Tag = rivals.Contains(m.ProgramId) ? "Rival" : Ours(m) ? Hardwood.Core.College.CollegeWorld.Conferences.First(c => c.Key == conf).Short : "",
+            });
+        }
+        int fired = spring.Count(m => m.Why is "fired" or "you"), retired = spring.Count(m => m.Why == "retired"), left = spring.Count(m => m.Why == "left");
+        CarouselTitle = $"The coaching carousel, spring {spring[0].Year}";
+        CarouselNote = $"{spring.Count} programs changed head coach: {fired} let go, {retired} retired, {left} hired away by bigger jobs."
+            + (mine ? " Your conference and your rivals first, then the biggest jobs." : " The biggest jobs first.");
+        HasCarouselMore = ordered.Count > CarouselShown;
+        CarouselToggle = CarouselAll ? "Show fewer" : $"Show all {ordered.Count}";
+    }
+
+    private static string UpperFirst(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
     private void RefreshProgram()
     {

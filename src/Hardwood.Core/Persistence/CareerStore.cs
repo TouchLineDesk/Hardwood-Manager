@@ -29,6 +29,7 @@ public static class CareerStore
         Put("digest", SaveFile.ToJson(new DigestState(s.WorldDigest, s.LastDigest, s.WeekResults, s.WeekKnocks, s.WeekRecruiting)));
         Put("inbox", SaveFile.ToJson(s.InboxSettings));
         Put("head_to_head", SaveFile.ToJson(s.HeadToHeadBook));
+        Put("carousel", SaveFile.ToJson(s.Carousel)); // CS9 (run 191); missing before v0.179.0
         if (s.NamePackApplied is { } pack) Put("name_pack", pack);
         // Bugs #18 and #19 (run 55): the box scores of your college games and your games below the NBA lived only in the
         // session, so after a reload their schedule rows had a score and no box. They are kept here now (at most 200 each).
@@ -74,6 +75,8 @@ public static class CareerStore
         s.NamePackApplied = Get("name_pack");
         // #529: a save from before v0.79.0 has no book; it starts counting from this season.
         s.HeadToHeadBook = Get("head_to_head") is { } hj && SaveFile.FromJson<HeadToHeadBook>(hj) is { } book ? book : new HeadToHeadBook();
+        s.Carousel.Clear();
+        if (Get("carousel") is { } carj && SaveFile.FromJson<List<CarouselMove>>(carj) is { } car) s.Carousel.AddRange(car); // CS9 (run 191)
         s.InboxSettings = Get("inbox") is { } ij && SaveFile.FromJson<InboxSettings>(ij) is { } inbox ? inbox : new InboxSettings();
         if (Get("side_boxes") is { } sb && SaveFile.FromJson<List<SideBox>>(sb) is { } sides)
         {

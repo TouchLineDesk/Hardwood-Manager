@@ -1091,6 +1091,7 @@ public sealed partial class GameSession
         HumanTeam = team;
         team.Coach = Coach;
         team.CoachName = Coach.Name;
+        CarouselFilled(team.Id, Coach.Name); // CS9: a carousel opening you took
         Job.Employed = true;
         SyncAcademics(); // CS7 part 2c review: only the program you coach keeps academics
         Job.Confidence = 70;
