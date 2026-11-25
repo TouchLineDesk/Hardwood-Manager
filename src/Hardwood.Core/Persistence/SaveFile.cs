@@ -427,7 +427,7 @@ public sealed class SaveFile
         }
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = "SELECT id, first_name, last_name, birth_date, role, coaching, development, fitness, medical, scouting, reputation, team_id, salary, years FROM staff";
+            cmd.CommandText = "SELECT id, first_name, last_name, birth_date, role, coaching, development, fitness, medical, scouting, reputation, team_id, salary, years FROM staff ORDER BY id";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {

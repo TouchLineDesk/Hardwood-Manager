@@ -114,6 +114,16 @@ public sealed partial class GameSession
         }
         TeamsById(League.Teams);
         foreach (var c in World.Competitions) TeamsById(c.Clubs);
+        // Staff too (run 198's review): a load reads them by id, while hires and releases join the end of the live lists,
+        // and the summer's staff step draws for each in list order and breaks ties by it.
+        static void StaffById(List<Staff> list)
+        {
+            for (int i = 1; i < list.Count; i++)
+                if (list[i - 1].Id > list[i].Id) { list.Sort((a, b) => a.Id.CompareTo(b.Id)); return; }
+        }
+        StaffById(League.FreeStaff);
+        foreach (var t in League.Teams.Concat(World.Clubs)) StaffById(t.Staff);
+        if (World.College is { } college) foreach (var t in college.Programs) StaffById(t.Staff);
         foreach (var t in World.Clubs) ById(t.Roster);
         if (World.College is { } cw)
         {

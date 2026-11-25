@@ -32,6 +32,10 @@ public class Run198ReloadRolloverTests
             sb.Append($"T{t.Id} ").Append(string.Join(",", t.Roster.Select(p => $"{p.Id}:{p.CurrentAbility}:{p.PotentialAbility}"))).Append('\n');
         foreach (var t in s.World.Clubs)
             sb.Append($"C{t.Id} ").Append(string.Join(",", t.Roster.Select(p => $"{p.Id}:{p.CurrentAbility}"))).Append('\n');
+        // Staff in list order (run 198's review): the summer's staff step draws in that order.
+        sb.Append("freestaff ").Append(string.Join(",", s.League.FreeStaff.Select(x => x.Id))).Append('\n');
+        foreach (var t in s.League.Teams.Concat(s.World.Clubs).Where(t => t.Staff.Count > 0))
+            sb.Append($"S{t.Id} ").Append(string.Join(",", t.Staff.Select(x => x.Id))).Append('\n');
         return sb.ToString();
     }
 
@@ -68,6 +72,10 @@ public class Run198ReloadRolloverTests
             // After a save the clubs abroad are in the order a load reads them.
             foreach (var comp in a.World.Competitions)
                 Assert.True(comp.Clubs.Select(t => t.Id).SequenceEqual(comp.Clubs.Select(t => t.Id).Order()), $"{comp.Key}'s clubs out of id order after a save");
+            Assert.True(a.League.Teams.Select(t => t.Id).SequenceEqual(a.League.Teams.Select(t => t.Id).Order()), "the NBA's teams out of id order after a save");
+            foreach (var t in a.League.Teams.Concat(a.World.Clubs).Prepend(a.HumanTeam))
+                Assert.True(t.Staff.Select(x => x.Id).SequenceEqual(t.Staff.Select(x => x.Id).Order()), $"{t.FullName}'s staff out of id order after a save");
+            Assert.True(a.League.FreeStaff.Select(x => x.Id).SequenceEqual(a.League.FreeStaff.Select(x => x.Id).Order()), "free staff out of id order after a save");
             SqliteConnection.ClearAllPools();
             var copy = Path.Combine(dir, "reload.hwsave");
             File.Copy(path, copy, true);
