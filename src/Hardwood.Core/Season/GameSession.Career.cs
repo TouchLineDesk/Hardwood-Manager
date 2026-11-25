@@ -337,8 +337,9 @@ public sealed partial class GameSession
         string successor = Board.NewCoachName(CareerRng(6));
         ReleaseClub(successor);
         // CS9: leaving a college program puts it on this spring's carousel.
-        if (IsCollegeProgram(club) && Carousel.Count > 0 && Carousel[0].Year == Today.Year)
-            Carousel.Insert(0, new CarouselMove(Today.Year, club.Id, club.FullName, Coach.Name, successor, "left", "", ToProgramId: team.Id));
+        // Only in the summer: a move in the autumn belongs to next spring's carousel, not this one (review of PR #260).
+        if (IsCollegeProgram(club) && Phase == SessionPhase.Offseason && Carousel.Count > 0 && Carousel[0].Year == Today.Year)
+            Carousel.Insert(0, new CarouselMove(Today.Year, club.Id, club.FullName, Coach.Name, successor, "you", "", ToProgramId: team.Id));
         PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left {club.TheFullName} for {team.TheFullName}; {successor} takes over.", college: IsCollegeProgram(club));
     }
 }

@@ -1099,13 +1099,13 @@ public static class Board
     public static double HireChance(Coach coach, League league, Team team) => HireChance(coach, LeagueContext.Nabl(league), team);
     public static double HireChance(Coach coach, LeagueContext ctx, Team team) => 1 / (1 + Math.Exp(-(coach.Reputation - Prestige(ctx, team) + 8) / 7));
 
+    /// <summary>CS9 (run 191): a college coach who met his win target is let go only rarely (an AD's change of direction).</summary>
+    public const double CollegeBaseSackChance = 0.015;
+
     /// <summary>
     /// The coaching carousel for computer-run teams at the end of a season: owners who expected more may fire their
     /// coach (impatient owners more readily). Returns the teams that changed coach.
     /// </summary>
-    /// <summary>CS9 (run 191): a college coach who met his win target is let go only rarely (an AD's change of direction).</summary>
-    public const double CollegeBaseSackChance = 0.015;
-
     public static List<Team> AiSeasonChanges(League league, Standings standings, Rng rng, int? humanTeamId) =>
         AiSeasonChanges(LeagueContext.Nabl(league), t => standings[t].Wins, rng, humanTeamId, league.Season);
 

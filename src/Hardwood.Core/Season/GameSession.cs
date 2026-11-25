@@ -854,13 +854,14 @@ public sealed partial class GameSession
                 Post("Relegated on a tiebreak", tie + " The last club in each division goes down at the end of the summer; clubs level on record are split by point difference.", "Board");
             if (InNabl && UsaPyramid.PromotionSeriesOf(World, HumanTeam.Id) is { Complete: true } ps && ps.LoserId == HumanTeam.Id && FindTeam(ps.WinnerId!.Value) is { } beat)
                 Post("Relegated", $"{beat.FullName} beat you {ps.Score} in the promotion playoff. You go down to {World[UsaPyramid.Tier2].Profile.Name} at the end of the summer.", "Board");
-            if (sacked) Fire();
+            if (sacked) { Fire(); _sackedAtReview = true; }
             else if (!hiredForNext) overachieved = Job.Current is { } e && Overachieved(e, achieved, rec.Wins, rec.Losses, ContextOf(HumanTeam), GoingDown(), GoingUp());
         }
         foreach (var t in Jobs.Board.AiSeasonChanges(League, Standings, _rng, ControlledTeamId)) CoachLeaves(t, "parted ways with");
         WorldCoachingChanges();
         // The career path (#651): college programs change coaches too, then bigger clubs may come for you.
         CollegeCoachingChanges();
+        _sackedAtReview = false;
         CareerApproaches(overachieved);
     }
 

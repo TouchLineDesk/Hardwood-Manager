@@ -6,7 +6,8 @@ namespace Hardwood.Core.Season;
 
 /// <summary>
 /// One change on the college coaching carousel (CS9, run 191): who left a program, why, and who came in.
-/// <see cref="Why"/> is "fired", "retired", "left" (for a bigger job, <see cref="ToProgramId"/>) or "you" (you left or were let go).
+/// <see cref="Why"/> is "fired", "retired", "left" (for a bigger job, <see cref="ToProgramId"/>) or "you" (let go at the review,
+/// or, with <see cref="ToProgramId"/>, you left for that job in the summer; a resignation isn't listed).
 /// <see cref="FromProgramId"/> is where the new coach came from when another program's coach was hired away.
 /// </summary>
 public sealed record CarouselMove(int Year, int ProgramId, string Program, string Out, string In, string Why, string Record = "",
@@ -25,6 +26,9 @@ public sealed partial class GameSession
 {
     /// <summary>The college coaching carousel, newest spring first (four springs kept).</summary>
     public List<CarouselMove> Carousel { get; } = new();
+
+    /// <summary>Set while the season-end review that just sacked you runs the carousel (so a mid-season sacking isn't listed as one).</summary>
+    private bool _sackedAtReview;
 
     /// <summary>A computer coach's chance to retire in a spring (about 4 of 365 a year).</summary>
     public const double CarouselRetireChance = 0.012;
@@ -62,18 +66,21 @@ public sealed partial class GameSession
         var moves = new List<CarouselMove>();
         var queue = new List<(Team T, string Why, int? To)>();
         var changed = new HashSet<int>();
-        foreach (var t in Board.AiSeasonChanges(ctx, t => record[t.Id].wins, rng, ControlledTeamId, League.Season, Board.CollegeBaseSackChance))
-        { queue.Add((t, "fired", null)); changed.Add(t.Id); }
-        foreach (var t in cw.Programs)
-            if (t.Id != ControlledTeamId && !changed.Contains(t.Id) && t.CoachName != "Interim coach" && rng.Chance(CarouselRetireChance))
-            { queue.Add((t, "retired", null)); changed.Add(t.Id); }
-        // You, let go at the review (Fire ran before this): your old program is on the carousel too.
-        if (!Employed && Coach.History.LastOrDefault() is { Ended: "Sacked" } last && last.ToSeason == League.Season
-            && cw.Program(last.TeamId) is { } mine)
+        // You, let go at this review (Fire ran just before): your old program is on the carousel, and its new coach isn't
+        // judged on your season (the review of PR #260).
+        Team? mine = null;
+        if (_sackedAtReview && !Employed && Coach.History.LastOrDefault() is { Ended: "Sacked" } last && cw.Program(last.TeamId) is { } m0)
         {
+            mine = m0;
             moves.Add(new CarouselMove(year, mine.Id, mine.FullName, Coach.Name, mine.CoachName, "you", $"{last.Wins}-{last.Losses}"));
             changed.Add(mine.Id);
         }
+        int? exclude = ControlledTeamId ?? mine?.Id;
+        foreach (var t in Board.AiSeasonChanges(ctx, t => record[t.Id].wins, rng, exclude, League.Season, Board.CollegeBaseSackChance))
+        { queue.Add((t, "fired", null)); changed.Add(t.Id); }
+        foreach (var t in cw.Programs)
+            if (t.Id != exclude && !changed.Contains(t.Id) && t.CoachName != "Interim coach" && rng.Chance(CarouselRetireChance))
+            { queue.Add((t, "retired", null)); changed.Add(t.Id); }
 
         // The biggest jobs move first, so a chain runs downhill.
         queue = queue.OrderByDescending(x => CarouselSize(x.T)).ToList();
@@ -138,7 +145,7 @@ public sealed partial class GameSession
         bool mineCollege = Employed && InCollege;
         string? myConf = mineCollege ? cw.ConferenceOf[HumanTeam.Id] : null;
         var rivals = mineCollege ? cw.RivalsOf(HumanTeam.Id).Select(r => r.RivalId).ToHashSet() : new HashSet<int>();
-        var shown = moves.Where(m => m.Why != "you" || !mineCollege).ToList();
+        var shown = moves;
         var lines = new List<string>();
         var ours = shown.Where(m => rivals.Contains(m.ProgramId) || (myConf != null && cw.ConferenceOf.GetValueOrDefault(m.ProgramId) == myConf)).ToList();
         var big = shown.Except(ours).OrderByDescending(m => FindTeam(m.ProgramId) is { } t ? CarouselSize(t) : 0).Take(Math.Max(3, 8 - ours.Count)).ToList();
@@ -155,7 +162,7 @@ public sealed partial class GameSession
         if (rest > 0) lines.Add($"• and {rest} more on the Board page");
         int hired = moves.Count(m => m.FromProgramId != null);
         string title = $"The coaching carousel: {moves.Count} programs change coach";
-        string body = $"{moves.Count} college programs changed head coach this spring: {moves.Count(m => m.Why == "fired")} let go, "
+        string body = $"{moves.Count} college programs changed head coach this spring: {moves.Count(m => m.Why is "fired" or "you")} let go, "
             + $"{moves.Count(m => m.Why == "retired")} retired" + (hired > 0 ? $", and {hired} hired another program's coach" : "") + ".\n\n"
             + string.Join("\n", lines)
             + (moves.Any(m => m.OpenToYou) ? "\n\nThe jobs still open to you are on the Board page." : "");
@@ -172,22 +179,27 @@ public sealed partial class GameSession
             "fired" => $"{m.Out} let go after {m.Record}",
             "retired" => $"{m.Out} retired",
             "left" => $"{m.Out} left for {(m.ToProgramId is { } to && FindTeam(to) is { } tt ? tt.FullName : "a bigger job")}",
+            "you" when m.ToProgramId is { } yt => $"{m.Out} (you) left for {FindTeam(yt)?.FullName ?? "a bigger job"}",
             "you" => $"{m.Out} (you) let go after {m.Record}",
             _ => $"{m.Out} left",
         };
         bool stillOpen = m.OpenToYou && LiveVacancies.Any(v => v.TeamId == m.ProgramId);
+        // An opening that was offered to you and filled without you: the program's coach now (the market draws its own hire;
+        // the review of PR #260). Only for the newest spring, before anyone else can have moved on.
+        string hired = m.OpenToYou && !stillOpen && Carousel.Count > 0 && m.Year == Carousel[0].Year && FindTeam(m.ProgramId) is { } now
+            && now.CoachName != "Interim coach" ? now.CoachName : m.In;
         string came = stillOpen ? "the job is open (interim coach)"
-            : m.FromProgramId is { } f && FindTeam(f) is { } ft ? $"hired {m.In} from {ft.FullName}"
-            : $"promoted {m.In}";
+            : m.FromProgramId is { } f && FindTeam(f) is { } ft ? $"hired {hired} from {ft.FullName}"
+            : $"promoted {hired}";
         return $"{prog}: {left}; {came}";
     }
 
-    /// <summary>A carousel opening was filled after the spring (by you, or by the successor when you didn't take it).</summary>
+    /// <summary>A carousel opening you took this summer (an opening filled without you reads the program's coach, in <see cref="CarouselLine"/>).</summary>
     private void CarouselFilled(int programId, string coach)
     {
-        if (Carousel.Count == 0) return;
+        if (Carousel.Count == 0 || Phase != SessionPhase.Offseason && Phase != SessionPhase.Postseason) return;
         int year = Carousel[0].Year;
         int i = Carousel.FindIndex(m => m.ProgramId == programId && m.OpenToYou && m.Year == year);
-        if (i >= 0) Carousel[i] = Carousel[i] with { In = coach, OpenToYou = false, Why = Carousel[i].Why, FromProgramId = null };
+        if (i >= 0) Carousel[i] = Carousel[i] with { In = coach, OpenToYou = false, FromProgramId = null };
     }
 }
