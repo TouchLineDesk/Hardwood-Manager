@@ -71,8 +71,11 @@ public class Run133CollegeReviewTests
         while (s.Today < new DateOnly(2026, 12, 24) && guard++ < 200) s.AdvanceDay();
         var poll = c.Poll();
         _out.WriteLine(string.Join(", ", poll.Take(25).Select(e => $"{e.Rank} {e.Team.City} {e.Wins}-{e.Losses}")));
-        foreach (var a in poll.Where(e => e.Losses == 0 && e.Wins >= 8))
-            Assert.DoesNotContain(poll, b => b.Rank < a.Rank && b.Losses >= 3);
+        // K35 (run 193): the poll on show is Monday's, so a team's record can have moved since; the voters' rule holds in
+        // the running order they vote from (it was taken from that order on Monday).
+        var live = c.LivePollOrder().Select((tid, i) => (Rank: i + 1, Rec: c.Record(tid))).ToList();
+        foreach (var a in live.Where(e => e.Rec.losses == 0 && e.Rec.wins >= 8))
+            Assert.DoesNotContain(live, b => b.Rank < a.Rank && b.Rec.losses >= 3);
         Assert.InRange(c.PollPosition(id), 1, c.Programs.Count);
 
         // H130: the field's at-large teams all have winning records.
