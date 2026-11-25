@@ -78,6 +78,7 @@ public class CollegeSaveCompatibilityTests
         sb.Append("history ").Append(JsonSerializer.Serialize(cw.History)).Append('\n');
         sb.Append("allamerican ").Append(JsonSerializer.Serialize(cw.AllAmerican)).Append('\n'); // CS11 (run 195)
         sb.Append("captains ").Append(JsonSerializer.Serialize(cw.Captains)).Append(' ').Append(string.Join(",", s.HumanTeam.CaptainIds.OrderBy(x => x))).Append('\n'); // run 196
+        sb.Append("road ").Append(JsonSerializer.Serialize(cw.Road)).Append('\n'); // run 197
         sb.Append("books ").Append(JsonSerializer.Serialize(s.HumanTeam.Money.Program, new JsonSerializerOptions { IncludeFields = true })).Append('\n');
         var job = s.Job.Current!;
         sb.Append($"job {job.League} {job.TeamId} {job.Season} {job.Goal} {job.TargetWins} {F(Math.Round(s.Job.Confidence, 6))} {s.Job.History.Count}\n");
