@@ -43,7 +43,9 @@ public class Run186MarchShowTests
             var start = (StartViewModel)vm.CurrentPage!;
             start.SavePath = path; start.SeedText = "31";
             start.PlayLeague = "College basketball";
-            start.SelectedTeam = start.Teams.First(t => t.Team.City == "Duke");
+            // Run 194: Duke was a First Four team on seed 31 until the college zones and the press changed its coached season
+            // and it missed the field. The strongest program at the start is a safe tournament team on any engine.
+            start.SelectedTeam = start.Teams.OrderByDescending(t => Hardwood.Core.World.QuickSim.Strength(t.Team)).First();
             start.NewGame();
             var s = vm.Session!;
             s.Delegated.Recruiting = true;
@@ -67,8 +69,8 @@ public class Run186MarchShowTests
             CollegeGame? g = null;
             guard = 0;
             while ((g = cw.Season.Games.Where(x => !x.Played && x.Event == CollegeWorld.Madness && (x.HomeId == s.HumanTeam.Id || x.AwayId == s.HumanTeam.Id))
-                       .OrderBy(x => x.Date).FirstOrDefault()) == null && guard++ < 3) s.AdvanceDay();
-            Assert.True(g != null, $"{s.HumanTeam.FullName} should be in the field on seed 31 (the First Four)");
+                       .OrderBy(x => x.Date).FirstOrDefault()) == null && guard++ < 6) s.AdvanceDay(); // run 194: a top seed starts on Thu or Fri
+            Assert.True(g != null, $"{s.HumanTeam.FullName} should be in the field on seed 31");
             var home = s.FindTeam(g!.HomeId)!; var away = s.FindTeam(g.AwayId)!;
             var show = s.BuildStudioShow(home, away, g.Date);
             var open = show.Segments[0].Lines[0].Text;

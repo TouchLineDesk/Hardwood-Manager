@@ -67,6 +67,9 @@ public sealed record PossessionInput(int Index, ulong Seed, IReadOnlyList<PlayEv
     /// <summary>Defensive aggression, 0–100: higher closes the gaps (less sag off the ball).</summary>
     public int HomeAggression { get; init; } = 50;
     public int AwayAggression { get; init; } = 50;
+    /// <summary>Run 194: the side presses full court (college). The walk-up line says the press was beaten.</summary>
+    public bool HomePress { get; init; }
+    public bool AwayPress { get; init; }
     /// <summary>M3: three-point emphasis, 0–100. High spreads the floor four out; low brings the shooters in to attack.</summary>
     public int HomeThrees { get; init; } = 50;
     public int AwayThrees { get; init; } = 50;
@@ -479,6 +482,11 @@ public static class PossessionChoreographer
                 PossessionStart.PeriodStart => firstBall?.Period is 1 or null ? $"{offName} win the tip"
                     : firstBall.Period > input.Periods ? $"{offName} have the ball to start overtime"
                     : $"{offName} have the ball to start the {(input.Periods == 2 ? "second half" : PeriodWord(firstBall.Period))}",
+                // Run 194: against a full-court press the walk-up is the press beaten (or not: a steal follows in the events).
+                _ when (homeOff ? input.AwayPress : input.HomePress) => Vary(input.Index, $"{offName} get it in against the press, {N(players[handler])} with it",
+                    $"{N(players[handler])} breaks the pressure in the backcourt", $"{offName} handle the press. {ScoreLine(input, input.StartHomeScore, input.StartAwayScore)}",
+                    $"{N(players[defBase + (handler - offBase + 5) % 5])} picks {N(players[handler])} up full court",
+                    $"{N(players[handler])} beats {N(players[defBase + (handler - offBase + 5) % 5])} up the floor against the press"),
                 _ => Vary(input.Index, $"{N(players[handler])} brings it up for {offName}",
                     $"{N(players[handler])} walks it up. {ScoreLine(input, input.StartHomeScore, input.StartAwayScore)}",
                     $"{offName} in the half court, {N(players[handler])} with it"),

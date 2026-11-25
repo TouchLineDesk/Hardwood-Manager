@@ -18,7 +18,7 @@ public static class Tactics
     /// <summary>Run 194: how much a college scheme's fit counts, against the pros' <see cref="EngineConfig.SchemeFitLogit"/>. A
     /// college fit tracks talent (the best programs suit every scheme best), so at full weight it made the favourites'
     /// defence better still: `madness` on seed 2026 went to 5 v 12 79% and 1-seed titles 58% (from 69% and 46%).</summary>
-    public const double CollegeSchemeFitScale = 0.35;
+    public const double CollegeSchemeFitScale = 0.2;
 
     /// <summary>A zone of any kind (the 2-3, the 1-3-1, the match-up).</summary>
     public static bool IsZone(DefensiveScheme s) => s is DefensiveScheme.Zone23 or DefensiveScheme.Zone131 or DefensiveScheme.MatchUpZone;
@@ -29,7 +29,7 @@ public static class Tactics
     /// <summary>Possessions per 48 added when the defence presses.</summary>
     public const double PressPace = 3;
     /// <summary>Turnover chance added on a pressed possession at an average press fit (0.5); ± <see cref="PressFitTurnover"/> × (fit − 0.5).</summary>
-    public const double PressTurnover = 0.022, PressFitTurnover = 0.04;
+    public const double PressTurnover = 0.022, PressFitTurnover = 0.02;
     /// <summary>Share of pressed turnovers that are steals (live balls) instead of the usual <see cref="EngineConfig.LiveBallTurnoverShare"/>.</summary>
     public const double PressLiveBallShare = 0.70;
     /// <summary>A broken press: rim shots weigh more and are contested less on the possession's first shot.</summary>

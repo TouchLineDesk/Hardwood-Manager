@@ -197,6 +197,7 @@ public sealed partial class LiveGameViewModel
             EnergyOf = _live.EnergyOf,
             HomePace = HomeTeam.Tactic.Pace, AwayPace = AwayTeam.Tactic.Pace,
             HomeAggression = HomeTeam.Tactic.DefensiveAggression, AwayAggression = AwayTeam.Tactic.DefensiveAggression,
+            HomePress = HomeTeam.Tactic.FullCourtPress, AwayPress = AwayTeam.Tactic.FullCourtPress,
             // M3 (run 150): the shouts' levers show in the shape, and the commentary names what changed.
             HomeThrees = HomeTeam.Tactic.ThreePointEmphasis, AwayThrees = AwayTeam.Tactic.ThreePointEmphasis,
             HomeGlass = HomeTeam.Tactic.CrashGlass, AwayGlass = AwayTeam.Tactic.CrashGlass,
