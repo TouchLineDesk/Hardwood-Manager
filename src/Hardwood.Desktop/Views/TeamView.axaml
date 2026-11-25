@@ -33,7 +33,7 @@
       <c:Icon Kind="Trophy" Width="14" Height="14" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,1,6,0"/>
       <TextBlock x:Name="BannersLine" Grid.Column="1" Text="{Binding Banners}" FontSize="12" TextWrapping="Wrap"/>
     </Grid>
-    <TabControl>
+    <TabControl x:Name="TeamTabs">
       <TabItem Header="Roster">
         <DockPanel>
           <!-- Run 70 (review #13 rank 8): collector cards in the club's colours first, as on your own Roster; the table one click away. -->
@@ -126,6 +126,81 @@
             <DataGridTextColumn Header="Competition" Binding="{Binding Competition}" Width="*"/>
           </DataGrid.Columns>
         </DataGrid>
+      </TabItem>
+      <!-- Slice 8 (run 199): a college program's legacy: the rafters, the Hall of Fame and the record book. -->
+      <TabItem Header="Legacy" IsVisible="{Binding HasLegacy}">
+        <ScrollViewer x:Name="LegacyScroll" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="12" Margin="0,4,8,12">
+            <TextBlock Text="{Binding LegacyNote}" Classes="muted" TextWrapping="Wrap"/>
+            <StackPanel Spacing="6" IsVisible="{Binding HasRafters}">
+              <TextBlock Text="In the rafters" FontSize="16" FontWeight="SemiBold"/>
+              <ItemsControl ItemsSource="{Binding Rafters}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RaftersRow">
+                    <Border Width="200" Margin="0,0,10,10" Padding="10,8" CornerRadius="6" Background="{DynamicResource HwPanelBrush}"
+                            BorderBrush="{DynamicResource HwAccentBrush}" BorderThickness="0,3,0,0">
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Number}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                        <TextBlock Text="{Binding Years}" Classes="muted" FontSize="12" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Why}" FontSize="11" TextWrapping="Wrap" MaxLines="3" TextAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Spacing="6" IsVisible="{Binding HasHall}">
+              <TextBlock Text="Hall of Fame" FontSize="16" FontWeight="SemiBold"/>
+              <ItemsControl ItemsSource="{Binding Hall}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HallOfFameRow">
+                    <Grid ColumnDefinitions="110,*" Margin="0,0,0,8">
+                      <TextBlock Text="{Binding Class}" Classes="muted" FontSize="12" Margin="0,2,0,0"/>
+                      <StackPanel Grid.Column="1" Spacing="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                          <TextBlock Text="{Binding Years}" Classes="muted" FontSize="12" VerticalAlignment="Center"/>
+                          <TextBlock Text="· jersey retired" Classes="muted" FontSize="12" VerticalAlignment="Center" IsVisible="{Binding Jersey}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Line}" FontSize="12" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Why}" FontSize="12" Classes="muted" TextWrapping="Wrap" MaxLines="2"/>
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <TextBlock Text="Program records" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding HasLegacyTables}"/>
+            <ItemsControl ItemsSource="{Binding LegacyTables}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LegacyTable">
+                  <Border Width="300" Margin="0,0,10,10" Padding="10,8" CornerRadius="6" Background="{DynamicResource HwPanelBrush}">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                      <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:LegacyRecordRow">
+                            <Grid ColumnDefinitions="18,60,*" Margin="0,1">
+                              <TextBlock Text="{Binding Rank}" Classes="muted" FontSize="12"/>
+                              <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold" FontSize="12"/>
+                              <StackPanel Grid.Column="2">
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" TextWrapping="Wrap" MaxLines="2"/>
+                              </StackPanel>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
     </TabControl>
   </DockPanel>

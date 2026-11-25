@@ -212,6 +212,8 @@ public sealed partial class CollegeWorld
         }
         list.AddRange(AllAmericanHonoursOf(playerId)); // CS11 (run 195)
         list.AddRange(CaptainHonoursOf(playerId)); // run 196
+        // Slice 8 (run 199): the rafters and the Hall of Fame, last, so the same night's farewell keeps his awards (review).
+        list.AddRange(LegacyHonoursOf(playerId));
         return list;
     }
 

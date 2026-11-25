@@ -1120,6 +1120,7 @@ public sealed partial class CollegeWorld
             Awards.RemoveAll(a => a.Year == s.Year);
             Awards.Add(awards);
             if (awards.PlayerOfYearId != null) News.Add(AwardsNews(awards));
+            CloseLegacy(); // slice 8 (run 199): the record books, the Hall of Fame and the rafters
             return true;
         }
         return false;

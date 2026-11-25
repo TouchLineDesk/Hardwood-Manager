@@ -47,6 +47,14 @@ public sealed class TeamGameRow
     public IRelayCommand? Open { get; init; }
 }
 
+/// <summary>Slice 8 (run 199): a retired jersey in a program's rafters.</summary>
+public sealed record RaftersRow(string Number, string Name, string Years, string Why);
+/// <summary>A program Hall of Fame member.</summary>
+public sealed record HallOfFameRow(string Class, string Name, string Years, string Line, string Why, bool Jersey);
+/// <summary>A program record-book column ("Career points"), top five.</summary>
+public sealed record LegacyTable(string Title, IReadOnlyList<LegacyRecordRow> Rows);
+public sealed record LegacyRecordRow(int Rank, string Value, string Name, string When, bool Current);
+
 /// <summary>Any team's page (NABL, abroad, college): roster as your scouts see it, season stats, games and the club.</summary>
 public sealed partial class TeamViewModel : PageViewModel
 {
@@ -61,6 +69,18 @@ public sealed partial class TeamViewModel : PageViewModel
     /// <summary>K12b (run 137): a college program's banners in words ("National champions 1996, 1998, 2012 …"); empty otherwise.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasBanners))] private string _banners = "";
     public bool HasBanners => Banners.Length > 0;
+    // Slice 8 (run 199): a college program's legacy tab (the rafters, the Hall of Fame and the record book).
+    [ObservableProperty] private bool _hasLegacy;
+    [ObservableProperty] private string _legacyNote = "";
+    [ObservableProperty] private List<RaftersRow> _rafters = new();
+    [ObservableProperty] private List<HallOfFameRow> _hall = new();
+    [ObservableProperty] private List<LegacyTable> _legacyTables = new();
+    public bool HasRafters => Rafters.Count > 0;
+    public bool HasHall => Hall.Count > 0;
+    partial void OnRaftersChanged(List<RaftersRow> value) => OnPropertyChanged(nameof(HasRafters));
+    partial void OnHallChanged(List<HallOfFameRow> value) => OnPropertyChanged(nameof(HasHall));
+    public bool HasLegacyTables => LegacyTables.Count > 0;
+    partial void OnLegacyTablesChanged(List<LegacyTable> value) => OnPropertyChanged(nameof(HasLegacyTables));
     public Avalonia.Media.Color Accent => ThemeService.AccentFor(Team);
 
     /// <summary>From Danny's graphics pack (#350): the club's banner behind the header, and its jerseys (home first).</summary>
@@ -130,6 +150,7 @@ public sealed partial class TeamViewModel : PageViewModel
             chips.Add(new("Banners", v, sub, past.Titles > 0 ? "good" : ""));
             Banners = past.Line(cw.FirstListedYear);
         }
+        BuildLegacy(program ? s.World.College : null, t);
         if (t.Money.Ready)
         {
             long payroll = t.Roster.Sum(p => p.Contract?.Salary ?? 0);
@@ -194,4 +215,36 @@ public sealed partial class TeamViewModel : PageViewModel
 
     private static string F(double? v) => v is { } x ? x.ToString("0.0") : "-";
     private static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
+
+    /// <summary>Slice 8 (run 199): the program's legacy: its rafters, Hall of Fame and record book (this career's seasons).</summary>
+    private void BuildLegacy(Hardwood.Core.College.CollegeWorld? cw, Team t)
+    {
+        HasLegacy = cw != null;
+        if (cw == null) { Rafters = new(); Hall = new(); LegacyTables = new(); LegacyNote = ""; return; }
+        var book = cw.LegacyOf(t.Id);
+        Rafters = book.Rafters.Select(h => new RaftersRow(h.Jersey!.Value.ToString(), h.Name, h.Years, string.Join(" · ", h.Why.Take(2)))).ToList();
+        Hall = book.Hall.OrderByDescending(h => h.Class).ThenByDescending(h => h.Score)
+            .Select(h => new HallOfFameRow($"Class of {h.Class}", $"{h.Name} ({h.Pos})", h.Years, h.Line, string.Join(" · ", h.Why.Take(4)), h.Jersey != null)).ToList();
+        var tables = new List<LegacyTable>();
+        LegacyTable Career(string title, Func<Hardwood.Core.College.LegacyCareer, int> of) =>
+            new(title, book.Leaders(of).Select((c, i) => new LegacyRecordRow(i + 1, of(c).ToString("N0"), c.Name, c.Done ? c.Years : $"{Hardwood.Core.College.CollegeAwards.SeasonText(c.First)} on · still playing", !c.Done)).ToList());
+        LegacyTable Single(string title, Func<Hardwood.Core.College.LegacySeason, int> of) =>
+            new(title, book.BestSeasons(of).Select((x, i) => new LegacyRecordRow(i + 1, of(x).ToString("N0"), x.Name, $"{Hardwood.Core.College.CollegeAwards.SeasonText(x.Year)} · {x.G} games", false)).ToList());
+        tables.Add(Career("Career points", c => c.Pts));
+        tables.Add(Career("Career rebounds", c => c.Reb));
+        tables.Add(Career("Career assists", c => c.Ast));
+        tables.Add(Single("Points in a season", x => x.Pts));
+        tables.Add(Single("Rebounds in a season", x => x.Reb));
+        tables.Add(Single("Assists in a season", x => x.Ast));
+        // The team's best seasons by record (the season honours keep every program's record).
+        var best = cw.Awards.Where(a => (book.FirstYear == 0 || a.Year >= book.FirstYear) && a.Records.TryGetValue(t.Id, out var r) && r.Length >= 3 && r[0] + r[1] > 0)
+            .Select(a => (a.Year, R: a.Records[t.Id])).OrderByDescending(x => x.R[0] - x.R[1]).ThenByDescending(x => x.R[0]).ThenBy(x => x.Year).Take(5).ToList();
+        tables.Add(new LegacyTable("Best seasons", best.Select((b, i) => new LegacyRecordRow(i + 1, $"{b.R[0]}-{b.R[1]}", Hardwood.Core.College.CollegeAwards.SeasonText(b.Year),
+            b.R[2] >= 1 ? Hardwood.Core.College.CollegeAwardsText.Reached(b.R[2]) : b.R[2] == 0 ? "the First Four" : "", false)).ToList()));
+        LegacyTables = tables.Where(x => x.Rows.Count > 0).ToList();
+        LegacyNote = book.LastYear == 0
+            ? "The record book opens the night of this career's first national final: every season's totals count from then on, and each senior's career is judged as it ends. The best join the program's Hall of Fame; the very best have their jersey retired."
+            : $"This career's seasons ({Hardwood.Core.College.ProgramLegacy.Span(book.FirstYear, book.LastYear)}). A senior joins the Hall of Fame on the night of his last national final if his honours, his team's runs and his totals add up; the very best have their jersey retired."
+              + (Hall.Count == 0 ? " No one has been inducted yet." : "");
+    }
 }

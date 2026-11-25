@@ -21,6 +21,7 @@ public sealed partial class GameSession
         PreseasonPolls(c);
         SeniorNight(c);
         SeniorFarewell(c); // run 196
+        LegacyCeremony(c); // run 199: after the farewell, the same night
         CollegeMoments(c); // run 166: Midnight Madness, early signing, poll Monday, Championship Week, court storms, One Shining Moment
     }
 
