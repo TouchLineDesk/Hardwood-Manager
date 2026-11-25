@@ -391,6 +391,10 @@ public sealed partial class GameSession
             : $"{(won ? "Beat" : "Lost to")} {(rv.InState ? "in-state rival" : "rival")} {opp.City}, {ours}-{theirs}";
         string body = $"{(won ? "You won" : "You lost")} {rv.Label} {(g.HomeId == us ? "at home" : g.IsNeutral() ? "on a neutral court" : "on the road")}. "
             + (cw.SeriesLine(us, them) is { } line ? line + "." : "");
+        // Slice 9 (run 200): the rival's head coach has his say, in his own voice.
+        if (cw.BenchOf(them) is { } coach)
+            body += $"\n\n{coach.Name}, {opp.FullName}'s head coach {coach.SeasonText}: "
+                + College.RivalCoaches.RivalryQuote(coach, !won, HumanTeam.City, rv.Label);
         Post(title, body, "League");
     }
 

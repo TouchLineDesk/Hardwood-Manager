@@ -394,6 +394,16 @@ public sealed partial class CollegeWorld
         return back.Count;
     }
 
+    /// <summary>Slice 9 (run 200): who beat you for a recruit, when it's a rival's or a conference mate's coach (" Rick Ashby,
+    /// Kentucky's head coach and a recruiter, closed: ...").</summary>
+    private string RivalCloser(int me, Team to)
+    {
+        bool rival = RivalryOf(me, to.Id) != null;
+        if (!rival && ConferenceOf.GetValueOrDefault(to.Id) != ConferenceOf.GetValueOrDefault(me)) return "";
+        if (BenchOf(to.Id) is not { } c) return "";
+        return $" {c.Name}, {(rival ? "your rival's" : "a conference rival's")} head coach and {RivalCoaches.StyleText(c.Style)}, beat you to him: {RivalCoaches.RecruitLine(c)}";
+    }
+
     /// <summary>Tell the coached program about a commitment it cares about: to it, or a prospect it was courting going elsewhere.</summary>
     private void TellCoach(Player p, Recruit r, Team to, bool signingDay = false, Team? flippedFrom = null)
     {
@@ -410,6 +420,7 @@ public sealed partial class CollegeWorld
         // Only a prospect you'd offered gets a message when he goes elsewhere (critic review #8: a college coach's inbox had
         // about 100 of these in three seasons, most for prospects the assistant had only put on the board).
         else if (r.CourtedBy == me && r.Offered)
-            CoachNews.Add(($"{p.Name} picks {to.FullName}", $"{who}, whom you were recruiting{(r.Offered ? " with a scholarship offer" : "")}, {(signingDay ? "signed with" : "has committed to")} {to.FullName}. Interest in you was {r.Interest:0}."));
+            CoachNews.Add(($"{p.Name} picks {to.FullName}", $"{who}, whom you were recruiting{(r.Offered ? " with a scholarship offer" : "")}, {(signingDay ? "signed with" : "has committed to")} {to.FullName}. Interest in you was {r.Interest:0}."
+                + RivalCloser(me, to)));
     }
 }

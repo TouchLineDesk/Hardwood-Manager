@@ -106,6 +106,9 @@ public static class CareerStore
         }
         foreach (var t in clubs) t.Coach = null;
         if (s.Employed) { s.HumanTeam.Coach = s.Coach; s.HumanTeam.CoachName = s.Coach.Name; }
+        // Slice 9 / H203 (run 200): an older save's college has no bench book yet: its shared names are made unique once,
+        // and every coach gets his past. (A new career does this when it's made.)
+        if (s.World.College is { Benches.Count: 0 } && Get("coaches") != null) s.UniqueBenches((ulong)s.League.Season * 7919UL);
         s.World.ManagedClubId = s.Employed && s.Abroad ? s.HumanTeam.Id : null;
     }
 

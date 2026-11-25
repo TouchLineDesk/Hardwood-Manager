@@ -124,7 +124,7 @@ public sealed partial class GameSession
         Coach.Reputation = Math.Max(0, Coach.Reputation - 2);
         // The jobs you'd opened while in work stay open to you; offers stand until they lapse.
         foreach (var v in LiveVacancies) v.WhileEmployed = false;
-        string successor = Board.NewCoachName(CareerRng(1));
+        string successor = FreshCoachName(CareerRng(1));
         ReleaseClub(successor);
         Post("You resigned", $"You have resigned as head coach of {club.TheFullName}; {successor} takes over. "
             + "Clubs that change coach post their openings on the Board page, where you can apply. "
@@ -316,7 +316,7 @@ public sealed partial class GameSession
         }
     }
 
-    private static string Successor(Vacancy v, Rng rng) => v.NextCoach is { Length: > 0 } n ? n : Board.NewCoachName(rng);
+    private string Successor(Vacancy v, Rng rng) => v.NextCoach is { Length: > 0 } n ? n : FreshCoachName(rng);
 
     /// <summary>Whether the last season beat the board's expectations (the goal, or the win target by four or more over 82 games).</summary>
     private bool Overachieved(Expectations e, SeasonGoal achieved, int wins, int losses, LeagueContext ctx, bool relegated = false, bool goingUp = false)
@@ -334,7 +334,7 @@ public sealed partial class GameSession
     {
         var club = HumanTeam;
         Coach.History.Add(JobRecordFor(club, $"Left for {team.FullName}"));
-        string successor = Board.NewCoachName(CareerRng(6));
+        string successor = FreshCoachName(CareerRng(6));
         ReleaseClub(successor);
         // CS9: leaving a college program puts it on this spring's carousel.
         // Only in the summer: a move in the autumn belongs to next spring's carousel, not this one (review of PR #260).

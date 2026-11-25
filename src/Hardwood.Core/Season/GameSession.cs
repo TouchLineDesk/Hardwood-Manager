@@ -166,6 +166,8 @@ public sealed partial class GameSession
         HumanTeam.Coach = Coach;
         // College programs get athletic directors (the board's role) and coaches' names (C2, #168).
         if (World.College != null) Jobs.Board.EnsureOwnersAndCoaches(World.College.Programs, seed);
+        // H203 and slice 9 (run 200): a new career's benches each have their own coach, and his past.
+        if (rngState == null) UniqueBenches(seed);
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
         Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
@@ -1020,7 +1022,7 @@ public sealed partial class GameSession
         {
             // The career path (#651): a step up opens to you while you're in work. The successor is drawn now, as the
             // computer's hire always was, so the session's random numbers run exactly as before.
-            string successor = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+            string successor = FreshCoachName(new Rng(_rng.NextULong()));
             if (OpenWhileEmployed(t, successor)) return;
             t.CoachName = successor;
             if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
@@ -1035,7 +1037,7 @@ public sealed partial class GameSession
         }
         else
         {
-            t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+            t.CoachName = FreshCoachName(new Rng(_rng.NextULong()));
             // Other clubs' coaching changes go to the world digest (run 42, review #12 Top fix 1; a college coach's already did).
             if (League.Teams.Contains(t) || HumanLeague?.Clubs.Contains(t) == true)
                 PostWorld($"{t.Abbreviation} change coach", $"{t.FullName} have {how} {old} and hired {t.CoachName}.", college: IsCollegeProgram(t));
@@ -1049,7 +1051,7 @@ public sealed partial class GameSession
         Coach.History.Add(JobRecordFor(HumanTeam, "Sacked"));
         Coach.Reputation = Math.Max(0, Coach.Reputation - 5);
         foreach (var v in LiveVacancies) v.WhileEmployed = false; // jobs you'd opened in work stay open to you
-        ReleaseClub(Jobs.Board.NewCoachName(new Rng(_rng.NextULong())));
+        ReleaseClub(FreshCoachName(new Rng(_rng.NextULong())));
         Post("Out of work", $"You are no longer coach of {HumanTeam.TheFullName}; {HumanTeam.CoachName} takes over. Clubs that change coach will post their openings on the Board page, where you can apply. Your reputation: {Coach.Reputation:0}/100.", "Board");
     }
 
@@ -1096,7 +1098,7 @@ public sealed partial class GameSession
         {
             v.Status = "filled";
             // An offer made while you're in work names its successor from the start (#651); out of work, as before.
-            t.CoachName = v.NextCoach is { Length: > 0 } n ? n : Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+            t.CoachName = v.NextCoach is { Length: > 0 } n ? n : FreshCoachName(new Rng(_rng.NextULong()));
         }
         SaveNow();
     }
@@ -1171,7 +1173,7 @@ public sealed partial class GameSession
                 else
                 {
                     v.Status = "rejected";
-                    t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+                    t.CoachName = FreshCoachName(new Rng(_rng.NextULong()));
                     Post($"{t.Abbreviation} went another way", $"{t.FullName} have hired {t.CoachName} instead.", "Board");
                 }
             }
@@ -1179,7 +1181,7 @@ public sealed partial class GameSession
             else if (v.Status == "open" && Today.DayNumber - v.Opened.DayNumber >= 21)
             {
                 v.Status = "filled";
-                t.CoachName = Jobs.Board.NewCoachName(new Rng(_rng.NextULong()));
+                t.CoachName = FreshCoachName(new Rng(_rng.NextULong()));
                 // Openings you didn't go for are news, not mail (critic review: 146 of these in one spell out of work).
                 PostWorld($"{t.Abbreviation} hire a coach", $"{t.FullName} have filled their opening with {t.CoachName}.", college: IsCollegeProgram(t));
             }
