@@ -47,6 +47,15 @@ public static class MarchCalendar
     /// <paramref name="count"/>) on the first day, the other half the day after.</summary>
     public static DateOnly SecondDay(DateOnly first, int index, int count) => index < count / 2 ? first : first.AddDays(1);
 
+    /// <summary>The day a March Madness game in a round and bracket slot is (or will be) played; null before Selection Sunday.</summary>
+    public static DateOnly? Day(CollegeSeason s, int round, int slot)
+    {
+        if (!s.RoundDates.TryGetValue(CollegeWorld.Madness, out var d) || round < 0 || round >= d.Count) return null;
+        if (!SplitRound(round, s.Weekdays)) return d[round];
+        int games = round == 0 ? 64 : 64 >> round;
+        return SecondDay(d[round], slot, games);
+    }
+
     /// <summary>The NIT: the first round (two days), the second round, the quarter-finals, the semi-finals and the final.</summary>
     public static List<DateOnly> Nit(int seasonYear, bool weekdays)
     {

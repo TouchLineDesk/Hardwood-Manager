@@ -103,6 +103,8 @@ public class Run204MarchCalendarTests
             for (int i = 1; i < days.Count; i++) Assert.True(days[i].DayNumber - days[i - 1].DayNumber >= 2, $"{c.Program(id)!.FullName} plays {days[i - 1]} and {days[i]}");
         }
         Assert.Equal(new DateOnly(2027, 4, 5), madness.Single(g => g.Round == 6).Date);
+        // The bracket boxes and the Final Four page read the same day the game was scheduled on (review, run 204).
+        Assert.All(madness, g => Assert.Equal(g.Date, c.MadnessDay(g.Round, g.Slot)));
         var nit = s.Games.Where(g => g.Event == CollegeWorld.Nit).ToList();
         Assert.Equal(MarchCalendar.Nit(2026, true)[4], nit.Single(g => g.Round == 4).Date);
         var sr = c.AllAmericanOf(CollegeWorld.SeniorGame);

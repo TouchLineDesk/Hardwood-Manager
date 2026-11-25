@@ -176,7 +176,7 @@ public sealed partial class GameSession
             body = $"{HumanTeam.FullName} are the No. {place} seed in the {ev}: first up, {CollegeWorld.WithRank(c.Rank(opp), c.Program(opp)!.FullName)} on {mine.Date:ddd, MMM d}. "
                 + $"The final is on {start.AddDays(2):ddd, MMM d}; the champions take the {conf.Short}'s automatic bid to March Madness."
                 + (leader != HumanTeam ? $" {leader.FullName} are the top seed." : "")
-                + $"\n{stakes}\nAll week, every conference crowns a champion; Selection Sunday follows.";
+                + $"\n{stakes}\nEvery conference crowns its champion by Selection Sunday.";
         }
         Post(title, body, "League");
     }

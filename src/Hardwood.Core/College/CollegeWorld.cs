@@ -1265,6 +1265,11 @@ public sealed partial class CollegeWorld
         if (name.EndsWith("tournament")) News.Add(($"{w.FullName} win the {name}", $"{w.FullName} take the {name} and the automatic bid to March Madness."));
     }
 
+    /// <summary>K39 (run 204): the day a March Madness game in a round and bracket slot is (or will be) played: a split round's
+    /// top half on the first day, the bottom half the next. A First Four game's slot is its bracket slot (0-63). Null before
+    /// Selection Sunday.</summary>
+    public DateOnly? MadnessDay(int round, int slot) => MarchCalendar.Day(Season, round, slot);
+
     /// <summary>K39 (run 204): a First Four game is on the Tuesday when its winner plays on Thursday (the bracket's top half),
     /// and on the Wednesday when he plays on Friday. One day in a season started before v0.192.0.</summary>
     private static DateOnly FirstFourDay(CollegeSeason s, List<DateOnly> dates, int slot) =>
@@ -1412,7 +1417,7 @@ public static class MadnessBracket
                     a = games.FirstOrDefault(x => x.Round == round - 1 && x.Slot == slot * 2)?.WinnerId;
                     b = games.FirstOrDefault(x => x.Round == round - 1 && x.Slot == slot * 2 + 1)?.WinnerId;
                 }
-                var date = s.RoundDates.TryGetValue(CollegeWorld.Madness, out var d) && round < d.Count ? d[round] : (DateOnly?)null;
+                var date = MarchCalendar.Day(s, round, slot);
                 boxes.Add(new BracketBox(round, slot, a, Seed(a), b, Seed(b), null, null, date));
             }
         }

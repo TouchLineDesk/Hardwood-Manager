@@ -88,7 +88,7 @@ public static class SelectionShow
                 : s.LastFourIn.Contains(g.HomeId) || s.LastFourIn.Contains(g.AwayId)
                 ? $"Two of the last teams in: {a.School} and {b.School} meet in Dayton, and the winner is a No. {seed} seed in the {MadnessBracket.Regions[region]}."
                 : $"{a.School} ({a.Record}) and {b.School} ({b.Record}) play for a No. {seed} seed in the {MadnessBracket.Regions[region]}.";
-            beats.Add(new("First Four", FirstFourSite.ToUpperInvariant(), "First Four", When(0), region, -1, a, b, Next(), line, my));
+            beats.Add(new("First Four", FirstFourSite.ToUpperInvariant(), "First Four", g.Date.ToString("ddd, MMM d"), region, -1, a, b, Next(), line, my));
         }
 
         for (int r = 0; r < 4; r++)
