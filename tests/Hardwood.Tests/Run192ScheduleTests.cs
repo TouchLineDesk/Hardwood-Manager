@@ -116,12 +116,11 @@ public class Run192ScheduleTests
         var s = GameSession.NewGame(9, id, null);
         var c = s.World.College!;
         Assert.DoesNotContain(c.Programs.Select(t => t.Id).OrderByDescending(i => c.Season.Elo[i]).Take(30), i => i == id);
-        s.HumanTeam.Money.Program.Schedule = new NonConferencePlan { Showcase = true };
+        // Ticked during the season: the request waits for next season's draw (the AD's target is already set).
+        s.HumanTeam.Money.Program.Schedule = new NonConferencePlan { Showcase = true, Mix = ScheduleMix.BuyGames };
         int guard = 0;
         while (s.Today < new DateOnly(2026, 12, 22) && guard++ < 120) s.AdvanceDay();
-        var show = c.Season.Games.Where(g => g.Stage == "Showcase" && (g.HomeId == id || g.AwayId == id)).ToList();
-        Assert.Single(show);
-        _out.WriteLine($"{show[0].Event}: {c.Program(show[0].HomeId)!.FullName} v {c.Program(show[0].AwayId)!.FullName}");
+        Assert.DoesNotContain(c.Season.Games, g => g.Stage == "Showcase" && (g.HomeId == id || g.AwayId == id));
         string? line = s.ScheduleLine();
         _out.WriteLine(line);
         Assert.NotNull(line);
@@ -129,7 +128,6 @@ public class Run192ScheduleTests
         Assert.Contains("Board page", line);
 
         // Next season with buy games: the AD expects one more win and says so, and the welcome shows the new slate.
-        s.HumanTeam.Money.Program.Schedule.Mix = ScheduleMix.BuyGames;
         s.Job.Current!.TargetWins = 0; // kept on, whatever the record
         guard = 0;
         while (s.Phase != SessionPhase.Offseason && guard++ < 500) s.AdvanceDay();
@@ -138,12 +136,21 @@ public class Run192ScheduleTests
         Assert.Equal(2027, c.Season.Year);
         var plan = s.HumanTeam.Money.Program.Schedule;
         Assert.Equal(2027, plan.DrawnYear);
+        Assert.True(plan.DrawnShowcase);
         Assert.Equal(CollegeWorld.BuyGameCount, plan.BuyGamesBooked);
+        Assert.Equal(1, s.Job.Current!.ScheduleShift);
         var goal = s.Inbox.Last(m => m.Title.StartsWith("Expectations for 2027"));
         _out.WriteLine(goal.Body);
         Assert.Contains("buy games at home, so the AD expects one more win", goal.Body);
         var welcome = s.Inbox.Last(m => m.Title.StartsWith("Welcome to 2027"));
         _out.WriteLine(welcome.Body);
         Assert.Contains("Your schedule:", welcome.Body);
+
+        // December: the showcase asked for at the draw, against a top-30 program on a neutral floor.
+        guard = 0;
+        while (s.Today < new DateOnly(2027, 12, 22) && guard++ < 200) s.AdvanceDay();
+        var show = c.Season.Games.Where(g => g.Stage == "Showcase" && (g.HomeId == id || g.AwayId == id)).ToList();
+        Assert.Single(show);
+        _out.WriteLine($"{show[0].Event}: {c.Program(show[0].HomeId)!.FullName} v {c.Program(show[0].AwayId)!.FullName}");
     }
 }

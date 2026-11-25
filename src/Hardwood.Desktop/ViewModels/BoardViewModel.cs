@@ -394,8 +394,6 @@ public sealed partial class BoardViewModel : PageViewModel
 
     private static string Cap(string w) => w.Length == 0 ? w : char.ToUpperInvariant(w[0]) + w[1..];
 
-    /// <summary>CS9 (run 191): the newest spring's coaching changes. In college your conference and your rivals come first,
-    /// then the biggest jobs; each row says who left, why, and who came in.</summary>
     // Run 192 (slice 2 of the revised launch plan): a college coach plans next season's non-conference schedule with the AD (the Board page scrolls; the Schedule page's side column didn't have the room).
     public const string MixDraw = "The conference office's draw";
     public const string MixBuy = "Buy games: 5 at home";
@@ -419,7 +417,7 @@ public sealed partial class BoardViewModel : PageViewModel
     partial void OnPlanHolidayChanged(string? value) => SavePlan();
     partial void OnPlanShowcaseChanged(bool value) => SavePlan();
 
-    private static string HolidayLabel(Hardwood.Core.College.CollegeWorld c, int id, string name) =>
+    private static string HolidayLabel(string name) =>
         Hardwood.Core.College.CollegeWorld.IsMajorHoliday(name)
             ? $"{name} ({Hardwood.Core.College.CollegeWorld.PrestigeLetter(Hardwood.Core.College.CollegeWorld.MajorHolidayPrestige)} or better)" : name;
 
@@ -434,7 +432,7 @@ public sealed partial class BoardViewModel : PageViewModel
         if (pick is { Length: > 0 } ev && c.HolidayBlocked(s.HumanTeam.Id, ev) is { } why)
         {
             PlanHolidayNote = why + " The choice stays as it was.";
-            _planLoading = true; PlanHoliday = plan.Holiday == null ? HolidayAny : plan.Holiday.Length == 0 ? HolidayNone : HolidayLabel(c, s.HumanTeam.Id, plan.Holiday); _planLoading = false;
+            _planLoading = true; PlanHoliday = plan.Holiday == null ? HolidayAny : plan.Holiday.Length == 0 ? HolidayNone : HolidayLabel(plan.Holiday); _planLoading = false;
         }
         else { plan.Holiday = pick; PlanHolidayNote = ""; }
         PlanEffect = EffectText(plan.Mix);
@@ -459,9 +457,9 @@ public sealed partial class BoardViewModel : PageViewModel
         PlanTitle = $"Your non-conference schedule for {next}-{(next + 1) % 100:00}";
         PlanHolidays.Clear();
         PlanHolidays.Add(HolidayAny); PlanHolidays.Add(HolidayNone);
-        foreach (var h in Hardwood.Core.College.CollegeWorld.HolidayEvents) PlanHolidays.Add(HolidayLabel(c, me, h));
+        foreach (var h in Hardwood.Core.College.CollegeWorld.HolidayEvents) PlanHolidays.Add(HolidayLabel(h));
         PlanMix = plan?.Mix switch { Hardwood.Core.College.ScheduleMix.BuyGames => MixBuy, Hardwood.Core.College.ScheduleMix.Tough => MixTough, _ => MixDraw };
-        PlanHoliday = plan?.Holiday switch { null => HolidayAny, "" => HolidayNone, var h => HolidayLabel(c, me, h) };
+        PlanHoliday = plan?.Holiday switch { null => HolidayAny, "" => HolidayNone, var h => HolidayLabel(h) };
         PlanShowcase = plan?.Showcase == true;
         _planLoading = false;
         PlanEffect = EffectText(plan?.Mix ?? Hardwood.Core.College.ScheduleMix.Balanced);
@@ -473,6 +471,8 @@ public sealed partial class BoardViewModel : PageViewModel
         PlanSeries = returns.Count == 0 ? "" : "Returns next season: " + string.Join(", ", returns.Select(x => $"{(x.HomeFirst ? "at" : "vs")} {c.Program(x.OpponentId)?.FullName}")) + ".";
     }
 
+    /// <summary>CS9 (run 191): the newest spring's coaching changes. In college your conference and your rivals come first,
+    /// then the biggest jobs; each row says who left, why, and who came in.</summary>
     private void RefreshCarousel()
     {
         var s = Session;

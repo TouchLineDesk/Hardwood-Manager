@@ -33,6 +33,8 @@ public sealed class NonConferencePlan
     /// <summary>The season the plan was last drawn into, and the mix it was drawn with (the AD's target reads these).</summary>
     public int DrawnYear { get; set; }
     public ScheduleMix DrawnMix { get; set; }
+    /// <summary>Whether the showcase was asked for when <see cref="DrawnYear"/>'s schedule was drawn (a later tick waits a season).</summary>
+    public bool DrawnShowcase { get; set; }
     /// <summary>What the draw booked in <see cref="DrawnYear"/> (for the inbox and the panel).</summary>
     public int BuyGamesBooked { get; set; }
     public int SeriesGamesBooked { get; set; }
@@ -138,7 +140,7 @@ public sealed partial class CollegeWorld
             }
         }
         plan.SeriesGamesBooked = games.Count - plan.BuyGamesBooked;
-        plan.DrawnYear = year; plan.DrawnMix = plan.Mix;
+        plan.DrawnYear = year; plan.DrawnMix = plan.Mix; plan.DrawnShowcase = plan.Showcase;
         return games;
     }
 
@@ -146,7 +148,8 @@ public sealed partial class CollegeWorld
     /// December), in the same list the cross-conference rivals use.</summary>
     private void BookPlanned(int year, int ncRounds, Dictionary<int, int> owed, List<HashSet<int>> booked, List<(int Round, int Home, int Away)> fixedGames)
     {
-        if (ManagedProgramId is not { } me || Program(me) == null || PlanOf(me) == null) return;
+        if (ManagedProgramId is not { } me || Program(me) == null || PlanOf(me) is not { } plan) return;
+        plan.DrawnYear = year; plan.DrawnMix = plan.Mix; plan.DrawnShowcase = plan.Showcase;
         var left = owed.ToDictionary(kv => kv.Key, kv => kv.Value - fixedGames.Count(x => x.Home == kv.Key || x.Away == kv.Key));
         var games = PlannedGames(me, year, left);
         for (int n = 0; n < games.Count; n++)

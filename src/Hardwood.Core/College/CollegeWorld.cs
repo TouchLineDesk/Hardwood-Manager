@@ -1038,9 +1038,14 @@ public sealed partial class CollegeWorld
         if (!s.Games.Any(g => g.Stage == "Showcase") && s.Games.Where(g => g.Stage is "Non-conference" or "Invitational" && g.Date < new DateOnly(s.Year, 12, 19)).All(g => g.Played))
         {
             var top = Programs.Select(t => t.Id).OrderByDescending(i => s.Elo[i]).Take(30).ToList();
-            // Run 192: a coached program that asked for a showcase gets the last place (a top-30 opponent, on a neutral floor).
-            if (ManagedProgramId is { } asker && PlanOf(asker) is { Showcase: true } && !top.Contains(asker) && Program(asker) != null)
-                top[Math.Min(top.Count, 2 * Showcases.Length) - 1] = asker; // the last place that gets a game (12 showcases, 24 programs)
+            // Run 192: a coached program that asked for a showcase when the schedule was drawn gets a top-30 opponent (neutral floor).
+            // Run 192 review: moved near the front, so it is paired whatever its rating (only 24 of the 30 get a game).
+            if (ManagedProgramId is { } asker && PlanOf(asker) is { DrawnShowcase: true } ask && ask.DrawnYear == s.Year && Program(asker) != null
+                && top.IndexOf(asker) is var at && (at < 0 || at >= 2 * Showcases.Length - 2))
+            {
+                if (at >= 0) top.RemoveAt(at); else top.RemoveAt(top.Count - 1);
+                top.Insert(1, asker);
+            }
             var day = new DateOnly(s.Year, 12, 19);
             int n = 0;
             while (top.Count >= 2 && n < Showcases.Length)
