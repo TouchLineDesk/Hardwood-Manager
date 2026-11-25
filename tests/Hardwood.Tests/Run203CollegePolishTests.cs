@@ -178,4 +178,27 @@ public class Run203CollegePolishTests
         _out.WriteLine($"24-6 from 30: {low.Confidence:0}");
         Assert.InRange(low.Confidence, 31, 30 + Board.YearRiseCap);
     }
+
+    [Fact]
+    public void Review_of_272_caps_keep_a_met_goal_and_measure_from_the_seasons_start()
+    {
+        var (ctx, team) = College(31);
+        // A title season after the drift reached 88 from a start of 50: never lowered.
+        var champ = new JobState
+        {
+            Confidence = 88, HiredSeason = 2024, SeasonStartSeason = 2026, SeasonStartConfidence = 50,
+            Current = new Expectations { Season = 2026, Goal = SeasonGoal.Title, TargetWins = 26, TeamId = team.Id, League = "college" },
+        };
+        Board.SeasonReview(champ, new Coach(), ctx, team, SeasonGoal.Title, 28, 3, None, new DateOnly(2027, 4, 8), 2026, madnessRound: 7, seed: 1);
+        Assert.True(champ.Confidence >= 88, $"{champ.Confidence}");
+        // A .500 first season that drifted from 70 to 35: no lower than 50 and no final warning.
+        var first = new JobState
+        {
+            Confidence = 35, HiredSeason = 2026, SeasonStartSeason = 2026, SeasonStartConfidence = 70,
+            Current = new Expectations { Season = 2026, Goal = SeasonGoal.Playoffs, TargetWins = 22, TeamId = team.Id, League = "college" },
+        };
+        var body = Board.SeasonReview(first, new Coach(), ctx, team, SeasonGoal.Develop, 16, 16, None, new DateOnly(2027, 4, 8), 2026).body;
+        Assert.True(first.Confidence >= 70 - Board.FirstSeasonDropCap, $"{first.Confidence}");
+        Assert.DoesNotContain("final warning", body);
+    }
 }

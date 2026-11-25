@@ -1041,7 +1041,7 @@ public static class Board
         if (ctx.IsCollege && firstSeason && !relegated)
         {
             double start0 = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } s0 ? s0 : beforeReview;
-            if (wins >= losses) job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start0) - FirstSeasonDropCap);
+            if (wins >= losses) job.Confidence = Math.Max(job.Confidence, start0 - FirstSeasonDropCap); // the review of #272: from the season's start, drift included
             if (wins >= FirstSeasonSafeWins && madnessRound >= 0) job.Confidence = Math.Max(job.Confidence, FirstSeasonSafeFloor);
         }
         string owner = team.Owner.Name;
@@ -1056,7 +1056,9 @@ public static class Board
         // K40 (run 203): a college AD's confidence rises at most YearRiseCap over a season (Arizona State went 39 → 72 on
         // one more win, 15-15 against a 17-win target). A March run past the seed keeps its "content" floor.
         if (ctx.IsCollege && !sacked)
-            job.Confidence = Math.Min(job.Confidence, Math.Max(seasonStart + YearRiseCap, seedOver >= 1 ? ContentLine + 5 : 0));
+            job.Confidence = Math.Min(job.Confidence, Math.Max(Math.Max(seasonStart + YearRiseCap, seedOver >= 1 ? ContentLine + 5 : 0),
+                // The review of #272: a goal met never comes with a fall (H70), so the cap never takes back the season's drift.
+                diff >= 0 ? beforeReview : 0));
         if (ctx.IsCollege && !sacked)
         {
             if (wins < losses) job.Confidence = Math.Min(job.Confidence, LosingCap);
