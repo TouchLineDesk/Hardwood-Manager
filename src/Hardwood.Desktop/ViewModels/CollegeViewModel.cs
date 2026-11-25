@@ -129,9 +129,11 @@ public sealed record BracketCard(string SeedA, string NameA, string ScoreA, bool
 }
 
 /// <summary>One team on a bracketology seed line (C4 part 1).</summary>
-public sealed record SeedCell(string Name, string Record, string Tag, bool Mine)
+public sealed record SeedCell(string Name, string Record, string Tag, bool Mine, string Detail = "")
 {
     public bool HasTag => Tag.Length > 0;
+    /// <summary>Run 193: the bubble's résumé line ("NET 44 · Q1 3-6").</summary>
+    public bool HasDetail => Detail.Length > 0;
 }
 
 public static class CollegeConverters
@@ -418,8 +420,6 @@ public sealed partial class CollegeViewModel : PageViewModel
         _conference = DefaultConference();
     }
 
-    private static DateOnly LastGameDay(CollegeWorld c) => c.Season.Games.Where(g => g.Played).Max(g => g.Date);
-
     public override void Refresh()
     {
         var c = Session.World.College;
@@ -451,8 +451,12 @@ public sealed partial class CollegeViewModel : PageViewModel
         PollNote = mine + (c.FinalPoll
             ? "Final poll: the champion first, then the record and the rating with every March Madness win counted"
             : started
-            ? $"Re-ranked after every game, on the rating and the record · arrows: since the last day of games ({LastGameDay(c):MMM d})"
-            : "Preseason: ranked on the rating. Re-ranked after every game once the season tips off, on the rating and the record.");
+            ? (s.PollRelease.Count > 0 && s.PollDay is { } released
+                ? s.PollBefore.Count == 0
+                    ? $"Released every Monday, on the rating and the record · this poll: {released:ddd MMM d}, the first of the season (arrows from next week's)"
+                    : $"Released every Monday, on the rating and the record · this poll: {released:ddd MMM d} · arrows: since the week before"
+                : "Ranked on the rating and the record; the next poll comes out with the next day of games")
+            : "Preseason: ranked on the rating. Once the season tips off, a new poll comes out every Monday, on the rating and the record.");
         FillConference();
         // Between Selection Sunday and the first game, March Madness opens on the reveal.
         // (The page is kept while the game is open, so this is decided once per season.) Once the games start, a page
@@ -699,7 +703,9 @@ public sealed partial class CollegeViewModel : PageViewModel
                 chips.Insert(0, new("Our seed", $"No. {seed}", $"{where} · {status}", tone));
             }
             else chips.Insert(0, new("Our seed", "Left out", c.Bracketology().StatusOf(me), "bad"));
+            if (c.InNit(me)) chips.Insert(1, NitChip(c, me));
         }
+        if (s.EventWinners.TryGetValue(CollegeWorld.Nit, out var nitChamp)) chips.Add(new("NIT champions", c.Program(nitChamp)?.City ?? "", CollegeWorld.NitFinalSite, ""));
         MadnessChips = chips;
     }
 
@@ -878,7 +884,7 @@ public sealed partial class CollegeViewModel : PageViewModel
         MadnessChips = chips;
         if (all && s.LastFourIn.Count > 0)
         {
-            SeedCell Cell(int id) => new(School(id), Rec(id), "", id == me);
+            SeedCell Cell(int id) => new(School(id), Rec(id), "", id == me, c.Resume(id));
             SelectionBubble = new()
             {
                 new("Last four in", s.LastFourIn.Select(Cell).ToList(), "good"),
@@ -886,6 +892,19 @@ public sealed partial class CollegeViewModel : PageViewModel
                 new("Next four out", s.NextFourOut.Select(Cell).ToList(), "bad"),
             };
         }
+    }
+
+    /// <summary>Run 193: our NIT run: the seed, and the next game or how far we went.</summary>
+    private static Hardwood.Desktop.Controls.Chip NitChip(CollegeWorld c, int me)
+    {
+        var games = c.Season.Games.Where(g => g.Event == CollegeWorld.Nit && (g.HomeId == me || g.AwayId == me)).OrderBy(g => g.Round).ToList();
+        var last = games.LastOrDefault();
+        string sub = last == null ? ""
+            : c.Season.EventWinners.TryGetValue(CollegeWorld.Nit, out var w) && w == me ? "champions"
+            : last.Played && last.WinnerId != me ? $"out in the {CollegeWorld.NitRoundName(last.Round).ToLowerInvariant()}"
+            : !last.Played ? $"{CollegeWorld.NitRoundName(last.Round)}: {(last.HomeId == me ? "vs" : "at")} {c.Program(last.HomeId == me ? last.AwayId : last.HomeId)?.City}, {last.Date:MMM d}"
+            : "through";
+        return new("NIT", $"No. {c.NitSeedOf(me)} seed", sub, sub == "champions" ? "good" : sub.StartsWith("out") ? "bad" : "team");
     }
 
     /// <summary>"vs No. 13 Vermont, Thu Mar 19", or the First Four game, for the reveal's seed chip.</summary>
@@ -926,11 +945,13 @@ public sealed partial class CollegeViewModel : PageViewModel
             var teams = p.Field.Where(id => p.Seeds[id] == seed).Select(Cell).ToList();
             return new SeedLine(seed.ToString(), teams, teams.Any(t => t.Mine));
         }).ToList();
+        // Run 193: each bubble team's résumé, the NET and the Quad 1 record, as the committee reads it.
+        SeedCell Bub(int id) => Cell(id) with { Detail = c.Resume(id) };
         Bubble = new()
         {
-            new("Last four in", p.LastFourIn.Select(Cell).ToList(), "good"),
-            new("First four out", p.FirstFourOut.Select(id => Cell(id) with { Tag = "" }).ToList(), "warn"),
-            new("Next four out", p.NextFourOut.Select(id => Cell(id) with { Tag = "" }).ToList(), "bad"),
+            new("Last four in", p.LastFourIn.Select(Bub).ToList(), "good"),
+            new("First four out", p.FirstFourOut.Select(id => Bub(id) with { Tag = "" }).ToList(), "warn"),
+            new("Next four out", p.NextFourOut.Select(id => Bub(id) with { Tag = "" }).ToList(), "bad"),
         };
         var chips = new List<Hardwood.Desktop.Controls.Chip>();
         if (me is { } m)
@@ -939,6 +960,9 @@ public sealed partial class CollegeViewModel : PageViewModel
             string tone = !p.In(m) ? "bad" : p.LastFourIn.Contains(m) ? "warn" : "good";
             string value = p.Seeds.TryGetValue(m, out var sd) ? $"No. {sd}" : status == "Out" ? "Out" : "Bubble";
             chips.Add(new("Our projection", value, p.In(m) ? (p.LastFourIn.Contains(m) ? "last four in" : p.AutoBids.TryGetValue(m, out var cf) ? $"automatic bid (projected {cf} champions)" : "at-large") : status.ToLowerInvariant(), tone));
+            // Run 193: the résumé the committee reads: the NET rank and the record by quadrant.
+            var q = c.Quads(m);
+            chips.Add(new("Our NET", $"No. {c.NetRank(m)}", $"Q1 {q.Of(1)} · Q2 {q.Of(2)} · Q3 {q.Of(3)} · Q4 {q.Of(4)}", q.BadLosses > 1 ? "warn" : "team"));
         }
         chips.Add(new("Automatic bids decided", $"{p.AutoBidsDecided} of {autos}", "conference tournaments", "team"));
         if (p.LastFourIn.Count > 0) chips.Add(new("Last team in", c.Program(p.LastFourIn[^1])?.City ?? "", Rec(p.LastFourIn[^1]), "warn"));

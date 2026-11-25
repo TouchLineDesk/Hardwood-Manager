@@ -55,13 +55,11 @@ public sealed partial class CollegeWorld
 
     private BracketProjection Project(IReadOnlyDictionary<int, string> auto, bool final, int decided)
     {
-        var elo = Season.Elo;
         // R3: with 32 real conferences, a champion of a weak one runs up its rating against weak opponents. The committee
         // weighs the schedule: a real world's rating counts half the gap between the program's conference and the average,
         // so weak-conference champions seed 13-16 and the strong at-large teams fill lines 10-12, as in the real bracket.
-        var confElo = IsReal ? Programs.GroupBy(t => ConferenceOf[t.Id]).ToDictionary(g => g.Key, g => g.Average(t => elo.GetValueOrDefault(t.Id, 1500))) : null;
-        double avg = confElo == null ? 1500 : Programs.Average(t => elo.GetValueOrDefault(t.Id, 1500));
-        double Rating(int id) => elo.GetValueOrDefault(id, 1500) + (confElo == null ? 0 : ScheduleWeight * (confElo[ConferenceOf[id]] - avg));
+        // Run 193: this rating is the NET (SelectionRating), which the bubble's quadrants rank by.
+        var Rating = SelectionRating();
         var autoIds = auto.Keys.ToHashSet();
         // H130 (run 133): the committee doesn't take an at-large team at .500 or worse (Cincinnati went in at 14-14 as an
         // 8-seed). Before any game, everyone is eligible (the preseason projection).
@@ -188,7 +186,7 @@ public sealed partial class CollegeWorld
             string last = p.LastFourIn.Count > 0 ? $" The last team in was {Named(p.LastFourIn[^1])}." : "";
             string party = p.FirstFourOut.Contains(me) || p.NextFourOut.Contains(me)
                 ? "\nThe team watched the show together; by the last region the room had gone quiet." : "";
-            CoachNews.Add(("Selection Sunday: we're left out", $"{t.FullName} weren't picked for March Madness. {why}{last}{party}"));
+            CoachNews.Add(("Selection Sunday: we're left out", $"{t.FullName} weren't picked for March Madness. {why}{last}{party}{NitInvite(me)}"));
         }
     }
 }

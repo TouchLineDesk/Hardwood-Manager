@@ -288,7 +288,7 @@ public sealed partial class ScheduleViewModel : PageViewModel
                 .ThenByDescending(g => cw.ConferenceOf.GetValueOrDefault(g.HomeId) == conf || cw.ConferenceOf.GetValueOrDefault(g.AwayId) == conf)
                 .Take(30);
             foreach (var g in games)
-                LeagueScores.Add($"{Name(g.AwayId, g.AwayRank)} {g.AwayPts} {(g.Event != null ? "vs" : "@")} {Name(g.HomeId, g.HomeRank)} {g.HomePts}"); // K24: neutral courts read "vs"
+                LeagueScores.Add($"{Name(g.AwayId, g.AwayRank)} {g.AwayPts} {(g.IsNeutral() ? "vs" : "@")} {Name(g.HomeId, g.HomeRank)} {g.HomePts}"); // K24: neutral courts read "vs"
             if (LeagueScores.Count == 0) LeagueScores.Add("No other college games yesterday.");
         }
         else

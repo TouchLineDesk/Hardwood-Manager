@@ -31,7 +31,11 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 ## The season, at a glance
 - **November to early March:** 29–32 regular-season games (non-conference first, then your conference), with the Top 25
   every Monday and the conference tournament in Championship Week.
+- **The bubble (March Madness page, before Selection Sunday):** bracketology shows each bubble team's NET rank and
+  Quad 1 record, and your own NET with the record in all four quadrants, as the committee reads a résumé.
 - **Selection Sunday and March Madness:** your seed arrives in the inbox; the studio and the arena name the round.
+  Left out? The 32 best teams left out play the **NIT**: the better seed hosts the first three rounds, and the
+  semi-finals and the final are in Indianapolis.
 - **April to the summer:** the AD's season review (the verdict and the program's prestige move), your seniors' draft
   night, graduation, the new class enrolling, and the next season's expectations in October.
 - **The coaching carousel (May):** after the reviews, 40–70 programs change coach (let go, retired, or hired away by a
@@ -44,7 +48,6 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 
 ## Known issues (not worth a note unless they bother you)
-- **The Top 25 re-ranks every day**, while the inbox calls it "Poll Monday" (K35, after launch).
 - **Blue bloods recruit too well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.

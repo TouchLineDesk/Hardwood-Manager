@@ -106,22 +106,14 @@ public sealed partial class GameSession
     // ------------------------------------------------------------------------------------------
     // Poll Monday
 
-    /// <summary>Our Top 25 rank as the week began: the rank at tip-off of our first game in the last seven days (null: unranked).
-    /// False when we played no game this week (nothing to compare).</summary>
-    private bool RankAWeekAgo(CollegeWorld c, out int? rank)
-    {
-        rank = null;
-        var since = Today.AddDays(-7);
-        var g = c.GamesOf(HumanTeam.Id).FirstOrDefault(x => x.Played && x.Date > since && x.Date <= Today);
-        if (g == null) return false;
-        rank = g.HomeId == HumanTeam.Id ? g.HomeRank : g.AwayRank;
-        return true;
-    }
-
     private void PollMonday(CollegeWorld c)
     {
         if (Today.DayOfWeek != DayOfWeek.Monday || c.Season.Selected || c.FirstGameDay is not { } first || Today <= first) return;
-        if (!RankAWeekAgo(c, out var before)) return;
+        // K35 (run 193): the poll is released this morning (if no game today has released it already), and the news
+        // compares it with last week's release, the same ranks the badges show all week.
+        c.ReleasePoll(Today);
+        if (c.Season.PollDay != Today || c.Season.PollBefore.Count == 0) return;
+        int? before = c.Season.PollBefore.TryGetValue(HumanTeam.Id, out var was) ? was : null;
         int? now = c.Rank(HumanTeam.Id);
         if (before == now) return;
         string? title = (before, now) switch
@@ -171,7 +163,7 @@ public sealed partial class GameSession
         {
             title = $"Championship Week: we're not in the {ev}";
             body = $"Only the top eight of the {conf.Name} play in its tournament, and {HumanTeam.FullName} finished {Ordinal(place)}. "
-                + (p.In(HumanTeam.Id) ? "We'll wait for Selection Sunday: " + stakes : "Our season is over unless the committee surprises everyone.")
+                + (p.In(HumanTeam.Id) ? "We'll wait for Selection Sunday: " + stakes : "March Madness is gone unless the committee surprises everyone; the NIT takes the 32 best teams left out.")
                 + $"\nThe {ev} runs {start:MMM d}-{start.AddDays(2).Day}.";
         }
         else
@@ -192,7 +184,7 @@ public sealed partial class GameSession
 
     private void CourtStorms(CollegeWorld c)
     {
-        foreach (var g in c.Season.Games.Where(g => g.Date == Today && g.Played && g.Event == null && g.HomeRank == null && g.AwayRank is <= StormRank && g.WinnerId == g.HomeId))
+        foreach (var g in c.Season.Games.Where(g => g.Date == Today && g.Played && !g.IsNeutral() && g.HomeRank == null && g.AwayRank is <= StormRank && g.WinnerId == g.HomeId))
         {
             var home = c.Program(g.HomeId)!; var away = c.Program(g.AwayId)!;
             int r = g.AwayRank!.Value;

@@ -52,12 +52,13 @@ public sealed partial class GameSession
             var rivalry = cw.RivalryOf(a.Id, h.Id);
             (rivalryLabel, rankA, rankH) = (rivalry?.Label, rkA, rkH);
             bool postseason = g != null && !College.CollegeWorld.IsRegularSeason(g);
-            neutral = g?.Event != null || postseason;   // tournaments, showcases and March are on a neutral floor
+            neutral = g != null && g.IsNeutral();   // tournaments, showcases and March are on a neutral floor (not the NIT's first three rounds, run 193)
             // A ranked opponent makes it a big night; your own ranking alone doesn't (No. 1 at home to a low-major is ordinary).
             int? oppRank = HumanTeam == h ? rkA : HumanTeam == a ? rkH : rkA ?? rkH;
             full = oppRank != null || rivalry != null || postseason;
             occasion = g?.Stage == College.CollegeWorld.Madness ? $"March Madness · {College.CollegeWorld.RoundName(g.Round)}"   // K31 (run 186): the round
                 : g?.Stage == "Conference tournament" ? (g.Event ?? "Conference tournament")
+                : g?.Stage == College.CollegeWorld.Nit ? $"NIT · {College.CollegeWorld.NitRoundName(g.Round)}"   // run 193
                 : rivalry != null ? $"Rivalry · {Cap(rivalry.Name ?? (rivalry.InState ? "in-state rivals" : "rivals"))}"
                 : rkA != null && rkH != null ? $"Top 25 · #{rkA} vs #{rkH}"
                 : oppRank != null ? "Top 25"

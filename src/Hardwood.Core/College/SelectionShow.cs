@@ -118,7 +118,8 @@ public static class SelectionShow
         if (mine is { } me && myRegion < 0)
             close = (s.FirstFourOut.Contains(me) ? $"Tough night for {School(me)}: among the first four out. "
                 : s.NextFourOut.Contains(me) ? $"{School(me)} was in the next four out: close, not close enough. "
-                : $"{School(me)} wasn't near the bubble this year. ") + close;
+                : $"{School(me)} wasn't near the bubble this year. ")
+                + (s.NitField.Contains(me) ? $"The NIT has them as a No. {s.NitField.IndexOf(me) / 4 + 1} seed. " : "") + close; // run 193
         beats.Add(new("Close", "HSN STUDIOS", "The field is set", "", -1, -1, null, null, Analyst, close, mine is { } && myRegion < 0));
         return beats;
     }

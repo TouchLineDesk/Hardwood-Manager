@@ -139,7 +139,7 @@ public sealed partial class GameSession
         var (set, name, line, accent, second) = StudioShow.SetFor(date, InCollege, Abroad && MyLevel == 0 && !InCollege, series, firstGame && series == null);
         // K31 (run 186): a college game on a neutral floor, and March Madness's round and seeds, are named on the show.
         var cg = InCollege && World.College is { } cwShow ? cwShow.GameOn(us.Id, date) : null;
-        bool neutralFloor = cg?.Event != null;
+        bool neutralFloor = cg != null && cg.IsNeutral();
         string marchRound = "";
         if (cg != null && cg.Event == College.CollegeWorld.Madness && World.College is { } cwm)
         {

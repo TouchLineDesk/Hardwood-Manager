@@ -90,7 +90,8 @@ public sealed record ArenaDress(string Paint, string Trim, string Lettering, str
     /// fills a campus house by the home program's tradition and arena (with neither, the crowd is a typical 0.8).</summary>
     public static ArenaDress For(Team home, CollegeGame? game, Team? away, CollegeWorld? world)
     {
-        if (game?.Event is { } ev)
+        // Run 193 review: the NIT's first three rounds are on the better seed's campus, dressed as a home game.
+        if (game?.Event is { } ev && game.IsNeutral())
         {
             if (ev == CollegeWorld.Madness)
             {

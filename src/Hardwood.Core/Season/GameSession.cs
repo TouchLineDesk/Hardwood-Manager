@@ -442,6 +442,8 @@ public sealed partial class GameSession
         _liveSeries = null; _liveScheduled = null; _liveWorld = null;
         if (Phase == SessionPhase.Offseason) return (null, played);
         if (Phase == SessionPhase.Preseason && Today >= OpeningNight) Phase = SessionPhase.RegularSeason;
+        // K35 (run 193 review): a Monday's new poll is out before our game tips off, so the live game shows the ranks it is stamped with.
+        if (InCollege && World.College is { } pollWorld && pollWorld.Season.PollRelease.Count > 0) pollWorld.ReleasePoll(Today);
         // A club abroad plays its league and continental games from the world's fixtures.
         live = BeginAbroadGame(liveHumanGame, played);
 

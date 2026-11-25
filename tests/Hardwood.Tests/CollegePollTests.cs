@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Hardwood.Tests;
 
-/// <summary>The college Top 25 (Danny, #528): re-ranked after every game, the rank at tip-off kept on each result, and the
+/// <summary>The college Top 25 (Danny, #528): released every Monday (K35, run 193), the rank at tip-off kept on each result, and the
 /// rank travelling with the team (logos, links, schedules).</summary>
 public class CollegePollTests
 {
@@ -34,16 +34,22 @@ public class CollegePollTests
             Assert.All(pre, e => Assert.Equal("–", e.MoveText));
 
             for (int i = 0; i < 24; i++) s.AdvanceDay();
+            // K35 (run 193): on to the first Monday release after the preseason poll.
+            for (int i = 0; i < 40 && cw.Season.PollDay?.DayOfWeek != DayOfWeek.Monday; i++) s.AdvanceDay();
+            var monday = cw.Season.PollDay;
+            for (int i = 0; i < 5 && !cw.Season.Games.Any(g => g.Played && g.Date >= monday); i++) s.AdvanceDay();
+            Assert.Equal(monday, cw.Season.PollDay);
             var poll = cw.Poll();
             Assert.Equal(25, poll.Count);
             Assert.Equal(25, poll.Select(e => e.Team.Id).Distinct().Count());
-            // Ranked on the rating and the record (H148, run 133), best first, and Rank() agrees with the grid.
-            Assert.Equal(poll.Select(e => e.Team.Id), cw.Programs.Select(t => t.Id).OrderByDescending(cw.PollScore).ThenBy(id => id).Take(25));
+            // K35 (run 193): the poll on show is the Monday release (ranked then on the rating and the record), and Rank() agrees with the grid.
+            Assert.Equal(poll.Select(e => e.Team.Id), cw.Season.PollRelease.Take(25));
+            Assert.Equal(DayOfWeek.Monday, cw.Season.PollDay!.Value.DayOfWeek);
             Assert.All(poll, e => Assert.Equal(e.Rank, cw.Rank(e.Team.Id)));
             Assert.Null(cw.Rank(cw.Programs.First(t => !poll.Any(e => e.Team == t)).Id));
             Assert.Null(cw.Rank(s.League.Teams[0].Id));
 
-            // The arrows compare with the poll before the latest day of games.
+            // The arrows compare with last week's release.
             Assert.NotNull(cw.Season.PollDay);
             Assert.Equal(25, cw.Season.PollBefore.Count);
             Assert.All(poll, e => Assert.Equal(cw.Season.PollBefore.TryGetValue(e.Team.Id, out var b) ? b : null, e.Before));
@@ -53,13 +59,13 @@ public class CollegePollTests
             Assert.Equal("▼2", new PollEntry(8, poll[0].Team, 5, 1, 6).MoveText);
             Assert.Equal("NEW", new PollEntry(8, poll[0].Team, 5, 1, null).MoveText);
 
-            // Every game played on the latest day kept both sides' ranks as they stood before the day.
-            var day = cw.Season.Games.Where(g => g.Played && g.Date == cw.Season.PollDay).ToList();
+            // Every game played since this week's release tipped off against it.
+            var day = cw.Season.Games.Where(g => g.Played && g.Date >= cw.Season.PollDay).ToList();
             Assert.NotEmpty(day);
             foreach (var g in day.Where(g => g.HomeId != s.HumanTeam.Id && g.AwayId != s.HumanTeam.Id))
             {
-                Assert.True((cw.Season.PollBefore.TryGetValue(g.HomeId, out var h) ? h : (int?)null) == g.HomeRank, $"{g.Date} {g.Stage} {g.Event} r{g.Round} {g.HomeId} v {g.AwayId} rank {g.HomeRank} before {h} day {day.Count} human {s.HumanTeam.Id}");
-                Assert.Equal(cw.Season.PollBefore.TryGetValue(g.AwayId, out var a) ? a : null, g.AwayRank);
+                Assert.True(cw.Rank(g.HomeId) == g.HomeRank, $"{g.Date} {g.Stage} {g.Event} r{g.Round} {g.HomeId} v {g.AwayId} rank {g.HomeRank} now {cw.Rank(g.HomeId)}");
+                Assert.Equal(cw.Rank(g.AwayId), g.AwayRank);
             }
             // Ranked teams played, so some results carry a rank.
             Assert.Contains(cw.Season.Games, g => g.Played && (g.HomeRank != null || g.AwayRank != null));
@@ -76,12 +82,14 @@ public class CollegePollTests
             Assert.Equal("#4 Duke", CollegeWorld.WithRank(4, "Duke"));
             Assert.Equal("Duke", CollegeWorld.WithRank(null, "Duke"));
 
-            // One more day of games: the poll moves with the ratings and records again.
+            // The next Monday: a new release, and the arrows compare with the one before it.
             var before = cw.Season.PollDay;
+            var lastWeek = cw.PollRanks();
             int guard = 0;
             while (cw.Season.PollDay == before && guard++ < 10) s.AdvanceDay();
             Assert.NotEqual(before, cw.Season.PollDay);
-            Assert.Equal(cw.Poll().Select(e => e.Team.Id), cw.Programs.Select(t => t.Id).OrderByDescending(cw.PollScore).ThenBy(id => id).Take(25));
+            Assert.Equal(before!.Value.AddDays(7), cw.Season.PollDay);
+            Assert.Equal(lastWeek, cw.Season.PollBefore);
 
             // It all saves and loads.
             s.SaveNow();

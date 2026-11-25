@@ -61,7 +61,9 @@ public class CollegeTests
         Assert.All(s.ConferenceChampions.Values, id => Assert.Contains(id, s.Seeds.Keys)); // automatic bids
         Assert.Equal(8, s.Games.Where(g => g.Stage == "Invitational").Select(g => g.Event).Distinct().Count());
         var records = c.Programs.Select(t => c.Record(t.Id)).Select(r => r.wins + r.losses).ToList();
-        Assert.InRange(records.Average(), 24, 32);
+        // Run 193: the NIT adds up to five games for 32 programs (about 0.3 a program on average).
+        Assert.InRange(records.Average(), 24, 33);
+        Assert.Equal(31, s.Games.Count(g => g.Event == CollegeWorld.Nit));
         Assert.Contains(c.History, h => h.Year == s.Year && h.ChampionId == s.ChampionId);
         Assert.Equal(25, c.Top25().Count);
         Assert.All(c.Active, conf => Assert.Equal(conf.Size, c.ConferenceTable(conf.Key).Count));
