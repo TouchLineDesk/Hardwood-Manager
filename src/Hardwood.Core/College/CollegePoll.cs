@@ -12,8 +12,10 @@ public sealed record PollEntry(int Rank, Team Team, int Wins, int Losses, int? B
 }
 
 /// <summary>
-/// The college Top 25 (Danny, #528): ranked on the rating and the record (H148, run 133), re-ranked after every game, and the rank travels with the
-/// team (its logo, schedules, scoreboards, standings and the live game).
+/// The college Top 25 (Danny, #528): ranked on the rating and the record (H148, run 133), and the rank travels with the
+/// team (its logo, schedules, scoreboards, standings and the live game). K35 (run 193): the poll is released on Mondays, as
+/// the real one is, and the badges, the Top 25 page and the tip-off ranks read that release all week; the first release is
+/// the preseason poll, on the season's first day of games. The final poll (after the title) is ranked live.
 /// </summary>
 public sealed partial class CollegeWorld
 {
@@ -108,21 +110,55 @@ public sealed partial class CollegeWorld
     /// <summary>Poll points for a record's win share above .500 (×0.5 for a perfect record).</summary>
     public const double RecordWeight = 260;
 
+    /// <summary>K35 (run 193): whether the poll on show is the Monday release (otherwise the live ranking: the preseason, an
+    /// older save until its first Monday, and the final poll).</summary>
+    private bool Released => Season.PollRelease.Count > 0 && !FinalPoll;
+
     /// <summary>Where a program would stand if the poll went on past 25 (H148: "Your program: No. 31").</summary>
-    public int PollPosition(int teamId) { EnsurePoll(); return _fullRanks.TryGetValue(teamId, out var r) ? r : Programs.Count; }
+    public int PollPosition(int teamId)
+    {
+        if (Released) { int i = Season.PollRelease.IndexOf(teamId); return i >= 0 ? i + 1 : Programs.Count; }
+        EnsurePoll(); return _fullRanks.TryGetValue(teamId, out var r) ? r : Programs.Count;
+    }
 
     /// <summary>The Top 25's program ids, best first.</summary>
-    public IReadOnlyList<int> PollOrder() { EnsurePoll(); return _pollOrder; }
+    public IReadOnlyList<int> PollOrder() { if (Released) return Season.PollRelease.Take(PollSize).ToList(); EnsurePoll(); return _pollOrder; }
 
-    /// <summary>Before the first game of a day: keep the poll as it stood, for the arrows.</summary>
+    /// <summary>The poll as it would be ranked right now (the voters' running order between Mondays), best first.</summary>
+    public IReadOnlyList<int> LivePollOrder() { EnsurePoll(); return _pollOrder; }
+
+    /// <summary>The Monday of the week a date falls in.</summary>
+    public static DateOnly PollMondayOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7));
+
+    /// <summary>
+    /// K35 (run 193): release the poll if one is due: the preseason poll on the season's first day of games, then every
+    /// Monday (taken before that day's games). The previous release is kept for the arrows. No random numbers.
+    /// </summary>
+    public void ReleasePoll(DateOnly today)
+    {
+        var s = Season;
+        if (FinalPoll) return;
+        bool first = s.PollRelease.Count == 0;
+        var monday = PollMondayOf(today);
+        if (!first && s.PollDay is { } last && last >= monday) return;
+        s.PollBefore = first ? new() : PollRanks();
+        EnsurePoll();
+        s.PollRelease = Programs.Select(t => t.Id).OrderBy(id => _fullRanks.GetValueOrDefault(id, int.MaxValue)).ThenBy(id => id).ToList();
+        s.PollDay = first ? today : monday;
+    }
+
+    /// <summary>Before the first game of a day: release the poll if a Monday has come (K35), then every game that day tips off against it.</summary>
     private void BeforeGameDay(DateOnly date)
     {
-        if (Season.PollDay == date) return;
-        Season.PollBefore = PollRanks();
-        Season.PollDay = date;
+        if (_tippedOff == date && ReferenceEquals(_tippedSeason, Season)) return;
+        ReleasePoll(date);
+        _tippedOff = date; _tippedSeason = Season;
         // Every game that day tips off against the poll as it stood, even when yours is played first.
         foreach (var g in Season.Games.Where(g => g.Date == date)) TipOff(g);
     }
+
+    private DateOnly? _tippedOff;
+    private CollegeSeason? _tippedSeason;
 
     /// <summary>Both sides' ranks at tip-off, once (a game you coach is recorded before the rest of the day's).</summary>
     private void TipOff(CollegeGame g)
@@ -133,15 +169,19 @@ public sealed partial class CollegeWorld
     }
 
     /// <summary>A copy of the poll as program id → rank.</summary>
-    public Dictionary<int, int> PollRanks() { EnsurePoll(); return new Dictionary<int, int>(_pollRanks); }
+    public Dictionary<int, int> PollRanks() => PollOrder().Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
 
-    /// <summary>A program's Top 25 rank right now (1-25), or null when unranked or not a college program.</summary>
-    public int? Rank(int teamId) { EnsurePoll(); return _pollRanks.TryGetValue(teamId, out var r) ? r : null; }
+    /// <summary>A program's Top 25 rank right now (1-25; K35: the Monday release's), or null when unranked or not a college program.</summary>
+    public int? Rank(int teamId)
+    {
+        if (Released) { int i = Season.PollRelease.IndexOf(teamId); return i >= 0 && i < PollSize ? i + 1 : null; }
+        EnsurePoll(); return _pollRanks.TryGetValue(teamId, out var r) ? r : null;
+    }
 
     /// <summary>Call after changing ratings outside a game (tests, a new season): the poll is re-ranked on its next read.</summary>
     public void InvalidatePoll() => _pollVersion++;
 
-    /// <summary>The Top 25 with records and movement since the latest day of games.</summary>
+    /// <summary>The Top 25 with records and movement since the previous release (K35: last week's poll).</summary>
     public List<PollEntry> Poll()
     {
         var before = Season.PollBefore;

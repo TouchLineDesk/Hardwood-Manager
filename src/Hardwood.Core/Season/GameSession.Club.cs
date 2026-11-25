@@ -227,6 +227,7 @@ public sealed partial class GameSession
                 // events their name (and the round for March Madness).
                 string comp = g.Event ?? HumanLeagueName;
                 string stage = g.Event == College.CollegeWorld.Madness ? College.CollegeWorld.RoundName(g.Round)
+                    : g.Event == College.CollegeWorld.Nit ? College.CollegeWorld.NitRoundName(g.Round)
                     : g.Stage == "Conference" ? MyConference!.Short : "Regular season";
                 list.Add(new MyGame(g.Date, opp, home, comp, stage,
                     g.Played ? (home ? g.HomePts : g.AwayPts) : null, g.Played ? (home ? g.AwayPts : g.HomePts) : null, r)
@@ -235,7 +236,7 @@ public sealed partial class GameSession
                     OurRank = g.Played ? (home ? g.HomeRank : g.AwayRank) : cw.Rank(us.Id),
                     Group = ScheduleFilter.CollegeGroup(g.Event, g.Stage),
                     Rivalry = cw.RivalryOf(us.Id, opp.Id),
-                    Neutral = g.Event != null,
+                    Neutral = g.IsNeutral(),
                     StyleConference = cw.StyleConference(g),
                     NotCoached = g.Played && r == null && (g.Date <= Job.HiredOn || !Job.Employed),
                 });
@@ -388,7 +389,7 @@ public sealed partial class GameSession
         int ours = g.HomeId == us ? g.HomePts!.Value : g.AwayPts!.Value, theirs = g.HomeId == us ? g.AwayPts!.Value : g.HomePts!.Value;
         string title = rv.Name != null ? $"{rv.Name}: {(won ? "a win" : "a loss")} against {opp.City}, {ours}-{theirs}"
             : $"{(won ? "Beat" : "Lost to")} {(rv.InState ? "in-state rival" : "rival")} {opp.City}, {ours}-{theirs}";
-        string body = $"{(won ? "You won" : "You lost")} {rv.Label} {(g.HomeId == us ? "at home" : g.Event != null ? "on a neutral court" : "on the road")}. "
+        string body = $"{(won ? "You won" : "You lost")} {rv.Label} {(g.HomeId == us ? "at home" : g.IsNeutral() ? "on a neutral court" : "on the road")}. "
             + (cw.SeriesLine(us, them) is { } line ? line + "." : "");
         Post(title, body, "League");
     }

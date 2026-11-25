@@ -106,22 +106,14 @@ public sealed partial class GameSession
     // ------------------------------------------------------------------------------------------
     // Poll Monday
 
-    /// <summary>Our Top 25 rank as the week began: the rank at tip-off of our first game in the last seven days (null: unranked).
-    /// False when we played no game this week (nothing to compare).</summary>
-    private bool RankAWeekAgo(CollegeWorld c, out int? rank)
-    {
-        rank = null;
-        var since = Today.AddDays(-7);
-        var g = c.GamesOf(HumanTeam.Id).FirstOrDefault(x => x.Played && x.Date > since && x.Date <= Today);
-        if (g == null) return false;
-        rank = g.HomeId == HumanTeam.Id ? g.HomeRank : g.AwayRank;
-        return true;
-    }
-
     private void PollMonday(CollegeWorld c)
     {
         if (Today.DayOfWeek != DayOfWeek.Monday || c.Season.Selected || c.FirstGameDay is not { } first || Today <= first) return;
-        if (!RankAWeekAgo(c, out var before)) return;
+        // K35 (run 193): the poll is released this morning (if no game today has released it already), and the news
+        // compares it with last week's release, the same ranks the badges show all week.
+        c.ReleasePoll(Today);
+        if (c.Season.PollDay != Today || c.Season.PollBefore.Count == 0) return;
+        int? before = c.Season.PollBefore.TryGetValue(HumanTeam.Id, out var was) ? was : null;
         int? now = c.Rank(HumanTeam.Id);
         if (before == now) return;
         string? title = (before, now) switch

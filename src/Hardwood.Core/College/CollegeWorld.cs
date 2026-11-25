@@ -34,6 +34,9 @@ public sealed class CollegeGame
     public int Overtimes { get; set; }
     public bool Played => HomePts != null;
     public int? WinnerId => !Played ? null : HomePts > AwayPts ? HomeId : AwayId;
+    /// <summary>Whether the game is on a neutral floor: every event (invitationals, showcases, tournaments, March), except the
+    /// NIT's first three rounds, which the better seed hosts (run 193). A method, so it isn't saved.</summary>
+    public bool IsNeutral() => Event != null && !(Event == CollegeWorld.Nit && Round < 3);
 }
 
 /// <summary>A side's leading scorer in a March Madness game (points, then rebounds and assists break ties). The name is kept
@@ -72,6 +75,11 @@ public sealed class CollegeSeason
     public Dictionary<int, int> PollBefore { get; set; } = new();
     /// <summary>The day <see cref="PollBefore"/> was taken (the latest day of games).</summary>
     public DateOnly? PollDay { get; set; }
+    /// <summary>K35 (run 193): the Top 25 as released on the latest poll Monday, every program best first (the badges, the
+    /// Top 25 page and the tip-off ranks read it all week). Empty before the first release and in older saves (then the live poll).</summary>
+    public List<int> PollRelease { get; set; } = new();
+    /// <summary>Run 193: the NIT's 32 teams, best first (empty when the season had none, or before v0.181.0).</summary>
+    public List<int> NitField { get; set; } = new();
 }
 
 public sealed record CollegeChampion(int Year, int ChampionId, string Champion, int RunnerUpId, string RunnerUp);
@@ -614,7 +622,7 @@ public sealed partial class CollegeWorld
     /// November invitationals, the showcases and the conference schedule. Conference tournaments and March Madness are the
     /// postseason, judged by how far the program went (a 33-5 record with five tournament wins isn't "3 wins past" a 24-win target).
     /// </summary>
-    public static bool IsRegularSeason(CollegeGame g) => g.Stage is not ("Conference tournament" or Madness);
+    public static bool IsRegularSeason(CollegeGame g) => g.Stage is not ("Conference tournament" or Madness or Nit);
 
     /// <summary>CS2: a program's regular-season record (<see cref="IsRegularSeason"/>).</summary>
     public (int wins, int losses) RegularSeasonRecord(int id)
@@ -892,7 +900,12 @@ public sealed partial class CollegeWorld
             var next = s.Games.Where(g => !g.Played).OrderBy(g => g.Date).FirstOrDefault();
             if (next == null || next.Date > date)
             {
-                if (!added) return;
+                if (!added)
+                {
+                    // K35 (run 193): a Monday without games still brings the new poll (once the season has its first).
+                    if (s.PollRelease.Count > 0) ReleasePoll(date);
+                    return;
+                }
                 continue;
             }
             var day = s.Games.Where(g => !g.Played && g.Date == next.Date).ToList();
@@ -907,11 +920,13 @@ public sealed partial class CollegeWorld
     {
         var home = Program(g.HomeId)!; var away = Program(g.AwayId)!;
         // March Madness gets the full match engine (decision #95), and so does every game of a program you coach (C2, #168).
+        // Run 193: the NIT plays on its own stream (a hash of the game), so it never moves March Madness or anyone else's dice.
+        if (g.Event == Nit) rng = NitRng(Season.Year, g);
         if (g.Event == Madness || g.HomeId == ManagedProgramId || g.AwayId == ManagedProgramId)
             Record(g, sim.Simulate(home, away, GameRules(g), rng.NextULong(), false, g.Date));
         else
         {
-            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.Event != null, homePoints: HomeCourtPoints(g.HomeId), totalScale: StyleOf(g).PointsScale); // NCAA ~72 a side
+            var (hp, ap) = QuickSim.Play(home, away, g.Date, rng, Season.Stats, Rules.College, 72, neutral: g.IsNeutral(), homePoints: HomeCourtPoints(g.HomeId), totalScale: StyleOf(g).PointsScale); // NCAA ~72 a side
             g.HomePts = hp; g.AwayPts = ap;
             UpdateElo(g);
             NoteRivalry(g); // C5 part 1: no random numbers
@@ -919,12 +934,12 @@ public sealed partial class CollegeWorld
     }
 
     /// <summary>College rules for a game: events (invitationals, showcases, tournaments) are on a neutral court.</summary>
-    public static Rules RulesFor(CollegeGame g) => g.Event == Madness ? Rules.CollegeMadness : g.Event != null ? Rules.CollegeNeutral : Rules.College; // K21 (run 163)
+    public static Rules RulesFor(CollegeGame g) => g.Event == Madness ? Rules.CollegeMadness : g.IsNeutral() ? Rules.CollegeNeutral : Rules.College; // K21 (run 163)
 
     /// <summary>College rules for a game in this world: a neutral court for events, else the home program's own arena (C5 part 2).</summary>
     public Rules GameRules(CollegeGame g) =>
         StyleOf(g).Apply(g.Event == Madness ? Rules.CollegeMadness // K21 (run 163): March's single-game spread
-            : g.Event != null ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 }); // C5: + the conference's style
+            : g.IsNeutral() ? Rules.CollegeNeutral : Rules.College with { HomeScale = HomeCourtPoints(g.HomeId) / 2.5 }); // C5: + the conference's style
 
     /// <summary>The program you coach (college career, slice C2): its games always use the full engine. Not saved; the session sets it.</summary>
     public int? ManagedProgramId { get; set; }
@@ -985,7 +1000,7 @@ public sealed partial class CollegeWorld
     {
         var elo = Season.Elo;
         double rh = elo.GetValueOrDefault(g.HomeId, 1500), ra = elo.GetValueOrDefault(g.AwayId, 1500);
-        bool neutral = g.Event != null;
+        bool neutral = g.IsNeutral();
         double expected = 1 / (1 + Math.Pow(10, (ra - rh - (neutral ? 0 : 60 * HomeCourtPoints(g.HomeId) / 2.5)) / 400));
         double result = g.HomePts > g.AwayPts ? 1 : 0;
         double margin = Math.Log(Math.Abs(g.HomePts!.Value - g.AwayPts!.Value) + 1);
@@ -1028,7 +1043,11 @@ public sealed partial class CollegeWorld
             int dateIndex = name == Madness ? next : next;
             var date = dateIndex < dates.Count ? dates[dateIndex] : current.Max(g => g.Date).AddDays(1);
             for (int i = 0; i < current.Count; i += 2)
-                s.Games.Add(new CollegeGame { Date = date, HomeId = current[i].WinnerId!.Value, AwayId = current[i + 1].WinnerId!.Value, Stage = current[i].Stage, Event = name, Round = next, Slot = i / 2 });
+            {
+                var ng = new CollegeGame { Date = date, HomeId = current[i].WinnerId!.Value, AwayId = current[i + 1].WinnerId!.Value, Stage = current[i].Stage, Event = name, Round = next, Slot = i / 2 };
+                if (name == Nit) NitHost(ng);
+                s.Games.Add(ng);
+            }
             changed = true;
         }
         if (changed) return true;
@@ -1227,6 +1246,7 @@ public sealed partial class CollegeWorld
     private void Crowned(string name, CollegeGame final)
     {
         if (name == Madness) return; // the champion is announced with the final
+        if (name == Nit) { NitCrowned(final); return; }
         var w = Program(final.WinnerId!.Value)!;
         if (name.EndsWith("tournament")) News.Add(($"{w.FullName} win the {name}", $"{w.FullName} take the {name} and the automatic bid to March Madness."));
     }
@@ -1298,6 +1318,7 @@ public sealed partial class CollegeWorld
         string Names(List<int> ids) => string.Join(", ", ids.Select(i => Program(i)!.FullName));
         News.Add(("March Madness: the field is set", $"68 teams are in. The No. 1 seeds: {string.Join(", ", ones)}."
             + (p.LastFourIn.Count > 0 ? $"\nLast four in: {Names(p.LastFourIn)}.\nFirst four out: {Names(p.FirstFourOut)}." : "")));
+        SelectNit(p);
         SelectionNews(p);
     }
 

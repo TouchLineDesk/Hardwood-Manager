@@ -123,9 +123,11 @@
                         <ItemsControl ItemsSource="{Binding Teams}">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:SeedCell">
-                              <Grid ColumnDefinitions="*,Auto">
+                              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,2">
                                 <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
                                 <TextBlock Grid.Column="1" Text="{Binding Record}" FontSize="12" Classes="muted" Margin="8,0,0,0"/>
+                                <!-- Run 193: the bubble résumé (NET and Quad 1 record). -->
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Detail}" FontSize="11" Classes="muted" IsVisible="{Binding HasDetail}" TextTrimming="CharacterEllipsis"/>
                               </Grid>
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
@@ -236,9 +238,11 @@
                         <ItemsControl ItemsSource="{Binding Teams}">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:SeedCell">
-                              <Grid ColumnDefinitions="*,Auto">
+                              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,2">
                                 <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" FontWeight="{Binding Mine, Converter={x:Static vm:HomeConverters.Bold}}"/>
                                 <TextBlock Grid.Column="1" Text="{Binding Record}" FontSize="12" Classes="muted" Margin="8,0,0,0"/>
+                                <!-- Run 193: the bubble résumé (NET and Quad 1 record). -->
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Detail}" FontSize="11" Classes="muted" IsVisible="{Binding HasDetail}" TextTrimming="CharacterEllipsis"/>
                               </Grid>
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
