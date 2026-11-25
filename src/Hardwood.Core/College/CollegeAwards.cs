@@ -210,6 +210,7 @@ public sealed partial class CollegeWorld
             foreach (var (key, five) in a.AllConference)
                 if (five.Contains(playerId) && a.ConferencePlayer.GetValueOrDefault(key) != playerId) list.Add($"All-{ConferenceShortName(key)} first team {y}");
         }
+        list.AddRange(AllAmericanHonoursOf(playerId)); // CS11 (run 195)
         return list;
     }
 

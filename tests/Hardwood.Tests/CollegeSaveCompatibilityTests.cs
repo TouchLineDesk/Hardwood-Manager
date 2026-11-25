@@ -76,6 +76,7 @@ public class CollegeSaveCompatibilityTests
         foreach (var (k, v) in cw.Alumni.OrderBy(kv => kv.Key)) sb.Append($"A{k} {v.ProgramId} {v.Year}\n");
         sb.Append("awards ").Append(JsonSerializer.Serialize(cw.Awards)).Append('\n');
         sb.Append("history ").Append(JsonSerializer.Serialize(cw.History)).Append('\n');
+        sb.Append("allamerican ").Append(JsonSerializer.Serialize(cw.AllAmerican)).Append('\n'); // CS11 (run 195)
         sb.Append("books ").Append(JsonSerializer.Serialize(s.HumanTeam.Money.Program, new JsonSerializerOptions { IncludeFields = true })).Append('\n');
         var job = s.Job.Current!;
         sb.Append($"job {job.League} {job.TeamId} {job.Season} {job.Goal} {job.TargetWins} {F(Math.Round(s.Job.Confidence, 6))} {s.Job.History.Count}\n");

@@ -892,6 +892,12 @@ public sealed partial class CollegeWorld
     /// <summary>Play every game up to and including <paramref name="date"/>, adding knockout rounds and stages as they come.</summary>
     public void PlayThrough(DateOnly date, GameSimulator sim, Rng rng)
     {
+        PlayGamesThrough(date, sim, rng);
+        AllAmericanThrough(date); // CS11 (run 195): after the day's games, so the Final Four is known when the seniors are picked
+    }
+
+    private void PlayGamesThrough(DateOnly date, GameSimulator sim, Rng rng)
+    {
         RecruitingThrough(date, rng);
         var s = Season;
         while (true)
