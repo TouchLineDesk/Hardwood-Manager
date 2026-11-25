@@ -45,6 +45,11 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   book 5 buy games at home (the AD expects one more win) or sign 3 home-and-home series with power programs (the AD
   allows one win; the return games come the next season); pick a holiday tournament (the three biggest invite B
   programs or better) and ask for a December showcase. The season's welcome names your slate and strength of schedule.
+- **Zones and the press (Tactics page, and the live game's Tactics tab):** besides man-to-man and the 2-3, college
+  benches play the 1-3-1 (traps the wings, forces turnovers, leaves the corners and the glass open) and the match-up
+  zone, and can press full court after every basket (about 3 more turnovers a game against it, a quicker game, but a
+  broken press gives up layups and your players tire faster). About one program in three plays a zone and one in nine
+  presses; the scouting report warns you about a pressing opponent.
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 
 ## Known issues (not worth a note unless they bother you)

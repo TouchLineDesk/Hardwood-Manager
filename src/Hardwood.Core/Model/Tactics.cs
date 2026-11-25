@@ -3,8 +3,10 @@ namespace Hardwood.Core.Model;
 /// <summary>How a team runs its offense (decision #58). The sliders on <see cref="Tactic"/> fine-tune it.</summary>
 public enum OffensiveSystem { Balanced, PickAndRoll, Motion, PostCentric, PaceAndSpace, Isolation }
 
-/// <summary>How a team defends (decision #59).</summary>
-public enum DefensiveScheme { Man, SwitchEverything, Zone23, Drop }
+/// <summary>How a team defends (decision #59). Run 194 (slice 4 of the college launch plan, #1170): the 1-3-1 and the
+/// match-up zone are college schemes (<see cref="Engine.Tactics.Schemes"/>); the pros keep the first four. New values go
+/// at the end, so saves keep their numbers.</summary>
+public enum DefensiveScheme { Man, SwitchEverything, Zone23, Drop, Zone131, MatchUpZone }
 
 /// <summary>FM-style player roles (decision #60). Each changes how often a player shoots, where from, and how he defends.</summary>
 public enum Role
@@ -25,17 +27,21 @@ public sealed class TacticPreset
     public int DefensiveAggression { get; set; } = 50;
     public int StarUsage { get; set; } = 50;
     public bool DoubleStar { get; set; }
+    /// <summary>Run 194: the full-court press (college).</summary>
+    public bool FullCourtPress { get; set; }
 
     public static TacticPreset From(Tactic t, string name) => new()
     {
         Name = name, System = t.System, Scheme = t.Scheme, Pace = t.Pace, ThreePointEmphasis = t.ThreePointEmphasis,
         CrashGlass = t.CrashGlass, DefensiveAggression = t.DefensiveAggression, StarUsage = t.StarUsage, DoubleStar = t.DoubleStar,
+        FullCourtPress = t.FullCourtPress,
     };
 
     public void ApplyTo(Tactic t)
     {
         t.System = System; t.Scheme = Scheme; t.Pace = Pace; t.ThreePointEmphasis = ThreePointEmphasis;
         t.CrashGlass = CrashGlass; t.DefensiveAggression = DefensiveAggression; t.StarUsage = StarUsage; t.DoubleStar = DoubleStar;
+        t.FullCourtPress = FullCourtPress;
     }
 }
 
@@ -153,6 +159,8 @@ public static class Systems
         DefensiveScheme.Man => "Man-to-man",
         DefensiveScheme.SwitchEverything => "Switch everything",
         DefensiveScheme.Zone23 => "2-3 zone",
+        DefensiveScheme.Zone131 => "1-3-1 zone",
+        DefensiveScheme.MatchUpZone => "Match-up zone",
         _ => "Drop coverage",
     };
 
@@ -161,6 +169,8 @@ public static class Systems
         DefensiveScheme.Man => "Straight up. The baseline everything else is measured against.",
         DefensiveScheme.SwitchEverything => "Switch every screen: kills pick-and-roll, but bigs end up on guards. Needs versatile defenders.",
         DefensiveScheme.Zone23 => "Pack the paint: fewer shots at the rim, more threes allowed. Needs good help defense.",
+        DefensiveScheme.Zone131 => "Long arms on the wings trap the ball: more turnovers, but the corners and the glass are open. Needs length and quick hands.",
+        DefensiveScheme.MatchUpZone => "A zone that guards like man-to-man: a little less at the rim and a little more on threes than man. Needs smart, connected defenders.",
         _ => "The big sags to protect the rim: concedes pull-up mid-range jumpers. Needs a rim protector.",
     };
 
@@ -203,6 +213,10 @@ public static class Systems
                                                     AvgPart("bigs who can switch", players.Where(p => p.PrimaryPosition >= Position.PF), 0.4, Attr.PerimeterDefense, Attr.Agility, Attr.Speed) },
         DefensiveScheme.Zone23 => new() { AvgPart("help defence", players, 0.7, Attr.HelpDefense, Attr.BasketballIQ),
                                           TopPart("rim protector", players, 0.3, Attr.Block, Attr.InteriorDefense) },
+        DefensiveScheme.Zone131 => new() { AvgPart("quick hands", players, 0.5, Attr.Steal, Attr.Decisions),
+                                           AvgPart("length and speed on the wings", players.Where(p => p.PrimaryPosition is >= Position.SG and <= Position.PF), 0.5, Attr.PerimeterDefense, Attr.Speed, Attr.Agility) },
+        DefensiveScheme.MatchUpZone => new() { AvgPart("reading the floor", players, 0.6, Attr.BasketballIQ, Attr.HelpDefense, Attr.Teamwork),
+                                               AvgPart("perimeter defence", players, 0.4, Attr.PerimeterDefense) },
         _ => new() { TopPart("rim protector", players, 0.7, Attr.Block, Attr.InteriorDefense, Attr.HelpDefense),
                      AvgPart("perimeter defence", players, 0.3, Attr.PerimeterDefense) },
     };
@@ -222,8 +236,8 @@ public static class Systems
     public static List<FitReason> Reasons(OffensiveSystem s, IReadOnlyCollection<Player> players) =>
         s == OffensiveSystem.Balanced || players.Count == 0 ? new() : Explain(Parts(s, players), OffCenter[(int)s], OffSpread[(int)s]);
 
-    public static List<FitReason> Reasons(DefensiveScheme s, IReadOnlyCollection<Player> players) =>
-        s == DefensiveScheme.Man || players.Count == 0 ? new() : Explain(Parts(s, players), DefCenter[(int)s], DefSpread[(int)s]);
+    public static List<FitReason> Reasons(DefensiveScheme s, IReadOnlyCollection<Player> players, bool college = false) =>
+        s == DefensiveScheme.Man || players.Count == 0 ? new() : Explain(Parts(s, players), Center(s, college), Spread(s, college));
 
     private static List<FitReason> Explain(List<FitPart> parts, double center, double spread) =>
         parts.Select(p =>
@@ -243,13 +257,40 @@ public static class Systems
     /// </summary>
     public static double Fit(OffensiveSystem s, IReadOnlyCollection<Player> players) =>
         s == OffensiveSystem.Balanced ? 0.5 : Math.Clamp(0.5 + (Raw(s, players) - OffCenter[(int)s]) / OffSpread[(int)s], 0, 1);
-    public static double Fit(DefensiveScheme s, IReadOnlyCollection<Player> players) =>
-        s == DefensiveScheme.Man ? 0.5 : Math.Clamp(0.5 + (Raw(s, players) - DefCenter[(int)s]) / DefSpread[(int)s], 0, 1);
+    /// <param name="college">Run 194: measured against college rotations. Against the pros' centres every college rotation
+    /// fit every scheme at 0 (college players are 4-5 points lower), so every college bench played man-to-man.</param>
+    public static double Fit(DefensiveScheme s, IReadOnlyCollection<Player> players, bool college = false) =>
+        s == DefensiveScheme.Man ? 0.5 : Math.Clamp(0.5 + (Raw(s, players) - Center(s, college)) / Spread(s, college), 0, 1);
+
+    private static double Center(DefensiveScheme s, bool college) => (college ? DefCenterCollege : DefCenter)[(int)s];
+    private static double Spread(DefensiveScheme s, bool college) => (college ? DefSpreadCollege : DefSpread)[(int)s];
 
     // Indexed by enum value (Balanced/Man unused). Center = mean raw score of a top-9 rotation over four generated
     // leagues; spread = 4 standard deviations, so a rotation two SDs above average fits perfectly.
     internal static double[] OffCenter = { 0, 16.26, 12.81, 15.79, 12.85, 15.39 };
     internal static double[] OffSpread = { 1, 3.7, 2.5, 3.9, 3.1, 4.3 };
-    internal static double[] DefCenter = { 0, 12.01, 14.56, 15.91 };
-    internal static double[] DefSpread = { 1, 3.0, 3.1, 4.0 };
+    // Run 194 (`hardwood schemefits`, seeds 2026 and 31, top-9 rotations): the 1-3-1 and the match-up zone on the pros'
+    // clubs (12.9 / 3.0, 12.73 / 3.05), and every scheme on the 365 college programs (mean / 4 SD).
+    internal static double[] DefCenter = { 0, 12.01, 14.56, 15.91, 12.90, 12.73 };
+    internal static double[] DefSpread = { 1, 3.0, 3.1, 4.0, 3.0, 3.05 };
+    internal static double[] DefCenterCollege = { 0, 7.92, 9.26, 10.37, 8.33, 8.11 };
+    internal static double[] DefSpreadCollege = { 1, 3.62, 4.16, 4.81, 3.58, 3.46 };
+
+    /// <summary>Run 194: what the full-court press needs from a rotation (all nine, so depth counts: pressing tires legs).</summary>
+    public static List<FitPart> PressParts(IReadOnlyCollection<Player> players) => new()
+    {
+        AvgPart("speed and stamina", players, 0.5, Attr.Speed, Attr.Stamina, Attr.Acceleration),
+        AvgPart("hands and ball pressure", players, 0.5, Attr.Steal, Attr.PerimeterDefense),
+    };
+
+    public static double PressRaw(IReadOnlyCollection<Player> players) => players.Count == 0 ? 11.5 : PressParts(players).Sum(p => p.Value * p.Weight);
+
+    /// <summary>Run 194: how well a rotation suits the full-court press, 0 to 1 (0.5 an average rotation).</summary>
+    public static double PressFit(IReadOnlyCollection<Player> players) =>
+        Math.Clamp(0.5 + (PressRaw(players) - PressCenter) / PressSpread, 0, 1);
+
+    public static List<FitReason> PressReasons(IReadOnlyCollection<Player> players) =>
+        players.Count == 0 ? new() : Explain(PressParts(players), PressCenter, PressSpread);
+
+    internal static double PressCenter = 8.42, PressSpread = 3.6; // college programs (`hardwood schemefits`)
 }

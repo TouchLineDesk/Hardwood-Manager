@@ -87,6 +87,9 @@ public sealed class Tactic
     public int? StarStopperId { get; set; }
     /// <summary>Send a second defender at the other team's best scorer: he shoots less and worse, his teammates get open looks.</summary>
     public bool DoubleStar { get; set; }
+    /// <summary>Run 194 (college): press full court after made baskets and dead balls. More turnovers and a faster game,
+    /// but a broken press gives up layups, and the pressers tire faster and foul more. <see cref="Engine.Tactics"/> has the numbers.</summary>
+    public bool FullCourtPress { get; set; }
     public List<TacticPreset> Presets { get; set; } = new();
     /// <summary>Preset used in the last five minutes of the fourth quarter and overtime when the score is within six (null = keep the current tactics).</summary>
     public string? LateGamePreset { get; set; }

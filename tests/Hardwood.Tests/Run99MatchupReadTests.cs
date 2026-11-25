@@ -39,7 +39,7 @@ public class Run99MatchupReadTests
             var read = MatchupRead.Of(us, them, null);
             var rot = CoachAi.Rotation(us, null);
             foreach (var sys in Enum.GetValues<OffensiveSystem>())
-                foreach (var sch in Enum.GetValues<DefensiveScheme>())
+                foreach (var sch in Tactics.Schemes(college: false))   // run 194: the college zones aren't the pros' to pick
                     Assert.True(plan.Value >= MatchupRead.Value(Systems.Fit(sys, rot), Systems.Fit(sch, rot), read.Edge(sys, sch), sys, sch) - 1e-12);
             checkedPairs++;
         }

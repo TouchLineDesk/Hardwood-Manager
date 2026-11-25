@@ -13,7 +13,8 @@ namespace Hardwood.Core.Engine;
 /// nothing he suggests can score below an alternative.
 /// </para>
 /// </summary>
-public sealed record MatchupRead(OffensiveSystem TheirSystem, DefensiveScheme TheirScheme)
+/// <param name="College">Run 194: a college read, whose "would match up better" names only schemes a college bench can play.</param>
+public sealed record MatchupRead(OffensiveSystem TheirSystem, DefensiveScheme TheirScheme, bool College = false)
 {
     /// <summary>An edge at or past this (either way) is worth a word; at or past <see cref="Big"/> it's a big one.</summary>
     public const double Notable = 0.015;
@@ -24,10 +25,10 @@ public sealed record MatchupRead(OffensiveSystem TheirSystem, DefensiveScheme Th
     public const double BaselineStep = 0.025;
 
     /// <summary>What the assistant expects <paramref name="opp"/> to run against <paramref name="us"/>.</summary>
-    public static MatchupRead Of(Team us, Team opp, DateOnly? on)
+    public static MatchupRead Of(Team us, Team opp, DateOnly? on, bool college = false)
     {
-        var (s, d) = CoachAi.TheirPlan(opp, us, on);
-        return new MatchupRead(s, d);
+        var (s, d) = CoachAi.TheirPlan(opp, us, on, college);
+        return new MatchupRead(s, d, college);
     }
 
     /// <summary>Our system against their defence: positive is good for us.</summary>
@@ -68,7 +69,7 @@ public sealed record MatchupRead(OffensiveSystem TheirSystem, DefensiveScheme Th
     public string WhyScheme(DefensiveScheme pick)
     {
         if (Defence(pick) > -Notable) return "";
-        var better = Enum.GetValues<DefensiveScheme>().OrderByDescending(Defence).First();
+        var better = Tactics.Schemes(College).OrderByDescending(Defence).First();
         return Defence(better) > Defence(pick) + 1e-9
             ? $"{Systems.Name(pick)} suits their {Systems.Name(TheirSystem).ToLower()} more than you'd like; {Systems.Name(better).ToLower()} would match up better, but your players don't suit it and the fit is worth more."
             : $"Nothing matches up better against their {Systems.Name(TheirSystem).ToLower()}; {Systems.Name(pick).ToLower()} is the least-bad option.";

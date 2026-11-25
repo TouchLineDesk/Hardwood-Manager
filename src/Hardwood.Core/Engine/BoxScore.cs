@@ -103,6 +103,9 @@ public sealed class GameResult
     /// <summary>K28: college possessions that started in the last minute of the final period (or overtime) with the side
     /// with the ball ahead by four to ten, outside a transition break: the trips where the trailing side should foul. Not saved.</summary>
     public int LateFoulChances { get; set; }
+    /// <summary>Run 194: possessions each side (home, away) played against a full-court press, and the turnovers it forced.</summary>
+    public int[] PressedPossessions { get; } = new int[2];
+    public int[] PressTurnovers { get; } = new int[2];
 
     public TeamBox Winner => Home.Points > Away.Points ? Home : Away;
     public TeamBox Loser => Home.Points > Away.Points ? Away : Home;

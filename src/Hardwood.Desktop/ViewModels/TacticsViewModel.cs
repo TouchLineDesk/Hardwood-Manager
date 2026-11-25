@@ -166,6 +166,11 @@ public sealed partial class TacticsViewModel : PageViewModel
     [ObservableProperty] private bool _doubleStar;
     partial void OnSelectedStopperChanged(StopperOption? value) { if (!_loading) { Tac.StarStopperId = value?.Player?.Id; Changed(); } }
     partial void OnDoubleStarChanged(bool value) { if (!_loading) { Tac.DoubleStar = value; Changed(); } }
+    /// <summary>Run 194: the full-court press (college only), and how well the rotation suits it.</summary>
+    [ObservableProperty] private bool _fullCourtPress;
+    partial void OnFullCourtPressChanged(bool value) { if (!_loading) { Tac.FullCourtPress = value; Changed(); } }
+    public bool IsCollege => Session.InCollege;
+    [ObservableProperty] private string _pressFitText = "";
     [ObservableProperty] private bool _halftimeAdjust;
     partial void OnHalftimeAdjustChanged(bool value) { if (!_loading) { Tac.HalftimeAdjust = value; Changed(); } }
     [ObservableProperty] private bool _assistantPlans;
@@ -185,6 +190,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     [ObservableProperty] private string _fitSummary = "";
 
     private Tactic Tac => Session.HumanTeam.Tactic;
+    private bool College => Session.InCollege;
 
     // The overhaul (Danny, #475, D60 A): the play diagram, suggested setups, gauges and the matchup board.
     public ObservableCollection<SetupCard> Setups { get; } = new();
@@ -233,10 +239,10 @@ public sealed partial class TacticsViewModel : PageViewModel
         DiagramSystem = Tac.System; DiagramScheme = Tac.Scheme;
         DefenceNote = PlayBook.DefenceNote(Tac.Scheme);
         PlayLabels = TacticSetups.StartingFive(team, on).Select(p => p.LastName).ToList();
-        var read = next == null ? null : MatchupRead.Of(team, next.Opponent, on);
+        var read = next == null ? null : MatchupRead.Of(team, next.Opponent, on, College);
         double currentEdge = read?.Edge(Tac.System, Tac.Scheme) ?? 0;
         Setups.Clear();
-        foreach (var s in TacticSetups.Suggest(team, next?.Opponent, on))
+        foreach (var s in TacticSetups.Suggest(team, next?.Opponent, on, College))
             Setups.Add(new SetupCard { Setup = s, Owner = this, Active = s.Matches(Tac), CurrentEdge = currentEdge });
         Board.Clear();
         HasOpponent = next != null;
@@ -247,7 +253,7 @@ public sealed partial class TacticsViewModel : PageViewModel
             var (ts, td) = (read.TheirSystem, read.TheirScheme);
             BoardTitle = $"Matchup board: {team.Name} vs {opp.Name}";
             double ours = read.Attack(Tac.System), theirs = read.Defence(Tac.Scheme);
-            BoardNote = BoardNoteFor(read, CoachAi.Rotation(team, on), Tac.System, Tac.Scheme);
+            BoardNote = BoardNoteFor(read, CoachAi.Rotation(team, on), Tac.System, Tac.Scheme, College);
             OurAttack = $"Your {Hardwood.Core.Model.Systems.Name(Tac.System).ToLower()} vs their {Hardwood.Core.Model.Systems.Name(td).ToLower()}";
             TheirAttack = $"Their {Hardwood.Core.Model.Systems.Name(ts).ToLower()} vs your {Hardwood.Core.Model.Systems.Name(Tac.Scheme).ToLower()}";
             OurAttackEdge = EdgeWords(ours); OurAttackBrush = EdgeBrushOf(ours);
@@ -261,10 +267,10 @@ public sealed partial class TacticsViewModel : PageViewModel
     /// The assistant's line under the board (K2): when a side of the plan in use is a disadvantage, either why he picked
     /// it (the fit outweighs it) or what he'd run instead. Empty when neither side is a disadvantage.
     /// </summary>
-    public static string BoardNoteFor(MatchupRead read, IReadOnlyCollection<Player> rot, OffensiveSystem system, DefensiveScheme scheme)
+    public static string BoardNoteFor(MatchupRead read, IReadOnlyCollection<Player> rot, OffensiveSystem system, DefensiveScheme scheme, bool college = false)
     {
         if (rot.Count == 0) return "";
-        var pickS = CoachAi.BestSystem(rot, read.TheirScheme); var pickD = CoachAi.BestScheme(rot, read.TheirSystem);
+        var pickS = CoachAi.BestSystem(rot, read.TheirScheme); var pickD = CoachAi.BestScheme(rot, read.TheirSystem, college);
         var lines = new List<string>();
         if (read.Attack(system) <= -MatchupRead.Notable)
             lines.Add(system == pickS ? read.WhySystem(system) : $"On offense your assistant would run {Hardwood.Core.Model.Systems.Name(pickS).ToLower()}." + (read.WhySystem(pickS) is { Length: > 0 } w ? " " + w : ""));
@@ -291,23 +297,24 @@ public sealed partial class TacticsViewModel : PageViewModel
 
         // What the next opponent will probably run, to show each option's matchup.
         var nextOpp = Session.NextMyGame?.Opponent;
-        var optRead = nextOpp == null ? null : MatchupRead.Of(team, nextOpp, Session.NextMyGame?.Date ?? Session.Today);
+        var optRead = nextOpp == null ? null : MatchupRead.Of(team, nextOpp, Session.NextMyGame?.Date ?? Session.Today, College);
         DefensiveScheme? theirScheme = optRead?.TheirScheme;
         OffensiveSystem? theirSystem = optRead?.TheirSystem;
         var bestSystem = CoachAi.BestSystem(rot, theirScheme);
-        var bestScheme = CoachAi.BestScheme(rot, theirSystem);
+        var bestScheme = CoachAi.BestScheme(rot, theirSystem, College);
         Systems.Clear();
         foreach (var s in Enum.GetValues<OffensiveSystem>())
             Systems.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(s), Description = Hardwood.Core.Model.Systems.Describe(s), Fit = Hardwood.Core.Model.Systems.Fit(s, rot), System = s,
                 Reasons = Hardwood.Core.Model.Systems.Reasons(s, rot).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
                 Matchup = optRead?.Attack(s) ?? 0, Recommended = s == bestSystem });
         Schemes.Clear();
-        foreach (var d in Enum.GetValues<DefensiveScheme>())
-            Schemes.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(d), Description = Hardwood.Core.Model.Systems.Describe(d), Fit = Hardwood.Core.Model.Systems.Fit(d, rot), Scheme = d,
-                Reasons = Hardwood.Core.Model.Systems.Reasons(d, rot).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
+        // Run 194: college benches also get the 1-3-1 and the match-up zone; a pro save keeps the four schemes it had.
+        foreach (var d in Tactics.Schemes(College))
+            Schemes.Add(new SystemOption { Name = Hardwood.Core.Model.Systems.Name(d), Description = Hardwood.Core.Model.Systems.Describe(d), Fit = Hardwood.Core.Model.Systems.Fit(d, rot, College), Scheme = d,
+                Reasons = Hardwood.Core.Model.Systems.Reasons(d, rot, College).Select(r => (r.Effect >= 0.025 ? "+ " : r.Effect <= -0.025 ? "− " : "· ") + r.Text).ToList(),
                 Matchup = optRead?.Defence(d) ?? 0, Recommended = d == bestScheme });
         SelectedSystem = Systems.First(o => o.System == t.System);
-        SelectedScheme = Schemes.First(o => o.Scheme == t.Scheme);
+        SelectedScheme = Schemes.FirstOrDefault(o => o.Scheme == t.Scheme) ?? Schemes[0];
 
         Pace = t.Pace; ThreeEmphasis = t.ThreePointEmphasis; CrashGlass = t.CrashGlass; Aggression = t.DefensiveAggression; StarUsage = t.StarUsage;
 
@@ -333,6 +340,10 @@ public sealed partial class TacticsViewModel : PageViewModel
         foreach (var p in team.Roster.OrderByDescending(p => p.Attributes[Attr.PerimeterDefense])) Stoppers.Add(new StopperOption { Player = p });
         SelectedStopper = Stoppers.FirstOrDefault(s => s.Player?.Id == t.StarStopperId) ?? Stoppers[0];
         DoubleStar = t.DoubleStar;
+        FullCourtPress = t.FullCourtPress;
+        double pf = Hardwood.Core.Model.Systems.PressFit(rot);
+        PressFitText = $"Your rotation suits the press {StarText(pf * 5)}"
+                       + (Hardwood.Core.Model.Systems.PressReasons(rot).FirstOrDefault() is { } why ? $": {char.ToLowerInvariant(why.Text[0])}{why.Text[1..]}." : ".");
         HalftimeAdjust = t.HalftimeAdjust;
         AssistantPlans = t.AssistantPlans;
 
@@ -348,7 +359,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         {
             var opp = next.Opponent;
             OpponentHeadline = $"Next: {next.Versus(opp.FullName)}, {next.Date:MMM d}" + (next.Competition != Session.League.Name ? $" ({next.Competition})" : "");
-            ScoutingReport = CoachAi.ScoutingReport(team, opp, next.Date);
+            ScoutingReport = CoachAi.ScoutingReport(team, opp, next.Date, College);
         }
         else { OpponentHeadline = "No game scheduled"; ScoutingReport = ""; }
 
@@ -360,7 +371,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     {
         if (!_loading) RefreshOverhaul();
         var rot = CoachAi.Rotation(Session.HumanTeam, Session.Today);
-        double sf = Hardwood.Core.Model.Systems.Fit(Tac.System, rot), df = Hardwood.Core.Model.Systems.Fit(Tac.Scheme, rot);
+        double sf = Hardwood.Core.Model.Systems.Fit(Tac.System, rot), df = Hardwood.Core.Model.Systems.Fit(Tac.Scheme, rot, College);
         var misfits = RoleRows.Where(r => r.Minutes > 0 && r.Selected != null && r.Selected.Stars < 2.5).Select(r => r.Player.LastName).ToList();
         FitSummary = $"Your rotation fits {Hardwood.Core.Model.Systems.Name(Tac.System).ToLower()} {StarText(sf * 5)} and {Hardwood.Core.Model.Systems.Name(Tac.Scheme).ToLower()} {StarText(df * 5)}."
                      + (misfits.Count > 0 ? $" Poor role fits among players who get minutes: {string.Join(", ", misfits)}." : "");
@@ -393,7 +404,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     private string PlanKey(bool roles)
     {
         var t = Tac;
-        string key = $"{t.System}|{t.Scheme}|{t.StarStopperId}|{t.DoubleStar}|{t.Auto}";
+        string key = $"{t.System}|{t.Scheme}|{t.StarStopperId}|{t.DoubleStar}|{t.FullCourtPress}|{t.Auto}";
         if (roles) key += "|" + string.Join(",", Session.HumanTeam.Roster.OrderBy(p => p.Id).Select(p => $"{p.Id}:{t.RoleOf(p)}"));
         return key;
     }
@@ -403,7 +414,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     {
         var presets = Tac.Presets; var late = Tac.LateGamePreset;
         string before = PlanKey(true);
-        CoachAi.AssistantSetup(Session.HumanTeam);
+        CoachAi.AssistantSetup(Session.HumanTeam, College);
         Tac.Presets = presets; Tac.LateGamePreset = late;
         bool same = PlanKey(true) == before;
         Session.SaveNow();
@@ -422,11 +433,12 @@ public sealed partial class TacticsViewModel : PageViewModel
         var team = Session.HumanTeam;
         var opp = next.Opponent;
         var rot = CoachAi.Rotation(team, next.Date);
-        var (theirSystem, theirScheme) = CoachAi.TheirPlan(opp, team, next.Date);
+        var (theirSystem, theirScheme) = CoachAi.TheirPlan(opp, team, next.Date, College);
         string before = PlanKey(false);
         Tac.System = CoachAi.BestSystem(rot, theirScheme);
-        Tac.Scheme = CoachAi.BestScheme(rot, theirSystem);
-        var (star, dbl) = CoachAi.TheirStar(opp, next.Date, team);
+        Tac.Scheme = CoachAi.BestScheme(rot, theirSystem, College);
+        if (College) Tac.FullCourtPress = CoachAi.Presses(rot, true);
+        var (star, dbl) = CoachAi.TheirStar(opp, next.Date, team, College);
         Tac.StarStopperId = star != null ? CoachAi.Stopper(rot)?.Id : null;
         Tac.DoubleStar = dbl;
         bool same = PlanKey(false) == before;

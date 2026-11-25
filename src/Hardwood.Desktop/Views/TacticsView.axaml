@@ -70,6 +70,12 @@
               <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:StopperOption"><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
             <CheckBox Content="Double-team him (he shoots less and worse; his teammates get open looks)" IsChecked="{Binding DoubleStar}"/>
+            <!-- Run 194: the full-court press, college only. -->
+            <StackPanel Spacing="2" IsVisible="{Binding IsCollege}" Margin="0,6,0,0">
+              <CheckBox Content="Press full court after every basket" IsChecked="{Binding FullCourtPress}"/>
+              <TextBlock Text="More turnovers and a faster game, but a broken press gives up layups, and your players tire faster and foul more." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding PressFitText}" FontSize="11.5" TextWrapping="Wrap"/>
+            </StackPanel>
           </StackPanel>
         </Border>
       </StackPanel>

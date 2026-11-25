@@ -91,6 +91,22 @@ public static class Program
             return 0;
         }
 
+        if (cmd == "schemefits")
+        {
+            // Run 194: the raw fit scores of every defensive scheme and the press, over top-9 rotations (mean and 4 SD),
+            // for the pros' clubs and the college programs, to set Systems.DefCenter/DefSpread and PressCenter/PressSpread.
+            void Row(string name, List<IReadOnlyCollection<Player>> rots)
+            {
+                string Stat(Func<IReadOnlyCollection<Player>, double> f) { var v = rots.Select(f).ToList(); double m = v.Average(); double sd = Math.Sqrt(v.Average(x => (x - m) * (x - m))); return $"{m:0.00}/{4 * sd:0.00}"; }
+                Console.WriteLine($"{name} ({rots.Count}): " + string.Join(" · ", Enum.GetValues<DefensiveScheme>().Where(d => d != DefensiveScheme.Man).Select(d => $"{d} {Stat(r => Systems.Raw(d, r))}"))
+                    + $" · press {Stat(Systems.PressRaw)}");
+                Console.WriteLine("   fits now: " + string.Join(" · ", Enum.GetValues<DefensiveScheme>().Select(d => $"{d} {rots.Average(r => Systems.Fit(d, r)):0.00}")) + $" · press {rots.Average(r => Systems.PressFit(r)):0.00}");
+            }
+            Row("pros", league.Teams.Select(t => (IReadOnlyCollection<Player>)CoachAi.Rotation(t, null)).ToList());
+            Row("college", gameWorld.College!.Programs.Select(t => (IReadOnlyCollection<Player>)CoachAi.Rotation(t, null)).ToList());
+            return 0;
+        }
+
         if (cmd == "collegebox")
         {
             // K11 (run 134): the college box score under the full engine, over the season's own scheduled games.
@@ -100,11 +116,28 @@ public static class Program
             var sim = new GameSimulator(); var rr = new Rng(seed + 7);
             double pts = 0, fga = 0, tpa = 0, fta = 0, ftm = 0, orb = 0, drb = 0, tov = 0, pf = 0, fgm = 0, tpm = 0, poss = 0, ast = 0; int teams = 0;
             int homeWins = 0; double mpp = 0, sxx = 0; var xs = new List<(double x, double y)>();
+            // Run 194: who plays which scheme, who presses, and what the press does to the team facing it.
+            var schemes = new Dictionary<DefensiveScheme, int>(); int presses = 0; double vsTov = 0, vsPoss = 0, vsPts = 0, pressPace = 0; int vsN = 0, pressGames = 0;
+            double pressWinsOver = 0; int pressDecided = 0;
             foreach (var g in games)
             {
                 var h = cw.Program(g.HomeId)!; var a = cw.Program(g.AwayId)!;
                 var r = sim.Simulate(h, a, cw.GameRules(g), rr.NextULong());
                 if (r.Home.Points > r.Away.Points) homeWins++;
+                foreach (var (t, b, o) in new[] { (h, r.Home, r.Away), (a, r.Away, r.Home) })
+                {
+                    schemes[t.Tactic.Scheme] = schemes.GetValueOrDefault(t.Tactic.Scheme) + 1;
+                    if (!t.Tactic.FullCourtPress) continue;
+                    presses++; vsN++; vsTov += o.Turnovers; vsPoss += o.FGA - o.OReb + o.Turnovers + 0.44 * o.FTA; vsPts += o.Points;
+                }
+                if (h.Tactic.FullCourtPress != a.Tactic.FullCourtPress)
+                {
+                    var pt = h.Tactic.FullCourtPress ? h : a;
+                    double edge = Hardwood.Core.World.QuickSim.Strength(pt) - Hardwood.Core.World.QuickSim.Strength(pt == h ? a : h);
+                    bool won = (r.Home.Points > r.Away.Points) == (pt == h);
+                    pressWinsOver += (won ? 1 : 0) - 1 / (1 + Math.Exp(-edge * 0.12)); pressDecided++;
+                }
+                if (h.Tactic.FullCourtPress || a.Tactic.FullCourtPress) { pressGames++; pressPace += (r.Home.FGA - r.Home.OReb + r.Home.Turnovers + 0.44 * r.Home.FTA + r.Away.FGA - r.Away.OReb + r.Away.Turnovers + 0.44 * r.Away.FTA) / 2; }
                 foreach (var (b, o) in new[] { (r.Home, r.Away), (r.Away, r.Home) })
                 {
                     teams++; pts += b.Points; fga += b.FGA; fgm += b.FGM; tpa += b.ThreePA; tpm += b.ThreePM; fta += b.FTA; ftm += b.FTM;
@@ -120,6 +153,10 @@ public static class Program
             Console.WriteLine($"  ORB% {100 * orb / (orb + drb):0.0} · TOV% {100 * tov / poss:0.0} · FTA/FGA {100 * fta / fga:0.0} · 3PA rate {100 * tpa / fga:0.0}");
             Console.WriteLine($"  FG% {100 * fgm / fga:0.0} · 3P% {100 * tpm / Math.Max(1, tpa):0.0} · FT% {100 * ftm / Math.Max(1, fta):0.0} · fouls {pf / teams:0.0} · FTA {fta / teams:0.0} · assists {ast / teams:0.0}");
             Console.WriteLine($"  home wins {100.0 * homeWins / games.Count:0.0}% · margin per strength point {k:0.000} · home edge {hp:0.0} · residual sd {sres:0.00}");
+            Console.WriteLine("  schemes: " + string.Join(" · ", schemes.OrderByDescending(x => x.Value).Select(x => $"{Systems.Name(x.Key)} {100.0 * x.Value / teams:0.0}%")));
+            if (vsN > 0)
+                Console.WriteLine($"  press: {100.0 * presses / teams:0.0}% of team-games · facing it: TOV% {100 * vsTov / vsPoss:0.0}, ORtg {100 * vsPts / vsPoss:0.0} · possessions in press games {pressPace / Math.Max(1, pressGames):0.0}"
+                    + $" · pressers' wins over expectation {100 * pressWinsOver / Math.Max(1, pressDecided):+0.0;-0.0}% ({pressDecided} games)");
             return 0;
         }
 
