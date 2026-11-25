@@ -1,3 +1,4 @@
+using Hardwood.Core.College;
 using Hardwood.Core.Jobs;
 using Hardwood.Core.Model;
 using Hardwood.Core.World;
@@ -43,6 +44,53 @@ public sealed partial class GameSession
     public const double CarouselStepUp = 6;
     /// <summary>The most hires from other programs in one spring (so one chain can't run on through the whole country).</summary>
     public const int CarouselMaxPoaches = 14;
+    /// <summary>H202 (run 200): a season this far (in 82-game wins) below the target counts as a poor one.</summary>
+    public const double CarouselPoorShortfall = 3;
+
+    /// <summary>
+    /// H202 (run 200): the chance an athletic director lets his coach go this spring. Never in a coach's first two seasons,
+    /// never at .650 or better, nor at .600 or better with a tournament bid. Otherwise a small base chance (an AD's change of
+    /// direction, only after a losing season) plus the shortfall against the target, which counts 60% after one poor
+    /// season, 120% after two and 160% after three (impatient owners sooner).
+    /// </summary>
+    public static double CarouselFireChance(int seasonsHere, int wins, int losses, bool bid, double shortfall, int poorRun, int patience)
+    {
+        double pct = wins + losses == 0 ? 0.5 : wins / (double)(wins + losses);
+        if (seasonsHere <= 2 || pct >= 0.65 || (pct >= 0.6 && bid)) return 0;
+        double weight = poorRun switch { 0 => 0, 1 => 0.6, 2 => 1.2, _ => 1.6 };
+        double p = (pct < 0.5 ? 0.02 : 0) + shortfall * 0.035 * weight * (1.3 - patience / 40.0);
+        return Math.Clamp(p, 0, 0.75);
+    }
+
+    /// <summary>H203 (run 200): every computer coach in the college and abroad gets his own name (a new career, or an older
+    /// save's first load, when the college book is empty), then the college benches get their past. Returns how many were renamed.</summary>
+    public int UniqueBenches(ulong seed)
+    {
+        var fixedTeams = League.Teams.Append(HumanTeam);
+        var renamable = World.Clubs.Concat(World.College?.Programs ?? new List<Team>()).Where(t => t != HumanTeam);
+        int n = Board.UniqueBenchNames(fixedTeams, renamable, seed ^ 0xBE4C4);
+        World.College?.EnsureBenches();
+        return n;
+    }
+
+    /// <summary>H203 (run 200): a new computer coach's name, never one already on a bench.</summary>
+    internal string FreshCoachName(Rng rng)
+    {
+        var taken = AllBenchNames();
+        return Board.NewCoachName(rng, taken.Contains);
+    }
+
+    /// <summary>Every head coach's name on a bench now (college and pro), for H203's uniqueness.</summary>
+    private HashSet<string> AllBenchNames()
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var t in League.Teams) names.Add(t.CoachName);
+        foreach (var t in World.Clubs) names.Add(t.CoachName);
+        if (World.College is { } cw) foreach (var t in cw.Programs) names.Add(t.CoachName);
+        names.Remove(""); names.Remove("Interim coach");
+        return names;
+    }
+
     /// <summary>Springs kept.</summary>
     public const int CarouselSprings = 4;
 
@@ -76,8 +124,31 @@ public sealed partial class GameSession
             changed.Add(mine.Id);
         }
         int? exclude = ControlledTeamId ?? mine?.Id;
-        foreach (var t in Board.AiSeasonChanges(ctx, t => record[t.Id].wins, rng, exclude, League.Season, Board.CollegeBaseSackChance))
-        { queue.Add((t, "fired", null)); changed.Add(t.Id); }
+        // H202 (run 200): an athletic director's patience. A coach's first two seasons are safe, a winning season with a
+        // tournament bid is safe, and one poor season rarely costs a job: a run of them does (see CarouselFireChance).
+        cw.EnsureBenches();
+        var poorRun = new Dictionary<int, int>();
+        foreach (var t in cw.Programs.Where(t => t.Id != exclude))
+        {
+            var (w, l) = record[t.Id];
+            var e = Board.SetExpectations(ctx, t, League.Season);
+            var b = cw.BenchOf(t.Id);
+            double shortfall = Math.Max(0, e.TargetWins - w) * 82.0 / Math.Max(1, ctx.SeasonGames);
+            int run = shortfall >= CarouselPoorShortfall ? (b?.PoorRun ?? 0) + 1 : 0;
+            poorRun[t.Id] = run;
+            double p = CarouselFireChance(b?.Seasons + 1 ?? 3, w, l, cw.Season.Seeds.ContainsKey(t.Id), shortfall, run, t.Owner.Patience);
+            if (rng.Chance(p)) { queue.Add((t, "fired", null)); changed.Add(t.Id); }
+        }
+        // Every bench counts the season (the record, bids, a title and the run of poor seasons) before anyone moves.
+        foreach (var t in cw.Programs)
+            if (cw.BenchOf(t.Id) is { } b)
+            {
+                var (w, l) = record[t.Id];
+                b.Seasons++; b.Wins += w; b.Losses += l; b.CareerWins += w; b.CareerLosses += l;
+                if (cw.Season.Seeds.ContainsKey(t.Id)) b.Bids++;
+                if (cw.Season.ChampionId == t.Id) b.Titles++;
+                b.PoorRun = poorRun.GetValueOrDefault(t.Id);
+            }
         foreach (var t in cw.Programs)
             if (t.Id != exclude && !changed.Contains(t.Id) && t.CoachName != "Interim coach" && rng.Chance(CarouselRetireChance))
             { queue.Add((t, "retired", null)); changed.Add(t.Id); }
@@ -85,17 +156,18 @@ public sealed partial class GameSession
         // The biggest jobs move first, so a chain runs downhill.
         queue = queue.OrderByDescending(x => CarouselSize(x.T)).ToList();
         int poaches = 0;
-        var benches = cw.Programs.Select(p => p.CoachName).ToHashSet();
+        var benches = AllBenchNames();
         for (int i = 0; i < queue.Count; i++)
         {
             var (t, why, to) = queue[i];
             string old = t.CoachName;
             var (w, l) = record[t.Id];
             // A new name: not the coach he replaces, and not one already on another bench (the name lists are short).
-            string successor = Board.NewCoachName(rng);
-            for (int k = 0; k < 8 && (successor == old || benches.Contains(successor)); k++) successor = Board.NewCoachName(rng);
+            // H203 (run 200): the name lists are long now, and a name already on any bench (college or pro) isn't used.
+            string successor = Board.NewCoachName(rng, n => n == old || benches.Contains(n));
             bool open = Employed ? OpenWhileEmployed(t, successor) : OpenWhileOut(t, successor, old);
             int? from = null;
+            BenchCoach? hiredFrom = null;
             if (!open)
             {
                 double prestige = CarouselSize(t);
@@ -104,6 +176,7 @@ public sealed partial class GameSession
                 {
                     successor = q.CoachName;
                     from = q.Id;
+                    hiredFrom = cw.BenchOf(q.Id);
                     poaches++;
                     changed.Add(q.Id);
                     // His old job opens, in its place in the order (it's smaller than this one, so it comes later).
@@ -113,6 +186,7 @@ public sealed partial class GameSession
                 }
                 t.CoachName = successor;
                 benches.Add(successor);
+                cw.NewBench(t.Id, successor, hiredFrom);
             }
             moves.Add(new CarouselMove(year, t.Id, t.FullName, old, successor, why, $"{w}-{l}", from, to, open));
         }

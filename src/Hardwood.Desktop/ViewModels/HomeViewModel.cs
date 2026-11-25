@@ -191,6 +191,9 @@ public sealed partial class HomeViewModel : PageViewModel
                 + (orec.Games > 0 ? $" · they're {orec.Wins}-{orec.Losses}" : "");
             GameTag = CollegeGameTag(s, team, next);
             CourtLine = CollegeCourtLine(s, team, next);
+            // Slice 9 (run 200): the man on the other bench.
+            if (s.InCollege && s.World.College?.CoachLine(opp.Id) is { Length: > 0 } coach)
+                CourtLine = $"Their coach: {coach}." + (CourtLine.Length > 0 ? " " + CourtLine : "");
             StyleLine = s.InCollege && next.StyleConference is { } sk ? Hardwood.Core.College.CollegeWorld.StyleLine(sk) : "";
             Scouting = CoachAi.ScoutingHeadline(team, opp, next.Date, Session.InCollege); // H101 (run 112)
         }

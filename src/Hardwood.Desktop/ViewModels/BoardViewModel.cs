@@ -138,6 +138,10 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private string _carouselToggle = "";
     /// <summary>The carousel panel shows 10 changes until you ask for all.</summary>
     public const int CarouselShown = 10;
+    /// <summary>Slice 9 (run 200): the head coaches you face, your rivals' first, then your conference's.</summary>
+    public ObservableCollection<CarouselRow> RivalCoachRows { get; } = new();
+    [ObservableProperty] private bool _hasRivalCoaches;
+    [ObservableProperty] private string _rivalCoachesNote = "";
     [CommunityToolkit.Mvvm.Input.RelayCommand] private void ToggleCarousel() { CarouselAll = !CarouselAll; RefreshCarousel(); }
 
     // Item M (#281): facilities.
@@ -352,6 +356,7 @@ public sealed partial class BoardViewModel : PageViewModel
         }
         HasVacancies = Vacancies.Count > 0;
         RefreshCarousel();
+        RefreshRivalCoaches();
         RefreshPlan();
         ShowJobs = !s.Employed || HasVacancies;
         JobsTitle = s.Employed ? "Your career: bigger jobs" : "Out of work: open jobs";
@@ -506,6 +511,42 @@ public sealed partial class BoardViewModel : PageViewModel
             + (mine ? " Your conference and your rivals first, then the biggest jobs." : " The biggest jobs first.");
         HasCarouselMore = ordered.Count > CarouselShown;
         CarouselToggle = CarouselAll ? "Show fewer" : $"Show all {ordered.Count}";
+    }
+
+    /// <summary>Slice 9 (run 200): the other benches in your world: each coach's style, his record at the program and in his
+    /// career, his reputation, and your series with his program.</summary>
+    private void RefreshRivalCoaches()
+    {
+        var s = Session;
+        RivalCoachRows.Clear();
+        HasRivalCoaches = s.Employed && s.InCollege && s.World.College != null;
+        if (!HasRivalCoaches) return;
+        var cw = s.World.College!;
+        int me = s.HumanTeam.Id;
+        string conf = cw.ConferenceOf[me];
+        string confShort = Hardwood.Core.College.CollegeWorld.Conferences.First(c => c.Key == conf).Short;
+        var rivals = cw.RivalsOf(me).Select(r => r.RivalId).ToList();
+        var mates = cw.Programs.Where(p => p.Id != me && cw.ConferenceOf.GetValueOrDefault(p.Id) == conf && !rivals.Contains(p.Id))
+            .Select(p => (p, b: cw.BenchOf(p.Id))).Where(x => x.b != null)
+            .OrderByDescending(x => cw.ReputationOf(x.b!)).Select(x => x.p.Id);
+        foreach (int id in rivals.Concat(mates).Distinct())
+        {
+            if (cw.Program(id) is not { } t || cw.BenchOf(id) is not { } c) continue;
+            int rep = cw.ReputationOf(c);
+            string career = c.CareerWins + c.CareerLosses > c.Wins + c.Losses ? $"; {c.CareerRecord} in his career" : "";
+            string honours = (c.Bids > 0 ? $", {c.Bids} NCAA bid{(c.Bids == 1 ? "" : "s")}" : "") + (c.Titles > 0 ? $", {c.Titles} title{(c.Titles == 1 ? "" : "s")}" : "");
+            string series = cw.SeriesLine(me, id) is { } line ? $" {UpperFirst(line)}." : "";
+            RivalCoachRows.Add(new CarouselRow
+            {
+                Team = t,
+                Detail = $"{c.Name}, {Hardwood.Core.College.RivalCoaches.StyleText(c.Style)}, {c.SeasonText}: {c.Record} here{career}{honours}. "
+                    + $"Reputation {rep} ({Hardwood.Core.College.RivalCoaches.ReputationWord(rep)}).{series}",
+                Tag = rivals.Contains(id) ? "Rival" : confShort,
+            });
+        }
+        HasRivalCoaches = RivalCoachRows.Count > 0;
+        RivalCoachesNote = "The men on the other benches: your rivals first, then your conference by reputation. A coach's style is how he wins "
+            + "and how he recruits; his quotes follow your rivalry games, and he's named when he beats you to a recruit.";
     }
 
     private static string UpperFirst(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];

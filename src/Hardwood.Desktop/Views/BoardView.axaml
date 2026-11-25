@@ -262,6 +262,30 @@
           </StackPanel>
         </Border>
 
+        <!-- Slice 9 (run 200): rival coaches as characters -->
+        <Border x:Name="RivalCoachesPanel" Classes="panel" IsVisible="{Binding HasRivalCoaches}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="ClipboardList" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Rival coaches" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="{Binding RivalCoachesNote}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+            <ItemsControl ItemsSource="{Binding RivalCoachRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CarouselRow">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+                    <c:TeamLogo Team="{Binding Team}" Width="30" Height="30" Margin="0,0,8,0" VerticalAlignment="Top"/>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" MaxLines="3"/>
+                    </StackPanel>
+                    <Border Grid.Column="2" IsVisible="{Binding HasTag}" Background="{StaticResource HwPanelAltBrush}" CornerRadius="6" Padding="6,2" Margin="6,0,0,0" VerticalAlignment="Top">
+                      <TextBlock Text="{Binding Tag}" FontSize="11" FontWeight="SemiBold"/>
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
         <!-- CS9 (run 191): the college coaching carousel -->
         <Border Classes="panel" IsVisible="{Binding HasCarousel}">
           <StackPanel Spacing="6">

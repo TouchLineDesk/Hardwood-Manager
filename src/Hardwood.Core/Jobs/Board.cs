@@ -133,8 +133,23 @@ public static class Board
 {
     private static readonly string[] OwnerFirst = { "Richard", "Victoria", "Gerald", "Margaret", "Howard", "Diane", "Leonard", "Catherine", "Stanley", "Patricia", "Walter", "Eleanor", "Franklin", "Judith", "Raymond", "Sandra" };
     private static readonly string[] OwnerLast = { "Whitmore", "Kessler", "Abernathy", "Lindqvist", "Holloway", "Pemberton", "Castellano", "Ashford", "Delgado", "Thornbury", "Okafor-Hale", "Vance", "Merriweather", "Calloway", "Rutherford", "Benedetti" };
-    private static readonly string[] CoachFirst = { "Mike", "Steve", "Doc", "Erik", "Rick", "Monty", "Quin", "Nate", "Tyronn", "Dwane", "Jerry", "Larry", "Gregg", "Phil", "Pat", "Chuck" };
-    private static readonly string[] CoachLast = { "Brennan", "Hollis", "Mercer", "Draper", "Fontaine", "Waverly", "Kingsley", "Barlow", "Prentice", "Ashby", "Coleridge", "Danvers", "Ellery", "Garland", "Hartley", "Langston" };
+    // H203 (run 200): 64 first names x 80 last names (5,120), so about 600 benches rarely meet the same name, and
+    // NewCoachName's check makes sure they never do. The first 16 of each are the old lists.
+    private static readonly string[] CoachFirst =
+    {
+        "Mike", "Steve", "Doc", "Erik", "Rick", "Monty", "Quin", "Nate", "Tyronn", "Dwane", "Jerry", "Larry", "Gregg", "Phil", "Pat", "Chuck",
+        "Bobby", "Tom", "Jim", "Bill", "Dave", "Gary", "Ron", "Dan", "Kevin", "Mark", "Scott", "Jeff", "Brad", "Chris", "Matt", "Tony",
+        "Lou", "Ed", "Frank", "Joe", "Ray", "Roy", "Ben", "Sam", "Will", "Jay", "Kelvin", "Darnell", "Marcus", "Andre", "Terrence", "Lamont",
+        "Shaka", "Mitch", "Wes", "Kyle", "Travis", "Grant", "Bruce", "Dale", "Ken", "Herb", "Lon", "Fran", "Buzz", "Tad", "Porter", "Cuonzo",
+    };
+    private static readonly string[] CoachLast =
+    {
+        "Brennan", "Hollis", "Mercer", "Draper", "Fontaine", "Waverly", "Kingsley", "Barlow", "Prentice", "Ashby", "Coleridge", "Danvers", "Ellery", "Garland", "Hartley", "Langston",
+        "Whitfield", "Calder", "Pruitt", "Holloway", "Stanton", "Merritt", "Doyle", "Kessler", "Bramlett", "Sutter", "Rowan", "Tillman", "Corbett", "Haskins", "Lowell", "Pendleton",
+        "McCall", "Ogden", "Fairbanks", "Royce", "Albright", "Gentry", "Halsey", "Kincaid", "Lockhart", "Mabry", "Norwood", "Paxton", "Quarles", "Radford", "Selby", "Thorne",
+        "Underhill", "Vickers", "Wakefield", "Yancey", "Ainsley", "Burkett", "Crowder", "Dunlap", "Easley", "Fenwick", "Gaither", "Harlan", "Ivey", "Jessup", "Kimbrough", "Larkin",
+        "Mayfield", "Nesbitt", "Oakes", "Purcell", "Rendell", "Shipley", "Talbert", "Upshaw", "Vaughn", "Winslow", "Abbott", "Benton", "Cartwright", "Delaney", "Everett", "Fitch",
+    };
 
     /// <summary>Give every team an owner and a computer coach if it doesn't have one (new careers and older saves).</summary>
     public static void EnsureOwnersAndCoaches(League league, ulong seed) => EnsureOwnersAndCoaches(league.Teams, seed);
@@ -156,6 +171,40 @@ public static class Board
     }
 
     public static string NewCoachName(Rng rng) => $"{rng.Pick(CoachFirst)} {rng.Pick(CoachLast)}";
+
+    /// <summary>H203 (run 200): a name nobody on a bench has (<paramref name="taken"/>). Tries the stream a few times, then walks
+    /// the lists from the last draw, so it always ends with a free name while there is one.</summary>
+    public static string NewCoachName(Rng rng, Func<string, bool> taken)
+    {
+        string n = NewCoachName(rng);
+        for (int k = 0; k < 6 && taken(n); k++) n = NewCoachName(rng);
+        if (!taken(n)) return n;
+        int f = Array.IndexOf(CoachFirst, n[..n.IndexOf(' ')]), l = Array.IndexOf(CoachLast, n[(n.IndexOf(' ') + 1)..]);
+        for (int i = 1; i < CoachFirst.Length * CoachLast.Length; i++)
+        {
+            int j = (f * CoachLast.Length + l + i) % (CoachFirst.Length * CoachLast.Length);
+            string c = $"{CoachFirst[j / CoachLast.Length]} {CoachLast[j % CoachLast.Length]}";
+            if (!taken(c)) return c;
+        }
+        return n;
+    }
+
+    /// <summary>H203 (run 200): give every computer coach on a college or club bench his own name. The first holder of a name
+    /// (by team id) keeps it; the NBA's real coaches and your own are never renamed. Seeded from the team, no shared draw.</summary>
+    public static int UniqueBenchNames(IEnumerable<Team> fixedTeams, IEnumerable<Team> renamable, ulong seed)
+    {
+        var taken = new HashSet<string>(fixedTeams.Select(t => t.Coach?.Name ?? t.CoachName), StringComparer.Ordinal);
+        int renamed = 0;
+        foreach (var t in renamable.OrderBy(t => t.Id))
+        {
+            if (t.Coach != null || t.CoachName is "" or "Interim coach") continue;
+            if (taken.Add(t.CoachName)) continue;
+            t.CoachName = NewCoachName(new Rng(seed ^ (ulong)(t.Id * 104729 + 31)), taken.Contains);
+            taken.Add(t.CoachName);
+            renamed++;
+        }
+        return renamed;
+    }
 
     /// <summary>Where the squad and payroll put a team in the league, 1 = best (squad 70%, spending 30%).</summary>
     public static int ProjectedRank(League league, Team team) => ProjectedRank(LeagueContext.Nabl(league), team);
