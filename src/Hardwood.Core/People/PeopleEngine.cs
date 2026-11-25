@@ -117,7 +117,12 @@ public static class PeopleEngine
         if (p.TradeRequested) f.Add(("Wants out", -8));
         if (team.Coach is { MoraleBonus: var mb } && Math.Abs(mb) >= 1) f.Add((mb > 0 ? "Plays for his coach" : "Not inspired by the coach", mb));
         if (p.BoostUntil is { } until && until > today && p.MoodBoost != 0) f.Add((p.BoostReason ?? "Settled", p.MoodBoost));
-        if (college && team.CaptainIds.Contains(p.Id)) f.Add((College.Captaincy.CaptainReason, College.Captaincy.CaptainMorale)); // run 196
+        if (college) // run 196: captains, a lost captaincy and Senior Night, each its own line
+        {
+            if (team.CaptainIds.Contains(p.Id)) f.Add((College.Captaincy.CaptainReason, College.Captaincy.CaptainMorale));
+            else if (team.StrippedUntil.TryGetValue(p.Id, out var su) && su > today) f.Add((College.Captaincy.LostReason, College.Captaincy.LostCaptaincy));
+            if (team.HonouredIds.Contains(p.Id)) f.Add((College.Captaincy.HonouredReason, College.Captaincy.SeniorNightLift));
+        }
         return f;
     }
 

@@ -123,10 +123,12 @@ public class Run196CaptainsTests
             // Two captains already: a third must wait. Taking one away hurts him; then another can be named.
             var other = s.HumanTeam.Roster.First(p => !caps.Contains(p));
             Assert.Contains("take the captaincy from one", s.CaptaincyBlocked(other));
+            PeopleEngine.Boost(caps[1], 10, s.Today.AddDays(50), "Trusts you after a kept promise", s.Today);
             string reply = s.ToggleCaptain(caps[1]);
+            Assert.Equal(10, caps[1].MoodBoost);
             _out.WriteLine(reply);
             Assert.False(s.IsCaptain(caps[1]));
-            Assert.Equal(Captaincy.LostReason, caps[1].BoostReason);
+            // Review: its own line, so another lift he had is kept.
             Assert.Contains(PeopleEngine.Factors(caps[1], s.HumanTeam, 0.5, null, s.League.Finance, s.Today, college: true), f => f.reason == Captaincy.LostReason && f.effect == Captaincy.LostCaptaincy);
             s.ToggleCaptain(other);
             Assert.True(s.IsCaptain(other));
@@ -140,13 +142,16 @@ public class Run196CaptainsTests
             Assert.True(back.IsCaptain(other));
             Assert.Single(back.Inbox, m => m.Title.StartsWith("Captains: ")); // not announced twice
 
-            // Senior Night lifts the seniors; the day after the national final, one farewell.
+            // Senior Night lifts the seniors; the night of the national final, one farewell.
             var seniors = c.FinalYear(s.HumanTeam);
             guard = 0;
             while (s.Phase != SessionPhase.Offseason && s.Today < new DateOnly(2027, 4, 20) && guard++ < 400) s.AdvanceDay();
             if (seniors.Count > 0)
             {
                 Assert.Contains(s.Inbox, m => m.Title.StartsWith("Senior Night tomorrow"));
+                Assert.All(seniors, p => Assert.Contains(PeopleEngine.Factors(p, s.HumanTeam, 0.5, null, s.League.Finance, new DateOnly(2027, 3, 20), college: true),
+                    f => f.reason == Captaincy.HonouredReason && f.effect == Captaincy.SeniorNightLift));
+                Assert.NotNull(s.CaptaincyBlocked(seniors[0])); // the season is over
                 var fare = s.Inbox.Single(m => m.Title.StartsWith("Farewell"));
                 _out.WriteLine(fare.Title + "\n" + fare.Body);
                 Assert.All(seniors, p => Assert.Contains(p.Name, fare.Body));

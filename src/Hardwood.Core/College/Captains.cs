@@ -17,6 +17,11 @@ public sealed class CaptainSeason
     public bool Chosen { get; set; }
     /// <summary>The coach has been told (his own program's inbox message).</summary>
     public bool Announced { get; set; }
+    /// <summary>Review (run 196): players who lost the captaincy this season, and the day it stops weighing on them (its own
+    /// mood line, so it neither replaces nor is replaced by another lift).</summary>
+    public Dictionary<int, DateOnly> Stripped { get; set; } = new();
+    /// <summary>Review (run 196): the seniors honoured on Senior Night (their own mood line for the rest of the season).</summary>
+    public List<int> Honoured { get; set; } = new();
 }
 
 /// <summary>
@@ -55,6 +60,8 @@ public static class Captaincy
     /// <summary>"Proud to captain the team" while he is one.</summary>
     public const string CaptainReason = "Proud to captain the team";
     public const string LostReason = "Lost the captaincy";
+    public const string HonouredReason = "Honoured on Senior Night";
+    public const double SeniorNightLift = 6;
 
     /// <summary>The college chemistry line for the captains (null with none on the roster).</summary>
     public static (string reason, double effect)? ChemistryLine(Team team)
@@ -85,7 +92,8 @@ public sealed partial class CollegeWorld
     /// Returns true on the day they're named.</summary>
     public bool NameCaptainsThrough(DateOnly date)
     {
-        if (CaptainsDay is not { } day || date < day || Captains.Any(c => c.Year == Season.Year)) { RefreshCaptainFlags(); return false; }
+        // Review (run 196): not once the season's final is played (an old save loaded in the spring).
+        if (CaptainsDay is not { } day || date < day || Season.ChampionId != null || Captains.Any(c => c.Year == Season.Year)) { RefreshCaptainFlags(); return false; }
         foreach (var t in Programs)
         {
             var pick = Captaincy.Suggest(t, Season.Year);
@@ -96,13 +104,22 @@ public sealed partial class CollegeWorld
         return true;
     }
 
-    /// <summary>Set a program's captains for this season (the coach's choice). The ids must be on its roster.</summary>
-    public CaptainSeason SetCaptains(Team t, IReadOnlyList<Player> captains)
+    /// <summary>The season's record for a program, made if it has none.</summary>
+    public CaptainSeason CaptainRecord(Team t)
     {
         var rec = CaptainsOf(t.Id);
         if (rec == null) { rec = new CaptainSeason { Year = Season.Year, TeamId = t.Id }; Captains.Add(rec); }
-        rec.PlayerIds = captains.Select(p => p.Id).ToList();
-        foreach (var p in captains) rec.Names[p.Id] = p.Name;
+        return rec;
+    }
+
+    /// <summary>Set a program's captains for this season (the coach's choice). A captain no longer on the roster keeps his
+    /// place in the record (review, run 196), so his honour isn't lost.</summary>
+    public CaptainSeason SetCaptains(Team t, IReadOnlyList<Player> captains)
+    {
+        var rec = CaptainRecord(t);
+        var onRoster = t.Roster.Select(p => p.Id).ToHashSet();
+        rec.PlayerIds = rec.PlayerIds.Where(id => !onRoster.Contains(id)).Concat(captains.Select(p => p.Id)).Distinct().ToList();
+        foreach (var p in captains) { rec.Names[p.Id] = p.Name; rec.Stripped.Remove(p.Id); }
         rec.Chosen = true;
         RefreshCaptainFlags();
         return rec;
@@ -112,11 +129,15 @@ public sealed partial class CollegeWorld
     /// Outside a season with captains (the summer), nobody is captain.</summary>
     public void RefreshCaptainFlags()
     {
-        var now = Captains.Where(c => c.Year == Season.Year).ToDictionary(c => c.TeamId);
+        var now = new Dictionary<int, CaptainSeason>();
+        foreach (var c in Captains) if (c.Year == Season.Year) now[c.TeamId] = c;
         foreach (var t in Programs)
         {
-            t.CaptainIds.Clear();
-            if (now.TryGetValue(t.Id, out var c)) foreach (var id in c.PlayerIds) t.CaptainIds.Add(id);
+            t.CaptainIds.Clear(); t.StrippedUntil.Clear(); t.HonouredIds.Clear();
+            if (!now.TryGetValue(t.Id, out var c)) continue;
+            foreach (var id in c.PlayerIds) t.CaptainIds.Add(id);
+            foreach (var (id, until) in c.Stripped) t.StrippedUntil[id] = until;
+            foreach (var id in c.Honoured) t.HonouredIds.Add(id);
         }
     }
 

@@ -18,8 +18,10 @@ public sealed partial class GameSession
     public string? CaptaincyBlocked(Player p)
     {
         if (!InCollege || World.College is not { } c) return "Only college programs name captains.";
+        if (c.Season.ChampionId != null) return "The season is over: next season's captains are named a week before its first game.";
         if (c.CaptainsOf(HumanTeam.Id) == null)
-            return c.CaptainsDay is { } d && d > Today ? $"Captains are named a week before the first game ({d:MMM d})." : "Captains are named a week before the first game.";
+            return c.CaptainsDay is { } d && d > Today ? $"Captains are named a week before the first game ({d:MMM d})."
+                : HumanTeam.Roster.Count == 0 ? "Sign players first: the captains come from the roster." : "Captains are named a week before the first game.";
         if (!IsCaptain(p) && MyCaptains.Count >= Captaincy.Count) return $"You have {Captaincy.Count} captains: take the captaincy from one of them first.";
         return null;
     }
@@ -34,16 +36,14 @@ public sealed partial class GameSession
         if (IsCaptain(p))
         {
             now.Remove(p);
+            // Review (run 196): its own mood line, so it doesn't wipe (or get wiped by) another lift.
+            c.CaptainRecord(HumanTeam).Stripped[p.Id] = Today.AddDays(Captaincy.LostCaptaincyDays);
             c.SetCaptains(HumanTeam, now);
-            p.MoodBoost = Captaincy.LostCaptaincy;
-            p.BoostUntil = Today.AddDays(Captaincy.LostCaptaincyDays);
-            p.BoostReason = Captaincy.LostReason;
             return $"{last} takes it badly: losing the captaincy will weigh on him for about a month. "
                 + (now.Count == 0 ? "The team has no captain now." : $"{now[0].Name} is the only captain now.");
         }
         now.Add(p);
         c.SetCaptains(HumanTeam, now);
-        if (p.BoostReason == Captaincy.LostReason) { p.MoodBoost = 0; p.BoostUntil = null; p.BoostReason = null; }
         int lead = p.Attributes[Attr.Leadership];
         return $"{last} is proud to be named captain. " + (lead >= 15 ? "The room follows him." : lead >= Captaincy.LeadershipPar
             ? "The room respects him." : $"He isn't a natural leader (leadership {lead} of 20), so the locker room may not follow him.");
@@ -63,23 +63,21 @@ public sealed partial class GameSession
         string body = $"The players have chosen their captains for {CollegeAwards.SeasonText(c.Season.Year)}, with your assistant's blessing: "
             + string.Join(" and ", caps.Select(Line)) + ".\n\n"
             + "Captains lead the locker room: their leadership sets the team's chemistry"
-            + (chem is { } ch ? $" ({(ch.effect >= 0 ? "+" : "")}{ch.effect:0} today)" : "")
+            + (chem is { } ch && Math.Round(ch.effect) != 0 ? $" ({ch.effect:+0;-0} today)" : "")
             + ", and a captain is proud to be one. An unhappy captain drags the room down.\n\n"
             + "You can change them on the Squad page (pick a player, then Make captain), but a player who loses the captaincy takes it badly.";
         Post($"Captains: {string.Join(" and ", caps.Select(p => p.Name))}", body, "Squad");
     }
 
-    /// <summary>Senior Night (run 196): the seniors honoured tomorrow get a lift that lasts the rest of the season.</summary>
+    /// <summary>Senior Night (run 196): the seniors honoured tomorrow get their own lift for the rest of the season.</summary>
     private void HonourSeniors(CollegeWorld c)
     {
-        var end = new DateOnly(CollegeWorld.SchoolYear(Today) + 1, 6, 30);
-        foreach (var p in c.FinalYear(HumanTeam))
-            People.PeopleEngine.Boost(p, SeniorNightLift, end, "Honoured on Senior Night", Today);
+        var rec = c.CaptainRecord(HumanTeam);
+        foreach (var p in c.FinalYear(HumanTeam)) if (!rec.Honoured.Contains(p.Id)) rec.Honoured.Add(p.Id);
+        c.RefreshCaptainFlags();
     }
 
-    public const double SeniorNightLift = 6;
-
-    /// <summary>The senior farewell (run 196): the day after the national final, a message for each of your seniors.</summary>
+    /// <summary>The senior farewell (run 196): the evening of the national final, a message for each of your seniors.</summary>
     private void SeniorFarewell(CollegeWorld c)
     {
         if (c.Season.ChampionId == null || c.Season.Year != CollegeWorld.SchoolYear(Today)) return;
@@ -112,7 +110,7 @@ public sealed partial class GameSession
             if (honours.Count > 0) bits.Add(string.Join("; ", honours.Take(4)));
             lines.Add($"{p.Name} ({p.PrimaryPosition})" + (bits.Count > 0 ? ": " + string.Join(". ", bits) + "." : "."));
         }
-        lines.Add("They turn pro this summer. Your juniors are next season's seniors, and the captaincy is theirs to win.");
+        lines.Add("They leave the program this summer. Your juniors are next season's seniors, and the captaincy is theirs to win.");
         return string.Join("\n\n", lines);
     }
 
