@@ -36,6 +36,11 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Selection Sunday and March Madness:** your seed arrives in the inbox; the studio and the arena name the round.
   Left out? The 32 best teams left out play the **NIT**: the better seed hosts the first three rounds, and the
   semi-finals and the final are in Indianapolis.
+- **Captains (a week before the first game):** the players name two captains, the ones the room follows (leadership
+  first, then seniority). Their leadership sets the team's chemistry; a poor pick or an unhappy captain costs it. Change
+  them on the Squad page (pick a player, then Make captain), but a player who loses the captaincy takes it badly.
+  Senior Night lifts your seniors for the rest of the season, and on the night of the national final the inbox says
+  farewell to each of them.
 - **The All-American games:** on February 1 the 24 best high-school seniors are named for the Hardwood All-American
   Classic (March 31, Chicago); the Monday after the Elite Eight the 20 best seniors outside the Final Four are named for
   the College All-American Game (the Friday before the semi-finals). East plays West; your picks, signees and

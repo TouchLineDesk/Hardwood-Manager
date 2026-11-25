@@ -51,6 +51,12 @@ public sealed class Team
     public double Chemistry { get; set; } = 60;
     /// <summary>Weeks each current player has been on the team (continuity feeds chemistry).</summary>
     public Dictionary<int, int> WeeksTogether { get; set; } = new();
+    /// <summary>Run 196: this season's captains (college; filled from <c>CollegeWorld.Captains</c>, not saved on the team).</summary>
+    public HashSet<int> CaptainIds { get; } = new();
+    /// <summary>Run 196 (review): players who lost the captaincy, until the day it stops weighing on them.</summary>
+    public Dictionary<int, DateOnly> StrippedUntil { get; } = new();
+    /// <summary>Run 196 (review): seniors honoured on Senior Night this season.</summary>
+    public HashSet<int> HonouredIds { get; } = new();
 
     public List<Staff> Staff { get; } = new();
     public TrainingPlan Training { get; set; } = new();

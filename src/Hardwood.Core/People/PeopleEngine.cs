@@ -117,6 +117,12 @@ public static class PeopleEngine
         if (p.TradeRequested) f.Add(("Wants out", -8));
         if (team.Coach is { MoraleBonus: var mb } && Math.Abs(mb) >= 1) f.Add((mb > 0 ? "Plays for his coach" : "Not inspired by the coach", mb));
         if (p.BoostUntil is { } until && until > today && p.MoodBoost != 0) f.Add((p.BoostReason ?? "Settled", p.MoodBoost));
+        if (college) // run 196: captains, a lost captaincy and Senior Night, each its own line
+        {
+            if (team.CaptainIds.Contains(p.Id)) f.Add((College.Captaincy.CaptainReason, College.Captaincy.CaptainMorale));
+            else if (team.StrippedUntil.TryGetValue(p.Id, out var su) && su > today) f.Add((College.Captaincy.LostReason, College.Captaincy.LostCaptaincy));
+            if (team.HonouredIds.Contains(p.Id)) f.Add((College.Captaincy.HonouredReason, College.Captaincy.SeniorNightLift));
+        }
         return f;
     }
 
@@ -172,8 +178,18 @@ public static class PeopleEngine
         f.Add((weeks >= 30 ? "A settled group that knows each other" : weeks >= 12 ? "Still getting used to each other" : "Lots of new faces", (weeks - 28) * 0.45));
         double morale = rot.Average(p => p.Morale);
         if (Math.Abs(morale - Neutral) >= 3) f.Add((morale >= Neutral ? "Happy players" : "Unhappy players", (morale - Neutral) * 0.5));
-        double leaders = rot.Max(p => p.Attributes[Attr.Leadership]);
-        if (leaders >= 15) f.Add(("A strong leader in the locker room", (leaders - 14) * 1.5));
+        // Run 196: in college, the captains lead the room (good or bad); the pros (and a college summer) keep the strongest leader.
+        if (college && College.Captaincy.ChemistryLine(team) is { } caps)
+        {
+            f.Add(caps);
+            if (team.Roster.Where(p => team.CaptainIds.Contains(p.Id)).FirstOrDefault(p => p.Morale < UnhappyLine) is { } sour)
+                f.Add(($"Captain {sour.Name} is unhappy", -College.Captaincy.UnhappyCaptainCost));
+        }
+        else
+        {
+            double leaders = rot.Max(p => p.Attributes[Attr.Leadership]);
+            if (leaders >= 15) f.Add(("A strong leader in the locker room", (leaders - 14) * 1.5));
+        }
         double team1 = rot.Average(p => p.Attributes[Attr.Teamwork]);
         f.Add((team1 >= 11 ? "Team-first players" : "Too many individuals", (team1 - 11) * 2));
         int egos = rot.Count(p => p.Hidden.Ego >= 15);

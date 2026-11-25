@@ -17,8 +17,10 @@ public sealed partial class GameSession
     internal void CollegeCalendar()
     {
         if (!Employed || !InCollege || World.College is not { } c || Phase == SessionPhase.Offseason) return;
+        CaptainsCalendar(c); // run 196: before the preseason message, on the same day
         PreseasonPolls(c);
         SeniorNight(c);
+        SeniorFarewell(c); // run 196
         CollegeMoments(c); // run 166: Midnight Madness, early signing, poll Monday, Championship Week, court storms, One Shining Moment
     }
 
@@ -88,8 +90,10 @@ public sealed partial class GameSession
             ? $"Tomorrow's game against {CollegeWorld.WithRank(c.Rank(opp.Id), opp.FullName)} is the last home game of the regular season. Nobody on the roster is in his final season, so there's no one to honour this year."
             : $"Tomorrow's game against {CollegeWorld.WithRank(c.Rank(opp.Id), opp.FullName)} is the last home game of the regular season. Before tip-off the crowd honours "
               + $"{(finals.Count == 1 ? "the player" : $"the {finals.Count} players")} in {(finals.Count == 1 ? "his" : "their")} final season, who turn pro this summer: "
-              + string.Join(", ", finals.Select(p => $"{p.Name} ({p.PrimaryPosition}{SeasonLine(p)})")) + ".";
+              + string.Join(", ", finals.Select(p => $"{p.Name} ({p.PrimaryPosition}{SeasonLine(p)}{(IsCaptain(p) ? ", captain" : "")})")) + "."
+              + " The night lifts them for the rest of the season.";
         Post($"Senior Night tomorrow: {opp.FullName} visit for the last home game", body, "Roster");
+        HonourSeniors(c); // run 196
     }
 
     /// <summary>"3 Fr, 4 So, 4 Jr, 4 Sr" for your program as the school year after the summer will see it.</summary>
