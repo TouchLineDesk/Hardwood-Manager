@@ -1099,6 +1099,9 @@ public static class Board
     public static double HireChance(Coach coach, League league, Team team) => HireChance(coach, LeagueContext.Nabl(league), team);
     public static double HireChance(Coach coach, LeagueContext ctx, Team team) => 1 / (1 + Math.Exp(-(coach.Reputation - Prestige(ctx, team) + 8) / 7));
 
+    /// <summary>CS9 (run 191): a college coach who met his win target is let go only rarely (an AD's change of direction).</summary>
+    public const double CollegeBaseSackChance = 0.015;
+
     /// <summary>
     /// The coaching carousel for computer-run teams at the end of a season: owners who expected more may fire their
     /// coach (impatient owners more readily). Returns the teams that changed coach.
@@ -1106,14 +1109,16 @@ public static class Board
     public static List<Team> AiSeasonChanges(League league, Standings standings, Rng rng, int? humanTeamId) =>
         AiSeasonChanges(LeagueContext.Nabl(league), t => standings[t].Wins, rng, humanTeamId, league.Season);
 
-    public static List<Team> AiSeasonChanges(LeagueContext ctx, Func<Team, int> wins, Rng rng, int? humanTeamId, int season)
+    /// <param name="baseChance">The chance a coach who met his target is let go anyway (CS9, run 191: college passes
+    /// <see cref="CollegeBaseSackChance"/>, so a 23-9 coach is rarely fired; the pros keep 4%).</param>
+    public static List<Team> AiSeasonChanges(LeagueContext ctx, Func<Team, int> wins, Rng rng, int? humanTeamId, int season, double baseChance = 0.04)
     {
         var fired = new List<Team>();
         foreach (var t in ctx.Teams.Where(t => t.Id != humanTeamId))
         {
             var e = SetExpectations(ctx, t, season);
             double shortfall = Math.Max(0, e.TargetWins - wins(t)) * 82.0 / Math.Max(1, ctx.SeasonGames);
-            double p = Math.Clamp(0.04 + shortfall * 0.025 * (1.3 - t.Owner.Patience / 40.0), 0, 0.7);
+            double p = Math.Clamp(baseChance + shortfall * 0.025 * (1.3 - t.Owner.Patience / 40.0), 0, 0.7);
             if (rng.Chance(p)) fired.Add(t);
         }
         return fired;

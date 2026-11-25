@@ -242,6 +242,31 @@
             </StackPanel>
           </StackPanel>
         </Border>
+
+        <!-- CS9 (run 191): the college coaching carousel -->
+        <Border Classes="panel" IsVisible="{Binding HasCarousel}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Newspaper" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding CarouselTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/></StackPanel>
+            <TextBlock Text="{Binding CarouselNote}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+            <ItemsControl ItemsSource="{Binding CarouselRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CarouselRow">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+                    <c:TeamLogo Team="{Binding Team}" Width="30" Height="30" Margin="0,0,8,0" VerticalAlignment="Top"/>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" MaxLines="3"/>
+                    </StackPanel>
+                    <Border Grid.Column="2" IsVisible="{Binding HasTag}" Background="{StaticResource HwPanelAltBrush}" CornerRadius="6" Padding="6,2" Margin="6,0,0,0" VerticalAlignment="Top">
+                      <TextBlock Text="{Binding Tag}" FontSize="11" FontWeight="SemiBold"/>
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="{Binding CarouselToggle}" Command="{Binding ToggleCarouselCommand}" IsVisible="{Binding HasCarouselMore}" HorizontalAlignment="Left"/>
+          </StackPanel>
+        </Border>
       </StackPanel>
     </Grid>
   </ScrollViewer>

@@ -34,6 +34,9 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Selection Sunday and March Madness:** your seed arrives in the inbox; the studio and the arena name the round.
 - **April to the summer:** the AD's season review (the verdict and the program's prestige move), your seniors' draft
   night, graduation, the new class enrolling, and the next season's expectations in October.
+- **The coaching carousel (May):** after the reviews, 40–70 programs change coach (let go, retired, or hired away by a
+  bigger program, which opens that job in turn). One inbox story lists your conference's and rival's changes first;
+  the Board page has the whole spring. A bigger job that opens may come to you if you beat your goal.
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 
 ## Known issues (not worth a note unless they bother you)

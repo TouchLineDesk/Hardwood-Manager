@@ -189,26 +189,6 @@ public sealed partial class GameSession
         return true;
     }
 
-    /// <summary>
-    /// College programs change coaches at the end of the season too (#651), so college jobs open: athletic directors who
-    /// expected more sometimes make a change, as owners do.
-    /// </summary>
-    private void CollegeCoachingChanges()
-    {
-        if (World.College is not { } cw || cw.Programs.Count == 0) return;
-        var rng = CareerRng(2);
-        var ctx = LeagueContext.College(cw, cw.Programs[0]);
-        // CS2 (run 126): the regular season, as the target covers (review of PR #190).
-        var wins = cw.Programs.ToDictionary(p => p.Id, p => cw.RegularSeasonRecord(p.Id).wins);
-        foreach (var t in Board.AiSeasonChanges(ctx, t => wins[t.Id], rng, ControlledTeamId, League.Season))
-        {
-            string old = t.CoachName;
-            string successor = Board.NewCoachName(rng);
-            if (Employed ? OpenWhileEmployed(t, successor) : OpenWhileOut(t, successor, old)) continue;
-            t.CoachName = successor;
-        }
-    }
-
     /// <summary>Out of work: a college opening joins the list when the program would consider you.</summary>
     private bool OpenWhileOut(Team t, string successor, string old)
     {
@@ -356,6 +336,10 @@ public sealed partial class GameSession
         Coach.History.Add(JobRecordFor(club, $"Left for {team.FullName}"));
         string successor = Board.NewCoachName(CareerRng(6));
         ReleaseClub(successor);
+        // CS9: leaving a college program puts it on this spring's carousel.
+        // Only in the summer: a move in the autumn belongs to next spring's carousel, not this one (review of PR #260).
+        if (IsCollegeProgram(club) && Phase == SessionPhase.Offseason && Carousel.Count > 0 && Carousel[0].Year == Today.Year)
+            Carousel.Insert(0, new CarouselMove(Today.Year, club.Id, club.FullName, Coach.Name, successor, "you", "", ToProgramId: team.Id));
         PostWorld($"{club.Abbreviation} change coach", $"{Coach.Name} has left {club.TheFullName} for {team.TheFullName}; {successor} takes over.", college: IsCollegeProgram(club));
     }
 }
