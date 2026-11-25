@@ -68,16 +68,18 @@ public static class PlayBook
     public static (double x, double y)[] Defence(DefensiveScheme d, double[] ox, double[] oy, double ballX, double ballY)
     {
         var r = new (double x, double y)[5];
-        if (d == DefensiveScheme.Zone23)
+        if (d is DefensiveScheme.Zone23 or DefensiveScheme.Zone131)
         {
             double shift = (ballX - 25) * 0.3;
-            (double, double)[] spots = { (19, 21), (31, 21), (10, 10), (25, 7.5), (40, 10) };
+            (double, double)[] spots = d == DefensiveScheme.Zone23
+                ? new[] { (19.0, 21.0), (31.0, 21.0), (10.0, 10.0), (25.0, 7.5), (40.0, 10.0) }
+                : new[] { (25.0, 27.0), (9.0, 17.0), (41.0, 17.0), (25.0, 15.0), (25.0, 5.0) }; // run 194: the 1-3-1
             for (int i = 0; i < 5; i++) r[i] = (spots[i].Item1 + shift * (i == 3 ? 0.5 : 1), spots[i].Item2 + (ballY < 15 ? -2 : 0));
             return r;
         }
         for (int i = 0; i < 5; i++)
         {
-            double k = i == 4 && d == DefensiveScheme.Drop ? 0.55 : 0.25; // drop: the big sags to protect the rim
+            double k = i == 4 && d == DefensiveScheme.Drop ? 0.55 : d == DefensiveScheme.MatchUpZone ? 0.4 : 0.25; // drop: the big sags to protect the rim; the match-up zone sits deeper
             r[i] = (ox[i] + (BasketX - ox[i]) * k, oy[i] + (BasketY - oy[i]) * k);
         }
         return r;
@@ -89,6 +91,8 @@ public static class PlayBook
         DefensiveScheme.Zone23 => "2-3 zone: two up top, three across the paint, shifting with the ball.",
         DefensiveScheme.Drop => "Drop coverage: the big sags to the rim; the guards fight over screens.",
         DefensiveScheme.SwitchEverything => "Switch everything: whoever is nearest takes the man; no help needed.",
+        DefensiveScheme.Zone131 => "1-3-1 zone: one up top, three across the free-throw line, one on the baseline; the wings trap.",
+        DefensiveScheme.MatchUpZone => "Match-up zone: each man picks up whoever enters his area, sagging into the paint.",
         _ => "Man-to-man: each defender a step off his man, between him and the basket.",
     };
 }

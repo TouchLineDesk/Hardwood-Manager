@@ -34,10 +34,12 @@ public static class DeskReel
         // The review of PR #256: an AI side's Tactic is only set at tip-off (CoachAi.Prepare), so the screen shows the plan
         // Prepare will pick (the same read, no random numbers, nothing changed); a coach's own fixed plan as it stands.
         (OffensiveSystem sys, DefensiveScheme sch) Plan(Team t, Team opp) =>
-            t.Tactic.Auto || t.Tactic.AssistantPlans ? CoachAi.PlanFor(t, opp, s.Date) : (t.Tactic.System, t.Tactic.Scheme);
+            t.Tactic.Auto || t.Tactic.AssistantPlans ? CoachAi.PlanFor(t, opp, s.Date, s.Set == StudioSet.College) : (t.Tactic.System, t.Tactic.Scheme);
         var (pa, ph) = (Plan(s.Away, s.Home), Plan(s.Home, s.Away));
         style.Add(new("Offense", Systems.Name(pa.sys), Systems.Name(ph.sys)));
-        style.Add(new("Defense", Systems.Name(pa.sch), Systems.Name(ph.sch)));
+        // Run 194: a college side that presses says so.
+        string D(Team t, DefensiveScheme sch) => Systems.Name(sch) + (s.Set == StudioSet.College && (t.Tactic.Auto ? CoachAi.Presses(CoachAi.Rotation(t, s.Date), true) : t.Tactic.FullCourtPress) ? " + press" : "");
+        style.Add(new("Defense", D(s.Away, pa.sch), D(s.Home, ph.sch)));
         HalftimeDesk.Fill(match, form.Concat(style), HalftimeDesk.MinRows + 1);
         // The segments: the open, keys to the game, off the court. One beat per line; the screen keeps the matchup.
         foreach (var seg in s.Segments)

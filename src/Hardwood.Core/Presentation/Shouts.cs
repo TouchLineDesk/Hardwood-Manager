@@ -123,9 +123,9 @@ public static class Shouts
 }
 
 /// <summary>A team's tactics at one moment, to say on the commentary bar what changed since (M3).</summary>
-public sealed record TacticSnapshot(OffensiveSystem System, DefensiveScheme Scheme, double Pace, int Threes, int Glass, int Aggression, int Star, bool Double)
+public sealed record TacticSnapshot(OffensiveSystem System, DefensiveScheme Scheme, double Pace, int Threes, int Glass, int Aggression, int Star, bool Double, bool Press = false)
 {
-    public static TacticSnapshot Of(Tactic t) => new(t.System, t.Scheme, t.Pace, t.ThreePointEmphasis, t.CrashGlass, t.DefensiveAggression, t.StarUsage, t.DoubleStar);
+    public static TacticSnapshot Of(Tactic t) => new(t.System, t.Scheme, t.Pace, t.ThreePointEmphasis, t.CrashGlass, t.DefensiveAggression, t.StarUsage, t.DoubleStar, t.FullCourtPress);
 
     /// <summary>
     /// The changes from <paramref name="before"/> to now, as commentary phrases after the team's name ("switch to a 2-3
@@ -138,6 +138,7 @@ public sealed record TacticSnapshot(OffensiveSystem System, DefensiveScheme Sche
         var shouts = newShouts.ToHashSet();
         if (System != before.System) said.Add(OffenceWords(System));
         if (Scheme != before.Scheme) said.Add($"switch to {SchemeWords(Scheme)}");
+        if (Press != before.Press) said.Add(Press ? "go to the full-court press" : "call off the press"); // run 194
         foreach (var s in shouts.OrderBy(s => (int)s)) said.Add(Shouts.Info(s).Says);
         bool Lever(params Shout[] ss) => ss.Any(shouts.Contains);
         if (!Lever(Shout.PushPace, Shout.SlowDown) && Math.Abs(Pace - before.Pace) >= 3) said.Add(Pace > before.Pace ? "pick up the pace" : "take some air out of the ball");
@@ -163,6 +164,8 @@ public sealed record TacticSnapshot(OffensiveSystem System, DefensiveScheme Sche
         DefensiveScheme.Man => "man-to-man",
         DefensiveScheme.SwitchEverything => "switching everything",
         DefensiveScheme.Zone23 => "a 2-3 zone",
+        DefensiveScheme.Zone131 => "a 1-3-1 zone",
+        DefensiveScheme.MatchUpZone => "a match-up zone",
         _ => "drop coverage",
     };
 

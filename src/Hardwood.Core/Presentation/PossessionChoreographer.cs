@@ -376,9 +376,12 @@ public static class PossessionChoreographer
         {
             // M3: the double comes from the defender nearest their best scorer (not his own man's).
             if (doubling && k == helper && star >= 0) return Spot.Lerp(cur[star], rim, 0.12).Clamp() with { Y = Math.Clamp(cur[star].Y + (cur[star].Y < 25 ? 2.2 : -2.2), 0.8, 49.2) };
-            if (scheme == DefensiveScheme.Zone23)
+            if (scheme is DefensiveScheme.Zone23 or DefensiveScheme.Zone131)
             {
-                var zone = new[] { S(15, 18), S(15, 32), S(6, 9), S(6, 41), S(4, 25) };
+                // Run 194: the 1-3-1 has one man at the top, three across the free-throw line and one on the baseline.
+                var zone = scheme == DefensiveScheme.Zone23
+                    ? new[] { S(15, 18), S(15, 32), S(6, 9), S(6, 41), S(4, 25) }
+                    : new[] { S(24, 25), S(15, 9), S(15, 41), S(13, 25), S(4, 25) };
                 double shift = (ball.Y - 25) * 0.3;
                 return new Spot(zone[k].X, zone[k].Y + shift).Clamp();
             }
@@ -388,7 +391,14 @@ public static class PossessionChoreographer
             bool onBall = man.DistanceTo(ball) < 3;
             double sag = (onBall ? (aggression >= 70 ? 0.06 : 0.18) : 0.35) * close;
             if (scheme == DefensiveScheme.SwitchEverything) sag *= 0.85;
-            return Spot.Lerp(man, rim, sag).Clamp();
+            var manSpot = Spot.Lerp(man, rim, sag).Clamp();
+            // Run 194: the match-up zone guards a man inside a 2-3's shape: halfway between the two.
+            if (scheme == DefensiveScheme.MatchUpZone)
+            {
+                var z23 = new[] { S(15, 18), S(15, 32), S(6, 9), S(6, 41), S(4, 25) }[k];
+                return Spot.Lerp(manSpot, new Spot(z23.X, z23.Y + (ball.Y - 25) * 0.3), 0.5).Clamp();
+            }
+            return manSpot;
         }
 
         double D = Math.Max(0, input.StartClock - (firstBall?.Clock ?? input.EndClock));
@@ -947,7 +957,7 @@ public static class PossessionChoreographer
             // The defence settles on the new spots (a zone shifts with the ball).
             int ballSlot = c.Ball.Count > 0 && c.Ball[^1].Mode == BallMode.Held && c.Ball[^1].Holder >= 0 ? c.Ball[^1].Holder : from;
             for (int k = 0; k < 5; k++) Drift(defBase + k, w0 + 0.55 * L, w1, DefSpot(k, cur[ballSlot]));
-            if (scheme == DefensiveScheme.Zone23) Act(w0, "zone", -1);
+            if (Engine.Tactics.IsZone(scheme)) Act(w0, "zone", -1);
         }
     }
 

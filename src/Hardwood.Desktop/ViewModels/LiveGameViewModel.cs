@@ -247,8 +247,12 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public double StarUsage { get => Us.Tactic.StarUsage; set { Us.Tactic.StarUsage = (int)value; OnPropertyChanged(); } }
     public List<SystemOption> SystemChoices { get; } = Enum.GetValues<Hardwood.Core.Model.OffensiveSystem>()
         .Select(x => new SystemOption { Name = Hardwood.Core.Model.Systems.Name(x), Description = "", Fit = 0.5, System = x }).ToList();
-    public List<SystemOption> SchemeChoices { get; } = Enum.GetValues<Hardwood.Core.Model.DefensiveScheme>()
+    /// <summary>Run 194: college games offer the college zones too; built once the session is known.</summary>
+    public List<SystemOption> SchemeChoices => _schemeChoices ??= Hardwood.Core.Engine.Tactics.Schemes(Session.InCollege)
         .Select(x => new SystemOption { Name = Hardwood.Core.Model.Systems.Name(x), Description = "", Fit = 0.5, Scheme = x }).ToList();
+    private List<SystemOption>? _schemeChoices;
+    public bool IsCollegeGame => Session.InCollege;
+    public bool FullCourtPress { get => Us.Tactic.FullCourtPress; set { Us.Tactic.FullCourtPress = value; OnPropertyChanged(); } }
     public SystemOption? OffenseChoice
     {
         get => SystemChoices.FirstOrDefault(o => o.System == Us.Tactic.System);

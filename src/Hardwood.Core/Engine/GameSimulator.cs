@@ -89,7 +89,7 @@ public sealed class GameSimulator
 
     public GameResult Simulate(Team home, Team away, Rules rules, ulong seed, bool keepLog = false, DateOnly? date = null)
     {
-        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date); CoachAi.Remember(home); CoachAi.Remember(away);
+        CoachAi.Prepare(home, away, date, rules.OneAndOne); CoachAi.Prepare(away, home, date, rules.OneAndOne); CoachAi.Remember(home); CoachAi.Remember(away);
         var rng = new Rng(seed);
         var result = new GameResult
         {
@@ -121,7 +121,7 @@ public sealed class GameSimulator
     /// <summary>Begin a game that the caller steps through; call <see cref="LiveGame.Finish"/> or step to the end, then read Result.</summary>
     public LiveGame StartLive(Team home, Team away, Rules rules, ulong seed, DateOnly? date = null)
     {
-        CoachAi.Prepare(home, away, date); CoachAi.Prepare(away, home, date); CoachAi.Remember(home); CoachAi.Remember(away);
+        CoachAi.Prepare(home, away, date, rules.OneAndOne); CoachAi.Prepare(away, home, date, rules.OneAndOne); CoachAi.Remember(home); CoachAi.Remember(away);
         var rng = new Rng(seed);
         var result = new GameResult { Home = new TeamBox { Team = home }, Away = new TeamBox { Team = away }, Seed = seed, Date = date, Neutral = rules.NeutralSite };
         var cfg = _cfg.For(rules);
@@ -236,6 +236,8 @@ public sealed class GameSimulator
         /// <summary>Team chemistry's effect on shot quality (logit) and turnovers, fixed for the game.</summary>
         public double ChemLogit { get; }
         public double ChemTurnover { get; }
+        /// <summary>Run 194: the rotation's full-court press fit, 0 to 1.</summary>
+        public double PressFit { get; }
         public int TeamFouls { get; set; }
         public int Possessions { get; set; }
         /// <summary>Timeouts (#1064, run 168): how many are left, the other side's unanswered points, a drawn-up play waiting
@@ -283,6 +285,8 @@ public sealed class GameSimulator
             }
             ChemLogit = (team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryLogit + (team.Coach?.ShotLogit ?? 0);
             ChemTurnover = -(team.Chemistry - People.PeopleEngine.Neutral) / 40.0 * cfg.ChemistryTurnover;
+            // Run 194: how well the dressed top nine suit the full-court press (read only when this side presses).
+            PressFit = Systems.PressFit(available.OrderByDescending(p => p.CurrentAbility).Take(9).ToList());
             // Players not dressed still get a (zero-minute) line so stats lookups never miss.
             foreach (var p in team.Roster.Except(available)) { Box.Lines.Add(new PlayerLine { Player = p }); Energy[p] = 1.0; Form[p] = 0; }
 
@@ -358,6 +362,7 @@ public sealed class GameSimulator
         private double _elapsed;      // seconds played so far in the game
         private Side _offense, _defense;
         private bool _transition;     // next possession starts in transition (after live-ball turnover)
+        private bool _pressed;        // run 194: this possession comes against a full-court press (until its first shot)
 
         public GameState(Side home, Side away, Rules rules, Rng rng, EngineConfig cfg, GameResult result, bool log)
         {
@@ -492,7 +497,7 @@ public sealed class GameSimulator
         {
             var t = us.Team.Tactic;
             if (t.Auto || !t.HalftimeAdjust || Interactive) return;
-            if (Read(us, them) is not var (sys, sch)) return;
+            if (Read(us, them, _rules.OneAndOne) is not var (sys, sch)) return;
             if (sys == t.System && sch == t.Scheme) return;
             var adj = new Tactic { Auto = false, Roles = t.Roles, StarStopperId = t.StarStopperId, Presets = t.Presets, LateGamePreset = t.LateGamePreset };
             TacticPreset.From(t, "halftime").ApplyTo(adj);
@@ -505,16 +510,16 @@ public sealed class GameSimulator
         /// The assistant's read of the other bench (#268): the counter to what they are really running, for the players
         /// still able to play (the best nine dressed, fouled-out players left out). Null with nobody to play. A pure read.
         /// </summary>
-        private static (OffensiveSystem system, DefensiveScheme scheme)? Read(Side us, Side them)
+        private static (OffensiveSystem system, DefensiveScheme scheme)? Read(Side us, Side them, bool college)
         {
             var rot = us.Dressed.Where(p => !us.Line(p).FouledOut).OrderByDescending(p => p.CurrentAbility).Take(9).ToList();
             if (rot.Count == 0) return null;
-            return CoachAi.Counter(rot, them.Team.Tactic.System, them.Team.Tactic.Scheme);
+            return CoachAi.Counter(rot, them.Team.Tactic.System, them.Team.Tactic.Scheme, college);
         }
 
         /// <summary>The halftime read for one side, the same one Continue applies (D75 A, run 69). Draws no random numbers.</summary>
         public (OffensiveSystem system, DefensiveScheme scheme)? HalftimeRead(bool home) =>
-            home ? Read(_home, _away) : Read(_away, _home);
+            home ? Read(_home, _away, _rules.OneAndOne) : Read(_away, _home, _rules.OneAndOne);
 
         /// <summary>#1064: the coach watching live asks for a timeout at the next dead ball. False with none left.</summary>
         public bool RequestTimeout(bool home)
@@ -668,7 +673,8 @@ public sealed class GameSimulator
                 else if (lead >= 6) _fitLogit -= _cfg.CatchUpLogit * 0.7;
             }
 
-            double pace = (off.Tac.Pace + def.Tac.Pace) / 2.0 + Tactics.PaceShift(off.Tac.System);
+            double pace = (off.Tac.Pace + def.Tac.Pace) / 2.0 + Tactics.PaceShift(off.Tac.System)
+                          + (def.Tac.FullCourtPress ? Tactics.PressPace : 0); // run 194: a pressing defence speeds the game up
             // Pace is possessions per 48 minutes (Tactic.Pace), so a 40-minute FIBA game has 5/6 as many possessions.
             double meanSeconds = 48 * 60.0 / (2.0 * pace * _rules.PaceScale);
             double seconds = _transition
@@ -726,6 +732,11 @@ public sealed class GameSimulator
             DrainEnergy(off, seconds); DrainEnergy(def, seconds);
             int pointsBefore = Score(off);
 
+            // Run 194: the full-court press, after a basket or a dead ball (not in transition, not on a late foul). It draws no
+            // extra random numbers, so a game without a press plays exactly as before.
+            _pressed = def.Tac.FullCourtPress && !wasTransition && !intentionalFoul;
+            if (_pressed) { _result.PressedPossessions[off.IsHome ? 0 : 1]++; DrainEnergy(def, seconds * (Tactics.PressEnergyDrain - 1), clockless: true); }
+
             bool possessionLive = true;
             int chanceIndex = 0; // 0 = first shot, 1+ = after offensive rebound
             if (intentionalFoul)
@@ -768,7 +779,7 @@ public sealed class GameSimulator
                 if (chanceIndex == 0 && TryTurnover(off, def)) { possessionLive = false; break; }
 
                 // 2. Non-shooting foul (resets the shot clock; bonus free throws if in penalty)
-                if (_rng.Chance(_cfg.NonShootingFoulRate))
+                if (_rng.Chance(_cfg.NonShootingFoulRate + (_pressed ? Tactics.PressFoulRate : 0)))
                 {
                     var fouler = PickDefender(def, null, ShotZone.ShortMid);
                     CommitFoul(def, fouler);
@@ -790,6 +801,7 @@ public sealed class GameSimulator
                 var defender = PickDefender(def, shooter2, zone);
                 possessionLive = ResolveShot(off, def, shooter2, defender, zone, wasTransition, ref chanceIndex);
                 wasTransition = false;
+                _pressed = false; // only the first shot comes against a broken press
             }
 
             // Plus/minus for everyone on court
@@ -814,7 +826,9 @@ public sealed class GameSimulator
                               + (def.Tac.DefensiveAggression - 50) / 25.0;
             double p = _cfg.TurnoverBase - _cfg.TurnoverSkillBeta * (security - pressure)
                        + Tactics.TurnoverShift(off.Tac, def.Tac) + off.ChemTurnover;
-            p = Math.Clamp(p, 0.04, 0.25 + _rules.TurnoverShift); // K11: the college profile lifts the ceiling with the base
+            // Run 194: the press. How much it forces depends on how well the pressers suit it (speed, stamina, hands).
+            if (_pressed) p += Tactics.PressTurnover + Tactics.PressFitTurnover * (def.PressFit - 0.5);
+            p = Math.Clamp(p, 0.04, 0.25 + _rules.TurnoverShift + (_pressed ? Tactics.PressTurnover : 0)); // K11: the college profile lifts the ceiling with the base
             if (!_rng.Chance(p)) return false;
 
             // Who turned it over: weighted by usage (handlers more often)
@@ -822,13 +836,14 @@ public sealed class GameSimulator
             var culprit = off.OnCourt[_rng.WeightedIndex(weights)];
             off.Line(culprit).Turnovers++;
 
-            if (_rng.Chance(_cfg.LiveBallTurnoverShare))
+            if (_pressed) _result.PressTurnovers[off.IsHome ? 0 : 1]++;
+            if (_rng.Chance(_pressed ? Tactics.PressLiveBallShare : _cfg.LiveBallTurnoverShare))
             {
                 var stealWeights = def.OnCourt.Select(pl => Math.Pow(pl.Attributes[Attr.Steal], 2) * (1 + pl.Tendencies.GambleSteals / 100.0)).ToArray();
                 var thief = def.OnCourt[_rng.WeightedIndex(stealWeights)];
                 def.Line(thief).Steals++;
                 _transition = true;
-                Log($"{thief.LastName} steals from {culprit.LastName}");
+                Log(_pressed ? $"{thief.LastName} picks it off in the press from {culprit.LastName}" : $"{thief.LastName} steals from {culprit.LastName}");
                 Play(PlayKind.Steal, def, thief, culprit);
             }
             else { Log($"Turnover by {culprit.LastName}"); Play(PlayKind.Turnover, off, culprit); }
@@ -886,7 +901,7 @@ public sealed class GameSimulator
             static long Key(Player[] five) { long k = 0; foreach (var p in five) k += (long)p.Id * 2654435761L; return k; }
             int tac = (int)off.Tac.System * 16 + (int)def.Tac.Scheme;
             var key = (Key(off.OnCourt), Key(def.OnCourt), tac);
-            if (!_fitCache.TryGetValue(key, out var v)) _fitCache[key] = v = Tactics.FitLogit(off.Tac, def.Tac, off.OnCourt, def.OnCourt, _cfg);
+            if (!_fitCache.TryGetValue(key, out var v)) _fitCache[key] = v = Tactics.FitLogit(off.Tac, def.Tac, off.OnCourt, def.OnCourt, _cfg, _rules.OneAndOne);
             return v;
         }
         private double _fitLogit;
@@ -921,7 +936,7 @@ public sealed class GameSimulator
             double driveFactor = (t.DriveRate + t.PostUpRate) / 40.0;
             double midFactor = 1.0 + t.IsolationRate / 40.0 - threeFactor * 0.25;
 
-            w[(int)ShotZone.Rim] = baseW[0] * driveFactor * (transition ? 1.6 : 1.0);
+            w[(int)ShotZone.Rim] = baseW[0] * driveFactor * (transition ? 1.6 : 1.0) * (_pressed ? Tactics.PressBrokenRimWeight : 1.0);
             w[(int)ShotZone.ShortMid] = baseW[1] * Math.Max(0.3, midFactor);
             w[(int)ShotZone.LongMid] = baseW[2] * Math.Max(0.3, midFactor);
             w[(int)ShotZone.CornerThree] = baseW[3] * threeFactor * (transition ? 1.2 : 1.0);
@@ -965,6 +980,7 @@ public sealed class GameSimulator
             if (zone == ShotZone.Rim) c += Math.Min(1.5, def.OnCourt.Sum(p => Roles.Info(def.Tac.RoleOf(p)).RimDefense));
             else c += Roles.Info(def.Tac.RoleOf(defender)).PerimeterDefense;
             c += Tactics.SchemeContest(def.Tac.Scheme, zone);
+            if (_pressed && zone == ShotZone.Rim) c -= Tactics.PressBrokenRimContest; // run 194: beat the press, and it's a layup
             c += def.Team.Coach?.ContestBonus ?? 0; // the coach's defensive teaching
             // Tired defenders contest worse.
             c -= (1 - def.Energy[defender]) * 4.0;
@@ -1123,7 +1139,8 @@ public sealed class GameSimulator
             double defStrength = def.OnCourt.Sum(p => p.Attributes[Attr.DefensiveRebounding] + (p.HeightCm - 200) * 0.08);
             double crash = (off.Tac.CrashGlass - 50) / 50.0 * 0.05;
             double longRebound = zone.IsThree() ? 0.02 : 0.0; // long misses slightly favour the offence
-            double pOff = _cfg.OffensiveReboundBase + _cfg.ReboundSkillBeta * (offStrength - defStrength) / 5.0 + crash + longRebound;
+            double pOff = _cfg.OffensiveReboundBase + _cfg.ReboundSkillBeta * (offStrength - defStrength) / 5.0 + crash + longRebound
+                          + Tactics.ZoneOffRebound(def.Tac.Scheme); // run 194: nobody boxes out the 1-3-1's weak side
             pOff = Math.Clamp(pOff, 0.12, 0.42);
 
             if (_rng.Chance(pOff))
@@ -1213,15 +1230,17 @@ public sealed class GameSimulator
             DrainEnergy(_away, seconds);
         }
 
-        private void DrainEnergy(Side side, double seconds)
+        /// <param name="clockless">Run 194: extra legwork only (the press): drains the five on the floor, adds no minutes and rests nobody.</param>
+        private void DrainEnergy(Side side, double seconds, bool clockless = false)
         {
             double possFraction = seconds / 14.0;
             foreach (var p in side.OnCourt)
             {
                 double drain = _cfg.EnergyDrainPerPossession * possFraction * (1.6 - p.Attributes[Attr.Stamina] / 20.0);
                 side.Energy[p] = Math.Max(0.3, side.Energy[p] - drain);
-                side.Line(p).Seconds += seconds;
+                if (!clockless) side.Line(p).Seconds += seconds;
             }
+            if (clockless) return;
             foreach (var p in side.Team.Roster)
             {
                 if (Array.IndexOf(side.OnCourt, p) >= 0) continue;

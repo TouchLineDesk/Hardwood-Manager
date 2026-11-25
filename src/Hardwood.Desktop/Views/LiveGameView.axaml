@@ -350,6 +350,7 @@
               <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:SystemOption"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
             <CheckBox Content="Double their best scorer" IsChecked="{Binding DoubleStar}"/>
+            <CheckBox Content="Press full court" IsChecked="{Binding FullCourtPress}" IsVisible="{Binding IsCollegeGame}"/>
             <TextBlock Text="Pace" Classes="muted" FontSize="11.5"/><Slider Minimum="88" Maximum="110" Value="{Binding Pace}"/>
             <TextBlock Text="Three-point emphasis" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding ThreeEmphasis}"/>
             <TextBlock Text="Offensive glass" Classes="muted" FontSize="11.5"/><Slider Minimum="0" Maximum="100" Value="{Binding CrashGlass}"/>
