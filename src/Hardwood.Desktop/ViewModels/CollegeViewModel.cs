@@ -742,7 +742,7 @@ public sealed partial class CollegeViewModel : PageViewModel
                 var alive = MadnessBracket.RegionField(s, r).SelectMany(p => p.Top.Teams.Concat(p.Bottom.Teams))
                     .Where(id => !losers.Contains(id)).OrderBy(Seed).ToList();
                 string still = alive.Count == 0 ? "" : $"Still alive ({alive.Count}): " + string.Join(", ", alive.Take(4).Select(id => $"{Seed(id)} {School(id)}")) + (alive.Count > 4 ? " …" : "");
-                string when = dates.Count > 4 ? $"Regional final {dates[4]:MMM d}." : "";
+                string when = c.MadnessDay(4, r) is { } rf ? $"Regional final {rf:MMM d}." : "";
                 teams.Add(new(region.ToUpperInvariant(), "", "To be decided", when, still, "", me is { } m0 && alive.Contains(m0), false));
                 continue;
             }

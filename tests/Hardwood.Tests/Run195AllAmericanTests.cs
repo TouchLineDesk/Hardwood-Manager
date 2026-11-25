@@ -58,8 +58,9 @@ public class Run195AllAmericanTests
         for (var d = new DateOnly(2027, 2, 2); d <= new DateOnly(2027, 4, 6); d = d.AddDays(1))
         {
             c.PlayThrough(d, sim, rng);
-            if (d == new DateOnly(2027, 3, 30)) Assert.False(hs.Played);
-            if (d == new DateOnly(2027, 4, 2)) Assert.False(c.AllAmericanOf(CollegeWorld.SeniorGame)!.Played);
+            // K39 (run 204): the Classic on Tuesday Mar 30, the seniors' game on Friday Apr 2 (the Final Four is Saturday Apr 3).
+            if (d == new DateOnly(2027, 3, 29)) Assert.False(hs.Played);
+            if (d == new DateOnly(2027, 4, 1)) Assert.False(c.AllAmericanOf(CollegeWorld.SeniorGame)!.Played);
         }
         Assert.True(hs.Played);
         Assert.NotEqual(hs.EastPts, hs.WestPts);
@@ -67,7 +68,7 @@ public class Run195AllAmericanTests
         Assert.Equal(hs.EastPts, hs.Box.Where(b => b.East).Sum(b => b.Pts));
         Assert.Contains(hs.MvpId!.Value, hs.EastPts > hs.WestPts ? hs.East : hs.West); // the MVP is a winner
 
-        // The seniors: named March 30, nobody from the Final Four or the NIT's last four, played April 3.
+        // The seniors: named March 30, nobody from the Final Four or the NIT's last four, played April 2.
         var sr = c.AllAmericanOf(CollegeWorld.SeniorGame)!;
         Assert.True(sr.Played);
         Assert.Equal(CollegeWorld.SeniorsASide, sr.East.Count);

@@ -66,9 +66,8 @@ public sealed partial class CollegeWorld
     public static string AllAmericanTitle(string kind) => kind == HighSchoolGame ? "Hardwood All-American Classic" : "College All-American Game";
 
     /// <summary>The day each game's rosters are named and the day it is played, for the season that began in <paramref name="year"/>.</summary>
-    public static (DateOnly Named, DateOnly Played) AllAmericanDates(string kind, int year) => kind == HighSchoolGame
-        ? (new DateOnly(year + 1, 2, 1), new DateOnly(year + 1, 3, 31))
-        : (new DateOnly(year + 1, 3, 30), new DateOnly(year + 1, 4, 3));
+    public static (DateOnly Named, DateOnly Played) AllAmericanDates(string kind, int year, bool weekdays = true) =>
+        MarchCalendar.AllAmerican(kind == HighSchoolGame, year, weekdays);
 
     /// <summary>This season's game of a kind, once its rosters are named.</summary>
     public AllAmericanGame? AllAmericanOf(string kind, int? year = null) =>
@@ -83,7 +82,7 @@ public sealed partial class CollegeWorld
         int year = Season.Year;
         foreach (var kind in new[] { HighSchoolGame, SeniorGame })
         {
-            var (named, played) = AllAmericanDates(kind, year);
+            var (named, played) = AllAmericanDates(kind, year, Season.Weekdays);
             var game = AllAmericanOf(kind);
             // Review (run 195): no upper bound, so a call that jumps past the game day (an audit, a catch-up) still names and plays it.
             if (game == null && date >= named)
