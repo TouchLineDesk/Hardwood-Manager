@@ -345,6 +345,9 @@ public static class Board
         bool promotionPlayoff = false, bool topLeagueDrops = true)
     {
         var e = NextExpectationsCore(ctx, team, season, previous, leagueKey, level, previousLevel);
+        // H205 (run 203): a new college coach (no previous season here) is asked for a deep run, not the title. North
+        // Carolina's AD asked a first-year coach to win it all, then gave him a final warning after 23-11 and a bid.
+        if (ctx.IsCollege && previous == null && e.Goal == SeasonGoal.Title) e.Goal = SeasonGoal.Finals;
         // K7 (run 115): a club the board expects to finish last in a division that sends its last club down is set to stay up,
         // and told what that takes. The Kings (12-70) were set "develop the squad, around 22 wins" and went down without the
         // stake ever being named.
@@ -492,6 +495,15 @@ public static class Board
 
     /// <summary>Owner patience at or above which the goal is set a step lower (H70).</summary>
     public const int PatientOwner = 15;
+    /// <summary>K40 (run 203): the most a college AD's confidence rises over one season.</summary>
+    public const double YearRiseCap = 20;
+    /// <summary>H205 (run 203): the most a college coach's first season at .500 or better costs the AD's confidence.</summary>
+    public const double FirstSeasonDropCap = 20;
+    /// <summary>H205: the wins (with a tournament bid) that keep a first-year college coach off a final warning.</summary>
+    public const int FirstSeasonSafeWins = 20;
+    /// <summary>H205: the confidence such a first season never falls below (above the final-warning line of 25).</summary>
+    public const double FirstSeasonSafeFloor = 40;
+
     /// <summary>H179 (run 172): the college rank down to which an ambitious AD asks for the tournament; below it, progress.</summary>
     public const int AmbitiousReach = 120;
     /// <summary>H179: the extra wins an ambitious AD asks of a program below <see cref="AmbitiousReach"/>.</summary>
@@ -1024,6 +1036,14 @@ public static class Board
             || (ctx.IsCollege && seed > 0 && seedOver >= 0 && winsVsTarget >= 0));
         if (!sacked && earned) { job.ProtectedSeason = season + 1; job.ProtectedReason = "credit"; }
         if (firstSeason && job.Confidence < 25 - (team.Owner.Patience - 10)) job.Confidence = Math.Max(job.Confidence, 20);
+        // H205 (run 203): a college coach's first season. A season at .500 or better costs at most FirstSeasonDropCap from
+        // where it began, and a 20-win season with a tournament bid never ends in a final warning.
+        if (ctx.IsCollege && firstSeason && !relegated)
+        {
+            double start0 = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } s0 ? s0 : beforeReview;
+            if (wins >= losses) job.Confidence = Math.Max(job.Confidence, Math.Min(beforeReview, start0) - FirstSeasonDropCap);
+            if (wins >= FirstSeasonSafeWins && madnessRound >= 0) job.Confidence = Math.Max(job.Confidence, FirstSeasonSafeFloor);
+        }
         string owner = team.Owner.Name;
         // An exit needs a postseason the club was in (review of #178: a club that missed the playoffs read "playoff exit").
         bool reachedPost = ctx.IsCollege ? achieved >= SeasonGoal.Playoffs || madnessRound >= 0
@@ -1033,6 +1053,10 @@ public static class Board
         // never "Secure" (App State, 12-13, read Secure 95/100); a "delighted" season never ends below its start (Duke won the
         // title as a 1-seed and went 95 → 80); a "disappointed" one or "expected more" never above it (44 → 57).
         double seasonStart = job.SeasonStartSeason == season && job.SeasonStartConfidence is { } ss ? ss : beforeReview;
+        // K40 (run 203): a college AD's confidence rises at most YearRiseCap over a season (Arizona State went 39 → 72 on
+        // one more win, 15-15 against a 17-win target). A March run past the seed keeps its "content" floor.
+        if (ctx.IsCollege && !sacked)
+            job.Confidence = Math.Min(job.Confidence, Math.Max(seasonStart + YearRiseCap, seedOver >= 1 ? ContentLine + 5 : 0));
         if (ctx.IsCollege && !sacked)
         {
             if (wins < losses) job.Confidence = Math.Min(job.Confidence, LosingCap);
@@ -1083,6 +1107,10 @@ public static class Board
             // H188 (run 182): the goal met with a regular season clearly past the target is better than "satisfied" (a 2-seed's
             // Elite Eight read "satisfied" while a round less read "pleased with the regular season").
             : diff == 0 && ctx.IsCollege && j.BeatTarget ? $"{owner} is pleased: {result}, and the regular season was {ahead} {(ahead == 1 ? "win" : "wins")} past the target. AD confidence: {job.Confidence:0}/100."
+            // K40 (run 203): "satisfied" short of the target needs a winning record or a miss of a win at most; otherwise the
+            // AD wanted to see progress (Arizona State, 15-15 against 17, 5-14 in the Big 12, read "satisfied" at 72).
+            : diff == 0 && ctx.IsCollege && wins < e.TargetWins && wins <= losses && e.TargetWins - wins > 1
+                ? $"{owner} wanted to see progress, and {TargetPhrase(wins, losses, e.TargetWins)}{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
             : diff == 0 && ctx.IsCollege && wins < e.TargetWins ? $"{owner} is satisfied with the progress, though {TargetPhrase(wins, losses, e.TargetWins)}{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
             : diff == 0 ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".

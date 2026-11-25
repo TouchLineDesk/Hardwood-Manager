@@ -57,7 +57,10 @@ public class Run165DressingRoomTests
         var why = PeopleEngine.Factors(senior, team, 0.8, st, Money, Day, college: true);
         _out.WriteLine(string.Join("; ", why.Select(x => $"{x.reason} {x.effect:+0.0;-0.0}")));
         Assert.True(college < PeopleEngine.UnhappyLine, $"senior target {college:0.0}");
-        Assert.True(pro > college + 12, $"pro target {pro:0.0} (the pros keep the whole lift)");
+        // Run 203 (H204): a college player's fit is judged against his own best role, so he can have a "Suits his role" line
+        // (+3) the pros don't; the lift is compared without it.
+        double RoleLine(bool c) => PeopleEngine.Factors(senior, team, 0.8, st, Money, Day, college: c).Where(x => x.reason.Contains("suit his role") || x.reason.StartsWith("Suits his role")).Sum(x => x.effect);
+        Assert.True(pro - RoleLine(false) > college - RoleLine(true) + 12, $"pro target {pro:0.0} (the pros keep the whole lift)");
         Assert.True(fresh > college + 10, "a freshman waits his turn more easily");
         Assert.Contains(why, x => x.reason.StartsWith("A senior who wants his turn (8 a game; expects about 22)"));
         Assert.Contains(why, x => x.reason == "Winning, but he isn't part of it" && x.effect > 0 && x.effect < 6);

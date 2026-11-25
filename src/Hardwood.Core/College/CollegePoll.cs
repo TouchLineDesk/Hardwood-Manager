@@ -42,6 +42,7 @@ public sealed partial class CollegeWorld
             score = id => id == champ ? double.MaxValue : id == runnerUp ? double.MaxValue / 2 : PollScore(id) + MarchPollWeight * Math.Max(0, march[id] - 1);
         }
         var all = Programs.Select(t => t.Id).OrderByDescending(score).ThenBy(id => id).ToList();
+        if (Season.ChampionId is { } ch && !_preMarchPoll) all = CapMarchClimb(all, ch, Season.RunnerUpId);
         if (Season.ChampionId == null || _preMarchPoll) KeepUnbeatenAhead(all);
         _fullRanks = all.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i + 1);
         _pollOrder = all.Take(PollSize).ToList();
@@ -50,6 +51,39 @@ public sealed partial class CollegeWorld
     }
 
     private Dictionary<int, int> _fullRanks = new();
+
+    /// <summary>H165 (run 203): the places a March team may climb in the final poll for each round won past its first game.</summary>
+    public const int MarchClimbPerRound = 2;
+    /// <summary>H165: the most places a March run lifts a team (the champion and the runner-up excepted).</summary>
+    public const int MarchClimbMax = 8;
+    /// <summary>H165: a Final Four team never finishes below this rank, so every semi-finalist is in the Top 25.</summary>
+    public const int FinalFourFloor = 20;
+
+    /// <summary>
+    /// H165 (run 203): a March run lifts a team a few places, not 10+ past teams with far better records. Hunt 26's final
+    /// poll had Missouri (22-14, an 8-seed Final Four) at No. 14, above Michigan State at 26-9. Each team's place is held
+    /// to at most <see cref="MarchClimbPerRound"/> places a round above where its score without March puts it (at most
+    /// <see cref="MarchClimbMax"/>); the champion and runner-up stay first and second, and a Final Four team stays in the
+    /// top <see cref="FinalFourFloor"/>. No random draw.
+    /// </summary>
+    private List<int> CapMarchClimb(List<int> withMarch, int champ, int? runnerUp)
+    {
+        var baseIdx = Programs.Select(t => t.Id).OrderByDescending(PollScore).ThenBy(id => id)
+            .Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+        var key = new Dictionary<int, int>();
+        for (int i = 0; i < withMarch.Count; i++)
+        {
+            int id = withMarch[i];
+            if (id == champ || id == runnerUp) { key[id] = i; continue; }
+            int reached = MadnessReached(id);
+            int climb = Math.Min(MarchClimbMax, MarchClimbPerRound * Math.Max(0, reached - 1));
+            int k = Math.Max(i, baseIdx[id] - climb);
+            if (reached >= 5) k = Math.Min(k, FinalFourFloor - 1);
+            key[id] = k;
+        }
+        var pos = withMarch.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+        return withMarch.OrderBy(id => key[id]).ThenBy(id => pos[id]).ToList();
+    }
 
     /// <summary>
     /// H148, hardened (run 156): the score alone let an 8-0 DePaul sit 20th behind 9-3 BYU once the non-conference season

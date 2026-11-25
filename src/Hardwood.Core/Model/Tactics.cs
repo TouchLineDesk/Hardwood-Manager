@@ -106,6 +106,30 @@ public static class Roles
         return Math.Clamp(Math.Round((avg - 6) / 2.4 * 2) / 2, 0, 5);
     }
 
+    /// <summary>
+    /// H204 (run 203): how far a role sits below the player's own best natural role, in stars (0 = his best fit). The star
+    /// scale is absolute, so at a low-major every role reads under 2 stars (Rider: 15 of 15 "doesn't suit his role" on day
+    /// one); a college player's mood compares the role with his own game instead.
+    /// </summary>
+    public static double FitGap(Player p, Role r) => Math.Max(0, Stars(p, Best(p)) - Stars(p, r));
+
+    /// <summary>H204: the gap, in stars below his best natural role, at which a college player feels miscast.</summary>
+    public const double CollegeMiscastGap = 1.5;
+
+    /// <summary>
+    /// H204: whether a player's role suits him (+1), doesn't (−1) or neither (0). The pros keep the absolute scale (3.5+
+    /// suits, under 2 doesn't). In college a role suits him at 3.5+ stars or when it is his best natural role, and doesn't
+    /// when it is under 2 stars and at least <see cref="CollegeMiscastGap"/> below his best.
+    /// </summary>
+    public static int Suitability(Player p, Role r, bool college)
+    {
+        double stars = Stars(p, r);
+        if (!college) return stars >= 3.5 ? 1 : stars < 2 ? -1 : 0;
+        double gap = FitGap(p, r);
+        if (stars >= 3.5 || gap <= 0) return 1;
+        return stars < 2 && gap >= CollegeMiscastGap ? -1 : 0;
+    }
+
     /// <summary>The roles a player suits best, best first.</summary>
     public static IEnumerable<(Role role, double stars)> Ranked(Player p) =>
         All.Select(i => (i.Role, Stars(p, i.Role))).OrderByDescending(x => x.Item2);
