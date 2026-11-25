@@ -33,21 +33,29 @@ public sealed class MadnessBracketView : Canvas
         AvaloniaProperty.Register<MadnessBracketView, MadnessFieldData?>(nameof(Field));
     public MadnessFieldData? Field { get => GetValue(FieldProperty); set => SetValue(FieldProperty, value); }
 
-    /// <summary>The card fonts as an Avalonia font collection, registered once. (An "avares://…#Family" key alone didn't
-    /// resolve them: Avalonia reads "Thin Black" and "ExtraBold" in the family names as weights.)</summary>
-    private static readonly bool Registered = Register();
-    private static bool Register()
+    /// <summary>The card fonts as an Avalonia font collection, registered with the current font manager. (An
+    /// "avares://…#Family" key alone didn't resolve them: Avalonia reads "Thin Black" and "ExtraBold" in the family names as
+    /// weights.) CI showed a font manager can be replaced within a process (headless test sessions), so registration is per
+    /// font manager, checked on every build, and the default type stands in if it fails.</summary>
+    private static FontManager? _registeredWith;
+    private static bool _fontsOk;
+    private static void EnsureFonts()
     {
+        var fm = FontManager.Current;
+        if (ReferenceEquals(fm, _registeredWith)) return;
+        _registeredWith = fm;
         try
         {
-            FontManager.Current.AddFontCollection(new Avalonia.Media.Fonts.EmbeddedFontCollection(
+            fm.AddFontCollection(new Avalonia.Media.Fonts.EmbeddedFontCollection(
                 new Uri("fonts:hardwood", UriKind.Absolute), new Uri("avares://HardwoodManager/Assets/Fonts", UriKind.Absolute)));
-            return true;
+            _fontsOk = true;
         }
-        catch (Exception) { return false; } // already registered, or no font manager: the default type is used
+        catch (Exception) { _fontsOk = fm.TryGetGlyphTypeface(new Typeface(HardwoodCondensed, FontStyle.Normal, FontWeight.ExtraBold), out _); }
     }
-    public static readonly FontFamily Condensed = Registered ? new("fonts:hardwood#Barlow Condensed") : FontFamily.Default;
-    public static readonly FontFamily Display = Registered ? new("fonts:hardwood#Big Shoulders Display") : FontFamily.Default;
+    private static readonly FontFamily HardwoodCondensed = new("fonts:hardwood#Barlow Condensed");
+    private static readonly FontFamily HardwoodDisplay = new("fonts:hardwood#Big Shoulders Display");
+    public static FontFamily Condensed { get { EnsureFonts(); return _fontsOk ? HardwoodCondensed : FontFamily.Default; } }
+    public static FontFamily Display { get { EnsureFonts(); return _fontsOk ? HardwoodDisplay : FontFamily.Default; } }
 
     private static readonly IBrush LineBrush = new SolidColorBrush(Color.Parse("#4A525E"));
     private static readonly IBrush SlotBrush = new SolidColorBrush(Color.Parse("#1E232B"));
