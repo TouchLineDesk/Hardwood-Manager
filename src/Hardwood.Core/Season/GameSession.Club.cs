@@ -375,6 +375,8 @@ public sealed partial class GameSession
         KeepNewest(CollegeResults);
         ReportGame(r);
         ReportRivalry(g);
+        // Slice 10 (run 201): career wins and March firsts are told as they happen.
+        if (Employed && InCollege && (g.HomeId == HumanTeam.Id || g.AwayId == HumanTeam.Id)) ReportMilestones();
     }
 
     /// <summary>C5 part 1 (run 94): after your program plays a rival, one inbox line with the result and the series. No random numbers.</summary>

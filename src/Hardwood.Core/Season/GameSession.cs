@@ -868,6 +868,8 @@ public sealed partial class GameSession
             bool wonDivision = HumanLeague is { } hc && UsaPyramid.WonDivision(hc, HumanTeam);
             if (wonDivision && achieved < Jobs.SeasonGoal.SecondRound) achieved = Jobs.SeasonGoal.SecondRound;
             bool sacked = false;
+            // Slice 10 (run 201): your season goes in your coaching book before the review (a sacked coach's counts too).
+            if (!hiredForNext) RecordMyCollegeSeason();
             if (!hiredForNext)
             {
                 (string title, string body, sacked) = Jobs.Board.SeasonReview(Job, Coach, ContextOf(HumanTeam), HumanTeam, achieved, rec.Wins, rec.Losses, MyStats, Today, League.Season,
@@ -1109,6 +1111,8 @@ public sealed partial class GameSession
     /// </summary>
     private Jobs.JobRecord JobRecordFor(Team club, string ended)
     {
+        InductMe(club); // slice 10 (run 201): leaving a college program after a long, winning spell puts you in its Hall
+
         if (Job.HiredSeason > League.Season) return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, Job.HiredSeason, 0, 0, ended);
         var rec = MyRecord;
         return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, ended);

@@ -262,6 +262,32 @@
           </StackPanel>
         </Border>
 
+        <!-- Slice 10 (run 201): your coaching legacy and coaching tree -->
+        <Border x:Name="MyCareerPanel" Classes="panel" IsVisible="{Binding HasMyCareer}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="Your coaching career" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="{Binding MyCareerHeadline}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding MyCareerSeasons}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Milestones" FontWeight="SemiBold" Margin="0,6,0,0" IsVisible="{Binding HasMyMilestones}"/>
+            <ItemsControl ItemsSource="{Binding MyCareerMilestones}" IsVisible="{Binding HasMyMilestones}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><TextBlock Text="{Binding}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Your coaching tree" FontWeight="SemiBold" Margin="0,6,0,0" IsVisible="{Binding HasMyTree}"/>
+            <ItemsControl ItemsSource="{Binding MyCareerTree}" IsVisible="{Binding HasMyTree}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><TextBlock Text="{Binding}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding MyCareerNote}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
+          </StackPanel>
+        </Border>
+
         <!-- Slice 9 (run 200): rival coaches as characters -->
         <Border x:Name="RivalCoachesPanel" Classes="panel" IsVisible="{Binding HasRivalCoaches}">
           <StackPanel Spacing="6">
