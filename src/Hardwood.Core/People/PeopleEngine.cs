@@ -107,9 +107,10 @@ public static class PeopleEngine
             if (ratio < 0.65) f.Add(("Feels underpaid", -8 * (0.5 + h.Ambition / 20.0)));
             else if (ratio > 1.3) f.Add(("Well paid", 3));
         }
-        double stars = Roles.Stars(p, team.Tactic.RoleOf(p));
-        if (stars >= 3.5) f.Add(($"Suits his role ({Roles.Info(team.Tactic.RoleOf(p)).Name})", 3));
-        else if (stars < 2) f.Add(($"Doesn't suit his role ({Roles.Info(team.Tactic.RoleOf(p)).Name})", -6));
+        // H204 (run 203): in college the fit is judged against his own best role, not the absolute star scale.
+        int suits = Roles.Suitability(p, team.Tactic.RoleOf(p), college);
+        if (suits > 0) f.Add(($"Suits his role ({Roles.Info(team.Tactic.RoleOf(p)).Name})", 3));
+        else if (suits < 0) f.Add(($"Doesn't suit his role ({Roles.Info(team.Tactic.RoleOf(p)).Name})", -6));
         double chem = (team.Chemistry - Neutral) * 0.15;
         if (Math.Abs(chem) >= 2) f.Add((team.Chemistry >= Neutral ? "Likes the team spirit" : "Unsettled in the locker room", chem));
         if (p.IsHurt(today)) f.Add(("Frustrated by his injury", -3));

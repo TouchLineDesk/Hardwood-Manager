@@ -113,8 +113,13 @@ public static class Talks
                 var role = team.Tactic.RoleOf(p);
                 double stars = Roles.Stars(p, role);
                 var best = Roles.Best(p);
-                r = stars >= 3.5
+                // H204 (run 203): in college, his own best role is "his game", whatever the absolute stars.
+                int suits = college ? Roles.Suitability(p, role, true) : 0;
+                r = stars >= 3.5 || suits > 0
                     ? new($"{name} is comfortable as a {Roles.Info(role).Name}. \"That's my game.\"", 4, true)
+                    : college ? suits < 0
+                        ? new($"{name} doesn't see himself as a {Roles.Info(role).Name}. \"I'm a {Roles.Info(best).Name}, coach.\"", -4, false)
+                        : new($"{name} will do what's asked as a {Roles.Info(role).Name}, though he'd prefer {Roles.Info(best).Name}.", 1, true)
                     : stars < 2.5
                         ? new($"{name} doesn't see himself as a {Roles.Info(role).Name}. \"I'm a {Roles.Info(best).Name}, coach.\"", -4, false)
                         : new($"{name} will do what's asked as a {Roles.Info(role).Name}, though he'd prefer {Roles.Info(best).Name}.", 1, true);

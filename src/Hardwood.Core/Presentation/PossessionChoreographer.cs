@@ -129,6 +129,8 @@ public sealed class Choreography
     public double Length { get; set; }
     /// <summary>A possession worth watching at Key moments speed: a make, a block, a steal, or a late, close game.</summary>
     public bool Key { get; set; }
+    /// <summary>K28 (run 203): a college trip in the last minute by a side down 4 to 10, shot early with no set run.</summary>
+    public bool Hurried { get; set; }
     public bool HomeOffense { get; set; }
     /// <summary>How the next possession starts.</summary>
     public PossessionStart Next { get; set; } = PossessionStart.DeadBall;
@@ -308,6 +310,12 @@ public static class PossessionChoreographer
             : new[] { OffensiveSystem.PickAndRoll, OffensiveSystem.Motion, OffensiveSystem.PostCentric, OffensiveSystem.PaceAndSpace, OffensiveSystem.Isolation }[rng.Next(5)];
         var scheme = homeOff ? input.AwayScheme : input.HomeScheme;
         c.Set = set; c.Scheme = scheme;
+        // K28 (run 203): the college side down 4 to 10 in the final minute shoots early (LateGame.Hurry), so the trip has no
+        // set to run: it was drawn as a slow clear-out. It reads as a hurried trip instead.
+        int offMargin = homeOff ? input.StartHomeScore - input.StartAwayScore : input.StartAwayScore - input.StartHomeScore;
+        bool hurried = input.Periods == 2 && (firstBall?.Period ?? 0) >= input.Periods && input.StartClock <= Engine.LateGame.HurryWindowSeconds
+            && offMargin is <= -Engine.LateGame.FoulMin and >= -Engine.LateGame.FoulMax;
+        c.Hurried = hurried;
         Role RoleAt(int slot) => input.RoleOf?.Invoke(players[slot]) ?? Roles.Best(players[slot]);
         double Tired(int slot) => Math.Clamp((0.9 - (input.EnergyOf?.Invoke(players[slot]) ?? 1.0)) / 0.6, 0, 1);
         double paceK = Math.Clamp(((homeOff ? input.HomePace : input.AwayPace) - 99) / 15, -1, 1);
@@ -583,7 +591,9 @@ public static class PossessionChoreographer
                 double firstPass = setStart + Math.Max(0.5, span - chain.Count * 1.6 - 0.4);
                 // The set's signature, in the time before the passes (first chance only, when there's time for it).
                 double setDone = 0;
-                if (firstChance && firstPass - 0.2 - setStart >= 2.5)
+                if (firstChance && hurried)
+                    c.Lines.Add(new(setStart + 0.1, Vary(input.Index, $"{offName} push it up, no time to run a set", $"{offName} in a hurry, looking for a quick shot", $"No time to waste for {offName}: quick ball"), false));
+                else if (firstChance && firstPass - 0.2 - setStart >= 2.5)
                 {
                     RunSet(setStart, firstPass - 0.2, from, target, e.Kind == PlayKind.Shot && assister < 0);
                     setDone = firstPass - 0.2;

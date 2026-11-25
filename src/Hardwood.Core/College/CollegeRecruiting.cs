@@ -369,7 +369,9 @@ public sealed partial class CollegeWorld
         _ => 0,
     };
     public const int StackFree = 2;
-    public const double FiveStarStack = 4;
+    /// <remarks>K21 (run 203): 4 → 6. The 25-season audit on seed 31 still had 1-seeds winning 84% of titles and 5-seeds beating
+    /// 12-seeds 76% (target 45–65% and 62–70%): the blue bloods kept stacking, so the best players spread a step further.</remarks>
+    public const double FiveStarStack = 6;
 
     /// <summary>What a prospect weighs most (fixed for life, from his id so older saves get one too).</summary>
     public static RecruitPriority PriorityOf(Player p) => (RecruitPriority)((uint)(p.Id * 2654435761u) >> 8 & 0x3);
