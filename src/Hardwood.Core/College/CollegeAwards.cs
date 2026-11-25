@@ -195,7 +195,7 @@ public sealed partial class CollegeWorld
     /// <summary>A player's college honours, newest first ("National Player of the Year 2027-28", "All-America first team 2026-27").</summary>
     public List<string> HonoursOf(int playerId)
     {
-        var list = new List<string>();
+        var list = new List<string>(LegacyHonoursOf(playerId)); // slice 8 (run 199): the rafters and the Hall of Fame first
         foreach (var a in Awards.OrderByDescending(a => a.Year))
         {
             string y = CollegeAwards.SeasonText(a.Year);

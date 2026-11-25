@@ -42,6 +42,9 @@ public sealed class ProgramBooks
 
     /// <summary>Run 196: the last season whose seniors had their farewell (0: none yet).</summary>
     public int FarewellYear { get; set; }
+
+    /// <summary>Run 199: the last season whose Hall of Fame class the coach was told about (0: none yet).</summary>
+    public int LegacyYear { get; set; }
 }
 
 /// <summary>CS7 part 1: the rules (no RNG, constants here for Danny's veto check).</summary>
