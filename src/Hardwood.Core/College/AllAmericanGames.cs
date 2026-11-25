@@ -44,7 +44,7 @@ public sealed class AllAmericanGame
 /// CS11 (run 195): the All-American games, two showcase games each spring, East against West on a neutral floor.
 /// <list type="bullet">
 /// <item><b>The College All-American Game</b> (<see cref="SeniorGame"/>): the 20 best seniors whose programs aren't in the
-/// Final Four or the NIT's last four, picked the Monday after the Elite Eight and played on the Friday before the semi-finals.</item>
+/// Final Four or the NIT's last four, picked on March 30 (after the Elite Eight) and played on April 3 (the eve of the semi-finals).</item>
 /// <item><b>The Hardwood All-American Classic</b> (<see cref="HighSchoolGame"/>, a fictional name): the 24 best high-school
 /// seniors of the class that enrolls next summer, picked on February 1 and played on March 31 in Chicago.</item>
 /// </list>
@@ -85,7 +85,8 @@ public sealed partial class CollegeWorld
         {
             var (named, played) = AllAmericanDates(kind, year);
             var game = AllAmericanOf(kind);
-            if (game == null && date >= named && date <= played.AddDays(7))
+            // Review (run 195): no upper bound, so a call that jumps past the game day (an audit, a catch-up) still names and plays it.
+            if (game == null && date >= named)
             {
                 game = kind == HighSchoolGame ? PickClassic(year, played) : PickSeniors(year, played);
                 if (game == null) continue;
@@ -162,8 +163,15 @@ public sealed partial class CollegeWorld
             return t;
         }
         var east = Side(true, g.East); var west = Side(false, g.West);
-        if (east.Roster.Count < 5 || west.Roster.Count < 5) { g.EastPts = g.WestPts = 0; return; } // a class that left the game (never in practice)
+        if (east.Roster.Count < 5 || west.Roster.Count < 5) { AllAmerican.Remove(g); return; } // a class that left the game (never in practice): no game
         // No date: the engine rolls injuries only for a dated game, and this one counts for nothing but pride.
+        // Review (run 195): a recruit's program is the one he is committed to on game day, not on the day he was named.
+        if (g.Kind == HighSchoolGame)
+        {
+            g.ProgramOf.Clear();
+            foreach (var id in g.East.Concat(g.West))
+                if (Recruits.TryGetValue(id, out var rec) && rec.CommittedTo is { } to) g.ProgramOf[id] = to;
+        }
         var r = new GameSimulator().Simulate(east, west, Rules.CollegeNeutral, AllAmericanSeed(g), false, null);
         g.EastPts = r.Home.Points; g.WestPts = r.Away.Points;
         g.Box = r.Home.Lines.Select(l => (l, true)).Concat(r.Away.Lines.Select(l => (l, false)))
@@ -173,7 +181,7 @@ public sealed partial class CollegeWorld
         ResultNews(g);
     }
 
-    /// <summary>"Jalen Brooks (Duke)" for a senior; "Jalen Brooks (Oak Hill, VA; Duke signee)" for a recruit.</summary>
+    /// <summary>"Jalen Brooks (Duke Blue Devils)" for a senior; "Jalen Brooks (Oak Hill (VA); Duke Blue Devils commit)" for a recruit.</summary>
     private string Who(AllAmericanGame g, int id)
     {
         string? prog = g.ProgramOf.TryGetValue(id, out var t) ? Program(t)?.FullName : null;
@@ -196,7 +204,7 @@ public sealed partial class CollegeWorld
             if (ours.Count == 0) return;
             string names = string.Join(" and ", ours.Select(g.NameOf));
             CoachNews.Add((ours.Count == 1 ? $"{names} is a College All-American Game pick" : $"{ours.Count} of our seniors are College All-American Game picks",
-                $"{names} {(ours.Count == 1 ? "has" : "have")} been picked for the {g.Title} {where} on {g.Date:MMMM d}: one more game in {us.FullName}'s colours, in front of every pro scout in the building."));
+                $"{names} {(ours.Count == 1 ? "has" : "have")} been picked for the {g.Title} {where} on {g.Date:MMMM d}: one last college game for a {us.FullName} senior, in front of every pro scout in the building."));
         }
         else
         {

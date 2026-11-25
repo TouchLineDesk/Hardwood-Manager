@@ -171,7 +171,8 @@ public class Run135CollegeAwardsUiTests
             Assert.Equal("2026-27 college awards", aw.Headline);
             Assert.StartsWith("National champions: ", aw.Summary);
             var awards = aw.Winners.Select(x => x.Award).ToList();
-            Assert.Equal(new[] { "National Player of the Year", "Defensive Player of the Year", "Freshman of the Year", "Most Outstanding Player", "Coach of the Year" }, awards);
+            Assert.Equal(new[] { "National Player of the Year", "Defensive Player of the Year", "Freshman of the Year", "Most Outstanding Player", "Coach of the Year",
+                                 "College All-American Game MVP", "Hardwood All-American Classic MVP" }, awards); // + CS11 (run 195)
             Assert.Equal(a.NameOf(a.PlayerOfYearId!.Value), aw.Winners[0].Name);
             Assert.Equal(3, aw.AllLeagueTeams.Count);
             Assert.Equal("All-America teams", aw.AllLeagueTitle);
