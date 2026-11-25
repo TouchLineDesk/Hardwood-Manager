@@ -13,11 +13,15 @@ public sealed partial class GameSession
     /// <summary>Your college coaching book (empty outside college).</summary>
     public CoachBook MyCoachBook => World.College?.MyCareer ?? new CoachBook();
 
+    /// <summary>You coach your program's current season (review of PR #270: not when you were hired for next season, whose
+    /// program's season so far isn't yours).</summary>
+    public bool CoachingThisCollegeSeason => Employed && InCollege && Job.HiredSeason <= League.Season;
+
     /// <summary>The season you just finished, counted on the day it's reviewed (before a sacking, so a fired coach's last
-    /// season counts too).</summary>
+    /// season counts too), or the part of it you coached when you leave before then (a sacking, a resignation, a move).</summary>
     private void RecordMyCollegeSeason()
     {
-        if (!Employed || !InCollege || World.College is not { } cw) return;
+        if (!CoachingThisCollegeSeason || World.College is not { } cw) return;
         var book = cw.MyCareer;
         if (book.Seasons.Any(x => x.Year == League.Season)) return;
         var all = MyRecord;
@@ -36,7 +40,9 @@ public sealed partial class GameSession
     {
         if (!Employed || !InCollege || World.College is not { } cw) return;
         var book = cw.MyCareer;
-        bool counted = book.Seasons.Any(x => x.Year == League.Season);
+        // A save from before the book (v0.189.0) doesn't hold your whole career, so its "firsts" would be wrong (review of PR #270).
+        if (book.Partial) return;
+        bool counted = book.Seasons.Any(x => x.Year == League.Season) || !CoachingThisCollegeSeason;
         int wins = book.Wins + (counted ? 0 : MyRecord.Wins);
         int reached = counted ? -1 : cw.MadnessReached(HumanTeam.Id);
         foreach (var (key, title, body) in CoachingLegacy.Reached(book, Coach.Name, HumanTeam.FullName, wins, book.Seasons.Count, reached, book.Bids).ToList())
@@ -90,6 +96,8 @@ public sealed partial class GameSession
     private void InductMe(Team club)
     {
         if (World.College is not { } cw || !IsCollegeProgram(club)) return;
+        // Leaving before the review (sacked or resigning mid-season, or moving on before it): the season you coached counts.
+        if (Employed && club == HumanTeam) RecordMyCollegeSeason();
         var here = cw.MyCareer.Seasons.Where(x => x.ProgramId == club.Id).ToList();
         if (here.Count == 0) return;
         int w = here.Sum(x => x.Wins), l = here.Sum(x => x.Losses), bids = here.Count(x => x.Seed > 0), titles = here.Count(x => x.Reached >= 7);

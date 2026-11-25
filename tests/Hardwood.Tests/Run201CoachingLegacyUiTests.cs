@@ -54,7 +54,7 @@ public class Run201CoachingLegacyUiTests
             var book = cw.MyCareer;
             book.Seasons.Add(new CoachSeason { Year = 2024, ProgramId = s.HumanTeam.Id, Program = s.HumanTeam.FullName, Wins = 24, Losses = 10, Seed = 9, Reached = 2 });
             book.Seasons.Add(new CoachSeason { Year = 2025, ProgramId = s.HumanTeam.Id, Program = s.HumanTeam.FullName, Wins = 29, Losses = 6, Seed = 3, Reached = 5 });
-            book.Milestones.Add(new CoachMilestone { Key = "win-1", Date = new DateOnly(2024, 11, 5), Text = "Your first win as a head coach" });
+            book.Milestones.Add(new CoachMilestone { Key = "win-1", Date = new DateOnly(2024, 11, 5), Text = "Your first college win" });
             book.Milestones.Add(new CoachMilestone { Key = "final-four", Date = new DateOnly(2026, 3, 29), Text = "Your first Final Four" });
             var bench = cw.Benches.First(b => b.Seasons >= 2);
             book.Tree.Add(new TreeBranch { Name = bench.Name, Year = 2025, FromProgramId = s.HumanTeam.Id, FromProgram = s.HumanTeam.FullName, ProgramId = bench.ProgramId, Program = cw.Program(bench.ProgramId)!.FullName });

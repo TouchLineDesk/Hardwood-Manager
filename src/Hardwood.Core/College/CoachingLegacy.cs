@@ -49,6 +49,9 @@ public sealed class CoachBook
     public List<CoachSeason> Seasons { get; set; } = new();
     public List<CoachMilestone> Milestones { get; set; } = new();
     public List<TreeBranch> Tree { get; set; } = new();
+    /// <summary>The book was started by an older save (before v0.189.0): it counts from that save's next season, and no
+    /// "first" milestones are told from it.</summary>
+    public bool Partial { get; set; }
 
     [JsonIgnore] public int Wins => Seasons.Sum(s => s.Wins);
     [JsonIgnore] public int Losses => Seasons.Sum(s => s.Losses);
@@ -98,7 +101,7 @@ public static class CoachingLegacy
         foreach (int m in WinMarks)
             if (wins >= m)
                 yield return m == 1
-                    ? ("win-1", "Your first win as a head coach", $"{coach} has his first win as a college head coach, with {program}. The first of many, the staff hopes.")
+                    ? ("win-1", "Your first college win", $"{coach} has his first win as a college head coach, with {program}. The first of many, the staff hopes.")
                     : ($"win-{m}", $"{m} career wins", $"{coach} reached {m} career wins as a college head coach tonight, with {program}.");
         if (reached >= 0 || bidsBefore > 0)
             yield return ("bid-1", "Your first NCAA tournament", $"{coach} takes a team to the NCAA tournament for the first time: {program} are in the field.");

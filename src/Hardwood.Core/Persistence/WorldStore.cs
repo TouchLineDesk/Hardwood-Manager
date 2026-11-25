@@ -195,7 +195,7 @@ public static class WorldStore
                 col.Road.AddRange(cs.Road ?? new()); // run 197; missing before v0.185.0
                 col.Legacy.AddRange(cs.Legacy ?? new()); // run 199; missing before v0.187.0
                 col.Benches.AddRange(cs.Benches ?? new()); // run 200; missing before v0.188.0 (the career's load seeds them)
-                col.MyCareer = cs.MyCareer ?? new(); // run 201; missing before v0.189.0 (the book counts from the next season)
+                col.MyCareer = cs.MyCareer ?? new() { Partial = true }; // run 201; missing before v0.189.0 (counts from the next season, no milestones)
                 col.RealAlumniSeeded = cs.RealAlumniSeeded; // K12b (run 137); false before v0.125.0, so the session seeds them once
                 var byId = col.Programs.ToDictionary(t => t.Id);
                 foreach (var p in collegePlayers ?? Enumerable.Empty<Player>())

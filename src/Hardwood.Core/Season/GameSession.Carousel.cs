@@ -200,6 +200,7 @@ public sealed partial class GameSession
                 // draw moves), at most one a spring.
                 if (from == null && branch == null && TreeHire(cw, t, year, benches) is { } asst)
                 {
+                    benches.Add(successor); // the drawn name stays spoken for, so later draws run as they would have
                     successor = asst.Name;
                     staffOf = HumanTeam.FullName;
                     HumanTeam.Staff.Remove(asst); asst.TeamId = null;

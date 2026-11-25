@@ -566,13 +566,14 @@ public sealed partial class BoardViewModel : PageViewModel
         MyCareerSeasons.Clear(); MyCareerMilestones.Clear(); MyCareerTree.Clear();
         var cw = s.World.College;
         var book = s.MyCoachBook;
-        bool live = s.Employed && s.InCollege && cw != null;
-        HasMyCareer = cw != null && (live || book.Seasons.Count > 0);
+        bool live = s.CoachingThisCollegeSeason && cw != null;
+        HasMyCareer = cw != null && (s.Employed && s.InCollege || book.Seasons.Count > 0);
         HasMyMilestones = HasMyTree = false;
         if (!HasMyCareer) return;
         int w = book.Wins, l = book.Losses, n = book.Seasons.Count;
         string Plural(int k, string one, string many) => k == 1 ? $"1 {one}" : $"{k} {many}";
-        MyCareerHeadline = n == 0 ? $"{s.Coach.Name}: your first college season is under way."
+        MyCareerHeadline = n == 0 ? (book.Partial ? $"{s.Coach.Name}: your seasons count from this one (the book is newer than this save)."
+                : live ? $"{s.Coach.Name}: your first college season is under way." : $"{s.Coach.Name}: your first college season starts in the fall.")
             : $"{s.Coach.Name}: {w}-{l} ({(w / (double)Math.Max(1, w + l)):.000}) in {Plural(n, "season", "seasons")}"
               + $" · {Plural(book.Bids, "NCAA bid", "NCAA bids")}" + (book.FinalFours > 0 ? $" · {Plural(book.FinalFours, "Final Four", "Final Fours")}" : "")
               + (book.Titles > 0 ? $" · {Plural(book.Titles, "national title", "national titles")}" : "");
@@ -596,8 +597,9 @@ public sealed partial class BoardViewModel : PageViewModel
         HasMyMilestones = MyCareerMilestones.Count > 0;
         HasMyTree = MyCareerTree.Count > 0;
         MyCareerNote = "Your college seasons count the day the athletic director reviews them. Milestones are told once, in your inbox and the news. "
-            + "An assistant of yours (coaching 11+) may take a head job after you've had two seasons together; a coach who leaves a program after "
-            + $"{Hardwood.Core.College.CoachingLegacy.HallSeasons}+ winning seasons, or a title, joins its Hall of Fame. You too.";
+            + $"Once you've had {Hardwood.Core.College.CoachingLegacy.TreeSeasons} seasons at your program, an assistant of yours (coaching {Hardwood.Core.College.CoachingLegacy.TreeCoaching}+) may take a head job in the spring. "
+            + $"A coach who leaves a program after {Hardwood.Core.College.CoachingLegacy.HallSeasons}+ winning seasons with {Hardwood.Core.College.CoachingLegacy.HallBids}+ NCAA bids, "
+            + $"or {Hardwood.Core.College.CoachingLegacy.TitleSeasons}+ seasons with a national title, joins its Hall of Fame. You too.";
     }
 
     private static string UpperFirst(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];

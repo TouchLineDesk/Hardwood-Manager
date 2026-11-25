@@ -78,7 +78,7 @@ public class Run201CoachingLegacyTests
             foreach (var b in book.Tree) _out.WriteLine($"Tree: {b.Name} -> {b.Program} ({b.Year})");
             Assert.Equal(new[] { 2026, 2027, 2028 }, book.Seasons.Select(x => x.Year).ToArray());
             Assert.All(book.Seasons, x => Assert.Equal(me.Id, x.ProgramId));
-            Assert.Equal(1, s.Inbox.Count(m => m.Title == "Your first win as a head coach"));
+            Assert.Equal(1, s.Inbox.Count(m => m.Title == "Your first college win"));
             Assert.Equal(book.Milestones.Count, book.Milestones.Select(m => m.Key).Distinct().Count());
             // The tree: the ready assistant left for a head job no bigger than yours, and is on that bench now.
             var branch = Assert.Single(book.Tree);
