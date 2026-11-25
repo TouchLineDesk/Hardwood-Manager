@@ -39,6 +39,9 @@ public sealed class ProgramBooks
 
     /// <summary>Run 192: the non-conference plan (null: none chosen; the draw as before).</summary>
     public NonConferencePlan? Schedule { get; set; }
+
+    /// <summary>Run 196: the last season whose seniors had their farewell (0: none yet).</summary>
+    public int FarewellYear { get; set; }
 }
 
 /// <summary>CS7 part 1: the rules (no RNG, constants here for Danny's veto check).</summary>

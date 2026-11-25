@@ -894,6 +894,7 @@ public sealed partial class CollegeWorld
     {
         PlayGamesThrough(date, sim, rng);
         AllAmericanThrough(date); // CS11 (run 195): after the day's games, so the Final Four is known when the seniors are picked
+        NameCaptainsThrough(date); // run 196: every program's captains, a week before the first game
     }
 
     private void PlayGamesThrough(DateOnly date, GameSimulator sim, Rng rng)

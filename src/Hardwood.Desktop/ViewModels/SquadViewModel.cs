@@ -157,7 +157,8 @@ public sealed partial class SquadViewModel : PageViewModel
                 Team = team,
                 Today = Session.Today,
                 MainReason = worst.reason != null && worst.effect < 0 ? worst.reason : "",
-                Status = p.TradeRequested && !Session.InCollege ? "Wants a trade" : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min") : "",
+                Status = p.TradeRequested && !Session.InCollege ? "Wants a trade" : promise != null ? (promise.Kind == "trade" ? "Promised a trade" : $"Promised {promise.TargetMpg:0} min")
+                    : Session.IsCaptain(p) ? "Captain" : "", // run 196
             });
         }
         Lanes.Clear();
@@ -209,6 +210,18 @@ public sealed partial class SquadViewModel : PageViewModel
         {
             var t = topic;
             Topics.Add(new TalkButton { Label = Talks.Label(t), Command = new RelayCommand(() => Talk(p, t), () => blocked == null), Tip = blocked ?? $"Talk to {p.Name.Split(' ').Last()}" });
+        }
+        if (Session.InCollege)
+        {
+            // Run 196: captains. The button names what it does; a blocked one says why in its tooltip.
+            var why = Session.CaptaincyBlocked(p);
+            bool captain = Session.IsCaptain(p);
+            Topics.Add(new TalkButton
+            {
+                Label = captain ? "Take away the captaincy" : "Make captain",
+                Command = new RelayCommand(() => { Reply = Session.ToggleCaptain(p); Refresh(); }, () => why == null),
+                Tip = why ?? (captain ? $"{p.Name.Split(' ').Last()} takes it badly for about a month" : $"Captains lead the locker room: {p.Name.Split(' ').Last()}'s leadership is {p.Attributes[Hardwood.Core.Model.Attr.Leadership]} of 20"),
+            });
         }
         TalkNote = blocked ?? "Personality matters: professionals take criticism well, hot-heads don't, and a broken promise costs his trust for three months.";
     }
