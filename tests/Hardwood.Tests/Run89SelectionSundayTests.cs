@@ -116,14 +116,15 @@ public class Run89SelectionSundayTests
             Assert.Equal(4, college.BracketColumns.Count);
             Assert.True(college.FieldPicked);
 
-            // Once a game is played, a page left on the reveal moves to your region's bracket, and the reveal shows everything.
+            // Once a game is played, a page left on the reveal moves to the bracket, and the reveal shows everything.
             college.BracketView = CollegeViewModel.SelectionView;
             while (!s.Games.Any(g => g.Event == CollegeWorld.Madness && g.Played)) session.AdvanceDay();
             vm.AfterTick();
             vm.Navigate("Home");
             vm.Navigate("College");
             college = (CollegeViewModel)vm.CurrentPage!;
-            Assert.Equal(myRegion >= 0 ? MadnessBracket.Regions[myRegion] : "East", college.BracketView);
+            // Run 190 (the bracket redesign): it moves to the whole field, as on TV (it was your region's four columns).
+            Assert.Equal(CollegeViewModel.FullView, college.BracketView);
             Assert.False(college.ShowSelection);
             college.BracketView = CollegeViewModel.SelectionView;
             Assert.Equal(4, college.RevealRegions.Count(r => r.Shown));
