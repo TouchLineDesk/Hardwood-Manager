@@ -613,6 +613,7 @@ public sealed partial class GameSession
         GradeStudioPicks(played);
         PlayWorld(Today);
         CollegeCalendar(); // CS3 (run 127): the preseason polls and media day, Senior Night
+        PlayFibaWindows(); // I3 (run 210): the qualifying windows, by quick result on their own stream
         bool inSeason = Abroad ? Phase != SessionPhase.Offseason : Phase is SessionPhase.RegularSeason or SessionPhase.Postseason;
         if (inSeason && Today.DayOfWeek == DayOfWeek.Monday)
         {

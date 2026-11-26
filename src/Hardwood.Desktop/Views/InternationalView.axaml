@@ -59,7 +59,7 @@
             <TextBlock Grid.Column="1" Text="FIBA" Classes="muted" FontSize="11"/>
             <TextBlock Grid.Column="2" Text="Nation" Classes="muted" FontSize="11"/>
             <TextBlock Grid.Column="3" Text="Zone" Classes="muted" FontSize="11"/>
-            <TextBlock Grid.Column="4" Text="Rating" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
+            <TextBlock Grid.Column="4" Text="Points" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
             <TextBlock Grid.Column="5" Text="Pool" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
           </Grid>
           <ListBox ItemsSource="{Binding Nations}" SelectedItem="{Binding Selected}" Background="Transparent" Height="300">
@@ -70,7 +70,7 @@
                   <TextBlock Grid.Column="1" Text="{Binding Code}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" Classes.accent="{Binding Mine}" TextWrapping="Wrap" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="3" Text="{Binding Zone}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="4" Text="{Binding Strength}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="4" Text="{Binding Points}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="5" Text="{Binding Pool}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                 </Grid>
               </DataTemplate>
@@ -78,6 +78,22 @@
           </ListBox>
         </DockPanel>
       </Border>
+
+        <!-- I3 (run 210): the qualifying groups -->
+        <Border Classes="panel" IsVisible="{Binding HasQualifying}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+              <TextBlock Text="{Binding QualTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+            </StackPanel>
+            <TextBlock Text="{Binding QualNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding QualGroups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
 
         <!-- The selected nation's twelve -->
         <Border Classes="panel">
@@ -112,7 +128,7 @@
               <c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
               <TextBlock Text="FIBA calendar" Classes="h2" Margin="0"/>
             </StackPanel>
-            <TextBlock Text="The next three years. The World Cup is played (its result shows above once it's over); the qualifying windows, the Olympics and call-ups come in later builds. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="The next three years. The windows (quick results) and the World Cup are played and move the ranking; the Olympics, the continental championships and call-ups come in later builds. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <ItemsControl ItemsSource="{Binding Calendar}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FibaEventRow">

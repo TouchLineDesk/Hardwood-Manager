@@ -26,6 +26,8 @@ public sealed class NationalTeam
     /// <summary>1-based rank among the ranked (not suspended) teams; 0 when suspended.</summary>
     public int Rank { get; set; }
     public int ZoneRank { get; set; }
+    /// <summary>I3 (run 210): FIBA ranking points (0 until <see cref="FibaRanking.Apply"/> ranks the teams by results).</summary>
+    public double Points { get; set; }
     public string Name => Nation.Name;
 }
 
@@ -129,6 +131,14 @@ public static class NationalTeams
             foreach (var t in programs) foreach (var p in t.Roster) if (seen.Add(p.Id)) entries.Add((p, t, true));
         foreach (var p in s.League.FreeAgents) if (seen.Add(p.Id)) entries.Add((p, null, false));
         return Build(entries, s.Today);
+    }
+
+    /// <summary>I3 (run 210): the teams ranked by FIBA ranking points (the saved ranking, or its starting seed), not strength.
+    /// Pure: the history is only read.</summary>
+    public static IReadOnlyList<NationalTeam> Ranked(GameSession s)
+    {
+        var teams = Build(s);
+        return FibaRanking.Apply(teams, FibaRanking.Current(s.World.International, teams));
     }
 
     /// <summary>The teams for a list of players (each with his club, or null for a free agent).</summary>

@@ -15,9 +15,12 @@ public sealed class NationRow
     public string Name => Team.Name;
     public string Zone => NationalTeams.ZoneName(Team.Nation.Zone);
     public string Strength => Team.Strength.ToString("F1");
+    /// <summary>I3 (run 210): FIBA ranking points, and the move since the last window or tournament.</summary>
+    public string Points => Team.Rank > 0 ? Team.Points.ToString("F0") : "–";
+    public string Move { get; init; } = "";
     public int Pool => Team.Pool.Count;
     public string Star => Team.Squad.Count > 0 ? Team.Squad[0].Player.Name : "";
-    public string Tip => $"{Name}, {Zone} · best player {Star} · {Pool} eligible players";
+    public string Tip => $"{Name}, {Zone} · best player {Star} · {Pool} eligible players · strength {Strength}" + (Move == "" ? "" : $" ·{Move}");
     public bool Mine { get; init; }
 }
 
@@ -77,6 +80,12 @@ public sealed partial class InternationalViewModel : PageViewModel
     public ObservableCollection<string> CupGroups { get; } = new();
     public ObservableCollection<string> CupScorers { get; } = new();
 
+    // I3 (run 210): the current qualifying cycle's groups and the latest window.
+    [ObservableProperty] private bool _hasQualifying;
+    [ObservableProperty] private string _qualTitle = "";
+    [ObservableProperty] private string _qualNote = "";
+    public ObservableCollection<string> QualGroups { get; } = new();
+
     private IReadOnlyList<NationalTeam> _teams = Array.Empty<NationalTeam>();
 
     public InternationalViewModel(MainViewModel shell) : base(shell) { }
@@ -84,9 +93,13 @@ public sealed partial class InternationalViewModel : PageViewModel
     public override void Refresh()
     {
         var s = Session;
-        _teams = NationalTeams.Build(s);
+        _teams = NationalTeams.Ranked(s);
         int ranked = _teams.Count(t => t.Rank > 0);
-        Summary = $"{ranked} national teams ranked by their best twelve · a country needs {NationalTeams.MinPool} players aged {NationalTeams.MinAge}+ anywhere in the world"
+        var hist = s.World.International;
+        string basis = hist.Ranking.Count == 0
+            ? "the FIBA world ranking (seeded from the real ranking and each twelve's strength; results move it from the first window)"
+            : $"the FIBA world ranking, from results ({hist.Windows.Count} window{(hist.Windows.Count == 1 ? "" : "s")}, {hist.WorldCups.Count} World Cup{(hist.WorldCups.Count == 1 ? "" : "s")})";
+        Summary = $"{ranked} national teams in {basis} · a country needs {NationalTeams.MinPool} players aged {NationalTeams.MinAge}+ anywhere in the world"
                   + Suspended(_teams.Where(t => t.Rank == 0).Select(t => t.Name).ToList());
 
         var mine = s.Employed ? s.HumanTeam.Roster.Select(p => p.Id).ToHashSet() : new HashSet<int>();
@@ -98,6 +111,7 @@ public sealed partial class InternationalViewModel : PageViewModel
         Calendar.Clear();
         foreach (var e in FibaCalendar.From(s.Today, 3)) Calendar.Add(new FibaEventRow { Event = e });
         FillCup(s.World.International.WorldCups.LastOrDefault());
+        FillQualifying(hist);
 
         var keep = Selected?.Team.Name;
         Fill();
@@ -108,6 +122,7 @@ public sealed partial class InternationalViewModel : PageViewModel
     {
         var keep = Selected?.Team.Name;
         Fill();
+        FillQualifying(Session.World.International);
         Selected = Nations.FirstOrDefault(n => n.Name == keep) ?? Nations.FirstOrDefault();
     }
 
@@ -117,7 +132,7 @@ public sealed partial class InternationalViewModel : PageViewModel
         var s = Session;
         var mine = s.Employed ? s.HumanTeam.Roster.Select(p => p.Id).ToHashSet() : new HashSet<int>();
         foreach (var t in _teams.Where(t => Zone == "All zones" || NationalTeams.ZoneName(t.Nation.Zone) == Zone))
-            Nations.Add(new NationRow { Team = t, Mine = t.Squad.Any(x => mine.Contains(x.Player.Id)) });
+            Nations.Add(new NationRow { Team = t, Mine = t.Squad.Any(x => mine.Contains(x.Player.Id)), Move = GameSession.Move(s.World.International, t) });
     }
 
     partial void OnSelectedChanged(NationRow? value)
@@ -140,7 +155,7 @@ public sealed partial class InternationalViewModel : PageViewModel
                 Mine = employed && x.Club == s.HumanTeam,
             });
         }
-        string rank = t.Rank > 0 ? $"No. {t.Rank} in the world, No. {t.ZoneRank} in {NationalTeams.ZoneName(t.Nation.Zone)}" : "suspended by FIBA";
+        string rank = t.Rank > 0 ? $"No. {t.Rank} in the world ({t.Points:F0} points), No. {t.ZoneRank} in {NationalTeams.ZoneName(t.Nation.Zone)}" : "suspended by FIBA";
         SquadTitle = $"{t.Name} ({t.Nation.Code}) · {rank}";
         int abroad = t.Squad.Count(x => x.Club != null && !PlaysAtHome(s, x.Club, x.College, t.Nation.Name));
         int colleges = t.Pool.Count(x => x.College);
@@ -169,6 +184,28 @@ public sealed partial class InternationalViewModel : PageViewModel
         }
         int n = 0;
         foreach (var p in rec.TopScorers.Take(5)) CupScorers.Add($"{++n}. {p.Name} ({p.Code}) {p.Ppg:0.0} a game in {p.Games}");
+    }
+
+    /// <summary>I3 (run 210): the latest qualifying cycle's group tables (W-L and point difference, in order), with the last window's
+    /// results for each group.</summary>
+    private void FillQualifying(InternationalHistory h)
+    {
+        QualGroups.Clear();
+        var last = h.Windows.LastOrDefault();
+        var cycle = last == null ? null : h.Cycles.FirstOrDefault(c => c.Target == last.Target);
+        HasQualifying = cycle != null;
+        if (last == null || cycle == null) { QualTitle = QualNote = ""; return; }
+        int windows = h.Windows.Count(w => w.Target == last.Target);
+        QualTitle = $"Qualifying for the {last.Target}";
+        QualNote = $"{windows} window{(windows == 1 ? "" : "s")} played, the latest {last.Dates}. Quick results; each zone's places go to its group winners first, then the runners-up."
+                   + (last.Target.EndsWith("World Cup", StringComparison.Ordinal) ? " Europe has 12 places, Asia-Pacific 8 (with the host), the Americas 7 and Africa 5." : "");
+        var games = Qualifying.GamesOf(h, last.Target);
+        foreach (var (name, codes) in cycle.Groups.OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            if (Zone != "All zones" && !name.StartsWith(Zone + " ", StringComparison.Ordinal)) continue;
+            var table = WorldCup.Table(games, codes, g => g.Round == name);
+            QualGroups.Add($"{name}: " + string.Join(", ", table.Select(c => { var r = WorldCup.Record(games, c, g => g.Round == name); return $"{c} {r.W}-{r.L} ({r.Diff:+0;-0;0})"; })));
+        }
     }
 
     /// <summary>The selected nation's last World Cup: "World Cup 2027: silver".</summary>

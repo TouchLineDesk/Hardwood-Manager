@@ -528,7 +528,7 @@ public static class Assistant
                          "Watch the teams around you and the playoff line."),
         ["Leagues"] = ("Every league in the game, ours included: standings, schedule and results, stat leaders, the rules and format, and past champions. Pick a region, then a league. Click any team or player name to open their page.",
                      "Scout other clubs' rosters from here: a team's page shows its players as your scouts see them."),
-        ["International"] = ("National teams: every country with twelve players anywhere in the world (pros, clubs abroad, college and free agents) fields a team, ranked by its best twelve. Pick a nation to see its twelve, and check the FIBA calendar for the World Cup and the Olympics.",
+        ["International"] = ("National teams: every country with twelve players anywhere in the world (pros, clubs abroad, college and free agents) fields a team, ranked in the FIBA world ranking (results in the qualifying windows and the World Cup move it). Pick a nation to see its twelve, and check the FIBA calendar for the World Cup and the Olympics.",
                              "Each twelve is the federation's pick on true ability; the ratings you see are your scouts' view. The calendar shows what's coming; the tournaments themselves arrive in later builds."),
         ["College"] = ("College basketball: the Top 25, conferences, March Madness, prospects and the high-school recruiting classes. Seniors sign by mid-April, enroll at 18 and turn pro at 22, after four years.",
                        "Track the best 21-year-olds in Prospects; they're free agents next summer at 22."),

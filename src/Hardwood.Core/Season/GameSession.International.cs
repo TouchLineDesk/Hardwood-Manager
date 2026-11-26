@@ -19,8 +19,81 @@ public sealed partial class GameSession
             if (World.International.WorldCups.Any(w => w.Year == y)) continue;
             if (WorldCup.Play(this, y, _sim) is not { } rec) continue;
             World.International.WorldCups.Add(rec);
+            RankWorldCup(rec);
             Post($"World Cup {y}: {rec.NameOf(rec.Gold)} win gold", WorldCupStory(rec), "World");
         }
+    }
+
+    /// <summary>I3 (run 210): every World Cup game moves the FIBA ranking.</summary>
+    private void RankWorldCup(WorldCupRecord rec)
+    {
+        var h = World.International;
+        var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
+        var points = FibaRanking.Current(h, teams);
+        var before = FibaRanking.Apply(teams, points).Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
+        foreach (var g in rec.Games) FibaRanking.Update(points, g, FibaRanking.WorldCupK);
+        h.Ranking = points;
+        h.LastRanking = before;
+    }
+
+    /// <summary>
+    /// I3 (run 210): a FIBA window that ended today (or within <see cref="Qualifying.CatchUpDays"/>, after a jump) is played
+    /// once, by quick result on its own stream, from today's rosters (players fit on the window's first day). No player, club or
+    /// shared stream is touched. The inbox gets one message.
+    /// </summary>
+    private void PlayFibaWindows()
+    {
+        foreach (var w in Qualifying.DueWindows(Today))
+        {
+            var h = World.International;
+            string key = Qualifying.KeyOf(w);
+            if (h.Windows.Any(x => x.Key == key)) continue;
+            var teams = NationalTeams.Build(WorldCup.Entries(this, w.Start), w.Start);
+            if (teams.Count(t => t.Rank > 0) < 2) continue;
+            var rec = Qualifying.Play(h, w, teams, Seed);
+            Post($"FIBA window: qualifiers for the {rec.Target}", WindowStory(rec), "World");
+        }
+    }
+
+    /// <summary>The window's inbox story: the top of the ranking, the biggest results, and your own players' nations.</summary>
+    internal string WindowStory(WindowRecord rec)
+    {
+        var h = World.International;
+        var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
+        var ranked = FibaRanking.Apply(teams, FibaRanking.Current(h, teams)).Where(t => t.Rank > 0).ToList();
+        string Name(string code) => ranked.FirstOrDefault(t => t.Nation.Code == code)?.Name ?? code;
+        var lines = new List<string>
+        {
+            $"{rec.Games.Count} qualifiers were played ({rec.Dates}), window {rec.Index + 1} of the {rec.Target} cycle. Club seasons carried on.",
+            "FIBA world ranking: " + string.Join(", ", ranked.Take(5).Select(t => $"{t.Rank}. {t.Name}" + Move(h, t))) + ".",
+        };
+        var upsets = rec.Games.Select(g => (g, gap: 0))
+            .Where(x => (h.LastRanking.GetValueOrDefault(x.g.Winner, 999)) > (h.LastRanking.GetValueOrDefault(x.g.Loser, 999)) + 8)
+            .OrderByDescending(x => h.LastRanking.GetValueOrDefault(x.g.Winner, 999) - h.LastRanking.GetValueOrDefault(x.g.Loser, 999)).Take(2).ToList();
+        if (upsets.Count > 0)
+            lines.Add("Upsets: " + string.Join("; ", upsets.Select(x => $"{Name(x.g.Winner)} beat {Name(x.g.Loser)} {Math.Max(x.g.HomePts, x.g.AwayPts)}-{Math.Min(x.g.HomePts, x.g.AwayPts)}")) + ".");
+        if (Employed)
+        {
+            var mine = HumanTeam.Roster.Select(p => p.Id).ToHashSet();
+            var nations = ranked.Where(t => t.Squad.Any(x => mine.Contains(x.Player.Id))).ToList();
+            foreach (var t in nations)
+            {
+                var gs = rec.Games.Where(g => g.Home == t.Nation.Code || g.Away == t.Nation.Code).ToList();
+                if (gs.Count == 0) continue;
+                lines.Add($"{t.Name} (with " + string.Join(", ", t.Squad.Where(x => mine.Contains(x.Player.Id)).Select(x => x.Player.Name)) + "): "
+                    + string.Join(", ", gs.Select(g => (g.Winner == t.Nation.Code ? "beat " : "lost to ") + Name(g.Home == t.Nation.Code ? g.Away : g.Home)
+                        + $" {Math.Max(g.HomePts, g.AwayPts)}-{Math.Min(g.HomePts, g.AwayPts)}")) + $"; now No. {t.Rank}.");
+            }
+        }
+        lines.Add("The groups and the ranking are on the International page. Players aren't called up from clubs yet (a later build).");
+        return string.Join("\n\n", lines);
+    }
+
+    /// <summary>" (up 2)", " (down 1)" or "" against the rank before the latest window or tournament.</summary>
+    public static string Move(InternationalHistory h, NationalTeam t)
+    {
+        if (!h.LastRanking.TryGetValue(t.Nation.Code, out var was) || was == t.Rank) return "";
+        return was > t.Rank ? $" (up {was - t.Rank})" : $" (down {t.Rank - was})";
     }
 
     /// <summary>The inbox story: medals, the final, the MVP, the top scorer and your own players who were there.</summary>
