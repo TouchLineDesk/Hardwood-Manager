@@ -139,7 +139,7 @@ public static class WorldCup
         if (EventIn(year) is not { } ev) return null;
         var ranked = NationalTeams.Build(Entries(s, ev.Start), ev.Start);
         var field = Field(ranked, ev.Where);
-        if (field.Count < 8) return null;
+        if (field.Count < Teams) return null; // review (run 209): the bracket needs the full 32; a smaller world has no World Cup
         var rng = new Rng(s.Seed ^ 0xF1BA_0C0B_2027_0001UL ^ ((ulong)(uint)year * 0x9E3779B97F4A7C15UL));
         return Play(field, ev, rng, sim ?? new GameSimulator());
     }

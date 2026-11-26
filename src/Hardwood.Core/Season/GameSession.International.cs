@@ -14,7 +14,8 @@ public sealed partial class GameSession
         for (int y = summer.Year; y <= newYear.Year; y++)
         {
             if (WorldCup.EventIn(y) is not { } ev) continue;
-            if (ev.End > newYear || ev.End < summer.AddMonths(-6)) continue;
+            // Review (run 209): a jump that lands mid-tournament (a league that opens before Sep 15) still plays it, whole.
+            if (ev.Start >= newYear || ev.End < summer.AddMonths(-6)) continue;
             if (World.International.WorldCups.Any(w => w.Year == y)) continue;
             if (WorldCup.Play(this, y, _sim) is not { } rec) continue;
             World.International.WorldCups.Add(rec);
