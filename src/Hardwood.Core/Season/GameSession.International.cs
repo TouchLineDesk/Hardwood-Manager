@@ -30,6 +30,7 @@ public sealed partial class GameSession
             Post($"World Cup {y}: {rec.NameOf(rec.Gold)} win gold", WorldCupStory(rec), "World");
         }
         RefreshInternationalMoods();
+        if (_settled.Count > 0) ReviewTournaments(_settled); // I6b (run 215): the federation's verdict on your nation's summer
         if (_settled.Count > 0) PostCallups(_settled);
         _settled.Clear();
     }
@@ -249,7 +250,9 @@ public sealed partial class GameSession
             if (h.Windows.Any(x => x.Key == key)) continue;
             var teams = NationalTeams.For(this, w.Start);
             if (teams.Count(t => t.Rank > 0) < 2) continue;
-            var rec = Qualifying.Play(h, w, teams, Seed);
+            var before = new Dictionary<string, double>(FibaRanking.Current(h, teams));
+            var rec = Qualifying.Play(h, w, teams, Seed, NationalJobState.Games);
+            ReviewWindow(rec, before);
             Post($"FIBA window: qualifiers for the {rec.Target}", WindowStory(rec), "World");
         }
     }

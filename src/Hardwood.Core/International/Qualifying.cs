@@ -197,21 +197,60 @@ public static class Qualifying
 
     /// <summary>Play one window from the teams as they stand on its first day (ranked by <paramref name="points"/>). Draws the
     /// cycle's groups if this is its first window. Adds the window to the history and moves the ranking.</summary>
-    public static WindowRecord Play(InternationalHistory h, FibaEvent w, IReadOnlyList<NationalTeam> teams, ulong seed)
+    /// <param name="coached">I6b (run 215): your nation's games already played in the full engine on their day (live or by your
+    /// assistant). They replace the quick result for that pairing; the quick result is still drawn, so every other game is the same.</param>
+    public static WindowRecord Play(InternationalHistory h, FibaEvent w, IReadOnlyList<NationalTeam> teams, ulong seed, IReadOnlyList<CoachedGame>? coached = null)
     {
         var points = FibaRanking.Current(h, teams);
         var ranked = FibaRanking.Apply(teams, points);
-        string target = TargetOf(w);
-        var cycle = h.Cycles.FirstOrDefault(c => c.Target == target);
-        if (cycle == null) h.Cycles.Add(cycle = new QualifyingCycle { Target = target, FirstWindow = KeyOf(w), Groups = DrawGroups(ranked) });
-        var plan = CycleWindows(target, cycle.FirstWindow == "" ? KeyOf(w) : cycle.FirstWindow);
-        int index = Math.Max(0, plan.IndexOf(KeyOf(w)));
-        int windows = Math.Max(1, plan.Count);
-        var rec = new WindowRecord { Key = KeyOf(w), Target = target, Dates = w.Dates, Index = index };
+        var cycle = CycleFor(h, w, ranked, keep: true);
+        var rec = new WindowRecord { Key = KeyOf(w), Target = cycle.Target, Dates = w.Dates, Index = IndexOf(cycle, w) };
         var byCode = ranked.ToDictionary(t => t.Nation.Code);
         var rng = new Rng(seed ^ 0xF1BA_3A1D_0000_0003UL ^ ((ulong)(uint)(w.Start.Year * 100 + w.Start.Month) * 0x9E3779B97F4A7C15UL));
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        string[] days = { w.Start.AddDays(3).ToString("MMM d", inv), w.Start.AddDays(5).ToString("MMM d", inv), w.End.AddDays(-1).ToString("MMM d", inv) };
+        foreach (var f in FixturesOf(cycle, w))
+        {
+            // A team whose pool fell under twelve since the draw forfeits nothing: its games aren't played.
+            if (!byCode.TryGetValue(f.Home, out var ht) || !byCode.TryGetValue(f.Away, out var at)) continue;
+            var (hp, ap) = QuickResult(ht.Strength, at.Strength, rng);
+            if (coached?.FirstOrDefault(c => c.Key == rec.Key && c.Home == f.Home && c.Away == f.Away) is { } mine) (hp, ap) = (mine.HomePts, mine.AwayPts);
+            var g = new CupGame(f.Group, f.Home, f.Away, hp, ap, f.Day.ToString("MMM d", inv));
+            rec.Games.Add(g);
+            FibaRanking.Update(points, g, FibaRanking.WindowK);
+        }
+        h.Windows.Add(rec);
+        h.Ranking = points;
+        h.LastRanking = ranked.Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
+        return rec;
+    }
+
+    /// <summary>I6b (run 215): the cycle a window belongs to: the saved one, or (on its first window) the groups drawn by today's
+    /// ranking. Added to the history only when <paramref name="keep"/> is set.</summary>
+    public static QualifyingCycle CycleFor(InternationalHistory h, FibaEvent w, IReadOnlyList<NationalTeam> rankedBestFirst, bool keep)
+    {
+        string target = TargetOf(w);
+        var cycle = h.Cycles.FirstOrDefault(c => c.Target == target);
+        if (cycle != null) return cycle;
+        cycle = new QualifyingCycle { Target = target, FirstWindow = KeyOf(w), Groups = DrawGroups(rankedBestFirst) };
+        if (keep) h.Cycles.Add(cycle);
+        return cycle;
+    }
+
+    private static int IndexOf(QualifyingCycle cycle, FibaEvent w)
+    {
+        var plan = CycleWindows(cycle.Target, cycle.FirstWindow == "" ? KeyOf(w) : cycle.FirstWindow);
+        return Math.Max(0, plan.IndexOf(KeyOf(w)));
+    }
+
+    /// <summary>I6b (run 215): the window's games and their days (the window's 4th, 6th and 8th days), in the order they are played.
+    /// Pure: what <see cref="Play"/> plays, before it is played.</summary>
+    public static List<NationalFixture> FixturesOf(QualifyingCycle cycle, FibaEvent w)
+    {
+        var plan = CycleWindows(cycle.Target, cycle.FirstWindow == "" ? KeyOf(w) : cycle.FirstWindow);
+        int index = Math.Max(0, plan.IndexOf(KeyOf(w)));
+        int windows = Math.Max(1, plan.Count);
+        DateOnly[] days = { w.Start.AddDays(3), w.Start.AddDays(5), w.End.AddDays(-1) };
+        var list = new List<NationalFixture>();
         foreach (var (name, codes) in cycle.Groups.OrderBy(g => g.Key, StringComparer.Ordinal))
         {
             // Review (run 210): the cycle's rounds, spread evenly over its windows: no pairing repeats, and by the last window
@@ -221,19 +260,9 @@ public static class Qualifying
             if (index == windows - 1) to = rounds.Count;
             for (int k = from; k < to; k++)
                 foreach (var (home, away) in rounds[k])
-                {
-                    // A team whose pool fell under twelve since the draw forfeits nothing: its games aren't played.
-                    if (!byCode.TryGetValue(home, out var ht) || !byCode.TryGetValue(away, out var at)) continue;
-                    var (hp, ap) = QuickResult(ht.Strength, at.Strength, rng);
-                    var g = new CupGame(name, home, away, hp, ap, days[Math.Min(2, k - from)]);
-                    rec.Games.Add(g);
-                    FibaRanking.Update(points, g, FibaRanking.WindowK);
-                }
+                    list.Add(new NationalFixture(KeyOf(w), name, home, away, days[Math.Min(2, k - from)]));
         }
-        h.Windows.Add(rec);
-        h.Ranking = points;
-        h.LastRanking = ranked.Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
-        return rec;
+        return list;
     }
 
     /// <summary>The window keys of a cycle from <paramref name="firstKey"/> to its event, in order.</summary>

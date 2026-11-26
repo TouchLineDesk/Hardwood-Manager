@@ -247,7 +247,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 {
                     InLiveGame = true;
                     // Danny's pre-game studio show (#446) airs first, unless he's chosen to skip it.
-                    CurrentPage = AppSettings.Current.StudioShow ? new StudioShowViewModel(this, live, played) : new LiveGameViewModel(this, live, played);
+                    CurrentPage = AppSettings.Current.StudioShow && Session.LiveNational == null ? new StudioShowViewModel(this, live, played) : new LiveGameViewModel(this, live, played);
                     foreach (var n in Nav) n.IsActive = false;
                     return;
                 }

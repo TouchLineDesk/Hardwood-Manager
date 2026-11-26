@@ -6,7 +6,7 @@ namespace Hardwood.Core.International;
 public sealed record NationalOffer(string Code, string Name, int Rank, DateOnly Made, DateOnly Expires);
 
 /// <summary>One finished spell in charge of a national team.</summary>
-public sealed record NationalSpell(string Code, string Name, DateOnly From, DateOnly To);
+public sealed record NationalSpell(string Code, string Name, DateOnly From, DateOnly To, bool Sacked = false);
 
 /// <summary>
 /// International plan I6a (run 214, #108): the human coach's national-team job, alongside a club (or college) job. Saved inside
@@ -25,6 +25,13 @@ public sealed class NationalCoaching
     /// <summary>The last October the federations were asked (one round of offers a year).</summary>
     public int LastOfferYear { get; set; }
     public List<NationalSpell> Past { get; set; } = new();
+    /// <summary>I6b (run 215): your nation's window games played on their day (live or by your assistant), until the window is
+    /// played; then they are in its record. Kept for the window being played only.</summary>
+    public List<CoachedGame> Games { get; set; } = new();
+    /// <summary>I6b: how your national results have moved your reputation, all told (shown on the International page).</summary>
+    public double ReputationEarned { get; set; }
+    /// <summary>I6b: the federation's verdicts, newest last ("2027 World Cup: out in the quarter-finals, seeded 6th · satisfied").</summary>
+    public List<string> Verdicts { get; set; } = new();
 
     [System.Text.Json.Serialization.JsonIgnore] public bool IsEmpty => Code == null && Offers.Count == 0 && LastOfferYear == 0 && Past.Count == 0;
 

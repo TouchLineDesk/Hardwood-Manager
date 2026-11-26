@@ -68,7 +68,15 @@ public sealed partial class LiveGameViewModel : PageViewModel
     private int _logShown;
 
     public override string Title => "Live game";
-    public Team Us => Session.HumanTeam;
+    public Team Us => _us ??= Session.LiveNational is { } n
+        ? (_live.Result.Home.Team.Abbreviation == Session.NationalJobState.Code ? _live.Result.Home.Team : _live.Result.Away.Team)
+        : Session.HumanTeam;
+    private Team? _us;
+    /// <summary>I6b (run 215): this is your nation's qualifier (FIBA rules, home and away), not a club game.</summary>
+    public bool IsNationalGame => _national ??= Session.LiveNational != null;
+    private bool? _national;
+    /// <summary>A college game: the college presentation (the arena, the band, the broadcast names). Never a national game.</summary>
+    private bool CollegeGameNow => Session.InCollege && !IsNationalGame;
     public Team Them => _live.Result.Home.Team == Us ? _live.Result.Away.Team : _live.Result.Home.Team;
     // The college Top 25 rank travels with the team (#528).
     public string Headline => $"{Hardwood.Desktop.Controls.CollegeRank.Prefix(_live.Result.Away.Team, _live.Result.Away.Team.FullName)} at {Hardwood.Desktop.Controls.CollegeRank.Prefix(_live.Result.Home.Team, _live.Result.Home.Team.FullName)}";
@@ -248,10 +256,10 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public List<SystemOption> SystemChoices { get; } = Enum.GetValues<Hardwood.Core.Model.OffensiveSystem>()
         .Select(x => new SystemOption { Name = Hardwood.Core.Model.Systems.Name(x), Description = "", Fit = 0.5, System = x }).ToList();
     /// <summary>Run 194: college games offer the college zones too; built once the session is known.</summary>
-    public List<SystemOption> SchemeChoices => _schemeChoices ??= Hardwood.Core.Engine.Tactics.Schemes(Session.InCollege)
+    public List<SystemOption> SchemeChoices => _schemeChoices ??= Hardwood.Core.Engine.Tactics.Schemes(CollegeGameNow)
         .Select(x => new SystemOption { Name = Hardwood.Core.Model.Systems.Name(x), Description = "", Fit = 0.5, Scheme = x }).ToList();
     private List<SystemOption>? _schemeChoices;
-    public bool IsCollegeGame => Session.InCollege;
+    public bool IsCollegeGame => CollegeGameNow;
     public bool FullCourtPress { get => Us.Tactic.FullCourtPress; set { Us.Tactic.FullCourtPress = value; OnPropertyChanged(); } }
     public SystemOption? OffenseChoice
     {
@@ -269,6 +277,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
     public LiveGameViewModel(MainViewModel shell, GameSimulator.LiveGame live, List<GameResult> played) : base(shell)
     {
         _live = live; _played = played;
+        _ = Us; _ = IsNationalGame; // I6b: fixed now, before the day is recorded
         // M1 (run 148): a frame clock (about 60 a second) plays each possession out over its real game-clock time.
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _timer.Tick += (_, _) => FrameTick();
@@ -468,7 +477,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         // B4a: at halftime the HSN desk comes on first, unless the shows are skipped. B4b (run 145): so does the postgame
         // show at the final.
         PostgameDesk = final;
-        if (halftime && AppSettings.Current.StudioShow)
+        if (halftime && AppSettings.Current.StudioShow && !IsNationalGame)
         {
             var wp = Hardwood.Core.Engine.GameFlow.WinProbability(r);
             double home = wp.Count == 0 ? 0.5 : wp[^1].Percent / 100.0;
@@ -476,7 +485,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
                 t => _live.HalftimeRead(t), Session.DeskContextFor(r, final: false)), r.Away.Team, r.Home.Team, "Halftime");
             DeskShown = true;
         }
-        else if (final && AppSettings.Current.StudioShow)
+        else if (final && AppSettings.Current.StudioShow && !IsNationalGame)
         {
             var (rows, line) = Session.PostgameTable(r);
             HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.PostgameDesk.Build(r, rows, line, Session.HalftimeAround(r.Home.Team, r.Away.Team),

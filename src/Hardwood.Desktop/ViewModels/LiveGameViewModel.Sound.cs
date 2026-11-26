@@ -48,7 +48,7 @@ public sealed partial class LiveGameViewModel
     /// <summary>The home band's school and its song, or null when the home side isn't a college program.</summary>
     public (string School, Hardwood.Core.Presentation.FightSongSpec Spec)? BandFor()
     {
-        var college = Session.InCollege ? Session.World.College : null;
+        var college = CollegeGameNow ? Session.World.College : null;
         if (college == null || !college.ConferenceOf.TryGetValue(HomeTeam.Id, out var conf)) return null;
         var members = college.InConference(conf).Select(t => t.City);
         return (HomeTeam.City, Hardwood.Core.Presentation.FightSongs.For(HomeTeam.City, members));
