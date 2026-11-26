@@ -284,6 +284,12 @@ public sealed record Rules(
 
     public static readonly Rules Nba = new("NBA-style", 4, 12, 24, 6, 5, 7.24);
     public static readonly Rules Fiba = new("FIBA", 4, 10, 24, 5, 5, 6.75);
+    /// <summary>H219 (run 212): national-team games (the World Cup, the Olympics, their qualifiers and the continentals) on a
+    /// neutral court. FIBA tournaments play slower and score less than club games full of NBA players: tuned to real
+    /// tournaments: slower (pace 0.9), more physical (shots a little harder, more whistles and turnovers). Tuned with
+    /// `Run212FibaProbe` on seeds 31 and 2026 (352 sides each, the 32 best national twelves): 79-80 points a side (was 91-93),
+    /// 78 possessions, FG 43%, 3P 33-34%, 18 free throws and 12 turnovers, as at the 2019 and 2023 World Cups.</summary>
+    public static readonly Rules FibaNational = Fiba with { NeutralSite = true, PaceScale = 0.9, TurnoverShift = 0.02, ShotLogitShift = -0.08, FoulScale = 1.2 };
     /// <summary>
     /// College: two 20-minute halves, a 30-second clock, five fouls (decision #95). C4 step 0 (#185): the 30-second clock
     /// slows the game to about 68 possessions (pace scale), and talent gaps count for more than in the pros, so the

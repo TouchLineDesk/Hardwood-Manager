@@ -1079,6 +1079,10 @@ public static class Board
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
 
         string Verdict() => sacked ? $"{owner} has decided to make a change. You have been sacked."
+            // H212 (run 212): a college coach can't be sacked after his first or second season (#1129), so the AD doesn't
+            // threaten it: Providence's first-year coach read "final warning" at 11-19 and was kept two more seasons.
+            : firstSeason && diff < 0 && job.Confidence <= 25 && ctx.IsCollege
+                ? $"{owner} expected more from your first season. A new coach gets time to build, but next season has to show real progress. AD confidence: {job.Confidence:0}/100."
             : firstSeason && diff < 0 && job.Confidence <= 25 ? $"{owner} is giving you another season, but expects much better. Consider this a final warning."
             // H182 (run 176): a college coach's second season is never his last; the AD says so.
             : graceWarning ? $"{owner} is giving you a third season to turn the program around, but expects much better. Consider this a final warning. AD confidence: {job.Confidence:0}/100."

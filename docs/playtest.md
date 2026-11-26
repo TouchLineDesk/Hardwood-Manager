@@ -107,7 +107,7 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Blue bloods recruit well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
-- Call-ups (morale, injuries carried to the club), the U23 event and the national-team job aren't built yet (international plan I5–I6). International games score high: about 90 points a side against a real 75–85 (watch).
+- Call-ups (morale, injuries carried to the club), the U23 event and the national-team job aren't built yet (international plan I5–I6). International games play at FIBA tournament pace, about 80 points a side (v0.200.0).
 
 ## How to leave notes
 One note per thing in the notebook, tagged **Bored**, **Confused**, **Kept waiting**, **Felt wrong**, **Bug** or

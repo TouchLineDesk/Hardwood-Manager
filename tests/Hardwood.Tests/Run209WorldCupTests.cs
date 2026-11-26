@@ -57,7 +57,7 @@ public class Run209WorldCupTests
         Assert.Equal(rec.Gold, rec.Mvp!.Code);
         Assert.DoesNotContain(rec.Games, g => g.HomePts == g.AwayPts);
         // FIBA rules: 40 minutes, so about 75–95 a side.
-        Assert.InRange(rec.Games.Average(g => g.HomePts + g.AwayPts) / 2.0, 70, 100);
+        Assert.InRange(rec.Games.Average(g => g.HomePts + g.AwayPts) / 2.0, 75, 85); // H219 (run 212): FIBA tournament scoring
         // Every quarter-finalist won its way out of a second-round group: the top two of the four.
         Assert.Equal(8, rec.Games.Where(g => g.Round == WorldCup.QuarterRound).SelectMany(g => new[] { g.Home, g.Away }).Distinct().Count());
         // Days run inside the event.

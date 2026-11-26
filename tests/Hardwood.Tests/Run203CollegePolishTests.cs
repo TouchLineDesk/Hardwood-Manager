@@ -80,14 +80,15 @@ public class Run203CollegePolishTests
             Assert.True(job.Confidence >= Board.FirstSeasonSafeFloor);
             Assert.True(job.Confidence >= 60 - Board.FirstSeasonDropCap);
         }
-        // A bad first season still earns the warning.
+        // A bad first season still earns a warning, but no "final" one (H212, run 212: the grace rule keeps him two seasons).
         var bad = new JobState
         {
             Confidence = 40, HiredSeason = 2026, SeasonStartSeason = 2026, SeasonStartConfidence = 40,
             Current = new Expectations { Season = 2026, Goal = SeasonGoal.Title, TargetWins = 27, TeamId = team.Id, League = "college" },
         };
         var badBody = Board.SeasonReview(bad, new Coach(), ctx, team, SeasonGoal.Develop, 10, 21, None, new DateOnly(2027, 4, 7), 2026).body;
-        Assert.Contains("final warning", badBody.Split('\n').Last());
+        Assert.Contains("next season has to show real progress", badBody.Split('\n').Last());
+        Assert.DoesNotContain("final warning", badBody);
     }
 
     [Fact]

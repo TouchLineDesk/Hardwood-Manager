@@ -200,7 +200,7 @@ public static class WorldCup
             foreach (var x in n.Squad) t.Roster.Add(x.Player);
             teams[n.Nation.Code] = t;
         }
-        var rules = Rules.Fiba with { NeutralSite = true };
+        var rules = Rules.FibaNational; // H219 (run 212): national-team scoring
         var lines = new Dictionary<int, (string Code, string Name, int G, int Pts, int Reb, int Ast)>();
 
         CupGame Game(string round, string home, string away, DateOnly day)
