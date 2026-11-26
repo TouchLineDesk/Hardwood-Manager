@@ -20,6 +20,9 @@ public sealed class WindowRecord
 public sealed class QualifyingCycle
 {
     public string Target { get; set; } = "";
+    /// <summary>Review (run 210): the first window this career played in the cycle ("2026-11"); the double round robin is spread
+    /// over the windows from it to the event, so every pairing meets home and away exactly once.</summary>
+    public string FirstWindow { get; set; } = "";
     /// <summary>Group name ("Europe A") to its codes, in draw order.</summary>
     public Dictionary<string, List<string>> Groups { get; set; } = new();
 }
@@ -106,8 +109,8 @@ public static class FibaRanking
 
 /// <summary>
 /// International plan I3 (run 210): the qualifying windows (#106, #109). Each zone's ranked teams are drawn into groups of about
-/// four by ranking at a cycle's first window (no draw: a snake by rank), and each window plays two rounds of a home-and-away
-/// round robin, by quick result: a score from the two twelves' strength and home court, on the window's own stream. A World Cup
+/// four by ranking at a cycle's first window (no draw: a snake by rank), and the cycle's home-and-away round robin is spread over its
+/// windows, by quick result: a score from the two twelves' strength and home court, on the window's own stream. A World Cup
 /// cycle has the two windows before it (November and February); a continental cycle has the four. The tables decide each zone's
 /// World Cup places (I2's quotas), and I4 reads the continental ones. Club seasons carry on (#107); nothing touches a player.
 /// </summary>
@@ -197,23 +200,29 @@ public static class Qualifying
         var ranked = FibaRanking.Apply(teams, points);
         string target = TargetOf(w);
         var cycle = h.Cycles.FirstOrDefault(c => c.Target == target);
-        if (cycle == null) h.Cycles.Add(cycle = new QualifyingCycle { Target = target, Groups = DrawGroups(ranked) });
-        int index = h.Windows.Count(x => x.Target == target);
+        if (cycle == null) h.Cycles.Add(cycle = new QualifyingCycle { Target = target, FirstWindow = KeyOf(w), Groups = DrawGroups(ranked) });
+        var plan = CycleWindows(target, cycle.FirstWindow == "" ? KeyOf(w) : cycle.FirstWindow);
+        int index = Math.Max(0, plan.IndexOf(KeyOf(w)));
+        int windows = Math.Max(1, plan.Count);
         var rec = new WindowRecord { Key = KeyOf(w), Target = target, Dates = w.Dates, Index = index };
         var byCode = ranked.ToDictionary(t => t.Nation.Code);
         var rng = new Rng(seed ^ 0xF1BA_3A1D_0000_0003UL ^ ((ulong)(uint)(w.Start.Year * 100 + w.Start.Month) * 0x9E3779B97F4A7C15UL));
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        string[] days = { w.Start.AddDays(3).ToString("MMM d", inv), w.End.AddDays(-1).ToString("MMM d", inv) };
+        string[] days = { w.Start.AddDays(3).ToString("MMM d", inv), w.Start.AddDays(5).ToString("MMM d", inv), w.End.AddDays(-1).ToString("MMM d", inv) };
         foreach (var (name, codes) in cycle.Groups.OrderBy(g => g.Key, StringComparer.Ordinal))
         {
+            // Review (run 210): the cycle's rounds, spread evenly over its windows: no pairing repeats, and by the last window
+            // every team has played every other home and away (an odd group's byes even out too).
             var rounds = Rounds(codes);
-            for (int k = 0; k < 2; k++)
-                foreach (var (home, away) in rounds[(2 * index + k) % rounds.Count])
+            int from = index * rounds.Count / windows, to = Math.Min(rounds.Count, (index + 1) * rounds.Count / windows);
+            if (index == windows - 1) to = rounds.Count;
+            for (int k = from; k < to; k++)
+                foreach (var (home, away) in rounds[k])
                 {
                     // A team whose pool fell under twelve since the draw forfeits nothing: its games aren't played.
                     if (!byCode.TryGetValue(home, out var ht) || !byCode.TryGetValue(away, out var at)) continue;
                     var (hp, ap) = QuickResult(ht.Strength, at.Strength, rng);
-                    var g = new CupGame(name, home, away, hp, ap, days[k]);
+                    var g = new CupGame(name, home, away, hp, ap, days[Math.Min(2, k - from)]);
                     rec.Games.Add(g);
                     FibaRanking.Update(points, g, FibaRanking.WindowK);
                 }
@@ -222,6 +231,17 @@ public static class Qualifying
         h.Ranking = points;
         h.LastRanking = ranked.Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
         return rec;
+    }
+
+    /// <summary>The window keys of a cycle from <paramref name="firstKey"/> to its event, in order.</summary>
+    public static List<string> CycleWindows(string target, string firstKey)
+    {
+        int year = int.TryParse(target.AsSpan(0, 4), out var y) ? y : 0;
+        var keys = new List<string>();
+        for (int yr = year - 5; yr <= year; yr++)
+            foreach (var e in FibaCalendar.InYear(yr).Where(e => e.Kind == FibaEventKind.Window).OrderBy(e => e.Start))
+                if (TargetOf(e) == target && string.CompareOrdinal(KeyOf(e), firstKey) >= 0) keys.Add(KeyOf(e));
+        return keys;
     }
 
     /// <summary>A qualifying group's games so far in a cycle, as a World Cup record the group tables can read.</summary>

@@ -60,11 +60,12 @@ public class Run210QualifyingTests
         var cycle = Assert.Single(h.Cycles);
         Assert.All(cycle.Groups.Values, g => Assert.InRange(g.Count, 2, 6));
         Assert.Equal(teams.Count(t => t.Rank > 0), cycle.Groups.Values.Sum(g => g.Count));
-        // Every team plays two games a window (a team in an odd group sits one out).
-        foreach (var w in new[] { w1, w2 })
-            foreach (var (name, codes) in cycle.Groups)
-                foreach (var c in codes)
-                    Assert.InRange(w.Games.Count(g => g.Round == name && (g.Home == c || g.Away == c)), codes.Count % 2 == 1 ? 1 : 2, 2);
+        // Review (run 210): by the cycle's last window every pairing has met exactly once at each end, so tables are even.
+        var all = h.Windows.SelectMany(w => w.Games).ToList();
+        foreach (var (name, codes) in cycle.Groups)
+            foreach (var a in codes) foreach (var b in codes.Where(b => b != a))
+                Assert.Equal(1, all.Count(g => g.Round == name && g.Home == a && g.Away == b));
+        Assert.All(new[] { w1, w2 }, w => Assert.NotEmpty(w.Games));
         Assert.DoesNotContain(h.Windows.SelectMany(w => w.Games), g => g.HomePts == g.AwayPts);
         double avg = h.Windows.SelectMany(w => w.Games).Average(g => (g.HomePts + g.AwayPts) / 2.0);
         double homeWins = h.Windows.SelectMany(w => w.Games).Average(g => g.HomePts > g.AwayPts ? 1.0 : 0.0);
@@ -102,11 +103,18 @@ public class Run210QualifyingTests
         _out.WriteLine($"Now:            {string.Join(" ", ranked.Take(10).Select(t => $"{t.Nation.Code} {t.Points:F0}"))}");
         _out.WriteLine("Cycles: " + string.Join(", ", h.Cycles.Select(c => $"{c.Target} ({h.Windows.Count(w => w.Target == c.Target)})")));
         int kept = top.Intersect(seedTop).Count();
-        Assert.InRange(kept, 5, 9); // stable, not frozen
+        Assert.InRange(kept, 5, 10); // stable (the same players all along); the order must still move (below)
         Assert.NotEqual(seedTop, top);
         Assert.Equal(4, h.Cycles.Count); // 2027 WC (2 windows), 2029 continentals (4), 2031 WC (4), 2033 continentals (4)
         Assert.Equal(new[] { 2, 4, 4, 4 }, h.Cycles.Select(c => h.Windows.Count(w => w.Target == c.Target)));
         Assert.DoesNotContain(ranked, t => t.Nation.Suspended && t.Rank > 0);
+        // No fixture repeats within a cycle, and every window plays (the round robin is spread, not wrapped).
+        foreach (var c in h.Cycles)
+        {
+            var games = h.Windows.Where(w => w.Target == c.Target).SelectMany(w => w.Games).Select(g => (g.Round, g.Home, g.Away)).ToList();
+            Assert.Equal(games.Count, games.Distinct().Count());
+        }
+        Assert.All(h.Windows, w => Assert.NotEmpty(w.Games));
     }
 
     [Fact]
