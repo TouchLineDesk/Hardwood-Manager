@@ -38,7 +38,7 @@
                             <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="72" Height="72" IsVisible="{Binding HasTeam}" ShowRank="False"/>
                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
                               <TextBlock Text="{Binding School}" FontSize="34" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
-                              <TextBlock Text="{Binding Tag}" IsVisible="{Binding HasTag}" FontSize="20" FontWeight="Bold" Foreground="#58A6FF"/>
+                              <TextBlock Text="{Binding Tag}" IsVisible="{Binding HasTag}" FontSize="20" FontWeight="Bold" Foreground="#58A6FF" TextWrapping="Wrap" MaxLines="2"/>
                             </StackPanel>
                             <TextBlock Grid.Column="3" Text="{Binding Record}" FontSize="30" Foreground="#C9D1D9" VerticalAlignment="Center" Margin="12,0,0,0"/>
                           </Grid>
@@ -56,7 +56,7 @@
                             <c:TeamLogo Grid.Column="1" Team="{Binding Team}" Width="72" Height="72" IsVisible="{Binding HasTeam}" ShowRank="False"/>
                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
                               <TextBlock Text="{Binding School}" FontSize="34" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
-                              <TextBlock Text="{Binding Tag}" IsVisible="{Binding HasTag}" FontSize="20" FontWeight="Bold" Foreground="#58A6FF"/>
+                              <TextBlock Text="{Binding Tag}" IsVisible="{Binding HasTag}" FontSize="20" FontWeight="Bold" Foreground="#58A6FF" TextWrapping="Wrap" MaxLines="2"/>
                             </StackPanel>
                             <TextBlock Grid.Column="3" Text="{Binding Record}" FontSize="30" Foreground="#C9D1D9" VerticalAlignment="Center" Margin="12,0,0,0"/>
                           </Grid>
