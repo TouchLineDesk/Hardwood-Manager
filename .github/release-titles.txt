@@ -1,0 +1,3 @@
+# Release titles that differ from "Hardwood Manager X.Y.Z" (read by release.yml).
+# One line per version: <version> | <title> | <the opening line of the release notes (optional)>
+0.194.0 | Your first college career: download v0.194.0 | The college launch build: the whole college plan (program legacy, rival coaches, your coaching career and tree, player stories, March on the real weekdays and everything before them). Start here: https://github.com/TouchLineDesk/Hardwood-Manager/blob/main/docs/playtest.md

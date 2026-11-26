@@ -104,8 +104,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = "${{ steps.v.outputs.version }}"
+          # Run 206: a version listed in .github/release-titles.txt ("0.194.0 | <title> | <first line of the notes>")
+          # gets that title and opening line (the launch build); every other version is "Hardwood Manager X.Y.Z".
+          $title = "Hardwood Manager $v"
+          $lead = ""
+          $list = ".github/release-titles.txt"
+          if (Test-Path $list) {
+            foreach ($line in Get-Content $list) {
+              if ($line.Trim().StartsWith('#') -or $line.Trim() -eq '') { continue }
+              $parts = $line.Split('|') | ForEach-Object { $_.Trim() }
+              if ($parts[0] -eq $v -and $parts.Count -ge 2 -and $parts[1] -ne '') {
+                $title = $parts[1]
+                if ($parts.Count -ge 3) { $lead = ($parts[2..($parts.Count - 1)] -join ' | ') }
+              }
+            }
+          }
+          Write-Host "Release title: $title"
+          $notes = @()
+          if ($lead -ne '') { $notes += @('--notes', $lead) }
           gh release create "v$v" "HardwoodManager-v$v-win-x64.zip" `
             --repo "${{ github.repository }}" `
             --target "${{ github.sha }}" `
-            --title "Hardwood Manager $v" `
-            --generate-notes
+            --title "$title" `
+            --generate-notes @notes

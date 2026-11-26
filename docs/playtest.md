@@ -1,7 +1,7 @@
 # Start here: your first college career
 
-This is the short guide for Danny's first college play-through (the college launch, Wed Nov 25, 2026). It replaces the
-old NBA play-test guide (v0.112.1). Notes go in the play-test notebook:
+This is the short guide for Danny's first college play-through: the launch build, "Your first college career"
+(v0.194.0, Thu Nov 26, 2026), with the whole college plan in it. It replaces the old NBA play-test guide (v0.112.1). Notes go in the play-test notebook:
 https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them first.
 
 ## Before you start
@@ -33,7 +33,11 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   every Monday and the conference tournament in Championship Week.
 - **The bubble (March Madness page, before Selection Sunday):** bracketology shows each bubble team's NET rank and
   Quad 1 record, and your own NET with the record in all four quadrants, as the committee reads a résumé.
-- **Selection Sunday and March Madness:** your seed arrives in the inbox; the studio and the arena name the round.
+- **Selection Sunday and March Madness, on the real weekdays:** conference tournaments run Friday to Sunday, with the
+  finals on Selection Sunday (20 days before the final). The First Four is Tuesday and Wednesday, the first two rounds
+  Thursday to Sunday, the Sweet 16 and Elite Eight the next Thursday to Sunday (each half of the bracket on its own two
+  days, so nobody plays two days running), the Final Four the first Saturday of April and the final on Monday. Your
+  seed arrives in the inbox; the studio and the arena name the round. The bracket page shows the whole field.
   Left out? The 32 best teams left out play the **NIT**: the better seed hosts the first three rounds, and the
   semi-finals and the final are in Indianapolis.
 - **Captains (a week before the first game):** the players name two captains, the ones the room follows (leadership
@@ -59,10 +63,33 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   zone, and can press full court after every basket (about 3 more turnovers a game against it, a quicker game, but a
   broken press gives up layups and your players tire faster). About one program in three plays a zone and one in nine
   presses; the scouting report warns you about a pressing opponent.
+- **Program legacy (the team page's Legacy tab):** every program keeps a record book (career and single-season
+  leaders, its best team seasons). On the night of each national final the seniors' careers close: the best go into
+  the program's Hall of Fame, and the greatest have their jerseys retired. The inbox and the news tell you about yours.
+- **Rival coaches (Home and the Board page):** every other head coach is a person with a style (recruiter, tactician,
+  defensive mind, player developer, motivator, up-tempo), a record, bids, titles and a reputation. Home names tonight's
+  opposing coach, the Board page lists your rivals' coaches, and they speak after a rivalry game and when they beat you
+  to a recruit. Their styles are colour, not a hidden edge.
+- **Your coaching career and coaching tree (the Board page's "Your coaching career" panel):** every season you coach
+  is booked: record, seed and how far you went in March. Milestones (your first win, every 100 wins, your first bid,
+  tournament win, Final Four and title, 10 seasons) come once each in the inbox and the news. After two seasons with
+  you, a good assistant may be hired away as a head coach in the carousel: that's your coaching tree. A long, winning
+  stay (or a title) puts a coach in that program's Hall, and that includes you.
+- **Player stories over four years (the inbox, the Roster and the player page):** every player has an origin (his
+  home state, his stars and his rank as a recruit). Your own players' stories are told once each, from real game data:
+  the freshman phenom, the hometown hero, the walk-on who earns minutes (and a scholarship the next summer if one is
+  open), the senior's breakout and the one the big programs overlooked.
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 
 ## Known issues (not worth a note unless they bother you)
-- **Blue bloods recruit too well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
+- **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two
+  teams' dots can be hard to tell apart (K36).
+- **Unhappy players repeat themselves:** "X wants a word" can come back every few weeks for months, and the assistant
+  may keep suggesting "Hire an assistant coach" (K37).
+- **Computer coaches waste timeouts** (a "breather" in a tie game's last minutes, one called down 30), and there are
+  no media timeouts yet (K38).
+- **The Most Outstanding Player line** counts only his points in the final, though it says "in the Final Four" (H210).
+- **Blue bloods recruit well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
 - National teams, FIBA and the Olympics aren't built yet; international play starts after the college plan.

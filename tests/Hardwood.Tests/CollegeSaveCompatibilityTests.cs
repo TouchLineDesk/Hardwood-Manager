@@ -22,6 +22,10 @@ public class CollegeSaveCompatibilityTests
 {
     public const string FixtureName = "college-v0165.hwsave.gz";
 
+    /// <summary>Run 206: a college career made by the launch build (v0.194.0), the build of Danny's first college career.
+    /// Every later build must load it (README). Same program, seed and day as the first fixture.</summary>
+    public const string LaunchFixtureName = "college-v0194.hwsave.gz";
+
     /// <summary>The fixture's day and program, as made (README).</summary>
     private static readonly DateOnly FixtureDay = new(2027, 1, 8);
 
@@ -103,6 +107,7 @@ public class CollegeSaveCompatibilityTests
     public void There_is_a_college_fixture()
     {
         Assert.Contains(Fixtures(), f => (string)f[0] == FixtureName);
+        Assert.Contains(Fixtures(), f => (string)f[0] == LaunchFixtureName);
     }
 
     [Theory]
