@@ -178,13 +178,15 @@ public static class Reactions
     /// where is the big college band"). Pure: read from the choreography's ball, actions and moments, panned to where the
     /// play is. Nothing here touches the engine or its random stream. The players' shouts wait for a file (none in the
     /// pack), and the fight songs come in their own runs.</summary>
-    public static List<SoundCue> Court(Choreography c)
+    /// <param name="band">K44 (run 216): only a college game has a band. The pros and national teams get the court's
+    /// sounds with no fight song, drumline or brass (a pro PA or a FIBA horn waits for files).</param>
+    public static List<SoundCue> Court(Choreography c, bool band = true)
     {
         var cues = new List<SoundCue>();
         var input = c.Input;
         static double Pan(double x) => Math.Clamp((x - 47) / 47.0, -1, 1) * 0.8;
         // Before the tip: the home band's fight song (run 161; the drumline when there's no band).
-        if (input.Index == 0) cues.Add(new SoundCue(0.1, Cue.FightSong, 0.8));
+        if (band && input.Index == 0) cues.Add(new SoundCue(0.1, Cue.FightSong, 0.8));
         // Dribbles while the ball is carried: one every 0.42 s, at the carrier (at most 12 a possession).
         int bounces = 0;
         foreach (var b in c.Ball.Where(b => b.Mode == BallMode.Held && b.Holder >= 0 && !b.FreeThrow && b.T1 - b.T0 >= 0.5))
@@ -212,7 +214,7 @@ public static class Reactions
                         cues.Add(new SoundCue(t, dunk ? Cue.Slam : e.Zone == ShotZone.Rim ? Cue.Finish : Cue.Swish, 1.0, pan));
                         bool leadChange = e.Period >= input.Periods && hBefore <= aBefore && home > away;
                         // The brass after a home dunk or a late lead change (not in a blowout).
-                        if (e.Home && (dunk || leadChange) && aBefore - hBefore < BlowoutDeficit) cues.Add(new SoundCue(t + 0.5, Cue.Brass, 0.7));
+                        if (band && e.Home && (dunk || leadChange) && aBefore - hBefore < BlowoutDeficit) cues.Add(new SoundCue(t + 0.5, Cue.Brass, 0.7));
                     }
                     else cues.Add(new SoundCue(t, (input.Index + i) % 3 == 0 && e.Zone != ShotZone.Rim ? Cue.Backboard : Cue.Rim, 0.9, pan));
                     break;
@@ -220,7 +222,7 @@ public static class Reactions
                 case PlayKind.FreeThrow:
                     cues.Add(new SoundCue(t, e.Made ? Cue.Swish : Cue.Rim, 0.7, Pan(RimX(t))));
                     break;
-                case PlayKind.PeriodEnd:
+                case PlayKind.PeriodEnd when band:
                 {
                     // The band strikes up at the break (after the buzzer and the applause): the fight song at halftime and
                     // when the home side has won (run 161), else the drumline.

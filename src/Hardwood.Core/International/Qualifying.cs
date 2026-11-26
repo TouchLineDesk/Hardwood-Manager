@@ -199,7 +199,10 @@ public static class Qualifying
     /// cycle's groups if this is its first window. Adds the window to the history and moves the ranking.</summary>
     /// <param name="coached">I6b (run 215): your nation's games already played in the full engine on their day (live or by your
     /// assistant). They replace the quick result for that pairing; the quick result is still drawn, so every other game is the same.</param>
-    public static WindowRecord Play(InternationalHistory h, FibaEvent w, IReadOnlyList<NationalTeam> teams, ulong seed, IReadOnlyList<CoachedGame>? coached = null)
+    /// <param name="playing">K42 (run 216): each team's strength with the players its clubs release for the window (no NBA
+    /// players). The ranking and the draw still use <paramref name="teams"/>; a team missing here plays at its full strength.</param>
+    public static WindowRecord Play(InternationalHistory h, FibaEvent w, IReadOnlyList<NationalTeam> teams, ulong seed, IReadOnlyList<CoachedGame>? coached = null,
+        IReadOnlyDictionary<string, double>? playing = null)
     {
         var points = FibaRanking.Current(h, teams);
         var ranked = FibaRanking.Apply(teams, points);
@@ -212,7 +215,9 @@ public static class Qualifying
         {
             // A team whose pool fell under twelve since the draw forfeits nothing: its games aren't played.
             if (!byCode.TryGetValue(f.Home, out var ht) || !byCode.TryGetValue(f.Away, out var at)) continue;
-            var (hp, ap) = QuickResult(ht.Strength, at.Strength, rng);
+            double hs = playing?.GetValueOrDefault(f.Home, ht.Strength) ?? ht.Strength;
+            double aws = playing?.GetValueOrDefault(f.Away, at.Strength) ?? at.Strength;
+            var (hp, ap) = QuickResult(hs, aws, rng);
             if (coached?.FirstOrDefault(c => c.Key == rec.Key && c.Home == f.Home && c.Away == f.Away) is { } mine) (hp, ap) = (mine.HomePts, mine.AwayPts);
             var g = new CupGame(f.Group, f.Home, f.Away, hp, ap, f.Day.ToString("MMM d", inv));
             rec.Games.Add(g);

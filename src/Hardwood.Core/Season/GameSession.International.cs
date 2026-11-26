@@ -251,7 +251,7 @@ public sealed partial class GameSession
             var teams = NationalTeams.For(this, w.Start);
             if (teams.Count(t => t.Rank > 0) < 2) continue;
             var before = new Dictionary<string, double>(FibaRanking.Current(h, teams));
-            var rec = Qualifying.Play(h, w, teams, Seed, NationalJobState.Games);
+            var rec = Qualifying.Play(h, w, teams, Seed, NationalJobState.Games, NationalTeams.WindowStrengths(this, w.Start));
             ReviewWindow(rec, before);
             Post($"FIBA window: qualifiers for the {rec.Target}", WindowStory(rec), "World");
         }

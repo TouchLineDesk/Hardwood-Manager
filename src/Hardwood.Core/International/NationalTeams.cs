@@ -137,8 +137,17 @@ public static class NationalTeams
 
     /// <summary>The teams as they stand on <paramref name="day"/> (players available that day), with your own twelve where you
     /// coach a nation (I6a, run 214).</summary>
-    public static IReadOnlyList<NationalTeam> For(GameSession s, DateOnly day) =>
-        Build(WorldCup.Entries(s, day), day, s.World.International.Coaching?.Overrides);
+    /// <param name="window">K42 (run 216): the twelves a qualifying window can call on (no NBA players; see
+    /// <see cref="WorldCup.Entries"/>).</param>
+    public static IReadOnlyList<NationalTeam> For(GameSession s, DateOnly day, bool window = false) =>
+        Build(WorldCup.Entries(s, day, window), day, s.World.International.Coaching?.Overrides);
+
+    /// <summary>K42 (run 216): a player's club keeps him for the qualifying windows (an NBA club).</summary>
+    public static bool HeldForWindows(GameSession s, Team? club) => club != null && s.League.Teams.Contains(club);
+
+    /// <summary>K42: each team's strength in a window (its released twelve), by code.</summary>
+    public static Dictionary<string, double> WindowStrengths(GameSession s, DateOnly day) =>
+        For(s, day, window: true).ToDictionary(t => t.Nation.Code, t => t.Strength);
 
     /// <summary>I3 (run 210): the teams ranked by FIBA ranking points (the saved ranking, or its starting seed), not strength.
     /// Pure: the history is only read.</summary>
