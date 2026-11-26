@@ -124,7 +124,7 @@ public sealed partial class TeamViewModel : PageViewModel
         // K14 (run 135, hunt 19): a college program answers to its athletic director, not an owner.
         bool program = s.IsCollegeProgram(t);
         string boss = program ? "Athletic director" : "Owner";
-        Club = $"Coach: {coach} · {boss}: {(t.Owner.Name.Length > 0 ? t.Owner.Name + ", " : "")}{t.Owner.Style.ToLowerInvariant()} · Arena: {t.ArenaCapacity:N0}";
+        Club = $"Coach: {coach} · {boss}: {(t.Owner.Name.Length > 0 ? t.Owner.Name + ", " : "")}{t.Owner.Style.ToLowerInvariant()} · Arena: {(Hardwood.Core.World.RealClubs.ArenaOf(t) is { } arena ? $"{arena}, " : "")}{t.ArenaCapacity:N0}";
         Money = t.Money.Ready ? $"Revenue ${t.Money.Revenue / 1e6:F1}M · Wage budget ${t.Money.WageBudget / 1e6:F1}M · Payroll ${t.Roster.Sum(p => p.Contract?.Salary ?? 0) / 1e6:F1}M" : "";
         var chips = new List<Hardwood.Desktop.Controls.Chip>();
         if (home != null)
@@ -139,7 +139,7 @@ public sealed partial class TeamViewModel : PageViewModel
         }
         chips.Add(new("Coach", coach, t.Coach is { } hc ? $"reputation {hc.Reputation:0}" : ""));
         chips.Add(new(boss, t.Owner.Name.Length > 0 ? t.Owner.Name : "-", t.Owner.Style.ToLowerInvariant()));
-        chips.Add(new("Arena", t.ArenaCapacity.ToString("N0"), "seats"));
+        chips.Add(new("Arena", t.ArenaCapacity.ToString("N0"), Hardwood.Core.World.RealClubs.ArenaOf(t) is { } named ? $"seats · {named}" : "seats")); // run 217 (K5)
         // K12b (run 137): a college program's banners: its titles, Final Fours and NCAA tournaments (real history in a real
         // world, plus this career's), and the years under the header.
         Banners = "";

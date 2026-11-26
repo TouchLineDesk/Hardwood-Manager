@@ -8,14 +8,15 @@ public sealed class Team
     /// <summary>City, nickname and abbreviation: settable so a name pack can rename the club (Names.NamePack).</summary>
     public required string City { get; set; }
     public required string Name { get; set; }
-    public string FullName => $"{City} {Name}";
+    /// <summary>Run 217 (K5): a real club abroad reads as it's written ("FC Barcelona", "Zalgiris Kaunas"), not "Barcelona Barça".</summary>
+    public string FullName => World.RealClubs.FullOf(City, Name) ?? $"{City} {Name}";
     /// <summary>
     /// H80 (run 105): the name in a sentence. "the Boston Celtics", but "Providence City" and "Charlotte FC": club-style names
     /// (the pyramid's United, City, BC, Athletic, Basketball Club, FC) take no article.
     /// </summary>
-    public string TheFullName => TakesArticle(Name) ? "the " + FullName : FullName;
+    public string TheFullName => World.RealClubs.FullOf(City, Name) is { } own ? own : TakesArticle(Name) ? $"the {City} {Name}" : $"{City} {Name}";
     /// <summary>The same at the start of a sentence: "The Boston Celtics", "Providence City".</summary>
-    public string TheFullNameCap => TakesArticle(Name) ? "The " + FullName : FullName;
+    public string TheFullNameCap => World.RealClubs.FullOf(City, Name) is { } own ? own : TakesArticle(Name) ? $"The {City} {Name}" : $"{City} {Name}";
     private static readonly HashSet<string> ClubStyleNames = new(World.UsaPyramid.ClubStyles, StringComparer.OrdinalIgnoreCase) { "Basket" };
     public static bool TakesArticle(string nickname) => !ClubStyleNames.Contains(nickname.Trim());
     public required string Abbreviation { get; set; }

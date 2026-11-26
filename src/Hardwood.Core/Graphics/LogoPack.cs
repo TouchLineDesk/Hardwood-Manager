@@ -86,6 +86,8 @@ public sealed class LogoPack
         if (FileCount == 0) return null;
         if (_mapped.TryGetValue(Key(team.FullName), out var m)) return m;
         if (_byKey.TryGetValue(Key(team.FullName), out var f)) return f;
+        // Run 217: a pack made for the made-up club a real one replaced ("Madrid Capitales") still fits it.
+        if (Hardwood.Core.World.RealClubs.FormerFullName(team) is { } madeUp && (_mapped.TryGetValue(Key(madeUp), out f) || _byKey.TryGetValue(Key(madeUp), out f))) return f;
         if (_byKey.TryGetValue($"team{team.Id}", out f)) return f;
         bool Unique(Func<Team, string> by) => all == null || all.Count(t => Key(by(t)) == Key(by(team))) <= 1;
         if (_byKey.TryGetValue(Key(team.Name), out f) && Unique(t => t.Name)) return f;

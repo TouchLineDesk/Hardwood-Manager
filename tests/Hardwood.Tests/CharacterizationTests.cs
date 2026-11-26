@@ -199,7 +199,9 @@ public class CharacterizationTests
         // schedule and its quick-sim draws on the shared stream move. The NBA's schedule and odds are unchanged.
         // Run 214 (I6a, the national-team job): re-pinned (was 96C84F8D7D7572A6 since run 176). Only the inbox line moved: the
         // federations' offers arrive on Oct 15 (one more message). With that message taken out, the old pin holds exactly.
-        Pin("career seed 2026, 30 days, no saves", "16F28036D92D2B1E", Session(s));
+        // Run 217 (K5, real clubs abroad): re-pinned (was 16F28036D92D2B1E). The real clubs' standing and arena sizes shape the
+        // rosters and budgets abroad. With both taken out (names and abbreviations alone), the old pin held exactly.
+        Pin("career seed 2026, 30 days, no saves", "D88ED375B3F43A1F", Session(s));
     }
 
     [Fact]

@@ -31,13 +31,13 @@ public class AnyClubTests
         var id = ClubIn(Competitions.Spain);
         var s = GameSession.NewGame(3, id, null);
         Assert.True(s.Abroad);
-        Assert.Equal("Spanish League", s.HumanLeagueName);
+        Assert.Equal("Liga ACB", s.HumanLeagueName);
         Assert.Equal(Enum.GetValues<StaffRole>().Length, s.HumanTeam.Staff.Count); // given staff on arrival
         Assert.NotNull(s.Job.Current);
         Assert.True(s.Today < new DateOnly(2026, 9, 26)); // the career starts before the Spanish season
         Assert.Equal(0, s.MyGames().Count(g => g.Played));
         var first = s.NextMyGame!;
-        Assert.Equal("Spanish League", first.Competition);
+        Assert.Equal("Liga ACB", first.Competition);
 
         // Play to the first game live, then on for a few weeks.
         while (!s.HumanPlaysToday) s.AdvanceDay();
@@ -50,7 +50,7 @@ public class AnyClubTests
         for (int i = 0; i < 60; i++) s.AdvanceDay();
         var rec = s.MyRecord;
         Assert.True(rec.Games >= 7, $"{rec.Games} games");
-        Assert.Equal(rec.Games, s.MyGames().Count(g => g.Played && g.Competition == "Spanish League"));
+        Assert.Equal(rec.Games, s.MyGames().Count(g => g.Played && g.Competition == "Liga ACB"));
         Assert.True(s.MyRank >= 1);
         Assert.Contains(s.MyStats.Values, st => st.Games >= 5 && st.Points > 0);
         Assert.Contains(s.Inbox, m => m.Category == "Game" && GameSession.IsResultsTitle(m.Title) && m.Body.Contains("led with"));

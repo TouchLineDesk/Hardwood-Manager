@@ -25,7 +25,7 @@ public class NamePackTests
       "clubs": {
         "Boston Celtics": { "city": "Port City", "name": "Gulls", "abbr": "pcg", "primary": "#112233", "secondary": "#445566" },
         "new york knicks": { "city": "Metro", "name": "Towers", "abbr": "MET" },
-        "Madrid Capitales": { "city": "Real", "name": "Capital", "abbr": "RCA" },
+        "Real Madrid": { "city": "Real", "name": "Capital", "abbr": "RCA" },
       },
       "tiers": { "usa2": [ { "city": "Alpha", "name": "Ones", "abbr": "AON" }, { "city": "Beta", "name": "Twos", "abbr": "BTW" }, { "city": "Gamma", "name": "Threes", "abbr": "GTH" } ] },
     }
@@ -67,7 +67,7 @@ public class NamePackTests
 
             NamePack.ResetStatic();
             Assert.Equal("NBA", Brand.Top); // a real career (the only kind since D61 B) goes back to the NBA
-            Assert.Equal("Spanish League", Competitions.All.First(c => c.Key == Competitions.Spain).Name);
+            Assert.Equal("Liga ACB", Competitions.All.First(c => c.Key == Competitions.Spain).Name); // run 217: its real name (D44-style) once the pack is gone
             Assert.Equal("Atlantic Coast Alliance", CollegeWorld.Conferences.First(c => c.Key == "aca").Name);
         }
         finally

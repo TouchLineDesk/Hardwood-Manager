@@ -139,7 +139,9 @@ public sealed class NamePack
                 || FormerNames.TryGetValue(t.FullName, out var former) && Clubs.TryGetValue(former, out c)
                 || NewNames.TryGetValue(t.FullName, out var renamed) && Clubs.TryGetValue(renamed, out c)
                 || UsaPyramid.FormerNames.TryGetValue(t.FullName, out var was) && Clubs.TryGetValue(was, out c)
-                || PyramidNewNames.Value.TryGetValue(t.FullName, out var now) && Clubs.TryGetValue(now, out c)) { Rename(t, c); changed++; }
+                || PyramidNewNames.Value.TryGetValue(t.FullName, out var now) && Clubs.TryGetValue(now, out c)
+                || RealClubs.FormerFullName(t) is { } madeUp && Clubs.TryGetValue(madeUp, out c)) { Rename(t, c); changed++; } // run 217
+
         foreach (var (key, list) in Tiers)
         {
             IEnumerable<Team> members;
