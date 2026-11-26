@@ -197,7 +197,9 @@ public class CharacterizationTests
         // Run 176 (H159 again): re-pinned (was 249C3CAD0011DCF3 since run 163). An invited program books one more
         // non-conference game (8 for a 20-game conference; a first-round invitational loser played 28), so November's college
         // schedule and its quick-sim draws on the shared stream move. The NBA's schedule and odds are unchanged.
-        Pin("career seed 2026, 30 days, no saves", "96C84F8D7D7572A6", Session(s));
+        // Run 214 (I6a, the national-team job): re-pinned (was 96C84F8D7D7572A6 since run 176). Only the inbox line moved: the
+        // federations' offers arrive on Oct 15 (one more message). With that message taken out, the old pin holds exactly.
+        Pin("career seed 2026, 30 days, no saves", "16F28036D92D2B1E", Session(s));
     }
 
     [Fact]

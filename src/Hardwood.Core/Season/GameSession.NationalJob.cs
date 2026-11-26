@@ -71,9 +71,12 @@ public sealed partial class GameSession
         var job = NationalJobState;
         if (job.Code == null) return false;
         if (job.Picks.Remove(playerId)) return true;
-        if (job.Picks.Count >= NationalTeams.SquadSize) return false;
         var team = MyNation;
         if (team == null || team.Pool.All(x => x.Player.Id != playerId)) return false;
+        // Review (run 214): a pick who has left the pool (retired, gone from the world) no longer holds a place.
+        var pool = team.Pool.Select(x => x.Player.Id).ToHashSet();
+        job.Picks.RemoveAll(id => !pool.Contains(id));
+        if (job.Picks.Count >= NationalTeams.SquadSize) return false;
         job.Picks.Add(playerId);
         return true;
     }

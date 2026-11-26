@@ -153,6 +153,13 @@ public class Run214NationalJobTests
         Assert.DoesNotContain(onDay.Squad, x => x.Player == hurt);
         Assert.Equal(NationalTeams.SquadSize, onDay.Squad.Count);
         Assert.Contains(hurt.Id, job.Picks); // still your pick for when he's fit
+
+        // Review (run 214): a pick who has left the pool doesn't hold a place, so the picker never locks.
+        job.Picks[^1] = -12345;
+        var outside = NationalTeams.Ranked(s).First(t => t.Nation.Code == job.Code).Pool.First(x => !job.Picks.Contains(x.Player.Id)).Player.Id;
+        Assert.True(s.ToggleNationalPick(outside));
+        Assert.DoesNotContain(-12345, job.Picks);
+        Assert.Equal(NationalTeams.SquadSize, job.Picks.Count);
     }
 
     [Fact]

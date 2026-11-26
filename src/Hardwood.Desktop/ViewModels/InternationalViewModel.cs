@@ -190,8 +190,8 @@ public sealed partial class InternationalViewModel : PageViewModel
             Offers.Add(new NationalOfferRow
             {
                 Title = $"{o.Name} (No. {o.Rank} in the world)",
-                Detail = $"Offered {o.Made:MMM d} · answer by {o.Expires:MMM d} · coach them alongside your club job",
-                Accept = new RelayCommand(() => { JobStatus = s.AcceptNationalOffer(code) ? "" : "That offer is no longer open."; Refresh(); }),
+                Detail = $"Offered {o.Made:MMM d} · answer by {o.Expires:MMM d} · coach them alongside " + (s.Employed ? "your club job" : "your next club job"),
+                Accept = new RelayCommand(() => { JobStatus = s.AcceptNationalOffer(code) ? $"You're the head coach of {o.Name}." : "That offer is no longer open."; Refresh(); }),
                 Decline = new RelayCommand(() => { s.DeclineNationalOffer(code); JobStatus = $"You turned down {o.Name}."; Refresh(); }),
             });
         }
@@ -288,16 +288,16 @@ public sealed partial class InternationalViewModel : PageViewModel
             string club = x.Club == null ? "Free agent" : x.College ? $"{x.Club.FullName}, college" : x.Club.FullName;
             Pool.Add(new NationPoolRow
             {
-                Player = x.Player, Club = x.Club, Picked = picks.Contains(id), CanPick = job.Picks.Count < NationalTeams.SquadSize,
+                Player = x.Player, Club = x.Club, Picked = picks.Contains(id), CanPick = inPool < NationalTeams.SquadSize,
                 Line = $"{club} · {x.Player.PrimaryPosition} · {x.Age}" + (x.Player.Injury is { } inj && inj.ReturnDate > s.Today ? $" · injured until {inj.ReturnDate:MMM d}" : ""),
                 Ability = Scouting.Ability(x.Player, k).ToString(),
-                Toggle = new RelayCommand(() => { s.ToggleNationalPick(id); Refresh(); }),
+                Toggle = new RelayCommand(() => { JobStatus = ""; s.ToggleNationalPick(id); Refresh(); }),
             });
         }
         int gone = job.Picks.Count - inPool;
-        PoolNote = $"{job.Picks.Count} of {NationalTeams.SquadSize} picked"
-                   + (job.Picks.Count < NationalTeams.SquadSize ? " · the federation's next best fill the empty places" : "")
-                   + (gone > 0 ? $" · {gone} of your picks {(gone == 1 ? "is" : "are")} no longer eligible" : "")
+        PoolNote = $"{inPool} of {NationalTeams.SquadSize} picked"
+                   + (inPool < NationalTeams.SquadSize ? " · the federation's next best fill the empty places" : "")
+                   + (gone > 0 ? $" · {gone} of your picks {(gone == 1 ? "is" : "are")} no longer eligible (their places are open)" : "")
                    + " · the best " + Math.Min(PoolShown, t.Pool.Count) + $" of {t.Pool.Count} shown, ability as your scouts believe";
     }
 

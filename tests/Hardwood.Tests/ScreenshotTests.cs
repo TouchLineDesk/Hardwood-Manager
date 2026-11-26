@@ -116,6 +116,18 @@ public class ScreenshotTests
                 vm.Navigate("Home");
                 vm.Navigate("International");
                 Snap(window, Path.Combine(dir, $"{n++:00}-international-olympics.png"));
+                // I6a (run 214): two federations' offers, then your nation with its pool to pick from.
+                var job = session.NationalJobState;
+                job.Offers = Hardwood.Core.International.NationalJob.OffersFor(Hardwood.Core.International.NationalTeams.Ranked(session), session.Coach.Reputation, session.Seed, session.Today);
+                vm.Navigate("Home");
+                vm.Navigate("International");
+                Snap(window, Path.Combine(dir, $"{n++:00}-international-offers.png"));
+                if (job.Offers.Count > 0 && session.AcceptNationalOffer(job.Offers[0].Code))
+                {
+                    vm.Navigate("Home");
+                    vm.Navigate("International");
+                    Snap(window, Path.Combine(dir, $"{n++:00}-international-pick-twelve.png"));
+                }
             }
             session.World.International = realHistory;
             if (Hardwood.Core.RealWorld.RealWorldData.IsReal(session.League))
