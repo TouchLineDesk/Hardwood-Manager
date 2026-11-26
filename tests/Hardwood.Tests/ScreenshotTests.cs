@@ -105,6 +105,17 @@ public class ScreenshotTests
                 session.World.International.WorldCups.Add(cup);
                 vm.Navigate("International");
                 Snap(window, Path.Combine(dir, $"{n++:00}-international-world-cup.png"));
+                // I4 (run 211): the Olympics (now the cup panel) and the continental championships (the medals panel).
+                var intl = session.World.International;
+                if (Hardwood.Core.International.Olympics.Play(session, 2028) is { } oly)
+                {
+                    intl.OlympicQualifiers.AddRange(oly.Qualifiers);
+                    intl.Olympics.Add(oly.Olympics);
+                }
+                intl.Continentals.AddRange(Hardwood.Core.International.Continentals.Play(session, 2029));
+                vm.Navigate("Home");
+                vm.Navigate("International");
+                Snap(window, Path.Combine(dir, $"{n++:00}-international-olympics.png"));
             }
             session.World.International = realHistory;
             if (Hardwood.Core.RealWorld.RealWorldData.IsReal(session.League))

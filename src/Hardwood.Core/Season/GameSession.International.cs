@@ -9,10 +9,13 @@ public sealed partial class GameSession
     /// (the date holds in May and jumps to October, run 197's lesson), once, from its own stream (<see cref="WorldCup.Play(GameSession, int, Engine.GameSimulator?)"/>).
     /// Nothing the shared streams, players or clubs see changes: the inbox gets the result.
     /// </summary>
-    private void PlayInternationalOverSummer(DateOnly summer, DateOnly newYear)
+    /// <remarks>Public for the tests (run 211); the session calls it once at the summer's jump.</remarks>
+    public void PlayInternationalOverSummer(DateOnly summer, DateOnly newYear)
     {
         for (int y = summer.Year; y <= newYear.Year; y++)
         {
+            PlayOlympicsOverSummer(y, summer, newYear);
+            PlayContinentalsOverSummer(y, summer, newYear);
             if (WorldCup.EventIn(y) is not { } ev) continue;
             // Review (run 209): a jump that lands mid-tournament (a league that opens before Sep 15) still plays it, whole.
             if (ev.Start >= newYear || ev.End < summer.AddMonths(-6)) continue;
@@ -25,15 +28,103 @@ public sealed partial class GameSession
     }
 
     /// <summary>I3 (run 210): every World Cup game moves the FIBA ranking.</summary>
-    private void RankWorldCup(WorldCupRecord rec)
+    private void RankWorldCup(WorldCupRecord rec) => RankTournament(rec, FibaRanking.WorldCupK);
+
+    /// <summary>I4 (run 211): a tournament's games move the FIBA ranking by <paramref name="k"/>.</summary>
+    private void RankTournament(WorldCupRecord rec, double k, bool keepLast = false)
     {
         var h = World.International;
         var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
         var points = FibaRanking.Current(h, teams);
         var before = FibaRanking.Apply(teams, points).Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
-        foreach (var g in rec.Games) FibaRanking.Update(points, g, FibaRanking.WorldCupK);
+        foreach (var g in rec.Games) FibaRanking.Update(points, g, k);
         h.Ranking = points;
+        if (!keepLast) h.LastRanking = before;
+    }
+
+    /// <summary>I4 (run 211): the Olympic qualifying tournaments and the Olympics, played once at the summer's jump.</summary>
+    private void PlayOlympicsOverSummer(int y, DateOnly summer, DateOnly newYear)
+    {
+        if (Olympics.EventIn(y) is not { } ev || Olympics.QualifyingIn(y) is not { } oqt) return;
+        if (oqt.Start >= newYear || ev.End < summer.AddMonths(-6)) return;
+        var h = World.International;
+        if (h.Olympics.Any(o => o.Year == y)) return;
+        if (Olympics.Play(this, y, _sim) is not { } result) return;
+        h.OlympicQualifiers.AddRange(result.Qualifiers);
+        h.Olympics.Add(result.Olympics);
+        // The movement arrows read against the ranking before the qualifiers; both events move the points.
+        var before = CurrentRanks();
+        foreach (var q in result.Qualifiers) RankTournament(q, Olympics.QualifierK, keepLast: true);
+        RankTournament(result.Olympics, Olympics.OlympicK, keepLast: true);
         h.LastRanking = before;
+        Post($"Olympics {y}: {result.Olympics.NameOf(result.Olympics.Gold)} win gold", OlympicStory(result), "World");
+    }
+
+    /// <summary>The world ranks as they stand (code to rank), for the movement arrows.</summary>
+    private Dictionary<string, int> CurrentRanks()
+    {
+        var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
+        return FibaRanking.Apply(teams, FibaRanking.Current(World.International, teams)).Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
+    }
+
+    /// <summary>I4 (run 211): the four continental championships, played once at the summer's jump, each moving the ranking.</summary>
+    private void PlayContinentalsOverSummer(int y, DateOnly summer, DateOnly newYear)
+    {
+        if (!FibaCalendar.IsContinentalYear(y)) return;
+        var events = FibaCalendar.InYear(y).Where(e => e.Kind == FibaEventKind.Continental).ToList();
+        if (events.Min(e => e.Start) >= newYear || events.Max(e => e.End) < summer.AddMonths(-6)) return;
+        var h = World.International;
+        if (h.Continentals.Any(c => c.Year == y)) return;
+        var before = CurrentRanks();
+        var played = Continentals.Play(this, y, _sim, rec => RankTournament(rec, Continentals.ContinentalK, keepLast: true));
+        if (played.Count == 0) return;
+        h.Continentals.AddRange(played);
+        h.LastRanking = before;
+        Post($"Continental championships {y}: " + string.Join(", ", played.Select(c => $"{c.NameOf(c.Gold)} ({c.Short.Replace($" {y}", "")})")),
+            ContinentalStory(played), "World");
+    }
+
+    /// <summary>The Olympic story: medals, the final, the MVP, the four qualifiers and your own players who were there.</summary>
+    internal string OlympicStory(Olympics.Result result)
+    {
+        var rec = result.Olympics;
+        var f = rec.Final!;
+        var lines = new List<string>
+        {
+            $"{rec.NameOf(rec.Gold)} beat {rec.NameOf(rec.Silver)} {Math.Max(f.HomePts, f.AwayPts)}-{Math.Min(f.HomePts, f.AwayPts)} in the Olympic final in {rec.Host} ({rec.Dates}). {rec.NameOf(rec.Bronze)} took bronze over {rec.NameOf(rec.Fourth)}.",
+        };
+        if (result.Qualifiers.Count > 0)
+            lines.Add("Through the qualifying tournaments: " + string.Join(", ", result.Qualifiers.Select(q => $"{q.NameOf(q.Gold)} (in {q.Host})")) + ".");
+        if (rec.Mvp is { } mvp) lines.Add($"MVP: {mvp.Name} ({mvp.Code}), {mvp.Ppg:0.0} points, {mvp.Rpg:0.0} rebounds and {mvp.Apg:0.0} assists a game.");
+        if (Ours(rec) is { Length: > 0 } ours) lines.Add("Ours at the Olympics: " + ours + ".");
+        lines.Add("The groups, the knockouts and the medal table are on the International page.");
+        return string.Join("\n\n", lines);
+    }
+
+    /// <summary>The continental story: each champion and final, and your own players who were there.</summary>
+    internal string ContinentalStory(IReadOnlyList<WorldCupRecord> played)
+    {
+        var lines = new List<string>();
+        foreach (var c in played)
+        {
+            var f = c.Final!;
+            string line = $"{c.Title} ({c.Dates}): {c.NameOf(c.Gold)} beat {c.NameOf(c.Silver)} {Math.Max(f.HomePts, f.AwayPts)}-{Math.Min(f.HomePts, f.AwayPts)} in the final"
+                          + (c.Bronze != "" ? $"; {c.NameOf(c.Bronze)} took bronze" : "") + $" ({c.Teams.Count} teams)."
+                          + (c.Mvp is { } m ? $" MVP: {m.Name} ({m.Code})." : "");
+            lines.Add(line);
+            if (Ours(c) is { Length: > 0 } ours) lines.Add($"Ours at {c.Short}: {ours}.");
+        }
+        lines.Add("The fields came from the continental qualifying tables. Every result is on the International page.");
+        return string.Join("\n\n", lines);
+    }
+
+    /// <summary>"Name (Nation, gold), …" for your own players in a tournament's twelves, or "".</summary>
+    private string Ours(WorldCupRecord rec)
+    {
+        if (!Employed) return "";
+        var mine = HumanTeam.Roster.ToDictionary(p => p.Id);
+        var ours = rec.Teams.SelectMany(t => t.Squad.Where(mine.ContainsKey).Select(id => $"{mine[id].Name} ({t.Name}, {Placing(rec, t.Code)})")).ToList();
+        return string.Join(", ", ours);
     }
 
     /// <summary>
@@ -123,7 +214,9 @@ public sealed partial class GameSession
         if (code == rec.Silver) return "silver";
         if (code == rec.Bronze) return "bronze";
         if (code == rec.Fourth) return "fourth";
+        if (rec.Games.Any(g => g.Round == WorldCup.SemiRound && (g.Home == code || g.Away == code))) return "out in the semi-finals"; // I4: no bronze game
         if (rec.Games.Any(g => g.Round == WorldCup.QuarterRound && (g.Home == code || g.Away == code))) return "out in the quarter-finals";
+        if (rec.Games.Any(g => g.Round == Tournament.RoundOf16 && (g.Home == code || g.Away == code))) return "out in the round of 16";
         if (rec.Games.Any(g => g.Round == WorldCup.SecondRound && (g.Home == code || g.Away == code))) return "out in the second round";
         return "out in the group";
     }

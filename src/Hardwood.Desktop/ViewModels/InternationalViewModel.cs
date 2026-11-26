@@ -80,6 +80,12 @@ public sealed partial class InternationalViewModel : PageViewModel
     public ObservableCollection<string> CupGroups { get; } = new();
     public ObservableCollection<string> CupScorers { get; } = new();
 
+    // I4 (run 211): every tournament played (newest first) and the medal table of the World Cups and Olympics.
+    [ObservableProperty] private bool _hasHonours;
+    [ObservableProperty] private string _medalNote = "";
+    public ObservableCollection<string> Tournaments { get; } = new();
+    public ObservableCollection<string> Medals { get; } = new();
+
     // I3 (run 210): the current qualifying cycle's groups and the latest window.
     [ObservableProperty] private bool _hasQualifying;
     [ObservableProperty] private string _qualTitle = "";
@@ -110,7 +116,8 @@ public sealed partial class InternationalViewModel : PageViewModel
 
         Calendar.Clear();
         foreach (var e in FibaCalendar.From(s.Today, 3)) Calendar.Add(new FibaEventRow { Event = e });
-        FillCup(s.World.International.WorldCups.LastOrDefault());
+        FillCup(hist.Majors.LastOrDefault());
+        FillHonours(hist);
         FillQualifying(hist);
 
         var keep = Selected?.Team.Name;
@@ -170,11 +177,11 @@ public sealed partial class InternationalViewModel : PageViewModel
         CupKnockouts.Clear(); CupGroups.Clear(); CupScorers.Clear();
         HasCup = rec?.Final != null;
         if (rec?.Final == null) { CupTitle = CupMedals = CupMvp = CupFive = ""; return; }
-        CupTitle = $"FIBA Basketball World Cup {rec.Year} · {rec.Host}";
+        CupTitle = $"{rec.Title} · {rec.Host}";
         CupMedals = $"Gold {rec.NameOf(rec.Gold)} · Silver {rec.NameOf(rec.Silver)} · Bronze {rec.NameOf(rec.Bronze)}";
         CupMvp = rec.Mvp is { } m ? $"MVP: {m.Name} ({m.Code}), {m.Ppg:0.0} pts, {m.Rpg:0.0} reb, {m.Apg:0.0} ast a game" : "";
         CupFive = rec.AllStarFive.Count > 0 ? "All-star five: " + string.Join(", ", rec.AllStarFive.Select(p => $"{p.Name} ({p.Code})")) : "";
-        foreach (var g in rec.Games.Where(g => g.Round is WorldCup.QuarterRound or WorldCup.SemiRound or WorldCup.BronzeRound or WorldCup.FinalRound))
+        foreach (var g in rec.Games.Where(g => g.Round is Tournament.RoundOf16 or WorldCup.QuarterRound or WorldCup.SemiRound or WorldCup.BronzeRound or WorldCup.FinalRound))
             CupKnockouts.Add($"{g.Round}, {g.Day}: {rec.NameOf(g.Home)} {g.HomePts}-{g.AwayPts} {rec.NameOf(g.Away)}");
         for (int i = 0; i < rec.Groups.Count; i++)
         {
@@ -185,6 +192,35 @@ public sealed partial class InternationalViewModel : PageViewModel
         int n = 0;
         foreach (var p in rec.TopScorers.Take(5)) CupScorers.Add($"{++n}. {p.Name} ({p.Code}) {p.Ppg:0.0} a game in {p.Games}");
     }
+
+    /// <summary>I4 (run 211): one line for every tournament played, newest first, and the medal table (World Cups and Olympics:
+    /// gold, then silver, then bronze).</summary>
+    private void FillHonours(InternationalHistory h)
+    {
+        Tournaments.Clear(); Medals.Clear();
+        var lines = new List<(int Year, int Order, string Text)>();
+        foreach (var r in h.Majors.Where(r => r.Final != null))
+            lines.Add((r.Year, 0, $"{r.Short}, {r.Host}: gold {r.NameOf(r.Gold)}, silver {r.NameOf(r.Silver)}, bronze {r.NameOf(r.Bronze)}"));
+        foreach (var g in h.OlympicQualifiers.GroupBy(q => q.Year))
+            lines.Add((g.Key, 1, $"Olympic qualifying {g.Key}: " + Joined(g.Select(q => $"{q.NameOf(q.Gold)} (in {q.Host})").ToList()) + " went through"));
+        foreach (var r in h.Continentals.Where(r => r.Final != null))
+            lines.Add((r.Year, 2, $"{r.Short}: gold {r.NameOf(r.Gold)}, silver {r.NameOf(r.Silver)}, bronze {r.NameOf(r.Bronze)} ({r.Teams.Count} teams)"));
+        foreach (var l in lines.OrderByDescending(l => l.Year).ThenBy(l => l.Order)) Tournaments.Add(l.Text);
+        var table = h.Majors.Where(r => r.Final != null)
+            .SelectMany(r => new[] { (r.NameOf(r.Gold), 0), (r.NameOf(r.Silver), 1), (r.NameOf(r.Bronze), 2) })
+            .Where(x => x.Item1 != "")
+            .GroupBy(x => x.Item1)
+            .Select(g => (Name: g.Key, G: g.Count(x => x.Item2 == 0), S: g.Count(x => x.Item2 == 1), B: g.Count(x => x.Item2 == 2)))
+            .OrderByDescending(x => x.G).ThenByDescending(x => x.S).ThenByDescending(x => x.B).ThenBy(x => x.Name, StringComparer.Ordinal).ToList();
+        foreach (var m in table.Take(10)) Medals.Add($"{m.Name}: {m.G} gold, {m.S} silver, {m.B} bronze");
+        HasHonours = Tournaments.Count > 0;
+        int majors = h.Majors.Count();
+        MedalNote = majors == 0 ? ""
+            : $"Medal table: {h.WorldCups.Count} World Cup{(h.WorldCups.Count == 1 ? "" : "s")} and {h.Olympics.Count} Olympics played in this career";
+    }
+
+    private static string Joined(IReadOnlyList<string> items) => items.Count <= 1 ? string.Join("", items)
+        : string.Join(", ", items.Take(items.Count - 1)) + " and " + items[^1];
 
     /// <summary>I3 (run 210): the latest qualifying cycle's group tables (W-L and point difference, in order), with the last window's
     /// results for each group.</summary>
@@ -208,10 +244,15 @@ public sealed partial class InternationalViewModel : PageViewModel
         }
     }
 
-    /// <summary>The selected nation's last World Cup: "World Cup 2027: silver".</summary>
-    internal string CupLine(string code) =>
-        Session.World.International.WorldCups.LastOrDefault(w => w.Teams.Any(t => t.Code == code)) is { } w
-            ? $" · World Cup {w.Year}: {GameSession.Placing(w, code)}" : "";
+    /// <summary>The selected nation's last World Cup and Olympics (I4): " · World Cup 2027: silver · Olympics 2028: gold".</summary>
+    internal string CupLine(string code)
+    {
+        var h = Session.World.International;
+        string line = "";
+        foreach (var w in new[] { h.WorldCups.LastOrDefault(w => w.Teams.Any(t => t.Code == code)), h.Olympics.LastOrDefault(w => w.Teams.Any(t => t.Code == code)) })
+            if (w != null) line += $" · {w.Short}: {GameSession.Placing(w, code)}";
+        return line;
+    }
 
     /// <summary>Review (run 207): a club in the nation's own country. The NBA, the US pyramid and college are home for the USA;
     /// a club abroad is home when its league's country (or local nationalities) is the nation's.</summary>

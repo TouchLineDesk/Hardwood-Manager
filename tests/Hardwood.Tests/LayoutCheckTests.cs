@@ -105,6 +105,13 @@ public class LayoutCheckTests
                 foreach (var w in Hardwood.Core.International.FibaCalendar.InYear(2026).Where(e => e.Kind == Hardwood.Core.International.FibaEventKind.Window && e.Start.Month == 11))
                     Hardwood.Core.International.Qualifying.Play(h, w, Hardwood.Core.International.NationalTeams.Build(Hardwood.Core.International.WorldCup.Entries(s, w.Start), w.Start), s.Seed);
             if (h.WorldCups.Count == 0 && Hardwood.Core.International.WorldCup.Play(s, 2027) is { } cup) h.WorldCups.Add(cup);
+            // I4 (run 211): the Olympics and the continental championships, so the cup panel and the medals panel show.
+            if (h.Olympics.Count == 0 && Hardwood.Core.International.Olympics.Play(s, 2028) is { } oly)
+            {
+                h.OlympicQualifiers.AddRange(oly.Qualifiers);
+                h.Olympics.Add(oly.Olympics);
+            }
+            if (h.Continentals.Count == 0) h.Continentals.AddRange(Hardwood.Core.International.Continentals.Play(s, 2029));
             v.Navigate("International");
         });
         yield return ("Recruiting", v =>

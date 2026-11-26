@@ -183,9 +183,12 @@ public static class Qualifying
     }
 
     /// <summary>A quick result (#109): the margin from the strength gap and home court, the total from FIBA's usual scoring.</summary>
-    public static (int Home, int Away) QuickResult(double home, double away, Rng rng)
+    public static (int Home, int Away) QuickResult(double home, double away, Rng rng) => QuickResult(home, away, rng, HomeEdge);
+
+    /// <summary>I4 (run 211): a quick result with a given home edge (0 at a neutral qualifying tournament).</summary>
+    public static (int Home, int Away) QuickResult(double home, double away, Rng rng, double homeEdge)
     {
-        double margin = rng.NextGaussian((home - away) * MarginPerStrength + HomeEdge, MarginSd);
+        double margin = rng.NextGaussian((home - away) * MarginPerStrength + homeEdge, MarginSd);
         double total = Math.Max(110, rng.NextGaussian(TotalMean, TotalSd));
         int h = (int)Math.Round((total + margin) / 2), a = (int)Math.Round((total - margin) / 2);
         if (h == a) { if (margin >= 0) h += 2; else a += 2; } // overtime, settled

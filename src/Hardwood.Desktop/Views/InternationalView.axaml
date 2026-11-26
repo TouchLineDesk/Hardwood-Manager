@@ -13,7 +13,7 @@
     </StackPanel>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="10" Margin="0,0,6,0">
-      <!-- I2 (run 209): the latest World Cup played -->
+      <!-- I2 (run 209): the latest World Cup played; I4 (run 211): or the Olympics, whichever is newer -->
       <Border Classes="panel" IsVisible="{Binding HasCup}">
         <StackPanel Spacing="6">
           <StackPanel Orientation="Horizontal" Spacing="8">
@@ -37,6 +37,27 @@
           </ItemsControl>
           <TextBlock Text="Top scorers (3+ games)" Classes="muted" FontSize="11" Margin="0,4,0,0"/>
           <ItemsControl ItemsSource="{Binding CupScorers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- I4 (run 211): every tournament played and the medal table -->
+      <Border Classes="panel" IsVisible="{Binding HasHonours}">
+        <StackPanel Spacing="6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+            <TextBlock Text="Champions and medals" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Tournaments}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding MedalNote}" Classes="muted" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" IsVisible="{Binding MedalNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <ItemsControl ItemsSource="{Binding Medals}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -128,7 +149,7 @@
               <c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
               <TextBlock Text="FIBA calendar" Classes="h2" Margin="0"/>
             </StackPanel>
-            <TextBlock Text="The next three years. The windows (quick results) and the World Cup are played and move the ranking; the Olympics, the continental championships and call-ups come in later builds. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="The next three years. The windows and the Olympic qualifying tournaments (quick results), the World Cup, the Olympics and the continental championships are played and move the ranking; call-ups come in a later build. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <ItemsControl ItemsSource="{Binding Calendar}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FibaEventRow">
