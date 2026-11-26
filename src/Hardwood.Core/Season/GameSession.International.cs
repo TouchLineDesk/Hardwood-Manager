@@ -12,19 +12,121 @@ public sealed partial class GameSession
     /// <remarks>Public for the tests (run 211); the session calls it once at the summer's jump.</remarks>
     public void PlayInternationalOverSummer(DateOnly summer, DateOnly newYear)
     {
+        _settled.Clear();
         for (int y = summer.Year; y <= newYear.Year; y++)
         {
             PlayOlympicsOverSummer(y, summer, newYear);
             PlayContinentalsOverSummer(y, summer, newYear);
+            PlayU23OverSummer(y, summer, newYear);
             if (WorldCup.EventIn(y) is not { } ev) continue;
             // Review (run 209): a jump that lands mid-tournament (a league that opens before Sep 15) still plays it, whole.
             if (ev.Start >= newYear || ev.End < summer.AddMonths(-6)) continue;
             if (World.International.WorldCups.Any(w => w.Year == y)) continue;
             if (WorldCup.Play(this, y, _sim) is not { } rec) continue;
+            Settle(rec);
             World.International.WorldCups.Add(rec);
             RankWorldCup(rec);
             Post($"World Cup {y}: {rec.NameOf(rec.Gold)} win gold", WorldCupStory(rec), "World");
         }
+        RefreshInternationalMoods();
+        if (_settled.Count > 0) PostCallups(_settled);
+        _settled.Clear();
+    }
+
+    /// <summary>The records played by the current call of <see cref="PlayInternationalOverSummer"/> (for the one call-ups message).</summary>
+    private readonly List<WorldCupRecord> _settled = new();
+
+    /// <summary>
+    /// I5 (run 213): once, as a tournament is played: who was left out (from the nation's previous twelve) and the injuries carried
+    /// to the clubs. An injury still running on the jump day replaces a shorter one; every one goes in the player's history.
+    /// </summary>
+    private void Settle(WorldCupRecord rec)
+    {
+        if (rec.Games.Count == 0) return;
+        var first = DateOnly.ParseExact($"{rec.Games[0].Day} {rec.Year}", "MMM d yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        var pools = NationalTeams.Build(WorldCup.Entries(this, first), first);
+        rec.LeftOut = Callups.LeftOut(World.International, rec, pools, first);
+        if (rec.Injuries.Count > 0)
+        {
+            var people = InternationalPeople();
+            foreach (var inj in rec.Injuries)
+            {
+                if (!people.TryGetValue(inj.PlayerId, out var p)) continue;
+                var injury = new Hardwood.Core.Model.Injury { Name = inj.Injury, Severity = inj.Severity, Occurred = inj.Occurred, ReturnDate = inj.Return };
+                p.InjuryHistory.Add(injury);
+                if (inj.Return > Today && (p.Injury == null || p.Injury.ReturnDate < inj.Return)) p.Injury = injury;
+            }
+        }
+        _settled.Add(rec);
+    }
+
+    /// <summary>Every player a national team can pick (pros, clubs abroad, college, free agents), by id.</summary>
+    private Dictionary<int, Hardwood.Core.Model.Player> InternationalPeople()
+    {
+        var d = new Dictionary<int, Hardwood.Core.Model.Player>();
+        foreach (var t in League.Teams) foreach (var p in t.Roster) d.TryAdd(p.Id, p);
+        foreach (var t in World.Clubs) foreach (var p in t.Roster) d.TryAdd(p.Id, p);
+        if (World.College?.Programs is { } programs) foreach (var t in programs) foreach (var p in t.Roster) d.TryAdd(p.Id, p);
+        foreach (var p in League.FreeAgents) d.TryAdd(p.Id, p);
+        return d;
+    }
+
+    /// <summary>I5: every player's line from the latest summer's tournaments, re-derived from the saved records (at load and after a
+    /// summer). Pure over the history: no draw.</summary>
+    internal void RefreshInternationalMoods()
+    {
+        var h = World.International;
+        bool any = h.WorldCups.Count + h.Olympics.Count + h.Continentals.Count + h.U23Cups.Count > 0;
+        foreach (var p in InternationalPeople().Values) p.International = any ? Callups.MoodFor(h, p) : null;
+    }
+
+    /// <summary>I5: the U23 Nations Cup (2030, 2034, …), played once at the summer's jump on its own stream. No ranking move.</summary>
+    private void PlayU23OverSummer(int y, DateOnly summer, DateOnly newYear)
+    {
+        if (U23Cup.EventIn(y) is not { } ev) return;
+        if (ev.Start >= newYear || ev.End < summer.AddMonths(-6)) return;
+        var h = World.International;
+        if (h.U23Cups.Any(c => c.Year == y)) return;
+        if (U23Cup.Play(this, y, _sim) is not { Final: not null } rec) return;
+        Settle(rec);
+        h.U23Cups.Add(rec);
+        var f = rec.Final!;
+        string story = $"{rec.NameOf(rec.Gold)} beat {rec.NameOf(rec.Silver)} {Math.Max(f.HomePts, f.AwayPts)}-{Math.Min(f.HomePts, f.AwayPts)} in the final ({rec.Dates}); "
+                       + $"{rec.NameOf(rec.Bronze)} took bronze. Sixteen under-23 twelves played; it's a game event (FIBA has no men's U23 world championship) and doesn't move the ranking."
+                       + (rec.Mvp is { } m ? $"\n\nMVP: {m.Name} ({m.Code}), {m.Ppg:0.0} points a game." : "")
+                       + (Ours(rec) is { Length: > 0 } ours ? $"\n\nOurs at the U23 Nations Cup: {ours}." : "");
+        Post($"U23 Nations Cup {y}: {rec.NameOf(rec.Gold)} win gold", story, "World");
+    }
+
+    /// <summary>I5: one message for your own players' summer: who played (and where they finished), who was left out, and who
+    /// comes back hurt. Nothing when none of yours was involved.</summary>
+    private void PostCallups(IReadOnlyList<WorldCupRecord> played)
+    {
+        if (!Employed) return;
+        var mine = HumanTeam.Roster.ToDictionary(p => p.Id);
+        var lines = new List<string>();
+        int picked = 0;
+        foreach (var rec in played)
+        {
+            var ours = rec.Teams.SelectMany(t => t.Squad.Where(mine.ContainsKey).Select(id => $"{mine[id].Name} ({t.Name}, {Placing(rec, t.Code)})")).ToList();
+            picked += ours.Count;
+            if (ours.Count > 0) lines.Add($"{rec.Short}: {string.Join(", ", ours)}.");
+            var left = rec.LeftOut.Where(kv => mine.ContainsKey(kv.Key)).Select(kv => $"{mine[kv.Key].Name} ({rec.NameOf(kv.Value)})").ToList();
+            if (left.Count > 0) lines.Add($"Left out for {rec.Short}: {string.Join(", ", left)}. He was in the twelve last time.");
+            foreach (var inj in rec.Injuries.Where(i => mine.ContainsKey(i.PlayerId)))
+                lines.Add(inj.Return > Today
+                    ? $"{inj.Name} was hurt at {rec.Short} ({inj.Injury}, {inj.Occurred:MMM d}) and is out until {inj.Return:MMM d}."
+                    : $"{inj.Name} was hurt at {rec.Short} ({inj.Injury}) but is fit again.");
+        }
+        if (lines.Count == 0) return;
+        lines.Add("A medal or a call-up lifts a player's mood for the first weeks of the season; being left out stings. Both show among his mood factors.");
+        string title = picked switch
+        {
+            0 => "International duty: news about our players",
+            1 => "International duty: one of ours played for his country",
+            _ => $"International duty: {picked} of ours played for their countries",
+        };
+        Post(title, string.Join("\n\n", lines), "World");
     }
 
     /// <summary>I3 (run 210): every World Cup game moves the FIBA ranking.</summary>
@@ -50,6 +152,7 @@ public sealed partial class GameSession
         var h = World.International;
         if (h.Olympics.Any(o => o.Year == y)) return;
         if (Olympics.Play(this, y, _sim) is not { } result) return;
+        Settle(result.Olympics);
         h.OlympicQualifiers.AddRange(result.Qualifiers);
         h.Olympics.Add(result.Olympics);
         // The movement arrows read against the ranking before the qualifiers; both events move the points.
@@ -78,6 +181,7 @@ public sealed partial class GameSession
         var before = CurrentRanks();
         var played = Continentals.Play(this, y, _sim, rec => RankTournament(rec, Continentals.ContinentalK, keepLast: true));
         if (played.Count == 0) return;
+        foreach (var rec in played) Settle(rec);
         h.Continentals.AddRange(played);
         h.LastRanking = before;
         Post($"Continental championships {y}: " + string.Join(", ", played.Select(c => $"{c.NameOf(c.Gold)} ({c.Short.Replace($" {y}", "")})")),

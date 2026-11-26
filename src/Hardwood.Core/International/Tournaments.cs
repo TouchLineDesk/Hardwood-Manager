@@ -74,6 +74,7 @@ public static class Tournament
         var rules = Rules.FibaNational; // H219 (run 212): national-team scoring
         var engine = format.Quick ? null : sim ?? new GameSimulator();
         var lines = new Dictionary<int, (string Code, string Name, int G, int Pts, int Reb, int Ast)>();
+        var apps = new List<Callups.Appearance>();
         var inv = System.Globalization.CultureInfo.InvariantCulture;
 
         CupGame Game(string round, string home, string away, DateOnly day)
@@ -88,6 +89,7 @@ public static class Tournament
                 foreach (var (box, code) in new[] { (r.Home, home), (r.Away, away) })
                     foreach (var l in box.Lines.Where(l => l.Seconds > 0))
                     {
+                        apps.Add(new Callups.Appearance(l.Player, code, day, l.Minutes));
                         var c = lines.TryGetValue(l.Player.Id, out var was) ? was : (Code: code, Name: l.Player.Name, G: 0, Pts: 0, Reb: 0, Ast: 0);
                         lines[l.Player.Id] = (code, l.Player.Name, c.G + 1, c.Pts + l.Points, c.Reb + l.Rebounds, c.Ast + l.Assists);
                     }
@@ -173,6 +175,7 @@ public static class Tournament
             var pool = lastEight.Count > 0 ? lastEight : lastFour;
             rec.AllStarFive = all.Where(p => p.Games >= 4 && pool.Contains(p.Code)).OrderByDescending(p => p.Impact).ThenBy(p => p.PlayerId).Take(5).ToList();
             rec.Mvp = rec.AllStarFive.FirstOrDefault(p => p.Code == rec.Gold) ?? all.Where(p => p.Code == rec.Gold).OrderByDescending(p => p.Impact).ThenBy(p => p.PlayerId).FirstOrDefault();
+            rec.Injuries = Callups.RollInjuries(rec, apps); // I5 (run 213): after the games, from its own seed
         }
         return rec;
     }

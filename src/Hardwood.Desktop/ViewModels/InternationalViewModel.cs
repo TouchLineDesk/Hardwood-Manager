@@ -205,6 +205,8 @@ public sealed partial class InternationalViewModel : PageViewModel
             lines.Add((g.Key, 1, $"Olympic qualifying {g.Key}: " + Joined(g.Select(q => $"{q.NameOf(q.Gold)} (in {q.Host})").ToList()) + " went through"));
         foreach (var r in h.Continentals.Where(r => r.Final != null))
             lines.Add((r.Year, 2, $"{r.Short}: gold {r.NameOf(r.Gold)}, silver {r.NameOf(r.Silver)}, bronze {r.NameOf(r.Bronze)} ({r.Teams.Count} teams)"));
+        foreach (var r in h.U23Cups.Where(r => r.Final != null)) // I5 (run 213): a game event, not in the medal table
+            lines.Add((r.Year, 3, $"{r.Short} (under-23s): gold {r.NameOf(r.Gold)}, silver {r.NameOf(r.Silver)}, bronze {r.NameOf(r.Bronze)}"));
         foreach (var l in lines.OrderByDescending(l => l.Year).ThenBy(l => l.Order)) Tournaments.Add(l.Text);
         var table = h.Majors.Where(r => r.Final != null)
             .SelectMany(r => new[] { (r.NameOf(r.Gold), 0), (r.NameOf(r.Silver), 1), (r.NameOf(r.Bronze), 2) })
