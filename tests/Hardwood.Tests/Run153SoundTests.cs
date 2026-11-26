@@ -265,7 +265,7 @@ public class Run153SoundTests
             {
                 var cues = Reactions.Plan(c);
                 // Run 160: the court and the band play from the same clock.
-                planned += cues.Count + Reactions.Court(c).Count + Reactions.Band(c, bandRun).Count;
+                planned += cues.Count + Reactions.Court(c, page.HasBand).Count + (page.HasBand ? Reactions.Band(c, bandRun).Count : 0); // K44 (run 216): no band at a pro game
                 foreach (var q in cues)
                 {
                     // Run 157: a crowd's answer to a whistle comes 0.15–0.2 s after it.

@@ -161,8 +161,10 @@ public sealed partial class InternationalViewModel : PageViewModel
         FillQualifying(hist);
 
         var keep = Selected?.Team.Name;
+        string? pick = _selectCode; _selectCode = null;
         Fill();
-        Selected = Nations.FirstOrDefault(n => n.Name == keep)
+        Selected = (pick != null ? Nations.FirstOrDefault(n => n.Code == pick) : null)
+                   ?? Nations.FirstOrDefault(n => n.Name == keep)
                    ?? Nations.FirstOrDefault(n => n.Code == s.NationalJobState.Code)
                    ?? Nations.FirstOrDefault(n => n.Mine) ?? Nations.FirstOrDefault();
     }
@@ -197,7 +199,13 @@ public sealed partial class InternationalViewModel : PageViewModel
             {
                 Title = $"{o.Name} (No. {o.Rank} in the world)",
                 Detail = $"Offered {o.Made:MMM d} · answer by {o.Expires:MMM d} · coach them alongside " + (s.Employed ? "your club job" : "your next club job"),
-                Accept = new RelayCommand(() => { JobStatus = s.AcceptNationalOffer(code) ? $"You're the head coach of {o.Name}." : "That offer is no longer open."; Refresh(); }),
+                Accept = new RelayCommand(() =>
+                {
+                    bool took = s.AcceptNationalOffer(code);
+                    JobStatus = took ? $"You're the head coach of {o.Name}." : "That offer is no longer open.";
+                    if (took) _selectCode = code; // K45 (run 216): open on your new nation, not the row you had selected
+                    Refresh();
+                }),
                 Decline = new RelayCommand(() => { s.DeclineNationalOffer(code); JobStatus = $"You turned down {o.Name}."; Refresh(); }),
             });
         }
@@ -225,6 +233,9 @@ public sealed partial class InternationalViewModel : PageViewModel
         JobStatus = "Your twelve is the federation's best twelve again.";
         Refresh();
     }
+
+    /// <summary>K45 (run 216): the nation to select on the next refresh (set when you accept a job).</summary>
+    private string? _selectCode;
 
     internal static string Ordinal(int n) => n + ((n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
@@ -296,15 +307,17 @@ public sealed partial class InternationalViewModel : PageViewModel
             Pool.Add(new NationPoolRow
             {
                 Player = x.Player, Club = x.Club, Picked = picks.Contains(id), CanPick = inPool < NationalTeams.SquadSize,
-                Line = $"{club} · {x.Player.PrimaryPosition} · {x.Age}" + (x.Player.Injury is { } inj && inj.ReturnDate > s.Today ? $" · injured until {inj.ReturnDate:MMM d}" : ""),
+                Line = $"{club} · {x.Player.PrimaryPosition} · {x.Age}" + (NationalTeams.HeldForWindows(s, x.Club) ? " · summers only" : "") + (x.Player.Injury is { } inj && inj.ReturnDate > s.Today ? $" · injured until {inj.ReturnDate:MMM d}" : ""),
                 Ability = Scouting.Ability(x.Player, k).ToString(),
                 Toggle = new RelayCommand(() => { JobStatus = ""; s.ToggleNationalPick(id); Refresh(); }),
             });
         }
         int gone = job.Picks.Count - inPool;
+        int held = t.Pool.Count(x => picks.Contains(x.Player.Id) && NationalTeams.HeldForWindows(s, x.Club));
         PoolNote = $"{inPool} of {NationalTeams.SquadSize} picked"
                    + (inPool < NationalTeams.SquadSize ? " · the federation's next best fill the empty places" : "")
                    + (gone > 0 ? $" · {gone} of your picks {(gone == 1 ? "is" : "are")} no longer eligible (their places are open)" : "")
+                   + (held > 0 ? $" · {held} of your picks play in the NBA, whose clubs don't release players for the qualifying windows: the federation's next best take their places then" : "")
                    + " · the best " + Math.Min(PoolShown, t.Pool.Count) + $" of {t.Pool.Count} shown, ability as your scouts believe";
     }
 

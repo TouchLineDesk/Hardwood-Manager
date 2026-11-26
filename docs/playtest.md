@@ -95,7 +95,14 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   the World Cup's best per zone and the four qualifiers; three groups, the quarter-finals to the final, the full engine);
   and in 2029 EuroBasket, the AmeriCup, AfroBasket and the Asia Cup, with fields from the continental qualifying tables
   (as many teams as each zone has, up to 24, 12, 16 and 16). The page's "Champions and medals" panel lists every
-  tournament played and the World Cup and Olympic medal table. Players aren't called up from your squad yet (a later build).
+  tournament played and the World Cup and Olympic medal table.
+  **From v0.201.0 call-ups count:** a player picked for (or left out of) a tournament comes back happier (or not), injuries
+  picked up there carry to his club, and from 2030 there's a U23 Nations Cup. **From v0.202.0 you can coach a nation:**
+  federations call from Oct 15 by your reputation (smaller nations first); accept on the International page and pick your
+  twelve there. **From v0.203.0 you coach its qualifiers live** on days your club is idle (your assistant takes them on club
+  days); results move your reputation, and a tournament far below the seeding ends the job. **From v0.204.0** NBA clubs
+  don't release players for the November and February windows (they play the summer events), and NBA and national games no
+  longer have the college band.
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two
@@ -106,8 +113,8 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   TIMEOUT" in the commentary), and nobody calls one in the last two minutes of a 15-point game (K38).
 - **Blue bloods recruit well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
-- **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
-- Call-ups (morale, injuries carried to the club), the U23 event and the national-team job aren't built yet (international plan I5–I6). International games play at FIBA tournament pace, about 80 points a side (v0.200.0).
+- **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs (college games only; the pros have no PA or organ yet). Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
+- **Your nation's summer tournaments** are still played at the summer's jump, not live (K41). A club game and a national game on the same day leave the national game to your assistant. International games play at FIBA tournament pace, about 80 points a side (v0.200.0).
 
 ## How to leave notes
 One note per thing in the notebook, tagged **Bored**, **Confused**, **Kept waiting**, **Felt wrong**, **Bug** or

@@ -146,7 +146,7 @@ public sealed partial class GameSession
         var h = World.International;
         var teams = NationalTeams.For(this, w.Start);
         Qualifying.CycleFor(h, w, FibaRanking.Apply(teams, FibaRanking.Current(h, teams)), keep: true); // the draw holds from today
-        var today = NationalTeams.For(this, Today);
+        var today = NationalTeams.For(this, Today, window: true); // K42: NBA clubs keep their players
         var home = today.FirstOrDefault(t => t.Nation.Code == f.Home);
         var away = today.FirstOrDefault(t => t.Nation.Code == f.Away);
         if (home == null || away == null) return null; // a side short of twelve today: the window's quick result stands

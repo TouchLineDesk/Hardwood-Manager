@@ -124,12 +124,15 @@ public static class WorldCup
         FibaCalendar.IsWorldCupYear(year) ? FibaCalendar.InYear(year).First(e => e.Kind == FibaEventKind.WorldCup) : null;
 
     /// <summary>The world's players as national-team entries, fit on <paramref name="day"/>.</summary>
-    public static List<(Player P, Team? Club, bool College)> Entries(GameSession s, DateOnly day)
+    /// <param name="window">K42 (run 216): a qualifying window. NBA clubs don't release their players for the windows
+    /// (they play on through November and February), so NBA rosters are left out; summer events take everyone.</param>
+    public static List<(Player P, Team? Club, bool College)> Entries(GameSession s, DateOnly day, bool window = false)
     {
         var entries = new List<(Player, Team?, bool)>();
         var seen = new HashSet<int>();
         void Add(Player p, Team? t, bool college) { if (p.IsAvailable(day) && seen.Add(p.Id)) entries.Add((p, t, college)); }
-        foreach (var t in s.League.Teams) foreach (var p in t.Roster) Add(p, t, false);
+        if (!window) foreach (var t in s.League.Teams) foreach (var p in t.Roster) Add(p, t, false);
+        else foreach (var t in s.League.Teams) foreach (var p in t.Roster) seen.Add(p.Id); // held by their NBA club
         foreach (var t in s.World.Clubs) foreach (var p in t.Roster) Add(p, t, false);
         if (s.World.College?.Programs is { } programs) foreach (var t in programs) foreach (var p in t.Roster) Add(p, t, true);
         foreach (var p in s.League.FreeAgents) Add(p, null, false);

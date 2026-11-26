@@ -45,6 +45,9 @@ public sealed partial class LiveGameViewModel
         return a;
     }
 
+    /// <summary>K44 (run 216): a band plays only at a college game (not the pros, not a national team).</summary>
+    public bool HasBand => CollegeGameNow && !IsNationalGame;
+
     /// <summary>The home band's school and its song, or null when the home side isn't a college program.</summary>
     public (string School, Hardwood.Core.Presentation.FightSongSpec Spec)? BandFor()
     {
@@ -111,7 +114,10 @@ public sealed partial class LiveGameViewModel
     private void PlanSound()
     {
         // The crowd's reactions, then the court and the band (run 160), on one clock.
-        _cues = _script == null ? new() : Reactions.Plan(_script).Concat(Reactions.Court(_script)).Concat(Reactions.Band(_script, _bandRun)).OrderBy(q => q.T).ToList();
+        // K44 (run 216): the band (fight song, drumline, brass and the run's hit) plays at college games only.
+        bool band = HasBand;
+        _cues = _script == null ? new() : Reactions.Plan(_script).Concat(Reactions.Court(_script, band))
+            .Concat(band ? Reactions.Band(_script, _bandRun) : Enumerable.Empty<SoundCue>()).OrderBy(q => q.T).ToList();
         _cueNext = 0;
     }
 
