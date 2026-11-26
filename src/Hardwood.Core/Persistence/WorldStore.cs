@@ -34,7 +34,7 @@ public static class WorldStore
                 col.Destined, col.Season, col.History, col.Recruiting, col.Recruits, col.WalkOnIds.ToList(), col.RecruitingDay, col.TrailHours, col.TrailWeek, col.Series, col.Alumni, col.Awards, col.RealAlumniSeeded, col.Pledges, col.BrokenWordUntil, col.AllAmerican, col.Captains, col.Road, col.Legacy, col.Benches, col.MyCareer, col.Stories))));
         if (world.College != null) // K30 (run 178): the college record's own format, next to its JSON (ADR-1)
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('college_format', $v)", ("$v", CollegeMigrations.Current.ToString()));
-        if (world.International.WorldCups.Count > 0) // run 209 (I2); missing before v0.197.0
+        if (!world.International.IsEmpty) // run 209 (I2); missing before v0.197.0; windows and the ranking from v0.198.0 (I3)
             SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('international', $v)", ("$v", SaveFile.ToJson(world.International)));
         SaveFile.Exec(conn, "INSERT INTO world_meta(key, value) VALUES('awaiting', $v)",
             ("$v", SaveFile.ToJson(world.AwaitingDecision.ToDictionary(kv => kv.Key, kv => kv.Value.Select(p => p.Id).ToList()))));

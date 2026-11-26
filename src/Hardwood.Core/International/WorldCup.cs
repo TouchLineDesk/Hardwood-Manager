@@ -50,11 +50,21 @@ public sealed class WorldCupRecord
 public sealed class InternationalHistory
 {
     public List<WorldCupRecord> WorldCups { get; set; } = new();
+    /// <summary>I3 (run 210): the qualifying windows played, oldest first.</summary>
+    public List<WindowRecord> Windows { get; set; } = new();
+    /// <summary>I3: each qualifying cycle's groups.</summary>
+    public List<QualifyingCycle> Cycles { get; set; } = new();
+    /// <summary>I3: FIBA ranking points by code. Empty until the first window or World Cup is played (the page shows the seed).</summary>
+    public Dictionary<string, double> Ranking { get; set; } = new();
+    /// <summary>I3: the world rank by code before the latest window or tournament, for the page's movement arrows.</summary>
+    public Dictionary<string, int> LastRanking { get; set; } = new();
+
+    public bool IsEmpty => WorldCups.Count == 0 && Windows.Count == 0 && Ranking.Count == 0;
 }
 
 /// <summary>
 /// International plan I2 (run 209): the FIBA Basketball World Cup, played. 32 teams by zone quota (Europe 12, Americas 7,
-/// Africa 5, Asia-Pacific 8 with the host), on strength until I3's qualifiers; eight groups of four; a second round of four groups
+/// Africa 5, Asia-Pacific 8 with the host), by I3's qualifiers (run 210) and the FIBA ranking; eight groups of four; a second round of four groups
 /// (each team carries its group games against the other qualifier and plays the two from the paired group); quarter-finals,
 /// semi-finals, a bronze game and the final. Every game is the full engine on FIBA rules at a neutral site (#109). Squads are the
 /// federation's twelve on the first day, from players fit that day. It draws from its own stream (the session seed and the year),
@@ -90,15 +100,21 @@ public static class WorldCup
         return entries;
     }
 
-    /// <summary>The 32 teams: the host if it has a team, then each zone's best by rank up to its quota, then the best of the rest.</summary>
-    public static List<NationalTeam> Field(IReadOnlyList<NationalTeam> ranked, string host)
+    /// <summary>The 32 teams: the host if it has a team, then each zone's places up to its quota (I3, run 210: in qualifying
+    /// order when the zone's qualifiers were played, else by rank), then the best of the rest by rank.</summary>
+    public static List<NationalTeam> Field(IReadOnlyList<NationalTeam> ranked, string host, IReadOnlyDictionary<FibaZone, List<string>>? qualifying = null)
     {
         var eligible = ranked.Where(t => t.Rank > 0).OrderBy(t => t.Rank).ToList();
         var field = new List<NationalTeam>();
         if (eligible.FirstOrDefault(t => t.Name == host) is { } h) field.Add(h);
         foreach (var (zone, quota) in Quota)
-            foreach (var t in eligible.Where(t => t.Nation.Zone == zone && !field.Contains(t)).Take(quota - field.Count(f => f.Nation.Zone == zone)))
+        {
+            var order = qualifying?.GetValueOrDefault(zone) ?? new List<string>();
+            var inZone = eligible.Where(t => t.Nation.Zone == zone && !field.Contains(t))
+                .OrderBy(t => order.IndexOf(t.Nation.Code) is var i && i >= 0 ? i : int.MaxValue).ThenBy(t => t.Rank).ToList();
+            foreach (var t in inZone.Take(quota - field.Count(f => f.Nation.Zone == zone)))
                 field.Add(t);
+        }
         foreach (var t in eligible.Where(t => !field.Contains(t)))
         {
             if (field.Count >= Teams) break;
@@ -137,8 +153,10 @@ public static class WorldCup
     public static WorldCupRecord? Play(GameSession s, int year, GameSimulator? sim = null)
     {
         if (EventIn(year) is not { } ev) return null;
-        var ranked = NationalTeams.Build(Entries(s, ev.Start), ev.Start);
-        var field = Field(ranked, ev.Where);
+        var built = NationalTeams.Build(Entries(s, ev.Start), ev.Start);
+        var points = FibaRanking.Current(s.World.International, built);
+        var ranked = FibaRanking.Apply(built, points); // I3 (run 210): ranked by results, the field by the qualifiers
+        var field = Field(ranked, ev.Where, Qualifying.ZoneOrder(s.World.International, Qualifying.WorldCupTarget(year), points));
         if (field.Count < Teams) return null; // review (run 209): the bracket needs the full 32; a smaller world has no World Cup
         var rng = new Rng(s.Seed ^ 0xF1BA_0C0B_2027_0001UL ^ ((ulong)(uint)year * 0x9E3779B97F4A7C15UL));
         return Play(field, ev, rng, sim ?? new GameSimulator());

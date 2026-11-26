@@ -100,7 +100,11 @@ public class LayoutCheckTests
         yield return ("International World Cup", v =>
         {
             var s = v.Session!;
-            if (s.World.International.WorldCups.Count == 0 && Hardwood.Core.International.WorldCup.Play(s, 2027) is { } cup) s.World.International.WorldCups.Add(cup);
+            var h = s.World.International;
+            if (h.Windows.Count == 0) // I3 (run 210): a window played, so the qualifying panel and the ranking's points show
+                foreach (var w in Hardwood.Core.International.FibaCalendar.InYear(2026).Where(e => e.Kind == Hardwood.Core.International.FibaEventKind.Window && e.Start.Month == 11))
+                    Hardwood.Core.International.Qualifying.Play(h, w, Hardwood.Core.International.NationalTeams.Build(Hardwood.Core.International.WorldCup.Entries(s, w.Start), w.Start), s.Seed);
+            if (h.WorldCups.Count == 0 && Hardwood.Core.International.WorldCup.Play(s, 2027) is { } cup) h.WorldCups.Add(cup);
             v.Navigate("International");
         });
         yield return ("Recruiting", v =>

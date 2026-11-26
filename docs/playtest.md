@@ -81,12 +81,16 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   open), the senior's breakout and the one the big programs overlooked.
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 - **International (new in v0.195.0, the left menu):** every country with twelve players aged 17+ anywhere in the world
-  fields a national team (about 40), ranked by its best twelve. Pick one to see its twelve and their clubs; the FIBA
+  fields a national team (about 40), ranked in the FIBA world ranking. Pick one to see its twelve and their clubs; the FIBA
   calendar shows the windows, the 2027 World Cup in Qatar and the 2028 Olympics in Los Angeles. **From v0.197.0 the 2027
   World Cup is played** (32 teams, groups, a second round and the knockouts, every game in the full engine on FIBA rules):
   it's played at the summer's jump to the new season, the inbox tells you who won gold, and the page shows the medals,
   the knockouts, the group tables, the top scorers and an all-star five (`claude/international-plan.md`). College rosters are all American, so your players can only
-  be in the USA's pool.
+  be in the USA's pool. **From v0.198.0 the qualifying windows are played** (late November and late February, quick
+  results; each zone in groups of about four, two games a window): the inbox gets one message a window, the page shows
+  the cycle's group tables, and the group winners and runners-up take their zone's World Cup places. The ranking
+  starts from the real FIBA order blended with each twelve's strength, then moves with every window and World Cup game.
+  Players aren't called up from your squad yet (a later build).
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two
@@ -98,7 +102,7 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Blue bloods recruit well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
-- National teams, FIBA and the Olympics aren't built yet; international play starts after the college plan.
+- The Olympics, the continental championships, call-ups and the national-team job aren't built yet (international plan I4–I6).
 
 ## How to leave notes
 One note per thing in the notebook, tagged **Bored**, **Confused**, **Kept waiting**, **Felt wrong**, **Bug** or

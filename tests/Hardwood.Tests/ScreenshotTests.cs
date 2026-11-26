@@ -94,14 +94,19 @@ public class ScreenshotTests
                 vm.Navigate(nav.Name);
                 Snap(window, Path.Combine(dir, $"{n++:00}-{nav.Name.Replace(" & ", "-").Replace(' ', '-').ToLower()}.png"));
             }
-            // I2 (run 209): the International page after a World Cup.
+            // I2 (run 209): the International page after a World Cup; I3 (run 210): and a qualifying window.
+            var realHistory = session.World.International;
+            session.World.International = new Hardwood.Core.International.InternationalHistory();
+            foreach (var w in Hardwood.Core.International.FibaCalendar.InYear(2026).Where(e => e.Kind == Hardwood.Core.International.FibaEventKind.Window && e.Start.Month == 11))
+                Hardwood.Core.International.Qualifying.Play(session.World.International, w,
+                    Hardwood.Core.International.NationalTeams.Build(Hardwood.Core.International.WorldCup.Entries(session, w.Start), w.Start), session.Seed);
             if (Hardwood.Core.International.WorldCup.Play(session, 2027) is { } cup)
             {
                 session.World.International.WorldCups.Add(cup);
                 vm.Navigate("International");
                 Snap(window, Path.Combine(dir, $"{n++:00}-international-world-cup.png"));
-                session.World.International.WorldCups.Remove(cup);
             }
+            session.World.International = realHistory;
             if (Hardwood.Core.RealWorld.RealWorldData.IsReal(session.League))
             {
                 // The real NBA's past (R1): records to beat, titles by franchise, every season.
