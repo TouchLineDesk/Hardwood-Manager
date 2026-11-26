@@ -120,7 +120,7 @@ public sealed partial class InternationalViewModel : PageViewModel
         int no = 0;
         foreach (var x in t.Squad)
         {
-            double k = Scouting.Knowledge(s.HumanTeam, x.Player, prospect: x.College);
+            double k = employed ? Scouting.Knowledge(s.HumanTeam, x.Player, prospect: x.College) : 1.0;
             Squad.Add(new NationPlayerRow
             {
                 No = ++no, Player = x.Player, Club = x.Club, Age = x.Age,
@@ -131,12 +131,23 @@ public sealed partial class InternationalViewModel : PageViewModel
         }
         string rank = t.Rank > 0 ? $"No. {t.Rank} in the world, No. {t.ZoneRank} in {NationalTeams.ZoneName(t.Nation.Zone)}" : "suspended by FIBA";
         SquadTitle = $"{t.Name} ({t.Nation.Code}) · {rank}";
-        var worldClubs = s.World.Clubs.ToHashSet();
-        int abroad = t.Squad.Count(x => x.Club != null && worldClubs.Contains(x.Club));
+        int abroad = t.Squad.Count(x => x.Club != null && !PlaysAtHome(s, x.Club, x.College, t.Nation.Name));
         int colleges = t.Pool.Count(x => x.College);
         SquadNote = $"The federation's best twelve from {t.Pool.Count} eligible players"
                     + (colleges > 0 ? $" ({colleges} in college)" : "")
                     + (abroad > 0 ? $" · {abroad} play abroad" : "") + $" · strength {t.Strength:F1} · ability as your scouts believe";
+    }
+
+    /// <summary>Review (run 207): a club in the nation's own country. The NBA, the US pyramid and college are home for the USA;
+    /// a club abroad is home when its league's country (or local nationalities) is the nation's.</summary>
+    internal static bool PlaysAtHome(GameSession s, Team club, bool college, string nation)
+    {
+        bool usa = nation == "USA";
+        if (college || s.League.Teams.Contains(club)) return usa;
+        var comp = s.World.Competitions.FirstOrDefault(c => c.Clubs.Contains(club));
+        if (comp == null) return false;
+        if (Hardwood.Core.World.UsaPyramid.IsPyramid(comp.Key)) return usa;
+        return comp.Profile.Country == nation || comp.Profile.LocalNationalities.Contains(nation);
     }
 
     /// <summary>" · Russia is suspended by FIBA", " · Russia and Belarus are suspended by FIBA".</summary>

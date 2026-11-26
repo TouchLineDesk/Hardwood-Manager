@@ -7,8 +7,10 @@ public sealed record FibaEvent(FibaEventKind Kind, string Name, DateOnly Start, 
 {
     /// <summary>"Aug 27 – Sep 12, 2027".</summary>
     public string Dates => Start.Year == End.Year
-        ? $"{Start:MMM d} – {End:MMM d, yyyy}"
-        : $"{Start:MMM d, yyyy} – {End:MMM d, yyyy}";
+        ? $"{Start.ToString("MMM d", Inv)} – {End.ToString("MMM d, yyyy", Inv)}"
+        : $"{Start.ToString("MMM d, yyyy", Inv)} – {End.ToString("MMM d, yyyy", Inv)}";
+
+    private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
 }
 
 /// <summary>
@@ -34,7 +36,7 @@ public static class FibaCalendar
         for (int y = d.Year; y < d.Year + 5; y++)
         {
             if (IsWorldCupYear(y) && new DateOnly(y, 8, 27) > d) return $"the {y} World Cup";
-            if (IsContinentalYear(y) && new DateOnly(y, 8, 20) > d) return $"the {y} continental championships";
+            if (IsContinentalYear(y) && new DateOnly(y, 8, 8) > d) return $"the {y} continental championships";
         }
         return "the next tournament";
     }

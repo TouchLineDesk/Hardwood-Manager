@@ -54,6 +54,7 @@ public static class NationalTeams
         new("Colombia", "COL", FibaZone.Americas), new("Chile", "CHI", FibaZone.Americas), new("Panama", "PAN", FibaZone.Americas),
         new("Cuba", "CUB", FibaZone.Americas), new("Paraguay", "PAR", FibaZone.Americas), new("Peru", "PER", FibaZone.Americas),
         new("Ecuador", "ECU", FibaZone.Americas), new("Trinidad and Tobago", "TTO", FibaZone.Americas), new("US Virgin Islands", "ISV", FibaZone.Americas),
+        new("Nicaragua", "NCA", FibaZone.Americas), new("Costa Rica", "CRC", FibaZone.Americas), new("Honduras", "HON", FibaZone.Americas),
         // Europe
         new("Serbia", "SRB", FibaZone.Europe), new("Croatia", "CRO", FibaZone.Europe), new("Slovenia", "SLO", FibaZone.Europe),
         new("Bosnia and Herzegovina", "BIH", FibaZone.Europe), new("Montenegro", "MNE", FibaZone.Europe), new("North Macedonia", "MKD", FibaZone.Europe),
@@ -65,7 +66,7 @@ public static class NationalTeams
         new("Ukraine", "UKR", FibaZone.Europe), new("Georgia", "GEO", FibaZone.Europe), new("Belgium", "BEL", FibaZone.Europe),
         new("Netherlands", "NED", FibaZone.Europe), new("Poland", "POL", FibaZone.Europe), new("Czechia", "CZE", FibaZone.Europe),
         new("Portugal", "POR", FibaZone.Europe), new("Switzerland", "SUI", FibaZone.Europe), new("Great Britain", "GBR", FibaZone.Europe),
-        new("England", "GBR", FibaZone.Europe), new("Ireland", "IRL", FibaZone.Europe), new("Hungary", "HUN", FibaZone.Europe),
+        new("Ireland", "IRL", FibaZone.Europe), new("Hungary", "HUN", FibaZone.Europe),
         new("Slovakia", "SVK", FibaZone.Europe), new("Bulgaria", "BUL", FibaZone.Europe), new("Romania", "ROU", FibaZone.Europe),
         new("Iceland", "ISL", FibaZone.Europe), new("Cyprus", "CYP", FibaZone.Europe),
         new("Russia", "RUS", FibaZone.Europe, Suspended: true), new("Belarus", "BLR", FibaZone.Europe, Suspended: true),
@@ -83,13 +84,28 @@ public static class NationalTeams
         new("China", "CHN", FibaZone.AsiaPacific), new("Philippines", "PHI", FibaZone.AsiaPacific), new("Korea", "KOR", FibaZone.AsiaPacific),
         new("Lebanon", "LBN", FibaZone.AsiaPacific), new("India", "IND", FibaZone.AsiaPacific), new("Pakistan", "PAK", FibaZone.AsiaPacific),
         new("Kazakhstan", "KAZ", FibaZone.AsiaPacific), new("Iran", "IRI", FibaZone.AsiaPacific), new("Jordan", "JOR", FibaZone.AsiaPacific),
-        new("Chinese Taipei", "TPE", FibaZone.AsiaPacific), new("Taiwan", "TPE", FibaZone.AsiaPacific), new("Qatar", "QAT", FibaZone.AsiaPacific),
+        new("Chinese Taipei", "TPE", FibaZone.AsiaPacific), new("Qatar", "QAT", FibaZone.AsiaPacific),
         new("Saudi Arabia", "KSA", FibaZone.AsiaPacific), new("Indonesia", "INA", FibaZone.AsiaPacific), new("Syria", "SYR", FibaZone.AsiaPacific),
         new("Bahrain", "BRN", FibaZone.AsiaPacific), new("Guam", "GUM", FibaZone.AsiaPacific),
     };
 
-    private static readonly Dictionary<string, Nation> ByName = Known.GroupBy(n => n.Name, StringComparer.OrdinalIgnoreCase)
-        .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+    /// <summary>Review (run 207): other spellings map to one nation, so a country never splits into two teams with one code.</summary>
+    private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["England"] = "Great Britain", ["United Kingdom"] = "Great Britain", ["Scotland"] = "Great Britain", ["Wales"] = "Great Britain",
+        ["Taiwan"] = "Chinese Taipei", ["South Korea"] = "Korea", ["United States"] = "USA", ["DR Congo"] = "Congo DR",
+        ["Côte d'Ivoire"] = "Ivory Coast", ["Turkiye"] = "Turkey", ["Türkiye"] = "Turkey", ["Czech Republic"] = "Czechia",
+        ["Bosnia"] = "Bosnia and Herzegovina", ["Macedonia"] = "North Macedonia",
+    };
+
+    private static readonly Dictionary<string, Nation> ByName = BuildIndex();
+
+    private static Dictionary<string, Nation> BuildIndex()
+    {
+        var d = Known.ToDictionary(n => n.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var (alias, name) in Aliases) d[alias] = d[name];
+        return d;
+    }
 
     /// <summary>The FIBA nation for a player's nationality, or null when the game doesn't know it.</summary>
     public static Nation? NationOf(string nationality) => ByName.GetValueOrDefault(nationality.Trim());

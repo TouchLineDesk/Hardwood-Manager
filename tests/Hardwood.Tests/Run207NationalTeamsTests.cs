@@ -52,6 +52,18 @@ public class Run207NationalTeamsTests
     }
 
     [Fact]
+    public void Other_spellings_join_one_nation()
+    {
+        Assert.Same(NationalTeams.NationOf("Great Britain"), NationalTeams.NationOf("England"));
+        Assert.Same(NationalTeams.NationOf("Chinese Taipei"), NationalTeams.NationOf("Taiwan"));
+        Assert.Equal("NCA", NationalTeams.NationOf("Nicaragua")!.Code);
+        var club = new Team { Id = 1, City = "X", Name = "Y", Abbreviation = "XY", Division = "D" };
+        var list = Enumerable.Range(0, 6).Select(_ => (P("England", 120), (Team?)club, false))
+            .Concat(Enumerable.Range(0, 6).Select(_ => (P("Great Britain", 120), (Team?)club, false)));
+        Assert.Equal("Great Britain", Assert.Single(NationalTeams.Build(list, Today)).Name);
+    }
+
+    [Fact]
     public void The_calendar_follows_the_fiba_cycle()
     {
         var events = FibaCalendar.From(new DateOnly(2026, 10, 14), 6);
