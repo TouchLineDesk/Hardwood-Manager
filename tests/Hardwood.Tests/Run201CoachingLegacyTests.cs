@@ -85,7 +85,10 @@ public class Run201CoachingLegacyTests
             Assert.Equal("Treeby Branchwell", branch.Name);
             Assert.Equal(2028, branch.Year);
             Assert.DoesNotContain(s.HumanTeam.Staff, x => x.Id == id);
-            Assert.Equal(branch.Name, s.FindTeam(branch.ProgramId)!.CoachName);
+            foreach (var m in s.Carousel.Where(m => m.In == branch.Name || m.Out == branch.Name)) _out.WriteLine($"Carousel {m.Year}: {m.Program}: {m.Out} -> {m.In} ({m.Why})");
+            // Run 217: the world after him can move him on again (a later spring's carousel); he took the job, though.
+            var later = s.Carousel.FirstOrDefault(m => m.Out == branch.Name && m.Year > branch.Year);
+            if (later == null) Assert.Equal(branch.Name, s.FindTeam(branch.ProgramId)!.CoachName);
             Assert.NotNull(cw.BenchNamed(branch.Name));
             Assert.Contains(s.Carousel, m => m.FromStaffOf != null && m.In == branch.Name);
             Assert.Contains(s.Inbox, m => m.Title.StartsWith("Your assistant Treeby Branchwell takes"));
