@@ -98,6 +98,12 @@ public class Run208PolishTests
             Assert.Contains("first raised on", b2);
             Assert.DoesNotContain(s.Inbox, m => m.Title.StartsWith(p.Name) && m.Title.EndsWith("wants a word"));
             s.Post(t2, b2, "Squad");
+            // A new spell (he settled: no unhappy weeks) after the old message's week starts a new thread.
+            p.UnhappyWeeks = 0;
+            s.Inbox[0] = new InboxMessage { Id = s.Inbox[0].Id, Date = s.Today.AddDays(-30), Title = s.Inbox[0].Title, Body = s.Inbox[0].Body, Category = "Squad" };
+            Assert.Equal($"{p.Name} wants a word", s.OneComplaintThread(p, $"{p.Name} wants a word", "x").title);
+            s.Inbox[0] = new InboxMessage { Id = s.Inbox[0].Id, Date = s.Today, Title = s.Inbox[0].Title, Body = s.Inbox[0].Body, Category = "Squad" };
+            p.UnhappyWeeks = 7;
             var (_, b3) = s.OneComplaintThread(p, $"{p.Name} wants a word", "He is unhappy and wants to talk.");
             // The first date carries through every update.
             Assert.Equal(System.Text.RegularExpressions.Regex.Match(b2, @"first raised on \w+ \d+").Value,

@@ -1264,7 +1264,9 @@ public sealed partial class GameSession
     {
         var seasonStart = new DateOnly(Today.Month >= 8 ? Today.Year : Today.Year - 1, 8, 1);
         string first = $"{p.Name} wants a word", again = $"{p.Name} still wants a word";
-        var old = Inbox.FirstOrDefault(m => m.Category == "Squad" && m.Date >= seasonStart && (m.Title == first || m.Title == again));
+        // Review (run 208): only the same unhappy spell is merged; after he has settled, a new complaint starts a new thread.
+        var spellStart = Today.AddDays(-7 * (p.UnhappyWeeks + 1));
+        var old = Inbox.FirstOrDefault(m => m.Category == "Squad" && m.Date >= seasonStart && m.Date >= spellStart && (m.Title == first || m.Title == again));
         if (old == null) return (title, body);
         var raised = System.Text.RegularExpressions.Regex.Match(old.Body, @"first raised on (\w+ \d+)") is { Success: true } mm
             ? mm.Groups[1].Value : old.Date.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
