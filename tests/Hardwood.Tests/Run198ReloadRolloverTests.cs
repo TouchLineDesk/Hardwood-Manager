@@ -20,7 +20,7 @@ public class Run198ReloadRolloverTests
 
     /// <summary>The college fingerprint, the inbox's newest titles, your roster, and the pro and abroad worlds in list order
     /// (the order the world draws in).</summary>
-    private static string Print(GameSession s)
+    internal static string Print(GameSession s)
     {
         var sb = new System.Text.StringBuilder(CollegeSaveCompatibilityTests.Fingerprint(s));
         sb.Append("inbox ").Append(string.Join(" | ", s.Inbox.Take(12).Select(m => $"{m.Date:MMdd} {m.Title}"))).Append('\n');
