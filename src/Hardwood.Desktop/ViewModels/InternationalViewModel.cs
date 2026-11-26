@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Hardwood.Core.International;
 using Hardwood.Core.Model;
 using Hardwood.Core.Season;
@@ -39,6 +40,31 @@ public sealed class NationPlayerRow
     /// <summary>"Philadelphia 76ers · SG · 25".</summary>
     public string Line => $"{ClubText} · {Pos} · {Age}";
     public bool Mine { get; init; }
+}
+
+/// <summary>I6a (run 214): a federation's offer of its head coach's job.</summary>
+public sealed class NationalOfferRow
+{
+    public string Title { get; init; } = "";
+    public string Detail { get; init; } = "";
+    public required IRelayCommand Accept { get; init; }
+    public required IRelayCommand Decline { get; init; }
+}
+
+/// <summary>I6a (run 214): one player in your nation's pool, with the button that puts him in your twelve or takes him out.</summary>
+public sealed class NationPoolRow
+{
+    public required Player Player { get; init; }
+    public Team? Club { get; init; }
+    public bool HasClub => Club != null;
+    public string Line { get; init; } = "";
+    public string Ability { get; init; } = "";
+    public bool Picked { get; init; }
+    public bool CanPick { get; init; }
+    public string ButtonText => Picked ? "Drop" : "Pick";
+    public string ButtonTip => Picked ? "Take him out of your twelve" : CanPick ? "Put him in your twelve" : "Your twelve is full: drop someone first";
+    public bool ButtonEnabled => Picked || CanPick;
+    public required IRelayCommand Toggle { get; init; }
 }
 
 public sealed class FibaEventRow
@@ -92,6 +118,18 @@ public sealed partial class InternationalViewModel : PageViewModel
     [ObservableProperty] private string _qualNote = "";
     public ObservableCollection<string> QualGroups { get; } = new();
 
+    // I6a (run 214): the national-team job: offers, your nation, and your twelve.
+    [ObservableProperty] private string _jobTitle = "";
+    [ObservableProperty] private string _jobNote = "";
+    [ObservableProperty] private string _jobStatus = "";
+    [ObservableProperty] private bool _coachingNation;
+    [ObservableProperty] private bool _editingMine;
+    [ObservableProperty] private string _poolNote = "";
+    public ObservableCollection<NationalOfferRow> Offers { get; } = new();
+    public ObservableCollection<NationPoolRow> Pool { get; } = new();
+    /// <summary>How many of the pool the picker lists (the best by ability, plus every pick).</summary>
+    public const int PoolShown = 30;
+
     private IReadOnlyList<NationalTeam> _teams = Array.Empty<NationalTeam>();
 
     public InternationalViewModel(MainViewModel shell) : base(shell) { }
@@ -114,6 +152,8 @@ public sealed partial class InternationalViewModel : PageViewModel
             : picked.Count == 0 ? "None of your players is in a national twelve."
             : $"In a national twelve: " + string.Join(", ", picked.Select(z => $"{z.x.Player.Name} ({z.t.Nation.Code})")) + ".";
 
+        FillJob();
+
         Calendar.Clear();
         foreach (var e in FibaCalendar.From(s.Today, 3)) Calendar.Add(new FibaEventRow { Event = e });
         FillCup(hist.Majors.LastOrDefault());
@@ -122,8 +162,64 @@ public sealed partial class InternationalViewModel : PageViewModel
 
         var keep = Selected?.Team.Name;
         Fill();
-        Selected = Nations.FirstOrDefault(n => n.Name == keep) ?? Nations.FirstOrDefault(n => n.Mine) ?? Nations.FirstOrDefault();
+        Selected = Nations.FirstOrDefault(n => n.Name == keep)
+                   ?? Nations.FirstOrDefault(n => n.Code == s.NationalJobState.Code)
+                   ?? Nations.FirstOrDefault(n => n.Mine) ?? Nations.FirstOrDefault();
     }
+
+    /// <summary>I6a (run 214): the job panel: the nation you coach (and the Resign and Reset buttons), the open offers, or who
+    /// would call a coach of your reputation.</summary>
+    private void FillJob()
+    {
+        var s = Session;
+        var job = s.NationalJobState;
+        Offers.Clear();
+        CoachingNation = job.Code != null;
+        if (job.Code != null)
+        {
+            var t = _teams.FirstOrDefault(x => x.Nation.Code == job.Code);
+            string rank = t is { Rank: > 0 } ? $"No. {t.Rank} in the world" : "unranked";
+            JobTitle = $"Head coach of {job.Name}";
+            JobNote = $"Since {job.Since:MMM d, yyyy} · {rank}, alongside your club job · your twelve play the qualifying windows and the summer tournaments "
+                      + "(pick them in the nation's panel below). The games are quick results in the windows and the full engine at tournaments.";
+            return;
+        }
+        foreach (var o in job.Offers)
+        {
+            string code = o.Code;
+            Offers.Add(new NationalOfferRow
+            {
+                Title = $"{o.Name} (No. {o.Rank} in the world)",
+                Detail = $"Offered {o.Made:MMM d} · answer by {o.Expires:MMM d} · coach them alongside " + (s.Employed ? "your club job" : "your next club job"),
+                Accept = new RelayCommand(() => { JobStatus = s.AcceptNationalOffer(code) ? $"You're the head coach of {o.Name}." : "That offer is no longer open."; Refresh(); }),
+                Decline = new RelayCommand(() => { s.DeclineNationalOffer(code); JobStatus = $"You turned down {o.Name}."; Refresh(); }),
+            });
+        }
+        int best = NationalJob.BestRankFor(s.Coach.Reputation);
+        JobTitle = Offers.Count > 0 ? "National team offers" : "National team job";
+        JobNote = Offers.Count > 0
+            ? "A national team is coached alongside your club job: you pick its twelve for the windows and the summer tournaments."
+            : $"No federation is waiting on you. Federations call once a year, from Oct 15, by reputation: at {s.Coach.Reputation:0}/100, "
+              + $"nations ranked about {Ordinal(best)} and below would call. Win, and bigger nations will.";
+    }
+
+    [RelayCommand]
+    private void ResignNation()
+    {
+        string name = Session.NationalJobState.Name;
+        if (Session.ResignNationalJob()) JobStatus = $"You stepped down as head coach of {name}.";
+        Refresh();
+    }
+
+    [RelayCommand]
+    private void ResetPicks()
+    {
+        Session.ResetNationalPicks();
+        JobStatus = "Your twelve is the federation's best twelve again.";
+        Refresh();
+    }
+
+    internal static string Ordinal(int n) => n + ((n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
     partial void OnZoneChanged(string value)
     {
@@ -145,6 +241,7 @@ public sealed partial class InternationalViewModel : PageViewModel
     partial void OnSelectedChanged(NationRow? value)
     {
         Squad.Clear();
+        FillPool(value);
         if (value == null) { SquadTitle = ""; SquadNote = ""; return; }
         var s = Session;
         var t = value.Team;
@@ -166,9 +263,42 @@ public sealed partial class InternationalViewModel : PageViewModel
         SquadTitle = $"{t.Name} ({t.Nation.Code}) · {rank}";
         int abroad = t.Squad.Count(x => x.Club != null && !PlaysAtHome(s, x.Club, x.College, t.Nation.Name));
         int colleges = t.Pool.Count(x => x.College);
-        SquadNote = $"The federation's best twelve from {t.Pool.Count} eligible players"
+        SquadNote = (t.CoachPicked ? $"Your twelve (you're the head coach) from {t.Pool.Count} eligible players" : $"The federation's best twelve from {t.Pool.Count} eligible players")
                     + (colleges > 0 ? $" ({colleges} in college)" : "")
                     + (abroad > 0 ? $" · {abroad} play abroad" : "") + $" · strength {t.Strength:F1}" + CupLine(t.Nation.Code) + " · ability as your scouts believe";
+    }
+
+    /// <summary>I6a (run 214): when the selected nation is yours, its pool (the best <see cref="PoolShown"/> and every pick) with
+    /// Pick and Drop buttons.</summary>
+    private void FillPool(NationRow? value)
+    {
+        Pool.Clear();
+        var s = Session;
+        var job = s.NationalJobState;
+        EditingMine = value != null && job.Code != null && value.Code == job.Code;
+        if (!EditingMine) { PoolNote = ""; return; }
+        var t = value!.Team;
+        var picks = job.Picks.ToHashSet();
+        bool employed = s.Employed;
+        int inPool = t.Pool.Count(x => picks.Contains(x.Player.Id));
+        foreach (var x in t.Pool.Where((x, i) => i < PoolShown || picks.Contains(x.Player.Id)))
+        {
+            double k = employed ? Scouting.Knowledge(s.HumanTeam, x.Player, prospect: x.College) : 1.0;
+            int id = x.Player.Id;
+            string club = x.Club == null ? "Free agent" : x.College ? $"{x.Club.FullName}, college" : x.Club.FullName;
+            Pool.Add(new NationPoolRow
+            {
+                Player = x.Player, Club = x.Club, Picked = picks.Contains(id), CanPick = inPool < NationalTeams.SquadSize,
+                Line = $"{club} · {x.Player.PrimaryPosition} · {x.Age}" + (x.Player.Injury is { } inj && inj.ReturnDate > s.Today ? $" · injured until {inj.ReturnDate:MMM d}" : ""),
+                Ability = Scouting.Ability(x.Player, k).ToString(),
+                Toggle = new RelayCommand(() => { JobStatus = ""; s.ToggleNationalPick(id); Refresh(); }),
+            });
+        }
+        int gone = job.Picks.Count - inPool;
+        PoolNote = $"{inPool} of {NationalTeams.SquadSize} picked"
+                   + (inPool < NationalTeams.SquadSize ? " · the federation's next best fill the empty places" : "")
+                   + (gone > 0 ? $" · {gone} of your picks {(gone == 1 ? "is" : "are")} no longer eligible (their places are open)" : "")
+                   + " · the best " + Math.Min(PoolShown, t.Pool.Count) + $" of {t.Pool.Count} shown, ability as your scouts believe";
     }
 
     /// <summary>I2 (run 209): the latest World Cup: medals, the knockouts, the group tables, the top scorers and the all-star five.</summary>
