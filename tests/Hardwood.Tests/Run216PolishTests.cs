@@ -78,7 +78,13 @@ public class Run216PolishTests
         int heldInSummer = summer.Sum(t => t.Squad.Count(x => nba.Contains(x.Player.Id)));
         _out.WriteLine($"NBA players in the summer twelves: {heldInSummer}; teams {summer.Count} → {window.Count} in the window");
         Assert.True(heldInSummer > 20);
-        Assert.All(window, t => Assert.DoesNotContain(t.Squad, x => nba.Contains(x.Player.Id)));
+        // Review (run 216): no nation drops out of the window; one short of twelve released players calls up its NBA players
+        // to make up the twelve (and only then).
+        Assert.Equal(summer.Select(t => t.Nation.Code), window.Select(t => t.Nation.Code));
+        var short_ = window.Where(t => t.Squad.Any(x => nba.Contains(x.Player.Id))).ToList();
+        _out.WriteLine("short of released players: " + string.Join(", ", short_.Select(t => $"{t.Name} ({t.Squad.Count(x => !nba.Contains(x.Player.Id))} released)")));
+        Assert.All(short_, t => Assert.True(t.Pool.Count(x => !nba.Contains(x.Player.Id)) < NationalTeams.SquadSize));
+        Assert.All(window.Except(short_), t => Assert.DoesNotContain(t.Squad, x => nba.Contains(x.Player.Id)));
         Assert.All(window, t => Assert.Equal(NationalTeams.SquadSize, t.Squad.Count));
         // The default (summer) build is the same as before: everyone.
         Assert.Equal(NationalTeams.Build(WorldCup.Entries(s, nov.Start), nov.Start).Select(t => (t.Nation.Code, t.Strength)),

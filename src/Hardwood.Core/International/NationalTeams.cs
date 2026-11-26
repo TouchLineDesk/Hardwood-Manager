@@ -139,8 +139,27 @@ public static class NationalTeams
     /// coach a nation (I6a, run 214).</summary>
     /// <param name="window">K42 (run 216): the twelves a qualifying window can call on (no NBA players; see
     /// <see cref="WorldCup.Entries"/>).</param>
-    public static IReadOnlyList<NationalTeam> For(GameSession s, DateOnly day, bool window = false) =>
-        Build(WorldCup.Entries(s, day, window), day, s.World.International.Coaching?.Overrides);
+    public static IReadOnlyList<NationalTeam> For(GameSession s, DateOnly day, bool window = false)
+    {
+        var picks = s.World.International.Coaching?.Overrides;
+        var full = Build(WorldCup.Entries(s, day), day, picks);
+        if (!window) return full;
+        // Review (run 216): a nation with fewer than twelve released players isn't dropped from the window (its games would
+        // otherwise be played at full NBA strength): its NBA players are released to make up the twelve, best first.
+        var released = Build(WorldCup.Entries(s, day, window: true), day, picks).ToDictionary(t => t.Nation.Code);
+        var list = new List<NationalTeam>();
+        foreach (var t in full)
+        {
+            if (released.TryGetValue(t.Nation.Code, out var r)) { r.Rank = t.Rank; r.ZoneRank = t.ZoneRank; list.Add(r); continue; }
+            var free = t.Pool.Where(x => !HeldForWindows(s, x.Club)).ToList();
+            var held = t.Pool.Where(x => HeldForWindows(s, x.Club)).Take(Math.Max(0, SquadSize - free.Count) + MinGuards + MinBigs).ToList();
+            var order = free.Concat(held).ToList();
+            bool chosen = picks != null && picks.TryGetValue(t.Nation.Code, out var ids) && ids.Count > 0;
+            var squad = chosen ? Chosen(order, picks![t.Nation.Code]) : PickTwelve(order);
+            list.Add(new NationalTeam { Nation = t.Nation, Pool = order, Squad = squad, Strength = StrengthOf(squad), CoachPicked = chosen, Rank = t.Rank, ZoneRank = t.ZoneRank });
+        }
+        return list;
+    }
 
     /// <summary>K42 (run 216): a player's club keeps him for the qualifying windows (an NBA club).</summary>
     public static bool HeldForWindows(GameSession s, Team? club) => club != null && s.League.Teams.Contains(club);
