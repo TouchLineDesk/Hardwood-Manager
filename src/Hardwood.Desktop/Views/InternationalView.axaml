@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hardwood.Desktop.ViewModels"
+             xmlns:c="using:Hardwood.Desktop.Controls"
+             x:Class="Hardwood.Desktop.Views.InternationalView"
+             x:DataType="vm:InternationalViewModel">
+  <!-- International plan I1 (run 207): national teams from the whole world, the selected nation's twelve, and the FIBA calendar. -->
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+      <TextBlock Text="International" Classes="h1"/>
+      <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding Yours}" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Yours, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </StackPanel>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="10" Margin="0,0,6,0">
+      <!-- The ranking (its list scrolls on its own; one column, so it reads at any width and text size) -->
+      <Border Classes="panel">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <c:Icon Kind="Globe" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
+              <TextBlock Text="Ranking" Classes="h2" Margin="0"/>
+            </StackPanel>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Zones}" SelectedItem="{Binding Zone}" MinWidth="120"/>
+          </Grid>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="30,42,*,100,50,50" Margin="12,0,12,2">
+            <TextBlock Text="#" Classes="muted" FontSize="11"/>
+            <TextBlock Grid.Column="1" Text="FIBA" Classes="muted" FontSize="11"/>
+            <TextBlock Grid.Column="2" Text="Nation" Classes="muted" FontSize="11"/>
+            <TextBlock Grid.Column="3" Text="Zone" Classes="muted" FontSize="11"/>
+            <TextBlock Grid.Column="4" Text="Rating" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
+            <TextBlock Grid.Column="5" Text="Pool" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
+          </Grid>
+          <ListBox ItemsSource="{Binding Nations}" SelectedItem="{Binding Selected}" Background="Transparent" Height="300">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:NationRow">
+                <Grid ColumnDefinitions="30,42,*,100,50,50" ToolTip.Tip="{Binding Tip}">
+                  <TextBlock Text="{Binding Rank}" FontSize="12" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Code}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" Classes.accent="{Binding Mine}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Zone}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="4" Text="{Binding Strength}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="5" Text="{Binding Pool}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+        <!-- The selected nation's twelve -->
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Kind="Flag" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+              <TextBlock Text="{Binding SquadTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+            </StackPanel>
+            <TextBlock Text="{Binding SquadNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding Squad}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NationPlayerRow">
+                  <Grid ColumnDefinitions="26,24,*,56" Margin="0,3">
+                    <TextBlock Text="{Binding No}" Classes="muted" FontSize="12" VerticalAlignment="Center"/>
+                    <c:TeamLogo Grid.Column="1" Team="{Binding Club}" Width="18" Height="18" ShowText="False" IsVisible="{Binding HasClub}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                      <c:PlayerLink Player="{Binding Player}" FontWeight="{Binding Mine, Converter={x:Static c:Converters.BoldIf}}" HorizontalAlignment="Left"/>
+                      <TextBlock Text="{Binding Line}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="3" Text="{Binding Ability}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="Ability, as your scouts believe"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- The FIBA calendar -->
+        <Border Classes="panel">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
+              <TextBlock Text="FIBA calendar" Classes="h2" Margin="0"/>
+            </StackPanel>
+            <TextBlock Text="The next three years. The tournaments are played, and national teams call up their players, in later builds. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding Calendar}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FibaEventRow">
+                  <StackPanel Margin="0,4">
+                    <TextBlock Text="{Binding Name}" FontSize="12.5" TextWrapping="Wrap" FontWeight="{Binding Major, Converter={x:Static c:Converters.BoldIf}}"/>
+                    <TextBlock Text="{Binding When}" FontSize="11.5" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Note}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+    </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

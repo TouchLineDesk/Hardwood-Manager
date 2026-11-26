@@ -122,6 +122,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ("Standings", "ListOrdered", () => new StandingsViewModel(this)),
             ("Leagues", "Globe", () => new WorldViewModel(this)),
             ("College", "GraduationCap", () => new CollegeViewModel(this)),
+            ("International", "Flag", () => new InternationalViewModel(this)),
             ("League Leaders", "ChartColumnIncreasing", () => new LeadersViewModel(this)),
             ("Transactions", "ArrowLeftRight", () => new TransactionsViewModel(this)),
             ("Offseason", "Sun", () => new OffseasonViewModel(this)),
