@@ -29,6 +29,8 @@ public sealed class NationalTeam
     /// <summary>I3 (run 210): FIBA ranking points (0 until <see cref="FibaRanking.Apply"/> ranks the teams by results).</summary>
     public double Points { get; set; }
     public string Name => Nation.Name;
+    /// <summary>I6a (run 214): the twelve is the human coach's, not the federation's.</summary>
+    public bool CoachPicked { get; init; }
 }
 
 /// <summary>
@@ -130,8 +132,13 @@ public static class NationalTeams
         if (s.World.College?.Programs is { } programs)
             foreach (var t in programs) foreach (var p in t.Roster) if (seen.Add(p.Id)) entries.Add((p, t, true));
         foreach (var p in s.League.FreeAgents) if (seen.Add(p.Id)) entries.Add((p, null, false));
-        return Build(entries, s.Today);
+        return Build(entries, s.Today, s.World.International.Coaching?.Overrides);
     }
+
+    /// <summary>The teams as they stand on <paramref name="day"/> (players available that day), with your own twelve where you
+    /// coach a nation (I6a, run 214).</summary>
+    public static IReadOnlyList<NationalTeam> For(GameSession s, DateOnly day) =>
+        Build(WorldCup.Entries(s, day), day, s.World.International.Coaching?.Overrides);
 
     /// <summary>I3 (run 210): the teams ranked by FIBA ranking points (the saved ranking, or its starting seed), not strength.
     /// Pure: the history is only read.</summary>
@@ -142,7 +149,8 @@ public static class NationalTeams
     }
 
     /// <summary>The teams for a list of players (each with his club, or null for a free agent).</summary>
-    public static IReadOnlyList<NationalTeam> Build(IEnumerable<(Player P, Team? Club, bool College)> players, DateOnly today)
+    public static IReadOnlyList<NationalTeam> Build(IEnumerable<(Player P, Team? Club, bool College)> players, DateOnly today,
+        IReadOnlyDictionary<string, IReadOnlyCollection<int>>? picks = null)
     {
         var byNation = new Dictionary<Nation, List<NationalPick>>();
         foreach (var (p, club, college) in players)
@@ -159,8 +167,9 @@ public static class NationalTeams
         {
             if (pool.Count < MinPool) continue;
             var ordered = pool.OrderByDescending(x => x.Player.CurrentAbility).ThenBy(x => x.Player.Id).ToList();
-            var squad = PickTwelve(ordered);
-            teams.Add(new NationalTeam { Nation = n, Pool = ordered, Squad = squad, Strength = StrengthOf(squad) });
+            bool chosen = picks != null && picks.TryGetValue(n.Code, out var ids) && ids.Count > 0;
+            var squad = chosen ? Chosen(ordered, picks![n.Code]) : PickTwelve(ordered);
+            teams.Add(new NationalTeam { Nation = n, Pool = ordered, Squad = squad, Strength = StrengthOf(squad), CoachPicked = chosen });
         }
 
         int rank = 0;
@@ -196,6 +205,20 @@ public static class NationalTeams
             squad.Remove(drop);
             squad.Add(add);
         }
+    }
+
+    /// <summary>I6a (run 214): the coach's twelve: his picks who are in the pool (available and old enough), topped up with the
+    /// federation's best when fewer than twelve are. Best first.</summary>
+    public static IReadOnlyList<NationalPick> Chosen(IReadOnlyList<NationalPick> bestFirst, IReadOnlyCollection<int> ids)
+    {
+        var set = ids as ISet<int> ?? ids.ToHashSet();
+        var squad = bestFirst.Where(x => set.Contains(x.Player.Id)).Take(SquadSize).ToList();
+        foreach (var x in bestFirst)
+        {
+            if (squad.Count >= SquadSize) break;
+            if (!squad.Contains(x)) squad.Add(x);
+        }
+        return squad.OrderByDescending(x => x.Player.CurrentAbility).ThenBy(x => x.Player.Id).ToList();
     }
 
     /// <summary>The starting five count most, the bench less: 70% the top five's average ability, 30% the next five's.</summary>

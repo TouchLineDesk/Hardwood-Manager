@@ -114,6 +114,28 @@ public class LayoutCheckTests
             if (h.Continentals.Count == 0) h.Continentals.AddRange(Hardwood.Core.International.Continentals.Play(s, 2029));
             v.Navigate("International");
         });
+        // I6a (run 214): the national-team job: two offers on the page, then a nation coached with its pool to pick from.
+        yield return ("International offers", v =>
+        {
+            var s = v.Session!;
+            var job = s.NationalJobState;
+            if (job.Code == null)
+                job.Offers = Hardwood.Core.International.NationalJob.OffersFor(Hardwood.Core.International.NationalTeams.Ranked(s), s.Coach.Reputation, s.Seed, s.Today);
+            v.Navigate("International");
+        });
+        yield return ("International job", v =>
+        {
+            var s = v.Session!;
+            var job = s.NationalJobState;
+            if (job.Code == null)
+            {
+                if (job.Offers.Count == 0)
+                    job.Offers = Hardwood.Core.International.NationalJob.OffersFor(Hardwood.Core.International.NationalTeams.Ranked(s), s.Coach.Reputation, s.Seed, s.Today);
+                s.AcceptNationalOffer(job.Offers[0].Code);
+                if (job.Picks.Count > 0) s.ToggleNationalPick(job.Picks[^1]); // eleven picked, so the fill note shows
+            }
+            v.Navigate("International");
+        });
         yield return ("Recruiting", v =>
         {
             v.Navigate("College");

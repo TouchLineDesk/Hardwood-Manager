@@ -47,7 +47,7 @@ public sealed partial class GameSession
     {
         if (rec.Games.Count == 0) return;
         var first = DateOnly.ParseExact($"{rec.Games[0].Day} {rec.Year}", "MMM d yyyy", System.Globalization.CultureInfo.InvariantCulture);
-        var pools = NationalTeams.Build(WorldCup.Entries(this, first), first);
+        var pools = NationalTeams.For(this, first);
         rec.LeftOut = Callups.LeftOut(World.International, rec, pools, first);
         if (rec.Injuries.Count > 0)
         {
@@ -140,7 +140,7 @@ public sealed partial class GameSession
     private void RankTournament(WorldCupRecord rec, double k, bool keepLast = false)
     {
         var h = World.International;
-        var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
+        var teams = NationalTeams.For(this, Today);
         var points = FibaRanking.Current(h, teams);
         var before = FibaRanking.Apply(teams, points).Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
         foreach (var g in rec.Games) FibaRanking.Update(points, g, k);
@@ -170,7 +170,7 @@ public sealed partial class GameSession
     /// <summary>The world ranks as they stand (code to rank), for the movement arrows.</summary>
     private Dictionary<string, int> CurrentRanks()
     {
-        var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
+        var teams = NationalTeams.For(this, Today);
         return FibaRanking.Apply(teams, FibaRanking.Current(World.International, teams)).Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code, t => t.Rank);
     }
 
@@ -247,7 +247,7 @@ public sealed partial class GameSession
             var h = World.International;
             string key = Qualifying.KeyOf(w);
             if (h.Windows.Any(x => x.Key == key)) continue;
-            var teams = NationalTeams.Build(WorldCup.Entries(this, w.Start), w.Start);
+            var teams = NationalTeams.For(this, w.Start);
             if (teams.Count(t => t.Rank > 0) < 2) continue;
             var rec = Qualifying.Play(h, w, teams, Seed);
             Post($"FIBA window: qualifiers for the {rec.Target}", WindowStory(rec), "World");
@@ -258,7 +258,7 @@ public sealed partial class GameSession
     internal string WindowStory(WindowRecord rec)
     {
         var h = World.International;
-        var teams = NationalTeams.Build(WorldCup.Entries(this, Today), Today);
+        var teams = NationalTeams.For(this, Today);
         var ranked = FibaRanking.Apply(teams, FibaRanking.Current(h, teams)).Where(t => t.Rank > 0).ToList();
         string Name(string code) => ranked.FirstOrDefault(t => t.Nation.Code == code)?.Name ?? code;
         var lines = new List<string>

@@ -254,7 +254,7 @@ public static class Olympics
     {
         if (EventIn(year) is not { } ev || QualifyingIn(year) is not { } oqt) return null;
         var h = s.World.International;
-        var built = NationalTeams.Build(WorldCup.Entries(s, oqt.Start), oqt.Start);
+        var built = NationalTeams.For(s, oqt.Start);
         var points = FibaRanking.Current(h, built);
         var ranked = FibaRanking.Apply(built, points).Where(t => t.Rank > 0).ToList();
         if (ranked.Count < Teams) return null;
@@ -277,7 +277,7 @@ public static class Olympics
         }
         field = field.OrderBy(t => t.Rank).ToList();
         // The Olympic twelves are picked on the Olympics' first day, from players fit then.
-        var onDay = FibaRanking.Apply(NationalTeams.Build(WorldCup.Entries(s, ev.Start), ev.Start), points)
+        var onDay = FibaRanking.Apply(NationalTeams.For(s, ev.Start), points)
             .Where(t => t.Rank > 0).ToDictionary(t => t.Nation.Code);
         field = field.Select(t => onDay.GetValueOrDefault(t.Nation.Code) ?? t).OrderBy(t => t.Rank).ToList();
         var rng = new Rng(s.Seed ^ 0xF1BA_0A7C_0000_0012UL ^ ((ulong)(uint)year * 0x9E3779B97F4A7C15UL));
@@ -359,7 +359,7 @@ public static class Continentals
         foreach (var ev in events)
         {
             var spec = Events.First(x => ev.Name.StartsWith(x.Prefix, StringComparison.Ordinal));
-            var built = NationalTeams.Build(WorldCup.Entries(s, ev.Start), ev.Start);
+            var built = NationalTeams.For(s, ev.Start);
             var points = FibaRanking.Current(h, built);
             var ranked = FibaRanking.Apply(built, points).Where(t => t.Rank > 0 && t.Nation.Zone == spec.Zone).ToList();
             var order = Qualifying.ZoneOrder(h, Target(year), points).GetValueOrDefault(spec.Zone) ?? new List<string>();

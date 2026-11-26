@@ -13,6 +13,40 @@
     </StackPanel>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="10" Margin="0,0,6,0">
+      <!-- I6a (run 214): the national-team job: your nation, or the federations' offers -->
+      <Border Classes="panel">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Kind="Flag" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+              <TextBlock Text="{Binding JobTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding CoachingNation}">
+              <Button Content="Federation's twelve" Command="{Binding ResetPicksCommand}" ToolTip.Tip="Go back to the federation's best twelve"/>
+              <Button Content="Step down" Command="{Binding ResignNationCommand}" ToolTip.Tip="Leave the national team (your club job is unaffected)"/>
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="{Binding JobNote}" FontSize="12" TextWrapping="Wrap"/>
+          <ItemsControl ItemsSource="{Binding Offers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:NationalOfferRow">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Content="Accept" Classes="primary" Command="{Binding Accept}"/>
+                    <Button Content="Decline" Command="{Binding Decline}"/>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding JobStatus}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding JobStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </StackPanel>
+      </Border>
+
       <!-- I2 (run 209): the latest World Cup played; I4 (run 211): or the Olympics, whichever is newer -->
       <Border Classes="panel" IsVisible="{Binding HasCup}">
         <StackPanel Spacing="6">
@@ -142,6 +176,32 @@
           </StackPanel>
         </Border>
 
+        <!-- I6a (run 214): your nation's pool, to pick your twelve -->
+        <Border Classes="panel" IsVisible="{Binding EditingMine}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:Icon Kind="Users" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+              <TextBlock Text="Pick your twelve" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+            </StackPanel>
+            <TextBlock Text="{Binding PoolNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding Pool}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NationPoolRow">
+                  <Grid ColumnDefinitions="24,*,48,Auto" Margin="0,3">
+                    <c:TeamLogo Team="{Binding Club}" Width="18" Height="18" ShowText="False" IsVisible="{Binding HasClub}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                      <c:PlayerLink Player="{Binding Player}" FontWeight="{Binding Picked, Converter={x:Static c:Converters.BoldIf}}" HorizontalAlignment="Left"/>
+                      <TextBlock Text="{Binding Line}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding Ability}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip.Tip="Ability, as your scouts believe"/>
+                    <Button Grid.Column="3" Content="{Binding ButtonText}" Command="{Binding Toggle}" IsEnabled="{Binding ButtonEnabled}" ToolTip.Tip="{Binding ButtonTip}" MinWidth="58" VerticalAlignment="Center"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
         <!-- The FIBA calendar -->
         <Border Classes="panel">
           <StackPanel Spacing="6">
@@ -149,7 +209,7 @@
               <c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
               <TextBlock Text="FIBA calendar" Classes="h2" Margin="0"/>
             </StackPanel>
-            <TextBlock Text="The next three years. The windows and the Olympic qualifying tournaments (quick results), the World Cup, the Olympics and the continental championships are played and move the ranking; call-ups come in a later build. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="The next three years. The windows and the Olympic qualifying tournaments (quick results), the World Cup, the Olympics and the continental championships are played and move the ranking. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <ItemsControl ItemsSource="{Binding Calendar}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FibaEventRow">

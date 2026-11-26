@@ -86,13 +86,16 @@ public sealed class InternationalHistory
     public List<WorldCupRecord> Continentals { get; set; } = new();
     /// <summary>I5 (run 213): the U23 Nations Cups played (a game event; FIBA has none).</summary>
     public List<WorldCupRecord> U23Cups { get; set; } = new();
+    /// <summary>I6a (run 214): your national-team job and the federations' offers.</summary>
+    public NationalCoaching Coaching { get; set; } = new();
 
     /// <summary>I4: the World Cups and Olympics played, oldest first: the medal table's tournaments.</summary>
     [System.Text.Json.Serialization.JsonIgnore] public IEnumerable<WorldCupRecord> Majors => WorldCups.Concat(Olympics).OrderBy(r => r.Year);
 
     public bool IsEmpty => WorldCups.Count == 0 && Windows.Count == 0 && Ranking.Count == 0 && Olympics.Count == 0 && OlympicQualifiers.Count == 0
                            && Continentals.Count == 0
-                           && U23Cups.Count == 0;
+                           && U23Cups.Count == 0
+                           && (Coaching?.IsEmpty ?? true);
 }
 
 /// <summary>
@@ -186,7 +189,7 @@ public static class WorldCup
     public static WorldCupRecord? Play(GameSession s, int year, GameSimulator? sim = null)
     {
         if (EventIn(year) is not { } ev) return null;
-        var built = NationalTeams.Build(Entries(s, ev.Start), ev.Start);
+        var built = NationalTeams.For(s, ev.Start);
         var points = FibaRanking.Current(s.World.International, built);
         var ranked = FibaRanking.Apply(built, points); // I3 (run 210): ranked by results, the field by the qualifiers
         var field = Field(ranked, ev.Where, Qualifying.ZoneOrder(s.World.International, Qualifying.WorldCupTarget(year), points));
