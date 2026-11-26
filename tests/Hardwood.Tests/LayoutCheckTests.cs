@@ -96,6 +96,13 @@ public class LayoutCheckTests
             ((SquadViewModel)v.CurrentPage!).View = "Full table";
         });
         yield return ("Records book", v => v.Navigate("History"));
+        // I2 (run 209): the International page with a World Cup played (the longest page; it scrolls).
+        yield return ("International World Cup", v =>
+        {
+            var s = v.Session!;
+            if (s.World.International.WorldCups.Count == 0 && Hardwood.Core.International.WorldCup.Play(s, 2027) is { } cup) s.World.International.WorldCups.Add(cup);
+            v.Navigate("International");
+        });
         yield return ("Recruiting", v =>
         {
             v.Navigate("College");
