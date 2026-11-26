@@ -82,8 +82,10 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 - **International (new in v0.195.0, the left menu):** every country with twelve players aged 17+ anywhere in the world
   fields a national team (about 40), ranked by its best twelve. Pick one to see its twelve and their clubs; the FIBA
-  calendar shows the windows, the 2027 World Cup in Qatar and the 2028 Olympics in Los Angeles. Nothing is played yet:
-  the World Cup comes next (`claude/international-plan.md`). College rosters are all American, so your players can only
+  calendar shows the windows, the 2027 World Cup in Qatar and the 2028 Olympics in Los Angeles. **From v0.197.0 the 2027
+  World Cup is played** (32 teams, groups, a second round and the knockouts, every game in the full engine on FIBA rules):
+  it's played at the summer's jump to the new season, the inbox tells you who won gold, and the page shows the medals,
+  the knockouts, the group tables, the top scorers and an all-star five (`claude/international-plan.md`). College rosters are all American, so your players can only
   be in the USA's pool.
 
 ## Known issues (not worth a note unless they bother you)

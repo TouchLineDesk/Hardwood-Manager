@@ -49,6 +49,8 @@ public sealed class GameWorld
     /// <summary>College basketball (decisions #76, #82-85, #95-98); null in careers from before it existed.</summary>
     public College.CollegeWorld? College { get; set; }
     public List<WorldCompetition> Competitions { get; } = new();
+    /// <summary>International plan I2 (run 209): the tournaments played (the World Cup). Saved as an optional world_meta row.</summary>
+    public International.InternationalHistory International { get; set; } = new();
     /// <summary>Headlines (champions, Final Four) since the session last read them.</summary>
     public List<(string Title, string Body)> News { get; } = new();
 

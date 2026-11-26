@@ -104,6 +104,12 @@ public class Run198ReloadRolloverTests
             }
             Assert.NotNull(c);
             Assert.True(a.Today >= end, $"stopped at {a.Today}");
+            // I2 (run 209): the summer jump played the 2027 World Cup the same in the session that saved and the one reloaded,
+            // and the Oct 14 save carried it.
+            string Cups(GameSession x) => System.Text.Json.JsonSerializer.Serialize(x.World.International);
+            Assert.Single(a.World.International.WorldCups);
+            Assert.Equal(Cups(a), Cups(b));
+            Assert.Equal(Cups(a), Cups(c!));
             _out.WriteLine($"{steps} steps the same, to {a.Today:yyyy-MM-dd}");
         }
         finally

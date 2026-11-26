@@ -94,6 +94,14 @@ public class ScreenshotTests
                 vm.Navigate(nav.Name);
                 Snap(window, Path.Combine(dir, $"{n++:00}-{nav.Name.Replace(" & ", "-").Replace(' ', '-').ToLower()}.png"));
             }
+            // I2 (run 209): the International page after a World Cup.
+            if (Hardwood.Core.International.WorldCup.Play(session, 2027) is { } cup)
+            {
+                session.World.International.WorldCups.Add(cup);
+                vm.Navigate("International");
+                Snap(window, Path.Combine(dir, $"{n++:00}-international-world-cup.png"));
+                session.World.International.WorldCups.Remove(cup);
+            }
             if (Hardwood.Core.RealWorld.RealWorldData.IsReal(session.League))
             {
                 // The real NBA's past (R1): records to beat, titles by franchise, every season.

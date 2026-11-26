@@ -67,6 +67,16 @@ public sealed partial class InternationalViewModel : PageViewModel
     [ObservableProperty] private string _squadNote = "";
     [ObservableProperty] private string _yours = "";
 
+    // I2 (run 209): the latest World Cup played, read from the saved history.
+    [ObservableProperty] private bool _hasCup;
+    [ObservableProperty] private string _cupTitle = "";
+    [ObservableProperty] private string _cupMedals = "";
+    [ObservableProperty] private string _cupMvp = "";
+    [ObservableProperty] private string _cupFive = "";
+    public ObservableCollection<string> CupKnockouts { get; } = new();
+    public ObservableCollection<string> CupGroups { get; } = new();
+    public ObservableCollection<string> CupScorers { get; } = new();
+
     private IReadOnlyList<NationalTeam> _teams = Array.Empty<NationalTeam>();
 
     public InternationalViewModel(MainViewModel shell) : base(shell) { }
@@ -87,6 +97,7 @@ public sealed partial class InternationalViewModel : PageViewModel
 
         Calendar.Clear();
         foreach (var e in FibaCalendar.From(s.Today, 3)) Calendar.Add(new FibaEventRow { Event = e });
+        FillCup(s.World.International.WorldCups.LastOrDefault());
 
         var keep = Selected?.Team.Name;
         Fill();
@@ -135,8 +146,35 @@ public sealed partial class InternationalViewModel : PageViewModel
         int colleges = t.Pool.Count(x => x.College);
         SquadNote = $"The federation's best twelve from {t.Pool.Count} eligible players"
                     + (colleges > 0 ? $" ({colleges} in college)" : "")
-                    + (abroad > 0 ? $" · {abroad} play abroad" : "") + $" · strength {t.Strength:F1} · ability as your scouts believe";
+                    + (abroad > 0 ? $" · {abroad} play abroad" : "") + $" · strength {t.Strength:F1}" + CupLine(t.Nation.Code) + " · ability as your scouts believe";
     }
+
+    /// <summary>I2 (run 209): the latest World Cup: medals, the knockouts, the group tables, the top scorers and the all-star five.</summary>
+    private void FillCup(WorldCupRecord? rec)
+    {
+        CupKnockouts.Clear(); CupGroups.Clear(); CupScorers.Clear();
+        HasCup = rec?.Final != null;
+        if (rec?.Final == null) { CupTitle = CupMedals = CupMvp = CupFive = ""; return; }
+        CupTitle = $"FIBA Basketball World Cup {rec.Year} · {rec.Host}";
+        CupMedals = $"Gold {rec.NameOf(rec.Gold)} · Silver {rec.NameOf(rec.Silver)} · Bronze {rec.NameOf(rec.Bronze)}";
+        CupMvp = rec.Mvp is { } m ? $"MVP: {m.Name} ({m.Code}), {m.Ppg:0.0} pts, {m.Rpg:0.0} reb, {m.Apg:0.0} ast a game" : "";
+        CupFive = rec.AllStarFive.Count > 0 ? "All-star five: " + string.Join(", ", rec.AllStarFive.Select(p => $"{p.Name} ({p.Code})")) : "";
+        foreach (var g in rec.Games.Where(g => g.Round is WorldCup.QuarterRound or WorldCup.SemiRound or WorldCup.BronzeRound or WorldCup.FinalRound))
+            CupKnockouts.Add($"{g.Round}, {g.Day}: {rec.NameOf(g.Home)} {g.HomePts}-{g.AwayPts} {rec.NameOf(g.Away)}");
+        for (int i = 0; i < rec.Groups.Count; i++)
+        {
+            string round = WorldCup.GroupName(i);
+            CupGroups.Add($"{round}: " + string.Join(", ", WorldCup.Table(rec, rec.Groups[i], g => g.Round == round)
+                .Select(c => { var r = WorldCup.Record(rec, c, g => g.Round == round); return $"{c} {r.W}-{r.L}"; })));
+        }
+        int n = 0;
+        foreach (var p in rec.TopScorers.Take(5)) CupScorers.Add($"{++n}. {p.Name} ({p.Code}) {p.Ppg:0.0} a game in {p.Games}");
+    }
+
+    /// <summary>The selected nation's last World Cup: "World Cup 2027: silver".</summary>
+    internal string CupLine(string code) =>
+        Session.World.International.WorldCups.LastOrDefault(w => w.Teams.Any(t => t.Code == code)) is { } w
+            ? $" · World Cup {w.Year}: {GameSession.Placing(w, code)}" : "";
 
     /// <summary>Review (run 207): a club in the nation's own country. The NBA, the US pyramid and college are home for the USA;
     /// a club abroad is home when its league's country (or local nationalities) is the nation's.</summary>

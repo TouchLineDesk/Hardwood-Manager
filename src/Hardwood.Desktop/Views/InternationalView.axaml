@@ -13,6 +13,37 @@
     </StackPanel>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="10" Margin="0,0,6,0">
+      <!-- I2 (run 209): the latest World Cup played -->
+      <Border Classes="panel" IsVisible="{Binding HasCup}">
+        <StackPanel Spacing="6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+            <TextBlock Text="{Binding CupTitle}" Classes="h2" Margin="0" TextWrapping="Wrap"/>
+          </StackPanel>
+          <TextBlock Text="{Binding CupMedals}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding CupMvp}" FontSize="12" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding CupFive}" FontSize="12" TextWrapping="Wrap"/>
+          <TextBlock Text="Knockouts" Classes="muted" FontSize="11" Margin="0,4,0,0"/>
+          <ItemsControl ItemsSource="{Binding CupKnockouts}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="Groups (wins-losses, in finishing order)" Classes="muted" FontSize="11" Margin="0,4,0,0"/>
+          <ItemsControl ItemsSource="{Binding CupGroups}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="Top scorers (3+ games)" Classes="muted" FontSize="11" Margin="0,4,0,0"/>
+          <ItemsControl ItemsSource="{Binding CupScorers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
       <!-- The ranking (its list scrolls on its own; one column, so it reads at any width and text size) -->
       <Border Classes="panel">
         <DockPanel>
@@ -81,7 +112,7 @@
               <c:Icon Kind="CalendarDays" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/>
               <TextBlock Text="FIBA calendar" Classes="h2" Margin="0"/>
             </StackPanel>
-            <TextBlock Text="The next three years. The tournaments are played, and national teams call up their players, in later builds. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            <TextBlock Text="The next three years. The World Cup is played (its result shows above once it's over); the qualifying windows, the Olympics and call-ups come in later builds. Club seasons don't stop for the windows." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
             <ItemsControl ItemsSource="{Binding Calendar}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FibaEventRow">
