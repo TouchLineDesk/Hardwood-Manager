@@ -180,8 +180,14 @@ public sealed partial class InternationalViewModel : PageViewModel
             var t = _teams.FirstOrDefault(x => x.Nation.Code == job.Code);
             string rank = t is { Rank: > 0 } ? $"No. {t.Rank} in the world" : "unranked";
             JobTitle = $"Head coach of {job.Name}";
-            JobNote = $"Since {job.Since:MMM d, yyyy} · {rank}, alongside your club job · your twelve play the qualifying windows and the summer tournaments "
-                      + "(pick them in the nation's panel below). The games are quick results in the windows and the full engine at tournaments.";
+            // I6b (run 215): you coach the window games yourself on a day your club is idle (your assistant on a club day).
+            string next = s.MyNationalGameToday is { } f ? $" · today: {(f.Home == job.Code ? "v" : "at")} {(f.Home == job.Code ? f.Away : f.Home)} ({f.Group}), live when you press Continue" : "";
+            string earned = job.ReputationEarned == 0 ? "" : $" · national results have {(job.ReputationEarned > 0 ? "added" : "cost")} {Math.Abs(job.ReputationEarned):0.0} reputation";
+            string verdict = job.Verdicts.Count > 0 ? $"\nLast verdict: {job.Verdicts[^1]}." : "";
+            JobNote = $"Since {job.Since:MMM d, yyyy} · {rank}, alongside your club job{next}{earned}. "
+                      + "Your twelve (pick them in the nation's panel below) play the windows' qualifiers, which you coach live on days your club is idle "
+                      + "(your assistant takes them on club days), and the summer tournaments, played in the full engine. A tournament far below the seeding can cost you the job."
+                      + verdict;
             return;
         }
         foreach (var o in job.Offers)
@@ -197,10 +203,11 @@ public sealed partial class InternationalViewModel : PageViewModel
         }
         int best = NationalJob.BestRankFor(s.Coach.Reputation);
         JobTitle = Offers.Count > 0 ? "National team offers" : "National team job";
+        string sacked = job.Past.LastOrDefault() is { Sacked: true } last ? $" {last.Name} let you go on {last.To:MMM d, yyyy}." : "";
         JobNote = Offers.Count > 0
             ? "A national team is coached alongside your club job: you pick its twelve for the windows and the summer tournaments."
             : $"No federation is waiting on you. Federations call once a year, from Oct 15, by reputation: at {s.Coach.Reputation:0}/100, "
-              + $"nations ranked about {Ordinal(best)} and below would call. Win, and bigger nations will.";
+              + $"nations ranked about {Ordinal(best)} and below would call. Win, and bigger nations will." + sacked;
     }
 
     [RelayCommand]

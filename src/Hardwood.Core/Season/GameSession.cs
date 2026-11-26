@@ -441,8 +441,12 @@ public sealed partial class GameSession
         return EndDay(live.played);
     }
 
-    /// <summary>True when the human team plays today and the game could be followed live.</summary>
-    public bool HumanPlaysToday =>
+    /// <summary>True when the human team plays today and the game could be followed live (I6b, run 215: or, on a day the club
+    /// is idle, your nation's qualifier).</summary>
+    public bool HumanPlaysToday => ClubGameToday || MyNationalGameToday != null;
+
+    /// <summary>True when the human club plays today (any competition).</summary>
+    private bool ClubGameToday =>
         Abroad ? Employed && Phase != SessionPhase.Offseason && (InCollege ? World.College!.GameOn(HumanTeam.Id, Today) != null : World.GameOn(HumanTeam.Id, Today) != null) :
         Employed && (Phase == SessionPhase.RegularSeason || (Phase == SessionPhase.Preseason && Today >= OpeningNight)) && GamesOn(Today).Any(g => g.Home == HumanTeam || g.Away == HumanTeam)
         || (Employed && Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam))
@@ -471,15 +475,19 @@ public sealed partial class GameSession
         if (Phase == SessionPhase.Preseason && Today >= OpeningNight) Phase = SessionPhase.RegularSeason;
         // K35 (run 193 review): a Monday's new poll is out before our game tips off, so the live game shows the ranks it is stamped with.
         if (InCollege && World.College is { } pollWorld && pollWorld.Season.PollRelease.Count > 0) pollWorld.ReleasePoll(Today);
+        // I6b (run 215): your nation's qualifier, live when the club is idle today, else your assistant's (own stream).
+        var national = BeginNationalGame(liveHumanGame);
+        // Review (run 215): with the national game live, no club game is (an out-of-work coach's old club plays on without him).
+        bool clubLive = liveHumanGame && national == null && Employed;
         // A club abroad plays its league and continental games from the world's fixtures.
-        live = BeginAbroadGame(liveHumanGame, played);
+        live = BeginAbroadGame(clubLive, played);
 
         if (Phase == SessionPhase.RegularSeason)
         {
             foreach (var g in GamesOn(Today))
             {
                 bool human = g.Home == HumanTeam || g.Away == HumanTeam;
-                if (human && liveHumanGame)
+                if (human && clubLive)
                 {
                     _liveScheduled = g;
                     live = _sim.StartLive(g.Home, g.Away, League.Rules, _rng.NextULong(), Today);
@@ -492,7 +500,7 @@ public sealed partial class GameSession
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
         {
-            var mine = liveHumanGame ? Postseason.Active.FirstOrDefault(se => se.Higher == HumanTeam || se.Lower == HumanTeam) : null;
+            var mine = clubLive ? Postseason.Active.FirstOrDefault(se => se.Higher == HumanTeam || se.Lower == HumanTeam) : null;
             _stageBefore = Postseason.Stage;
             played = Postseason.PlayDayExcept(_sim, _rng, Today, mine != null ? HumanTeam : null);
             foreach (var r in played) if (r.Home.Team == HumanTeam || r.Away.Team == HumanTeam) ReportGame(r, HumanSeries);
@@ -503,7 +511,7 @@ public sealed partial class GameSession
                 live = _sim.StartLive(home, away, League.Rules, _rng.NextULong(), Today);
             }
         }
-        return (live, played);
+        return (live ?? national, played);
     }
 
     private string _stageBefore = "";
@@ -514,7 +522,9 @@ public sealed partial class GameSession
         if (live != null)
         {
             if (!live.Complete) live.Finish();
-            if (_liveCollege is { } cg) RecordCollege(cg, live.Result);
+            bool nationalGame = _liveNational != null;
+            if (_liveNational is { } nat) { RecordNational(nat, live.Result, live: true); _liveNational = null; }
+            else if (_liveCollege is { } cg) RecordCollege(cg, live.Result);
             else if (_liveWorld is { } w) RecordAbroad(w.comp, w.fixture, live.Result);
             else if (_liveScheduled != null) RecordRegularSeasonGame(_liveScheduled, live.Result);
             else if (_liveSeries != null)
@@ -522,7 +532,7 @@ public sealed partial class GameSession
                 Postseason!.RecordGame(_liveSeries, live.Result);
                 ReportGame(live.Result, _liveSeries);
             }
-            played.Add(live.Result);
+            if (!nationalGame) played.Add(live.Result); // I6b: a national game isn't one of the club's
             // PR #176 review: the game is recorded, so it no longer "counts" as pending (LiveGameCountsInRecord); the
             // FINAL screen reached again with Back showed 1-2 for a 1-0 team that lost.
             _liveScheduled = null; _liveSeries = null; _liveWorld = null; _liveCollege = null;

@@ -122,12 +122,12 @@ public sealed partial class LiveGameViewModel
         var numbers = new Dictionary<Player, int>();
         foreach (var t in new[] { HomeTeam, AwayTeam }) foreach (var kv in ShirtNumbers.For(t)) numbers[kv.Key] = kv.Value;
         Numbers = numbers;
-        var game = Session.InCollege ? Session.World.College?.GameOn(Us.Id, Session.Today) : null;
+        var game = CollegeGameNow ? Session.World.College?.GameOn(Us.Id, Session.Today) : null;
         FloorDress = DressFor(Session, HomeTeam, AwayTeam, game);
         Markings = _live.Result.Periods == 2 ? CourtMarkings.College : _live.MinutesPerPeriod == 10 ? CourtMarkings.Fiba : CourtMarkings.Nba;
         BarAwayScore = _live.AwayScore; BarHomeScore = _live.HomeScore;
         BarClock = BugClock; BarPeriod = BugPeriod;
-        Commentary = $"Welcome to {HomeTeam.City}: {AwayTeam.Name} at {HomeTeam.Name}. Press Play for the tip.";
+        Commentary = $"Welcome to {HomeTeam.City}: {Nick(AwayTeam)} at {Nick(HomeTeam)}. Press Play for the tip.";
         MatchFrame = TipFrame();
         InitShouts();
         // Fight songs A (review): start the home band's song rendering now, so it's ready by the tip.
@@ -138,6 +138,10 @@ public sealed partial class LiveGameViewModel
     /// playoffs', the Finals' or a continental cup's dressing.</summary>
     public static Hardwood.Core.College.ArenaDress DressFor(Hardwood.Core.Season.GameSession s, Team home, Team away, Hardwood.Core.College.CollegeGame? game)
     {
+        // I6b (run 215): your nation's qualifier: the FIBA event floor, both nations' fans.
+        if (s.LiveNational is { } nat)
+            return Hardwood.Core.College.ArenaDress.ForPro(home, away, "FIBA", cup: "FIBA Qualifiers")
+                with { Sideline = $"{home.City.ToUpperInvariant()} · {nat.Group.ToUpperInvariant()}" };
         if (s.InCollege) return Hardwood.Core.College.ArenaDress.For(home, game, away, s.World.College);
         if (s.LiveCompetition is { } comp)
             return comp.Kind == Hardwood.Core.World.CompetitionKind.Continental
@@ -154,9 +158,11 @@ public sealed partial class LiveGameViewModel
     }
 
     /// <summary>The side's name as the commentary says it. K25 (run 174): a broadcast name ("Miami", not "Miami (FL)").</summary>
-    private string Short(Team t) => Session.InCollege
+    private string Short(Team t) => CollegeGameNow
         ? GameCalls.BroadcastName(t.City, (t == HomeTeam ? AwayTeam : HomeTeam).City)
-        : t.Name;
+        : Nick(t);
+    /// <summary>The side's nickname, or (a national team, run 215) its country.</summary>
+    internal static string Nick(Team t) => t.Name.Length > 0 ? t.Name : t.City;
 
     /// <summary>K25 (run 174): every commentary line of the game so far, in order, and the late live-ball sub lines (for tests).</summary>
     public List<CommentaryLine> SaidForTest { get; } = new();
@@ -169,7 +175,7 @@ public sealed partial class LiveGameViewModel
     /// the rivalry (college only).</summary>
     private GameCalls.Occasion? FinalOccasion(bool homeWon)
     {
-        if (!Session.InCollege || Session.World.College is not { } cw) return null;
+        if (!CollegeGameNow || Session.World.College is not { } cw) return null;
         var g = cw.GameOn(Us.Id, Session.Today);
         if (g == null) return null;
         int wId = homeWon ? HomeTeam.Id : AwayTeam.Id, lId = homeWon ? AwayTeam.Id : HomeTeam.Id;

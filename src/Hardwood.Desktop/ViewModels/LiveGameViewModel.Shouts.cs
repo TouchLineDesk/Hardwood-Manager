@@ -62,7 +62,7 @@ public sealed partial class LiveGameViewModel
         foreach (var row in ShoutRows) row.IsOn = _shouts.Any(a => a.Shout == row.Info.Shout);
         Status = on ? $"Shout: {info.Label} ({LeverWords(before, TacticSnapshot.Of(t))}). It counts from the next possession."
                     : $"{info.Label} cancelled ({LeverWords(before, TacticSnapshot.Of(t))}).";
-        Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {Us.Name}: {(on ? info.Label : info.Label + " off")}");
+        Log.Insert(0, $"{_live.PeriodText} {_live.ClockText}  >> {Nick(Us)}: {(on ? info.Label : info.Label + " off")}");
         OnPropertyChanged(nameof(ShoutsHeader)); OnPropertyChanged(nameof(ActiveShoutsLine)); OnPropertyChanged(nameof(HasActiveShouts));
         // The drawer's sliders read the same levers.
         foreach (var n in new[] { nameof(Pace), nameof(ThreeEmphasis), nameof(CrashGlass), nameof(Aggression), nameof(StarUsage), nameof(DoubleStar) }) OnPropertyChanged(n);
