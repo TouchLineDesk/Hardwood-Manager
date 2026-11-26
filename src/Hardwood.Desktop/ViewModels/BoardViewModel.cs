@@ -374,7 +374,9 @@ public sealed partial class BoardViewModel : PageViewModel
             ? $"These clubs changed coach and would be a step up from {s.HumanTeam.TheFullName}. Apply without leaving your job; if an offer comes and you accept it, you move at once and your history goes with you. Openings close when the new season starts."
               + (s.InCollege && s.Coach.Reputation < Hardwood.Core.Season.GameSession.CollegeToProReputation
                   ? " Pro clubs hire college coaches with a record: titles and deep March runs build the reputation they look for." : "")
-            : "Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team."
+            // H220 (run 212): an empty list says so, rather than showing nothing under the title.
+            : (HasVacancies ? "" : "No openings right now. Clubs post them when they change coach, and most come in the spring. ")
+              + "Clubs that change coach post openings here. Apply, wait for a decision, then accept or decline an offer. Keep pressing Continue while you wait: the computer runs every team."
               + (s.World.College == null ? ""
                   : summer ? " College programs posted theirs when the season ended; more open as their coaches move."
                   : " College programs post theirs at the end of the season.")
@@ -539,17 +541,25 @@ public sealed partial class BoardViewModel : PageViewModel
         var mates = cw.Programs.Where(p => p.Id != me && cw.ConferenceOf.GetValueOrDefault(p.Id) == conf && !rivals.Contains(p.Id))
             .Select(p => (p, b: cw.BenchOf(p.Id))).Where(x => x.b != null)
             .OrderByDescending(x => cw.ReputationOf(x.b!)).Select(x => x.p.Id);
+        // The season-end review books the season into every bench (GameSession.SeasonEndCoaching → CollegeCoachingChanges, the
+        // day the summer begins); until then it's added here. The review of PR #281: not judged by the carousel's moves, since a
+        // spring with no changes posts none.
+        bool booked = cw.Season.ChampionId != null && s.Phase == Hardwood.Core.Season.SessionPhase.Offseason;
         foreach (int id in rivals.Concat(mates).Distinct())
         {
             if (cw.Program(id) is not { } t || cw.BenchOf(id) is not { } c) continue;
             int rep = cw.ReputationOf(c);
-            string career = c.CareerWins + c.CareerLosses > c.Wins + c.Losses ? $"; {c.CareerRecord} in his career" : "";
+            // H213 (run 212): the book counts completed seasons only (it adds a season each spring), so the games played this
+            // season are added here: Virginia's coach read "in his first season: 0-0 here" after a 32-5 season.
+            var (nw, nl) = booked ? (0, 0) : cw.RegularSeasonRecord(id); // the book counts the regular season
+            string here = $"{c.Wins + nw}-{c.Losses + nl}";
+            string career = c.CareerWins + c.CareerLosses > c.Wins + c.Losses ? $"; {c.CareerWins + nw}-{c.CareerLosses + nl} in his career" : "";
             string honours = (c.Bids > 0 ? $", {c.Bids} NCAA bid{(c.Bids == 1 ? "" : "s")}" : "") + (c.Titles > 0 ? $", {c.Titles} title{(c.Titles == 1 ? "" : "s")}" : "");
             string series = cw.SeriesLine(me, id) is { } line ? $" {UpperFirst(line)}." : "";
             RivalCoachRows.Add(new CarouselRow
             {
                 Team = t,
-                Detail = $"{c.Name}, {Hardwood.Core.College.RivalCoaches.StyleText(c.Style)}, {c.SeasonText}: {c.Record} here{career}{honours}. "
+                Detail = $"{c.Name}, {Hardwood.Core.College.RivalCoaches.StyleText(c.Style)}, {c.SeasonText}: {here} here{career}{honours}. "
                     + $"Reputation {rep} ({Hardwood.Core.College.RivalCoaches.ReputationWord(rep)}).{series}",
                 Tag = rivals.Contains(id) ? "Rival" : confShort,
             });
@@ -573,6 +583,7 @@ public sealed partial class BoardViewModel : PageViewModel
         int w = book.Wins, l = book.Losses, n = book.Seasons.Count;
         string Plural(int k, string one, string many) => k == 1 ? $"1 {one}" : $"{k} {many}";
         MyCareerHeadline = n == 0 ? (book.Partial ? $"{s.Coach.Name}: your seasons count from this one (the book is newer than this save)."
+                : live && cw!.Season.ChampionId != null ? $"{s.Coach.Name}: your first college season is over; it goes in the book at the athletic director's review."
                 : live ? $"{s.Coach.Name}: your first college season is under way." : $"{s.Coach.Name}: your first college season starts in the fall.")
             : $"{s.Coach.Name}: {w}-{l} ({(w / (double)Math.Max(1, w + l)):.000}) in {Plural(n, "season", "seasons")}"
               + $" · {Plural(book.Bids, "NCAA bid", "NCAA bids")}" + (book.FinalFours > 0 ? $" · {Plural(book.FinalFours, "Final Four", "Final Fours")}" : "")
@@ -580,7 +591,7 @@ public sealed partial class BoardViewModel : PageViewModel
         if (live && !book.Seasons.Any(x => x.Year == s.League.Season))
         {
             var rec = s.MyRecord;
-            MyCareerSeasons.Add($"{Hardwood.Core.College.CollegeAwards.SeasonText(s.League.Season)} · {s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses} so far");
+            MyCareerSeasons.Add($"{Hardwood.Core.College.CollegeAwards.SeasonText(s.League.Season)} · {s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}{(cw!.Season.ChampionId != null ? " (season over; counted at the review)" : " so far")}");
         }
         foreach (var x in book.Seasons.OrderByDescending(x => x.Year))
             MyCareerSeasons.Add($"{Hardwood.Core.College.CollegeAwards.SeasonText(x.Year)} · {x.Program} · {x.Wins}-{x.Losses}"

@@ -63,7 +63,7 @@ public class Run211OlympicsTests
         Assert.Equal(4, new[] { o.Gold, o.Silver, o.Bronze, o.Fourth }.Distinct().Count());
         Assert.Equal("Jul 30", o.Final!.Day);
         Assert.Equal("Jul 15", o.Games[0].Day);
-        Assert.InRange(o.Games.Average(g => g.HomePts + g.AwayPts) / 2.0, 70, 100);
+        Assert.InRange(o.Games.Average(g => g.HomePts + g.AwayPts) / 2.0, 73, 87); // H219 (run 212): 26 games, so a little wider
         Assert.NotNull(o.Mvp);
 
         // The World Cup's best per zone (after the host): Europe 2, the Americas 2, Africa 1, Asia-Pacific 2.
