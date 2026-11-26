@@ -14,9 +14,9 @@ public sealed class Team
     /// H80 (run 105): the name in a sentence. "the Boston Celtics", but "Providence City" and "Charlotte FC": club-style names
     /// (the pyramid's United, City, BC, Athletic, Basketball Club, FC) take no article.
     /// </summary>
-    public string TheFullName => TakesArticle(Name) && World.RealClubs.FullOf(City, Name) == null ? "the " + FullName : FullName;
+    public string TheFullName => World.RealClubs.FullOf(City, Name) is { } own ? own : TakesArticle(Name) ? $"the {City} {Name}" : $"{City} {Name}";
     /// <summary>The same at the start of a sentence: "The Boston Celtics", "Providence City".</summary>
-    public string TheFullNameCap => TakesArticle(Name) && World.RealClubs.FullOf(City, Name) == null ? "The " + FullName : FullName;
+    public string TheFullNameCap => World.RealClubs.FullOf(City, Name) is { } own ? own : TakesArticle(Name) ? $"The {City} {Name}" : $"{City} {Name}";
     private static readonly HashSet<string> ClubStyleNames = new(World.UsaPyramid.ClubStyles, StringComparer.OrdinalIgnoreCase) { "Basket" };
     public static bool TakesArticle(string nickname) => !ClubStyleNames.Contains(nickname.Trim());
     public required string Abbreviation { get; set; }

@@ -47,16 +47,24 @@ public class Run217RealClubsTests
         Assert.DoesNotContain(world.Clubs, t => t.Name is "Capitales" or "Kartallar" or "Shamrocks" or "Green Knights" or "Olimpians" or "Albatrosses" or "Seine");
     }
 
-    [Fact]
-    public void Abbreviations_and_names_stay_unique_across_the_world()
+    [Theory]
+    [InlineData(2026ul)]
+    [InlineData(31ul)]
+    [InlineData(77ul)]
+    public void Abbreviations_and_names_stay_unique_across_the_world(ulong seed)
     {
-        var (league, world) = RealWorldData.NewWorld(2026, players: false);
+        var (league, world) = RealWorldData.NewWorld(seed, players: false);
         // The clubs abroad (outside the USA pyramid) and the NBA: the studio finds an NBA arena by abbreviation, so Baskonia isn't BKN.
         var all = world.Competitions.Where(c => !UsaPyramid.IsPyramid(c.Key) && c.Profile.Kind == CompetitionKind.Domestic).SelectMany(c => c.Clubs).Concat(league.Teams).ToList();
         var dupAbbr = all.GroupBy(t => t.Abbreviation).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
         Assert.True(dupAbbr.Count == 0, "duplicate abbreviations: " + string.Join(", ", dupAbbr));
         var dupName = all.GroupBy(t => t.FullName).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
         Assert.True(dupName.Count == 0, "duplicate names: " + string.Join(", ", dupName));
+        // Review: and no real club shares its abbreviation with any other club, the pyramid's and college's included.
+        var everyone = world.Clubs.Concat(league.Teams).Concat(world.College?.Programs ?? new()).DistinctBy(t => t.Id).ToList();
+        var shared = everyone.Where(t => RealClubs.Of(t) != null && everyone.Count(o => o.Abbreviation == t.Abbreviation) > 1)
+            .Select(t => $"{t.FullName} {t.Abbreviation} ({string.Join("/", everyone.Where(o => o != t && o.Abbreviation == t.Abbreviation).Select(o => o.FullName))})").ToList();
+        Assert.True(shared.Count == 0, "shared: " + string.Join("; ", shared));
         // Each real club replaced one made-up club in its own league.
         foreach (var key in Seven)
         {
@@ -83,6 +91,33 @@ public class Run217RealClubsTests
             }
         }
         Assert.True(giants / g > small / n + 5, $"giants {giants / g:0.0}, small clubs {small / n:0.0}");
+    }
+
+    [Fact]
+    public void A_real_league_with_one_club_renamed_by_a_pack_is_left_alone()
+    {
+        // Review (run 217): "Thessaloniki Iraklis" is a real club and the made-up name in Aris's slot. A pack that renames
+        // one Greek club must not send the league back through the rename (Iraklis would become a second Aris).
+        var (league, world) = RealWorldData.NewWorld(31, players: false);
+        var greece = world.Competitions.First(c => c.Key == WorldLeagues.Greece);
+        var aek = greece.Clubs.Single(t => t.Name == "AEK");
+        aek.City = "Nea Filadelfia"; aek.Name = "Union";
+        Assert.Equal(0, RealClubs.Rename(world, league.Teams));
+        Assert.Single(greece.Clubs, t => t.Name == "Aris");
+        Assert.Single(greece.Clubs, t => t.Name == "Iraklis");
+    }
+
+    [Fact]
+    public void A_pack_for_the_made_up_name_still_fits_the_real_club()
+    {
+        var (league, world) = RealWorldData.NewWorld(31, players: false);
+        var pack = Hardwood.Core.Names.NamePack.Parse("""{ "clubs": { "Madrid Capitales": { "city": "Madrid", "name": "Royals", "abbr": "MRY" } } }""");
+        try
+        {
+            pack.ApplyToClubs(league, world);
+            Assert.Contains(world.Clubs, t => t.FullName == "Madrid Royals" && t.Abbreviation == "MRY");
+        }
+        finally { Hardwood.Core.Names.NamePack.ResetStatic(); }
     }
 
     [Fact]

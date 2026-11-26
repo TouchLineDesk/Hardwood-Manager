@@ -28,7 +28,7 @@ public static class RealClubs
         R("Valencia", "Valencia Basket", "VLC", "Valencia Basket", "Roig Arena", 15600, 5, "Valencia", "Naranjeros"),
         R("Vitoria-Gasteiz", "Baskonia", "BAS", "Baskonia", "Buesa Arena", 15504, 5, "Vitoria", "Alaveses"),
         R("Málaga", "Unicaja", "MLG", "Unicaja", "Martín Carpena", 10699, 4, "Malaga", "Boquerones"),
-        R("Murcia", "UCAM Murcia", "MUR", "UCAM Murcia", "Palacio de Deportes de Murcia", 7454, 2, "Murcia", "Huertanos"),
+        R("Murcia", "UCAM Murcia", "UCM", "UCAM Murcia", "Palacio de Deportes de Murcia", 7454, 2, "Murcia", "Huertanos"),
         R("La Laguna", "Tenerife", "TFE", "La Laguna Tenerife", "Pabellón Santiago Martín", 5100, 2, "Tenerife", "Volcanes"),
         R("Las Palmas", "Gran Canaria", "GCA", "Gran Canaria", "Gran Canaria Arena", 9870, 2, "Gran Canaria", "Alisios"),
         R("Badalona", "Joventut", "JOV", "Joventut Badalona", "Palau Municipal d'Esports", 12760, 0, "Badalona", "Verdinegros"),
@@ -56,12 +56,12 @@ public static class RealClubs
         R("Istanbul", "Bahcesehir Koleji", "BKO", "Bahcesehir Koleji", "Sinan Erdem Dome", 13800, 1, "Antalya", "Akdeniz"),
         R("Aliaga", "Petkimspor", "PET", "Aliaga Petkimspor", "Aliaga ENKA Sports Hall", 3000, -1, "Gaziantep", "Sahinler"),
         R("Istanbul", "Erokspor", "ERO", "Esenler Erokspor", "Sinan Erdem Dome", 13800, -2, "Konya", "Selcuklu"),
-        R("Mersin", "Mersin MSK", "MER", "Mersin MSK", "Servet Tazegül Arena", 7500, -2, "Mersin", "Limanlar"),
+        R("Mersin", "Mersin MSK", "MSK", "Mersin MSK", "Servet Tazegül Arena", 7500, -2, "Mersin", "Limanlar"),
         R("Bursa", "Bursaspor", "BSP", "Bursaspor Basketbol", "Tofas Nilüfer Sports Hall", 7500, -2, "Samsun", "Karadeniz"),
         R("Trabzon", "Trabzonspor", "TZS", "Trabzonspor", "Hayri Gür Arena", 7500, -2, "Trabzon", "Firtina"),
         R("Istanbul", "Büyükçekmece", "BYK", "Büyükçekmece Basketbol", "Gazanfer Bilge Sports Hall", 3000, -3, "Eskisehir", "Porsuk"),
         R("Denizli", "Merkezefendi", "MKE", "Merkezefendi Basket", "Pamukkale University Arena", 3490, -3, "Kayseri", "Erciyes"),
-        R("Manisa", "Manisa Basket", "MNS", "Manisa Basket", "Muradiye Sports Hall", 3500, -3, "Manisa", "Spil"),
+        R("Manisa", "Manisa Basket", "MBK", "Manisa Basket", "Muradiye Sports Hall", 3500, -3, "Manisa", "Spil"),
     };
 
     /// <summary>Greek Basket League (12 of the real 13: Mykonos, the newest, is left out).</summary>
@@ -70,7 +70,7 @@ public static class RealClubs
         R("Athens", "Panathinaikos", "PAN", "Panathinaikos", "Telekom Center Athens", 19443, 8, "Athens", "Shamrocks"),
         R("Piraeus", "Olympiacos", "OLY", "Olympiacos", "Peace and Friendship Stadium", 11319, 8, "Piraeus", "Reds"),
         R("Athens", "AEK", "AEK", "AEK Athens", "Ano Liosia Olympic Hall", 9327, 3, "Athens", "Eagles"),
-        R("Thessaloniki", "PAOK", "POK", "PAOK", "PAOK Sports Arena", 8500, 2, "Thessaloniki", "Black Eagles"),
+        R("Thessaloniki", "PAOK", "PKS", "PAOK", "PAOK Sports Arena", 8500, 2, "Thessaloniki", "Black Eagles"),
         R("Thessaloniki", "Aris", "ARI", "Aris Thessaloniki", "Alexandrio Melathron", 5138, 1, "Thessaloniki", "Iraklis"),
         R("Peristeri", "Peristeri", "PRS", "Peristeri", "Peristeri Arena", 4000, 0, "Peristeri", "Westsiders"),
         R("Patras", "Promitheas", "PAT", "Promitheas Patras", "Dimitris Tofalos Arena", 4150, 0, "Patras", "Achaeans"),
@@ -88,7 +88,7 @@ public static class RealClubs
         R("Bologna", "Virtus Bologna", "BOL", "Virtus Bologna", "Virtus Arena", 9980, 6, "Bologna", "Virtus"),
         R("Venice", "Reyer Venezia", "VEN", "Reyer Venezia", "Palasport Taliercio", 3506, 2, "Venice", "Lagoon"),
         R("Sassari", "Dinamo Sassari", "DSS", "Dinamo Sassari", "PalaSerradimigni", 5000, 1, "Sassari", "Dinamo"),
-        R("Brescia", "Brescia", "BRE", "Pallacanestro Brescia", "PalaLeonessa", 5200, 2, "Brescia", "Leonessa"),
+        R("Brescia", "Brescia", "BSA", "Pallacanestro Brescia", "PalaLeonessa", 5200, 2, "Brescia", "Leonessa"),
         R("Tortona", "Derthona", "DER", "Derthona Basket", "PalaFerraris", 3510, 1, "Tortona", "Derthona"),
         R("Trento", "Trento", "TRE", "Aquila Basket Trento", "PalaTrento", 4360, 1, "Trento", "Aquila"),
         R("Varese", "Varese", "VAR", "Pallacanestro Varese", "Palasport Lino Oldrini", 5107, -1, "Varese", "Lakesiders"),
@@ -99,7 +99,7 @@ public static class RealClubs
         R("Cremona", "Cremona", "CRE", "Vanoli Cremona", "PalaRadi", 3519, -3, "Cremona", "Vanoli"),
         R("Trieste", "Trieste", "TRI", "Pallacanestro Trieste", "PalaTrieste", 6943, -1, "Pistoia", "Tuscans"),
         R("Trapani", "Trapani", "TPS", "Trapani Shark", "Palallio", 4575, -2, "Scafati", "Giants"),
-        R("Cantù", "Cantù", "CAN", "Pallacanestro Cantù", "PalaDesio", 6700, -2, "Cantu", "Brianza"),
+        R("Cantù", "Cantù", "CNT", "Pallacanestro Cantù", "PalaDesio", 6700, -2, "Cantu", "Brianza"),
     };
 
     /// <summary>LNB Élite (16).</summary>
@@ -126,10 +126,10 @@ public static class RealClubs
     /// <summary>Basketball Bundesliga (18).</summary>
     public static readonly ClubSeed[] Germany =
     {
-        R("Berlin", "Alba Berlin", "ALB", "Alba Berlin", "Uber Arena", 14500, 5, "Berlin", "Albatrosses"),
+        R("Berlin", "Alba Berlin", "ABB", "Alba Berlin", "Uber Arena", 14500, 5, "Berlin", "Albatrosses"),
         R("Munich", "Bayern Munich", "FCB", "Bayern Munich", "BMW Park", 6700, 6, "Munich", "Bavarians"),
         R("Bamberg", "Bamberg Baskets", "BAM", "Bamberg Baskets", "Brose Arena", 6150, -1, "Bamberg", "Brewers"),
-        R("Ulm", "Ulm", "ULM", "ratiopharm Ulm", "ratiopharm arena", 6000, 2, "Ulm", "Minster"),
+        R("Ulm", "Ulm", "RUL", "ratiopharm Ulm", "ratiopharm arena", 6000, 2, "Ulm", "Minster"),
         R("Ludwigsburg", "Ludwigsburg", "LUD", "Riesen Ludwigsburg", "MHP-Arena", 5300, 1, "Ludwigsburg", "Riesen"),
         R("Oldenburg", "Oldenburg", "OLD", "Baskets Oldenburg", "Große EWE Arena", 6069, 0, "Oldenburg", "Baskets"),
         R("Bonn", "Bonn", "BON", "Telekom Baskets Bonn", "Telekom Dome", 6000, 1, "Bonn", "Telekom"),
@@ -177,6 +177,9 @@ public static class RealClubs
     /// <summary>The club's name as it is written ("FC Barcelona", "Zalgiris Kaunas"), or null when "City Name" already reads right.</summary>
     public static string? FullOf(string city, string name) => Of(city, name)?.Full;
 
+    /// <summary>The made-up name a real club replaced ("Madrid Capitales"), so name and logo packs written for it still match.</summary>
+    public static string? FormerFullName(Team t) => Of(t)?.Was?.Replace('|', ' ');
+
     /// <summary>The club's arena ("Palau Blaugrana"), if it's a real club abroad.</summary>
     public static string? ArenaOf(Team t) => Of(t)?.Arena;
 
@@ -193,8 +196,12 @@ public static class RealClubs
         {
             // Already real (a new world, or a save renamed before): leave it. A made-up name can equal another real club's
             // ("Thessaloniki Iraklis" was Aris's slot), so a league is renamed all at once, by its old names, or not at all.
+            // Review (run 217): a name pack may have renamed some of a real league's clubs, so "not all real" doesn't mean
+            // "made up". A league is an older save's only while it still holds a purely made-up name (one that was replaced
+            // and isn't a real club's too): then every club is renamed by its old name, once.
             var real = comp.Profile.Clubs.Select(s => Key(s.City, s.Name)).ToHashSet();
-            if (comp.Clubs.All(t => real.Contains(Key(t.City, t.Name)))) continue;
+            var was = comp.Profile.Clubs.Where(s => s.Was != null).Select(s => s.Was!).ToHashSet();
+            if (!comp.Clubs.Any(t => was.Contains(Key(t.City, t.Name)) && !real.Contains(Key(t.City, t.Name)))) continue;
             foreach (var team in comp.Clubs) Rename(team, comp, used, ref n);
         }
         return n;
