@@ -9,6 +9,11 @@ namespace Hardwood.Tests;
 
 /// <summary>International plan I5 (run 213, #110): injuries carried to the clubs, morale for call-ups, medals and being left out, one
 /// call-ups message for your own players, and the U23 Nations Cup (a game event in 2030, 2034, …).</summary>
+[CollectionDefinition(nameof(Run213InternationalDutyTests), DisableParallelization = true)]
+public sealed class Run213Serial { }
+
+/// <remarks>Not run in parallel with any other class: two tests set <see cref="U23Cup.EligibleShift"/> (review, run 213).</remarks>
+[Collection(nameof(Run213InternationalDutyTests))]
 public class Run213InternationalDutyTests
 {
     private readonly ITestOutputHelper _out;
@@ -60,7 +65,7 @@ public class Run213InternationalDutyTests
             {
                 var p = people[i.PlayerId];
                 Assert.Contains(p.InjuryHistory, x => x.Name == i.Injury && x.Occurred == i.Occurred && x.ReturnDate == i.Return);
-                Assert.True(p.Injury != null && p.Injury.ReturnDate >= i.Return);
+                if (i.Return > new DateOnly(2027, 10, 14)) Assert.True(p.Injury != null && p.Injury.ReturnDate >= i.Return);
             }
 
             // Gold, a medal and a call-up each have their own mood line until Dec 1; nobody outside the twelves has one.
@@ -105,6 +110,24 @@ public class Run213InternationalDutyTests
         {
             SqliteConnection.ClearAllPools();
             try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void A_jump_mid_tournament_carries_only_the_injuries_already_picked_up()
+    {
+        var s = NewCareer();
+        var jump = new DateOnly(2027, 9, 5); // a league that opens before the World Cup ends (run 209's review)
+        s.PlayInternationalOverSummer(new DateOnly(2027, 5, 8), jump);
+        var cup = Assert.Single(s.World.International.WorldCups);
+        var people = AllPlayers(s);
+        Assert.Contains(cup.Injuries, i => i.Occurred > jump);
+        foreach (var i in cup.Injuries)
+        {
+            var p = people[i.PlayerId];
+            bool carried = p.InjuryHistory.Any(x => x.Name == i.Injury && x.Occurred == i.Occurred);
+            Assert.Equal(i.Occurred <= jump, carried);
+            if (i.Occurred > jump) Assert.False(p.Injury is { } cur && cur.Occurred == i.Occurred && cur.Name == i.Injury);
         }
     }
 

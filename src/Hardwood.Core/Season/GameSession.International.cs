@@ -13,6 +13,7 @@ public sealed partial class GameSession
     public void PlayInternationalOverSummer(DateOnly summer, DateOnly newYear)
     {
         _settled.Clear();
+        _jumpDay = newYear;
         for (int y = summer.Year; y <= newYear.Year; y++)
         {
             PlayOlympicsOverSummer(y, summer, newYear);
@@ -35,6 +36,8 @@ public sealed partial class GameSession
 
     /// <summary>The records played by the current call of <see cref="PlayInternationalOverSummer"/> (for the one call-ups message).</summary>
     private readonly List<WorldCupRecord> _settled = new();
+    /// <summary>The day the summer jumps to (today, once the session has moved on): what an injury is carried against.</summary>
+    private DateOnly _jumpDay;
 
     /// <summary>
     /// I5 (run 213): once, as a tournament is played: who was left out (from the nation's previous twelve) and the injuries carried
@@ -51,10 +54,11 @@ public sealed partial class GameSession
             var people = InternationalPeople();
             foreach (var inj in rec.Injuries)
             {
-                if (!people.TryGetValue(inj.PlayerId, out var p)) continue;
+                // Review (run 213): a jump that lands mid-tournament plays it whole; an injury dated after today isn't carried.
+                if (inj.Occurred > _jumpDay || !people.TryGetValue(inj.PlayerId, out var p)) continue;
                 var injury = new Hardwood.Core.Model.Injury { Name = inj.Injury, Severity = inj.Severity, Occurred = inj.Occurred, ReturnDate = inj.Return };
                 p.InjuryHistory.Add(injury);
-                if (inj.Return > Today && (p.Injury == null || p.Injury.ReturnDate < inj.Return)) p.Injury = injury;
+                if (inj.Return > _jumpDay && (p.Injury == null || p.Injury.ReturnDate < inj.Return)) p.Injury = injury;
             }
         }
         _settled.Add(rec);
@@ -113,8 +117,8 @@ public sealed partial class GameSession
             if (ours.Count > 0) lines.Add($"{rec.Short}: {string.Join(", ", ours)}.");
             var left = rec.LeftOut.Where(kv => mine.ContainsKey(kv.Key)).Select(kv => $"{mine[kv.Key].Name} ({rec.NameOf(kv.Value)})").ToList();
             if (left.Count > 0) lines.Add($"Left out for {rec.Short}: {string.Join(", ", left)}. He was in the twelve last time.");
-            foreach (var inj in rec.Injuries.Where(i => mine.ContainsKey(i.PlayerId)))
-                lines.Add(inj.Return > Today
+            foreach (var inj in rec.Injuries.Where(i => mine.ContainsKey(i.PlayerId) && i.Occurred <= _jumpDay))
+                lines.Add(inj.Return > _jumpDay
                     ? $"{inj.Name} was hurt at {rec.Short} ({inj.Injury}, {inj.Occurred:MMM d}) and is out until {inj.Return:MMM d}."
                     : $"{inj.Name} was hurt at {rec.Short} ({inj.Injury}) but is fit again.");
         }
