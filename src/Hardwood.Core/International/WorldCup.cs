@@ -28,6 +28,12 @@ public sealed record CupTeam(string Code, string Name, string Zone, double Stren
 public sealed class WorldCupRecord
 {
     public int Year { get; set; }
+    /// <summary>I4 (run 211): the tournament's name ("Olympic basketball tournament 2028", "EuroBasket 2029"); empty on a World Cup.</summary>
+    public string Name { get; set; } = "";
+    /// <summary>I4: "Olympics", "Olympic qualifying" or "Continental"; empty on a World Cup.</summary>
+    public string Kind { get; set; } = "";
+    /// <summary>I4: a continental championship's zone ("Europe"); empty otherwise.</summary>
+    public string Zone { get; set; } = "";
     public string Host { get; set; } = "";
     public string Dates { get; set; } = "";
     public List<CupTeam> Teams { get; set; } = new();
@@ -44,6 +50,15 @@ public sealed class WorldCupRecord
 
     public string NameOf(string code) => Teams.FirstOrDefault(t => t.Code == code)?.Name ?? code;
     public CupGame? Final => Games.LastOrDefault(g => g.Round == WorldCup.FinalRound);
+    /// <summary>"FIBA Basketball World Cup 2027", or the I4 tournament's own name.</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public string Title => Name != "" ? Name : $"FIBA Basketball World Cup {Year}";
+    /// <summary>A short name for lists: "World Cup 2027", "Olympics 2028", "EuroBasket 2029".</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public string Short => Kind switch
+    {
+        "" => $"World Cup {Year}",
+        "Olympics" => $"Olympics {Year}",
+        _ => Name.Replace("FIBA ", ""),
+    };
 }
 
 /// <summary>Every international tournament played in this career (I2: the World Cup; later slices add more).</summary>
@@ -58,8 +73,18 @@ public sealed class InternationalHistory
     public Dictionary<string, double> Ranking { get; set; } = new();
     /// <summary>I3: the world rank by code before the latest window or tournament, for the page's movement arrows.</summary>
     public Dictionary<string, int> LastRanking { get; set; } = new();
+    /// <summary>I4 (run 211): the Olympic tournaments played.</summary>
+    public List<WorldCupRecord> Olympics { get; set; } = new();
+    /// <summary>I4: the Olympic qualifying tournaments (quick results).</summary>
+    public List<WorldCupRecord> OlympicQualifiers { get; set; } = new();
+    /// <summary>I4: the continental championships (EuroBasket, the AmeriCup, AfroBasket, the Asia Cup).</summary>
+    public List<WorldCupRecord> Continentals { get; set; } = new();
 
-    public bool IsEmpty => WorldCups.Count == 0 && Windows.Count == 0 && Ranking.Count == 0;
+    /// <summary>I4: the World Cups and Olympics played, oldest first: the medal table's tournaments.</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public IEnumerable<WorldCupRecord> Majors => WorldCups.Concat(Olympics).OrderBy(r => r.Year);
+
+    public bool IsEmpty => WorldCups.Count == 0 && Windows.Count == 0 && Ranking.Count == 0 && Olympics.Count == 0 && OlympicQualifiers.Count == 0
+                           && Continentals.Count == 0;
 }
 
 /// <summary>

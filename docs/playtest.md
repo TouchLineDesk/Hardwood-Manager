@@ -90,7 +90,12 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   results; each zone in groups of about four, two games a window): the inbox gets one message a window, the page shows
   the cycle's group tables, and the group winners and runners-up take their zone's World Cup places. The ranking
   starts from the real FIBA order blended with each twelve's strength, then moves with every window and World Cup game.
-  Players aren't called up from your squad yet (a later build).
+  **From v0.199.0 the 2028 Olympics and the 2029 continental championships are played** at the summer's jump: four
+  Olympic qualifying tournaments of six (quick results) in early July, then twelve teams in Los Angeles (the USA as hosts,
+  the World Cup's best per zone and the four qualifiers; three groups, the quarter-finals to the final, the full engine);
+  and in 2029 EuroBasket, the AmeriCup, AfroBasket and the Asia Cup, with fields from the continental qualifying tables
+  (as many teams as each zone has, up to 24, 12, 16 and 16). The page's "Champions and medals" panel lists every
+  tournament played and the World Cup and Olympic medal table. Players aren't called up from your squad yet (a later build).
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two
@@ -102,7 +107,7 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **Blue bloods recruit well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
-- The Olympics, the continental championships, call-ups and the national-team job aren't built yet (international plan I4–I6).
+- Call-ups (morale, injuries carried to the club), the U23 event and the national-team job aren't built yet (international plan I5–I6). International games score high: about 90 points a side against a real 75–85 (watch).
 
 ## How to leave notes
 One note per thing in the notebook, tagged **Bored**, **Confused**, **Kept waiting**, **Felt wrong**, **Bug** or
