@@ -28,6 +28,7 @@ public class Run205FreshProcessReloadProbe
     {
         var phase = Environment.GetEnvironmentVariable("HW_RC_PHASE");
         if (string.IsNullOrEmpty(phase)) return;
+        Assert.True(phase is "save" or "load" or "nosave", $"HW_RC_PHASE must be save, load or nosave, not '{phase}'");
         var dir = Env("HW_RC_DIR", Path.Combine(Path.GetTempPath(), "hw-rc"));
         Directory.CreateDirectory(dir);
         ulong seed = ulong.Parse(Env("HW_RC_SEED", "31"));
@@ -40,13 +41,19 @@ public class Run205FreshProcessReloadProbe
         GameSession s;
         if (phase == "load")
         {
-            s = GameSession.Load(copy);
+            // Load a fresh copy each time: the session autosaves to its own file, so a second load phase would
+            // otherwise start where the first one ended (review).
+            var run = Path.Combine(dir, $"load-{Guid.NewGuid():N}.hwsave");
+            File.Copy(copy, run, true);
+            s = GameSession.Load(run);
+            Assert.True(s.Today == saveDay, $"the save is dated {s.Today}, not {saveDay}: run the save phase first");
         }
         else
         {
             var (_, world) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(seed, 2026, GameSession.DefaultFullSim);
             var id = world.College!.Programs.First(t => (t.City + " " + t.Name).Contains(team) || (team == "UTEP" && t.City.Contains("El Paso"))).Id;
-            s = GameSession.NewGame(seed, id, live);
+            // nosave has no save path, so it never saves (an autosave restarts the random streams, #1136).
+            s = GameSession.NewGame(seed, id, phase == "nosave" ? null : live);
             Assert.True(s.InCollege);
             while (s.Today < saveDay) s.AdvanceDay();
             if (phase == "save")
