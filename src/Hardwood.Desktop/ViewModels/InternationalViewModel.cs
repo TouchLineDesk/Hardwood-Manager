@@ -104,7 +104,7 @@ public sealed partial class InternationalViewModel : PageViewModel
         var hist = s.World.International;
         string basis = hist.Ranking.Count == 0
             ? "the FIBA world ranking (seeded from the real ranking and each twelve's strength; results move it from the first window)"
-            : $"the FIBA world ranking, from results ({hist.Windows.Count} window{(hist.Windows.Count == 1 ? "" : "s")}, {hist.WorldCups.Count} World Cup{(hist.WorldCups.Count == 1 ? "" : "s")})";
+            : $"the FIBA world ranking, from results ({hist.Windows.Count} window{(hist.Windows.Count == 1 ? "" : "s")}, {Plural(hist.WorldCups.Count + hist.Olympics.Count + hist.Continentals.Count, "tournament")})";
         Summary = $"{ranked} national teams in {basis} · a country needs {NationalTeams.MinPool} players aged {NationalTeams.MinAge}+ anywhere in the world"
                   + Suspended(_teams.Where(t => t.Rank == 0).Select(t => t.Name).ToList());
 
@@ -218,6 +218,8 @@ public sealed partial class InternationalViewModel : PageViewModel
         MedalNote = majors == 0 ? ""
             : $"Medal table: {h.WorldCups.Count} World Cup{(h.WorldCups.Count == 1 ? "" : "s")} and {h.Olympics.Count} Olympics played in this career";
     }
+
+    private static string Plural(int n, string word) => $"{n} {word}{(n == 1 ? "" : "s")}";
 
     private static string Joined(IReadOnlyList<string> items) => items.Count <= 1 ? string.Join("", items)
         : string.Join(", ", items.Take(items.Count - 1)) + " and " + items[^1];

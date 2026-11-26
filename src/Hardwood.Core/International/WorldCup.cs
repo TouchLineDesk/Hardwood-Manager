@@ -51,9 +51,9 @@ public sealed class WorldCupRecord
     public string NameOf(string code) => Teams.FirstOrDefault(t => t.Code == code)?.Name ?? code;
     public CupGame? Final => Games.LastOrDefault(g => g.Round == WorldCup.FinalRound);
     /// <summary>"FIBA Basketball World Cup 2027", or the I4 tournament's own name.</summary>
-    public string Title => Name != "" ? Name : $"FIBA Basketball World Cup {Year}";
+    [System.Text.Json.Serialization.JsonIgnore] public string Title => Name != "" ? Name : $"FIBA Basketball World Cup {Year}";
     /// <summary>A short name for lists: "World Cup 2027", "Olympics 2028", "EuroBasket 2029".</summary>
-    public string Short => Kind switch
+    [System.Text.Json.Serialization.JsonIgnore] public string Short => Kind switch
     {
         "" => $"World Cup {Year}",
         "Olympics" => $"Olympics {Year}",
@@ -81,7 +81,7 @@ public sealed class InternationalHistory
     public List<WorldCupRecord> Continentals { get; set; } = new();
 
     /// <summary>I4: the World Cups and Olympics played, oldest first: the medal table's tournaments.</summary>
-    public IEnumerable<WorldCupRecord> Majors => WorldCups.Concat(Olympics).OrderBy(r => r.Year);
+    [System.Text.Json.Serialization.JsonIgnore] public IEnumerable<WorldCupRecord> Majors => WorldCups.Concat(Olympics).OrderBy(r => r.Year);
 
     public bool IsEmpty => WorldCups.Count == 0 && Windows.Count == 0 && Ranking.Count == 0 && Olympics.Count == 0 && OlympicQualifiers.Count == 0
                            && Continentals.Count == 0;

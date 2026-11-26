@@ -257,8 +257,15 @@ public static class Olympics
         if (ranked.Count < Teams) return null;
         var cup = h.WorldCups.Where(w => w.Year == year - 1).LastOrDefault();
         var direct = Direct(ranked, HostNation(ev.Where), cup, points);
+        // Review (run 211): with no known host, or a zone short of World Cup teams, the open direct places go by ranking before
+        // the qualifying pools are drawn, so a qualifying tournament's loser never takes one.
+        foreach (var t in ranked)
+        {
+            if (direct.Count >= Teams - QualifyingTournaments) break;
+            if (!direct.Contains(t)) direct.Add(t);
+        }
         var qrng = new Rng(s.Seed ^ 0xF1BA_0A7C_0000_0011UL ^ ((ulong)(uint)year * 0x9E3779B97F4A7C15UL));
-        var qualifiers = PlayQualifiers(ranked, direct, oqt, qrng, points);
+        var qualifiers = PlayQualifiers(ranked, direct, oqt, qrng);
         var field = direct.Concat(qualifiers.Select(q => ranked.First(t => t.Nation.Code == q.Gold))).ToList();
         foreach (var t in ranked) // a world too small for four qualifying tournaments: the best of the rest
         {
@@ -291,8 +298,7 @@ public static class Olympics
     }
 
     /// <summary>Four tournaments of six (snaked by rank from the best teams not yet in), quick results; each winner goes through.</summary>
-    public static List<WorldCupRecord> PlayQualifiers(IReadOnlyList<NationalTeam> ranked, IReadOnlyList<NationalTeam> direct, FibaEvent oqt, Rng rng,
-        IReadOnlyDictionary<string, double> points)
+    public static List<WorldCupRecord> PlayQualifiers(IReadOnlyList<NationalTeam> ranked, IReadOnlyList<NationalTeam> direct, FibaEvent oqt, Rng rng)
     {
         var rest = ranked.Where(t => !direct.Contains(t)).Take(QualifyingTournaments * QualifyingSize).ToList();
         int count = Math.Min(QualifyingTournaments, Math.Max(0, Teams - direct.Count));
