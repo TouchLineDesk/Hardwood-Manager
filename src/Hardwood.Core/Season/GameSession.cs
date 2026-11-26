@@ -477,15 +477,17 @@ public sealed partial class GameSession
         if (InCollege && World.College is { } pollWorld && pollWorld.Season.PollRelease.Count > 0) pollWorld.ReleasePoll(Today);
         // I6b (run 215): your nation's qualifier, live when the club is idle today, else your assistant's (own stream).
         var national = BeginNationalGame(liveHumanGame);
+        // Review (run 215): with the national game live, no club game is (an out-of-work coach's old club plays on without him).
+        bool clubLive = liveHumanGame && national == null && Employed;
         // A club abroad plays its league and continental games from the world's fixtures.
-        live = BeginAbroadGame(liveHumanGame, played);
+        live = BeginAbroadGame(clubLive, played);
 
         if (Phase == SessionPhase.RegularSeason)
         {
             foreach (var g in GamesOn(Today))
             {
                 bool human = g.Home == HumanTeam || g.Away == HumanTeam;
-                if (human && liveHumanGame)
+                if (human && clubLive)
                 {
                     _liveScheduled = g;
                     live = _sim.StartLive(g.Home, g.Away, League.Rules, _rng.NextULong(), Today);
@@ -498,7 +500,7 @@ public sealed partial class GameSession
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
         {
-            var mine = liveHumanGame ? Postseason.Active.FirstOrDefault(se => se.Higher == HumanTeam || se.Lower == HumanTeam) : null;
+            var mine = clubLive ? Postseason.Active.FirstOrDefault(se => se.Higher == HumanTeam || se.Lower == HumanTeam) : null;
             _stageBefore = Postseason.Stage;
             played = Postseason.PlayDayExcept(_sim, _rng, Today, mine != null ? HumanTeam : null);
             foreach (var r in played) if (r.Home.Team == HumanTeam || r.Away.Team == HumanTeam) ReportGame(r, HumanSeries);

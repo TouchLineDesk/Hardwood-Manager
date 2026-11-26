@@ -31,9 +31,17 @@ public static class NationalGames
     /// <summary>A tournament: this much per place above the seeding, capped either way; then the medal's lift.</summary>
     public const double TournamentRepPerPlace = 0.4, TournamentRepCap = 4.0;
 
-    public static ulong GameSeed(ulong seed, NationalFixture f) =>
-        seed ^ 0x4E41_5447_414D_4542UL ^ ((ulong)(uint)f.Day.DayNumber * 0x9E3779B97F4A7C15UL)
-             ^ ((ulong)(uint)StringComparer.Ordinal.GetHashCode(f.Home) * 31) ^ (ulong)(uint)f.Away.Length;
+    /// <summary>The game's own seed: the career's seed, the day and both codes (FNV-1a, the same in every process; review, run 215).</summary>
+    public static ulong GameSeed(ulong seed, NationalFixture f)
+    {
+        ulong h = 14695981039346656037UL;
+        void Mix(int v) { unchecked { h ^= (uint)v; h *= 1099511628211UL; } }
+        Mix(f.Day.DayNumber);
+        foreach (char c in f.Home) Mix(c);
+        Mix('|');
+        foreach (char c in f.Away) Mix(c);
+        return seed ^ h ^ 0x4E41_5447_414D_4542UL;
+    }
 
     /// <summary>A temporary side for one national game: the twelve on the floor, the nation's code on the scoreboard.
     /// The away side wears a contrasting kit so the dots differ on the court.</summary>
@@ -41,7 +49,7 @@ public static class NationalGames
     {
         var t = new Team
         {
-            Id = id, City = n.Name, Name = n.Name, Abbreviation = n.Nation.Code, Division = "FIBA",
+            Id = id, City = n.Name, Name = "", Abbreviation = n.Nation.Code, Division = "FIBA",
             PrimaryColor = home ? "#1D3FA3" : "#C8102E", SecondaryColor = home ? "#FFFFFF" : "#F2F2F2",
         };
         foreach (var x in n.Squad) t.Roster.Add(x.Player);

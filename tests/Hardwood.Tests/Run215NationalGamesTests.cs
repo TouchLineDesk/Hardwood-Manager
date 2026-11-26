@@ -148,4 +148,15 @@ public class Run215NationalGamesTests
         Assert.InRange(NationalGames.WindowReputation(expected, "BBB", pts), 0, 0.5);
         Assert.True(NationalGames.WindowReputation(expected, "AAA", pts) < 0);
     }
+
+    [Fact]
+    public void A_national_games_seed_is_the_same_in_every_process()
+    {
+        var f = new NationalFixture("2026-11", "Europe A", "ESP", "LAT", new DateOnly(2026, 11, 13));
+        // FNV-1a over the day and both codes (review, run 215): no string.GetHashCode, which changes per process.
+        Assert.Equal(0x28232D60838AD4B1UL, NationalGames.GameSeed(31, f)); // pinned: computed outside .NET
+        Assert.NotEqual(NationalGames.GameSeed(31, f), NationalGames.GameSeed(31, f with { Away = "LTU" }));
+        Assert.NotEqual(NationalGames.GameSeed(31, f), NationalGames.GameSeed(31, f with { Day = f.Day.AddDays(2) }));
+        Assert.NotEqual(NationalGames.GameSeed(31, f), NationalGames.GameSeed(32, f));
+    }
 }

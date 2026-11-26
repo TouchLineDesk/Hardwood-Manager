@@ -127,7 +127,7 @@ public sealed partial class LiveGameViewModel
         Markings = _live.Result.Periods == 2 ? CourtMarkings.College : _live.MinutesPerPeriod == 10 ? CourtMarkings.Fiba : CourtMarkings.Nba;
         BarAwayScore = _live.AwayScore; BarHomeScore = _live.HomeScore;
         BarClock = BugClock; BarPeriod = BugPeriod;
-        Commentary = $"Welcome to {HomeTeam.City}: {AwayTeam.Name} at {HomeTeam.Name}. Press Play for the tip.";
+        Commentary = $"Welcome to {HomeTeam.City}: {Nick(AwayTeam)} at {Nick(HomeTeam)}. Press Play for the tip.";
         MatchFrame = TipFrame();
         InitShouts();
         // Fight songs A (review): start the home band's song rendering now, so it's ready by the tip.
@@ -160,7 +160,9 @@ public sealed partial class LiveGameViewModel
     /// <summary>The side's name as the commentary says it. K25 (run 174): a broadcast name ("Miami", not "Miami (FL)").</summary>
     private string Short(Team t) => CollegeGameNow
         ? GameCalls.BroadcastName(t.City, (t == HomeTeam ? AwayTeam : HomeTeam).City)
-        : t.Name;
+        : Nick(t);
+    /// <summary>The side's nickname, or (a national team, run 215) its country.</summary>
+    internal static string Nick(Team t) => t.Name.Length > 0 ? t.Name : t.City;
 
     /// <summary>K25 (run 174): every commentary line of the game so far, in order, and the late live-ball sub lines (for tests).</summary>
     public List<CommentaryLine> SaidForTest { get; } = new();

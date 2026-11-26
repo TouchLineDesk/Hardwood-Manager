@@ -63,7 +63,7 @@ public sealed partial class GameSession
         if (job.Code == null) return false;
         job.Past.Add(new NationalSpell(job.Code, job.Name, job.Since ?? Today, Today));
         Post($"You've stepped down as head coach of {job.Name}", "The federation thanked you and will name a successor. Other nations may call next October.", "World");
-        job.Code = null; job.Name = ""; job.Since = null; job.Picks.Clear();
+        job.Code = null; job.Name = ""; job.Since = null; job.Picks.Clear(); job.Games.Clear();
         return true;
     }
 
@@ -176,9 +176,10 @@ public sealed partial class GameSession
         var top = box.Lines.Where(l => l.Seconds > 0).OrderByDescending(l => l.Points).FirstOrDefault();
         string opp = (f.Home == code ? r.Away : r.Home).Team.City;
         Post($"{job.Name} {(won ? "beat" : "lost to")} {opp} {Math.Max(g.HomePts, g.AwayPts)}-{Math.Min(g.HomePts, g.AwayPts)}",
-            $"Your assistant took the {f.Group} qualifier ({(f.Home == code ? "at home" : "away")}) while you were with the club today. "
+            (ClubGameToday ? $"Your assistant took the {f.Group} qualifier ({(f.Home == code ? "at home" : "away")}) while you were with the club today. "
+                : $"The {f.Group} qualifier ({(f.Home == code ? "at home" : "away")}) was played without you watching: your assistant ran the bench. ")
             + (top != null ? $"{top.Player.Name} led {job.Name} with {top.Points} points. " : "")
-            + "On a day your club doesn't play, you coach your nation's game yourself.", "World");
+            + "With Watch games on, you coach your nation's game yourself on a day your club doesn't play.", "World");
     }
 
     /// <summary>I6b: after a window is played, your results move your reputation (wins above what the ranking expected).</summary>

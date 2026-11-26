@@ -119,8 +119,8 @@ public sealed partial class LiveGameViewModel : PageViewModel
     [RelayCommand] private void ToBox() => ShowBox = true;
     [ObservableProperty] private IReadOnlyList<LiveBoxRow> _awayBox = Array.Empty<LiveBoxRow>();
     [ObservableProperty] private IReadOnlyList<LiveBoxRow> _homeBox = Array.Empty<LiveBoxRow>();
-    public string AwayBoxTitle => $"{AwayTeam.Name} (away)";
-    public string HomeBoxTitle => $"{HomeTeam.Name} (home)";
+    public string AwayBoxTitle => $"{Nick(AwayTeam)} (away)";
+    public string HomeBoxTitle => $"{Nick(HomeTeam)} (home)";
 
     /// <summary>The compact box score: everyone who has played (or is on the floor), starters first, then by minutes,
     /// and the team's totals. Only rebuilt while its tab is showing.</summary>
