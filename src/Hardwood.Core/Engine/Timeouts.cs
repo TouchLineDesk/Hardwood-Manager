@@ -45,7 +45,20 @@ public sealed record TimeoutRules(int AtTip, int CarryToSecondHalf, int SecondHa
     public const double AfterTimeoutLogit = 0.10;
     /// <summary>A breather is called when the five on the floor average less than the sub-out line plus this.</summary>
     public const double BreatherMargin = 0.06;
+
+    /// <summary>K38 (run 208): college has media timeouts (the first dead ball under each of <see cref="MediaMarks"/>).</summary>
+    public bool HasMediaTimeouts => ReferenceEquals(this, College) || (AtTip == College.AtTip && CarryToSecondHalf == College.CarryToSecondHalf && PerOvertime == College.PerOvertime && CarryIntoOvertime);
+    /// <summary>The media marks of each college half, in seconds left: under 16, 12, 8 and 4 minutes.</summary>
+    public static readonly int[] MediaMarks = { 960, 720, 480, 240 };
+    /// <summary>The rest a media timeout gives the players on the floor (it runs longer than a team's own).</summary>
+    public const double MediaSeconds = 90;
+    /// <summary>K38: the last two minutes of a college game this lopsided are garbage time: no bench timeouts.</summary>
+    public const int GarbageMargin = 15;
 }
+
+/// <summary>K38 (run 208): a college media timeout (kept on <see cref="GameResult.MediaTimeouts"/>; not saved).</summary>
+/// <param name="Mark">The mark it was taken under, in seconds left (960 = "under 16").</param>
+public sealed record MediaTimeoutCall(int Period, double Clock, int Mark, int HomeScore, int AwayScore);
 
 /// <summary>Why a bench called a timeout.</summary>
 public enum TimeoutReason

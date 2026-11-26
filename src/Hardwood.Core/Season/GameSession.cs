@@ -1248,9 +1248,32 @@ public sealed partial class GameSession
                 People.PeopleEventKind.DressingRoom => "The dressing room",
                 _ => e.Player.Name,
             };
-            Post(title, InCollege ? CollegeWording(e) : e.Text, "Squad");
+            string body = InCollege ? CollegeWording(e) : e.Text;
+            if (InCollege && e.Kind == People.PeopleEventKind.WantsTalk) (title, body) = OneComplaintThread(e.Player, title, body);
+            Post(title, body, "Squad");
         }
         WeeklyMedia();
+    }
+
+    /// <summary>
+    /// K37 (run 208): in college, one unhappy player's complaint is one inbox thread a season. A repeat replaces the earlier
+    /// message (moved to the top) and says how long it has gone on and when he first raised it, instead of piling up
+    /// "wants a word" thirteen times. Text only: nothing about the mood itself changes.
+    /// </summary>
+    public (string title, string body) OneComplaintThread(Player p, string title, string body)
+    {
+        var seasonStart = new DateOnly(Today.Month >= 8 ? Today.Year : Today.Year - 1, 8, 1);
+        string first = $"{p.Name} wants a word", again = $"{p.Name} still wants a word";
+        // Review (run 208): only the same unhappy spell is merged; after he has settled, a new complaint starts a new thread.
+        var spellStart = Today.AddDays(-7 * (p.UnhappyWeeks + 1));
+        var old = Inbox.FirstOrDefault(m => m.Category == "Squad" && m.Date >= seasonStart && m.Date >= spellStart && (m.Title == first || m.Title == again));
+        if (old == null) return (title, body);
+        var raised = System.Text.RegularExpressions.Regex.Match(old.Body, @"first raised on (\w+ \d+)") is { Success: true } mm
+            ? mm.Groups[1].Value : old.Date.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
+        Inbox.Remove(old);
+        int weeks = Math.Max(1, p.UnhappyWeeks);
+        return (again, $"{body} He has been unhappy for {weeks} week{(weeks == 1 ? "" : "s")} (first raised on {raised}). "
+            + "Talk to him on the Squad page, or change what he's unhappy about (minutes, role).");
     }
 
     /// <summary>

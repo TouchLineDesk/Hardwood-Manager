@@ -82,6 +82,8 @@ public static class Assistant
         string career = $"{s.Seed}-{s.HumanTeam.Id}-{s.League.Season}";
         if (t.Key.StartsWith("board-")) return $"remind:board{(s.Job.Confidence < 20 ? "-low" : "")}:{career}-{s.Phase}";
         if (t.Key.StartsWith("staffdeal-")) return $"remind:staffdeal:{career}"; // one decision a summer: once a season
+        // K37 (run 208): a missing staff role is a standing reminder too ("Hire an assistant coach" sat on the panel 30 days).
+        if (t.Key.StartsWith("staff-")) return $"remind:staff:{career}-{s.Phase}";
         return null;
     }
 

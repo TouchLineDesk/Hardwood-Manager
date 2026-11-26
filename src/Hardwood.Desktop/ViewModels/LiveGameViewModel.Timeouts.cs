@@ -49,5 +49,16 @@ public sealed partial class LiveGameViewModel
         return notes;
     }
 
+    /// <summary>K38 (run 208): the college media timeouts the engine took in the step just played ("MEDIA TIMEOUT · under 12:00").</summary>
+    private List<string> MediaNotes(int before)
+    {
+        var all = _live.Result.MediaTimeouts;
+        var notes = new List<string>();
+        for (int i = before; i < all.Count; i++) notes.Add(MediaLine(all[i]));
+        return notes;
+    }
+
+    public static string MediaLine(MediaTimeoutCall m) => $"MEDIA TIMEOUT · under {m.Mark / 60}:00";
+
     public static string TimeoutLine(string team, TimeoutCall t) => $"Timeout, {team}: {t.Why} · {t.LeftText}";
 }

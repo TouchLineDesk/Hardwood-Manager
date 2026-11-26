@@ -89,11 +89,10 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two
   teams' dots can be hard to tell apart (K36).
-- **Unhappy players repeat themselves:** "X wants a word" can come back every few weeks for months, and the assistant
-  may keep suggesting "Hire an assistant coach" (K37).
-- **Computer coaches waste timeouts** (a "breather" in a tie game's last minutes, one called down 30), and there are
-  no media timeouts yet (K38).
-- **The Most Outstanding Player line** counts only his points in the final, though it says "in the Final Four" (H210).
+- **Unhappy players:** from v0.196.0 a repeated "X wants a word" is one inbox thread that says how long it has gone on
+  ("X still wants a word"), and "Hire an assistant coach" shows on two days a phase. The mood itself still lingers (K37).
+- **Timeouts:** from v0.196.0 college games have media timeouts (under 16, 12, 8 and 4 minutes of each half, "MEDIA
+  TIMEOUT" in the commentary), and nobody calls one in the last two minutes of a 15-point game (K38).
 - **Blue bloods recruit well** for years in a row, and prestige moves slowly after a bad season (K21, K27).
 - **Big conferences play 19 league games** (real ones play 18 or 20; H197, after launch).
 - **Sound:** the release zip carries the licensed pack: the arena crowd, the court sounds (dribbles, squeaks, the rim and the net) and the band's drumline and brass stabs. Every college home game also plays a fight song for the school (the real one where it's public domain, an original tune otherwise) on a simple band made in code. Nobody has tuned it by ear yet, and players' shouts and a crowd "aww" are still missing. If a game has no dribbles or drumline, that zip was built without the pack: leave a note. Your "restaurant" note stays open until it sounds right to you.
