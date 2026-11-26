@@ -1,6 +1,6 @@
 namespace Hardwood.Core.International;
 
-public enum FibaEventKind { Window, WorldCup, Olympics, OlympicQualifying, Continental }
+public enum FibaEventKind { Window, WorldCup, Olympics, OlympicQualifying, Continental, U23 }
 
 /// <summary>One date on the FIBA calendar.</summary>
 public sealed record FibaEvent(FibaEventKind Kind, string Name, DateOnly Start, DateOnly End, string Where, string Note)
@@ -74,6 +74,13 @@ public static class FibaCalendar
                 _ => (Saturday(new DateOnly(y, 7, 24)), Saturday(new DateOnly(y, 7, 24)).AddDays(15), "Host to be named"),
             };
             yield return new FibaEvent(FibaEventKind.Olympics, $"Olympic basketball tournament {y}", start, end, where, "12 teams: the host, the World Cup's qualifiers and four qualifying winners");
+        }
+        if (U23Cup.IsYear(y))
+        {
+            // I5 (run 213): a game event (FIBA has no men's U23 world event), in the even summers without an Olympics.
+            var u = Friday(new DateOnly(y, 7, 10));
+            yield return new FibaEvent(FibaEventKind.U23, $"U23 Nations Cup {y}", u, u.AddDays(9), "Host to be named",
+                "16 under-23 twelves; a game event, not a FIBA one");
         }
         if (IsContinentalYear(y))
         {

@@ -87,6 +87,9 @@ public sealed class Player
     public DateOnly? BoostUntil { get; set; }
     /// <summary>Why the boost exists, shown among his mood factors.</summary>
     public string? BoostReason { get; set; }
+    /// <summary>I5 (run 213): the latest summer's international line (picked, a medal, left out), re-derived from the saved
+    /// tournaments by the session; never saved itself.</summary>
+    public global::Hardwood.Core.International.InternationalMood? International { get; set; }
 
     public Injury? Injury { get; set; }
     public List<Injury> InjuryHistory { get; } = new();

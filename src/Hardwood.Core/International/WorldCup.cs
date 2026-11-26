@@ -47,6 +47,10 @@ public sealed class WorldCupRecord
     public List<CupPlayer> TopScorers { get; set; } = new();
     public List<CupPlayer> AllStarFive { get; set; } = new();
     public CupPlayer? Mvp { get; set; }
+    /// <summary>I5 (run 213): injuries picked up in its full-engine games (carried to the clubs at the summer's jump).</summary>
+    public List<CupInjury> Injuries { get; set; } = new();
+    /// <summary>I5: players in their nation's previous senior twelve who were fit and in the pool but not picked (id to code).</summary>
+    public Dictionary<int, string> LeftOut { get; set; } = new();
 
     public string NameOf(string code) => Teams.FirstOrDefault(t => t.Code == code)?.Name ?? code;
     public CupGame? Final => Games.LastOrDefault(g => g.Round == WorldCup.FinalRound);
@@ -57,6 +61,7 @@ public sealed class WorldCupRecord
     {
         "" => $"World Cup {Year}",
         "Olympics" => $"Olympics {Year}",
+        U23Cup.Kind => $"U23 Nations Cup {Year}",
         _ => Name.Replace("FIBA ", ""),
     };
 }
@@ -79,12 +84,15 @@ public sealed class InternationalHistory
     public List<WorldCupRecord> OlympicQualifiers { get; set; } = new();
     /// <summary>I4: the continental championships (EuroBasket, the AmeriCup, AfroBasket, the Asia Cup).</summary>
     public List<WorldCupRecord> Continentals { get; set; } = new();
+    /// <summary>I5 (run 213): the U23 Nations Cups played (a game event; FIBA has none).</summary>
+    public List<WorldCupRecord> U23Cups { get; set; } = new();
 
     /// <summary>I4: the World Cups and Olympics played, oldest first: the medal table's tournaments.</summary>
     [System.Text.Json.Serialization.JsonIgnore] public IEnumerable<WorldCupRecord> Majors => WorldCups.Concat(Olympics).OrderBy(r => r.Year);
 
     public bool IsEmpty => WorldCups.Count == 0 && Windows.Count == 0 && Ranking.Count == 0 && Olympics.Count == 0 && OlympicQualifiers.Count == 0
-                           && Continentals.Count == 0;
+                           && Continentals.Count == 0
+                           && U23Cups.Count == 0;
 }
 
 /// <summary>
@@ -93,7 +101,7 @@ public sealed class InternationalHistory
 /// (each team carries its group games against the other qualifier and plays the two from the paired group); quarter-finals,
 /// semi-finals, a bronze game and the final. Every game is the full engine on FIBA rules at a neutral site (#109). Squads are the
 /// federation's twelve on the first day, from players fit that day. It draws from its own stream (the session seed and the year),
-/// never the shared ones, and writes nothing to players or clubs (no injuries, no stats in club lines: I5 adds the effects, #110).
+/// never the shared ones, and writes nothing to players or clubs (I5, run 213: its injuries are kept in the record and carried by the session, #110).
 /// </summary>
 public static class WorldCup
 {
@@ -202,6 +210,7 @@ public static class WorldCup
         }
         var rules = Rules.FibaNational; // H219 (run 212): national-team scoring
         var lines = new Dictionary<int, (string Code, string Name, int G, int Pts, int Reb, int Ast)>();
+        var apps = new List<Callups.Appearance>();
 
         CupGame Game(string round, string home, string away, DateOnly day)
         {
@@ -209,6 +218,7 @@ public static class WorldCup
             foreach (var (box, code) in new[] { (r.Home, home), (r.Away, away) })
                 foreach (var l in box.Lines.Where(l => l.Seconds > 0))
                 {
+                    apps.Add(new Callups.Appearance(l.Player, code, day, l.Minutes));
                     var c = lines.TryGetValue(l.Player.Id, out var was) ? was : (Code: code, Name: l.Player.Name, G: 0, Pts: 0, Reb: 0, Ast: 0);
                     lines[l.Player.Id] = (code, l.Player.Name, c.G + 1, c.Pts + l.Points, c.Reb + l.Rebounds, c.Ast + l.Assists);
                 }
@@ -265,6 +275,7 @@ public static class WorldCup
         rec.AllStarFive = all.Where(p => p.Games >= 5 && lastEight.Contains(p.Code))
             .OrderByDescending(p => p.Impact).ThenBy(p => p.PlayerId).Take(5).ToList();
         rec.Mvp = rec.AllStarFive.FirstOrDefault(p => p.Code == rec.Gold) ?? all.Where(p => p.Code == rec.Gold).OrderByDescending(p => p.Impact).FirstOrDefault();
+        rec.Injuries = Callups.RollInjuries(rec, apps); // I5 (run 213): after the games, from its own seed
         return rec;
     }
 
