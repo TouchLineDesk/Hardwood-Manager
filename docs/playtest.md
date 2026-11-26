@@ -34,7 +34,7 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
 - **The bubble (March Madness page, before Selection Sunday):** bracketology shows each bubble team's NET rank and
   Quad 1 record, and your own NET with the record in all four quadrants, as the committee reads a résumé.
 - **Selection Sunday and March Madness, on the real weekdays:** conference tournaments run Friday to Sunday, with the
-  finals on Selection Sunday (20 days before the final). The First Four is Tuesday and Wednesday, the first two rounds
+  finals on Selection Sunday (three weeks before the Final Four). The First Four is Tuesday and Wednesday, the first two rounds
   Thursday to Sunday, the Sweet 16 and Elite Eight the next Thursday to Sunday (each half of the bracket on its own two
   days, so nobody plays two days running), the Final Four the first Saturday of April and the final on Monday. Your
   seed arrives in the inbox; the studio and the arena name the round. The bracket page shows the whole field.
