@@ -175,6 +175,13 @@ public static class Program
                 Console.WriteLine($"{name}: {list.Count} games · timeouts a side {calls.Count / (double)sides:0.00} " +
                     $"(stop a run {calls.Count(c => c.Reason == TimeoutReason.StopRun) / (double)sides:0.00}, last play {calls.Count(c => c.Reason == TimeoutReason.LastPlay) / (double)sides:0.00}, late {calls.Count(c => c.Reason == TimeoutReason.LatePlay) / (double)sides:0.00}, breather {calls.Count(c => c.Reason == TimeoutReason.Breather) / (double)sides:0.00}, clock {calls.Count(c => c.Reason is TimeoutReason.StopClock or TimeoutReason.SetDefense) / (double)sides:0.00}) · " +
                     $"games with none {100.0 * list.Count(r => r.Timeouts.Count == 0) / list.Count:0}% · points a side {pts:0.0} · OT {100.0 * list.Count(r => r.Overtimes > 0) / list.Count:0.0}%");
+                // K38 (run 208): the late-game misuses the critic saw, and the media timeouts.
+                int last = list.Count == 0 ? 0 : list[0].Periods;
+                bool Final(TimeoutCall c) => c.Period >= last;
+                int Margin(TimeoutCall c) => c.Home ? c.HomeScore - c.AwayScore : c.AwayScore - c.HomeScore;
+                Console.WriteLine($"    down 15+ in the last 2:00: {calls.Count(c => Final(c) && c.Clock <= 120 && Margin(c) <= -15)} · " +
+                    $"breathers in the last 4:00 within 3: {calls.Count(c => Final(c) && c.Clock <= 240 && Math.Abs(Margin(c)) <= 3 && c.Reason == TimeoutReason.Breather)} · " +
+                    $"media timeouts a game {list.Average(r => r.MediaTimeouts.Count):0.00} · margin {list.Average(r => Math.Abs(r.Home.Points - r.Away.Points)):0.0}");
             }
             var nbaTeams = league.Teams.ToList();
             Report("NBA", Enumerable.Range(0, n).Select(i => { var h = nbaTeams[i % nbaTeams.Count]; var a = nbaTeams[(i * 7 + 3) % nbaTeams.Count]; if (a == h) a = nbaTeams[(i + 1) % nbaTeams.Count]; return sim.Simulate(h, a, Rules.Nba, rr.NextULong()); }));

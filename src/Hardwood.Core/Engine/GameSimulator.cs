@@ -356,6 +356,8 @@ public sealed class GameSimulator
         private readonly PlayByPlay? _pbp;
         private readonly List<int> _homeByPeriod = new(), _awayByPeriod = new();
         private readonly TimeoutRules _to;
+        /// <summary>K38 (run 208): the next media timeout mark of this half (an index into <see cref="TimeoutRules.MediaMarks"/>).</summary>
+        private int _mediaNext;
 
         private int _period;
         private double _clock;        // seconds remaining in period
@@ -442,6 +444,7 @@ public sealed class GameSimulator
             // K11: in college, team fouls carry from the second half into overtime.
             if (!(_period > _rules.Periods && _rules.FoulsCarryIntoOvertime)) { _home.TeamFouls = 0; _away.TeamFouls = 0; }
             _periodHomeStart = Score(_home); _periodAwayStart = Score(_away);
+            _mediaNext = 0;
             foreach (var side in new[] { _home, _away })
             {
                 side.TimeoutsLeft = _to.AtPeriodStart(_period, _rules.Periods, side.TimeoutsLeft);
@@ -553,6 +556,17 @@ public sealed class GameSimulator
             int full = _period <= _rules.Periods ? _rules.MinutesPerPeriod * 60 : _cfg.OvertimeMinutes * 60;
             if (_clock >= full) return;   // a period just opened: the break was the timeout
             int diff = Score(off) - Score(def);
+            // K38 (run 208), college only: the media timeout at the first dead ball under 16, 12, 8 and 4 minutes of each half
+            // (a bench's own timeout called under a mark counts as that mark's, as in the real game).
+            if (_to.HasMediaTimeouts && _period <= _rules.Periods && _mediaNext < TimeoutRules.MediaMarks.Length
+                && _clock < TimeoutRules.MediaMarks[_mediaNext])
+            {
+                MediaTimeout();
+                return;
+            }
+            // K38: college garbage time. The last two minutes of a 15-point game: neither bench calls one (a coach's own
+            // request above still counts).
+            if (_rules.Periods == 2 && _period >= _rules.Periods && _clock <= 120 && Math.Abs(diff) >= TimeoutRules.GarbageMargin) return;
             if (_period >= _rules.Periods && _clock <= _rules.ShotClockSeconds + 2 && _clock > 1 && diff is >= -3 and <= 0
                 && off.TimeoutsLeft > 0 && off.LastPlayCallPeriod != _period)
             {
@@ -597,18 +611,37 @@ public sealed class GameSimulator
             }
         }
 
-        private void CallTimeout(Side side, TimeoutReason reason, int run)
+        /// <summary>Everyone on the floor sits for a stoppage's length (the bench's recovery rate); the clock doesn't move.</summary>
+        private void Rest(double seconds)
         {
-            side.TimeoutsLeft--; side.Box.Timeouts = side.TimeoutsLeft; side.Box.TimeoutsUsed++;
-            side.RunAgainst = 0; side.AfterTimeout = true;
-            // Everyone on the floor sits for the timeout's length (the bench's recovery rate); the clock doesn't move.
-            double possFraction = _to.Seconds / 14.0;
+            double possFraction = seconds / 14.0;
             foreach (var s in new[] { _home, _away })
             foreach (var p in s.OnCourt)
             {
                 double rec = _cfg.EnergyRecoverPerPossession * possFraction * (0.7 + p.Attributes[Attr.NaturalFitness] / 20.0);
                 s.Energy[p] = Math.Min(1.0, s.Energy[p] + rec);
             }
+        }
+
+        /// <summary>K38 (run 208): a college media timeout. Nobody's timeout is used and no run is stopped (a run goes on
+        /// after the break); the players rest. No random numbers are drawn.</summary>
+        private void MediaTimeout()
+        {
+            int mark = TimeoutRules.MediaMarks[_mediaNext];
+            while (_mediaNext < TimeoutRules.MediaMarks.Length && _clock < TimeoutRules.MediaMarks[_mediaNext]) _mediaNext++;
+            Rest(TimeoutRules.MediaSeconds);
+            _result.MediaTimeouts.Add(new MediaTimeoutCall(_period, _clock, mark, Score(_home), Score(_away)));
+            if (_pbp != null) Log($"Media timeout (under {mark / 60}:00)");
+        }
+
+        private void CallTimeout(Side side, TimeoutReason reason, int run)
+        {
+            side.TimeoutsLeft--; side.Box.Timeouts = side.TimeoutsLeft; side.Box.TimeoutsUsed++;
+            side.RunAgainst = 0; side.AfterTimeout = true;
+            Rest(_to.Seconds);
+            // K38: a bench's timeout under a media mark is that mark's media timeout.
+            if (_to.HasMediaTimeouts && _period <= _rules.Periods)
+                while (_mediaNext < TimeoutRules.MediaMarks.Length && _clock < TimeoutRules.MediaMarks[_mediaNext]) _mediaNext++;
             var call = new TimeoutCall(_period, _clock, side.IsHome, reason, run, side.TimeoutsLeft, Score(_home), Score(_away));
             _result.Timeouts.Add(call);
             if (_pbp != null) Log($"Timeout, {side.Team.Abbreviation} ({call.Why}; {call.LeftText})");   // a quick game builds no strings (#614)

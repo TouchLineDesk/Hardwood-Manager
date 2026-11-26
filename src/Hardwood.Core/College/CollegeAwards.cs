@@ -38,6 +38,24 @@ public sealed class CollegeAwards
     public int? FreshmanId => Freshman.FirstOrDefault()?.PlayerId;
     public string NameOf(int id) => Names.TryGetValue(id, out var n) ? n : "-";
 
+    /// <summary>The Final Four's Most Outstanding Player: the champion's leading scorer in the title game, with the Final Four
+    /// games he led them in (both, or only the final). H210 (run 208): the Awards card and the Final Four page's line both read
+    /// this, so they name the same man and count the same points. Null before a champion is crowned.</summary>
+    public static (GameStar Star, IReadOnlyList<GameStar> Led)? OutstandingOf(CollegeSeason s)
+    {
+        if (s.ChampionId is not { } champ) return null;
+        var stars = s.Games.Where(g => g.Event == CollegeWorld.Madness && g.Round >= 5 && g.Played && (g.HomeId == champ || g.AwayId == champ))
+            .OrderBy(g => g.Round).Select(g => g.HomeId == champ ? g.HomeStar : g.AwayStar).ToList();
+        if (stars.Count == 0 || stars[^1] is not { } last) return null;
+        return (last, stars.Where(x => x?.PlayerId == last.PlayerId).Select(x => x!).ToList());
+    }
+
+    /// <summary>H210: the MOP's points as the Final Four page says them: "21 and 17 points in the Final Four" when he led both
+    /// games, "17 points in the title game" when he led only the final.</summary>
+    public static string OutstandingPoints(IReadOnlyList<GameStar> led) => led.Count >= 2
+        ? $"{string.Join(" and ", led.Select(x => x.Pts))} points in the Final Four"
+        : $"{led[^1].Pts} points in the title game";
+
     public static string SeasonText(int year) => $"{year}-{(year + 1) % 100:00}";
 }
 
@@ -153,19 +171,13 @@ public sealed partial class CollegeWorld
         // The Final Four's Most Outstanding Player: the champion's leading scorer in both games if one man led both, else the
         // man who led them in the title game.
         int? mop = null; string mopLine = "";
-        if (s.ChampionId is { } champ)
+        if (CollegeAwards.OutstandingOf(s) is { } o)
         {
-            var games = s.Games.Where(g => g.Event == Madness && g.Round >= 5 && g.Played && (g.HomeId == champ || g.AwayId == champ))
-                .OrderBy(g => g.Round).ToList();
-            var stars = games.Select(g => g.HomeId == champ ? g.HomeStar : g.AwayStar).ToList();
-            if (stars.Count > 0 && stars[^1] is { } last)
-            {
-                mop = last.PlayerId;
-                var his = stars.Where(x => x?.PlayerId == last.PlayerId).Select(x => x!).ToList();
-                mopLine = his.Count >= 2
-                    ? $"Led the champions in both games: {string.Join(" and ", his.Select(x => x.Pts))} points"
-                    : $"Led the champions with {last.Pts} points in the title game";
-            }
+            var (last, his) = o;
+            mop = last.PlayerId;
+            mopLine = his.Count >= 2
+                ? $"Led the champions in both games: {string.Join(" and ", his.Select(x => x.Pts))} points"
+                : $"Led the champions with {last.Pts} points in the title game";
         }
 
         var names = new Dictionary<int, string>(); var programOf = new Dictionary<int, int>();

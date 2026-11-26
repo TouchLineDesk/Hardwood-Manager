@@ -803,11 +803,10 @@ public sealed partial class CollegeViewModel : PageViewModel
         int reg = c.RegionOf(champ);
         double avg = run.Count == 0 ? 0 : run.Average(g => Math.Abs(g.HomePts!.Value - g.AwayPts!.Value));
         MontageTitle = $"The champions' run: {team?.FullName}";
-        var weekend = run.Where(g => g.Round >= 5).Select(g => g.HomeId == champ ? g.HomeStar : g.AwayStar).Where(x => x != null).ToList();
-        var mop = weekend.GroupBy(x => x!.PlayerId).Select(gr => (gr.First()!.Name, Pts: gr.Sum(x => x!.Pts), N: gr.Count()))
-            .OrderByDescending(x => x.Pts).FirstOrDefault();
+        // H210 (run 208): the same man and the same points as the Awards card (CollegeAwards.OutstandingOf).
+        var mop = CollegeAwards.OutstandingOf(s);
         MontageSub = $"No. {Seed(champ)} seed{(reg >= 0 ? $" in the {R[reg]}" : "")} · {run.Count} wins, by {avg:0.0} a game"
-            + (mop.Name != null ? $" · Most Outstanding Player: {mop.Name}, {mop.Pts} points in the Final Four" : "");
+            + (mop is { } o ? $" · Most Outstanding Player: {o.Star.Name}, {CollegeAwards.OutstandingPoints(o.Led)}" : "");
         WeekendSub = $"Champions: {team?.FullName}, in {host}." + (dates.Count >= 7 ? $" National semi-finals {dates[5]:MMMM d} · championship game {dates[6]:MMMM d}." : "");
     }
 
