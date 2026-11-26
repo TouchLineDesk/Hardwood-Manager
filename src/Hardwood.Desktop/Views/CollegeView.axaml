@@ -72,7 +72,7 @@
                     <DataTemplate x:DataType="vm:RankRow"><c:TeamLink Team="{Binding Team}" ShowRank="False" Margin="4,0"/></DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="80"/>
+                <DataGridTextColumn Header="Conf" Binding="{Binding Conference}" Width="130"/>
                 <DataGridTextColumn Header="Record" Binding="{Binding Record}" Width="90"/>
                 <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="*"/>
               </DataGrid.Columns>

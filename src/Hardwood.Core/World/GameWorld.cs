@@ -148,7 +148,8 @@ public sealed class GameWorld
             foreach (var seedClub in profile.Clubs)
             {
                 var team = NewClub(id++, seedClub, profile, rng);
-                double quality = rng.NextGaussian(0, 7);
+                // Run 217 (K5): a real club's place in its league's hierarchy shifts its roster (the draw is the same).
+                double quality = rng.NextGaussian(0, 7) + seedClub.Standing;
                 for (int s = 0; s < RosterSize; s++) team.Roster.Add(NewPlayer(team, profile, seedClub, s, quality, today, gen, rng, foreignSlot: false));
                 ApplyForeignMix(team, profile, seedClub, quality, today, gen, rng);
                 comp.Clubs.Add(team);
@@ -174,10 +175,11 @@ public sealed class GameWorld
     private static Team NewClub(int id, ClubSeed c, CompetitionProfile profile, Rng rng)
     {
         var (primary, secondary) = Colours(rng);
+        int capacity = rng.Next(5000, 16000);
         return new Team
         {
             Id = id, City = c.City, Name = c.Name, Abbreviation = c.Abbr, Conference = Conference.East, Division = profile.Short,
-            ArenaCapacity = rng.Next(5000, 16000), PrimaryColor = primary, SecondaryColor = secondary, LogoStyle = rng.Next(0, 5),
+            ArenaCapacity = c.Capacity > 0 ? c.Capacity : capacity, PrimaryColor = primary, SecondaryColor = secondary, LogoStyle = rng.Next(0, 5),
             // European and Asian basketball is slower than the NABL: ~72 possessions in 40 minutes.
             Tactic = new Tactic { Pace = Math.Round(rng.NextGaussian(86, 3), 1) },
         };

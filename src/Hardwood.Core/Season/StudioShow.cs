@@ -162,7 +162,7 @@ public sealed partial class GameSession
 
         var panel = new List<StudioAnalyst> { StudioShow.BigMan, StudioShow.Numbers, StudioShow.Guard };
         if (set is StudioSet.Playoffs or StudioSet.Finals or StudioSet.ThirdPlace) panel.Add(StudioShow.Coach);
-        string venue = RealWorld.RealWorldData.IsReal(League) ? RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.Abbr == home.Abbreviation)?.Arena ?? "" : "";
+        string venue = RealWorld.RealWorldData.IsReal(League) ? RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.Abbr == home.Abbreviation)?.Arena ?? Hardwood.Core.World.RealClubs.ArenaOf(home) ?? "" : "";
 
         var show = new StudioShow
         {

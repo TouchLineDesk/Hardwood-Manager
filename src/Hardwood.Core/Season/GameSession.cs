@@ -147,6 +147,8 @@ public sealed partial class GameSession
         // A save from before the world existed (or a test) gets one built around its NABL; it catches up on load.
         _worldGenerated = world == null;
         World = world ?? Hardwood.Core.World.GameWorld.Generate(league, seed, DefaultFullSim, new DateOnly(league.Season, 10, 1), expandTop: false);
+        // Run 217 (K5): an older save's made-up clubs abroad become the real ones (a new world already has them).
+        if (Names.Brand.Real) Hardwood.Core.World.RealClubs.Rename(World, League.Teams);
         _rng = new Rng(rngState ?? (seed ^ 0x5E5510));
         _sim = new GameSimulator(engine);
         Standings = new Standings(league);

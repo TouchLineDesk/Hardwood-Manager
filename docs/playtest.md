@@ -103,6 +103,11 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   days); results move your reputation, and a tournament far below the seeding ends the job. **From v0.204.0** NBA clubs
   don't release players for the November and February windows (they play the summer events), and NBA and national games no
   longer have the college band.
+- **From v0.205.0 the clubs abroad are real** in Spain, Turkey, Greece, Italy, France, Germany and Lithuania: Real Madrid,
+  Fenerbahçe, Panathinaikos, Olimpia Milano, Monaco, Alba Berlin, Zalgiris Kaunas and the rest, in their cities, with their
+  arenas (the Team page's Arena chip) and real capacities, and the giants are strong in a new career. Every league abroad has
+  its real name (Liga ACB, the EuroLeague, the EuroCup, the B.League …). The rosters are still generated. An older save gets
+  the real names when it loads (its rosters stay as they were). The other leagues' clubs are still made up (next builds).
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two

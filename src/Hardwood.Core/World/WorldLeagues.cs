@@ -6,7 +6,8 @@ namespace Hardwood.Core.World;
 /// The wider world (decisions #111-114): about twenty more top flights across Europe, the Americas, Asia and Africa,
 /// a second European cup and an Americas club cup. One division per country, no promotion or relegation; quick results
 /// unless you choose the full engine at career start. They bring every basketball country's players into the game,
-/// so national teams have real pools to pick from. All clubs are fictional.
+/// so national teams have real pools to pick from. Run 217 (K5): the seven strongest European leagues have their real clubs
+/// (<see cref="RealClubs"/>) and every league its real name in a real-world career; the rest of the clubs are still made up.
 /// H79 (run 107): no league repeats a nickname (Munich Bavarians beside Braunschweig Lions, Busan Egis beside Daegu Pegasus,
 /// Batangas Bossing beside Manila Beermen), and Yokohama is the B-Corsairs, not the city's baseball team. Names only: the
 /// abbreviations, the club count and order stay, so seeded worlds draw the same numbers.
@@ -32,9 +33,9 @@ public static class WorldLeagues
 
     private static CompetitionProfile League(string key, string name, string shortName, string country, string[] locals, int offset, int foreign,
         double salary, double prestige, ClubSeed[] clubs, PlayoffRound[]? playoffs = null, bool stars = false, int robins = 2,
-        (int, int)? start = null, DayOfWeek[]? days = null, bool twoDay = true) => new()
+        (int, int)? start = null, DayOfWeek[]? days = null, bool twoDay = true, string? real = null) => new()
     {
-        Key = key, Name = name, Short = shortName, Country = country, LocalNationalities = locals, StrengthOffset = offset, ForeignLimit = foreign,
+        Key = key, Name = name, Short = shortName, RealName = real, Country = country, LocalNationalities = locals, StrengthOffset = offset, ForeignLimit = foreign,
         ImportsAreStars = stars, SalaryScale = salary, JobPrestige = prestige, Clubs = clubs, Playoffs = playoffs ?? Eight, RoundRobins = robins,
         Start = start ?? (9, 26), RoundDays = days ?? Weekend, TwoDayRounds = twoDay && days == null,
     };
@@ -46,10 +47,8 @@ public static class WorldLeagues
     {
         // ---------------------------------------------------------------- Europe
         League(Lithuania, "Lithuanian League", "LKL", "Lithuania", new[] { "Lithuania" }, -8, 4, 0.07, -16,
-            Clubs("Lithuania", ("Kaunas", "Green Knights", "KAG"), ("Vilnius", "Gediminas", "VIL"), ("Klaipeda", "Mariners", "KLP"),
-                ("Panevezys", "Ravens", "PNV"), ("Siauliai", "Sun City", "SIA"), ("Alytus", "Dzukai", "ALY"), ("Utena", "Lakers", "UTE"),
-                ("Marijampole", "Sudovians", "MRJ"), ("Jonava", "Neris", "JON"), ("Kedainiai", "Nevezis", "KED")),
-            robins: 3, start: (9, 25)),
+            RealClubs.Lithuania,
+            robins: 3, start: (9, 25), real: "Lithuanian Basketball League"),
         League(Aba, "Adriatic League", "ABA", "", new[] { "Serbia", "Croatia", "Slovenia", "Bosnia and Herzegovina", "Montenegro", "North Macedonia" },
             -5, 4, 0.07, -14,
             new ClubSeed[]
@@ -59,44 +58,32 @@ public static class WorldLeagues
                 new("Ljubljana", "Dragons", "LJU", "Slovenia"), new("Krka", "Novo Mesto", "KRK", "Slovenia"), new("Podgorica", "Buducnost Eagles", "PDG", "Montenegro"),
                 new("Niksic", "Ironworks", "NIK", "Montenegro"), new("Sarajevo", "Bascarsija", "SJJ", "Bosnia and Herzegovina"),
                 new("Skopje", "Vardar", "SKP", "North Macedonia"), new("Zadar", "Adriatics", "ZAD", "Croatia"), new("Mega", "Belgrade Youth", "MEG", "Serbia"),
-            }, start: (9, 27)),
+            }, start: (9, 27), real: "ABA League"),
         League(Germany, "German League", "BBL", "Germany", new[] { "Germany", "Austria" }, -6, 6, 0.08, -14,
-            Clubs("Germany", ("Berlin", "Albatrosses", "BER"), ("Munich", "Bavarians", "MUN"), ("Bamberg", "Brewers", "BAM"), ("Ulm", "Minster", "ULM"),
-                ("Ludwigsburg", "Riesen", "LUD"), ("Oldenburg", "Baskets", "OLD"), ("Bonn", "Telekom", "BON"), ("Hamburg", "Towers", "HAM"),
-                ("Frankfurt", "Skyliners", "FRA"), ("Wurzburg", "Main", "WUR"), ("Chemnitz", "Niners", "CHE"), ("Braunschweig", "Lions", "BRA"),
-                ("Gottingen", "Veilchen", "GOT"), ("Rostock", "Seawolves", "ROS"), ("Heidelberg", "Academics", "HEI"), ("Weissenfels", "Wolves", "WEI"),
-                ("Bayreuth", "Festival", "BAY"), ("Vechta", "Rasta", "VEC")), start: (9, 26)),
+            RealClubs.Germany, start: (9, 26), real: "Basketball Bundesliga"),
         League(France, "French League", "LNB", "France", new[] { "France" }, -5, 5, 0.08, -14,
-            Clubs("France", ("Paris", "Seine", "PSE"), ("Villeurbanne", "Lyon Lions", "VLB"), ("Monaco", "Princes", "MCO"), ("Pau", "Bearnais", "PAU"),
-                ("Strasbourg", "Rhinemen", "STR"), ("Le Mans", "Racers", "LMS"), ("Nanterre", "Nanterriens", "NAN"), ("Dijon", "Dukes", "DIJ"),
-                ("Bourg", "Bressans", "BOU"), ("Cholet", "Choletais", "CHO"), ("Limoges", "Porcelain", "LIM"), ("Gravelines", "Dunkirk", "GRA"),
-                ("Le Portel", "Lighthouse", "LPO"), ("Chalon", "Saone", "CHA"), ("Nancy", "Lorraine", "NCY"), ("Roanne", "Chorale", "ROA"))),
+            RealClubs.France, real: "LNB Élite"),
         League(Italy, "Italian League", "LBA", "Italy", new[] { "Italy" }, -5, 6, 0.09, -13,
-            Clubs("Italy", ("Milan", "Olimpians", "MLN"), ("Bologna", "Virtus", "BOL"), ("Venice", "Lagoon", "VEN"), ("Sassari", "Dinamo", "SAS"),
-                ("Brescia", "Leonessa", "BRE"), ("Tortona", "Derthona", "TOR"), ("Trento", "Aquila", "TRE"), ("Varese", "Lakesiders", "VAR"),
-                ("Reggio Emilia", "Reggiani", "REG"), ("Pesaro", "Adriatic", "PES"), ("Treviso", "Lions", "TRV"), ("Napoli", "Partenopei", "NAP"),
-                ("Cremona", "Vanoli", "CRE"), ("Pistoia", "Tuscans", "PIS"), ("Scafati", "Giants", "SCA"), ("Cantu", "Brianza", "CAN"))),
+            RealClubs.Italy, real: "Lega Basket Serie A"),
         League(Greece, "Greek League", "GBL", "Greece", new[] { "Greece" }, -4, 6, 0.09, -13,
-            Clubs("Greece", ("Athens", "Shamrocks", "ATS"), ("Piraeus", "Reds", "PRE"), ("Athens", "Eagles", "ATE"), ("Thessaloniki", "Black Eagles", "THE"),
-                ("Thessaloniki", "Iraklis", "THI"), ("Peristeri", "Westsiders", "PRS"), ("Patras", "Achaeans", "PAT"), ("Larissa", "Thessalians", "LAR"),
-                ("Kolossos", "Rhodes", "RHO"), ("Lavrio", "Miners", "LAV"), ("Kalamata", "Messenians", "KAL"), ("Marousi", "Northerners", "MAR"))),
+            RealClubs.Greece, real: "Greek Basket League"),
         League(Israel, "Israeli League", "IBL", "Israel", new[] { "Israel" }, -9, 5, 0.07, -16,
             Clubs("Israel", ("Tel Aviv", "Yellows", "TAY"), ("Tel Aviv", "Reds", "TAR"), ("Jerusalem", "Capitals", "JER"), ("Holon", "Southerners", "HOL"),
                 ("Haifa", "Carmel", "HAI"), ("Rishon", "Lezion", "RIS"), ("Ness Ziona", "Orchards", "NZI"), ("Hadera", "Riverside", "HAD"),
-                ("Herzliya", "Seaside", "HER"), ("Galil", "Gilboa", "GIL"), ("Ironi Kiryat", "Ata", "KIR"), ("Eilat", "Red Sea", "EIL"))),
+                ("Herzliya", "Seaside", "HER"), ("Galil", "Gilboa", "GIL"), ("Ironi Kiryat", "Ata", "KIR"), ("Eilat", "Red Sea", "EIL")), real: "Israeli Premier League"),
         League(Vtb, "VTB United League", "VTB", "", new[] { "Russia", "Belarus", "Kazakhstan" }, -6, 4, 0.10, -15,
             new ClubSeed[]
             {
                 new("Moscow", "Army", "MSA", "Russia"), new("Moscow", "Railwaymen", "MSR", "Russia"), new("St. Petersburg", "Zenith", "SPB", "Russia"),
                 new("Kazan", "Unicorns", "KZN", "Russia"), new("Krasnodar", "Kuban", "KRA", "Russia"), new("Nizhny Novgorod", "Volga", "NNV", "Russia"),
                 new("Samara", "Rockets", "SAM", "Russia"), new("Perm", "Parma", "PRM", "Russia"), new("Yekaterinburg", "Urals", "YEK", "Russia"),
-                new("Minsk", "Tsmoki", "MIN", "Belarus"), new("Astana", "Steppe", "AST", "Kazakhstan"), new("Novosibirsk", "Siberians", "NOV", "Russia"),
+                new("Minsk", "Tsmoki", "TSM", "Belarus"), new("Astana", "Steppe", "AST", "Kazakhstan"), new("Novosibirsk", "Siberians", "NOV", "Russia"),
             }, start: (9, 28)),
         League(Poland, "Polish League", "PLK", "Poland", new[] { "Poland" }, -15, 5, 0.04, -22,
             Clubs("Poland", ("Warsaw", "Legion", "WAR"), ("Wroclaw", "Silesians", "WRO"), ("Gdynia", "Seahawks", "GDY"), ("Szczecin", "Kings", "SZC"),
                 ("Zielona Gora", "Vineyard", "ZIE"), ("Lublin", "Starlings", "LUB"), ("Wloclawek", "Anwil", "WLO"), ("Ostrow", "Stallions", "OST"),
                 ("Sopot", "Pier", "SOP"), ("Torun", "Gingerbread", "TRN"), ("Gliwice", "Miners", "GLI"), ("Krakow", "Wawel", "KRW"),
-                ("Stargard", "Spojnia", "STA"), ("Dabrowa", "Furnace", "DAB"))),
+                ("Stargard", "Spojnia", "STA"), ("Dabrowa", "Furnace", "DAB")), real: "Polish Basketball League"),
         League(Baltic, "Latvian-Estonian League", "LEL", "", new[] { "Latvia", "Estonia" }, -17, 4, 0.03, -26,
             new ClubSeed[]
             {
@@ -108,7 +95,7 @@ public static class WorldLeagues
         League(Czechia, "Czech League", "NBL", "Czechia", new[] { "Czechia" }, -19, 4, 0.03, -27,
             Clubs("Czechia", ("Nymburk", "Elbe", "NYM"), ("Prague", "Vltava", "PRG"), ("Brno", "Moravians", "BRN"), ("Opava", "Silesians", "OPA"),
                 ("Pardubice", "Gingerbread", "PCE"), ("Ostrava", "Steel", "OSV"), ("Kolin", "Royals", "KOL"), ("Decin", "Warriors", "DEC"),
-                ("Usti", "Elbe Gate", "UST"), ("Olomouc", "Hanaks", "OLO"))),
+                ("Usti", "Elbe Gate", "UST"), ("Olomouc", "Hanaks", "OLO")), real: "Czech National Basketball League"),
         League(Benelux, "BNXT League", "BNX", "", new[] { "Belgium", "Netherlands" }, -17, 5, 0.035, -25,
             new ClubSeed[]
             {
@@ -124,38 +111,38 @@ public static class WorldLeagues
                 ("Cordoba", "Atenas", "COR"), ("Mar del Plata", "Peñarol", "MDP"), ("San Lorenzo", "Almagro", "SLO"), ("Obras", "Sanitarias", "OBR"),
                 ("Quimsa", "Santiago", "QUI"), ("Rosario", "Lepers", "RSR"), ("Mendoza", "Vintners", "MDZ"), ("Comodoro", "Gimnasia", "CMD"),
                 ("Corrientes", "Regatas", "CRR"), ("La Plata", "Platenses", "LPL"), ("Salta", "Andeans", "SAL"), ("Tucuman", "Garden", "TUC"),
-                ("Parana", "Echague", "PRA"), ("Olavarria", "Estudiantes", "OLA"), ("Zarate", "Basket", "ZRT"))),
+                ("Parana", "Echague", "PRA"), ("Olavarria", "Estudiantes", "OLA"), ("Zarate", "Basket", "ZRT")), real: "Liga Nacional de Básquet"),
         League(Brazil, "Brazilian League", "NBB", "Brazil", new[] { "Brazil" }, -15, 3, 0.035, -24,
             Clubs("Brazil", ("Sao Paulo", "Tricolor", "SAO"), ("Rio de Janeiro", "Flamingos", "RIO"), ("Franca", "Coffee", "FRN"), ("Brasilia", "Capital", "BSB"),
                 ("Bauru", "Dragons", "BAU"), ("Minas", "Tennis", "MIS"), ("Mogi", "Cruzes", "MOG"), ("Pinheiros", "Pines", "PIN"),
                 ("Fortaleza", "Sharks", "FOR"), ("Unifacisa", "Paraiba", "UNI"), ("Paulistano", "Athletics", "PAO"), ("Corinthians", "Timao", "CTH"),
-                ("Botafogo", "Lone Star", "BOT"), ("Vasco", "Admirals", "VAS"), ("Caxias", "Gauchos", "CAX"), ("Sao Jose", "Valley", "SJO"))),
+                ("Botafogo", "Lone Star", "BOT"), ("Vasco", "Admirals", "VAS"), ("Caxias", "Gauchos", "CAX"), ("Sao Jose", "Valley", "SJO")), real: "Novo Basquete Brasil"),
         League(PuertoRico, "Puerto Rico League", "BSN", "Puerto Rico", new[] { "Puerto Rico" }, -16, 3, 0.04, -25,
             Clubs("Puerto Rico", ("San Juan", "Capitanes", "SJU"), ("Bayamon", "Cowboys", "BYM"), ("Ponce", "Lions", "PON"), ("Mayaguez", "Indians", "MAY"),
                 ("Arecibo", "Captains", "ARE"), ("Carolina", "Giants", "CAR"), ("Caguas", "Creoles", "CAG"), ("Guaynabo", "Mets", "GUA"),
                 ("Quebradillas", "Pirates", "QBR"), ("Manati", "Athenians", "MAN"), ("Aguada", "Sailors", "AGU"), ("Humacao", "Grays", "HUM")),
-            stars: true),
+            stars: true, real: "Baloncesto Superior Nacional"),
         League(Mexico, "Mexican League", "LNM", "Mexico", new[] { "Mexico" }, -20, 4, 0.03, -28,
             Clubs("Mexico", ("Mexico City", "Capitanes", "MXC"), ("Monterrey", "Fuerza", "MTY"), ("Guadalajara", "Astros", "GDL"), ("Tijuana", "Zonkeys", "TIJ"),
-                ("Chihuahua", "Dorados", "CHI"), ("Puebla", "Angels", "PUE"), ("Merida", "Mayans", "MID"), ("Leon", "Lions", "LEO"),
-                ("Hermosillo", "Suns", "HMO"), ("Mexicali", "Soles", "MXL"), ("Queretaro", "Libertadores", "QRO"), ("Veracruz", "Halcones", "VER"))),
+                ("Chihuahua", "Dorados", "DOR"), ("Puebla", "Angels", "PUE"), ("Merida", "Mayans", "MID"), ("Leon", "Lions", "LEO"),
+                ("Hermosillo", "Suns", "HMO"), ("Mexicali", "Soles", "MXL"), ("Queretaro", "Libertadores", "QRO"), ("Veracruz", "Halcones", "VER")), real: "Liga Nacional de Baloncesto Profesional"),
         // ---------------------------------------------------------------- Asia and Africa
         League(Japan, "Japan B.League", "BLG", "Japan", new[] { "Japan" }, -11, 3, 0.08, -18,
             Clubs("Japan", ("Tokyo", "Alvarks", "TKY"), ("Tokyo", "Sunrockers", "TKS"), ("Chiba", "Jets", "CHB"), ("Utsunomiya", "Brex", "UTS"),
                 ("Okinawa", "Kings", "OKI"), ("Nagoya", "Diamonds", "NAG"), ("Osaka", "Evessa", "OSA"), ("Kawasaki", "Thunders", "KAW"),
                 ("Yokohama", "B-Corsairs", "YOK"), ("Shimane", "Magic", "SHI"), ("Hiroshima", "Dragonflies", "HIR"), ("Sendai", "Eighty Niners", "SEN"),
                 ("Hokkaido", "Levanga", "HOK"), ("Shiga", "Lakes", "SHG"), ("Kyoto", "Hannaryz", "KYO"), ("Niigata", "Albirex", "NII")),
-            stars: true, days: new[] { DayOfWeek.Saturday, DayOfWeek.Wednesday }, start: (10, 3)),
+            stars: true, days: new[] { DayOfWeek.Saturday, DayOfWeek.Wednesday }, start: (10, 3), real: "B.League"),
         League(Korea, "Korean League", "KBL", "Korea", new[] { "Korea" }, -16, 2, 0.06, -22,
             Clubs("Korea", ("Seoul", "Knights", "SEO"), ("Seoul", "Thunders", "SET"), ("Anyang", "Red Boosters", "ANY"), ("Suwon", "Sonic Boom", "SUW"),
                 ("Ulsan", "Phoebus", "ULS"), ("Wonju", "Promy", "WON"), ("Changwon", "Sakers", "CWN"), ("Busan", "Egis", "BUS"),
                 ("Goyang", "Sono", "GOY"), ("Daegu", "Pegasus", "DAE")),
-            stars: true, robins: 4, days: new[] { DayOfWeek.Saturday, DayOfWeek.Wednesday }, start: (10, 17), playoffs: Four),
+            stars: true, robins: 4, days: new[] { DayOfWeek.Saturday, DayOfWeek.Wednesday }, start: (10, 17), playoffs: Four, real: "Korean Basketball League"),
         League(Philippines, "Philippine League", "PBA", "Philippines", new[] { "Philippines" }, -20, 1, 0.04, -28,
             Clubs("Philippines", ("Manila", "Beermen", "MNL"), ("Manila", "Gin Kings", "MGK"), ("Quezon City", "Tropang", "QCT"), ("Pasig", "Bolts", "PSG"),
                 ("Makati", "Hotshots", "MKT"), ("Cebu", "Fuel Masters", "CEB"), ("Davao", "Painters", "DVO"), ("Pampanga", "Dyip", "PMP"),
                 ("Taguig", "Road Warriors", "TAG"), ("Laguna", "Elasto", "LAG"), ("Batangas", "Bossing", "BTG"), ("Iloilo", "Converge", "ILO")),
-            stars: true, robins: 3, days: new[] { DayOfWeek.Sunday, DayOfWeek.Wednesday }, start: (10, 4)),
+            stars: true, robins: 3, days: new[] { DayOfWeek.Sunday, DayOfWeek.Wednesday }, start: (10, 4), real: "Philippine Basketball Association"),
         League(Africa, "Basketball Africa League", "BAL", "", new[]
             {
                 "Senegal", "Nigeria", "Egypt", "Tunisia", "Angola", "Rwanda", "Morocco", "Mali", "Cameroon", "South Africa", "Ivory Coast", "Congo DR",
@@ -171,7 +158,7 @@ public static class WorldLeagues
         // ---------------------------------------------------------------- Cups
         new()
         {
-            Key = EuroCup, Name = "Euro Challenge Cup", Short = "ECC", Kind = CompetitionKind.Continental,
+            Key = EuroCup, Name = "Euro Challenge Cup", Short = "ECC", RealName = "EuroCup", Kind = CompetitionKind.Continental,
             RoundRobins = 1, Start = (10, 7), RoundDays = new[] { DayOfWeek.Wednesday }, PlayoffDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Friday },
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 3, 8), new PlayoffRound("Semi-finals", 3, 4), new PlayoffRound("Final", 3, 2) },
             Entrants = new[]
@@ -182,7 +169,7 @@ public static class WorldLeagues
         },
         new()
         {
-            Key = Americas, Name = "Americas Club Cup", Short = "ACC", Kind = CompetitionKind.Continental,
+            Key = Americas, Name = "Americas Club Cup", Short = "ACC", RealName = "Basketball Champions League Americas", Kind = CompetitionKind.Continental,
             RoundRobins = 1, Start = (11, 4), RoundDays = new[] { DayOfWeek.Tuesday }, PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
             Playoffs = new[] { new PlayoffRound("Semi-finals", 1, 4), new PlayoffRound("Final", 1, 2) },
             Entrants = new[] { (Argentina, 3), (Brazil, 3), (PuertoRico, 1), (Mexico, 1) },

@@ -12,8 +12,20 @@ public enum CompetitionKind
     GuestPool,
 }
 
-/// <summary>A fictional club: city, nickname, abbreviation and (for guest clubs) country.</summary>
-public sealed record ClubSeed(string City, string Name, string Abbr, string? Country = null);
+/// <summary>A club: city, nickname, abbreviation and (for guest clubs) country. A real club abroad (<see cref="RealClubs"/>, run 217)
+/// also carries its name as written, its arena and capacity, its place in the real hierarchy and the made-up name it replaced.</summary>
+public sealed record ClubSeed(string City, string Name, string Abbr, string? Country = null)
+{
+    /// <summary>The name as written when "City Name" doesn't read right ("FC Barcelona", "Zalgiris Kaunas").</summary>
+    public string? Full { get; init; }
+    public string? Arena { get; init; }
+    /// <summary>The arena's real capacity (0: drawn at random, as for the made-up clubs).</summary>
+    public int Capacity { get; init; }
+    /// <summary>Added to the club's roster quality in a new world (in CA): the giants are strong, the newcomers weak.</summary>
+    public int Standing { get; init; }
+    /// <summary>The made-up club this one replaced, "City|Name" (renamed on load in older saves).</summary>
+    public string? Was { get; init; }
+}
 
 /// <summary>One playoff round: name, series length and the weekdays games are played on.</summary>
 public sealed record PlayoffRound(string Name, int BestOf, int Teams);
@@ -124,7 +136,7 @@ public static class Competitions
     {
         new()
         {
-            Key = Elite, Name = "Euro Elite League", Short = "EEL", Kind = CompetitionKind.Continental,
+            Key = Elite, Name = "Euro Elite League", Short = "EEL", RealName = "EuroLeague", Kind = CompetitionKind.Continental,
             Start = (10, 6), RoundDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
             PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 5, 8), new PlayoffRound("Final Four semi-finals", 1, 4), new PlayoffRound("Final", 1, 2) },
@@ -134,39 +146,23 @@ public static class Competitions
         },
         new()
         {
-            Key = Spain, Name = "Spanish League", Short = "ESP", Country = "Spain", LocalNationalities = new[] { "Spain" },
+            Key = Spain, Name = "Spanish League", Short = "ESP", RealName = "Liga ACB", Country = "Spain", LocalNationalities = new[] { "Spain" },
             StrengthOffset = 0, ForeignLimit = 5, SalaryScale = 0.11, JobPrestige = -8,
             Start = (9, 26), RoundDays = new[] { DayOfWeek.Saturday }, TwoDayRounds = true,
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 3, 8), new PlayoffRound("Semi-finals", 5, 4), new PlayoffRound("Final", 5, 2) },
-            Clubs = new ClubSeed[]
-            {
-                new("Madrid", "Capitales", "MAD"), new("Barcelona", "Navegantes", "BCN"), new("Valencia", "Naranjeros", "VLC"),
-                new("Vitoria", "Alaveses", "VIT"), new("Malaga", "Boquerones", "MLG"), new("Murcia", "Huertanos", "MUR"),
-                new("Tenerife", "Volcanes", "TFE"), new("Gran Canaria", "Alisios", "GCA"), new("Badalona", "Verdinegros", "BDN"),
-                new("Zaragoza", "Cierzo", "ZAR"), new("Manresa", "Tigres", "MNR"), new("Bilbao", "Leones", "BIO"),
-                new("Granada", "Nazaries", "GRX"), new("Andorra", "Pirineus", "AND"), new("Girona", "Muralles", "GRO"),
-                new("Burgos", "Castellanos", "BUR"), new("Lugo", "Celtas", "LUG"), new("Sevilla", "Giraldas", "SVQ"),
-            },
+            Clubs = RealClubs.Spain,
         },
         new()
         {
-            Key = Turkey, Name = "Turkish Super League", Short = "TUR", Country = "Turkey", LocalNationalities = new[] { "Turkey" },
+            Key = Turkey, Name = "Turkish Super League", Short = "TUR", RealName = "Basketbol Süper Ligi", Country = "Turkey", LocalNationalities = new[] { "Turkey" },
             StrengthOffset = -3, ForeignLimit = 6, SalaryScale = 0.12, JobPrestige = -10,
             Start = (10, 3), RoundDays = new[] { DayOfWeek.Saturday }, TwoDayRounds = true,
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 3, 8), new PlayoffRound("Semi-finals", 5, 4), new PlayoffRound("Final", 7, 2) },
-            Clubs = new ClubSeed[]
-            {
-                new("Istanbul", "Kartallar", "IKA"), new("Istanbul", "Sarilar", "ISA"), new("Istanbul", "Bogazici", "IBO"),
-                new("Istanbul", "Halic", "IHA"), new("Ankara", "Baskent", "ANK"), new("Izmir", "Korfez", "IZM"),
-                new("Bursa", "Uludag", "BRS"), new("Antalya", "Akdeniz", "AYT"), new("Gaziantep", "Sahinler", "GZT"),
-                new("Konya", "Selcuklu", "KYA"), new("Mersin", "Limanlar", "MER"), new("Samsun", "Karadeniz", "SSX"),
-                new("Trabzon", "Firtina", "TZX"), new("Eskisehir", "Porsuk", "ESK"), new("Kayseri", "Erciyes", "ASR"),
-                new("Manisa", "Spil", "MNS"),
-            },
+            Clubs = RealClubs.Turkey,
         },
         new()
         {
-            Key = Australia, Name = "Australian League", Short = "AUS", Country = "Australia", LocalNationalities = new[] { "Australia", "New Zealand" },
+            Key = Australia, Name = "Australian League", Short = "AUS", RealName = "National Basketball League", Country = "Australia", LocalNationalities = new[] { "Australia", "New Zealand" },
             StrengthOffset = -10, ForeignLimit = 3, ImportsAreStars = true, SalaryScale = 0.07, JobPrestige = -20,
             RoundRobins = 4, Start = (9, 18), RoundDays = new[] { DayOfWeek.Thursday, DayOfWeek.Sunday },
             PlayoffDays = new[] { DayOfWeek.Thursday, DayOfWeek.Sunday },
@@ -181,7 +177,7 @@ public static class Competitions
         },
         new()
         {
-            Key = China, Name = "China Pro League", Short = "CPL", Country = "China", LocalNationalities = new[] { "China" },
+            Key = China, Name = "China Pro League", Short = "CPL", RealName = "Chinese Basketball Association", Country = "China", LocalNationalities = new[] { "China" },
             StrengthOffset = -14, ForeignLimit = 2, ImportsAreStars = true, SalaryScale = 0.09, JobPrestige = -16,
             Start = (10, 14), RoundDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Saturday },
             PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Friday, DayOfWeek.Sunday },
