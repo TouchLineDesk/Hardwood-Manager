@@ -74,7 +74,7 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   is booked: record, seed and how far you went in March. Milestones (your first win, every 100 wins, your first bid,
   tournament win, Final Four and title, 10 seasons) come once each in the inbox and the news. After two seasons with
   you, a good assistant may be hired away as a head coach in the carousel: that's your coaching tree. A long, winning
-  stay (or a title) puts a coach in that program's Hall, and that includes you.
+  stay with bids (or a title in a stay of five seasons or more) puts a coach in that program's Hall, and that includes you.
 - **Player stories over four years (the inbox, the Roster and the player page):** every player has an origin (his
   home state, his stars and his rank as a recruit). Your own players' stories are told once each, from real game data:
   the freshman phenom, the hometown hero, the walk-on who earns minutes (and a scholarship the next summer if one is
