@@ -541,9 +541,10 @@ public sealed partial class BoardViewModel : PageViewModel
         var mates = cw.Programs.Where(p => p.Id != me && cw.ConferenceOf.GetValueOrDefault(p.Id) == conf && !rivals.Contains(p.Id))
             .Select(p => (p, b: cw.BenchOf(p.Id))).Where(x => x.b != null)
             .OrderByDescending(x => cw.ReputationOf(x.b!)).Select(x => x.p.Id);
-        // The spring's carousel books the season into every bench (GameSession.CollegeCoachingChanges); until then it's added here.
-        var lastGame = cw.Season.Games.Where(g => g.Played).Select(g => g.Date).DefaultIfEmpty().Max();
-        bool booked = cw.Season.ChampionId != null && s.Carousel.Count > 0 && s.Carousel[0].Year >= lastGame.Year;
+        // The season-end review books the season into every bench (GameSession.SeasonEndCoaching → CollegeCoachingChanges, the
+        // day the summer begins); until then it's added here. The review of PR #281: not judged by the carousel's moves, since a
+        // spring with no changes posts none.
+        bool booked = cw.Season.ChampionId != null && s.Phase == Hardwood.Core.Season.SessionPhase.Offseason;
         foreach (int id in rivals.Concat(mates).Distinct())
         {
             if (cw.Program(id) is not { } t || cw.BenchOf(id) is not { } c) continue;
