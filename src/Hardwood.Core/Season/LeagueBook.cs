@@ -97,7 +97,10 @@ public sealed class LeagueBook
         int ri = 1;
         while (size > 1 && size % 2 == 0)
         {
-            size /= 2;
+            // Run 227: a round the same size as the one before (the EuroCup's quarter-finals after its eighth-finals: the group
+            // winners wait) keeps the slots, each fed by the series beside it.
+            bool same = ri < rounds.Count && rounds[ri].Series.Count == size;
+            if (!same) size /= 2;
             var prev = cols[^1].Slots;
             var slots = Enumerable.Repeat<BookSeries?>(null, size).ToList();
             bool nba = rounds.Any(r => r.Name.StartsWith("Conference"));
@@ -112,7 +115,7 @@ public sealed class LeagueBook
                 foreach (var x in rounds[ri].Series)
                 {
                     int feeder = prev.FindIndex(f => f != null && (f.High == x.High || f.Low == x.High || f.High == x.Low || f.Low == x.Low));
-                    int slot = feeder >= 0 ? feeder / 2 : -1;
+                    int slot = feeder >= 0 ? (same ? feeder : feeder / 2) : -1;
                     if (slot < 0 || slot >= size || slots[slot] != null) slot = slots.FindIndex(z => z == null);
                     if (slot >= 0) slots[slot] = x;
                 }
@@ -258,6 +261,10 @@ public sealed class LeagueBook
             {
                 int rank = 0;
                 var table = se.Table();
+                if (se.Grouped)
+                    // Run 227: one card per group; with the EuroCup's knockouts the top two go to the quarter-finals, 3rd-6th to the eighth-finals.
+                    return se.GroupTables().SelectMany((g, gi) => g.Select((r, k) => new BookTableRow(T(r.TeamId), r.Wins, r.Losses, r.PointsFor, r.PointsAgainst,
+                        CompetitionSeason.GroupName(gi), GroupZone(p, k + 1)))).ToList();
                 if (!pyramid)
                     return table.Select(r =>
                     {
@@ -309,6 +316,12 @@ public sealed class LeagueBook
 
     /// <summary>A zone by place in a division in the division format (D36): the top two make the playoffs, third plays the
     /// third-place tournament (4th, relegated, is marked by the caller where there's a league below).</summary>
+    /// <summary>Run 227: a group's places: straight to the quarter-finals, into the eighth-finals, or out.</summary>
+    public static string GroupZone(CompetitionProfile p, int place) =>
+        p.Playoffs.Length >= 2 && p.Playoffs[0].Name == "Eighth-finals" ? place <= 2 ? QuarterZone : place <= 6 ? EighthZone : ""
+        : p.Playoffs.Length > 0 && place <= p.Playoffs[0].Teams / Math.Max(1, p.Groups) ? "Playoffs" : "";
+    public const string QuarterZone = "Quarter-finals", EighthZone = "Eighth-finals";
+
     public static string DivisionZone(int placeInDivision) => placeInDivision <= 2 ? "Playoffs" : placeInDivision == 3 ? "Third place" : "";
 
     /// <summary>A pyramid club's zone (#319): in tiers 2-5 each division winner goes up and the last in each division goes down
@@ -372,13 +385,17 @@ public sealed class LeagueBook
         }
         list.Add(("Game", RulesText(p.Rules)));
         int perOpp = p.RoundRobins;
-        list.Add(("Season", $"{(perOpp == 1 ? "Everyone plays everyone once" : perOpp == 2 ? "Home and away against everyone" : $"Everyone plays everyone {perOpp} times")}"
+        bool grouped = c.Season.Grouped;
+        if (grouped) clubs = c.Season.Groups!.Max(g => g.Count);
+        list.Add(("Season", (grouped ? $"{c.Season.Groups!.Count} groups of {clubs}, drawn by strength. " : "") + $"{(perOpp == 1 ? "Everyone plays everyone once" : perOpp == 2 ? "Home and away against everyone" : $"Everyone plays everyone {perOpp} times")}"
                            + $" ({(clubs - 1) * perOpp} games), from {new DateOnly(2000, p.Start.Month, p.Start.Day):MMMM d}"
                            + (p.RegularEnd is { } re ? $" to {new DateOnly(2001, re.Month, re.Day):MMMM d}." : ".")));
         list.Add(("Playoffs", p.DivisionPlayoffs && clubs == UsaPyramid.ProSize
             ? $"The top two in each division (16 teams), seeded 1-8 by record within their conference: first round and conference semi-finals best of five, conference finals and the final best of seven. The eight third-placed teams play the {Postseason.ThirdPlaceName} (best of three) for a trophy and prize money."
             : p.DivisionPlayoffs ? "None this season: the table decides the title (the division playoffs start once the league has four divisions of four in each conference)."
             : p.Playoffs.Length == 0 ? "None: the table decides the title."
+            : grouped && p.Playoffs[0].Name == "Eighth-finals" ? "The top two in each group go straight to the quarter-finals; 3rd-6th play the eighth-finals across the groups (A3 v B6, B3 v A6, A4 v B5, B4 v A5) at the better-placed club. "
+              + string.Join(", ", p.Playoffs.Select(r => r.BestOf == 1 ? $"{r.Name} (one game)" : $"{r.Name} (best of {r.BestOf})")) + "."
             : (p.PlayIn ? $"Top {p.Playoffs[0].Teams - 2} go straight in; 7th-10th play the play-in (7v8 for 7th, then the loser hosts the 9v10 winner for 8th). "
                         : $"Top {p.Playoffs[0].Teams}: ")
               + string.Join(", ", p.Playoffs.Select(r => r.BestOf == 1 ? $"{r.Name} (one game)" : $"{r.Name} (best of {r.BestOf})"))

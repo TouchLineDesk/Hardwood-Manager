@@ -49,8 +49,8 @@ public class Run222RealFormatsTests
         Assert.Contains(weeks, w => w.Count() == 2);
         Assert.Contains(weeks, w => w.Count() == 1);
 
-        // The EuroCup: 19 Wednesdays, Oct 7 to early March.
-        Assert.Equal(190, ec.Season.Fixtures.Count);
+        // The EuroCup: 18 Wednesdays (two groups of ten, home and away since run 227), Oct 7 to early March.
+        Assert.Equal(180, ec.Season.Fixtures.Count);
         Assert.All(ec.Season.Fixtures, x => Assert.Equal(DayOfWeek.Wednesday, x.Date.DayOfWeek));
         Assert.True(ec.Season.Fixtures.Max(x => x.Date) <= new DateOnly(2027, 3, 4));
     }
@@ -96,10 +96,10 @@ public class Run222RealFormatsTests
         Assert.NotNull(s.ChampionId);
         Assert.Contains(world.News, n => n.Item1.Contains("play-in"));
 
-        // The EuroCup: 16 into single-game knockouts, a best-of-three final.
+        // The EuroCup: single-game knockouts (3rd-6th in each group in the eighth-finals since run 227), a best-of-three final.
         var ec = world.Competitions.First(c => c.Key == WorldLeagues.EuroCup).Season;
         Assert.True(ec.IsComplete);
-        Assert.Equal(8, ec.Series.Count(x => x.Round == "Eighth-finals"));
+        Assert.Equal(4, ec.Series.Count(x => x.Round == "Eighth-finals"));
         Assert.All(ec.Series.Where(x => x.Round != "Final"), x => Assert.Equal(1, x.BestOf));
         Assert.Equal(3, ec.Series.Single(x => x.Round == "Final").BestOf);
     }

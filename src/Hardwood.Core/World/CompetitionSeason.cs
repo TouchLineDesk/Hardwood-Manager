@@ -88,6 +88,20 @@ public sealed class CompetitionSeason
     public int? ThirdPlaceId { get; set; }
     public int? ThirdPlaceRunnerUpId { get; set; }
     public Dictionary<int, StatLine> Stats { get; set; } = new();
+    /// <summary>Run 227: the regular season's groups (team ids, group A first), or null for one table (and every season saved
+    /// before v0.215.0).</summary>
+    public List<List<int>>? Groups { get; set; }
+
+    public bool Grouped => Groups is { Count: > 1 };
+    public static string GroupName(int i) => $"Group {(char)('A' + i)}";
+
+    /// <summary>Run 227: each group's table, in group order (the whole table as one group when there are none).</summary>
+    public List<List<TableRow>> GroupTables()
+    {
+        var table = Table();
+        if (!Grouped) return new List<List<TableRow>> { table };
+        return Groups!.Select(g => { var set = g.ToHashSet(); return table.Where(r => set.Contains(r.TeamId)).ToList(); }).ToList();
+    }
 
     public bool IsComplete => Stage == Complete;
 

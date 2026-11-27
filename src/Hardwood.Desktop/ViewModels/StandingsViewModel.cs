@@ -30,8 +30,8 @@ public sealed class StandingRow
     /// <summary>The rank chip's colour: green for a playoff place, amber for the play-in.</summary>
     public Avalonia.Media.IBrush ZoneBrush => Zone switch
     {
-        "Playoffs" => PlayoffBrush,
-        "Play-in" or "Third place" => PlayInBrush,
+        "Playoffs" or Hardwood.Core.Season.LeagueBook.QuarterZone => PlayoffBrush,
+        "Play-in" or "Third place" or Hardwood.Core.Season.LeagueBook.EighthZone => PlayInBrush,
         "Promotion" => PromotionBrush,
         "Relegation" => RelegationBrush,
         _ => Avalonia.Media.Brushes.Transparent,
@@ -44,6 +44,8 @@ public sealed class StandingRow
         "" => "Outside the postseason places",
         "Third place" => "Third in the division: the third-place tournament",
         "Promotion" => "Division winner: promoted, and in the playoffs",
+        Hardwood.Core.Season.LeagueBook.QuarterZone => "Top two in the group: straight to the quarter-finals",
+        Hardwood.Core.Season.LeagueBook.EighthZone => "3rd-6th in the group: the eighth-finals",
         _ => Zone,
     };
     /// <summary>Your club's row on a division card stands out.</summary>

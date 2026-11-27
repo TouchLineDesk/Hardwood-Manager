@@ -113,10 +113,11 @@ public static class WorldLeagues
         // ---------------------------------------------------------------- Cups
         new()
         {
-            // Run 222 (the real format): 20 clubs, everyone once (19 rounds, Oct to early March), then single-game knockouts
-            // for the top 16 and a best-of-three final.
+            // Run 222 (the real format): 20 clubs, single-game knockouts and a best-of-three final. Run 227: in two groups of ten,
+            // home and away (18 rounds, Oct to early March); the top two in each group go straight to the quarter-finals, 3rd-6th
+            // play the eighth-finals.
             Key = EuroCup, Name = "Euro Challenge Cup", Short = "ECC", RealName = "EuroCup", Kind = CompetitionKind.Continental,
-            RoundRobins = 1, Start = (10, 7), RegularEnd = (3, 4), RoundDays = new[] { DayOfWeek.Wednesday }, PlayoffDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Friday },
+            RoundRobins = 2, Groups = 2, Start = (10, 7), RegularEnd = (3, 4), RoundDays = new[] { DayOfWeek.Wednesday }, PlayoffDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Friday },
             Playoffs = new[]
             {
                 new PlayoffRound("Eighth-finals", 1, 16), new PlayoffRound("Quarter-finals", 1, 8), new PlayoffRound("Semi-finals", 1, 4), new PlayoffRound("Final", 3, 2),
