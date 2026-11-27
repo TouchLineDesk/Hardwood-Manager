@@ -70,6 +70,9 @@ public class Run201CoachingLegacyTests
             while (s.Today < end && s.Employed)
             {
                 if (s.Phase == SessionPhase.Offseason) s.AdvanceOffseason(); else s.AdvanceDay();
+                // Run 219: each season's new target too (the real clubs abroad move the world's draws, and George Mason's third
+                // season ended in a sacking on May 9 2029); the test is about the book, not the job.
+                if (s.Job.Current is { } job) job.TargetWins = 0;
             }
             Assert.True(s.Employed);
             var book = cw.MyCareer;

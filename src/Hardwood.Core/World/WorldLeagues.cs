@@ -7,7 +7,8 @@ namespace Hardwood.Core.World;
 /// a second European cup and an Americas club cup. One division per country, no promotion or relegation; quick results
 /// unless you choose the full engine at career start. They bring every basketball country's players into the game,
 /// so national teams have real pools to pick from. Run 217 (K5): the seven strongest European leagues have their real clubs
-/// (<see cref="RealClubs"/>) and every league its real name in a real-world career; the rest of the clubs are still made up.
+/// (<see cref="RealClubs"/>) and every league its real name in a real-world career; runs 218 and 219 gave the rest of the leagues
+/// theirs (the BAL keeps two made-up clubs, in Bamako and Kinshasa).
 /// H79 (run 107): no league repeats a nickname (Munich Bavarians beside Braunschweig Lions, Busan Egis beside Daegu Pegasus,
 /// Batangas Bossing beside Manila Beermen), and Yokohama is the B-Corsairs, not the city's baseball team. Names only: the
 /// abbreviations, the club count and order stay, so seeded worlds draw the same numbers.
@@ -65,52 +66,23 @@ public static class WorldLeagues
         League(Vtb, "VTB United League", "VTB", "", new[] { "Russia", "Belarus", "Kazakhstan" }, -6, 4, 0.10, -15,
             RealClubs.Vtb, start: (9, 28)),
         League(Poland, "Polish League", "PLK", "Poland", new[] { "Poland" }, -15, 5, 0.04, -22,
-            Clubs("Poland", ("Warsaw", "Legion", "WAR"), ("Wroclaw", "Silesians", "WRO"), ("Gdynia", "Seahawks", "GDY"), ("Szczecin", "Kings", "SZC"),
-                ("Zielona Gora", "Vineyard", "ZIE"), ("Lublin", "Starlings", "LUB"), ("Wloclawek", "Anwil", "WLO"), ("Ostrow", "Stallions", "OST"),
-                ("Sopot", "Pier", "SOP"), ("Torun", "Gingerbread", "TRN"), ("Gliwice", "Miners", "GLI"), ("Krakow", "Wawel", "KRW"),
-                ("Stargard", "Spojnia", "STA"), ("Dabrowa", "Furnace", "DAB")), real: "Polish Basketball League"),
+            RealClubs.Poland, real: "Polish Basketball League"),
         League(Baltic, "Latvian-Estonian League", "LEL", "", new[] { "Latvia", "Estonia" }, -17, 4, 0.03, -26,
-            new ClubSeed[]
-            {
-                new("Riga", "Vef", "RIG", "Latvia"), new("Riga", "Daugava", "RDA", "Latvia"), new("Ventspils", "Port", "VSP", "Latvia"),
-                new("Liepaja", "Wind", "LIE", "Latvia"), new("Valmiera", "Glass", "VLM", "Latvia"), new("Jelgava", "Zemgale", "JEL", "Latvia"),
-                new("Tallinn", "Kalev", "TLL", "Estonia"), new("Tartu", "Rock", "TAT", "Estonia"), new("Parnu", "Seaside", "PRN", "Estonia"),
-                new("Rakvere", "Tarvas", "RAK", "Estonia"), new("Viimsi", "Coast", "VII", "Estonia"), new("Keila", "Coolbet", "KEI", "Estonia"),
-            }),
+            RealClubs.Baltic, real: "Latvian-Estonian Basketball League"),
         League(Czechia, "Czech League", "NBL", "Czechia", new[] { "Czechia" }, -19, 4, 0.03, -27,
-            Clubs("Czechia", ("Nymburk", "Elbe", "NYM"), ("Prague", "Vltava", "PRG"), ("Brno", "Moravians", "BRN"), ("Opava", "Silesians", "OPA"),
-                ("Pardubice", "Gingerbread", "PCE"), ("Ostrava", "Steel", "OSV"), ("Kolin", "Royals", "KOL"), ("Decin", "Warriors", "DEC"),
-                ("Usti", "Elbe Gate", "UST"), ("Olomouc", "Hanaks", "OLO")), real: "Czech National Basketball League"),
+            RealClubs.Czechia, real: "Czech National Basketball League"),
         League(Benelux, "BNXT League", "BNX", "", new[] { "Belgium", "Netherlands" }, -17, 5, 0.035, -25,
-            new ClubSeed[]
-            {
-                new("Ostend", "Seagulls", "OSN", "Belgium"), new("Antwerp", "Giants", "ANT", "Belgium"), new("Mons", "Hainaut", "MON", "Belgium"),
-                new("Leuven", "Bears", "LEU", "Belgium"), new("Brussels", "Capitals", "BRU", "Belgium"), new("Liege", "Meuse", "LGE", "Belgium"),
-                new("Mechelen", "Kangaroos", "MEC", "Belgium"), new("Groningen", "Donar", "GRN", "Netherlands"), new("Leiden", "Keys", "LEI", "Netherlands"),
-                new("Den Bosch", "Dragons", "DBO", "Netherlands"), new("Amsterdam", "Canals", "AMS", "Netherlands"), new("Rotterdam", "Port", "ROT", "Netherlands"),
-                new("Zwolle", "Landstede", "ZWO", "Netherlands"), new("Den Helder", "Suns", "DHE", "Netherlands"),
-            }),
+            RealClubs.Benelux, real: "BNXT League"),
         // ---------------------------------------------------------------- Americas
         League(Argentina, "Argentine League", "LNA", "Argentina", new[] { "Argentina" }, -14, 3, 0.03, -24,
-            Clubs("Argentina", ("Buenos Aires", "Porteños", "BUE"), ("Buenos Aires", "Boquenses", "BBQ"), ("Bahia Blanca", "Southerners", "BAH"),
-                ("Cordoba", "Atenas", "COR"), ("Mar del Plata", "Peñarol", "MDP"), ("San Lorenzo", "Almagro", "SLO"), ("Obras", "Sanitarias", "OBR"),
-                ("Quimsa", "Santiago", "QUI"), ("Rosario", "Lepers", "RSR"), ("Mendoza", "Vintners", "MDZ"), ("Comodoro", "Gimnasia", "CMD"),
-                ("Corrientes", "Regatas", "CRR"), ("La Plata", "Platenses", "LPL"), ("Salta", "Andeans", "SAL"), ("Tucuman", "Garden", "TUC"),
-                ("Parana", "Echague", "PRA"), ("Olavarria", "Estudiantes", "OLA"), ("Zarate", "Basket", "ZRT")), real: "Liga Nacional de Básquet"),
+            RealClubs.Argentina, real: "Liga Nacional de Básquet"),
         League(Brazil, "Brazilian League", "NBB", "Brazil", new[] { "Brazil" }, -15, 3, 0.035, -24,
-            Clubs("Brazil", ("Sao Paulo", "Tricolor", "SAO"), ("Rio de Janeiro", "Flamingos", "RIO"), ("Franca", "Coffee", "FRN"), ("Brasilia", "Capital", "BSB"),
-                ("Bauru", "Dragons", "BAU"), ("Minas", "Tennis", "MIS"), ("Mogi", "Cruzes", "MOG"), ("Pinheiros", "Pines", "PIN"),
-                ("Fortaleza", "Sharks", "FOR"), ("Unifacisa", "Paraiba", "UNI"), ("Paulistano", "Athletics", "PAO"), ("Corinthians", "Timao", "CTH"),
-                ("Botafogo", "Lone Star", "BOT"), ("Vasco", "Admirals", "VAS"), ("Caxias", "Gauchos", "CAX"), ("Sao Jose", "Valley", "SJO")), real: "Novo Basquete Brasil"),
+            RealClubs.Brazil, real: "Novo Basquete Brasil"),
         League(PuertoRico, "Puerto Rico League", "BSN", "Puerto Rico", new[] { "Puerto Rico" }, -16, 3, 0.04, -25,
-            Clubs("Puerto Rico", ("San Juan", "Capitanes", "SJU"), ("Bayamon", "Cowboys", "BYM"), ("Ponce", "Lions", "PON"), ("Mayaguez", "Indians", "MAY"),
-                ("Arecibo", "Captains", "ARE"), ("Carolina", "Giants", "CAR"), ("Caguas", "Creoles", "CAG"), ("Guaynabo", "Mets", "GUA"),
-                ("Quebradillas", "Pirates", "QBR"), ("Manati", "Athenians", "MAN"), ("Aguada", "Sailors", "AGU"), ("Humacao", "Grays", "HUM")),
+            RealClubs.PuertoRico,
             stars: true, real: "Baloncesto Superior Nacional"),
         League(Mexico, "Mexican League", "LNM", "Mexico", new[] { "Mexico" }, -20, 4, 0.03, -28,
-            Clubs("Mexico", ("Mexico City", "Capitanes", "MXC"), ("Monterrey", "Fuerza", "MTY"), ("Guadalajara", "Astros", "GDL"), ("Tijuana", "Zonkeys", "TIJ"),
-                ("Chihuahua", "Dorados", "DOR"), ("Puebla", "Angels", "PUE"), ("Merida", "Mayans", "MID"), ("Leon", "Lions", "LEO"),
-                ("Hermosillo", "Suns", "HMO"), ("Mexicali", "Soles", "MXL"), ("Queretaro", "Libertadores", "QRO"), ("Veracruz", "Halcones", "VER")), real: "Liga Nacional de Baloncesto Profesional"),
+            RealClubs.Mexico, real: "Liga Nacional de Baloncesto Profesional"),
         // ---------------------------------------------------------------- Asia and Africa
         League(Japan, "Japan B.League", "BLG", "Japan", new[] { "Japan" }, -11, 3, 0.08, -18,
             RealClubs.Japan,
@@ -125,14 +97,7 @@ public static class WorldLeagues
             {
                 "Senegal", "Nigeria", "Egypt", "Tunisia", "Angola", "Rwanda", "Morocco", "Mali", "Cameroon", "South Africa", "Ivory Coast", "Congo DR",
             }, -20, 4, 0.02, -28,
-            new ClubSeed[]
-            {
-                new("Dakar", "Lions", "DKR", "Senegal"), new("Lagos", "Rivers Hoopers", "LGS", "Nigeria"), new("Cairo", "Pharaohs", "CAI", "Egypt"),
-                new("Alexandria", "Ittihad", "ALX", "Egypt"), new("Tunis", "Esperance", "TUN", "Tunisia"), new("Monastir", "Ribat", "MNT", "Tunisia"),
-                new("Luanda", "Petro", "LUA", "Angola"), new("Kigali", "Patriots", "KGL", "Rwanda"), new("Casablanca", "Fus", "CAS", "Morocco"),
-                new("Bamako", "Stade", "BMK", "Mali"), new("Yaounde", "Forces", "YAO", "Cameroon"), new("Johannesburg", "Cape Tigers", "JNB", "South Africa"),
-                new("Abidjan", "Elephants", "ABJ", "Ivory Coast"), new("Kinshasa", "Leopards", "KIN", "Congo DR"),
-            }, robins: 2, days: new[] { DayOfWeek.Sunday }, playoffs: Four),
+            RealClubs.Africa, robins: 2, days: new[] { DayOfWeek.Sunday }, playoffs: Four),
         // ---------------------------------------------------------------- Cups
         new()
         {
