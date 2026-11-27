@@ -201,7 +201,9 @@ public class CharacterizationTests
         // federations' offers arrive on Oct 15 (one more message). With that message taken out, the old pin holds exactly.
         // Run 217 (K5, real clubs abroad): re-pinned (was 16F28036D92D2B1E). The real clubs' standing and arena sizes shape the
         // rosters and budgets abroad. With both taken out (names and abbreviations alone), the old pin held exactly.
-        Pin("career seed 2026, 30 days, no saves", "D88ED375B3F43A1F", Session(s));
+        // Run 218 (K5 slice 2: eight more leagues' real clubs): re-pinned (was D88ED375B3F43A1F) for the same reason; with the
+        // standing and capacities taken out, the old pin held exactly again.
+        Pin("career seed 2026, 30 days, no saves", "F7D0EC335FFA5A5E", Session(s));
     }
 
     [Fact]

@@ -64,6 +64,8 @@ public class Run119RealNbaLeakTests
         // Run 128 (D80 A): the world is drawn differently, and Curry (39, CA 156, one season left) now retires on seed 31. At 39
         // under contract his chance is about 15% by design (`ShouldRetire`; the rates are checked above), so only Leonard (36,
         // about 4%) is named here; the CA 130+ count above still holds (3: Durant 39, Curry 39, LeBron 42).
-        Assert.DoesNotContain(lines, l => l.Contains("Kawhi Leonard") && l.Contains("retired"));
+        // Run 218 (K5 slice 2): the real clubs' standing abroad draws the world differently again, and Leonard (36, deal to
+        // 2028, about 4%) now retires on seed 31; with the standing and capacities taken out he stays, as before. The rates are
+        // checked above and the count of CA 130+ retirees under contract still holds, so no single star is named any more.
     }
 }

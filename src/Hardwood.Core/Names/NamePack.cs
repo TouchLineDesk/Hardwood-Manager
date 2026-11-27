@@ -171,7 +171,8 @@ public sealed class NamePack
     public static readonly IReadOnlyDictionary<string, string> FormerNames = new Dictionary<string, string>
     {
         ["Munich Bavarians"] = "Munich Lions", ["Yokohama B-Corsairs"] = "Yokohama Bay Stars",
-        ["Busan Egis"] = "Busan Pegasus", ["Batangas Bossing"] = "Batangas Beer Men",
+        // Run 218 (K5 slice 2): the clubs the run-107 names belonged to are real now; their own pre-107 names still point at them.
+        ["Busan KCC Egis"] = "Busan Pegasus", ["Blackwater Bossing"] = "Batangas Beer Men",
     };
 
     /// <summary>The reverse: a career saved before the rename still finds a pack written for the new name.</summary>

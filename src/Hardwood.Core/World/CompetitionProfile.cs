@@ -167,13 +167,7 @@ public static class Competitions
             RoundRobins = 4, Start = (9, 18), RoundDays = new[] { DayOfWeek.Thursday, DayOfWeek.Sunday },
             PlayoffDays = new[] { DayOfWeek.Thursday, DayOfWeek.Sunday },
             Playoffs = new[] { new PlayoffRound("Semi-finals", 3, 4), new PlayoffRound("Grand Final", 5, 2) },
-            Clubs = new ClubSeed[]
-            {
-                new("Sydney", "Harbourmen", "SYD"), new("Melbourne", "Laneways", "MEL"), new("Melbourne", "Southern Cross", "MSC"),
-                new("Perth", "Black Swans", "PER"), new("Adelaide", "Vignerons", "ADL"), new("Brisbane", "Rivermen", "BNE"),
-                new("Cairns", "Reef", "CNS"), new("Tasmania", "Tigers", "TAS"), new("Illawarra", "Steelers", "ILW"),
-                new("Auckland", "Harbour Hawks", "AKL"),
-            },
+            Clubs = RealClubs.Australia,
         },
         new()
         {
@@ -182,16 +176,7 @@ public static class Competitions
             Start = (10, 14), RoundDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Saturday },
             PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Friday, DayOfWeek.Sunday },
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 5, 8), new PlayoffRound("Semi-finals", 5, 4), new PlayoffRound("Finals", 7, 2) },
-            Clubs = new ClubSeed[]
-            {
-                new("Beijing", "Dragons", "BJD"), new("Beijing", "Imperials", "BJI"), new("Shanghai", "Tide", "SHA"),
-                new("Guangdong", "Pearl River", "GDP"), new("Shenzhen", "Aviators", "SZN"), new("Liaoning", "Ironmen", "LIA"),
-                new("Xinjiang", "Snow Leopards", "XJS"), new("Zhejiang", "Silk", "ZJS"), new("Shandong", "Mountaineers", "SDM"),
-                new("Shanxi", "Loong", "SXL"), new("Jiangsu", "Mariners", "JSU"), new("Sichuan", "Pandas", "SCP"),
-                new("Tianjin", "Pioneers", "TJN"), new("Qingdao", "Eagles", "QDE"), new("Fujian", "Seafarers", "FJS"),
-                new("Guangzhou", "Rams", "GZR"), new("Nanjing", "Plum Blossoms", "NJG"), new("Ningbo", "Harbour", "NGB"),
-                new("Wuhan", "Cranes", "WUH"), new("Chongqing", "Mist", "CQM"),
-            },
+            Clubs = RealClubs.China,
         },
         new()
         {

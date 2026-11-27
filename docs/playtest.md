@@ -107,7 +107,12 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   Fenerbahçe, Panathinaikos, Olimpia Milano, Monaco, Alba Berlin, Zalgiris Kaunas and the rest, in their cities, with their
   arenas (the Team page's Arena chip) and real capacities, and the giants are strong in a new career. Every league abroad has
   its real name (Liga ACB, the EuroLeague, the EuroCup, the B.League …). The rosters are still generated. An older save gets
-  the real names when it loads (its rosters stay as they were). The other leagues' clubs are still made up (next builds).
+  the real names when it loads (its rosters stay as they were).
+- **From v0.206.0 eight more leagues have their real clubs:** the NBL (Sydney Kings, Perth Wildcats, the Breakers), the CBA
+  (Guangdong Southern Tigers, Liaoning Flying Leopards), the B.League (Alvark Tokyo, Ryukyu Golden Kings), the KBL, the PBA
+  (San Miguel, Ginebra and TNT, all at the Araneta Coliseum), the Israeli league (Maccabi and Hapoel Tel Aviv), the ABA League
+  (Crvena zvezda, Partizan) and the VTB League (CSKA, Zenit, UNICS). Poland, the Baltic, Czech, BNXT, the Americas and Africa
+  are still made up (next build).
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two
