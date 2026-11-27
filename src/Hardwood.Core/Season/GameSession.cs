@@ -1142,7 +1142,7 @@ public sealed partial class GameSession
         var rec = MyRecord;
         // H225 (run 228): a job taken mid-season records your own games there, not the club's before you came.
         int hw = Job.HiredSeason == League.Season ? Job.HiredWins ?? 0 : 0, hl = Job.HiredSeason == League.Season ? Job.HiredLosses ?? 0 : 0;
-        return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, Math.Max(0, rec.Wins - hw), Math.Max(0, rec.Losses - hl), ended);
+        return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, Math.Max(0, rec.Wins - hw), Math.Max(0, rec.Losses - hl), ended, hw, hl);
     }
 
     private void TakeJob(Team team)
@@ -1162,7 +1162,8 @@ public sealed partial class GameSession
         Job.HiredSeason = forSeason;
         // H225 (run 228): the club's record the day you arrived, so your own share of a season you joined mid-way can be told
         // apart (the Almanac credited a coach hired at 7-44 with the whole 11-71). Null for a hire before the season's games.
-        var atHire = forSeason == League.Season && !InCollege ? MyRecord : null;
+        // Only during the regular season: a playoff-time hire's club has played all its season (review of run 228).
+        var atHire = forSeason == League.Season && !InCollege && Phase == SessionPhase.RegularSeason ? MyRecord : null;
         Job.HiredWins = atHire is { } h0 && h0.Wins + h0.Losses > 0 ? h0.Wins : null;
         Job.HiredLosses = atHire is { } h1 && h1.Wins + h1.Losses > 0 ? h1.Losses : null;
         Job.History.Clear();

@@ -69,7 +69,10 @@ public sealed class Coach
     public double ChemistryBonus => (this[CoachAttr.Discipline] - 10) * 0.3;
 }
 
-public sealed record JobRecord(int TeamId, string TeamName, int FromSeason, int ToSeason, int Wins, int Losses, string Ended);
+/// <param name="HiredWins">H225 (run 228): the club's record when you arrived mid-season (0-0 otherwise and in older saves);
+/// <paramref name="Wins"/> and <paramref name="Losses"/> are then your own games there.</param>
+public sealed record JobRecord(int TeamId, string TeamName, int FromSeason, int ToSeason, int Wins, int Losses, string Ended,
+    int HiredWins = 0, int HiredLosses = 0);
 
 /// <summary>
 /// Bug hunt H19 (run 93): a job's seasons as the game labels them everywhere else. A record's seasons are start years, so

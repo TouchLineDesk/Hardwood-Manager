@@ -59,7 +59,8 @@ public class Run228BugSweepTests
         Assert.DoesNotContain("only division", Board.DescribeResult(SeasonGoal.Title, ctx with { PyramidLevel = 0, IsNabl = true }, wonDivision: false));
     }
 
-    /// <summary>H225: a coach who leaves one club mid-season and joins another gets a line for each, with his own record.</summary>
+    /// <summary>H225: a coach who leaves clubs mid-season gets a line for each, with his own record there: a club he started
+    /// with, one he joined and left mid-season, and today's, joined mid-season.</summary>
     [Fact]
     public void H225_your_season_has_a_line_per_club_with_your_own_record()
     {
@@ -73,25 +74,53 @@ public class Run228BugSweepTests
         var atLeaving = (s.MyRecord.Wins, s.MyRecord.Losses);
         Assert.Null(s.Resign());
         for (int i = 0; i < 12; i++) s.AdvanceDay();
-        var next = s.League.Teams.First(t => t != first && t.Id == ordered[3].Id);
-        s.Job.Vacancies.Add(new Vacancy { TeamId = next.Id, Opened = s.Today, Status = "offered" });
-        Assert.Null(s.AcceptOffer(next.Id));
-        Assert.Equal(next, s.HumanTeam);
-        var atHire = (s.MyRecord.Wins, s.MyRecord.Losses);
-        Assert.Equal(atHire.Item1, s.Job.HiredWins);
-        Assert.Equal(atHire.Item2, s.Job.HiredLosses);
-        Assert.Equal(atLeaving, (s.Coach.History.Last().Wins, s.Coach.History.Last().Losses));
+
+        (int, int) Hire(Team t)
+        {
+            s.Job.Vacancies.Add(new Vacancy { TeamId = t.Id, Opened = s.Today, Status = "offered" });
+            Assert.Null(s.AcceptOffer(t.Id));
+            Assert.Equal(t, s.HumanTeam);
+            var rec = (s.MyRecord.Wins, s.MyRecord.Losses);
+            Assert.Equal(rec.Item1, s.Job.HiredWins);
+            Assert.Equal(rec.Item2, s.Job.HiredLosses);
+            return rec;
+        }
+        // The second club: joined and left mid-season. His record there is his own games.
+        var second = s.League.Teams.First(t => t.Id == ordered[3].Id);
+        var hire2 = Hire(second);
+        int games0 = s.MyRecord.Wins + s.MyRecord.Losses;
+        guard = 0;
+        while (s.MyRecord.Wins + s.MyRecord.Losses < games0 + 8 && guard++ < 200) s.AdvanceDay();
+        var club2AtLeaving = (s.MyRecord.Wins, s.MyRecord.Losses);
+        Assert.Null(s.Resign());
+        var job2 = s.Coach.History.Last();
+        Assert.Equal((club2AtLeaving.Wins - hire2.Item1, club2AtLeaving.Losses - hire2.Item2), (job2.Wins, job2.Losses));
+        Assert.Equal(hire2, (job2.HiredWins, job2.HiredLosses));
+        Assert.Equal(atLeaving, (s.Coach.History[0].Wins, s.Coach.History[0].Losses));
+        for (int i = 0; i < 5; i++) s.AdvanceDay();
+        // Today's club, joined mid-season.
+        var third = s.League.Teams.First(t => t.Id == ordered[25].Id);
+        var hire3 = Hire(third);
 
         guard = 0;
         while (s.Phase != SessionPhase.Offseason && guard++ < 600) s.AdvanceDay();
         var e = Assert.Single(Almanac.Editions(s));
         var lines = e.Section(Almanac.Yours)!.Lines;
         foreach (var l in lines) _out.WriteLine(l);
-        Assert.Equal(2, lines.Count);
+        Assert.Equal(3, lines.Count);
         var h = s.League.History[0];
-        var full1 = h.Records.First(r => r.teamId == first.Id);
-        Assert.Equal($"{first.TheFullNameCap} were {atLeaving.Wins}-{atLeaving.Losses} when you resigned; they finished {full1.wins}-{full1.losses}.", lines[0]);
-        var full2 = h.Records.First(r => r.teamId == next.Id);
-        Assert.Equal($"{next.TheFullNameCap} went {full2.wins - atHire.Item1}-{full2.losses - atHire.Item2} after you arrived on {s.Job.HiredOn:MMM d} ({full2.wins}-{full2.losses} in all).", lines[1]);
+        var f1 = h.Records.First(r => r.teamId == first.Id);
+        Assert.Equal($"{first.TheFullNameCap} were {atLeaving.Wins}-{atLeaving.Losses} when you resigned; they finished {f1.wins}-{f1.losses}.", lines[0]);
+        var f2 = h.Records.First(r => r.teamId == second.Id);
+        Assert.Equal($"{second.TheFullNameCap} went {job2.Wins}-{job2.Losses} under you, from {hire2.Item1}-{hire2.Item2} when you arrived until you resigned; they finished {f2.wins}-{f2.losses}.", lines[1]);
+        var f3 = h.Records.First(r => r.teamId == third.Id);
+        Assert.Equal($"{third.TheFullNameCap} went {f3.wins - hire3.Item1}-{f3.losses - hire3.Item2} after you arrived on {s.Job.HiredOn:MMM d} ({f3.wins}-{f3.losses} in all).", lines[2]);
+    }
+
+    [Fact]
+    public void H225_an_older_job_record_loads_without_the_hire_record()
+    {
+        var old = System.Text.Json.JsonSerializer.Deserialize<JobRecord>("{\"TeamId\":3,\"TeamName\":\"Utah Jazz\",\"FromSeason\":2026,\"ToSeason\":2026,\"Wins\":8,\"Losses\":16,\"Ended\":\"Sacked\"}")!;
+        Assert.Equal((8, 16, 0, 0), (old.Wins, old.Losses, old.HiredWins, old.HiredLosses));
     }
 }

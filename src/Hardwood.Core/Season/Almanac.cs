@@ -228,9 +228,6 @@ public static class Almanac
 
     private static bool Kind(GameSession s, int teamId, bool college) => (s.World.College?.Program(teamId) != null) == college;
 
-    /// <summary>The team you coached in a season (of a college or a pro edition): the one the columnists picked for you then,
-    /// else the job your record says you held that season, else today's job if you were hired by then. Review: never today's
-    /// team for a season before you coached it.</summary>
     /// <summary>
     /// H225 (run 228): "Your season" for the pros, one line per club you coached that season, with your own record there. A
     /// coach sacked by Utah at 8-16 and hired by the Aces at 7-44 read "The Utah Jazz went 33-49", the Jazz's whole season.
@@ -251,10 +248,15 @@ public static class Almanac
         foreach (var j in left)
         {
             if (s.FindTeam(j.TeamId) is not { } t || Full(t.Id) is not { } full) continue;
-            bool partial = j.ToSeason == h.Season && j.Wins + j.Losses > 0 && j.Wins + j.Losses < full.w + full.l;
-            if (!partial) { lines.Add(FullLine(t, full)); continue; }
+            // The record saved is your own games; the club's when you left adds what it had when you came (review of run 228).
+            bool joined = j.FromSeason == h.Season && j.HiredWins + j.HiredLosses > 0;
+            int clubW = j.Wins + j.HiredWins, clubL = j.Losses + j.HiredLosses;
+            bool leftEarly = j.ToSeason == h.Season && clubW + clubL > 0 && clubW + clubL < full.w + full.l;
+            if (!joined && !leftEarly) { lines.Add(FullLine(t, full)); continue; }
             string how = j.Ended == "Sacked" ? "were sacked" : j.Ended.Length == 0 ? "left" : char.ToLowerInvariant(j.Ended[0]) + j.Ended[1..];
-            lines.Add($"{t.TheFullNameCap} were {j.Wins}-{j.Losses} when you {how}; they finished {full.w}-{full.l}.");
+            lines.Add(joined
+                ? $"{t.TheFullNameCap} went {j.Wins}-{j.Losses} under you, from {j.HiredWins}-{j.HiredLosses} when you arrived" + (leftEarly ? $" until you {how}" : "") + $"; they finished {full.w}-{full.l}."
+                : $"{t.TheFullNameCap} were {j.Wins}-{j.Losses} when you {how}; they finished {full.w}-{full.l}.");
         }
         // Today's job, if it covers that season.
         if (s.Employed && Kind(s, s.HumanTeam.Id, false) && s.Job.HiredSeason != 0 && s.Job.HiredSeason <= h.Season
@@ -274,6 +276,9 @@ public static class Almanac
         return lines;
     }
 
+    /// <summary>The team you coached in a season (of a college or a pro edition): the one the columnists picked for you then,
+    /// else the job your record says you held that season, else today's job if you were hired by then. Review: never today's
+    /// team for a season before you coached it.</summary>
     private static int? TeamThatSeason(GameSession s, int season, bool college)
     {
         if (s.Media.Columns.Picks.FirstOrDefault(p => p.Season == season && Kind(s, p.TeamId, college)) is { } picked) return picked.TeamId;
