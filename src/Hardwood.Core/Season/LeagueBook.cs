@@ -99,7 +99,8 @@ public sealed class LeagueBook
         {
             // Run 227: a round the same size as the one before (the EuroCup's quarter-finals after its eighth-finals: the group
             // winners wait) keeps the slots, each fed by the series beside it.
-            bool same = ri < rounds.Count && rounds[ri].Series.Count == size;
+            // Review: before the quarter-finals exist, the eighth-finals' four (the EuroCup's) still lead to four quarter-finals.
+            bool same = ri < rounds.Count ? rounds[ri].Series.Count == size : ri == 1 && rounds[0].Name == "Eighth-finals" && size == 4;
             if (!same) size /= 2;
             var prev = cols[^1].Slots;
             var slots = Enumerable.Repeat<BookSeries?>(null, size).ToList();
@@ -314,14 +315,14 @@ public sealed class LeagueBook
         };
     }
 
-    /// <summary>A zone by place in a division in the division format (D36): the top two make the playoffs, third plays the
-    /// third-place tournament (4th, relegated, is marked by the caller where there's a league below).</summary>
     /// <summary>Run 227: a group's places: straight to the quarter-finals, into the eighth-finals, or out.</summary>
     public static string GroupZone(CompetitionProfile p, int place) =>
         p.Playoffs.Length >= 2 && p.Playoffs[0].Name == "Eighth-finals" ? place <= 2 ? QuarterZone : place <= 6 ? EighthZone : ""
         : p.Playoffs.Length > 0 && place <= p.Playoffs[0].Teams / Math.Max(1, p.Groups) ? "Playoffs" : "";
     public const string QuarterZone = "Quarter-finals", EighthZone = "Eighth-finals";
 
+    /// <summary>A zone by place in a division in the division format (D36): the top two make the playoffs, third plays the
+    /// third-place tournament (4th, relegated, is marked by the caller where there's a league below).</summary>
     public static string DivisionZone(int placeInDivision) => placeInDivision <= 2 ? "Playoffs" : placeInDivision == 3 ? "Third place" : "";
 
     /// <summary>A pyramid club's zone (#319): in tiers 2-5 each division winner goes up and the last in each division goes down
@@ -387,6 +388,9 @@ public sealed class LeagueBook
         int perOpp = p.RoundRobins;
         bool grouped = c.Season.Grouped;
         if (grouped) clubs = c.Season.Groups!.Max(g => g.Count);
+        else if (p.Groups > 1 && clubs > 1 && c.Season.Fixtures.Count(f => f.Stage == CompetitionSeason.RegularSeason) is var reg and > 0)
+            // Review (run 227): a season saved before the groups was drawn as one table: count its passes from its own fixtures.
+            perOpp = Math.Max(1, (int)Math.Round(reg / (clubs * (clubs - 1) / 2.0)));
         list.Add(("Season", (grouped ? $"{c.Season.Groups!.Count} groups of {clubs}, drawn by strength. " : "") + $"{(perOpp == 1 ? "Everyone plays everyone once" : perOpp == 2 ? "Home and away against everyone" : $"Everyone plays everyone {perOpp} times")}"
                            + $" ({(clubs - 1) * perOpp} games), from {new DateOnly(2000, p.Start.Month, p.Start.Day):MMMM d}"
                            + (p.RegularEnd is { } re ? $" to {new DateOnly(2001, re.Month, re.Day):MMMM d}." : ".")));

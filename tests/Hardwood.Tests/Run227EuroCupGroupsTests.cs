@@ -72,6 +72,11 @@ public class Run227EuroCupGroupsTests
         var inEighths = eighths.SelectMany(x => new[] { x.HighId, x.LowId }).ToHashSet();
         Assert.DoesNotContain(A(1), inEighths); Assert.DoesNotContain(B(2), inEighths); Assert.DoesNotContain(A(7), inEighths);
 
+        // Review: while the eighth-finals are played, the bracket already shows the four quarter-finals the top two wait in.
+        var waiting = LeagueBook.Columns(s.Series.Select(x => new BookSeries(x.Round, world.TeamById(x.HighId)!, world.TeamById(x.LowId)!, 0, 0, null, false)));
+        Assert.Equal(new[] { "Eighth-finals", "Quarter-finals", "Semi-finals", "Final" }, waiting.Select(c => c.Round));
+        Assert.Equal(new[] { 4, 4, 2, 1 }, waiting.Select(c => c.Slots.Count));
+
         world.FinishSeasons(sim);
         Assert.True(s.IsComplete);
         var qf = s.Series.Where(x => x.Round == "Quarter-finals").OrderBy(x => x.Id).ToList();
@@ -99,6 +104,22 @@ public class Run227EuroCupGroupsTests
         Assert.True(s.IsComplete);
         Assert.Equal(8, s.Series.Count(x => x.Round == "Eighth-finals"));
         Assert.Equal(4, s.Series.Count(x => x.Round == "Quarter-finals"));
+    }
+
+    [Fact]
+    public void A_season_saved_before_the_groups_says_once_each_on_its_rules()
+    {
+        // Review (run 227): a v0.214 season is one round robin of 20; the rules must say so, not the new profile's home and away.
+        var s = GameSession.NewGame(31, humanTeamId: 5, savePath: null);
+        var se = Cup(s.World).Season;
+        var one = se.Groups!.SelectMany(g => g).ToList();
+        se.Groups = null;
+        se.Fixtures = se.Fixtures.Take(0).ToList();
+        for (int i = 0; i < one.Count; i++)
+            for (int j = i + 1; j < one.Count; j++)
+                se.Fixtures.Add(new Fixture { Index = se.Fixtures.Count, Date = new DateOnly(2026, 10, 7), HomeId = one[i], AwayId = one[j] });
+        var rule = LeagueBook.Get(s, WorldLeagues.EuroCup)!.Rules.Single(r => r.Label == "Season").Value;
+        Assert.StartsWith("Everyone plays everyone once (19 games)", rule);
     }
 
     [Fact]
