@@ -63,7 +63,7 @@ public static class Lineage
     /// recruits are renamed and returned. <paramref name="teamName"/> names a team id for the father's career line.
     /// </summary>
     public static List<Son> Link(League league, LineageBook book, IReadOnlyList<Player> cohort, int summerYear, string pool,
-                                 ulong seed, Func<int, string?> teamName)
+                                 ulong seed, Func<int, string?> teamName, Generation.NameBook? living = null)
     {
         var found = new List<Son>();
         if (cohort.Count == 0) return found;
@@ -87,8 +87,14 @@ public static class Lineage
             var pickFrom = fits.OrderByDescending(s => s.PotentialAbility).ThenBy(s => s.Id).Take(keep).ToList();
             var samePos = pickFrom.Where(s => s.PrimaryPosition == f.PrimaryPosition).ToList();
             if (samePos.Count > 0) pickFrom = samePos;
-            var son = pickFrom.OrderBy(s => MediaCast.Hash($"{seed}:pick:{f.Id}:{s.Id}")).First();
+            // The generator's name rules hold for the new name too (review): not a real player's, not a living player's, not "Brock Brock".
+            var son = pickFrom.OrderBy(s => MediaCast.Hash($"{seed}:pick:{f.Id}:{s.Id}"))
+                .FirstOrDefault(s => SurnameFor(s, f) is var last && !string.Equals(s.FirstName, last, StringComparison.OrdinalIgnoreCase)
+                                     && !RealWorld.RealNames.IsRealPlayer($"{s.FirstName} {last}") && !RealWorld.RealCareers.Players.ContainsKey($"{s.FirstName} {last}")
+                                     && living?.Taken(s.FirstName, last) != true);
+            if (son == null) continue;
             free.Remove(son);
+            living?.Add(son.FirstName, SurnameFor(son, f));
             Rename(son, f);
             var entry = new Son
             {
@@ -104,8 +110,15 @@ public static class Lineage
     /// <summary>The son takes his father's surname (a "Jr." when he shares the first name too) and appearance.</summary>
     public static void Rename(Player son, Player father)
     {
-        son.LastName = son.FirstName == father.FirstName ? father.LastName + " Jr." : father.LastName;
+        son.LastName = SurnameFor(son, father);
         if (son.Ethnicity != father.Ethnicity) { son.Ethnicity = father.Ethnicity; son.FaceFile = null; } // a new face from the right folder
+    }
+
+    /// <summary>The son's surname: his father's, with "Jr." when he shares the first name too ("III" after a "Jr.").</summary>
+    public static string SurnameFor(Player son, Player father)
+    {
+        if (son.FirstName != father.FirstName) return father.LastName;
+        return father.LastName.EndsWith(" Jr.") ? father.LastName[..^4] + " III" : father.LastName + " Jr.";
     }
 
     /// <summary>"11 seasons, 2 titles, 18.4 ppg, mostly with the Boston Shamrocks".</summary>

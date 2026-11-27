@@ -119,6 +119,35 @@ public class Run231SecondGenerationTests
     }
 
     [Fact]
+    public void A_new_name_keeps_the_generators_rules()
+    {
+        // The review: a son must not become a real player ("LeBron" + a father named James) or a living player's double.
+        int Found(string a, string b)
+        {
+            var league = NewLeague();
+            foreach (var d in AddFathers(league, 30, 2004)) d.LastName = "James";
+            var living = new NameBook();
+            living.Add("Marcus", "James");
+            var book = new LineageBook();
+            for (int year = 2040; year <= 2056; year++)
+            {
+                var cohort = Class(40, year, 14, (ulong)year);
+                for (int i = 0; i < cohort.Count; i++)
+                    cohort[i] = new Player { Id = cohort[i].Id, FirstName = i % 2 == 0 ? a : b, LastName = "Smith", BirthDate = cohort[i].BirthDate,
+                                             Nationality = "USA", PrimaryPosition = (Position)(i % 5), HeightCm = 190, PotentialAbility = 100 - i };
+                Lineage.Link(league, book, cohort, year, "high school", 31, _ => null, living);
+            }
+            return book.Sons.Count;
+        }
+        Assert.Equal(0, Found("LeBron", "Marcus"));
+        Assert.True(Found("Darius", "Marcus") > 0); // the same summers do find sons when the name is free
+        var jr = new Player { FirstName = "Tom", LastName = "Ashgrove Jr." };
+        Assert.Equal("Ashgrove III", Lineage.SurnameFor(new Player { FirstName = "Tom", LastName = "X" }, jr));
+        Assert.Equal("Ashgrove Jr.", Lineage.SurnameFor(new Player { FirstName = "Ned", LastName = "X" }, jr));
+        Assert.Equal("Ashgrove Jr.", Lineage.SurnameFor(new Player { FirstName = "Tom", LastName = "X" }, new Player { FirstName = "Tom", LastName = "Ashgrove" }));
+    }
+
+    [Fact]
     public void A_careers_summer_finds_sons_posts_one_message_and_a_reload_keeps_them()
     {
         var dir = Path.Combine(Path.GetTempPath(), $"hw-run231-{Guid.NewGuid():N}");

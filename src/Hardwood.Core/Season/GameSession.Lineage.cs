@@ -12,7 +12,8 @@ public sealed partial class GameSession
     /// <summary>A player anywhere in the world (rosters, free agents, retired, abroad, college and high school).</summary>
     public Player? AnyPlayer(int id) =>
         League.Teams.SelectMany(t => t.Roster).Concat(League.FreeAgents).Concat(League.Retired).Concat(World.Players)
-            .Concat(World.College?.Players ?? Enumerable.Empty<Player>()).FirstOrDefault(p => p.Id == id);
+            .Concat(World.College?.Players ?? Enumerable.Empty<Player>()).Concat(Offseason?.Prospects ?? Enumerable.Empty<Player>())
+            .FirstOrDefault(p => p.Id == id); // the summer's draft prospects too, until they're drafted or released (review)
 
     /// <summary>The son line for a player's page, or null.</summary>
     public string? LineageLine(Player p)
@@ -34,13 +35,14 @@ public sealed partial class GameSession
         {
             Lineage.Summers.Add(summerYear);
             var summer = new DateOnly(summerYear, 7, 1);
+            var living = Hardwood.Core.Generation.NameBook.Of(World, Offseason?.Prospects);
             if (World.College is { Recruiting: true } c)
             {
                 var newest = c.Prospects.Where(p => p.Age(summer) <= Hardwood.Core.College.CollegeWorld.YoungestAge).ToList();
-                found.AddRange(Hardwood.Core.People.Lineage.Link(League, Lineage, newest, summerYear, "high school", Seed, TeamNameOf));
+                found.AddRange(Hardwood.Core.People.Lineage.Link(League, Lineage, newest, summerYear, "high school", Seed, TeamNameOf, living));
             }
             if (Offseason?.Prospects is { Count: > 0 } pros && !League.CollegeActive)
-                found.AddRange(Hardwood.Core.People.Lineage.Link(League, Lineage, pros, summerYear, "draft", Seed, TeamNameOf));
+                found.AddRange(Hardwood.Core.People.Lineage.Link(League, Lineage, pros, summerYear, "draft", Seed, TeamNameOf, living));
         }
         PostSecondGeneration(found);
     }
