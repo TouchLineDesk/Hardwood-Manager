@@ -205,6 +205,7 @@ public sealed partial class LiveGameViewModel
             HomeSystem = Playing(HomeTeam, _clutchHome).System, AwaySystem = Playing(AwayTeam, _clutchAway).System,   // M5: the clutch plan's set while it plays
             RoleOf = p => (HomeTeam.Roster.Contains(p) ? HomeTeam : AwayTeam).Tactic.RoleOf(p),
             EnergyOf = _live.EnergyOf,
+            Dressed = HomeTeam.Roster.Concat(AwayTeam.Roster).ToList(),   // H215 (run 224)
             HomePace = HomeTeam.Tactic.Pace, AwayPace = AwayTeam.Tactic.Pace,
             HomeAggression = HomeTeam.Tactic.DefensiveAggression, AwayAggression = AwayTeam.Tactic.DefensiveAggression,
             HomePress = HomeTeam.Tactic.FullCourtPress, AwayPress = AwayTeam.Tactic.FullCourtPress,

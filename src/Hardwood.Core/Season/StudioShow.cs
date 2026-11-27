@@ -168,6 +168,15 @@ public sealed partial class GameSession
             line = $"{marchRound} · {Seeded(away)} v {Seeded(home)}";
         }
         else if (neutralFloor) line = $"{cg!.Event}: {date.DayOfWeek} night in {date:MMMM}";
+        // Run 224 (run 223's leftover): an NBA Cup knockout is named on the show, and a Las Vegas game isn't called from
+        // the home club's arena.
+        var cupTie = !InCollege ? Cup?.Ties.FirstOrDefault(t => t.Date == date && ((t.HomeId == home.Id && t.AwayId == away.Id) || (t.HomeId == away.Id && t.AwayId == home.Id))) : null;
+        if (cupTie != null)
+        {
+            neutralFloor = cupTie.Neutral;
+            name = "HSN NBA Cup";
+            line = cupTie.Neutral ? $"NBA Cup {cupTie.Round.ToLowerInvariant()} · {NbaCup.Venue}" : $"NBA Cup {cupTie.Round.ToLowerInvariant()}";
+        }
         var rng = new Rng((ulong)(date.DayNumber * 7919L + home.Id * 131L + away.Id * 17L + 1));
         var table = MyStandings;
         // Run 187: in college every program has a record, 0-0 included (a non-conference opponent's read "" on opening night).
@@ -180,7 +189,7 @@ public sealed partial class GameSession
 
         var panel = new List<StudioAnalyst> { StudioShow.BigMan, StudioShow.Numbers, StudioShow.Guard };
         if (set is StudioSet.Playoffs or StudioSet.Finals or StudioSet.ThirdPlace) panel.Add(StudioShow.Coach);
-        string venue = RealWorld.RealWorldData.IsReal(League) ? RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.Abbr == home.Abbreviation)?.Arena ?? Hardwood.Core.World.RealClubs.ArenaOf(home) ?? "" : "";
+        string venue = cupTie is { Neutral: true } ? "" : RealWorld.RealWorldData.IsReal(League) ? RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.Abbr == home.Abbreviation)?.Arena ?? Hardwood.Core.World.RealClubs.ArenaOf(home) ?? "" : "";
 
         var show = new StudioShow
         {
@@ -215,7 +224,9 @@ public sealed partial class GameSession
 
         // --- The open ---
         var open = new List<StudioLine>();
-        string greeting = set switch
+        string greeting = cupTie != null
+            ? $"Welcome to the NBA Cup on HSN: the {cupTie.Round.ToLowerInvariant()}{(cupTie.Neutral ? $", live from {NbaCup.Venue}" : "")}."
+            : set switch
         {
             StudioSet.Christmas => "Merry Christmas, everybody, and welcome to the HSN studio on the biggest regular-season day of the year.",
             StudioSet.Thanksgiving => "Happy Thanksgiving. Plates are full, the panel's full, and we've got basketball.",
@@ -233,7 +244,7 @@ public sealed partial class GameSession
         };
         string awayIntro = $"{away.FullName}{(show.AwayRecord != "" ? $" ({show.AwayRecord})" : "")}", homeIntro = $"{home.FullName}{(show.HomeRecord != "" ? $" ({show.HomeRecord})" : "")}";
         open.Add(new(host, $"{greeting} " + (neutralFloor ? $"{awayIntro} and {homeIntro} meet on a neutral floor" : $"{awayIntro} visit {homeIntro}") +
-                           (venue != "" ? $" at {venue}." : ".") + (show.Stakes != "" ? $" {show.Stakes}." : "")));
+                           (venue != "" ? $" at {venue}." : cupTie is { Neutral: true } ? $" in {NbaCup.Venue}." : ".") + (show.Stakes != "" ? $" {show.Stakes}." : "")));
         var fav = margin >= 0 ? home : away;
         double favChance = Math.Max(homeChance, 1 - homeChance);
         open.Add(new(num, favChance >= 0.75

@@ -4,7 +4,11 @@ namespace Hardwood.Core.Season;
 
 /// <summary>One road event on the Recruiting tab (run 197).</summary>
 public sealed record RoadRow(RoadEvent Event, string Title, string When, IReadOnlyList<string> Options, string? Choice, string? Result,
-                             bool Open, bool ByStaff, string Help);
+                             bool Open, bool ByStaff, string Help)
+{
+    /// <summary>H214 (run 224): the event's year when it isn't this one (the tile says "Passed · 2026"), else null.</summary>
+    public int? OtherYear { get; init; }
+}
 
 /// <summary>Recruiting on the road (run 197, slice 7 of the revised launch plan): see <see cref="CollegeWorld"/>'s CollegeRoad.cs.</summary>
 public sealed partial class GameSession
@@ -19,9 +23,14 @@ public sealed partial class GameSession
         {
             var entry = c.RoadEntry(HumanTeam.Id, cls, e);
             bool open = entry?.Result == null && Today <= CollegeWorld.RoadDay(e, cls);
-            string? result = entry?.Result ?? (open ? null : "Not run: it came before your job here (or before this save kept a road calendar).");
+            // H214 (run 224): say which of the two it was, and give the year when it isn't this one (Apr 13 2027 showed
+            // "Apr 24–Apr 26 · Passed", 2026's dates with no year).
+            var day = CollegeWorld.RoadDay(e, cls);
+            string? result = entry?.Result ?? (open ? null : day < Job.HiredOn
+                ? "Not run: it came before you took the job."
+                : "Not run: this save kept no road calendar then.");
             return new RoadRow(e, CollegeWorld.RoadTitle(e), CollegeWorld.RoadWhen(e, cls), CollegeWorld.RoadOptions(e),
-                entry?.Choice, result, open, entry?.ByStaff ?? false, CollegeWorld.RoadHelp(e));
+                entry?.Choice, result, open, entry?.ByStaff ?? false, CollegeWorld.RoadHelp(e)) { OtherYear = day.Year != Today.Year ? day.Year : null };
         }).ToList();
     }
 
