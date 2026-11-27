@@ -336,7 +336,14 @@ public sealed class GameWorld
     private List<int> ContinentalEntrants(WorldCompetition comp, HashSet<int> taken)
     {
         var ids = new List<int>();
-        var entrants = comp.Profile.Entrants.All(e => Competitions.Any(c => c.Key == e.LeagueKey)) ? comp.Profile.Entrants : comp.Profile.LegacyEntrants;
+        bool current = comp.Profile.Entrants.All(e => Competitions.Any(c => c.Key == e.LeagueKey));
+        var entrants = current ? comp.Profile.Entrants : comp.Profile.LegacyEntrants;
+        if (current && comp.Profile.Members.Length > 0)
+        {
+            ids = LicensedEntrants(comp.Profile, taken);
+            taken.UnionWith(ids);
+            return ids;
+        }
         foreach (var (key, n) in entrants)
         {
             if (Competitions.FirstOrDefault(c => c.Key == key) is not { } source) continue;
@@ -347,6 +354,68 @@ public sealed class GameWorld
         }
         taken.UnionWith(ids);
         return ids;
+    }
+
+    /// <summary>The order a domestic league's clubs are picked in for a cup: last season's table, or by strength before any game.</summary>
+    private List<int> CupOrder(WorldCompetition source) =>
+        source.Season.Fixtures.Any(f => f.Played) ? source.Season.Table().Select(r => r.TeamId).ToList()
+            : source.Clubs.OrderByDescending(Strength).Select(t => t.Id).ToList();
+
+    /// <summary>
+    /// Run 222: a cup with licensed clubs (the EuroLeague): every member in its source leagues enters, wherever it finished;
+    /// the rest of the field comes from those leagues' tables, one club from each league in the listed order, round after round.
+    /// </summary>
+    private List<int> LicensedEntrants(CompetitionProfile p, HashSet<int> taken)
+    {
+        var members = p.Members.ToHashSet();
+        var sources = p.Entrants.Select(e => Competitions.FirstOrDefault(c => c.Key == e.LeagueKey))
+            .OfType<WorldCompetition>().Where(c => c.Profile.Kind == CompetitionKind.Domestic).ToList();
+        var orders = sources.Select(CupOrder).ToList();
+        var ids = new List<int>();
+        foreach (var order in orders)
+            ids.AddRange(order.Where(id => !taken.Contains(id) && _teams.TryGetValue(id, out var t) && members.Contains(t.City + "|" + t.Name)));
+        int size = p.Size > 0 ? p.Size : p.Entrants.Sum(e => e.Clubs);
+        bool added = true;
+        while (ids.Count < size && added)
+        {
+            added = false;
+            foreach (var order in orders)
+            {
+                if (ids.Count >= size) break;
+                int next = order.FirstOrDefault(id => !taken.Contains(id) && !ids.Contains(id), -1);
+                if (next < 0) continue;
+                ids.Add(next); added = true;
+            }
+        }
+        return ids.Take(Math.Max(size, 0)).ToList();
+    }
+
+    /// <summary>Run 222: the round dates for <paramref name="rounds"/> rounds. With <see cref="CompetitionProfile.RegularEnd"/> they are
+    /// spread evenly over the round days up to that date (so some weeks have two rounds and some one); otherwise one round
+    /// on each round day in turn.</summary>
+    internal static List<DateOnly> RoundDates(CompetitionProfile p, int year, int rounds)
+    {
+        var days = new List<DateOnly>();
+        var day = new DateOnly(year, p.Start.Month, p.Start.Day);
+        if (p.RegularEnd is { } end)
+        {
+            var last = new DateOnly(year + 1, end.Month, end.Day);
+            var slots = new List<DateOnly>();
+            for (var d = day; d <= last; d = d.AddDays(1)) if (p.RoundDays.Contains(d.DayOfWeek)) slots.Add(d);
+            if (slots.Count >= rounds && rounds > 0)
+            {
+                for (int i = 0; i < rounds; i++)
+                    days.Add(slots[rounds == 1 ? 0 : (int)Math.Round(i * (slots.Count - 1) / (double)(rounds - 1))]);
+                return days;
+            }
+        }
+        for (int i = 0; i < rounds; i++)
+        {
+            while (!p.RoundDays.Contains(day.DayOfWeek)) day = day.AddDays(1);
+            days.Add(day);
+            day = day.AddDays(1);
+        }
+        return days;
     }
 
     private List<Fixture> RoundRobin(List<int> ids, CompetitionProfile p, int year)
@@ -374,14 +443,13 @@ public sealed class GameWorld
         }
 
         var fixtures = new List<Fixture>();
-        var day = new DateOnly(year, p.Start.Month, p.Start.Day);
+        var dates = RoundDates(p, year, rounds.Count);
         int idx = 0;
-        foreach (var round in rounds)
+        for (int r = 0; r < rounds.Count; r++)
         {
-            while (!p.RoundDays.Contains(day.DayOfWeek)) day = day.AddDays(1);
-            foreach (var (h, a) in round)
+            var day = dates[r];
+            foreach (var (h, a) in rounds[r])
                 fixtures.Add(new Fixture { Index = idx++, Date = p.TwoDayRounds && _rng.Chance(0.5) ? day.AddDays(1) : day, HomeId = h, AwayId = a });
-            day = day.AddDays(1);
         }
         return fixtures;
     }
@@ -511,22 +579,61 @@ public sealed class GameWorld
         if (s.Stage == CompetitionSeason.RegularSeason && s.Participants.Count < 2) { s.Stage = CompetitionSeason.Complete; return true; }
 
         if (p.DivisionPlayoffs) return AdvanceDivisions(comp);
-        if (s.Stage == CompetitionSeason.RegularSeason)
+        void FirstRound(List<int> seeds)
         {
-            if (p.Playoffs.Length == 0) { Crown(comp, s.Table()[0].TeamId, s.Table()[1].TeamId); return true; }
-            var seeds = s.Table().Take(p.Playoffs[0].Teams).Select(r => r.TeamId).ToList();
             var order = BracketOrder(seeds.Count);
             for (int i = 0; i < order.Count; i += 2)
                 s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = p.Playoffs[0].Name, BestOf = p.Playoffs[0].BestOf, HighId = seeds[order[i]], LowId = seeds[order[i + 1]] });
             s.Stage = p.Playoffs[0].Name;
             ScheduleNextGames(comp);
+        }
+        if (s.Stage == CompetitionSeason.RegularSeason)
+        {
+            if (p.Playoffs.Length == 0) { Crown(comp, s.Table()[0].TeamId, s.Table()[1].TeamId); return true; }
+            var rows = s.Table();
+            int direct = p.Playoffs[0].Teams - 2;
+            if (p.PlayIn && direct >= 1 && rows.Count >= p.Playoffs[0].Teams + 2)
+            {
+                // Run 222: the play-in (7v8 and 9v10, single games at the higher seed).
+                s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = -1, Round = PlayInHigh, BestOf = 1, HighId = rows[direct].TeamId, LowId = rows[direct + 1].TeamId });
+                s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = -1, Round = PlayInLow, BestOf = 1, HighId = rows[direct + 2].TeamId, LowId = rows[direct + 3].TeamId });
+                s.Stage = PlayInStage;
+                ScheduleNextGames(comp);
+                return true;
+            }
+            FirstRound(rows.Take(p.Playoffs[0].Teams).Select(r => r.TeamId).ToList());
+            return true;
+        }
+        if (s.Stage is PlayInStage or PlayInFinal)
+        {
+            var playIn = s.Series.Where(x => x.Round is PlayInHigh or PlayInLow or PlayInFinal).ToList();
+            if (playIn.Any(x => !x.Complete)) { ScheduleNextGames(comp); return true; }
+            var high = playIn.First(x => x.Round == PlayInHigh);
+            var low = playIn.First(x => x.Round == PlayInLow);
+            if (s.Stage == PlayInStage)
+            {
+                // The 7v8 loser hosts the 9v10 winner for the 8th seed.
+                s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = -1, Round = PlayInFinal, BestOf = 1, HighId = high.LoserId!.Value, LowId = low.WinnerId!.Value });
+                s.Stage = PlayInFinal;
+                ScheduleNextGames(comp);
+                return true;
+            }
+            var last = playIn.First(x => x.Round == PlayInFinal);
+            var seeds = s.Table().Take(p.Playoffs[0].Teams - 2).Select(r => r.TeamId).ToList();
+            seeds.Add(high.WinnerId!.Value); seeds.Add(last.WinnerId!.Value);
+            News.Add(($"{p.Name} play-in: {_teams[high.WinnerId!.Value].FullName} and {_teams[last.WinnerId!.Value].FullName} go through",
+                $"{_teams[high.WinnerId!.Value].FullName} beat {_teams[high.LoserId!.Value].FullName} for 7th place; {_teams[last.WinnerId!.Value].FullName} beat {_teams[last.LoserId!.Value].FullName} for 8th. The quarter-finals start next."));
+            FirstRound(seeds);
             return true;
         }
 
         var active = s.Series.Where(x => x.Round == s.Stage).ToList();
         if (active.Any(x => !x.Complete)) { ScheduleNextGames(comp); return true; }
 
-        int ri = active[0].RoundIndex;
+        // Review (run 222): the round comes from the stage's name, not the stored index: a save from before the EuroCup's
+        // eighth-finals holds its quarter-finals at index 0, which is the eighth-finals' place now (it repeated the round).
+        int named = Array.FindIndex(p.Playoffs, r => r.Name == s.Stage);
+        int ri = named >= 0 ? named : active[0].RoundIndex;
         if (ri == p.Playoffs.Length - 1)
         {
             var final = active[0];
@@ -548,6 +655,9 @@ public sealed class GameWorld
         ScheduleNextGames(comp);
         return true;
     }
+
+    /// <summary>Run 222: the play-in's rounds (the names hold "Play-In", which the bracket view leaves out, as it does the NBA's).</summary>
+    public const string PlayInStage = "Play-In", PlayInHigh = "Play-In 7/8", PlayInLow = "Play-In 9/10", PlayInFinal = "Play-In Final";
 
     public const string ThirdQuarters = Postseason.ThirdQuarters, ThirdSemis = Postseason.ThirdSemis, ThirdFinal = Postseason.ThirdFinal;
 
@@ -648,13 +758,16 @@ public sealed class GameWorld
         var p = comp.Profile;
         var lastPlayed = s.Fixtures.Where(f => f.Played).Select(f => f.Date).DefaultIfEmpty(new DateOnly(s.Year, p.Start.Month, p.Start.Day)).Max();
         if (notBefore is { } nb && lastPlayed < nb.AddDays(-1)) lastPlayed = nb.AddDays(-1);
-        foreach (var series in s.Series.Where(x => (x.Round == s.Stage || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round)) || UsaPyramid.IsPromotion(x.Round)) && !x.Complete))
+        HashSet<(int, DateOnly)>? busy = null;
+        foreach (var series in s.Series.Where(x => (x.Round == s.Stage || (s.Stage == PlayInStage && x.Round is PlayInHigh or PlayInLow)
+                     || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round)) || UsaPyramid.IsPromotion(x.Round)) && !x.Complete).ToList())
         {
             if (s.Fixtures.Any(f => f.SeriesId == series.Id && !f.Played)) continue;
             int gameNo = series.HighWins + series.LowWins + 1;
             var prev = s.Fixtures.Where(f => f.SeriesId == series.Id).Select(f => f.Date).DefaultIfEmpty(lastPlayed).Max();
             DateOnly date;
-            if (p.FinalFour && series.BestOf == 1)
+            // Run 222: the play-in is single games too, but in the regular playoff weeks.
+            if (p.FinalFour && series.BestOf == 1 && series.RoundIndex >= p.Playoffs.Length - 2)
             {
                 // Final Four weekend in late May: semi-finals on Friday, the final on Sunday.
                 var friday = new DateOnly(s.Year + 1, 5, 20);
@@ -664,8 +777,12 @@ public sealed class GameWorld
             }
             else
             {
+                // Run 222: never on a day either club already plays in another competition (a domestic playoff game against
+                // a EuroCup round, or a cup knockout against a domestic playoff game already set).
                 date = prev.AddDays(1);
-                while (!p.PlayoffDays.Contains(date.DayOfWeek)) date = date.AddDays(1);
+                busy ??= BusyElsewhere(comp);
+                while (!p.PlayoffDays.Contains(date.DayOfWeek) || busy.Contains((series.HighId, date)) || busy.Contains((series.LowId, date)))
+                    date = date.AddDays(1);
             }
             bool highHome = series.BestOf switch { 3 => gameNo != 2, 5 => gameNo is 1 or 2 or 5, 7 => gameNo is 1 or 2 or 5 or 7, _ => true };
             s.Fixtures.Add(new Fixture
@@ -674,6 +791,24 @@ public sealed class GameWorld
                 HomeId = highHome ? series.HighId : series.LowId, AwayId = highHome ? series.LowId : series.HighId,
             });
         }
+    }
+
+    /// <summary>Every (club, day) with a game in a competition other than <paramref name="comp"/>, for this competition's clubs
+    /// (built once per scheduling pass; review, run 222).</summary>
+    private HashSet<(int, DateOnly)> BusyElsewhere(WorldCompetition comp)
+    {
+        var mine = comp.Season.Participants.ToHashSet();
+        var busy = new HashSet<(int, DateOnly)>();
+        foreach (var c in Playing)
+        {
+            if (c == comp || !c.Season.Participants.Any(mine.Contains)) continue;
+            foreach (var f in c.Season.Fixtures)
+            {
+                if (mine.Contains(f.HomeId)) busy.Add((f.HomeId, f.Date));
+                if (mine.Contains(f.AwayId)) busy.Add((f.AwayId, f.Date));
+            }
+        }
+        return busy;
     }
 
     private void Crown(WorldCompetition comp, int champion, int runnerUp)

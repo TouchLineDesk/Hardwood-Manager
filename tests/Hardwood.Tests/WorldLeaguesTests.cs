@@ -50,8 +50,8 @@ public class WorldLeaguesTests
         var elite = world[Competitions.Elite].Season.Participants;
         var cup = world[WorldLeagues.EuroCup].Season.Participants;
         var americas = world[WorldLeagues.Americas].Season.Participants;
-        Assert.Equal(18, elite.Distinct().Count());
-        Assert.Equal(16, cup.Distinct().Count());
+        Assert.Equal(20, elite.Distinct().Count());   // run 222: the real fields
+        Assert.Equal(20, cup.Distinct().Count());
         Assert.Equal(8, americas.Distinct().Count());
         Assert.Empty(elite.Intersect(cup));
         Assert.All(americas, id => Assert.Equal("Americas", Competitions.RegionOf(world.HomeOf(world.TeamById(id)!).Profile)));
