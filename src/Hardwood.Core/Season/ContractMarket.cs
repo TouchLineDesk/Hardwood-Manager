@@ -37,6 +37,27 @@ public static class ContractMarket
         return (long)Math.Round(top * best * OptionShare / 10_000) * 10_000;
     }
 
+    /// <summary>
+    /// H61 (run 226, #932 "prices follow ability everywhere"): while the top league's free agency is open, a player clearly
+    /// good enough for it (<see cref="TopLeagueMargin"/> CA above its level) waits for its offers: he asks any other club
+    /// <see cref="OptionShare"/> of his top-league market. The star rule above left a gap: a CA-140 player was neither a
+    /// top-league star (105 + 40) nor anything below, so his floor was 0 and Joel Embiid signed in Lithuania for $1.86M.
+    /// 0 when he isn't that good (or <paramref name="topLevel"/> is unknown).
+    /// </summary>
+    public static long TopLeagueFloor(Player p, DateOnly on, double topLevel)
+    {
+        if (topLevel <= 0 || p.CurrentAbility < topLevel + TopLeagueMargin) return 0;
+        long top = MarketSalary(p.CurrentAbility, p.Age(on), Finance.HardCapDefault);
+        return (long)Math.Round(top * OptionShare / 10_000) * 10_000;
+    }
+
+    /// <summary>How far above the top league's mean ability (CA) a free agent is one its clubs would sign (about its top 40%).</summary>
+    public const double TopLeagueMargin = 10;
+
+    /// <summary>From this age a free agent of top-league ability whom no top-league club signed retires rather than play on
+    /// for a small league's wage (#932 "some fading stars retire"). Clubs abroad don't sign free agents over 33.</summary>
+    public const int FadingStarAge = 34;
+
     /// <summary>How far above a league's level (CA) a player is among its very best (the best in Spain, Japan or the G League are
     /// 40-45 above their league's mean), so a club there would pay its top wage for him.</summary>
     public const double StarMargin = 40;

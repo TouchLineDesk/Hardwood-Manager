@@ -117,7 +117,22 @@ public sealed partial class GameSession
     /// H61 (run 110): the least this player takes to play in your league (<see cref="GameWorld.AskingFloor"/>, from the
     /// best league open to him); 0 in the top league and at college.
     /// </summary>
-    public long MyAskingFloor(Player p) => InNabl || InCollege ? 0 : World.AskingFloor(p, ContractDate);
+    /// Run 226: in the summer, a free agent good enough for the top league waits for its offers
+    /// (<see cref="GameWorld.SummerAskingFloor"/>); your own players and players under contract elsewhere (who can't take
+    /// those offers) ask the usual floor.
+    public long MyAskingFloor(Player p) => InNabl || InCollege ? 0
+        : League.FreeAgents.Contains(p) ? World.SummerAskingFloor(p, ContractDate) : World.AskingFloor(p, ContractDate);
+
+    /// <summary>Run 226 (review): a free agent's opening demand, made while the top league's market was open, is dropped once it
+    /// closes, so the talks and the lists agree on his (lower) ask.</summary>
+    private void ForgetStaleTalks()
+    {
+        bool open = World.TopMarketOpen;
+        if (open == _talksMarketOpen) return;
+        _talksMarketOpen = open;
+        foreach (var id in _talks.Keys.Where(id => League.FreeAgents.Any(x => x.Id == id)).ToList()) _talks.Remove(id);
+    }
+    private bool _talksMarketOpen;
 
     /// <summary>
     /// Why his ask is above your league's usual wage for his level, for the talks screen; null when it isn't.
@@ -127,6 +142,8 @@ public sealed partial class GameSession
         long floor = MyAskingFloor(p);
         long scaled = (long)(ContractMarket.MarketSalary(p.CurrentAbility, p.Age(ContractDate), League.Finance) * MySalaryScale);
         if (floor <= scaled) return null;
+        if (floor > World.AskingFloor(p, ContractDate))
+            return $"{p.Name} is good enough for the {Hardwood.Core.Names.Brand.Top} and is waiting for its offers: until its free agency ends he asks at least {Budgets.Money(floor)} a year.";
         return $"{p.Name} could earn far more in a bigger league, so he asks more than the {HumanLeague!.Profile.Name}'s usual wage for his level: at least {Budgets.Money(floor)} a year.";
     }
 
@@ -139,6 +156,7 @@ public sealed partial class GameSession
     /// <summary>A player's demand of your club (fixed for the length of the talks).</summary>
     public ContractDemand DemandOf(Player p)
     {
+        ForgetStaleTalks();
         if (_talks.TryGetValue(p.Id, out var t)) return t.opening;
         var d = ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id, floor: MyAskingFloor(p));
         _talks[p.Id] = (d, 0);
@@ -146,9 +164,12 @@ public sealed partial class GameSession
     }
 
     /// <summary>A player's current ask of your club, without opening talks (for lists).</summary>
-    public ContractDemand PeekDemand(Player p) =>
-        _talks.TryGetValue(p.Id, out var t) ? t.opening
+    public ContractDemand PeekDemand(Player p)
+    {
+        ForgetStaleTalks();
+        return _talks.TryGetValue(p.Id, out var t) ? t.opening
         : ContractTalks.Demand(p, HumanTeam, ContractDate, MySalaryScale, League.Finance, renewal: p.TeamId == HumanTeam.Id, floor: MyAskingFloor(p));
+    }
 
     /// <summary>
     /// Bug hunt H43/H44 (run 81): why waiving, trading or accepting bids is closed to you, or null. Out of work, the
