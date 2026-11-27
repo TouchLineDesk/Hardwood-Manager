@@ -205,6 +205,22 @@ public static class Budgets
         m.Ready = true;
     }
 
+    /// <summary>
+    /// H129/K47 (run 229): next season's wage budget for a club going down, as Rescale will set it when the summer ends, worked
+    /// out without touching the club: the new league's revenue, the parachute (a new one, or the one already being paid), the
+    /// owner's wage share, and (a solvent owner) at least the cut contracts. The business plan's change is left out.
+    /// </summary>
+    public static long ProjectedWageBudget(Team t, double salaryScale, double typicalArena, double oldScale, long payrollAfter)
+    {
+        var m = t.Money;
+        long revenue = Revenue(t, LeagueRevenue(salaryScale), typicalArena, 0.5);
+        long parachute = oldScale > salaryScale ? (m.ParachuteYears > 0 ? m.Parachute : Round(MediaMoney(oldScale) * ParachuteShares[0])) : m.Parachute;
+        long budget = Round((revenue + parachute) * WageShare(t.Owner));
+        if (oldScale > salaryScale && m.Balance >= 0)
+            budget = Math.Max(budget, (long)Math.Ceiling(payrollAfter / 100_000.0) * 100_000);
+        return budget;
+    }
+
     /// <summary>The roster a club must carry (Finance.RosterMin) and the league minimum (Finance.MinSalary), for the budget floor.</summary>
     private const int MinRoster = 13;
     private static long MinWage => Finance.HardCapDefault.MinSalary;

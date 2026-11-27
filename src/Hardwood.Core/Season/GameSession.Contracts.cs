@@ -104,11 +104,11 @@ public sealed partial class GameSession
     public long KeepOwnAllowance() => InNabl ? Math.Max(0, ContractRules.NbaMeans(HumanTeam) - HumanTeam.Money.WageBudget) : ContractRules.Allowance(HumanTeam, ContractStart);
 
     /// <summary>H122: whether this renewal's wage fits the room the owner allows him (the budget, stretched for a young star).</summary>
-    public bool CanKeep(Player p, long wage) => MyCommittedWages + MyReservedWages + MyRosterFillReserve + wage <= HumanTeam.Money.WageBudget + MyStretchFor(p);
+    public bool CanKeep(Player p, long wage) => MyCommittedWages + MyReservedWages + MyRosterFillReserve + wage <= MySummerBudget + MyStretchFor(p);
 
     /// <summary>What's left for a new deal: the budget less committed wages, the summer's reserved seniors and the minimum deals
     /// the roster will still need.</summary>
-    public long MyWageRoom => HumanTeam.Money.WageBudget - MyCommittedWages - MyReservedWages - MyRosterFillReserve;
+    public long MyWageRoom => MySummerBudget - MyCommittedWages - MyReservedWages - MyRosterFillReserve;
 
     private readonly Dictionary<int, (ContractDemand opening, int round)> _talks = new();
     private readonly HashSet<int> _talksOver = new();
@@ -264,7 +264,7 @@ public sealed partial class GameSession
         // H122 / D81: the owner goes past the budget to keep your own young star (CA 150+, under 26), or in the NBA any of
         // your own players, up to the club's means.
         long stretch = MyStretchFor(p);
-        long budget = HumanTeam.Money.WageBudget + stretch;
+        long budget = MySummerBudget + stretch;
         // Over the budget only for a minimum deal that fills the roster to the league's minimum (critic review #3:
         // renewals and minimum deals let the strong club creep over its budget every summer).
         bool fillsRoster = wage <= (long)(League.Finance.MinSalary * MySalaryScale) && HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) < MyRosterMin;

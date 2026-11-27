@@ -204,6 +204,8 @@
           <CheckBox Content="{Binding DelegateRecruitingText}" IsChecked="{Binding DelegateRecruiting}" IsVisible="{Binding ShowDelegateRecruiting}"/>
           <CheckBox Content="Assistant picks tactics for each opponent" IsChecked="{Binding DelegateTactics}"/>
           <CheckBox Content="Assistant coach fronts the press and handles the locker room" IsChecked="{Binding DelegateMedia}"/>
+          <CheckBox Content="Sporting director makes the end-of-summer signings (to the roster minimum, within the budget)" IsChecked="{Binding DelegateSignings}" IsVisible="{Binding ShowSummerDuties}"/>
+          <CheckBox Content="General manager fills empty staff posts when the summer ends" IsChecked="{Binding DelegateStaffHiring}" IsVisible="{Binding ShowSummerDuties}"/>
           <TextBlock Text="{Binding DelegationNote}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>

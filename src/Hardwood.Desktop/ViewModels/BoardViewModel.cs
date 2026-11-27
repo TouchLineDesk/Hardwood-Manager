@@ -283,18 +283,21 @@ public sealed partial class BoardViewModel : PageViewModel
             string wagesNote = expiring.Count > 0
                 ? $"committed of a {M(m.WageBudget)} budget (not counting {M(upWages)} of {expiring.Count} expiring)"
                 : $"of a {M(m.WageBudget)} budget";
-            Finances = $"Revenue {M(m.Revenue)} a season · wage budget {M(m.WageBudget)} · wages {M(wages)} · "
+            Finances = $"Revenue {M(m.Revenue)} a season" + (m.Parachute > 0 ? $" + parachute {M(m.Parachute)}" : "") + $" · wage budget {M(m.WageBudget)} · wages {M(wages)} · "
                        + $"transfer budget {M(m.TransferBudget)} · bank balance {M(m.Balance)} · fan base {m.FanBase:0}/100";
             FinanceChips = new List<Hardwood.Desktop.Controls.Chip>
             {
                 // D81 (run 169): revenue includes what your prices add or cost.
                 new("Revenue", M(m.Revenue + Hardwood.Core.Season.Business.Change(m)), Hardwood.Core.Season.Business.Change(m) is var bc && bc != 0 ? $"a season · {(bc > 0 ? "+" : "-")}{M(Math.Abs(bc))} from your prices" : "a season", "team"),
+                // H144 (run 229): a relegated club's parachute is its own line, so the bank's swing is explained.
+                new("Parachute", M(m.Parachute), ParachuteNote(m), "team"),
                 new("Wages", M(wages), wagesNote, wages > m.WageBudget ? "bad" : wages > m.WageBudget * 0.95 ? "warn" : "good"),
                 new("Wage room", M(Math.Max(0, m.WageBudget - wages)), wages > m.WageBudget ? $"{M(wages - m.WageBudget)} over" : "to spend on wages", wages > m.WageBudget ? "bad" : ""),
                 new("Transfer budget", M(m.TransferBudget), "for transfer fees"),
                 new("Bank", M(m.Balance), m.Balance < 0 ? "in debt" : "balance", m.Balance < 0 ? "bad" : ""),
                 new("Fan base", $"{m.FanBase:0}", "out of 100", m.FanBase >= 70 ? "good" : m.FanBase < 35 ? "warn" : ""),
             };
+            if (m.Parachute <= 0) FinanceChips = FinanceChips.Where(c => c.Label != "Parachute").ToList();
             OwnerTitle = s.InCollege ? "Athletic director" : "The owner";
             FinanceTitle = s.InCollege ? "The program" : "Club finances";
             FinanceIcon = s.InCollege ? "GraduationCap" : "DollarSign";
@@ -495,7 +498,7 @@ public sealed partial class BoardViewModel : PageViewModel
         var s = Session;
         CarouselRows.Clear();
         var spring = s.LatestCarousel;
-        HasCarousel = s.World.College != null && spring.Count > 0;
+        HasCarousel = s.World.College != null && spring.Count > 0 && (s.InCollege || !s.Employed);   // H223 (run 229): not on a pro club's Board
         if (!HasCarousel) return;
         var cw = s.World.College!;
         bool mine = s.Employed && s.InCollege;
@@ -927,4 +930,8 @@ public sealed partial class BoardViewModel : PageViewModel
         CoachBackground.CollegeStar => "former college star",
         _ => "no playing career",
     };
+
+    /// <summary>H144 (run 229): "a season · year 1 of 3 after going down" for the parachute chip.</summary>
+    public static string ParachuteNote(Hardwood.Core.Model.ClubFinance m) =>
+        m.ParachuteYears > 0 ? $"a season · year {Math.Clamp(m.ParachuteYear, 1, m.ParachuteYears)} of {m.ParachuteYears} after going down" : "a season after going down";
 }

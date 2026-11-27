@@ -172,6 +172,13 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private string _delegationNote = "";
     [ObservableProperty] private bool _delegateMedia;
     partial void OnDelegateMediaChanged(bool value) { if (_loading) return; Session.Delegated.Media = value; Session.SaveNow(); FillDelegationNote(); }
+    // K46 (run 229): the end-of-summer signings and staff hiring are yours unless you switch them on (Danny, Nov 27).
+    [ObservableProperty] private bool _delegateSignings;
+    [ObservableProperty] private bool _delegateStaffHiring;
+    /// <summary>College programs don't sign pros (C2), so the summer duties are for club careers only.</summary>
+    public bool ShowSummerDuties => !Session.InCollege;
+    partial void OnDelegateSigningsChanged(bool value) { if (_loading) return; Session.Delegated.Signings = value; Session.SaveNow(); FillDelegationNote(); }
+    partial void OnDelegateStaffHiringChanged(bool value) { if (_loading) return; Session.Delegated.StaffHiring = value; Session.SaveNow(); FillDelegationNote(); }
     // Staff part 2: extending your staff, and you as a coach.
     [ObservableProperty] private string _renewal = "";
     [ObservableProperty] private bool _canExtend;
@@ -254,6 +261,7 @@ public sealed partial class StaffViewModel : PageViewModel
             new("Growing", growing.ToString(), "players heading up at their minutes", "info"),
         };
         DelegateTraining = s.Delegated.Training; DelegateRecruiting = s.Delegated.Recruiting; DelegateTactics = team.Tactic.Auto; DelegateMedia = s.Delegated.Media;
+        DelegateSignings = s.Delegated.Signings; DelegateStaffHiring = s.Delegated.StaffHiring;
         var c = s.Coach;
         CoachChips = Enum.GetValues<Hardwood.Core.Jobs.CoachAttr>()
             .Select(a => new Hardwood.Desktop.Controls.Chip(Hardwood.Core.Jobs.Coach.Label(a), c[a].ToString(), Hardwood.Core.Jobs.Coach.Describe(a), c[a] >= 14 ? "good" : c[a] <= 7 ? "warn" : "")).ToList();
@@ -376,6 +384,8 @@ public sealed partial class StaffViewModel : PageViewModel
         if (d.Recruiting) lines.Add(d.LastRecruiting.Length > 0 ? d.LastRecruiting : Session.TrailOpen ? "Your assistant spends the recruiting hours you leave unused each week (College > Recruiting)." : "Your head scout starts courting seniors from November (College > Recruiting).");
         if (Session.HumanTeam.Tactic.Auto) lines.Add("Your assistant picks the system, scheme and sliders for each opponent.");
         if (d.Media) lines.Add(d.LastMedia.Length > 0 ? d.LastMedia : "Your assistant coach fronts the press and handles the locker room, in his own style (a Mentor protects team spirit).");
+        if (d.Signings) lines.Add("Your sporting director makes the end-of-summer signings (one message lists each one)." + (d.LastSignings.Length > 0 ? " Last: " + d.LastSignings + "." : ""));
+        if (d.StaffHiring) lines.Add("Your general manager fills empty staff posts when the summer ends.");
         DelegationNote = lines.Count == 0 ? "You're running everything yourself." : string.Join("\n", lines);
     }
 

@@ -235,6 +235,13 @@ public sealed partial class MainViewModel : ViewModelBase
                 await Task.Run(() => { for (int i = 0; i < 200 && s.Phase != SessionPhase.Offseason && CollegeSpring(s); i++) s.AdvanceDay(); });
                 if (s.Phase == SessionPhase.Offseason) Navigate("Offseason");
             }
+            else if (Session.Phase == SessionPhase.Offseason && Session.SeasonStartHold() is { } hold)
+            {
+                // K46 (run 229): the season doesn't start with a short roster unless the signings are delegated; say why.
+                Session.PostSeasonStartHold(hold);
+                Navigate("Offseason");
+                if (Page("Offseason") is OffseasonViewModel off) off.Status = hold;
+            }
             else if (Session.Phase == SessionPhase.Offseason)
             {
                 Session.AdvanceOffseason();
