@@ -82,6 +82,15 @@ public sealed class Offseason
 
     /// <summary>The club you manage: its staff contracts are your call (staff part 2), so they aren't renewed for you.</summary>
     public int? HumanTeamId { get; set; }
+    /// <summary>K46 (run 229): your sporting director makes the end-of-summer signings (Delegation.Signings). Off by default.</summary>
+    public bool DelegateSignings { get; set; }
+    /// <summary>H129/K47 (run 229): the wage budget your sporting director's signings answer to (GameSession.MySummerBudget).</summary>
+    public long? HumanBudgetCap { get; set; }
+    /// <summary>K46 (run 229): your general manager fills empty staff posts at the end of the summer (Delegation.StaffHiring).</summary>
+    public bool DelegateStaff { get; set; }
+    /// <summary>What Complete() signed and hired for your club (for the session's one inbox message). Not saved.</summary>
+    public List<(Player player, Team team, long salary, int years)> HumanSummerSignings { get; private set; } = new();
+    public List<Staff> HumanSummerHires { get; private set; } = new();
     /// <summary>Wages and count of college seniors committed to a club, who sign after the budgets are set (#256).</summary>
     public Func<Team, (long wages, int count)>? PendingCommitments { get; init; }
 
@@ -283,6 +292,13 @@ public sealed class Offseason
     /// stays under the luxury tax line. (With a hard cap, the cap.)
     /// </summary>
     public long AiPayrollLimit(Team team, bool star)
+    {
+        // H129/K47 (run 229): your sporting director answers to the summer's budget (a relegated club's is the league below's).
+        if (team.Id == HumanTeamId && HumanBudgetCap is long cap) return Math.Min(cap, AiPayrollLimitFor(team, star));
+        return AiPayrollLimitFor(team, star);
+    }
+
+    private long AiPayrollLimitFor(Team team, bool star)
     {
         var fin = _league.Finance;
         // Open market: the wage budget (a club stretches a little to keep a star).
@@ -708,7 +724,13 @@ public sealed class Offseason
                 Waive(team, cut);
             }
         }
-        AiFreeAgency(null);
+        // K46 (run 229, Danny's Nov 27 decision): your club goes through the computer's free agency only when you handed the
+        // end-of-summer signings to your sporting director (DelegateSignings); otherwise the game signs nobody for you. The
+        // session holds "Start new season" while your roster is short (GameSession.SeasonStartHold), so the minimum fill below
+        // reaches your club only from a caller that skips that hold, and then only one-year minimum deals, which the session
+        // names in the inbox.
+        int signedBefore = Report.FreeAgentSignings.Count, hiredBefore = Report.StaffHired.Count;
+        AiFreeAgency(DelegateSignings ? null : HumanTeamId);
         AiSettle(HumanTeamId);
         // Every club reaches the roster minimum before opening night (review #10: a promoted club opened with 10; #358): the
         // best players still unsigned take a one-year minimum deal.
@@ -724,7 +746,12 @@ public sealed class Offseason
         // minimum offers. The Spurs opened 2027-28 at $172.93M on $171.90M (nba-real-strong, seed 31) without it.
         if (fin.OpenMarket && HumanTeamId is int hid && _league.Teams.FirstOrDefault(t => t.Id == hid) is { } human)
             Budgets.OwnerFunds(human, ContractMarket.Payroll(human));
-        AiHireStaff(null);
+        AiHireStaff(DelegateStaff ? null : HumanTeamId);
+        if (HumanTeamId is int me)
+        {
+            HumanSummerSignings = Report.FreeAgentSignings.Skip(signedBefore).Where(x => x.team.Id == me).ToList();
+            HumanSummerHires = Report.StaffHired.Skip(hiredBefore).Where(x => x.team.Id == me).Select(x => x.staff).ToList();
+        }
 
         // The rest of the world signs from the pool before the leftovers retire (decision #41).
         BeforeFreeAgentCleanup?.Invoke(this);

@@ -93,9 +93,14 @@ public sealed partial class GameSession
     /// <summary>How far past the wage budget the owner goes to keep this player of yours, whose deal is up; 0 in season, for
     /// anyone else, or when the club is in debt. In the NBA (D81, run 159: no salary cap) any of your own players, up to
     /// what the club's finances can carry; elsewhere (H122) only your own young star (CA 150+, under 26), by up to 35%.</summary>
-    public long MyStretchFor(Player p) => !MyExpiring.Contains(p) ? 0
-        : InNabl ? ContractRules.NbaKeepAllowance(HumanTeam, p)
-        : ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate, ContractStart);
+    public long MyStretchFor(Player p)
+    {
+        if (!MyExpiring.Contains(p)) return 0;
+        long stretch = InNabl ? ContractRules.NbaKeepAllowance(HumanTeam, p) : ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate, ContractStart);
+        // Review (run 229): in a relegation summer the stretch shrinks with the budget, as the league below's means are smaller.
+        long budget = HumanTeam.Money.WageBudget, summer = MySummerBudget;
+        return summer < budget && budget > 0 ? (long)(stretch * (double)summer / budget) : stretch;
+    }
 
     /// <summary>D81: whether your renewals are bound by the club's means (the NBA: no salary cap) rather than the 35% young-star stretch.</summary>
     public bool KeepsByMeans => InNabl;
@@ -104,11 +109,11 @@ public sealed partial class GameSession
     public long KeepOwnAllowance() => InNabl ? Math.Max(0, ContractRules.NbaMeans(HumanTeam) - HumanTeam.Money.WageBudget) : ContractRules.Allowance(HumanTeam, ContractStart);
 
     /// <summary>H122: whether this renewal's wage fits the room the owner allows him (the budget, stretched for a young star).</summary>
-    public bool CanKeep(Player p, long wage) => MyCommittedWages + MyReservedWages + MyRosterFillReserve + wage <= HumanTeam.Money.WageBudget + MyStretchFor(p);
+    public bool CanKeep(Player p, long wage) => MyCommittedWages + MyReservedWages + MyRosterFillReserve + wage <= MySummerBudget + MyStretchFor(p);
 
     /// <summary>What's left for a new deal: the budget less committed wages, the summer's reserved seniors and the minimum deals
     /// the roster will still need.</summary>
-    public long MyWageRoom => HumanTeam.Money.WageBudget - MyCommittedWages - MyReservedWages - MyRosterFillReserve;
+    public long MyWageRoom => MySummerBudget - MyCommittedWages - MyReservedWages - MyRosterFillReserve;
 
     private readonly Dictionary<int, (ContractDemand opening, int round)> _talks = new();
     private readonly HashSet<int> _talksOver = new();
@@ -264,7 +269,7 @@ public sealed partial class GameSession
         // H122 / D81: the owner goes past the budget to keep your own young star (CA 150+, under 26), or in the NBA any of
         // your own players, up to the club's means.
         long stretch = MyStretchFor(p);
-        long budget = HumanTeam.Money.WageBudget + stretch;
+        long budget = MySummerBudget + stretch;
         // Over the budget only for a minimum deal that fills the roster to the league's minimum (critic review #3:
         // renewals and minimum deals let the strong club creep over its budget every summer).
         bool fillsRoster = wage <= (long)(League.Finance.MinSalary * MySalaryScale) && HumanTeam.Roster.Count(x => !MyExpiring.Contains(x)) < MyRosterMin;

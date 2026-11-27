@@ -994,7 +994,7 @@ public sealed partial class GameSession
     /// A solvent owner funds at least those contracts, so the cut payroll is the floor of next season's budget. Null when you
     /// aren't going down.
     /// </summary>
-    public (string League, long PayrollAfter, bool OwnerFunds)? RelegationOutlook()
+    public (string League, long PayrollAfter, bool OwnerFunds, long BudgetAfter, double Keep)? RelegationOutlook()
     {
         if (!GoingDown()) return null;
         string from = InNabl ? "" : HumanLeague?.Key ?? "";
@@ -1007,8 +1007,39 @@ public sealed partial class GameSession
         double keep = oldScale > newScale ? Math.Max(0.5, newScale / oldScale) : 1;
         long after = HumanTeam.Roster.Where(p => !MyExpiring.Contains(p))
             .Sum(p => p.Contract is { } c ? (long)Math.Round(c.Salary * keep / 1000) * 1000 : 0);
-        return (Competitions.Get(below).Name, after, HumanTeam.Money.Balance >= 0);
+        var clubs = World.Competitions.FirstOrDefault(c => c.Key == below)?.Clubs;
+        double arena = clubs is { Count: > 0 } ? clubs.Average(t => (double)t.ArenaCapacity) : HumanTeam.ArenaCapacity;
+        long budgetAfter = Budgets.ProjectedWageBudget(HumanTeam, newScale, arena, oldScale, after);
+        return (Competitions.Get(below).Name, after, HumanTeam.Money.Balance >= 0, budgetAfter, keep);
     }
+
+    /// <summary>
+    /// H129/K47 (run 229): the wage budget the summer's deals answer to. Normally this league's budget; in a relegation summer
+    /// the room next season's budget leaves after the cut, at today's wages (a deal signed now is cut by the same clause), so
+    /// "to spend", "Fits your budget" and the owner's yes all use the league you're going to. Never more than this league's.
+    /// </summary>
+    public long MySummerBudget
+    {
+        get
+        {
+            long budget = HumanTeam.Money.WageBudget;
+            if (Phase != SessionPhase.Offseason) return budget;
+            // Review (run 229): pages read this many times a refresh; the room depends only on the day, the summer's step,
+            // the roster's contracts and the money, so it's kept until one of them changes.
+            long committed = MyCommittedWages;
+            var key = (Today, Offseason?.Phase, HumanTeam.Id, HumanTeam.Roster.Count, committed, budget, HumanTeam.Money.Balance >= 0);
+            if (_summerRoomKey != key)
+            {
+                _summerRoom = RelegationOutlook() is { } down
+                    ? (long)Math.Round(Math.Max(0, down.BudgetAfter - down.PayrollAfter) / Math.Max(0.01, down.Keep) / 1000) * 1000
+                    : (long?)null;
+                _summerRoomKey = key;
+            }
+            return _summerRoom is long room ? Math.Min(budget, committed + room) : budget;
+        }
+    }
+    private (DateOnly, OffseasonPhase?, int, int, long, long, bool)? _summerRoomKey;
+    private long? _summerRoom;
 
     /// <summary>
     /// H33 (bug hunt, Nov 16; run 82): when your club goes down level on record with others in its division, the tiebreak
@@ -1546,7 +1577,11 @@ public sealed partial class GameSession
                 break;
             case OffseasonPhase.FreeAgency:
                 int levelBefore = MyLevel; string leagueBefore = HumanLeagueName;
+                Offseason.DelegateSignings = Delegated.Signings;
+                Offseason.DelegateStaff = Delegated.StaffHiring;
+                if (Employed && InNabl) Offseason.HumanBudgetCap = MySummerBudget;
                 Offseason.Complete();
+                PostSummerSignings();
                 CloseSummerOpenings();
                 StartNewSeason();
                 if (!Employed) CarrySummerSearch();

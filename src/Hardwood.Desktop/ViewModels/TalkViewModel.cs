@@ -109,7 +109,7 @@ public sealed partial class TalkViewModel : ViewModelBase
     {
         var s = Session;
         // Over budget reads as such, not as "$-1.1M to spend" (review #14, the bug finder).
-        return BudgetLine(s.HumanTeam.Money.WageBudget, s.MyCommittedWages, s.MyReservedWages, s.MyRosterFillReserve, Signed)
+        return BudgetLine(s.MySummerBudget, s.MyCommittedWages, s.MyReservedWages, s.MyRosterFillReserve, Signed)
             // H122 (run 122): the owner's stretch for his own young star, said where the budget is.
             + (IsRenewal && !Signed && s.MyStretchFor(p) is > 0 and var stretch
                 ? s.KeepsByMeans

@@ -292,7 +292,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         ShowContracts = s.MyExpiring.Count > 0 || (s.InNabl && renewing);
         ShowFreeAgency = freeAgency;
         ShowBuyouts = s.InNabl && freeAgency;
-        long committed = s.MyCommittedWages, budget = team.Money.WageBudget;
+        long committed = s.MyCommittedWages, budget = s.MySummerBudget;
         static string M(long v) => TalkViewModel.M(v);   // H84: the talk panel writes money the same way
         CapText = $"Wages committed {M(committed)} of a {M(budget)} budget · {(budget >= committed ? $"{M(budget - committed)} to spend" : $"{M(committed - budget)} over")}"
                   + (s.InCollege ? "" : $" · roster {team.Roster.Count - s.MyExpiring.Count} under contract (needs {s.MyRosterMin}-{s.MyRosterMax})");
@@ -305,7 +305,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             RelegationText = $"Going down to {league}: contracts cut to about {M(down.PayrollAfter)} when the summer ends.";
             RelegationDetail = $"Relegation wage cut: when the summer ends you play in {league}, and every contract is cut to that league's level, about {M(down.PayrollAfter)} in all."
                 + (down.OwnerFunds ? " The owner sets a smaller budget that covers at least them." : " The owner, in debt, sets a smaller budget.")
-                + " Deals you sign now are cut the same way. The budget shown above is this league's until then.";
+                + $" Deals you sign now are cut the same way, so the budget above is what next season's {M(down.BudgetAfter)} budget there leaves you at today's wages.";
         }
         else { RelegationText = ""; RelegationDetail = ""; }
         Headline = $"Summer {o!.Season + 1} · {team.FullName}";
@@ -327,7 +327,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             // H40 (run 79): each ask is checked on its own against the room left, so say so: five asks can each fit and not all together.
             // H122 (run 122): the owner stretches the budget for your own young star; the card says so.
             long stretch = s.MyStretchFor(p);
-            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= team.Money.WageBudget ? "Fits on its own"
+            var fits = Offseason.WontReSign(p) ? "Won't stay" : s.MyCommittedWages + d.Wage <= s.MySummerBudget ? "Fits on its own"
                      : stretch > 0 && s.CanKeep(p, d.Wage) ? "Owner stretches" : "Over budget";
             Expiring.Add(new ExpiringRow
             {
@@ -343,7 +343,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                         // D81 (run 159): no salary cap in the NBA; the club keeps its own players up to what its finances carry.
                         ? $"His ask is over your wage budget, but there's no salary cap in the NBA: the owner will go up to {M(stretch)} over the budget to keep your own players, as far as the club's revenue and savings carry, and raises the budget to cover it."
                         : $"His ask is over your wage budget, but he's your own young star (CA {ContractRules.YoungStarAbility}+, under {ContractRules.YoungStarMaxAge + 1}): the owner will go up to {M(stretch)} over the budget to keep him, and raises the budget to cover it.",
-                    "Fits on its own" => $"His ask fits your wage budget with the deals you have now ({M(Math.Max(0, team.Money.WageBudget - s.MyCommittedWages))} to spend). Each card is checked on its own: keeping several takes the room of all of them.",
+                    "Fits on its own" => $"His ask fits your wage budget with the deals you have now ({M(Math.Max(0, s.MySummerBudget - s.MyCommittedWages))} to spend). Each card is checked on its own: keeping several takes the room of all of them.",
                     _ => stretch > 0
                         ? s.KeepsByMeans
                             ? $"His ask is more than the club's finances can carry, even with the {M(stretch)} past the budget the owner allows to keep your own players"
@@ -357,7 +357,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
         {
             foreach (var x in Expiring) x.ShowFit = false;
             // Review of #181: the hidden chips carried H40's caveat, so the page says it once, with the sum.
-            long room = Math.Max(0, team.Money.WageBudget - s.MyCommittedWages);
+            long room = Math.Max(0, s.MySummerBudget - s.MyCommittedWages);
             long all = s.MyExpiring.Where(p => !Offseason.WontReSign(p)).Sum(p => s.PeekDemand(p).Wage);
             Instructions += all <= room
                 ? $" Every ask fits your wage room ({M(room)}), all of them together too ({M(all)})."

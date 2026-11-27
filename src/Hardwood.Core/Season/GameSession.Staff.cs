@@ -16,10 +16,17 @@ public sealed class Delegation
     public bool Media { get; set; }
     /// <summary>The general manager decides the summer's facility projects within the owner's budget (item M, #281; D10).</summary>
     public bool Facilities { get; set; }
+    /// <summary>K46 (run 229, Danny's Nov 27 decision): the sporting director makes the end-of-summer signings for your club
+    /// (free agents within the budget, then minimum deals up to the roster minimum). Off unless you switch it on; older saves
+    /// load with it off, so the game never signs a player for you without being asked.</summary>
+    public bool Signings { get; set; }
+    /// <summary>K46: the general manager fills empty staff posts at the end of the summer. Off unless you switch it on.</summary>
+    public bool StaffHiring { get; set; }
     /// <summary>What the staff did last (shown on the Staff page).</summary>
     public string LastTraining { get; set; } = "";
     public string LastRecruiting { get; set; } = "";
     public string LastMedia { get; set; } = "";
+    public string LastSignings { get; set; } = "";
 }
 
 /// <summary>Staff depth (roadmap 12): interviews, staff styles in action, development projections and delegation.</summary>
