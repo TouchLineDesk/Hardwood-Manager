@@ -86,6 +86,9 @@ public sealed class Offseason
     public bool DelegateSignings { get; set; }
     /// <summary>H129/K47 (run 229): the wage budget your sporting director's signings answer to (GameSession.MySummerBudget).</summary>
     public long? HumanBudgetCap { get; set; }
+    /// <summary>K46 (run 230): the fewest players your club needs next season when that isn't this league's minimum (an NBA
+    /// club going down needs the G League's 11, not 13). Null: the league's own minimum.</summary>
+    public int? HumanRosterMin { get; set; }
     /// <summary>K46 (run 229): your general manager fills empty staff posts at the end of the summer (Delegation.StaffHiring).</summary>
     public bool DelegateStaff { get; set; }
     /// <summary>What Complete() signed and hired for your club (for the session's one inbox message). Not saved.</summary>
@@ -734,11 +737,12 @@ public sealed class Offseason
         AiSettle(HumanTeamId);
         // Every club reaches the roster minimum before opening night (review #10: a promoted club opened with 10; #358): the
         // best players still unsigned take a one-year minimum deal.
-        foreach (var team in _league.Teams.Where(t => t.Roster.Count < fin.RosterMin))
+        int MinFor(Team t) => t.Id == HumanTeamId && HumanRosterMin is int hm ? hm : fin.RosterMin;
+        foreach (var team in _league.Teams.Where(t => t.Roster.Count < MinFor(t)))
             foreach (var p in _league.FreeAgents.Where(p => p.DraftRightsTeamId == null || p.DraftRightsTeamId == team.Id)
                          .OrderByDescending(p => ContractMarket.Value(p, Date)).ToList())
             {
-                if (team.Roster.Count >= fin.RosterMin) break;
+                if (team.Roster.Count >= MinFor(team)) break;
                 SignFreeAgent(team, p, 1, fin.MinSalary);
             }
         // H56 (run 88): your sporting director's end-of-summer signings (the last of them a minimum deal that may go over

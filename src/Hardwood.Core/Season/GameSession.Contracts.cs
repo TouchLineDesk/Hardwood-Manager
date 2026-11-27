@@ -26,8 +26,11 @@ public sealed partial class GameSession
         : World.AwaitingDecision.TryGetValue(HumanTeam.Id, out var w) ? w : Array.Empty<Player>();
 
     /// <summary>The fewest players your league lets you carry (H29: the one number every screen, the assistant and the
-    /// sporting director use: the NBA's 13, or 11 in tiers 2-5 and abroad).</summary>
-    public int MyRosterMin => InNabl ? League.Finance.RosterMin : GameWorld.RosterMinimum;
+    /// sporting director use: the NBA's 13, or 11 in tiers 2-5 and abroad).
+    /// Run 230 (review): in the summer it is next season's league's (<see cref="NextSeasonRosterMin"/>), so the hold, the
+    /// minimum deals that fill the roster, releases and the pages all count to the same number.</summary>
+    public int MyRosterMin => Employed && !InCollege && Phase == SessionPhase.Offseason ? NextSeasonRosterMin
+        : InNabl ? League.Finance.RosterMin : GameWorld.RosterMinimum;
     /// <summary>The most players your league lets you carry (the NBA's 15, or 15 outside it).</summary>
     public int MyRosterMax => InNabl ? League.Finance.RosterMax : GameWorld.RosterMaximum;
 
