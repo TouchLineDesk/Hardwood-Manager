@@ -1140,7 +1140,9 @@ public sealed partial class GameSession
 
         if (Job.HiredSeason > League.Season) return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, Job.HiredSeason, 0, 0, ended);
         var rec = MyRecord;
-        return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, rec.Wins, rec.Losses, ended);
+        // H225 (run 228): a job taken mid-season records your own games there, not the club's before you came.
+        int hw = Job.HiredSeason == League.Season ? Job.HiredWins ?? 0 : 0, hl = Job.HiredSeason == League.Season ? Job.HiredLosses ?? 0 : 0;
+        return new Jobs.JobRecord(club.Id, club.FullName, Job.HiredSeason, League.Season, Math.Max(0, rec.Wins - hw), Math.Max(0, rec.Losses - hl), ended, hw, hl);
     }
 
     private void TakeJob(Team team)
@@ -1158,6 +1160,12 @@ public sealed partial class GameSession
         int forSeason = ClubSeasonOver(team) ? League.Season + 1 : League.Season;
         Job.HiredOn = Today;
         Job.HiredSeason = forSeason;
+        // H225 (run 228): the club's record the day you arrived, so your own share of a season you joined mid-way can be told
+        // apart (the Almanac credited a coach hired at 7-44 with the whole 11-71). Null for a hire before the season's games.
+        // Only during the regular season: a playoff-time hire's club has played all its season (review of run 228).
+        var atHire = forSeason == League.Season && !InCollege && Phase == SessionPhase.RegularSeason ? MyRecord : null;
+        Job.HiredWins = atHire is { } h0 && h0.Wins + h0.Losses > 0 ? h0.Wins : null;
+        Job.HiredLosses = atHire is { } h1 && h1.Wins + h1.Losses > 0 ? h1.Losses : null;
         Job.History.Clear();
         Job.RebuildUsed = false;
         // Review of #187: the season's starting confidence and last season's record belong to the old club; the first weekly
@@ -1551,7 +1559,7 @@ public sealed partial class GameSession
                     if (!up && !Job.RebuildUsed) { Job.ProtectedSeason = League.Season; Job.ProtectedReason = "rebuild"; Job.RebuildUsed = true; }
                     Post(up ? $"Promoted to {HumanLeagueName}!" : $"Relegated to {HumanLeagueName}",
                         up ? $"{HumanTeam.TheFullNameCap} go up from {leagueBefore} to {HumanLeagueName}. The owner has set new budgets and expectations for life at the higher level."
-                           : $"{HumanTeam.TheFullNameCap} drop from {leagueBefore} to {HumanLeagueName}. Wages already agreed don't fall with you; the owner expects you to bounce back.", "Board");
+                           : $"{HumanTeam.TheFullNameCap} drop from {leagueBefore} to {HumanLeagueName}. Every contract has been cut to this league's pay scale (never below half), deals signed this summer too; the owner expects you to bounce back.", "Board");
                 }
                 break;
         }

@@ -225,8 +225,8 @@ public sealed partial class OffseasonViewModel : PageViewModel
     private void UpdateDraftHint()
     {
         var p = SelectedProspect?.Player;
-        DraftButton = p != null && OnTheClock ? $"Draft {p.Name}" : "Draft selected";
         var o = Session.Offseason;
+        DraftButton = DraftButtonText(p?.Name, OnTheClock, CollegeSummer, o == null ? null : MyPicksLeft(o));
         if (p == null || o == null || !ShowDraft) { DraftHint = ""; return; }
         if (CollegeSummer)
         {
@@ -235,10 +235,24 @@ public sealed partial class OffseasonViewModel : PageViewModel
             DraftHint = row == null ? "" : $"{p.Name}: No. {row.Rank} of {DraftPool.Count} on the pros' board ({row.Pos}, potential {row.PA}).";
             return;
         }
-        var mine = Enumerable.Range(o.NextPickIndex, Math.Max(0, o.PickOwners.Count - o.NextPickIndex)).Where(i => o.PickOwners[i] == Session.HumanTeam).Select(i => i + 1).ToList();
+        var mine = MyPicksLeft(o);
         DraftHint = OnTheClock ? $"Press Draft to take {p.Name} with pick {o.NextPickIndex + 1}."
             : mine.Count > 0 ? $"{p.Name} is top of your board. You pick #{mine[0]}; if he's still there, take him then."
             : $"You have no pick left this year, so {p.Name} will go to another club.";
+    }
+
+    /// <summary>Your picks still to come this draft (1-based).</summary>
+    private List<int> MyPicksLeft(Offseason o) =>
+        Enumerable.Range(o.NextPickIndex, Math.Max(0, o.PickOwners.Count - o.NextPickIndex)).Where(i => o.PickOwners[i] == Session.HumanTeam).Select(i => i + 1).ToList();
+
+    /// <summary>H118 (run 228): the Draft button says why it's greyed: "Draft Name" on the clock, "Your pick: #12" while you
+    /// wait, "No pick this year" with none left (it read "Draft selected", greyed, with no pick at all).</summary>
+    public static string DraftButtonText(string? picked, bool onTheClock, bool collegeSummer, IReadOnlyList<int>? picksLeft)
+    {
+        if (onTheClock) return picked != null ? $"Draft {picked}" : "Pick a graduate";
+        if (collegeSummer) return "Programs don't pick";
+        if (picksLeft is { Count: > 0 } left) return $"Your pick: #{left[0]}";
+        return picksLeft == null ? "Draft selected" : "No pick this year";
     }
 
     public OffseasonViewModel(MainViewModel shell) : base(shell) => Talk = new TalkViewModel(shell, Refresh);

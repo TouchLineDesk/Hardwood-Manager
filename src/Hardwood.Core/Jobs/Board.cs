@@ -89,6 +89,10 @@ public sealed class JobState
     public Expectations? Current { get; set; }
     public DateOnly HiredOn { get; set; }
     public int HiredSeason { get; set; }
+    /// <summary>H225 (run 228): the club's record on the day you were hired, when that was mid-season (null otherwise and in
+    /// older saves), so the Almanac can give your own record there.</summary>
+    public int? HiredWins { get; set; }
+    public int? HiredLosses { get; set; }
     public List<Vacancy> Vacancies { get; set; } = new();
     public List<ConfidencePoint> History { get; set; } = new();
     /// <summary>The last warning level the board gave (0 none, 1 concerned, 2 under threat), so warnings aren't repeated.</summary>
@@ -267,9 +271,11 @@ public static class Board
         };
         // H70: a tier-2 division winner goes up only by winning the promotion playoff (run 102).
         string won = !wonDivision ? "" : goingUp ?? true ? "won your division and go up; " : "won your division but lost the promotion playoff; ";
+        // H226 (run 228): a pyramid champion who didn't win its division stays down; the review now says why.
+        bool staysDown = !wonDivision && !ctx.IsNabl && ctx.PyramidLevel is >= 2 and <= 4 && ctx.DivisionFormat;
         if (ctx.IsNabl || ctx.PlayoffTeams > 1) return won + achieved switch
         {
-            SeasonGoal.Title => "won the championship",
+            SeasonGoal.Title => staysDown ? "won the championship, but only division winners go up" : "won the championship",
             SeasonGoal.Finals => "reached the Finals",
             SeasonGoal.ConferenceFinals => "reached the conference finals",
             SeasonGoal.SecondRound => "won a playoff round",

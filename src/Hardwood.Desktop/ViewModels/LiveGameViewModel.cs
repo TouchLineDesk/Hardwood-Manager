@@ -581,6 +581,11 @@ public sealed partial class LiveGameViewModel : PageViewModel
         OnPropertyChanged(nameof(OffenseChoice)); OnPropertyChanged(nameof(DefenseChoice));
         UpdateRead();
     }
+    /// <summary>H121 (run 228): the scoreboard's period line says what its numbers are: "By quarter: SAS 28 31 · SEA 25 30"
+    /// ("By half" in college; overtime periods follow the last one). It was two bare rows of numbers.</summary>
+    public static string PeriodLineFor(string away, IEnumerable<int> awayPts, string home, IEnumerable<int> homePts, int periods) =>
+        $"{(periods == 2 ? "By half" : "By quarter")}:  {away} {string.Join(" ", awayPts)}   |   {home} {string.Join(" ", homePts)}";
+
 
     /// <summary>H71 (run 106): the top bar talks about the game on screen ("Now: vs GSW · Q2"), not "Next:" about it, and gives
     /// the result after the final. The real next game comes back when Continue records this one.</summary>
@@ -607,7 +612,7 @@ public sealed partial class LiveGameViewModel : PageViewModel
         OnPropertyChanged(nameof(TimeoutButtonText)); OnPropertyChanged(nameof(CanCallTimeout));
         Shell.Guide.LiveTick();
         var r = _live.Result;
-        PeriodLine = $"{AwayName} {string.Join(" ", r.Away.PointsByPeriod)}   |   {HomeName} {string.Join(" ", r.Home.PointsByPeriod)}";
+        PeriodLine = PeriodLineFor(AwayName, r.Away.PointsByPeriod, HomeName, r.Home.PointsByPeriod, r.Periods);
         Shell.NextGameText = TopBarLine(r.Home.Team == Us, (r.Home.Team == Us ? r.Away : r.Home).Team.Abbreviation, breakText == "HALFTIME" ? "Halftime" : _live.Period == 0 ? (r.Periods == 2 ? "H1" : "Q1") : _live.PeriodText, _live.Complete,
             r.Home.Team == Us ? HomeScore : AwayScore, r.Home.Team == Us ? AwayScore : HomeScore);
         // H106 (run 112): with FINAL on screen the bar said "1-0 · Final: L 123-129"; the record counts this game already.

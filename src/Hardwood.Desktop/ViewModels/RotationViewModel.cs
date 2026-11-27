@@ -276,16 +276,30 @@ public sealed partial class RotationViewModel : PageViewModel
         if (_loading || !Session.Employed) return;
         var chart = Session.HumanTeam.DepthChart!;
         chart.MinutesTargets = Rows.Where(r => r.Minutes > 0).ToDictionary(r => r.Player.Id, r => r.Minutes);
-        double total = Rows.Sum(r => r.Minutes);
+        // H143 (run 228): only fit players count. Two injured starters with 34 and 30 minutes read "240 of 240" in green,
+        // though the engine plays neither; their minutes are named apart and the total says what will really happen.
+        var fit = Rows.Where(r => r.Healthy).ToList();
+        double total = fit.Sum(r => r.Minutes);
+        double hurt = Rows.Where(r => !r.Healthy).Sum(r => r.Minutes);
         TotalOk = Math.Abs(total - 240) <= 3;
-        double starters = Rows.Where(r => r.IsStarter).Sum(r => r.Minutes);
-        ShareText = total > 0 ? $"Starters {starters:0} min ({starters / total * 100:0}%) · bench {total - starters:0} min · {Rows.Count(r => r.Minutes > 0)} players in the rotation" : "";
-        TotalText = $"{total:0} of 240 minutes" + (TotalOk ? "" : total > 240 ? " (over; the engine scales everyone down)" : " (under; the engine scales everyone up)");
-        var starterNoMinutes = Rows.Where(r => r.IsStarter && r.Minutes < 20).Select(r => r.Player.LastName).ToList();
-        if (starterNoMinutes.Count > 0) Status = $"Starters with under 20 minutes: {string.Join(", ", starterNoMinutes)}";
-        else if (Rows.Count(r => r.Minutes > 0) < 8) Status = "Give at least eight players minutes.";
+        double starters = fit.Where(r => r.IsStarter).Sum(r => r.Minutes);
+        ShareText = total > 0 ? $"Starters {starters:0} min ({starters / total * 100:0}%) · bench {total - starters:0} min · {fit.Count(r => r.Minutes > 0)} players in the rotation" : "";
+        TotalText = TotalLine(total, hurt);
+        var hurtStarters = Rows.Where(r => r.IsStarter && !r.Healthy).Select(r => r.Player.LastName).ToList();
+        var starterNoMinutes = fit.Where(r => r.IsStarter && r.Minutes < 20).Select(r => r.Player.LastName).ToList();
+        if (hurtStarters.Count > 0) Status = $"Injured starters: {string.Join(", ", hurtStarters)}. Pick fit players to start, or the engine starts someone else.";
+        else if (starterNoMinutes.Count > 0) Status = $"Starters with under 20 minutes: {string.Join(", ", starterNoMinutes)}";
+        else if (fit.Count(r => r.Minutes > 0) < 8) Status = "Give at least eight fit players minutes.";
         else Status = "";
         Session.SaveNow();
+    }
+
+    /// <summary>"238 of 240 minutes", the fit players' total; the minutes set for injured players are named apart.</summary>
+    public static string TotalLine(double fitTotal, double injuredMinutes)
+    {
+        bool ok = Math.Abs(fitTotal - 240) <= 3;
+        return $"{fitTotal:0} of 240 minutes" + (ok ? "" : fitTotal > 240 ? " (over; the engine scales everyone down)" : " (under; the engine scales everyone up)")
+            + (injuredMinutes > 0 ? $" · {injuredMinutes:0} more set for injured players, who won't play" : "");
     }
 
     [RelayCommand]
