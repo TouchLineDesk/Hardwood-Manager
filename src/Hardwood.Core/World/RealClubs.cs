@@ -209,7 +209,15 @@ public static partial class RealClubs
             var real = comp.Profile.Clubs.Select(s => Key(s.City, s.Name)).ToHashSet();
             var was = comp.Profile.Clubs.Where(s => s.Was != null).Select(s => s.Was!).ToHashSet();
             if (!comp.Clubs.Any(t => (was.Contains(Key(t.City, t.Name)) || Older.ContainsKey(Key(t.City, t.Name))) && !real.Contains(Key(t.City, t.Name)))) continue;
-            foreach (var team in comp.Clubs) Rename(team, comp, used, ref n);
+            // Review (run 218): a league that is already partly real (a pre-run-107 name left in a save renamed by v0.205) is
+            // renamed only where a club still holds a made-up name; a club already under its real name keeps its arena size.
+            bool fresh = !comp.Clubs.Any(t => real.Contains(Key(t.City, t.Name)) && !was.Contains(Key(t.City, t.Name)));
+            foreach (var team in comp.Clubs)
+            {
+                string k = Key(team.City, team.Name);
+                if (real.Contains(k) && (!was.Contains(k) || !fresh)) continue;
+                Rename(team, comp, used, ref n);
+            }
         }
         return n;
     }

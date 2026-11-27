@@ -74,6 +74,27 @@ public class Run218RealClubsTests
     }
 
     [Fact]
+    public void A_pre_run_107_name_left_in_a_real_league_is_renamed_alone()
+    {
+        // Review (run 218): a save from before run 107, renamed by v0.205, still holds "Munich Lions" in a real Germany. Only
+        // that club is renamed; the others keep their arena size (which may have grown since).
+        var (league, world) = RealWorldData.NewWorld(31, players: false);
+        var germany = world.Competitions.First(c => c.Key == WorldLeagues.Germany);
+        var bayern = germany.Clubs.Single(t => t.Name == "Bayern Munich");
+        bayern.City = "Munich"; bayern.Name = "Lions";
+        var alba = germany.Clubs.Single(t => t.Name == "Alba Berlin");
+        alba.ArenaCapacity = 15000;
+        var korea = world.Competitions.First(c => c.Key == WorldLeagues.Korea);
+        var busan = korea.Clubs.Single(t => t.Abbreviation == "BUS");
+        busan.Name = "Pegasus";
+        Assert.Equal(2, RealClubs.Rename(world, league.Teams));
+        Assert.Equal("Bayern Munich", bayern.FullName);
+        Assert.Equal("Busan KCC Egis", busan.FullName);
+        Assert.Equal(15000, alba.ArenaCapacity);
+        Assert.Single(korea.Clubs, t => t.Name == "KOGAS Pegasus");
+    }
+
+    [Fact]
     public void An_older_save_gets_the_eight_leagues_real_clubs_on_load()
     {
         string dir = Path.Combine(Path.GetTempPath(), $"hw-run218-{Guid.NewGuid():N}");
