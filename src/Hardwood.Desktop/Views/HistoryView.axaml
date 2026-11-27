@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hardwood.Desktop.ViewModels"
              xmlns:c="using:Hardwood.Desktop.Controls"
+             xmlns:core="using:Hardwood.Core.Season"
              x:Class="Hardwood.Desktop.Views.HistoryView"
              x:DataType="vm:HistoryViewModel">
   <UserControl.Resources>
@@ -244,6 +245,58 @@
             <TextBlock Text="{Binding CollegeSource}" Classes="muted" FontSize="10.5" TextWrapping="Wrap"/>
           </StackPanel>
         </ScrollViewer>
+      </TabItem>
+      <!-- W2 (run 225): the yearly almanac. Editions down the left, newest first; the chosen one as a magazine page. -->
+      <TabItem Header="Almanac">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" x:Name="AlmanacNote" Text="{Binding AlmanacNote}" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,8"/>
+          <Grid ColumnDefinitions="170,*" IsVisible="{Binding HasAlmanacs}">
+            <ListBox x:Name="AlmanacEditions" ItemsSource="{Binding Almanacs}" SelectedItem="{Binding SelectedAlmanac}" VerticalAlignment="Top">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:AlmanacCard">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Cover}" Classes="muted" FontSize="11" TextWrapping="Wrap" MaxLines="2"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <ScrollViewer Grid.Column="1" x:Name="AlmanacPage" Margin="12,0,0,0">
+              <StackPanel Spacing="10" DataContext="{Binding SelectedAlmanac}" x:DataType="vm:AlmanacCard" MaxWidth="900" HorizontalAlignment="Left">
+                <Border Classes="panel" Padding="0">
+                  <Border BorderBrush="{Binding Stripe}" BorderThickness="0,6,0,0" CornerRadius="5" Padding="16,12">
+                    <Grid ColumnDefinitions="64,*">
+                      <Panel Width="58" Height="58" VerticalAlignment="Center">
+                        <c:TeamLogo Team="{Binding Champion}" ShowText="False" ShowRank="False" Width="56" Height="56" IsVisible="{Binding HasCrest}"/>
+                        <c:Icon Kind="Trophy" Width="34" Height="34" Foreground="{DynamicResource HwAccentBrush}" IsVisible="{Binding !HasCrest}"/>
+                      </Panel>
+                      <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Title}" Classes="muted" FontSize="11" FontWeight="SemiBold" LetterSpacing="1.5"/>
+                        <TextBlock x:Name="AlmanacCover" Text="{Binding Cover}" FontSize="24" FontWeight="Bold" TextWrapping="Wrap"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </Border>
+                <ItemsControl x:Name="AlmanacSections" ItemsSource="{Binding Sections}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="core:AlmanacSection">
+                      <Border Classes="panel" Margin="0,0,0,10" Padding="14,10">
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="{Binding Title}" Classes="h2"/>
+                          <ItemsControl ItemsSource="{Binding Lines}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2"/></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </DockPanel>
       </TabItem>
     </TabControl>
   </DockPanel>

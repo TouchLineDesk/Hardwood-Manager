@@ -1377,6 +1377,7 @@ public sealed partial class GameSession
         if (CollegeDraft.SetUp(Offseason, League, World, _rng)) AnnounceDraftLottery();
 
         AnnounceAwards(Offseason.Summary!);
+        PostAlmanac(); // W2 (run 225): the season's almanac, after the summer's retirements and Hall of Fame
         FacilitiesSummerNews();
         // Run 42 (review #12, Top fix 1): in the NBA the summer's notes ride in "Contract decisions"; elsewhere they post as before.
         bool fold = Employed && collegeBefore == null && !Abroad;
