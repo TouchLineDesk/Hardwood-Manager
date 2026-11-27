@@ -1023,12 +1023,23 @@ public sealed partial class GameSession
         get
         {
             long budget = HumanTeam.Money.WageBudget;
-            if (Phase != SessionPhase.Offseason || RelegationOutlook() is not { } down) return budget;
-            long roomAfter = Math.Max(0, down.BudgetAfter - down.PayrollAfter);
-            long room = (long)Math.Round(roomAfter / Math.Max(0.01, down.Keep) / 1000) * 1000;
-            return Math.Min(budget, MyCommittedWages + room);
+            if (Phase != SessionPhase.Offseason) return budget;
+            // Review (run 229): pages read this many times a refresh; the room depends only on the day, the summer's step,
+            // the roster's contracts and the money, so it's kept until one of them changes.
+            long committed = MyCommittedWages;
+            var key = (Today, Offseason?.Phase, HumanTeam.Id, HumanTeam.Roster.Count, committed, budget, HumanTeam.Money.Balance >= 0);
+            if (_summerRoomKey != key)
+            {
+                _summerRoom = RelegationOutlook() is { } down
+                    ? (long)Math.Round(Math.Max(0, down.BudgetAfter - down.PayrollAfter) / Math.Max(0.01, down.Keep) / 1000) * 1000
+                    : (long?)null;
+                _summerRoomKey = key;
+            }
+            return _summerRoom is long room ? Math.Min(budget, committed + room) : budget;
         }
     }
+    private (DateOnly, OffseasonPhase?, int, int, long, long, bool)? _summerRoomKey;
+    private long? _summerRoom;
 
     /// <summary>
     /// H33 (bug hunt, Nov 16; run 82): when your club goes down level on record with others in its division, the tiebreak

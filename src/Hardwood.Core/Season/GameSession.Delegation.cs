@@ -51,13 +51,17 @@ public sealed partial class GameSession
         }
         foreach (var st in hired)
             lines.Add($"{st.Name} joins as {Staff.RoleName(st.Role, CollegeWords).ToLower()} ({Budgets.Money(st.Salary)} a year for {st.ContractYears}).");
-        string who = Delegated.Signings ? "Your sporting director made the end-of-summer signings you handed him"
-                   : "Your roster was under the league minimum when the season began, so the league filled it with one-year minimum deals";
-        string body = (signed.Count > 0 ? who + ":\n" : "Your general manager filled the empty staff posts:\n") + string.Join("\n", lines)
-                    + "\n\nWho handles what is on the Staff page (Delegate).";
-        string title = signed.Count > 0 ? $"Summer signings: {signed.Count} player{(signed.Count == 1 ? "" : "s")}" + (hired.Count > 0 ? $", {hired.Count} staff" : "")
+        var parts = new List<string>();
+        int n = signed.Count;
+        if (n > 0)
+            parts.Add((Delegated.Signings ? "Your sporting director made the end-of-summer signings you handed him:\n"
+                : "Your roster was under the league minimum at the end of the summer, so the league filled it with one-year minimum deals:\n")
+                + string.Join("\n", lines.Take(n)));
+        if (hired.Count > 0) parts.Add("Your general manager filled the empty staff posts:\n" + string.Join("\n", lines.Skip(n)));
+        string body = string.Join("\n\n", parts) + "\n\nWho handles what is on the Staff page (Delegate).";
+        string title = n > 0 ? $"Summer signings: {n} player{(n == 1 ? "" : "s")}" + (hired.Count > 0 ? $", {hired.Count} staff" : "")
                      : $"Staff hired: {hired.Count}";
         Post(title, body, "Roster");
-        Delegated.LastSignings = $"{Today:MMM d}: {title}";
+        if (Delegated.Signings && n > 0) Delegated.LastSignings = $"{Today:MMM d}: {title}";
     }
 }

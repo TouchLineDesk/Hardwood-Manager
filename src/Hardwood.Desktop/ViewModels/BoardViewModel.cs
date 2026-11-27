@@ -933,5 +933,6 @@ public sealed partial class BoardViewModel : PageViewModel
 
     /// <summary>H144 (run 229): "a season · year 1 of 3 after going down" for the parachute chip.</summary>
     public static string ParachuteNote(Hardwood.Core.Model.ClubFinance m) =>
-        m.ParachuteYears > 0 ? $"a season · year {Math.Clamp(m.ParachuteYear, 1, m.ParachuteYears)} of {m.ParachuteYears} after going down" : "a season after going down";
+        // ParachuteYears counts the seasons still to come (Budgets.Summer lowers it as ParachuteYear rises), so the total is both.
+        m.ParachuteYears > 0 && m.ParachuteYear > 0 ? $"a season · year {m.ParachuteYear} of {m.ParachuteYear + m.ParachuteYears - 1} after going down" : "a season after going down";
 }

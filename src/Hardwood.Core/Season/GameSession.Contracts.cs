@@ -93,9 +93,14 @@ public sealed partial class GameSession
     /// <summary>How far past the wage budget the owner goes to keep this player of yours, whose deal is up; 0 in season, for
     /// anyone else, or when the club is in debt. In the NBA (D81, run 159: no salary cap) any of your own players, up to
     /// what the club's finances can carry; elsewhere (H122) only your own young star (CA 150+, under 26), by up to 35%.</summary>
-    public long MyStretchFor(Player p) => !MyExpiring.Contains(p) ? 0
-        : InNabl ? ContractRules.NbaKeepAllowance(HumanTeam, p)
-        : ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate, ContractStart);
+    public long MyStretchFor(Player p)
+    {
+        if (!MyExpiring.Contains(p)) return 0;
+        long stretch = InNabl ? ContractRules.NbaKeepAllowance(HumanTeam, p) : ContractRules.KeepOwnAllowance(HumanTeam, p, ContractDate, ContractStart);
+        // Review (run 229): in a relegation summer the stretch shrinks with the budget, as the league below's means are smaller.
+        long budget = HumanTeam.Money.WageBudget, summer = MySummerBudget;
+        return summer < budget && budget > 0 ? (long)(stretch * (double)summer / budget) : stretch;
+    }
 
     /// <summary>D81: whether your renewals are bound by the club's means (the NBA: no salary cap) rather than the 35% young-star stretch.</summary>
     public bool KeepsByMeans => InNabl;
