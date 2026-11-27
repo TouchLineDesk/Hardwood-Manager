@@ -117,7 +117,10 @@ public sealed partial class GameSession
     /// H61 (run 110): the least this player takes to play in your league (<see cref="GameWorld.AskingFloor"/>, from the
     /// best league open to him); 0 in the top league and at college.
     /// </summary>
-    public long MyAskingFloor(Player p) => InNabl || InCollege ? 0 : World.AskingFloor(p, ContractDate);
+    /// Run 226: in the summer, another club's or the pool's player good enough for the top league waits for its offers
+    /// (<see cref="GameWorld.SummerAskingFloor"/>); your own players renew on the usual floor, as the computer's clubs' do.
+    public long MyAskingFloor(Player p) => InNabl || InCollege ? 0
+        : p.TeamId == HumanTeam.Id ? World.AskingFloor(p, ContractDate) : World.SummerAskingFloor(p, ContractDate);
 
     /// <summary>
     /// Why his ask is above your league's usual wage for his level, for the talks screen; null when it isn't.
@@ -127,6 +130,8 @@ public sealed partial class GameSession
         long floor = MyAskingFloor(p);
         long scaled = (long)(ContractMarket.MarketSalary(p.CurrentAbility, p.Age(ContractDate), League.Finance) * MySalaryScale);
         if (floor <= scaled) return null;
+        if (floor > World.AskingFloor(p, ContractDate))
+            return $"{p.Name} is good enough for the {Hardwood.Core.Names.Brand.Top} and is waiting for its offers: until its free agency ends he asks at least {Budgets.Money(floor)} a year.";
         return $"{p.Name} could earn far more in a bigger league, so he asks more than the {HumanLeague!.Profile.Name}'s usual wage for his level: at least {Budgets.Money(floor)} a year.";
     }
 

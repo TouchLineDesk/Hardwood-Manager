@@ -978,6 +978,24 @@ public sealed class GameWorld
     public long AskingFloor(Player p, DateOnly on) => ContractMarket.AskingFloor(p, on, Options(p));
 
     /// <summary>
+    /// H61 (run 226): the top league's summer market is open: the world's summer has started (contracts abroad counted down)
+    /// and its end (clubs abroad filling their rosters from the pool) hasn't run.
+    /// </summary>
+    public bool TopMarketOpen => SummerStarted > SummerEnded;
+
+    /// <summary>
+    /// H61 (run 226): the least this player takes of a club below the top league while the top league's free agency is open:
+    /// his usual floor, or, if he is good enough for the top league, most of his top-league market (he waits for its offers).
+    /// Once its free agency is over and nobody there signed him, the usual floor applies (#932 "unless no better offer
+    /// comes"). Only your own club's talks use it: the computer's clubs abroad sign from the pool at the end of the summer.
+    /// </summary>
+    public long SummerAskingFloor(Player p, DateOnly on)
+    {
+        long floor = AskingFloor(p, on);
+        return TopMarketOpen ? Math.Max(floor, ContractMarket.TopLeagueFloor(p, on, Options(p)[0].Level)) : floor;
+    }
+
+    /// <summary>
     /// H61 (run 110): would this player turn down a deal in <paramref name="comp"/>? Yes when his asking floor (from the
     /// best league open to him) is more than <paramref name="comp"/> pays a player of his level.
     /// </summary>
@@ -1176,9 +1194,33 @@ public sealed class GameWorld
                     + $"{string.Join(", ", made.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year deals."));
             }
         }
+        RetireFadingStars(freeAgents, date);
         Nabl.NextPlayerId = gen.NextId;
         College?.StartSeason(newYear, _rng);
         StartSeason(newYear);
+    }
+
+    /// <summary>
+    /// H61 (run 226, #932 "some fading stars retire rather than drop that far"): at the end of the summer, a free agent of
+    /// top-league ability aged <see cref="ContractMarket.FadingStarAge"/>+ whom no top-league club signed retires (LeBron
+    /// James, 43, had signed for tier-5 Worcester at $0.43M). Reads no random numbers. The best of them make the news.
+    /// </summary>
+    private void RetireFadingStars(List<Player> freeAgents, DateOnly date)
+    {
+        if (Nabl.Teams.Count == 0) return;
+        double top = Nabl.Teams.SelectMany(t => t.Roster).Select(x => (double)x.CurrentAbility).DefaultIfEmpty(0).Average();
+        if (top <= 0) return;
+        var gone = freeAgents.Where(p => p.Age(date) >= ContractMarket.FadingStarAge && p.CurrentAbility >= top + ContractMarket.TopLeagueMargin)
+            .OrderByDescending(p => p.CurrentAbility).ThenBy(p => p.Id).ToList();
+        foreach (var p in gone)
+        {
+            freeAgents.Remove(p); p.TeamId = null; p.Contract = null; p.DraftRightsTeamId = null;
+            Nabl.Retired.Add(p);
+        }
+        if (gone.Count == 0) return;
+        string names = string.Join(", ", gone.Take(3).Select(p => $"{p.Name} ({p.Age(date)})")) + (gone.Count > 3 ? $" and {gone.Count - 3} more" : "");
+        News.Add((gone.Count == 1 ? $"{gone[0].Name} retires" : $"{gone[0].Name} and {gone.Count - 1} more veterans retire",
+            $"{names}: no {Hardwood.Core.Names.Brand.Top} club offered a deal this summer, and {(gone.Count == 1 ? "he" : "they")} would rather retire than play on for a smaller league's wage."));
     }
 
     /// <summary>Whole summer in one go (no NABL market in between): used by tests and tools that only need the world to roll on.</summary>
