@@ -48,6 +48,12 @@ public class Run226FadingStarsTests
         var player = s.League.Teams.SelectMany(t => t.Roster)
             .Where(p => p.Nationality == "USA" && p.CurrentAbility >= top + 10 && p.CurrentAbility < top + 35)
             .OrderByDescending(p => p.CurrentAbility).First();
+        // Under contract with his club he can't take top-league offers: the usual floor, even in the summer (review).
+        var signed = s.League.Teams.SelectMany(t => t.Roster)
+            .Where(p => p != player && p.Nationality == "USA" && p.CurrentAbility >= top + 10 && p.CurrentAbility < top + 35).First();
+        // He is a free agent now.
+        s.League.Teams.First(t => t.Roster.Contains(player)).Roster.Remove(player);
+        player.TeamId = null; player.Contract = null; s.League.FreeAgents.Add(player);
         long usual = s.MyAskingFloor(player);
         Assert.Equal(s.World.AskingFloor(player, s.Today), usual);
         Assert.True(usual < 2_000_000, $"in season he is priced by the small leagues: {Budgets.Money(usual)}");
@@ -57,8 +63,9 @@ public class Run226FadingStarsTests
         s.World.SummerStarted = y;
         Assert.True(s.World.TopMarketOpen);
         long waiting = s.MyAskingFloor(player);
-        var ask = s.PeekDemand(player);
+        var ask = s.DemandOf(player);   // talks open while the market is open
         _out.WriteLine($"top level {top:0.0}: {player.Name} CA {player.CurrentAbility}, {player.Age(s.Today)}: floor {Budgets.Money(waiting)}, ask {Budgets.Money(ask.Wage)}; {s.AskingFloorNote(player)}");
+        Assert.Equal(s.World.AskingFloor(signed, s.Today), s.MyAskingFloor(signed));
         Assert.True(waiting > Math.Max(5_000_000, usual * 3), "a top-league player isn't a tier-5 wage while its free agency is open");
         Assert.True(ask.Wage >= waiting);
         Assert.Contains("waiting for its offers", s.AskingFloorNote(player));
@@ -71,6 +78,9 @@ public class Run226FadingStarsTests
         s.World.SummerEnded = y;
         Assert.False(s.World.TopMarketOpen);
         Assert.Equal(usual, s.MyAskingFloor(player));
+        // The demand made in the summer is dropped once the market closes, so the talks and the lists agree (review).
+        Assert.True(s.DemandOf(player).Wage < ask.Wage);
+        Assert.Equal(s.PeekDemand(player).Wage, s.DemandOf(player).Wage);
     }
 
     [Fact]

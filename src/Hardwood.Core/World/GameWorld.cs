@@ -1211,11 +1211,11 @@ public sealed class GameWorld
         double top = Nabl.Teams.SelectMany(t => t.Roster).Select(x => (double)x.CurrentAbility).DefaultIfEmpty(0).Average();
         if (top <= 0) return;
         var gone = freeAgents.Where(p => p.Age(date) >= ContractMarket.FadingStarAge && p.CurrentAbility >= top + ContractMarket.TopLeagueMargin)
-            .OrderByDescending(p => p.CurrentAbility).ThenBy(p => p.Id).ToList();
+            .Distinct().OrderByDescending(p => p.CurrentAbility).ThenBy(p => p.Id).ToList();
         foreach (var p in gone)
         {
-            freeAgents.Remove(p); p.TeamId = null; p.Contract = null; p.DraftRightsTeamId = null;
-            Nabl.Retired.Add(p);
+            freeAgents.RemoveAll(x => x == p); p.TeamId = null; p.Contract = null; p.DraftRightsTeamId = null;
+            if (!Nabl.Retired.Contains(p)) Nabl.Retired.Add(p);
         }
         if (gone.Count == 0) return;
         string names = string.Join(", ", gone.Take(3).Select(p => $"{p.Name} ({p.Age(date)})")) + (gone.Count > 3 ? $" and {gone.Count - 3} more" : "");
