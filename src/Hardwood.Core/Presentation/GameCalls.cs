@@ -124,16 +124,16 @@ public sealed class GameCalls
         bool homeWon = homeScore > awayScore;
         string w = homeWon ? homeName : awayName, l = homeWon ? awayName : homeName;
         int ws = Math.Max(homeScore, awayScore), ls = Math.Min(homeScore, awayScore), margin = ws - ls;
-        int down = 0, downLate = 0, led = 0;   // the most the winner trailed by (in all, and after halftime), and led by
+        int down = 0, downLate = 0, led = 0;   // the most the winner trailed by (in all, and after halftime), and led by after halftime
         int half = Math.Max(1, periods / 2);
         foreach (var e in plays)
         {
             int behind = homeWon ? e.AwayScore - e.HomeScore : e.HomeScore - e.AwayScore;
-            down = Math.Max(down, behind); led = Math.Max(led, -behind);
-            if (e.Period > half) downLate = Math.Max(downLate, behind);
+            down = Math.Max(down, behind);
+            if (e.Period > half) { downLate = Math.Max(downLate, behind); led = Math.Max(led, -behind); }
         }
         // K43 (run 220): a comeback is a 10-point hole after halftime (or 15 at any time); an early 12-point deficit
-        // erased by the second quarter isn't one. A winner whose 15-point lead shrank to 6 or less held off a rally.
+        // erased by the second quarter isn't one. A winner whose 15-point second-half lead shrank to 6 or less held off a rally.
         bool comeback = downLate >= 10 || down >= 15;
         bool heldOff = !comeback && led >= 15 && margin <= 6;
         // Review (run 174): a winner who wasn't ahead before the last score (a walk-off) didn't "hold on".

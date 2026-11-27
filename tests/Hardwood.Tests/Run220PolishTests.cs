@@ -31,7 +31,9 @@ public class Run220PolishTests
 
         // A big lead kept big is just a roll; a 15-point lead won by 7 is a plain win.
         Assert.StartsWith("SPURS ROLL!", GameCalls.Final(new[] { P(60, 40, 2), P(120, 95, 4) }, "Spurs", "Seattle", 120, 95, 4)[0]);
-        Assert.StartsWith("SPURS WIN IT!", GameCalls.Final(new[] { P(60, 45, 2), P(107, 100, 4) }, "Spurs", "Seattle", 107, 100, 4)[0]);
+        Assert.StartsWith("SPURS WIN IT!", GameCalls.Final(new[] { P(60, 45, 3), P(107, 100, 4) }, "Spurs", "Seattle", 107, 100, 4)[0]);
+        // A 15-point lead in the first half only, then a 4-point win, isn't a held-off late rally.
+        Assert.StartsWith("SPURS WIN IT!", GameCalls.Final(new[] { P(30, 15, 1), P(60, 58, 3), P(100, 96, 4) }, "Spurs", "Seattle", 100, 96, 4)[0]);
     }
 
     [Fact]

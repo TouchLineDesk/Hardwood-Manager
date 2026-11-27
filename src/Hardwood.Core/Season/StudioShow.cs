@@ -702,13 +702,4 @@ public sealed partial class GameSession
         };
         return (pick, by, why);
     }
-
-    private static double Phi(double x)
-    {
-        // Abramowitz-Stegun approximation of the normal CDF.
-        double t = 1 / (1 + 0.2316419 * Math.Abs(x));
-        double d = 0.3989423 * Math.Exp(-x * x / 2);
-        double p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-        return x >= 0 ? 1 - p : p;
-    }
 }
