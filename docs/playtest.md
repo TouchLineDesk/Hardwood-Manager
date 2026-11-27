@@ -125,6 +125,12 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   have two rounds), then a play-in for 7th-10th, best-of-five quarter-finals and the Final Four in late May. The EuroCup is 20
   clubs, everyone once, then single-game knockouts for the top 16 and a best-of-three final. The league page's Rules tab says
   how it works.
+- **From v0.211.0 the NBA has an in-season cup** (the NBA Cup). The 32 clubs are drawn into eight groups of four inside their
+  conference (by last season's record); the three group games each, on three November cup nights, count in the 82. The eight
+  group winners play quarter-finals at the better seed's arena in the second week of December, then the semi-finals and the
+  final in Las Vegas. The knockout games are extra games: they don't count in the standings or the season's statistics. Your
+  cup games are marked on the Schedule, your knockout games are played live on the cup's floor, and the inbox carries the
+  groups, the quarter-finals and the final. An older save starts the cup next season.
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two

@@ -208,7 +208,9 @@ public class CharacterizationTests
         // picks arrive on day one (one more message). With that message taken out, the old pin holds exactly; picks draw nothing.
         // Run 222 (the real formats): re-pinned (was 42A3A240E402A93E). The EuroLeague's field is 20 clubs from Sep 29 and the
         // EuroCup's 20, so the world plays more (and different) games in the first month on the shared stream.
-        Pin("career seed 2026, 30 days, no saves", "A6EDA6525EB313C1", Session(s));
+        // Run 223 (the NBA Cup): re-pinned (was A6EDA6525EB313C1). The cup's group games are set on their November nights and
+        // the knockout nights are kept free, so the NBA schedule's dates (and the order games draw from the stream) differ.
+        Pin("career seed 2026, 30 days, no saves", "9BC1E92A6C0C6A16", Session(s));
     }
 
     [Fact]

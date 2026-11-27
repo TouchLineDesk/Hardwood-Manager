@@ -143,6 +143,10 @@ public sealed partial class LiveGameViewModel
             return Hardwood.Core.College.ArenaDress.ForPro(home, away, "FIBA", cup: "FIBA Qualifiers")
                 with { Sideline = $"{home.City.ToUpperInvariant()} · {nat.Group.ToUpperInvariant()}" };
         if (s.InCollege) return Hardwood.Core.College.ArenaDress.For(home, game, away, s.World.College);
+        // Run 223: a cup knockout game: the cup's floor, both clubs' fans; Las Vegas for the semi-finals and final.
+        if (s.LiveCup is { } tie)
+            return Hardwood.Core.College.ArenaDress.ForPro(home, away, Hardwood.Core.Names.Brand.TopShort, cup: Hardwood.Core.Season.NbaCup.Name)
+                with { Sideline = $"{(tie.Neutral ? Hardwood.Core.Season.NbaCup.Venue.ToUpperInvariant() : home.City.ToUpperInvariant())} · {tie.Round.ToUpperInvariant()}" };
         if (s.LiveCompetition is { } comp)
             return comp.Kind == Hardwood.Core.World.CompetitionKind.Continental
                 ? Hardwood.Core.College.ArenaDress.ForPro(home, away, comp.Short, cup: comp.Name)

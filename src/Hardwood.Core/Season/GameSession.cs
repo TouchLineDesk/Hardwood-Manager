@@ -176,7 +176,11 @@ public sealed partial class GameSession
         if (Abroad) EnsureStaff(HumanTeam);
         Job.HiredOn = Today; Job.HiredSeason = league.Season;
         Job.Current ??= Jobs.Board.NextExpectations(ContextOf(HumanTeam), HumanTeam, league.Season, null, MyLeagueKey, MyLevel, 0, PromotionPlayoffFor(HumanTeam), TopLeagueDrops());
+        var savedCup = league.Cup.Current;
         BuildSeason();
+        // Run 223: a loaded career keeps the cup it saved (an older save has none this season), not the one drawn for the
+        // schedule built here, which the load replaces.
+        if (rngState != null) League.Cup.Current = savedCup;
     }
 
     /// <summary>Start a new career. Every career is a real-world one since v0.74.0 (D61 B, #478): the NBA's real teams,
@@ -222,7 +226,11 @@ public sealed partial class GameSession
     // ------------------------------------------------------------------------------------------
     private void BuildSeason()
     {
-        Schedule = ScheduleBuilder.Build(League, OpeningNight, _rng);
+        // Run 223: the in-season cup's groups (from last season's table, before it is cleared) and their nights.
+        var groups = NbaCup.Fits(League) ? NbaCup.Draw(League, CupRank()) : null;
+        Schedule = ScheduleBuilder.Build(League, OpeningNight, _rng, groups == null ? null : NbaCup.Plan(League, League.Season, groups));
+        League.Cup.Current = groups == null ? null
+            : new CupSeason { Season = League.Season, Groups = groups, GroupGames = NbaCup.GroupGameIndices(Schedule, League.Season, groups) };
         Results.Clear();
         Standings = new Standings(League);
         Stats = new Dictionary<int, PlayerSeasonStats>();
@@ -451,6 +459,7 @@ public sealed partial class GameSession
     private bool ClubGameToday =>
         Abroad ? Employed && Phase != SessionPhase.Offseason && (InCollege ? World.College!.GameOn(HumanTeam.Id, Today) != null : World.GameOn(HumanTeam.Id, Today) != null) :
         Employed && (Phase == SessionPhase.RegularSeason || (Phase == SessionPhase.Preseason && Today >= OpeningNight)) && GamesOn(Today).Any(g => g.Home == HumanTeam || g.Away == HumanTeam)
+        || (Employed && Phase == SessionPhase.RegularSeason && MyCupTieToday != null) // run 223
         || (Employed && Phase == SessionPhase.Postseason && Postseason != null && !Postseason.Complete && Postseason.Active.Any(se => se.Higher == HumanTeam || se.Lower == HumanTeam))
         // A promotion playoff (run 102): the top league's 4th-placed club plays it in tier 2's fixtures.
         || (Employed && Phase == SessionPhase.Postseason && World.GameOn(HumanTeam.Id, Today) != null);
@@ -472,7 +481,7 @@ public sealed partial class GameSession
     {
         var played = new List<GameResult>();
         GameSimulator.LiveGame? live = null;
-        _liveSeries = null; _liveScheduled = null; _liveWorld = null;
+        _liveSeries = null; _liveScheduled = null; _liveWorld = null; _liveCup = null;
         if (Phase == SessionPhase.Offseason) return (null, played);
         if (Phase == SessionPhase.Preseason && Today >= OpeningNight) Phase = SessionPhase.RegularSeason;
         // K35 (run 193 review): a Monday's new poll is out before our game tips off, so the live game shows the ranks it is stamped with.
@@ -499,6 +508,7 @@ public sealed partial class GameSession
                 RecordRegularSeasonGame(g, r);
                 played.Add(r);
             }
+            live = PlayCupTies(clubLive, played) ?? live; // run 223: the cup's knockout nights
         }
         else if (Phase == SessionPhase.Postseason && Postseason != null)
         {
@@ -528,6 +538,7 @@ public sealed partial class GameSession
             if (_liveNational is { } nat) { RecordNational(nat, live.Result, live: true); _liveNational = null; }
             else if (_liveCollege is { } cg) RecordCollege(cg, live.Result);
             else if (_liveWorld is { } w) RecordAbroad(w.comp, w.fixture, live.Result);
+            else if (_liveCup is { } tie) RecordCupTie(tie, live.Result);
             else if (_liveScheduled != null) RecordRegularSeasonGame(_liveScheduled, live.Result);
             else if (_liveSeries != null)
             {
@@ -537,7 +548,7 @@ public sealed partial class GameSession
             if (!nationalGame) played.Add(live.Result); // I6b: a national game isn't one of the club's
             // PR #176 review: the game is recorded, so it no longer "counts" as pending (LiveGameCountsInRecord); the
             // FINAL screen reached again with Back showed 1-2 for a 1-0 team that lost.
-            _liveScheduled = null; _liveSeries = null; _liveWorld = null; _liveCollege = null;
+            _liveScheduled = null; _liveSeries = null; _liveWorld = null; _liveCollege = null; _liveCup = null;
         }
         if (Phase == SessionPhase.Postseason && Postseason != null) Postseason.AfterDay();
         return EndDay(played);
@@ -627,6 +638,7 @@ public sealed partial class GameSession
         PlayWorld(Today);
         CollegeCalendar(); // CS3 (run 127): the preseason polls and media day, Senior Night
         MediaCastDay(); // W1 (run 221): the columnists' preseason picks, judged at the end of the regular season
+        NbaCupDay(); // run 223: the in-season cup's groups, knockouts and final
         PlayFibaWindows(); // I3 (run 210): the qualifying windows, by quick result on their own stream
         NationalJobDay(); // I6a (run 214): the national-team offers, on their own stream
         bool inSeason = Abroad ? Phase != SessionPhase.Offseason : Phase is SessionPhase.RegularSeason or SessionPhase.Postseason;

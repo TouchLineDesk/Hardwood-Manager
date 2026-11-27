@@ -193,7 +193,16 @@ public sealed partial class GameSession
             {
                 Results.TryGetValue(g.Index, out var r);
                 var (mine, theirs) = r == null ? (null as int?, null as int?) : r.Home.Team == us ? (r.Home.Points, r.Away.Points) : (r.Away.Points, r.Home.Points);
-                list.Add(new MyGame(g.Date, g.Home == us ? g.Away : g.Home, g.Home == us, League.Name, "Regular season", mine, theirs, r) { Group = ScheduleFilter.Regular });
+                // Run 223: a cup group game is still a league game; its tile says so.
+                list.Add(new MyGame(g.Date, g.Home == us ? g.Away : g.Home, g.Home == us, League.Name, IsCupGame(g) ? NbaCup.Name : "Regular season", mine, theirs, r) { Group = ScheduleFilter.Regular });
+            }
+            // Run 223: the cup's knockout games (extra games, not in the standings).
+            foreach (var t in Cup?.Ties.Where(t => t.HomeId == us.Id || t.AwayId == us.Id) ?? Enumerable.Empty<CupTie>())
+            {
+                bool home = t.HomeId == us.Id;
+                list.Add(new MyGame(t.Date, League.TeamById(home ? t.AwayId : t.HomeId), home, NbaCup.Name, t.Round,
+                    t.Played ? (home ? t.HomePoints : t.AwayPoints) : null, t.Played ? (home ? t.AwayPoints : t.HomePoints) : null, t.Result)
+                    { Group = NbaCup.Name, Neutral = t.Neutral });
             }
             foreach (var se in PlayoffSeries.Where(s => s.Higher == us || s.Lower == us))
             foreach (var r in se.Games)

@@ -13,7 +13,15 @@ public sealed record ScheduledGame(int Index, DateOnly Date, Team Home, Team Awa
 /// </summary>
 public static class ScheduleBuilder
 {
-    public static List<ScheduledGame> Build(League league, DateOnly opening, Rng rng)
+    public static List<ScheduledGame> Build(League league, DateOnly opening, Rng rng) => Build(league, opening, rng, null);
+
+    /// <summary>
+    /// As above, with the in-season cup's group games (run 223) set on their cup nights: each is one of the season's existing
+    /// games between the two, given the cup's host, and the other games' home sides are balanced around them, so every team
+    /// still plays 82 and hosts 41. The cup's knockout nights (<paramref name="cup"/>'s <c>Blocked</c>) carry no league games.
+    /// With no cup it draws exactly what it drew before.
+    /// </summary>
+    public static List<ScheduledGame> Build(League league, DateOnly opening, Rng rng, CupPlan? cup)
     {
         var teams = league.Teams;
         var pairs = new List<(Team home, Team away)>();
@@ -80,10 +88,26 @@ public static class ScheduleBuilder
         }
 
         TopUp(pairs, teams, rng);
-        BalanceHomeGames(pairs, teams);
+        if (cup == null)
+        {
+            BalanceHomeGames(pairs, teams);
+            rng.Shuffle(pairs);
+            return AssignDates(pairs, teams, opening);
+        }
+        var fixedGames = new Dictionary<DateOnly, List<(Team home, Team away)>>();
+        var locked = new List<(Team home, Team away)>();
+        foreach (var f in cup.Games)
+        {
+            int i = pairs.FindIndex(p => (p.home == f.Home && p.away == f.Away) || (p.home == f.Away && p.away == f.Home));
+            if (i < 0) continue; // never for the NBA's shape: conference rivals meet three or four times
+            pairs.RemoveAt(i);
+            if (!fixedGames.TryGetValue(f.Date, out var day)) fixedGames[f.Date] = day = new();
+            day.Add((f.Home, f.Away));
+            locked.Add((f.Home, f.Away));
+        }
+        BalanceHomeGames(pairs, teams, locked);
         rng.Shuffle(pairs);
-
-        return AssignDates(pairs, teams, opening);
+        return AssignDates(pairs, teams, opening, fixedGames, cup.Blocked);
     }
 
     /// <summary>The regular season's length: opening night to the last day (Oct 21 → Apr 12, as in the real NBA).</summary>
@@ -108,8 +132,24 @@ public static class ScheduleBuilder
     /// No random numbers are drawn here, so the RNG stream is unchanged; only the dates differ. If the days run out, the cap on
     /// back-to-backs lifts (the hard rules stay) until every game is placed.
     /// </summary>
-    internal static List<ScheduledGame> AssignDates(List<(Team home, Team away)> pairs, List<Team> teams, DateOnly opening)
+    internal static List<ScheduledGame> AssignDates(List<(Team home, Team away)> pairs, List<Team> teams, DateOnly opening,
+        Dictionary<DateOnly, List<(Team home, Team away)>>? fixedGames = null, IReadOnlyCollection<DateOnly>? blocked = null)
     {
+        fixedGames ??= new();
+        // Run 223: a team's cup nights, so the day before one is never the second of a back-to-back (no third straight day).
+        var fixedDays = new Dictionary<int, HashSet<int>>();
+        foreach (var (d, games) in fixedGames)
+        foreach (var (h, a) in games)
+            foreach (var id in new[] { h.Id, a.Id })
+                (fixedDays.TryGetValue(id, out var set) ? set : fixedDays[id] = new()).Add(d.DayNumber);
+        // Review (run 223): the knockout nights count as possible games for everyone, so a team that reaches the knockouts
+        // never goes into one as a third straight day or a fourth game in five.
+        if (blocked != null && fixedGames.Count > 0)
+            foreach (var t in teams)
+            foreach (var d in blocked)
+                (fixedDays.TryGetValue(t.Id, out var set) ? set : fixedDays[t.Id] = new()).Add(d.DayNumber);
+        var knockoutDays = fixedGames.Count > 0 && blocked != null ? blocked.Select(d => d.DayNumber).ToHashSet() : new HashSet<int>();
+        int fixedLeft = fixedGames.Values.Sum(l => l.Count);
         var schedule = new List<ScheduledGame>();
         var remaining = new List<(Team home, Team away)>(pairs);
         // Apr 12 of the next year (the 174th day from Oct 21, or the 175th across a Feb 29); an unusual opening keeps 174 days.
@@ -117,27 +157,46 @@ public static class ScheduleBuilder
         if (last.DayNumber - opening.DayNumber < 150) last = opening.AddDays(SeasonDays - 1);
         var left = teams.ToDictionary(t => t.Id, _ => 0);
         foreach (var (h, a) in pairs) { left[h.Id]++; left[a.Id]++; }
+        foreach (var (h, a) in fixedGames.Values.SelectMany(l => l)) { left[h.Id]++; left[a.Id]++; }
         var played = teams.ToDictionary(t => t.Id, _ => new List<int>());   // day numbers, ascending
         var backToBacks = teams.ToDictionary(t => t.Id, _ => 0);
         int idx = 0;
         var day = opening;
 
-        while (remaining.Count > 0)
+        while (remaining.Count > 0 || fixedLeft > 0)
         {
-            if (AllStarBreak(day)) { day = day.AddDays(1); continue; }
+            bool isFixed = fixedGames.TryGetValue(day, out var fixedToday);
+            if (!isFixed && (AllStarBreak(day) || blocked?.Contains(day) == true)) { day = day.AddDays(1); continue; }
             bool overtime = day > last;
             int target;
             if (overtime) target = teams.Count / 2;
             else
             {
                 double weightLeft = 0;
-                for (var d = day; d <= last; d = d.AddDays(1)) if (!AllStarBreak(d)) weightLeft += Weight(d);
-                target = (int)Math.Ceiling(remaining.Count * Weight(day) / weightLeft);
+                for (var d = day; d <= last; d = d.AddDays(1)) if (!AllStarBreak(d) && blocked?.Contains(d) != true) weightLeft += Weight(d);
+                target = (int)Math.Ceiling((remaining.Count + fixedLeft) * Weight(day) / weightLeft);
             }
 
             int dn = day.DayNumber;
             var playedToday = new HashSet<int>();
             int gamesToday = 0;
+            if (isFixed)
+            {
+                // The cup night's games go first, whatever the day's pace.
+                foreach (var (h, a) in fixedToday!)
+                {
+                    foreach (var id in new[] { h.Id, a.Id })
+                    {
+                        if (Yesterday(id)) backToBacks[id]++;
+                        played[id].Add(dn); left[id]--;
+                        playedToday.Add(id);
+                    }
+                    schedule.Add(new ScheduledGame(idx++, day, h, a));
+                    gamesToday++;
+                    fixedLeft--;
+                }
+                target = Math.Max(target, gamesToday);
+            }
             // Teams furthest behind first; the stable sort keeps the shuffled order between equals. (Indices, not pairs: the
             // same home-and-away pairing can appear twice.)
             var order = Enumerable.Range(0, remaining.Count)
@@ -175,6 +234,17 @@ public static class ScheduleBuilder
                 if (n >= 2 && p[^1] == dn - 1 && p[^2] == dn - 2) return false;     // a third straight day
                 if (n >= 3 && dn - p[^3] < 5) return false;                         // 4 games in 5 days
                 if (n >= 4 && dn - p[^4] < 7) return false;                         // 5 games in 7 days
+                if (fixedDays.TryGetValue(id, out var cupNights))
+                {
+                    // Review (run 223): nor out of one: a knockout night just behind counts as a game.
+                    bool ko(int d) => knockoutDays.Contains(d);
+                    bool on(int d) => p.Contains(d);
+                    if (ko(dn - 1) && on(dn - 2) || on(dn - 1) && ko(dn - 2) || ko(dn - 1) && ko(dn - 2)) return false;
+                    // Run 223: never into a cup night as a third straight day, or a fourth game in five days.
+                    if (cupNights.Contains(dn + 1) && Yesterday(id)) return false;
+                    if (cupNights.Contains(dn + 1) && n >= 2 && dn + 1 - p[^2] < 5) return false;
+                    if (cupNights.Contains(dn + 2) && n >= 2 && dn + 2 - p[^2] < 5) return false;
+                }
                 if (!Yesterday(id)) return true;
                 if (overtime) return pass == 1;
                 if (backToBacks[id] >= BackToBackCap) return false;
@@ -232,11 +302,12 @@ public static class ScheduleBuilder
     /// with room is reached; then any team still short takes one back the same way. Such an orientation always exists, so this
     /// never gives up; if it somehow did, the schedule keeps its imbalance rather than stopping the season (K4).
     /// </summary>
-    internal static void BalanceHomeGames(List<(Team home, Team away)> pairs, List<Team> teams)
+    internal static void BalanceHomeGames(List<(Team home, Team away)> pairs, List<Team> teams, List<(Team home, Team away)>? locked = null)
     {
         var games = teams.ToDictionary(t => t.Id, _ => 0);
         var homes = teams.ToDictionary(t => t.Id, _ => 0);
-        foreach (var (h, a) in pairs) { homes[h.Id]++; games[h.Id]++; games[a.Id]++; }
+        // Run 223: the cup's group games keep their hosts; they count toward the halves but are never flipped.
+        foreach (var (h, a) in pairs.Concat(locked ?? new())) { homes[h.Id]++; games[h.Id]++; games[a.Id]++; }
         int Lo(int id) => games[id] / 2;
         int Hi(int id) => (games[id] + 1) / 2;
 
