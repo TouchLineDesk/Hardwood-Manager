@@ -118,6 +118,12 @@
             <TextBlock Grid.Column="5" Text="Pool" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
           </Grid>
           <ListBox ItemsSource="{Binding Nations}" SelectedItem="{Binding Selected}" Background="Transparent" Height="300">
+            <!-- H228 (run 228): your nation's name is drawn in the club's colour, which read red on the selection's blue. -->
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem:selected TextBlock.accent">
+                <Setter Property="Foreground" Value="{DynamicResource HwTextBrush}"/>
+              </Style>
+            </ListBox.Styles>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:NationRow">
                 <Grid ColumnDefinitions="30,42,*,100,50,50" ToolTip.Tip="{Binding Tip}">

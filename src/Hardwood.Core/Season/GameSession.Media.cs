@@ -14,6 +14,10 @@ public sealed partial class GameSession
 {
     public MediaDesk Media => League.Media;
 
+    /// <summary>K49 (run 228): an answer in quotes once. Some answers are already quoted ("\"One bad night\""), and the
+    /// outcome printed them as ""One bad night"".</summary>
+    public static string Quoted(string label) => $"\"{label.Trim('"')}\"";
+
     /// <summary>Days between press conferences, and between locker-room moments.</summary>
     public const int PressGapDays = 13, LockerGapDays = 20, AnswerDays = 7;
 
@@ -121,7 +125,7 @@ public sealed partial class GameSession
         if (opened != null && Delegated.Media && HumanTeam.Staff.Any(x => x.Role == StaffRole.AssistantCoach))
         {
             Resolve(opened, DelegatedAnswer(opened), auto: true, who: $"{HumanTeam.Staff.First(x => x.Role == StaffRole.AssistantCoach).Name} answered");
-            Delegated.LastMedia = $"{Today:MMM d}: {opened.Title}: \"{opened.Options[opened.Chosen!.Value].Label}\"";
+            Delegated.LastMedia = $"{Today:MMM d}: {opened.Title}: {Quoted(opened.Options[opened.Chosen!.Value].Label)}";
         }
     }
 
@@ -152,7 +156,7 @@ public sealed partial class GameSession
             bool press = d.Kind == "press";
             string heading = press ? "PRESS CONFERENCE" : "IN THE LOCKER ROOM";
             string ask = d.Open
-                ? $"{d.Text}\nAnswer below. If you haven't by {d.Expires:MMM d}, your assistant will: \"{d.Options[d.SafeOption].Label}\"."
+                ? $"{d.Text}\nAnswer below. If you haven't by {d.Expires:MMM d}, your assistant will: {Quoted(d.Options[d.SafeOption].Label)}."
                 : $"{d.Text}\n{d.Outcome}"; // delegated: already handled by your assistant coach
             var week = Inbox.FirstOrDefault(m => m.Date == Today && m.Category == "Game" && IsResultsTitle(m.Title) && Media.ForMessage(m.Id) == null);
             if (week != null)
@@ -404,7 +408,7 @@ public sealed partial class GameSession
         }
         if (repeated) notes.Add("They've heard that one before, so it counted for less.");
         who ??= auto ? "Your assistant answered for you" : "You answered";
-        d.Outcome = $"{who}: \"{d.Options[option].Label}\". {string.Join(" ", notes)}";
+        d.Outcome = $"{who}: {Quoted(d.Options[option].Label)}. {string.Join(" ", notes)}";
         return d.Outcome;
     }
 }

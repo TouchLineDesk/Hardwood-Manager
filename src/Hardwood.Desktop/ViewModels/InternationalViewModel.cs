@@ -143,7 +143,8 @@ public sealed partial class InternationalViewModel : PageViewModel
         string basis = hist.Ranking.Count == 0
             ? "the FIBA world ranking (seeded from the real ranking and each twelve's strength; results move it from the first window)"
             : $"the FIBA world ranking, from results ({hist.Windows.Count} window{(hist.Windows.Count == 1 ? "" : "s")}, {Plural(hist.WorldCups.Count + hist.Olympics.Count + hist.Continentals.Count, "tournament")})";
-        Summary = $"{ranked} national teams in {basis} · a country needs {NationalTeams.MinPool} players aged {NationalTeams.MinAge}+ anywhere in the world"
+        // H224 (run 228): the real ranking has 160-odd nations; the game models those that can field twelve.
+        Summary = $"{ranked} nations modelled, ranked in {basis} · a country needs {NationalTeams.MinPool} players aged {NationalTeams.MinAge}+ anywhere in the world"
                   + Suspended(_teams.Where(t => t.Rank == 0).Select(t => t.Name).ToList());
 
         var mine = s.Employed ? s.HumanTeam.Roster.Select(p => p.Id).ToHashSet() : new HashSet<int>();

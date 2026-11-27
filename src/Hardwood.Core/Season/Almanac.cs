@@ -114,14 +114,7 @@ public static class Almanac
         if (honours.Count > 0) sections.Add(new(Honours, honours));
 
         // Your season (the team you coached that season: the one the columnists picked, or today's if you were there).
-        int? yours = TeamThatSeason(s, h.Season, college: false);
-        if (yours is { } y && h.Records.FindIndex(r => r.teamId == y) is var idx and >= 0 && s.FindTeam(y) is { } yt)
-        {
-            var rec = h.Records[idx];
-            int rank = h.Records.Count(r => r.wins > rec.wins) + 1;
-            string end = y == h.ChampionTeamId ? "Champions." : y == h.RunnerUpTeamId ? "Beaten in the Finals." : "";
-            sections.Add(new(Yours, new[] { $"{yt.TheFullNameCap} went {rec.wins}-{rec.losses}, {Ord(rank)} of {h.Records.Count} by record. {end}".TrimEnd() }));
-        }
+        if (ProSeasonLines(s, h) is { Count: > 0 } mineLines) sections.Add(new(Yours, mineLines));
 
         if (CallLines(s, h.Season, college: false) is { Count: > 0 } calls) sections.Add(new(Calls, calls));
 
@@ -238,6 +231,49 @@ public static class Almanac
     /// <summary>The team you coached in a season (of a college or a pro edition): the one the columnists picked for you then,
     /// else the job your record says you held that season, else today's job if you were hired by then. Review: never today's
     /// team for a season before you coached it.</summary>
+    /// <summary>
+    /// H225 (run 228): "Your season" for the pros, one line per club you coached that season, with your own record there. A
+    /// coach sacked by Utah at 8-16 and hired by the Aces at 7-44 read "The Utah Jazz went 33-49", the Jazz's whole season.
+    /// A full season keeps the old line (record, rank, how it ended).
+    /// </summary>
+    public static List<string> ProSeasonLines(GameSession s, SeasonSummary h)
+    {
+        var lines = new List<string>();
+        (int w, int l)? Full(int id) => h.Records.FindIndex(r => r.teamId == id) is var i and >= 0 ? (h.Records[i].wins, h.Records[i].losses) : null;
+        string FullLine(Team t, (int w, int l) rec)
+        {
+            int rank = h.Records.Count(r => r.wins > rec.w) + 1;
+            string end = t.Id == h.ChampionTeamId ? "Champions." : t.Id == h.RunnerUpTeamId ? "Beaten in the Finals." : "";
+            return $"{t.TheFullNameCap} went {rec.w}-{rec.l}, {Ord(rank)} of {h.Records.Count} by record. {end}".TrimEnd();
+        }
+        // The jobs you left that season, in order.
+        var left = s.Coach.History.Where(j => j.FromSeason <= h.Season && h.Season <= j.ToSeason && Kind(s, j.TeamId, false)).ToList();
+        foreach (var j in left)
+        {
+            if (s.FindTeam(j.TeamId) is not { } t || Full(t.Id) is not { } full) continue;
+            bool partial = j.ToSeason == h.Season && j.Wins + j.Losses > 0 && j.Wins + j.Losses < full.w + full.l;
+            if (!partial) { lines.Add(FullLine(t, full)); continue; }
+            string how = j.Ended == "Sacked" ? "were sacked" : j.Ended.Length == 0 ? "left" : char.ToLowerInvariant(j.Ended[0]) + j.Ended[1..];
+            lines.Add($"{t.TheFullNameCap} were {j.Wins}-{j.Losses} when you {how}; they finished {full.w}-{full.l}.");
+        }
+        // Today's job, if it covers that season.
+        if (s.Employed && Kind(s, s.HumanTeam.Id, false) && s.Job.HiredSeason != 0 && s.Job.HiredSeason <= h.Season
+            && !left.Any(j => j.TeamId == s.HumanTeam.Id && j.ToSeason >= h.Season) && Full(s.HumanTeam.Id) is { } now)
+        {
+            var t = s.HumanTeam;
+            bool joinedMidway = s.Job.HiredSeason == h.Season && (left.Count > 0 || s.Job.HiredWins != null);
+            if (!joinedMidway) lines.Add(FullLine(t, now));
+            else if (s.Job.HiredWins is { } hw && s.Job.HiredLosses is { } hl)
+                lines.Add($"{t.TheFullNameCap} went {now.w - hw}-{now.l - hl} after you arrived on {s.Job.HiredOn:MMM d} ({now.w}-{now.l} in all).");
+            else
+                lines.Add($"{t.TheFullNameCap} went {now.w}-{now.l}; you arrived on {s.Job.HiredOn:MMM d}.");
+        }
+        // Nothing in the job records (an older save): the team the columnists picked.
+        if (lines.Count == 0 && TeamThatSeason(s, h.Season, college: false) is { } y && s.FindTeam(y) is { } yt && Full(y) is { } rec)
+            lines.Add(FullLine(yt, rec));
+        return lines;
+    }
+
     private static int? TeamThatSeason(GameSession s, int season, bool college)
     {
         if (s.Media.Columns.Picks.FirstOrDefault(p => p.Season == season && Kind(s, p.TeamId, college)) is { } picked) return picked.TeamId;

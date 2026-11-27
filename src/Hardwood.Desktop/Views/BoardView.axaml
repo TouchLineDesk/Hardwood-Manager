@@ -8,7 +8,56 @@
     <!-- Side by side when wide; the coach drops below the club when narrow (big text sizes), so his bars keep their length. -->
     <Grid x:Name="Columns" ColumnDefinitions="3*,2*" RowDefinitions="Auto,Auto">
       <StackPanel x:Name="ClubColumn" Spacing="12" Margin="0,0,12,0">
-        <!-- Employed: owner, goals, confidence -->
+        <!-- H128 (run 228): the board leads: the owner, then the season's goal and his confidence, then the money. -->
+        <Border Classes="panel" IsVisible="{Binding Employed}">
+          <Grid ColumnDefinitions="Auto,*">
+            <c:TeamLogo Team="{Binding Team}" Width="72" Height="72" VerticalAlignment="Top" Margin="0,0,14,0"/>
+            <StackPanel Grid.Column="1" Spacing="6">
+              <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Shield" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding OwnerTitle}" Classes="h2" Margin="0"/></StackPanel>
+              <TextBlock Text="{Binding OwnerName}" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding OwnerStyle}" Classes="muted"/>
+              <Grid ColumnDefinitions="80,*,Auto" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                <TextBlock Text="Patience" Classes="muted"/>
+                <ProgressBar Grid.Column="1" MinWidth="0" Value="{Binding Patience}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding PatienceText}" Margin="10,0,0,0" HorizontalAlignment="Left"/>
+                <TextBlock Grid.Row="1" Text="Ambition" Classes="muted"/>
+                <ProgressBar Grid.Row="1" Grid.Column="1" MinWidth="0" Value="{Binding Ambition}" Maximum="20" Height="6" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding AmbitionText}" Margin="10,0,0,0" HorizontalAlignment="Left"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Classes="panel" IsVisible="{Binding Employed}">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="This season" Classes="h2" Margin="0"/></StackPanel>
+            <TextBlock Text="{Binding Goal}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Pace}" Classes="muted"/>
+            <ItemsControl ItemsSource="{Binding Demands}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DemandRow">
+                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                    <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding Brush}"/>
+                    <TextBlock Text="{Binding Text}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding ConfidenceTitle}" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <ProgressBar Value="{Binding Confidence}" Maximum="100" Height="10" Foreground="{Binding ConfidenceBrush}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" Margin="10,0,0,0" Foreground="{Binding ConfidenceBrush}" FontWeight="SemiBold"/>
+            </Grid>
+            <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" MinY="0" MaxY="100" IsVisible="{Binding HasTrend}"/>
+            <!-- What moved confidence (roadmap 4) -->
+            <TextBlock Text="What's moving it" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <TextBlock Text="{Binding ConfidenceHeading}" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ConfidenceRecent}" Classes="muted" TextWrapping="Wrap"/>
+            <c:StatStrip ItemsSource="{Binding ConfidenceDrivers}" Accent="{Binding Accent}"/>
+            <TextBlock Text="{Binding ConfidenceNote}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <!-- Employed: the money (below the owner and the season since H128) -->
         <Border Classes="panel" IsVisible="{Binding Employed}">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="{Binding FinanceIcon}" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding FinanceTitle}" Classes="h2" Margin="0"/></StackPanel>
@@ -143,54 +192,6 @@
             <TextBlock Text="{Binding BusinessWhen}" Classes="muted" TextWrapping="Wrap" FontSize="11.5"/>
             <TextBlock Text="{Binding BusinessStatus}" Classes="accent" TextWrapping="Wrap"/>
             <TextBlock Text="The match day is about 30% of revenue: tickets, food and drink, parking. Higher prices earn more now and cost fans; cheaper ones, free parking and fan days grow the fan base, and revenue grows with the fans. Arena upgrades are in Facilities." Classes="muted" FontSize="11" TextWrapping="Wrap"/>
-          </StackPanel>
-        </Border>
-        <Border Classes="panel" IsVisible="{Binding Employed}">
-          <Grid ColumnDefinitions="Auto,*">
-            <c:TeamLogo Team="{Binding Team}" Width="72" Height="72" VerticalAlignment="Top" Margin="0,0,14,0"/>
-            <StackPanel Grid.Column="1" Spacing="6">
-              <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Shield" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="{Binding OwnerTitle}" Classes="h2" Margin="0"/></StackPanel>
-              <TextBlock Text="{Binding OwnerName}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding OwnerStyle}" Classes="muted"/>
-              <Grid ColumnDefinitions="80,*,Auto" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
-                <TextBlock Text="Patience" Classes="muted"/>
-                <ProgressBar Grid.Column="1" MinWidth="0" Value="{Binding Patience}" Maximum="20" Height="6" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding PatienceText}" Margin="10,0,0,0" HorizontalAlignment="Left"/>
-                <TextBlock Grid.Row="1" Text="Ambition" Classes="muted"/>
-                <ProgressBar Grid.Row="1" Grid.Column="1" MinWidth="0" Value="{Binding Ambition}" Maximum="20" Height="6" VerticalAlignment="Center"/>
-                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding AmbitionText}" Margin="10,0,0,0" HorizontalAlignment="Left"/>
-              </Grid>
-            </StackPanel>
-          </Grid>
-        </Border>
-
-        <Border Classes="panel" IsVisible="{Binding Employed}">
-          <StackPanel Spacing="6">
-            <StackPanel Orientation="Horizontal" Spacing="8"><c:Icon Kind="Trophy" Width="18" Height="18" Foreground="{DynamicResource HwAccentBrush}"/><TextBlock Text="This season" Classes="h2" Margin="0"/></StackPanel>
-            <TextBlock Text="{Binding Goal}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
-            <TextBlock Text="{Binding Pace}" Classes="muted"/>
-            <ItemsControl ItemsSource="{Binding Demands}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:DemandRow">
-                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
-                    <c:Icon Kind="{Binding Icon}" Width="16" Height="16" Foreground="{Binding Brush}"/>
-                    <TextBlock Text="{Binding Text}"/>
-                  </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="{Binding ConfidenceTitle}" FontWeight="SemiBold" Margin="0,8,0,0"/>
-            <Grid ColumnDefinitions="*,Auto">
-              <ProgressBar Value="{Binding Confidence}" Maximum="100" Height="10" Foreground="{Binding ConfidenceBrush}" VerticalAlignment="Center"/>
-              <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" Margin="10,0,0,0" Foreground="{Binding ConfidenceBrush}" FontWeight="SemiBold"/>
-            </Grid>
-            <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" MinY="0" MaxY="100" IsVisible="{Binding HasTrend}"/>
-            <!-- What moved confidence (roadmap 4) -->
-            <TextBlock Text="What's moving it" FontWeight="SemiBold" Margin="0,6,0,0"/>
-            <TextBlock Text="{Binding ConfidenceHeading}" TextWrapping="Wrap"/>
-            <TextBlock Text="{Binding ConfidenceRecent}" Classes="muted" TextWrapping="Wrap"/>
-            <c:StatStrip ItemsSource="{Binding ConfidenceDrivers}" Accent="{Binding Accent}"/>
-            <TextBlock Text="{Binding ConfidenceNote}" Classes="muted" FontSize="11" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
 
