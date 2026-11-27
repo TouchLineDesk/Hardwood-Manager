@@ -72,12 +72,17 @@ public class WorldTests
             Assert.Single(comp.History);
             int teams = s.Participants.Count;
             int regular = s.Fixtures.Count(f => f.Stage == CompetitionSeason.RegularSeason);
-            Assert.Equal(teams * (teams - 1) / 2 * comp.Profile.RoundRobins, regular);
+            // Run 227: a competition in groups plays its round robins inside each group (the EuroCup's two of ten).
+            int expected = s.Groups is { } groups ? groups.Sum(g => g.Count * (g.Count - 1) / 2) * comp.Profile.RoundRobins
+                : teams * (teams - 1) / 2 * comp.Profile.RoundRobins;
+            Assert.Equal(expected, regular);
             Assert.All(s.Series, x => Assert.True(x.Complete));
             // The division format (D36) adds the third-place tournament's seven series.
             // Run 102: tier 2's runners-up-only bracket skips the first round (its division winners play the promotion playoffs,
             // which a world played without the top league's season never starts).
             int skipped = comp.Key == UsaPyramid.Tier2 && UsaPyramid.PlaysPromotion(world, world.Nabl) ? comp.Profile.Playoffs[0].Teams / 2 : 0;
+            // Run 227: the EuroCup's group winners and runners-up wait in the quarter-finals (four eighth-finals, not eight).
+            if (s.Grouped) skipped += comp.Profile.Playoffs[0].Teams / 4;
             Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2) - skipped + (comp.Profile.DivisionPlayoffs ? 7 : 0) + (comp.Profile.PlayIn ? 3 : 0), s.Series.Count);   // run 222: the play-in's three games
         }
         // No club plays twice on one day, across all competitions.

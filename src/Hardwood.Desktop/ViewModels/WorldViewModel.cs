@@ -289,6 +289,8 @@ public sealed partial class WorldViewModel : PageViewModel
         if (zones.Contains("Promotion")) Keys.Add(new ZoneKey(StandingRow.PromotionBrush, top ? "Division winner" : tier2 && playoff ? StandingRow.PromotionPlayoffKey : "Division winner: promoted"));
         if (zones.Contains("Playoffs")) Keys.Add(new ZoneKey(StandingRow.PlayoffBrush, "Playoffs"));
         if (zones.Contains("Play-in")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Play-in"));
+        if (zones.Contains(LeagueBook.QuarterZone)) Keys.Add(new ZoneKey(StandingRow.PlayoffBrush, "Quarter-finals"));
+        if (zones.Contains(LeagueBook.EighthZone)) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Eighth-finals"));
         if (zones.Contains("Third place")) Keys.Add(new ZoneKey(StandingRow.PlayInBrush, "Third-place tournament"));
         if (zones.Contains("Relegation")) Keys.Add(new ZoneKey(StandingRow.RelegationBrush, top && playoff ? StandingRow.StayUpKey : "Relegated"));
         if (!college && (zones.Contains("Promotion") || zones.Contains("Relegation"))) Keys.Add(new ZoneKey(Avalonia.Media.Brushes.Transparent, StandingRow.LevelRecords));

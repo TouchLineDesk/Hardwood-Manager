@@ -324,7 +324,8 @@ public sealed class GameWorld
         {
             var participants = comp.Profile.Kind == CompetitionKind.Continental ? ContinentalEntrants(comp, taken) : comp.Clubs.Select(t => t.Id).ToList();
             comp.Season = new CompetitionSeason { Year = year, Participants = participants };
-            comp.Season.Fixtures = RoundRobin(participants, comp.Profile, year);
+            comp.Season.Groups = DrawGroups(participants, comp.Profile);
+            comp.Season.Fixtures = comp.Season.Groups is { } groups ? GroupRoundRobin(groups, comp.Profile, year) : RoundRobin(participants, comp.Profile, year);
         }
     }
 
@@ -418,13 +419,46 @@ public sealed class GameWorld
         return days;
     }
 
-    private List<Fixture> RoundRobin(List<int> ids, CompetitionProfile p, int year)
+    /// <summary>Run 227: the groups of a competition played in groups (the EuroCup's two of ten), snake-drawn by strength (1st to A,
+    /// 2nd and 3rd to B, 4th and 5th to A, …), so each group gets one of the two strongest clubs. No random draw. Null when the
+    /// competition has one table, or too few clubs for six in each group.</summary>
+    internal List<List<int>>? DrawGroups(List<int> ids, CompetitionProfile p)
+    {
+        int g = p.Groups;
+        if (g < 2 || ids.Count < 6 * g) return null;
+        var order = ids.Select(id => (id, s: _teams.TryGetValue(id, out var t) ? Strength(t) : 0)).OrderByDescending(x => x.s).ThenBy(x => x.id).Select(x => x.id).ToList();
+        var groups = Enumerable.Range(0, g).Select(_ => new List<int>()).ToList();
+        for (int i = 0; i < order.Count; i++)
+        {
+            int lap = i / g, pos = i % g;
+            groups[lap % 2 == 0 ? pos : g - 1 - pos].Add(order[i]);
+        }
+        return groups;
+    }
+
+    /// <summary>Run 227: every group's round robin on the same round dates (round r of group A beside round r of group B).</summary>
+    private List<Fixture> GroupRoundRobin(List<List<int>> groups, CompetitionProfile p, int year)
+    {
+        var each = groups.Select(g => Rounds(g, p.RoundRobins)).ToList();
+        int count = each.Max(r => r.Count);
+        var dates = RoundDates(p, year, count);
+        var fixtures = new List<Fixture>();
+        int idx = 0;
+        for (int r = 0; r < count; r++)
+            foreach (var rounds in each.Where(x => r < x.Count))
+                foreach (var (h, a) in rounds[r])
+                    fixtures.Add(new Fixture { Index = idx++, Date = p.TwoDayRounds && _rng.Chance(0.5) ? dates[r].AddDays(1) : dates[r], HomeId = h, AwayId = a });
+        return fixtures;
+    }
+
+    /// <summary>The circle method: <paramref name="robins"/> passes, home and away alternating.</summary>
+    private static List<List<(int h, int a)>> Rounds(List<int> ids, int robins)
     {
         var teams = ids.ToList();
         if (teams.Count % 2 == 1) teams.Add(-1); // bye
         int n = teams.Count;
         var rounds = new List<List<(int h, int a)>>();
-        for (int pass = 0; pass < p.RoundRobins; pass++)
+        for (int pass = 0; pass < robins; pass++)
         {
             var rot = teams.ToList();
             for (int r = 0; r < n - 1; r++)
@@ -441,7 +475,12 @@ public sealed class GameWorld
                 rot.Insert(1, rot[^1]); rot.RemoveAt(rot.Count - 1);
             }
         }
+        return rounds;
+    }
 
+    private List<Fixture> RoundRobin(List<int> ids, CompetitionProfile p, int year)
+    {
+        var rounds = Rounds(ids, p.RoundRobins);
         var fixtures = new List<Fixture>();
         var dates = RoundDates(p, year, rounds.Count);
         int idx = 0;
@@ -601,6 +640,19 @@ public sealed class GameWorld
                 ScheduleNextGames(comp);
                 return true;
             }
+            if (GroupedKnockouts(s, p) && s.GroupTables() is [var ga, var gb])
+            {
+                // Run 227: 3rd-6th play the eighth-finals across the groups, at the better-placed club; each feeds the quarter-final
+                // of the same slot (A1, B2, B1, A2), so the two group winners are in different halves.
+                int Id(List<TableRow> g, int place) => g[place - 1].TeamId;
+                foreach (var (hi, lo) in new[] { (Id(gb, 4), Id(ga, 5)), (Id(ga, 3), Id(gb, 6)), (Id(ga, 4), Id(gb, 5)), (Id(gb, 3), Id(ga, 6)) })
+                    s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 0, Round = p.Playoffs[0].Name, BestOf = p.Playoffs[0].BestOf, HighId = hi, LowId = lo });
+                s.Stage = p.Playoffs[0].Name;
+                News.Add(($"{p.Name}: the groups are done",
+                    $"{T2(ga[0].TeamId)} and {T2(gb[0].TeamId)} won the groups and go straight to the quarter-finals with {T2(ga[1].TeamId)} and {T2(gb[1].TeamId)}; 3rd to 6th play the eighth-finals."));
+                ScheduleNextGames(comp);
+                return true;
+            }
             FirstRound(rows.Take(p.Playoffs[0].Teams).Select(r => r.TeamId).ToList());
             return true;
         }
@@ -641,6 +693,16 @@ public sealed class GameWorld
             return true;
         }
         var nextRound = p.Playoffs[ri + 1];
+        if (ri == 0 && GroupedKnockouts(s, p) && active.Count == 4 && s.GroupTables() is [var a1, var b1])
+        {
+            // Run 227: the group winners and runners-up host the eighth-finals' winners (slot by slot: A1, B2, B1, A2).
+            var direct = new[] { a1[0].TeamId, b1[1].TeamId, b1[0].TeamId, a1[1].TeamId };
+            for (int i = 0; i < 4; i++)
+                s.Series.Add(new SeriesState { Id = s.Series.Count + 1, RoundIndex = 1, Round = nextRound.Name, BestOf = nextRound.BestOf, HighId = direct[i], LowId = active[i].WinnerId!.Value });
+            s.Stage = nextRound.Name;
+            ScheduleNextGames(comp);
+            return true;
+        }
         // Bracket: winners of adjacent series meet; the better regular-season seed is "high".
         var table = s.Table().Select(r => r.TeamId).ToList();
         for (int i = 0; i < active.Count; i += 2)
@@ -655,6 +717,14 @@ public sealed class GameWorld
         ScheduleNextGames(comp);
         return true;
     }
+
+    /// <summary>Run 227: a season played in two groups whose knockouts start with the eighth-finals (the EuroCup): 3rd-6th play
+    /// them and the top two wait in the quarter-finals. A season saved before groups (no <see cref="CompetitionSeason.Groups"/>)
+    /// keeps the 16-club bracket.</summary>
+    private static bool GroupedKnockouts(CompetitionSeason s, CompetitionProfile p) =>
+        s.Groups is { Count: 2 } g && g.All(x => x.Count >= 6) && p.Playoffs.Length >= 2 && p.Playoffs[0].Name == "Eighth-finals" && p.Playoffs[1].Teams == 8;
+
+    private string T2(int id) => _teams.TryGetValue(id, out var t) ? t.FullName : "?";
 
     /// <summary>Run 222: the play-in's rounds (the names hold "Play-In", which the bracket view leaves out, as it does the NBA's).</summary>
     public const string PlayInStage = "Play-In", PlayInHigh = "Play-In 7/8", PlayInLow = "Play-In 9/10", PlayInFinal = "Play-In Final";

@@ -212,7 +212,9 @@ public class CharacterizationTests
         // the knockout nights are kept free, so the NBA schedule's dates (and the order games draw from the stream) differ.
         // Run 224 (K45, the short pro Welcome): re-pinned (was 9BC1E92A6C0C6A16). Only the inbox line moved: the Welcome's
         // data notes are their own "About this world" message (one more). With that message taken out, the old pin holds exactly.
-        Pin("career seed 2026, 30 days, no saves", "A753321B2903C9C9", Session(s));
+        // Run 227 (the EuroCup's two groups): re-pinned (was A753321B2903C9C9). Its 20 clubs play 18 group rounds (180 games, not
+        // 190), so the first month's quick results draw differently on the shared stream. With the old profile the old pin holds.
+        Pin("career seed 2026, 30 days, no saves", "14656BECA739BE78", Session(s));
     }
 
     [Fact]

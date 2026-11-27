@@ -121,6 +121,11 @@ public sealed class CompetitionProfile
     /// season's wild cards). They enter whatever their domestic finish; the rest of <see cref="Size"/> is filled from the
     /// <see cref="Entrants"/> leagues' tables, one club from each league in turn. A member a name pack renamed is just a club.</summary>
     public string[] Members { get; init; } = Array.Empty<string>();
+    /// <summary>Run 227 (the EuroCup's real format): the regular season is played in this many groups (snake-drawn by strength),
+    /// each its own round robin of <see cref="RoundRobins"/> passes. With two groups and an "Eighth-finals" first round, the top
+    /// two in each group go straight to the quarter-finals and 3rd-6th play the eighth-finals across the groups (A3 v B6, B3 v A6,
+    /// A4 v B5, B4 v A5). 1: one table, as before.</summary>
+    public int Groups { get; init; } = 1;
     /// <summary>Run 222: the number of clubs when <see cref="Members"/> are set (0: the sum of <see cref="Entrants"/>).</summary>
     public int Size { get; init; }
 
