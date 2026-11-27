@@ -119,9 +119,11 @@ public class Run223NbaCupTests
             }
             Assert.True(s.Standings[s.HumanTeam].Games >= standingGames);
 
-            // The next season draws new groups from the table and keeps the winner.
+            // The knockout games keep their box scores through a save (the bug finder: a score with no box).
+            reloaded.SaveNow();
             var saved = GameSession.Load(path);
             Assert.NotNull(saved.Cup);
+            Assert.All(saved.Cup!.Ties, t => Assert.True(t.Result is { } r && r.Home.Lines.Count > 0 && r.Home.Points == t.HomePoints && r.Away.Points == t.AwayPoints));
         }
         finally
         {

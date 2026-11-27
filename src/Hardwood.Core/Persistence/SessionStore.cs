@@ -85,6 +85,11 @@ public static class SessionStore
             }
         }
 
+        // Run 223 (review, the bug finder): the cup's knockout games keep their box scores.
+        if (s.Cup is { } cup)
+            for (int i = 0; i < cup.Ties.Count; i++)
+                if (cup.Ties[i].Result is { } cr) Box(CupBoxIndex(i), cr, cup.Ties[i].HomeId == s.HumanTeam.Id || cup.Ties[i].AwayId == s.HumanTeam.Id);
+
         if (s.Offseason is { } o && s.Phase == SessionPhase.Offseason)
         {
             SaveFile.Exec(conn, "INSERT INTO offseason(id, phase, season, draft_order, pick_owners, next_pick) VALUES(1, $p, $s, $d, $o, $n)",
@@ -109,6 +114,9 @@ public static class SessionStore
 
     /// <summary>A playoff game's key in <c>box_line</c>: negative, so it never meets a regular-season schedule index.</summary>
     internal static int PlayoffBoxIndex(int seriesOrder, int gameNo) => -(seriesOrder * 16 + gameNo + 1);
+
+    /// <summary>Run 223: a cup knockout game's key in <c>box_line</c>, far below any playoff key.</summary>
+    internal static int CupBoxIndex(int tie) => -(100_000 + tie);
 
     private static readonly string[] BoxParams = { "$g", "$t", "$p", "$st", "$sec", "$pts", "$fgm", "$fga", "$tpm", "$tpa", "$ftm", "$fta", "$oreb", "$dreb", "$ast", "$stl", "$blk", "$tov", "$pf", "$pm" };
 
@@ -180,6 +188,19 @@ public static class SessionStore
                 boxes[r.GetInt32(0)][r.GetInt32(1)].Add(line);
             }
         }
+        // Run 223: the cup's knockout games, rebuilt from their box lines (the score is in the cup's own record).
+        if (session.Cup is { } cupNow)
+            for (int i = 0; i < cupNow.Ties.Count; i++)
+            {
+                var t = cupNow.Ties[i];
+                if (!t.Played || !boxes.TryGetValue(CupBoxIndex(i), out var byTeam) || session.FindTeam(t.HomeId) is not { } ch || session.FindTeam(t.AwayId) is not { } ca) continue;
+                var home = new TeamBox { Team = ch }; var away = new TeamBox { Team = ca };
+                if (byTeam.TryGetValue(ch.Id, out var hl)) home.Lines.AddRange(hl);
+                if (byTeam.TryGetValue(ca.Id, out var al)) away.Lines.AddRange(al);
+                if (home.Lines.Count == 0) home.FixedPoints = t.HomePoints;
+                if (away.Lines.Count == 0) away.FixedPoints = t.AwayPoints;
+                t.Result = new GameResult { Home = home, Away = away, Overtimes = t.Overtimes, Date = t.Date, Neutral = t.Neutral };
+            }
 
         var schedule = new List<ScheduledGame>();
         var results = new Dictionary<int, GameResult>();
