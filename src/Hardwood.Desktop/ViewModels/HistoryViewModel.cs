@@ -41,6 +41,20 @@ public sealed class SeasonCard
     public string Tip => $"{Season}: {ChampionName} {Beat}. {FinalsMvpLabel}{FinalsMvp}. {MvpLabel}{Mvp}.";
 }
 
+/// <summary>W2 (run 225): one almanac edition on the History page's Almanac tab: the champion's crest and colour on the cover.</summary>
+public sealed class AlmanacCard
+{
+    public AlmanacEdition Edition { get; init; } = null!;
+    public Team? Champion { get; init; }
+    public IBrush Stripe { get; init; } = Brushes.Gray;
+    /// <summary>The list's label: "2026-27", or "2026-27 · college" in a career that has editions of both kinds.</summary>
+    public string Label { get; init; } = "";
+    public string Title => Edition.Title.ToUpperInvariant();
+    public string Cover => Edition.Cover;
+    public IReadOnlyList<AlmanacSection> Sections => Edition.Sections;
+    public bool HasCrest => Champion != null;
+}
+
 /// <summary>A real NBA season (R1, #191): the History page's "NBA history" tab.</summary>
 public sealed record RealSeasonRow(string Season, string Champion, string RunnerUp, string FinalsMvp, string Mvp, bool Ours);
 
@@ -255,7 +269,7 @@ public sealed partial class HistoryViewModel : PageViewModel
     {
         var s = Session; var cw = s.World.College!;
         IsReal = false; RealPastCards = new(); RealPastTitle = "";
-        if (Tab is not (0 or 4)) Tab = 0; // the pro tabs are hidden; Seasons (0) and College records (4, last) stay
+        if (Tab is not (0 or 4 or 5)) Tab = 0; // the pro tabs are hidden; Seasons (0), College records (4) and the Almanac (5) stay
         var cards = new List<SeasonCard>();
         int us = s.HumanTeam.Id;
         foreach (var h in cw.History.OrderByDescending(h => h.Year))
@@ -361,6 +375,30 @@ public sealed partial class HistoryViewModel : PageViewModel
             + (empty.Count > 0 ? $" Still to be set: {string.Join(" · ", empty)} (after the first season)." : "");
     }
 
+    // W2 (run 225): the yearly almanac, every edition built from the saved history.
+    [ObservableProperty] private List<AlmanacCard> _almanacs = new();
+    [ObservableProperty] private AlmanacCard? _selectedAlmanac;
+    public bool HasAlmanacs => Almanacs.Count > 0;
+    public string AlmanacNote => HasAlmanacs
+        ? $"{Almanacs.Count} edition{(Almanacs.Count == 1 ? "" : "s")}. Each comes out when the summer starts, built from what happened in this career."
+        : IsCollege ? "The first almanac comes out when this career's first college season ends: the champions, the honours, your season and the columnists' calls."
+        : "The first almanac comes out when this career's first season ends: the champions, the honours, your season, the columnists' calls and the Hall of Fame class.";
+    partial void OnAlmanacsChanged(List<AlmanacCard> value) { OnPropertyChanged(nameof(HasAlmanacs)); OnPropertyChanged(nameof(AlmanacNote)); }
+
+    private void BuildAlmanacs()
+    {
+        var s = Session; var cw = s.World.College;
+        string? keep = SelectedAlmanac?.Label;
+        var editions = Hardwood.Core.Season.Almanac.Editions(s);
+        bool both = editions.Any(e => e.College) && editions.Any(e => !e.College);
+        Almanacs = editions.Select(e =>
+        {
+            var champ = e.ChampionId is { } id ? (e.College && cw != null ? cw.Program(id) : s.FindTeam(id)) : null;
+            return new AlmanacCard { Edition = e, Champion = champ, Stripe = StripeFor(champ), Label = e.Label + (both ? (e.College ? " · college" : " · pros") : "") };
+        }).ToList();
+        SelectedAlmanac = Almanacs.FirstOrDefault(a => a.Label == keep) ?? Almanacs.FirstOrDefault();
+    }
+
     [ObservableProperty] private string _realPastFootnote = "Every real season since 1946-47 is on the NBA history tab.";
 
     public override void Refresh()
@@ -368,7 +406,7 @@ public sealed partial class HistoryViewModel : PageViewModel
         Rows.Clear();
         var s = Session;
         IsCollege = s.CollegeWords && s.World.College != null;
-        if (IsCollege) { RefreshCollege(); return; }
+        if (IsCollege) { RefreshCollege(); BuildAlmanacs(); return; }
         // H64 (run 88): award winners and record holders who moved abroad are still named (they were "-" once they left).
         var all = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).Concat(s.World?.Players ?? Enumerable.Empty<Player>())
             .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
@@ -403,6 +441,7 @@ public sealed partial class HistoryViewModel : PageViewModel
         SeasonCards = cards;
         BuildRecords(all);
         BuildReal(all);
+        BuildAlmanacs();
         int titles = s.League.History.Count(h => h.ChampionTeamId == s.HumanTeam.Id);
         Summary = s.League.History.Count == 0 ? "No completed seasons yet." : $"{s.League.History.Count} season{(s.League.History.Count == 1 ? "" : "s")} played · {titles} title{(titles == 1 ? "" : "s")} for {s.HumanTeam.FullName}";
         SeasonsNote = s.League.History.Count > 0 ? ""
