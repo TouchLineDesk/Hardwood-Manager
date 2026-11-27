@@ -142,6 +142,13 @@ public static class ScheduleBuilder
         foreach (var (h, a) in games)
             foreach (var id in new[] { h.Id, a.Id })
                 (fixedDays.TryGetValue(id, out var set) ? set : fixedDays[id] = new()).Add(d.DayNumber);
+        // Review (run 223): the knockout nights count as possible games for everyone, so a team that reaches the knockouts
+        // never goes into one as a third straight day or a fourth game in five.
+        if (blocked != null && fixedGames.Count > 0)
+            foreach (var t in teams)
+            foreach (var d in blocked)
+                (fixedDays.TryGetValue(t.Id, out var set) ? set : fixedDays[t.Id] = new()).Add(d.DayNumber);
+        var knockoutDays = fixedGames.Count > 0 && blocked != null ? blocked.Select(d => d.DayNumber).ToHashSet() : new HashSet<int>();
         int fixedLeft = fixedGames.Values.Sum(l => l.Count);
         var schedule = new List<ScheduledGame>();
         var remaining = new List<(Team home, Team away)>(pairs);
@@ -229,6 +236,10 @@ public static class ScheduleBuilder
                 if (n >= 4 && dn - p[^4] < 7) return false;                         // 5 games in 7 days
                 if (fixedDays.TryGetValue(id, out var cupNights))
                 {
+                    // Review (run 223): nor out of one: a knockout night just behind counts as a game.
+                    bool ko(int d) => knockoutDays.Contains(d);
+                    bool on(int d) => p.Contains(d);
+                    if (ko(dn - 1) && on(dn - 2) || on(dn - 1) && ko(dn - 2) || ko(dn - 1) && ko(dn - 2)) return false;
                     // Run 223: never into a cup night as a third straight day, or a fourth game in five days.
                     if (cupNights.Contains(dn + 1) && Yesterday(id)) return false;
                     if (cupNights.Contains(dn + 1) && n >= 2 && dn + 1 - p[^2] < 5) return false;

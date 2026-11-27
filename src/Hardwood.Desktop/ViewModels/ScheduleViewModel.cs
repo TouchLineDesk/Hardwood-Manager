@@ -37,10 +37,12 @@ public sealed class GameRow
     /// <summary>Run 136: "home", "away" or "neutral" (the layout gate: "neutral site" was cut on Sundays in December) (invitationals, showcases, tournaments).</summary>
     public static string Site(MyGame g) => g.Neutral ? "neutral" : g.Home ? "home" : "away";
     /// <summary>C5 part 1 (run 94): "RIVALRY" / "IN-STATE", else "#5 v #9" for two ranked sides; empty otherwise.</summary>
-    public string Tag => Game.Rivalry?.Tag ?? (Game.OurRank is { } a && Game.OpponentRank is { } b ? $"#{a} v #{b}" : "");
+    public string Tag => Game.Rivalry?.Tag ?? (CupGroupGame ? "CUP" : Game.OurRank is { } a && Game.OpponentRank is { } b ? $"#{a} v #{b}" : "");
+    /// <summary>Run 223: a league game that is also one of the in-season cup's group games.</summary>
+    public bool CupGroupGame => Game.Group == ScheduleFilter.Regular && Game.Stage == NbaCup.Name;
     public bool HasTag => Tag.Length > 0;
     public string TagTip => Game.Rivalry is { } r ? $"{r.Title}: {(r.InState ? "in-state conference rivals" : "a real college rivalry")}"
-        : HasTag ? "Both sides ranked in the Top 25 at tip-off" : "";
+        : CupGroupGame ? $"An {NbaCup.Name} group game: it counts in the league table and the cup's group" : HasTag ? "Both sides ranked in the Top 25 at tip-off" : "";
     public bool HasEvent => Competition.Length > 0;
     /// <summary>The big line: "W 112-104" for a result, "Next game" or "To come".</summary>
     public string TileScore => Played ? ResultText : IsNext ? "Next game" : "To come";
@@ -229,7 +231,8 @@ public sealed partial class ScheduleViewModel : PageViewModel
                 top = best != null ? $"{best.Player.LastName} {best.Points} pts, {best.Rebounds} reb, {best.Assists} ast"
                     : g.NotCoached ? (s.Employed ? NotCoachedText : OutOfWorkText) : "";
             }
-            string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
+            // Run 223: a cup group game is tagged "CUP" (the tag), not named after the opponent (the layout gate).
+            string comp = g.Competition == s.HumanLeagueName ? (g.Stage == "Regular season" || g.Stage == NbaCup.Name ? "" : g.Stage) : (g.Stage == "Regular season" ? g.Competition : $"{g.Competition}: {g.Stage}");
             if (s.InCollege && g.Competition == Hardwood.Core.College.CollegeWorld.Madness) comp = $"Madness: {g.Stage}";
             // The rank at tip-off for a result, the rank now for a game to come (#528).
             string opponent = s.InCollege ? g.Versus(Hardwood.Core.College.CollegeWorld.WithRank(g.OpponentRank, g.Opponent.City))

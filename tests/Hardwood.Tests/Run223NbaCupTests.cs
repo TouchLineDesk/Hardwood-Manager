@@ -108,6 +108,13 @@ public class Run223NbaCupTests
                 var ours = c.Ties.Count(t => (t.HomeId == x.HumanTeam.Id || t.AwayId == x.HumanTeam.Id));
                 int leagueGames = x.Schedule.Count(g => (g.Home == x.HumanTeam || g.Away == x.HumanTeam) && x.Results.ContainsKey(g.Index));
                 Assert.Equal(leagueGames, x.Standings[x.HumanTeam].Games);
+                // Review: with the knockout games, still never three days running.
+                foreach (var id in c.Ties.SelectMany(t => new[] { t.HomeId, t.AwayId }).Distinct())
+                {
+                    var days = x.Schedule.Where(g => g.Home.Id == id || g.Away.Id == id).Select(g => g.Date.DayNumber)
+                        .Concat(c.Ties.Where(t => t.HomeId == id || t.AwayId == id).Select(t => t.Date.DayNumber)).OrderBy(d => d).ToList();
+                    for (int i = 2; i < days.Count; i++) Assert.False(days[i] - days[i - 2] == 2, $"{id} three straight days to {DateOnly.FromDayNumber(days[i])}");
+                }
                 _out.WriteLine($"{(x == s ? "kept" : "reloaded")}: our knockout games {ours}; {string.Join(" | ", c.Ties.Select(t => $"{t.Round}: {NbaCup.Line(x.League, t)}"))}");
             }
             Assert.True(s.Standings[s.HumanTeam].Games >= standingGames);

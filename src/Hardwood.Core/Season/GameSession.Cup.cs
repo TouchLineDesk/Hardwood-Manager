@@ -28,8 +28,12 @@ public sealed partial class GameSession
     private Func<Team, double> CupRank()
     {
         var st = Standings;
-        if (st != null && League.Teams.All(st.Has) && League.Teams.All(t => st[t].Games > 0)) return t => st[t].WinPct + st[t].PointDiff / 1000.0;
-        return t => Hardwood.Core.World.QuickSim.Strength(t);
+        bool Played(Team t) => st != null && st.Has(t) && st[t].Games > 0;
+        if (!League.Teams.Any(Played)) return t => Hardwood.Core.World.QuickSim.Strength(t);
+        // Review (run 223): a club without a record here (promoted) is placed by its strength's rank, as a win share.
+        var byStrength = League.Teams.OrderBy(t => Hardwood.Core.World.QuickSim.Strength(t)).ThenBy(t => t.Id).Select((t, i) => (t.Id, i)).ToDictionary(x => x.Id, x => x.i);
+        int n = Math.Max(1, League.Teams.Count - 1);
+        return t => Played(t) ? st![t].WinPct + st[t].PointDiff / 1000.0 : byStrength[t.Id] / (double)n;
     }
 
     /// <summary>Tonight's knockout games: everyone else's played now, yours held back as the live game when it is live.</summary>
@@ -77,9 +81,13 @@ public sealed partial class GameSession
             $"{(won ? "You beat" : "You lost to")} {them.Team.TheFullName} {Math.Max(us.Points, them.Points)}-{Math.Min(us.Points, them.Points)} {where}" +
             $"{(r.Overtimes > 0 ? " after overtime" : "")}.{next}" + (tie.TopScorer != null ? $" Top scorer for the winners: {tie.TopScorer}." : "") +
             "\n\nCup knockout games don't count in the standings or the season's statistics.", "Game");
-        // Injuries from the game still reach you.
+        // Injuries from the game still reach you, as from a league game: knocks in the week's list, the rest on their own.
         foreach (var (p, inj) in r.Injuries.Where(x => x.player.TeamId == HumanTeam.Id))
-            Post($"{p.Name} injured: {inj.Name}", $"Out approximately {inj.DaysOut(Today)} days (expected return {inj.ReturnDate:MMM d}).", "Medical");
+        {
+            int days = inj.DaysOut(Today);
+            if (inj.AttributeLoss <= 0 && days <= KnockDays) { WeekKnocks.Add($"{p.Name}: {inj.Name}, out about {days} days (back {inj.ReturnDate:MMM d})"); continue; }
+            Post($"{p.Name} injured: {inj.Name}", $"Out approximately {days} days (expected return {inj.ReturnDate:MMM d}).{(inj.AttributeLoss > 0 ? " The medical staff expect some lasting loss of athleticism." : "")}", "Medical");
+        }
     }
 
     /// <summary>The cup's calendar, at the end of each day: the groups on opening night, the quarter-finals once the group
