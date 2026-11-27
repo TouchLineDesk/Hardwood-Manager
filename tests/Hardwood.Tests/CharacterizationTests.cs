@@ -203,7 +203,8 @@ public class CharacterizationTests
         // rosters and budgets abroad. With both taken out (names and abbreviations alone), the old pin held exactly.
         // Run 218 (K5 slice 2: eight more leagues' real clubs): re-pinned (was D88ED375B3F43A1F) for the same reason; with the
         // standing and capacities taken out, the old pin held exactly again.
-        Pin("career seed 2026, 30 days, no saves", "F7D0EC335FFA5A5E", Session(s));
+        // Run 219 (K5 slice 3: nine more leagues) re-pinned (was F7D0EC335FFA5A5E), the same way: names alone keep the old pin.
+        Pin("career seed 2026, 30 days, no saves", "CAB48C3C9C4B0D58", Session(s));
     }
 
     [Fact]
