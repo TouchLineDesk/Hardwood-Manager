@@ -109,6 +109,21 @@ public sealed class CompetitionProfile
     /// and the third-placed teams play their own tournament alongside. Any other layout crowns the table's leader.</summary>
     public bool DivisionPlayoffs { get; init; }
 
+    /// <summary>Run 222 (the real formats): the last regular-season date (month, day) in year Y+1. When set, the rounds are spread
+    /// evenly over the <see cref="RoundDays"/> between <see cref="Start"/> and this date (the EuroLeague's double-round weeks),
+    /// rather than played on consecutive round days.</summary>
+    public (int Month, int Day)? RegularEnd { get; init; }
+    /// <summary>Run 222: a play-in before the first playoff round (the EuroLeague's): the top <c>Playoffs[0].Teams − 2</c> go
+    /// straight in; the next four play 7v8 (the winner is the 7th seed) and 9v10, then the 7v8 loser meets the 9v10 winner for
+    /// the 8th seed. Single games at the higher seed's arena.</summary>
+    public bool PlayIn { get; init; }
+    /// <summary>Run 222: a continental competition's licensed clubs, as "City|Name" (the EuroLeague's long-term licences and this
+    /// season's wild cards). They enter whatever their domestic finish; the rest of <see cref="Size"/> is filled from the
+    /// <see cref="Entrants"/> leagues' tables, one club from each league in turn. A member a name pack renamed is just a club.</summary>
+    public string[] Members { get; init; } = Array.Empty<string>();
+    /// <summary>Run 222: the number of clubs when <see cref="Members"/> are set (0: the sum of <see cref="Entrants"/>).</summary>
+    public int Size { get; init; }
+
     /// <summary>Continental competition: how many clubs each domestic league sends (by key), plus the guest pool.</summary>
     public (string LeagueKey, int Clubs)[] Entrants { get; init; } = Array.Empty<(string, int)>();
     /// <summary>Entrants in careers made before the leagues in <see cref="Entrants"/> existed (used when any of them is missing).</summary>
@@ -136,11 +151,14 @@ public static class Competitions
     {
         new()
         {
+            // Run 222 (the real format): 20 clubs, home and away (38 rounds, from the last days of September to mid-April with double-round weeks),
+            // a play-in for 7th-10th, best-of-five quarter-finals and the Final Four in late May.
             Key = Elite, Name = "Euro Elite League", Short = "EEL", RealName = "EuroLeague", Kind = CompetitionKind.Continental,
-            Start = (10, 6), RoundDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
+            Start = (9, 29), RegularEnd = (4, 17), RoundDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
             PlayoffDays = new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday },
             Playoffs = new[] { new PlayoffRound("Quarter-finals", 5, 8), new PlayoffRound("Final Four semi-finals", 1, 4), new PlayoffRound("Final", 1, 2) },
-            FinalFour = true,
+            FinalFour = true, PlayIn = true,
+            Members = WorldLeagues.EliteMembers, Size = 20,
             Entrants = WorldLeagues.EliteEntrants,
             LegacyEntrants = new[] { (Spain, 5), (Turkey, 4), (Guests, 9) },
         },

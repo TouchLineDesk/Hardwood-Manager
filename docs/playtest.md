@@ -119,6 +119,12 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   (San Miguel, Ginebra and TNT, all at the Araneta Coliseum), the Israeli league (Maccabi and Hapoel Tel Aviv), the ABA League
   (Crvena zvezda, Partizan) and the VTB League (CSKA, Zenit, UNICS). Poland, the Baltic, Czech, BNXT, the Americas and Africa
   are still made up (next build).
+- **From v0.210.0 the European cups play their real formats.** The EuroLeague is 20 clubs: its licensed clubs (Real Madrid,
+  Barcelona, Fenerbahçe, Olympiacos, Panathinaikos, Partizan, Zalgiris and the rest) enter every season whatever their league
+  finish, and the best of the rest takes the last place. Home and away, 38 rounds from late September to mid-April (some weeks
+  have two rounds), then a play-in for 7th-10th, best-of-five quarter-finals and the Final Four in late May. The EuroCup is 20
+  clubs, everyone once, then single-game knockouts for the top 16 and a best-of-three final. The league page's Rules tab says
+  how it works.
 
 ## Known issues (not worth a note unless they bother you)
 - **The live court is smallish,** with a busy crowd around it, and in similar kits (white against light blue) the two

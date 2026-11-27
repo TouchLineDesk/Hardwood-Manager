@@ -22,10 +22,22 @@ public static class WorldLeagues
     private static CompetitionProfile[]? _profiles;
     public static CompetitionProfile[] Profiles => _profiles ??= Build();
 
-    /// <summary>The Euro Elite League's entrants once the European leagues exist (18 clubs).</summary>
+    /// <summary>The Euro Elite League's source leagues once the European leagues exist. Run 222: the 19 licensed clubs below
+    /// enter first; the leagues' tables fill the rest of the 20, one club from each league in this order.</summary>
     public static readonly (string, int)[] EliteEntrants =
     {
         (Competitions.Spain, 4), (Competitions.Turkey, 3), (Greece, 2), (Italy, 2), (Aba, 2), (Lithuania, 1), (Israel, 1), (France, 1), (Germany, 1), (Vtb, 1),
+    };
+
+    /// <summary>Run 222: the EuroLeague's 2025-26 clubs that are in the game ("City|Name"): the long-term licences and that
+    /// season's wild cards. The 20th, Dubai Basketball, isn't in the game: the best club of the rest takes its place.</summary>
+    public static readonly string[] EliteMembers =
+    {
+        "Madrid|Real Madrid", "Barcelona|Barça", "Vitoria-Gasteiz|Baskonia", "Valencia|Valencia Basket",
+        "Istanbul|Fenerbahçe", "Istanbul|Anadolu Efes", "Athens|Panathinaikos", "Piraeus|Olympiacos",
+        "Milan|Olimpia Milano", "Bologna|Virtus Bologna", "Kaunas|Zalgiris", "Munich|Bayern Munich",
+        "Paris|Paris Basketball", "Villeurbanne|ASVEL", "Monaco|Monaco", "Tel Aviv|Maccabi Tel Aviv", "Tel Aviv|Hapoel Tel Aviv",
+        "Belgrade|Partizan", "Belgrade|Crvena zvezda",
     };
 
     private static readonly PlayoffRound[] Eight = { new("Quarter-finals", 3, 8), new("Semi-finals", 5, 4), new("Final", 5, 2) };
@@ -101,13 +113,18 @@ public static class WorldLeagues
         // ---------------------------------------------------------------- Cups
         new()
         {
+            // Run 222 (the real format): 20 clubs, everyone once (19 rounds, Oct to early March), then single-game knockouts
+            // for the top 16 and a best-of-three final.
             Key = EuroCup, Name = "Euro Challenge Cup", Short = "ECC", RealName = "EuroCup", Kind = CompetitionKind.Continental,
-            RoundRobins = 1, Start = (10, 7), RoundDays = new[] { DayOfWeek.Wednesday }, PlayoffDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Friday },
-            Playoffs = new[] { new PlayoffRound("Quarter-finals", 3, 8), new PlayoffRound("Semi-finals", 3, 4), new PlayoffRound("Final", 3, 2) },
+            RoundRobins = 1, Start = (10, 7), RegularEnd = (3, 4), RoundDays = new[] { DayOfWeek.Wednesday }, PlayoffDays = new[] { DayOfWeek.Wednesday, DayOfWeek.Friday },
+            Playoffs = new[]
+            {
+                new PlayoffRound("Eighth-finals", 1, 16), new PlayoffRound("Quarter-finals", 1, 8), new PlayoffRound("Semi-finals", 1, 4), new PlayoffRound("Final", 3, 2),
+            },
             Entrants = new[]
             {
-                (Competitions.Spain, 2), (Competitions.Turkey, 2), (Italy, 2), (France, 2), (Germany, 2), (Aba, 2), (Greece, 1), (Israel, 1),
-                (Lithuania, 1), (Poland, 1),
+                (Competitions.Spain, 3), (Competitions.Turkey, 3), (Italy, 2), (France, 1), (Germany, 3), (Aba, 2), (Greece, 2), (Israel, 1),
+                (Lithuania, 2), (Poland, 1),
             },
         },
         new()

@@ -206,7 +206,9 @@ public class CharacterizationTests
         // Run 219 (K5 slice 3: nine more leagues) re-pinned (was F7D0EC335FFA5A5E), the same way: names alone keep the old pin.
         // Run 221 (W1, the media cast): re-pinned (was CAB48C3C9C4B0D58). Only the inbox line moved: the columnists' preseason
         // picks arrive on day one (one more message). With that message taken out, the old pin holds exactly; picks draw nothing.
-        Pin("career seed 2026, 30 days, no saves", "42A3A240E402A93E", Session(s));
+        // Run 222 (the real formats): re-pinned (was 42A3A240E402A93E). The EuroLeague's field is 20 clubs from Sep 29 and the
+        // EuroCup's 20, so the world plays more (and different) games in the first month on the shared stream.
+        Pin("career seed 2026, 30 days, no saves", "A6EDA6525EB313C1", Session(s));
     }
 
     [Fact]

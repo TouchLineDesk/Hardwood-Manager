@@ -22,7 +22,7 @@ public class WorldTests
     {
         var (nabl, world) = Build();
         Assert.Equal(new[] { 0, 18, 16, 10, 20 }, world.Competitions.Take(5).Select(c => c.Clubs.Count)); // then the USA pyramid and the wider world
-        Assert.Equal(18, world[Competitions.Elite].Season.Participants.Count);
+        Assert.Equal(20, world[Competitions.Elite].Season.Participants.Count);   // run 222: the real EuroLeague's 20
 
         var teamIds = nabl.Teams.Select(t => t.Id).Concat(world.Clubs.Select(t => t.Id)).ToList();
         Assert.Equal(teamIds.Count, teamIds.Distinct().Count());
@@ -78,7 +78,7 @@ public class WorldTests
             // Run 102: tier 2's runners-up-only bracket skips the first round (its division winners play the promotion playoffs,
             // which a world played without the top league's season never starts).
             int skipped = comp.Key == UsaPyramid.Tier2 && UsaPyramid.PlaysPromotion(world, world.Nabl) ? comp.Profile.Playoffs[0].Teams / 2 : 0;
-            Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2) - skipped + (comp.Profile.DivisionPlayoffs ? 7 : 0), s.Series.Count);
+            Assert.Equal(comp.Profile.Playoffs.Sum(r => r.Teams / 2) - skipped + (comp.Profile.DivisionPlayoffs ? 7 : 0) + (comp.Profile.PlayIn ? 3 : 0), s.Series.Count);   // run 222: the play-in's three games
         }
         // No club plays twice on one day, across all competitions.
         var games = world.Playing.SelectMany(c => c.Season.Fixtures).SelectMany(f => new[] { (f.HomeId, f.Date), (f.AwayId, f.Date) }).ToList();
@@ -142,7 +142,7 @@ public class WorldTests
         Assert.Equal(ids.Count, ids.Distinct().Count());
         Assert.All(world.Playing.Where(c => c.Profile.Kind == CompetitionKind.Domestic), c => Assert.Single(c.History));
         // The new Elite field comes from last season's domestic tables.
-        Assert.Equal(18, world[Competitions.Elite].Season.Participants.Distinct().Count());
+        Assert.Equal(20, world[Competitions.Elite].Season.Participants.Distinct().Count());
     }
 
     [Fact]

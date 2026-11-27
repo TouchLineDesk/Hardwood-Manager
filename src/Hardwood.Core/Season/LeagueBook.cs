@@ -262,7 +262,10 @@ public sealed class LeagueBook
                     return table.Select(r =>
                     {
                         rank++;
-                        return new BookTableRow(T(r.TeamId), r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, "", playoffTeams > 0 && rank <= playoffTeams ? "Playoffs" : "");
+                        // Run 222: with a play-in, the top (n − 2) go straight in and the next four play for the last two places.
+                        return new BookTableRow(T(r.TeamId), r.Wins, r.Losses, r.PointsFor, r.PointsAgainst, "",
+                            playoffTeams <= 0 ? "" : !p.PlayIn ? (rank <= playoffTeams ? "Playoffs" : "")
+                            : rank <= playoffTeams - 2 ? "Playoffs" : rank <= playoffTeams + 2 ? "Play-in" : "");
                     }).ToList();
                 // The pyramid by division (Danny, #318-#319), each in table order, divisions in the order they're listed.
                 var clubs = table.Select(r => T(r.TeamId)).ToList();
@@ -345,7 +348,10 @@ public sealed class LeagueBook
         var list = new List<(string, string)>();
         if (p.Kind == CompetitionKind.Continental)
         {
-            list.Add(("Format", $"A club cup of {clubs} clubs from: {string.Join(", ", p.Entrants.Select(e => $"{Competitions.All.FirstOrDefault(x => x.Key == e.LeagueKey)?.Name ?? e.LeagueKey} ({e.Clubs})"))}. Clubs qualify by last season's table."));
+            string Of(string key) => Competitions.All.FirstOrDefault(x => x.Key == key)?.Name ?? key;
+            list.Add(("Format", p.Members.Length > 0
+                ? $"A club cup of {clubs} clubs: the licensed clubs (Real Madrid, Barcelona, Fenerbahçe, Olympiacos, Panathinaikos, Zalgiris and the rest) enter every season, whatever their league finish; the other places go to the best of the rest from {string.Join(", ", p.Entrants.Select(e => Of(e.LeagueKey)))}, by last season's table."
+                : $"A club cup of {clubs} clubs from: {string.Join(", ", p.Entrants.Select(e => $"{Of(e.LeagueKey)} ({e.Clubs})"))}. Clubs qualify by last season's table."));
         }
         else
         {
@@ -367,12 +373,15 @@ public sealed class LeagueBook
         list.Add(("Game", RulesText(p.Rules)));
         int perOpp = p.RoundRobins;
         list.Add(("Season", $"{(perOpp == 1 ? "Everyone plays everyone once" : perOpp == 2 ? "Home and away against everyone" : $"Everyone plays everyone {perOpp} times")}"
-                           + $" ({(clubs - 1) * perOpp} games), from {new DateOnly(2000, p.Start.Month, p.Start.Day):MMMM d}."));
+                           + $" ({(clubs - 1) * perOpp} games), from {new DateOnly(2000, p.Start.Month, p.Start.Day):MMMM d}"
+                           + (p.RegularEnd is { } re ? $" to {new DateOnly(2001, re.Month, re.Day):MMMM d}." : ".")));
         list.Add(("Playoffs", p.DivisionPlayoffs && clubs == UsaPyramid.ProSize
             ? $"The top two in each division (16 teams), seeded 1-8 by record within their conference: first round and conference semi-finals best of five, conference finals and the final best of seven. The eight third-placed teams play the {Postseason.ThirdPlaceName} (best of three) for a trophy and prize money."
             : p.DivisionPlayoffs ? "None this season: the table decides the title (the division playoffs start once the league has four divisions of four in each conference)."
             : p.Playoffs.Length == 0 ? "None: the table decides the title."
-            : $"Top {p.Playoffs[0].Teams}: " + string.Join(", ", p.Playoffs.Select(r => r.BestOf == 1 ? $"{r.Name} (one game)" : $"{r.Name} (best of {r.BestOf})"))
+            : (p.PlayIn ? $"Top {p.Playoffs[0].Teams - 2} go straight in; 7th-10th play the play-in (7v8 for 7th, then the loser hosts the 9v10 winner for 8th). "
+                        : $"Top {p.Playoffs[0].Teams}: ")
+              + string.Join(", ", p.Playoffs.Select(r => r.BestOf == 1 ? $"{r.Name} (one game)" : $"{r.Name} (best of {r.BestOf})"))
               + (p.FinalFour ? ". The last four meet at a Final Four in late May." : ".")));
         list.Add(("Simulation", c.FullSim ? "Full match engine (box scores for every game)." : "Quick results (scores and player lines, no box scores)."));
         return list;
