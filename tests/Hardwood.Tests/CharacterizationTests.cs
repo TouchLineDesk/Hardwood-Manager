@@ -204,7 +204,9 @@ public class CharacterizationTests
         // Run 218 (K5 slice 2: eight more leagues' real clubs): re-pinned (was D88ED375B3F43A1F) for the same reason; with the
         // standing and capacities taken out, the old pin held exactly again.
         // Run 219 (K5 slice 3: nine more leagues) re-pinned (was F7D0EC335FFA5A5E), the same way: names alone keep the old pin.
-        Pin("career seed 2026, 30 days, no saves", "CAB48C3C9C4B0D58", Session(s));
+        // Run 221 (W1, the media cast): re-pinned (was CAB48C3C9C4B0D58). Only the inbox line moved: the columnists' preseason
+        // picks arrive on day one (one more message). With that message taken out, the old pin holds exactly; picks draw nothing.
+        Pin("career seed 2026, 30 days, no saves", "42A3A240E402A93E", Session(s));
     }
 
     [Fact]
