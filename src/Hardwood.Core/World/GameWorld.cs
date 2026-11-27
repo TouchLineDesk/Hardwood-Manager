@@ -813,11 +813,16 @@ public sealed class GameWorld
     /// every player in the pool at every pick).
     public IReadOnlyList<(double Level, double Scale)> Options(Player p)
     {
-        var stamp = (Nabl.Season, SummerStarted, SummerEnded, Competitions.Count, Levels.Count);
+        // Run 218 (Run198's reload test, in the real-clubs world): the stamp now holds what the list is made of, the top
+        // league's mean ability and the league levels. It held only counts, so a list cached weeks earlier (or by a page that
+        // asked) was still used in the summer, while a reloaded career built a fresh one: the two priced players differently
+        // and drew different numbers.
+        var top = Nabl.Teams.SelectMany(t => t.Roster).Select(x => (double)x.CurrentAbility).DefaultIfEmpty(0).Average();
+        double levels = 0; foreach (var v in Levels.Values) levels += v;
+        var stamp = (Nabl.Season, SummerStarted, SummerEnded, Competitions.Count, Levels.Count, top, levels);
         if (stamp != _optionsStamp) { _options.Clear(); _optionsStamp = stamp; }
         if (_options.TryGetValue(p.Nationality, out var list)) return list;
         list = new List<(double, double)>();
-        var top = Nabl.Teams.SelectMany(t => t.Roster).Select(x => (double)x.CurrentAbility).DefaultIfEmpty(0).Average();
         list.Add((top, 1.0));
         foreach (var c in Competitions)
             if (c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Count > 0 && Levels.TryGetValue(c.Key, out var level)
@@ -832,7 +837,7 @@ public sealed class GameWorld
         return _options[p.Nationality] = list;
     }
     private readonly Dictionary<string, List<(double Level, double Scale)>> _options = new();
-    private (int, int, int, int, int) _optionsStamp;
+    private (int, int, int, int, int, double, double) _optionsStamp;
 
     /// <summary>H61 (run 110): the least this player takes to play below the top league.</summary>
     public long AskingFloor(Player p, DateOnly on) => ContractMarket.AskingFloor(p, on, Options(p));
