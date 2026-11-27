@@ -1445,7 +1445,8 @@ public sealed partial class GameSession
             var waiting = MyExpiring;
             Post("Summer: contract decisions", (waiting.Count == 0 ? "No contracts expire this summer." :
                     $"{waiting.Count} contract{(waiting.Count == 1 ? " is" : "s are")} up: {string.Join(", ", waiting.Select(p => $"{p.Name} (asks ${DemandOf(p).Wage / 1e6:F2}M)"))}. Talk to them on the Offseason page, or let them go.")
-                + $"\n\nFree agents can be signed all summer within your budget ({MyBudgetLine}). Anyone you haven't renewed leaves when the summer ends, and if the squad is short of {MyRosterMin}, your sporting director makes up the numbers.", "Roster");
+                + $"\n\nFree agents can be signed all summer within your budget ({MyBudgetLine}). Anyone you haven't renewed leaves when the summer ends, and the season can't start with fewer than {MyRosterMin}"
+                + (Delegated.Signings ? " (your sporting director makes up the numbers if you leave it short)." : ": sign them yourself, or hand the summer signings to your sporting director (Staff page, Delegate).") , "Roster");
             return;
         }
 

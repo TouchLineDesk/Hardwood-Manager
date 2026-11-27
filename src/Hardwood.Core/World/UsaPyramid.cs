@@ -1088,7 +1088,7 @@ public static class UsaPyramid
             }
             if (filled.Count > 0)
                 news.Add(($"{mine.FullName} make up the numbers",
-                    $"The {Hardwood.Core.Names.Brand.Top} needs {fin.RosterMin} players, so your sporting director signed {string.Join(", ", filled.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year minimum deals."));
+                    $"The {Hardwood.Core.Names.Brand.Top} needs {fin.RosterMin} players, so {(world.DelegateSignings ? "your sporting director signed" : "the league filled the squad with")} {string.Join(", ", filled.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year minimum deals."));
         }
         return news;
     }

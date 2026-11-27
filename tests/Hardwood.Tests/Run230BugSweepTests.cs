@@ -86,6 +86,7 @@ public class Run230BugSweepTests
         Assert.False(s.Delegated.Signings);
         Cut(s, 7);
         Assert.Equal(GameWorld.RosterMinimum, s.NextSeasonRosterMin);
+        Assert.Equal(s.NextSeasonRosterMin, s.MyRosterMin);
         var hold = s.SeasonStartHold();
         _out.WriteLine(hold);
         Assert.NotNull(hold);
@@ -139,6 +140,7 @@ public class Run230BugSweepTests
         _out.WriteLine($"{s.HumanTeam.FullName}: going down {s.GoingDown()}");
         Assert.True(s.GoingDown(), "seed 31's weakest club goes down (run 229's measure)");
         Assert.Equal(GameWorld.RosterMinimum, s.NextSeasonRosterMin);
+        Assert.Equal(s.NextSeasonRosterMin, s.MyRosterMin);   // review: releases, minimum deals and pages count to the hold's number
         Cut(s, GameWorld.RosterMinimum);
         if (s.HumanTeam.Roster.Count(p => !s.MyExpiring.Contains(p)) == GameWorld.RosterMinimum) Assert.Null(s.SeasonStartHold());   // 11 is enough: not 13
         Cut(s, 9);
