@@ -79,6 +79,12 @@ https://claude.ai/artifact/9MjakW3Aqhy7hqiZgrHF3r. The next build run reads them
   home state, his stars and his rank as a recruit). Your own players' stories are told once each, from real game data:
   the freshman phenom, the hometown hero, the walk-on who earns minutes (and a scholarship the next summer if one is
   open), the senior's breakout and the one the big programs overlooked.
+- **The columnists (new in v0.209.0, the inbox):** three made-up writers cover your career: your local beat writer, a national
+  college writer (Dana Whitcombe) and a stats writer (Priya Venkataraman); in a pro career an old-school columnist (Walt
+  Brennecke) takes the college writer's place. Their preseason picks of your conference ride in the preseason message; on
+  Selection Sunday they are judged against the final table ("picked you 12th. You finished 9th."). In a pro career the picks
+  arrive on day one, the stats writer's power rankings ride in about every fourth weekly results message, and the verdict
+  comes when the playoffs start.
 - **No transfers and no redshirts:** a player stays at the program he enrolls at for four years (Danny's rule).
 - **International (new in v0.195.0, the left menu):** every country with twelve players aged 17+ anywhere in the world
   fields a national team (about 40), ranked in the FIBA world ranking. Pick one to see its twelve and their clubs; the FIBA

@@ -63,6 +63,8 @@ public sealed class MediaDesk
     public int AutoAnswered { get; set; }
     /// <summary>The pre-game studio show's tracked picks (#446). Older saves load with none.</summary>
     public StudioDesk Studio { get; set; } = new();
+    /// <summary>W1 (run 221): the columnists' preseason picks and their verdicts. Older saves load with none.</summary>
+    public ColumnBook Columns { get; set; } = new();
 
     public IEnumerable<PendingDecision> OpenFor(int teamId) => Decisions.Where(d => d.Open && d.TeamId == teamId);
     public PendingDecision? Find(int id) => Decisions.FirstOrDefault(d => d.Id == id);

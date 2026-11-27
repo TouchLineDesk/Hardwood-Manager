@@ -626,6 +626,7 @@ public sealed partial class GameSession
         GradeStudioPicks(played);
         PlayWorld(Today);
         CollegeCalendar(); // CS3 (run 127): the preseason polls and media day, Senior Night
+        MediaCastDay(); // W1 (run 221): the columnists' preseason picks, judged at the end of the regular season
         PlayFibaWindows(); // I3 (run 210): the qualifying windows, by quick result on their own stream
         NationalJobDay(); // I6a (run 214): the national-team offers, on their own stream
         bool inSeason = Abroad ? Phase != SessionPhase.Offseason : Phase is SessionPhase.RegularSeason or SessionPhase.Postseason;
@@ -644,6 +645,7 @@ public sealed partial class GameSession
         MaybePostJobs();
         MaybePostResults(now: Phase is SessionPhase.Postseason or SessionPhase.Offseason);
         AttachPressToResults();
+        AttachPowerRankings(); // W1 (run 221)
         MaybeAutoClear();
         if (Phase == SessionPhase.RegularSeason)
         {
