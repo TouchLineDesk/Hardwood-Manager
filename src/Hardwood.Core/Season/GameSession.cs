@@ -1580,6 +1580,9 @@ public sealed partial class GameSession
                 Offseason.DelegateSignings = Delegated.Signings;
                 Offseason.DelegateStaff = Delegated.StaffHiring;
                 if (Employed && InNabl) Offseason.HumanBudgetCap = MySummerBudget;
+                Offseason.HumanRosterMin = Employed && InNabl && GoingDown() ? GameWorld.RosterMinimum : null;
+                World.DelegateSignings = Employed && Delegated.Signings;
+                World.HumanClubId = Employed && !InCollege ? HumanTeam.Id : null;
                 Offseason.Complete();
                 PostSummerSignings();
                 CloseSummerOpenings();

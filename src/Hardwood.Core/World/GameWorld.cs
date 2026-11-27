@@ -916,6 +916,16 @@ public sealed class GameWorld
 
     /// <summary>The club abroad you coach (set by the session): its contracts are yours to decide, not the computer's.</summary>
     public int? ManagedClubId { get; set; }
+    /// <summary>K46 (run 230): you handed the end-of-summer signings to your sporting director (the session's
+    /// <c>Delegation.Signings</c>, set before each summer's end; not saved). Off: the world signs nobody for your club in its
+    /// summer refill; only the reported one-year fill to the league minimum (H88) remains, for a caller that skips the
+    /// session's hold.</summary>
+    public bool DelegateSignings { get; set; }
+    /// <summary>Run 230: your pro club, wherever it plays (set by the session before the summer's end; not saved). A top-league
+    /// club relegated into tier 2 at the rollover isn't <see cref="ManagedClubId"/> yet, so the refill that tops relegated
+    /// clubs up to <see cref="RosterSize"/> on multi-year deals used to sign for it without asking; now it gets only the reported
+    /// one-year fill to the league minimum, like a club abroad.</summary>
+    public int? HumanClubId { get; set; }
     /// <summary>Your club abroad's expiring players this summer, waiting for you to renew or release them (saved).</summary>
     public Dictionary<int, List<Player>> AwaitingDecision { get; } = new();
 
@@ -1122,6 +1132,8 @@ public sealed class GameWorld
             .ToDictionary(c => c.Key, c => c.Clubs.Average(t => Strength(t)));
         var needs = clubs.ToDictionary(x => x.team.Id, x => new Queue<Departure>(
             (Departed.TryGetValue(x.team.Id, out var d) ? d : new List<Departure>()).OrderByDescending(d => d.Ca)));
+        // K46 (run 230): your club's roster before the refill, so the delegated signings can be named in the inbox.
+        var managedBefore = ManagedClubId is int mb && TeamById(mb) is { } mbt ? mbt.Roster.Select(p => p.Id).ToHashSet() : null;
         bool any = true;
         while (any)
         {
@@ -1129,8 +1141,10 @@ public sealed class GameWorld
             // Weakest clubs choose first, like a draft (critic review #2: best-first let dynasties keep the best of the pool).
             foreach (var (comp, team) in clubs.OrderBy(x => Strength(x.team)))
             {
-                // You build your own squad; the sporting director only makes up the numbers if you leave it short.
+                // You build your own squad; the sporting director only makes up the numbers if you leave it short, and
+                // (K46, run 230) only when you handed him the summer signings.
                 if (team.Roster.Count >= (team.Id == ManagedClubId ? ManagedMinimum : RosterSize)) continue;
+                if (team.Id == ManagedClubId && !DelegateSignings) continue;
                 if (team.Id == ManagedClubId) needs[team.Id].Clear();
                 var club = ClubOf(comp, team);
                 var locals = LocalsOf(comp.Profile, club);
@@ -1196,6 +1210,12 @@ public sealed class GameWorld
             }
         }
         Departed.Clear();
+        if (managedBefore != null && ManagedClubId is int mj && TeamById(mj) is { } mt
+            && mt.Roster.Where(p => !managedBefore.Contains(p.Id)).ToList() is { Count: > 0 } joinedByDirector)
+            News.Add(($"{mt.FullName}: your sporting director's summer signings",
+                "You handed the end-of-summer signings to your sporting director (Staff page, Delegate). He made up the numbers to the league minimum of "
+                + $"{ManagedMinimum}:\n" + string.Join("\n", joinedByDirector.Select(p => $"{p.Name} ({p.PrimaryPosition}, CA {p.CurrentAbility}): "
+                    + $"{Budgets.Money(p.Contract?.Salary ?? 0)} × {p.Contract?.Years ?? 1}"))));
         // H56 (run 87): the minimum deals your sporting director signed to make up your roster are the owner's to fund.
         if (ManagedClubId is int mid && clubs.FirstOrDefault(x => x.team.Id == mid).team is { } managed)
             Budgets.OwnerFunds(managed, ContractMarket.Payroll(managed));
@@ -1203,7 +1223,7 @@ public sealed class GameWorld
         foreach (var n in UsaPyramid.Promote(this, Nabl, new StaffGenerator(new Rng(_rng.NextULong())), date)) News.Add(n);
         // Relegation releases leave gaps: those clubs sign again at their new level.
         foreach (var comp in Competitions.Where(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic))
-        foreach (var team in comp.Clubs.Where(t => t.Id != ManagedClubId))
+        foreach (var team in comp.Clubs.Where(t => t.Id != ManagedClubId && t.Id != HumanClubId))
         {
             var club = ClubOf(comp, team);
             while (team.Roster.Count < RosterSize)
@@ -1226,7 +1246,7 @@ public sealed class GameWorld
         // H88 (run 104): your own club skips the refill above (you pick your squad), but relegation clauses run after your
         // sporting director's summer signings, so a relegated club could open the season under the minimum (Charlotte FC,
         // 10 players on Oct 22). He makes up the numbers to the minimum, and the inbox names who he signed.
-        if (ManagedClubId is int mine && Competitions.FirstOrDefault(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Any(t => t.Id == mine)) is { } myComp)
+        if ((ManagedClubId ?? HumanClubId) is int mine && Competitions.FirstOrDefault(c => c.Clubs.Count > 0 && c.Profile.Kind == CompetitionKind.Domestic && c.Clubs.Any(t => t.Id == mine)) is { } myComp)
         {
             var team = myComp.Clubs.First(t => t.Id == mine);
             var club = ClubOf(myComp, team);
@@ -1260,8 +1280,10 @@ public sealed class GameWorld
             {
                 Budgets.OwnerFunds(team, ContractMarket.Payroll(team));
                 News.Add(($"{team.FullName} make up the numbers",
-                    $"{myComp.Profile.Name} needs at least {ManagedMinimum} players, and the squad was down to {team.Roster.Count - made.Count} after the summer's moves, so your sporting director signed "
-                    + $"{string.Join(", ", made.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year deals."));
+                    $"{myComp.Profile.Name} needs at least {ManagedMinimum} players, and the squad was down to {team.Roster.Count - made.Count} after the summer's moves, so "
+                    + (DelegateSignings ? "your sporting director signed " : "the league filled it with ")
+                    + $"{string.Join(", ", made.Select(p => $"{p.Name} ({p.PrimaryPosition})"))} on one-year deals."
+                    + (DelegateSignings ? "" : " Who handles the summer signings is on the Staff page (Delegate).")));
             }
         }
         RetireFadingStars(freeAgents, date);

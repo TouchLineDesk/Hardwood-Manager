@@ -22,7 +22,7 @@ public sealed record Columnist(string Key, string Name, string Outlet, ColumnVoi
     public string He => She ? "she" : "he";
     public string HeCap => She ? "She" : "He";
     public string His => She ? "her" : "his";
-    /// <summary>"Priya Venkataraman (The Possession Log)".</summary>
+    /// <summary>"Ryan Holt (The Possession Log)".</summary>
     public string Byline => $"{Name} ({Outlet})";
 }
 
@@ -34,7 +34,9 @@ public sealed class ColumnPicks
     /// <summary>Your team when the picks were made (a verdict is only written for the team that was picked).</summary>
     public int TeamId { get; set; }
     public string Key { get; set; } = "";
-    public string Name { get; set; } = "";
+    private string _name = "";
+    /// <summary>The writer's name. Run 230 (Danny, Nov 27): a save made before the cast was renamed loads with today's names.</summary>
+    public string Name { get => _name; set => _name = MediaCast.CurrentName(value); }
     public string Outlet { get; set; } = "";
     /// <summary>The table's name when picked ("East", "ACC", "Liga ACB").</summary>
     public string Table { get; set; } = "";
@@ -72,17 +74,44 @@ public sealed class ColumnBook
 /// </summary>
 public static class MediaCast
 {
-    public static readonly Columnist Numbers = new("numbers", "Priya Venkataraman", "The Possession Log", ColumnVoice.Numbers, true);
-    public static readonly Columnist OldSchool = new("oldschool", "Walt Brennecke", "the Courtside Sentinel", ColumnVoice.OldSchool, false);
-    public static readonly Columnist CollegeWriter = new("college", "Dana Whitcombe", "Campus Hoops Weekly", ColumnVoice.College, true);
+    // Run 230 (Danny, Nov 27, `danny-columnist-names-nov27`): plain American names, all invented. Outlets unchanged.
+    public static readonly Columnist Numbers = new("numbers", "Ryan Holt", "The Possession Log", ColumnVoice.Numbers, false);
+    public static readonly Columnist OldSchool = new("oldschool", "Frank Mahoney", "the Courtside Sentinel", ColumnVoice.OldSchool, false);
+    public static readonly Columnist CollegeWriter = new("college", "Mike Delaney", "Campus Hoops Weekly", ColumnVoice.College, false);
 
+    // Same lengths and the same she/he slots as the first cast, so a team keeps its beat writer's slot (the hash picks
+    // indices) and an older save's name maps one to one (CurrentName).
     private static readonly (string first, bool she)[] BeatFirst =
     {
-        ("Marcus", false), ("Elena", true), ("Tom", false), ("Rachel", true), ("Andre", false), ("Megan", true),
-        ("Luis", false), ("Hannah", true), ("Darnell", false), ("Sofia", true), ("Grant", false), ("Noor", true),
+        ("Jake", false), ("Sarah", true), ("Chris", false), ("Amy", true), ("Matt", false), ("Katie", true),
+        ("Steve", false), ("Lauren", true), ("Greg", false), ("Jenny", true), ("Dan", false), ("Megan", true),
     };
     private static readonly string[] BeatLast =
+        { "Morrison", "Walker", "Sullivan", "Carter", "Kelly", "Fletcher", "Hughes", "Bennett", "Foster", "Mitchell", "Coleman", "Porter" };
+
+    // The first cast (run 221), for saves made before run 230.
+    private static readonly string[] OldBeatFirst = { "Marcus", "Elena", "Tom", "Rachel", "Andre", "Megan", "Luis", "Hannah", "Darnell", "Sofia", "Grant", "Noor" };
+    private static readonly string[] OldBeatLast =
         { "Lindqvist", "Okafor", "Barrios", "Kowalczyk", "Ashby", "Delacroix", "Fairweather", "Novak", "Tremblay", "Haddad", "Castellanos", "Whitlock" };
+
+    /// <summary>Every beat writer's name, for tests (no clash with a real journalist).</summary>
+    public static IEnumerable<string> AllBeatNames => BeatFirst.SelectMany(f => BeatLast.Select(l => $"{f.first} {l}"));
+
+    /// <summary>Today's name for a writer saved under the first cast's name (run 230); any other name is returned unchanged.</summary>
+    public static string CurrentName(string? saved)
+    {
+        if (string.IsNullOrEmpty(saved)) return saved ?? "";
+        switch (saved)
+        {
+            case "Priya Venkataraman": return Numbers.Name;
+            case "Walt Brennecke": return OldSchool.Name;
+            case "Dana Whitcombe": return CollegeWriter.Name;
+        }
+        int sp = saved.IndexOf(' ');
+        if (sp <= 0) return saved;
+        int fi = Array.IndexOf(OldBeatFirst, saved[..sp]), li = Array.IndexOf(OldBeatLast, saved[(sp + 1)..]);
+        return fi >= 0 && li >= 0 ? $"{BeatFirst[fi].first} {BeatLast[li]}" : saved;
+    }
     private static readonly string[] BeatPaper = { "Hoops Ledger", "Fast Break", "Baseline", "Tip-Off Daily" };
 
     /// <summary>Your team's beat writer: the same writer for the same team in every career (a hash of its full name).</summary>

@@ -189,7 +189,7 @@ public class PyramidTests
         Assert.Contains(world.News, n => n.Item1.Contains("relegation release clauses") && n.Item1.StartsWith(mine.FullName));
         Assert.True(mine.Roster.Count >= GameWorld.ManagedMinimum, $"{mine.Roster.Count} players, minimum {GameWorld.ManagedMinimum}");
         var fill = world.News.First(n => n.Item1 == $"{mine.FullName} make up the numbers");
-        Assert.Contains("your sporting director signed", fill.Item2);
+        Assert.Contains("the league filled it with", fill.Item2);
         Assert.All(mine.Roster, p => Assert.NotNull(p.Contract));
     }
 

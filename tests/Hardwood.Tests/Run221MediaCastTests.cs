@@ -69,8 +69,8 @@ public class Run221MediaCastTests
         Assert.StartsWith($"{beat.Name} ({beat.Outlet}) picked you 11th. You won the A-10.", line);
         Assert.Contains("column back", line);
         Assert.Contains("Better than I wrote", MediaCast.VerdictLine(beat, 12, 9, "X", "A-10"));
-        Assert.StartsWith("Priya Venkataraman (The Possession Log) picked you 3rd. You finished 9th.", MediaCast.VerdictLine(MediaCast.Numbers, 3, 9, "X", "East"));
-        Assert.StartsWith("Walt Brennecke (the Courtside Sentinel) picked you to win the East, and you did.", MediaCast.VerdictLine(MediaCast.OldSchool, 1, 1, "X", "East"));
+        Assert.StartsWith("Ryan Holt (The Possession Log) picked you 3rd. You finished 9th.", MediaCast.VerdictLine(MediaCast.Numbers, 3, 9, "X", "East"));
+        Assert.StartsWith("Frank Mahoney (the Courtside Sentinel) picked you to win the East, and you did.", MediaCast.VerdictLine(MediaCast.OldSchool, 1, 1, "X", "East"));
         Assert.Contains("Told you so", MediaCast.VerdictLine(MediaCast.OldSchool, 5, 6, "X", "East"));
         // Review: a pro regular season's first place isn't the title; a low pick that sinks isn't "a good team let down".
         Assert.Contains("You finished top of the East.", MediaCast.VerdictLine(MediaCast.Numbers, 6, 1, "X", "East", 15, college: false));
