@@ -1264,6 +1264,10 @@ public sealed partial class GameSession
                 _ => e.Player.Name,
             };
             string body = InCollege ? CollegeWording(e) : e.Text;
+            // K37's leftover (run 220): once the college season is over (the title decided), nobody plays again until the
+            // fall, so a minutes complaint isn't posted (a graduating senior "still wants a word" a month after the last
+            // game). Text only: the mood itself moves as before.
+            if (InCollege && e.Kind == People.PeopleEventKind.WantsTalk && World.College?.Season.ChampionId != null) continue;
             if (InCollege && e.Kind == People.PeopleEventKind.WantsTalk) (title, body) = OneComplaintThread(e.Player, title, body);
             Post(title, body, "Squad");
         }

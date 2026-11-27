@@ -84,6 +84,9 @@ public static class Assistant
         if (t.Key.StartsWith("staffdeal-")) return $"remind:staffdeal:{career}"; // one decision a summer: once a season
         // K37 (run 208): a missing staff role is a standing reminder too ("Hire an assistant coach" sat on the panel 30 days).
         if (t.Key.StartsWith("staff-")) return $"remind:staff:{career}-{s.Phase}";
+        // K37's leftover (run 220): an unhappy player is named on at most two days per spell and phase ("Devante Summers is
+        // unhappy" sat on the panel 23 times); the Squad page keeps his mood, and a new name starts a new reminder.
+        if (t.Key.StartsWith("morale-")) return $"remind:{t.Key}:{career}-{s.Phase}";
         return null;
     }
 

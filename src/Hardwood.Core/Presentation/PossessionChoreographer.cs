@@ -624,7 +624,7 @@ public static class PossessionChoreographer
                     c.Ball.Add(new BallSegment(tt, tt + passTime, BallMode.Pass, holder, to, default, default, 0.25));
                     if (last && assister >= 0 && to == target)
                         c.Lines.Add(new(tt, $"{N(players[holder])} finds {N(players[to])} {Where(e.Zone)}", false));
-                    else if (PassCall(passesSaid++, input.Index, N(players[holder]), N(players[to]), offName) is { } call)
+                    else if (last && PassCall(passesSaid++, input.Index, N(players[holder]), N(players[to]), offName) is { } call)   // K43 (run 220): the called pass is the one to the shooter
                         c.Lines.Add(new(tt, call, false));
                     holder = to;
                     tt += passTime + 0.9;
