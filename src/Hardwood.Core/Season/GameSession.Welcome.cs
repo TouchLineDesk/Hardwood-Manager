@@ -77,7 +77,7 @@ public sealed partial class GameSession
             goal = $" Owner {HumanTeam.Owner.Name} wants you to {g.TrimEnd('.')} (around {e.TargetWins} wins).";
         }
         string text = $"You are the new head coach and general manager of {HumanTeam.TheFullName} ({HumanLeagueName}).{goal}\n\n"
-            + FirstGameSentence("", NextMyGame);
+            + (NextMyGame is { } next ? FirstGameSentence("", next) : "Set your rotation and tactics, then press Continue."); // review: no college summer line
         if (Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last)
             text += $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}). The rosters, contracts and history are real: see \"About this world\".";
         return text;

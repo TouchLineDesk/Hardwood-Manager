@@ -333,12 +333,17 @@ public static class PostgameDesk
         var (leadH, leadA) = GameFlow.BiggestLeads(r);
         int loserLead = lose == h ? leadH : leadA, winnerLead = win == h ? leadH : leadA;
         int gap = Math.Abs(margin);
+        bool winHomeSide = win == h;
         string story = $"{win.Team.FullName} beat {lose.Team.FullName} {win.Points}-{lose.Points}";
-        if (r.Overtimes > 0) story += r.Overtimes == 1 ? " in overtime." : $" in {r.Overtimes} overtimes.";
+        // K43's leftover (run 224; review): the desk agrees with the final call (GameCalls.Final) when a big lead nearly
+        // went: a 15-point lead after halftime, won by 6 or less, and not a comeback (10 down after halftime or 15 at any time).
+        bool comebackWin = (r.Flow.Count > 0 && LateLead(r, !winHomeSide) >= 10) || loserLead >= 15;
+        int lateLead = r.Flow.Count > 0 ? LateLead(r, winHomeSide) : 0;
+        if (!comebackWin && lateLead >= 15 && gap <= 6)
+            story += (r.Overtimes == 1 ? " in overtime" : r.Overtimes > 1 ? $" in {r.Overtimes} overtimes" : "")
+                + $". They led by {lateLead} after halftime and had to hold off a late {lose.Team.Name} rally.";
+        else if (r.Overtimes > 0) story += r.Overtimes == 1 ? " in overtime." : $" in {r.Overtimes} overtimes.";
         else if (r.Flow.Count > 0 && loserLead >= 10) story += $", and they were down {loserLead} at one point.";
-        // K43's leftover (run 224): the desk agrees with the final call when a big lead nearly went.
-        // As the call (GameCalls.Final): a 15-point lead after halftime, won by 6 or less.
-        else if (r.Flow.Count > 0 && LateLead(r, win == h) is >= 15 and var late && gap <= 6) story += $". They led by {late} after halftime and had to hold off a late {lose.Team.Name} rally.";
         else if (r.Flow.Count > 0 && loserLead == 0) story += ": they led from the first basket to the last.";
         else if (gap >= 20) story += ". It was never close.";
         else if (gap <= 3) story += ": it came down to the last possession.";

@@ -85,6 +85,8 @@ public class Run224PolishTests
     private static Team T(int id, string abbr) =>
         new() { Id = id, City = abbr, Name = abbr + "s", Abbreviation = abbr, Division = "D", PrimaryColor = "#0033A0", SecondaryColor = "#FFFFFF" };
 
+    private static PlayEvent P(int hs, int aw, int period) => new(period, 10, PlayKind.Shot, true, null, null, ShotZone.Rim, true, hs, aw);
+
     private static GameResult Game(params (int period, int home, int away)[] flow)
     {
         var r = new GameResult { Home = new TeamBox { Team = T(1, "SAS"), Possessions = 98 }, Away = new TeamBox { Team = T(2, "SEA"), Possessions = 98 }, Periods = 4, PeriodSeconds = 720 };
@@ -108,6 +110,12 @@ public class Run224PolishTests
         // A 15-point lead in the first half only isn't one (as GameCalls.Final).
         var early = PostgameDesk.Build(Game((1, 30, 15), (3, 60, 58), (4, 100, 96)))[0].Line!.Text;
         Assert.DoesNotContain("rally", early);
+        // Review: 12 down in the first quarter, 17 up in the third, won by 4: the call says "hold off the rally", so does the desk.
+        var both = PostgameDesk.Build(Game((1, 10, 22), (2, 50, 50), (3, 90, 73), (4, 110, 106)))[0].Line!.Text;
+        Assert.StartsWith("SAS HOLD OFF THE RALLY!", GameCalls.Final(new[] { P(10, 22, 1), P(50, 50, 2), P(90, 73, 3), P(110, 106, 4) }, "SAS", "SEA", 110, 106, 4)[0]);
+        Assert.Contains("led by 17 after halftime", both);
+        // A real comeback (10 down after halftime) isn't called a held-off rally.
+        Assert.DoesNotContain("rally", PostgameDesk.Build(Game((1, 30, 15), (3, 60, 72), (3, 85, 70), (4, 104, 100)))[0].Line!.Text);
     }
 
     [Fact]
