@@ -14,7 +14,7 @@ namespace Hardwood.Tests;
 /// </summary>
 public class Run219RealClubsTests
 {
-    private static readonly string[] Eight =
+    private static readonly string[] Nine =
     {
         WorldLeagues.Poland, WorldLeagues.Baltic, WorldLeagues.Czechia, WorldLeagues.Benelux, WorldLeagues.Argentina,
         WorldLeagues.Brazil, WorldLeagues.PuertoRico, WorldLeagues.Mexico, WorldLeagues.Africa,
@@ -24,7 +24,7 @@ public class Run219RealClubsTests
     public void A_new_world_has_the_real_clubs_of_the_nine_leagues()
     {
         var (_, world) = RealWorldData.NewWorld(31, players: false);
-        foreach (var key in Eight)
+        foreach (var key in Nine)
         {
             var comp = world.Competitions.First(c => c.Key == key);
             Assert.All(comp.Clubs, t => Assert.True(RealClubs.Of(t) != null || MadeUp(t), $"{t.FullName} is not real"));
@@ -70,7 +70,7 @@ public class Run219RealClubsTests
         foreach (ulong seed in new ulong[] { 31, 2026, 77 })
         {
             var (_, world) = RealWorldData.NewWorld(seed, players: false);
-            foreach (var key in Eight)
+            foreach (var key in Nine)
             foreach (var t in world.Competitions.First(c => c.Key == key).Clubs)
             {
                 double top = t.Roster.OrderByDescending(p => p.CurrentAbility).Take(8).Average(p => p.CurrentAbility);
@@ -95,7 +95,7 @@ public class Run219RealClubsTests
             using (var src = new GZipStream(File.OpenRead(Path.Combine(AppContext.BaseDirectory, "SaveFixtures", CollegeSaveCompatibilityTests.LaunchFixtureName)), CompressionMode.Decompress))
             using (var dst = File.Create(path)) src.CopyTo(dst);
             var s = GameSession.Load(path);
-            foreach (var key in Eight)
+            foreach (var key in Nine)
             {
                 var comp = s.World.Competitions.First(c => c.Key == key);
                 Assert.All(comp.Clubs, t => Assert.True(RealClubs.Of(t) != null || MadeUp(t), $"{key}: {t.FullName} not renamed"));
@@ -103,6 +103,10 @@ public class Run219RealClubsTests
             Assert.Equal(11409, s.World.Competitions.First(c => c.Key == WorldLeagues.Poland).Clubs.Single(t => t.Name == "Trefl").ArenaCapacity);
             Assert.Equal(1700, s.World.Competitions.First(c => c.Key == WorldLeagues.Baltic).Clubs.Single(t => t.Name == "Ogre").ArenaCapacity);
             Assert.Contains(s.World.Competitions.First(c => c.Key == WorldLeagues.Argentina).Clubs, t => t.FullName == "Argentino de Junín");
+            // Review: a club whose real name equals the made-up one (Antwerp Giants) still gets its real arena size.
+            Assert.Equal(5218, s.World.Competitions.First(c => c.Key == WorldLeagues.Benelux).Clubs.Single(t => t.Name == "Giants").ArenaCapacity);
+            // The BAL's two made-up clubs are left as they were.
+            Assert.Contains(s.World.Competitions.First(c => c.Key == WorldLeagues.Africa).Clubs, t => t.FullName == "Bamako Stade");
             Assert.Equal(0, RealClubs.Rename(s.World, s.League.Teams));
         }
         finally
