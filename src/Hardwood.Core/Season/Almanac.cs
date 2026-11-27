@@ -12,7 +12,7 @@ public sealed record AlmanacSection(string Title, IReadOnlyList<string> Lines);
 /// kept: the champions, the honours, your season, the columnists' best and worst calls (W1), records and milestones, the
 /// Hall of Fame class (pros) or the coaching carousel (college). <see cref="Season"/> is the season's first year.
 /// </summary>
-public sealed record AlmanacEdition(int Season, string Label, string Cover, int? ChampionId, IReadOnlyList<AlmanacSection> Sections)
+public sealed record AlmanacEdition(int Season, string Label, string Cover, int? ChampionId, IReadOnlyList<AlmanacSection> Sections, bool College = false)
 {
     public string Title => $"The {Label} Almanac";
     public AlmanacSection? Section(string title) => Sections.FirstOrDefault(x => x.Title == title);
@@ -29,11 +29,27 @@ public static class Almanac
     public const string Stories = "The year's stories", Honours = "The honours", Yours = "Your season", Calls = "The columnists' calls",
         Records = "Records and milestones", Hall = "The Hall of Fame", Carousel = "The coaching carousel", Abroad = "Around the world";
 
-    /// <summary>The career's editions, newest first: the college game's in a college career, the league's otherwise.</summary>
-    public static List<AlmanacEdition> Editions(GameSession s) =>
-        s.CollegeWords && s.World.College is { } cw
-            ? cw.History.OrderByDescending(h => h.Year).Select(h => College(s, h)).ToList()
-            : s.League.History.OrderByDescending(h => h.Season).Select(h => Pro(s, h)).ToList();
+    /// <summary>The career's editions, newest first: the college game's when this career has coached in college (or is
+    /// there now, in work or not), the league's when it has coached anywhere else (review: a career that moves keeps both).</summary>
+    public static List<AlmanacEdition> Editions(GameSession s)
+    {
+        var cw = s.World.College;
+        bool IsProgram(int id) => cw?.Program(id) != null;
+        bool college = cw != null && (s.InCollege || s.Coach.History.Any(j => IsProgram(j.TeamId)) || s.Media.Columns.Picks.Any(p => IsProgram(p.TeamId)));
+        bool pros = !s.InCollege || cw == null || s.Coach.History.Any(j => !IsProgram(j.TeamId)) || s.Media.Columns.Picks.Any(p => !IsProgram(p.TeamId));
+        var list = new List<AlmanacEdition>();
+        if (college) list.AddRange(cw!.History.Select(h => College(s, h)));
+        if (pros)
+        {
+            var players = PlayersOf(s);
+            list.AddRange(s.League.History.Select(h => Pro(s, h, players)));
+        }
+        return list.OrderByDescending(e => e.Season).ThenBy(e => e.College).ToList();
+    }
+
+    private static Dictionary<int, Player> PlayersOf(GameSession s) =>
+        s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).Concat(s.World?.Players ?? Enumerable.Empty<Player>())
+            .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
 
     public static string SeasonLabel(int season) => $"{season}-{(season + 1) % 100:00}";
     private static string Ord(int n) => AwardsEngine.Ordinal(n);
@@ -42,16 +58,19 @@ public static class Almanac
     // ------------------------------------------------------------------------------------------
     // The pros
 
-    public static AlmanacEdition Pro(GameSession s, SeasonSummary h)
+    public static AlmanacEdition Pro(GameSession s, SeasonSummary h, Dictionary<int, Player>? players = null)
     {
-        var players = s.League.AllActivePlayers.Concat(s.League.FreeAgents).Concat(s.League.Retired).Concat(s.World?.Players ?? Enumerable.Empty<Player>())
-            .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
+        players ??= PlayersOf(s);
         string Who(int? id) => id is { } i && players.TryGetValue(i, out var p) ? p.Name : "";
+        // Review: a winner's club as the ballots had it that season (the vote lines keep it), never where he plays today.
+        var clubThen = new Dictionary<int, string>();
+        if (h.Awards is { } aw)
+            foreach (var v in aw.MvpVoting.Concat(aw.RoyVoting).Concat(aw.DpoyVoting).Concat(aw.SixthManVoting))
+                if (v.Team.Length > 0) clubThen.TryAdd(v.PlayerId, v.Team);
         string WhoWith(int? id)
         {
-            if (id is not { } i || !players.TryGetValue(i, out var p)) return "";
-            var club = p.TeamId is { } t ? s.FindTeam(t) : null;
-            return club != null ? $"{p.Name} ({club.Abbreviation})" : p.Name;
+            string name = Who(id);
+            return name.Length > 0 && clubThen.TryGetValue(id!.Value, out var club) ? $"{name} ({club})" : name;
         }
         var champ = s.FindTeam(h.ChampionTeamId);
         var runner = s.FindTeam(h.RunnerUpTeamId);
@@ -95,7 +114,7 @@ public static class Almanac
         if (honours.Count > 0) sections.Add(new(Honours, honours));
 
         // Your season (the team you coached that season: the one the columnists picked, or today's if you were there).
-        int? yours = TeamThatSeason(s, h.Season, h.Records.Any(r => r.teamId == s.HumanTeam.Id));
+        int? yours = TeamThatSeason(s, h.Season, college: false);
         if (yours is { } y && h.Records.FindIndex(r => r.teamId == y) is var idx and >= 0 && s.FindTeam(y) is { } yt)
         {
             var rec = h.Records[idx];
@@ -104,7 +123,7 @@ public static class Almanac
             sections.Add(new(Yours, new[] { $"{yt.TheFullNameCap} went {rec.wins}-{rec.losses}, {Ord(rank)} of {h.Records.Count} by record. {end}".TrimEnd() }));
         }
 
-        if (CallLines(s, h.Season) is { Count: > 0 } calls) sections.Add(new(Calls, calls));
+        if (CallLines(s, h.Season, college: false) is { Count: > 0 } calls) sections.Add(new(Calls, calls));
 
         // Records and milestones set that season (a game record still standing, the biggest milestones).
         var marks = new List<string>();
@@ -112,7 +131,7 @@ public static class Almanac
         foreach (var (key, label) in RecordBook.PlayerGame.Select(c => (c.Key, c.Label)).Concat(RecordBook.TeamGame.Select(c => (c.Key, c.Label))))
             if (book.Top(key).FirstOrDefault() is { } e && e.Season == h.Season)
                 marks.Add($"{label}: {e.Value:0}, {(e.PlayerId != null ? $"{e.PlayerName} ({e.Team})" : e.Team)} vs {e.Opponent}"
-                    + (e.Date is { } d ? $" on {d:MMM d}" : "") + ". Still the league record.");
+                    + (e.Date is { } d ? $" on {d:MMM d}" : "") + (h.Season > book.FirstSeason ? ". Still the league record." : ". The best since this career began."));
         if (marks.Count > 5) marks = marks.Take(5).ToList();
         marks.AddRange(book.Milestones.Where(m => m.Season == h.Season).OrderByDescending(m => m.Threshold).ThenBy(m => m.Date).Take(3).Select(m => m.Text + "."));
         if (marks.Count > 0) sections.Add(new(Records, marks));
@@ -176,7 +195,7 @@ public static class Almanac
                 honours.Add($"First-team All-Americans: {string.Join(", ", first.Select(id => Named(id)).Where(n => n.Length > 0))}");
             if (honours.Count > 0) sections.Add(new(Honours, honours));
 
-            int? yours = TeamThatSeason(s, h.Year, a.Records.ContainsKey(s.HumanTeam.Id) && cw.History.Max(x => x.Year) == h.Year);
+            int? yours = TeamThatSeason(s, h.Year, college: true);
             if (yours is { } y && a.Records.TryGetValue(y, out var r) && r.Length >= 3 && cw.Program(y) is { } yt)
             {
                 string end = r[2] switch
@@ -196,7 +215,7 @@ public static class Almanac
             }
         }
 
-        if (CallLines(s, h.Year) is { Count: > 0 } calls) sections.Add(new(Calls, calls));
+        if (CallLines(s, h.Year, college: true) is { Count: > 0 } calls) sections.Add(new(Calls, calls));
 
         // The carousel of the spring that followed (kept for four springs).
         var moves = s.Carousel.Where(m => m.Year == h.Year + 1).Take(6).Select(m => m.Why switch
@@ -208,26 +227,30 @@ public static class Almanac
         }).ToList();
         if (moves.Count > 0) sections.Add(new(Carousel, moves));
 
-        return new AlmanacEdition(h.Year, SeasonLabel(h.Year), $"{h.Champion}, national champions", h.ChampionId, sections);
+        return new AlmanacEdition(h.Year, SeasonLabel(h.Year), $"{h.Champion}, national champions", h.ChampionId, sections, College: true);
     }
 
     // ------------------------------------------------------------------------------------------
     // Shared
 
-    /// <summary>The team you coached in a season: the one the columnists picked for you then, else today's team when
-    /// <paramref name="currentFits"/> (you're employed and it played that season).</summary>
-    private static int? TeamThatSeason(GameSession s, int season, bool currentFits)
+    private static bool Kind(GameSession s, int teamId, bool college) => (s.World.College?.Program(teamId) != null) == college;
+
+    /// <summary>The team you coached in a season (of a college or a pro edition): the one the columnists picked for you then,
+    /// else the job your record says you held that season, else today's job if you were hired by then. Review: never today's
+    /// team for a season before you coached it.</summary>
+    private static int? TeamThatSeason(GameSession s, int season, bool college)
     {
-        var picked = s.Media.Columns.Picks.FirstOrDefault(p => p.Season == season);
-        if (picked != null) return picked.TeamId;
-        return s.Employed && currentFits ? s.HumanTeam.Id : null;
+        if (s.Media.Columns.Picks.FirstOrDefault(p => p.Season == season && Kind(s, p.TeamId, college)) is { } picked) return picked.TeamId;
+        if (s.Coach.History.LastOrDefault(j => j.FromSeason <= season && season <= j.ToSeason && Kind(s, j.TeamId, college)) is { } job) return job.TeamId;
+        return s.Employed && Kind(s, s.HumanTeam.Id, college) && s.Job.HiredSeason != 0 && s.Job.HiredSeason <= season
+            ? s.HumanTeam.Id : null;
     }
 
     /// <summary>The columnists' judged picks for a season: each writer's call on your team, then the season's best call and
     /// worst miss across the table (W1's saved picks).</summary>
-    public static List<string> CallLines(GameSession s, int season)
+    public static List<string> CallLines(GameSession s, int season, bool college)
     {
-        var picks = s.Media.Columns.Picks.Where(p => p.Season == season && p.Judged != null && p.Finished.Count > 0).ToList();
+        var picks = s.Media.Columns.Picks.Where(p => p.Season == season && p.Judged != null && p.Finished.Count > 0 && Kind(s, p.TeamId, college)).ToList();
         if (picks.Count == 0) return new();
         int team = picks[0].TeamId;
         picks = picks.Where(p => p.TeamId == team).ToList();
@@ -255,8 +278,8 @@ public static class Almanac
         if (e.Section(Stories) is { } st) lines.AddRange(st.Lines.Take(3));
         if (e.Section(Yours) is { } y) lines.Add(y.Lines[0]);
         if (e.Section(Calls) is { Lines.Count: > 0 } c) lines.Add(c.Lines.FirstOrDefault(l => l.StartsWith("Best call", StringComparison.Ordinal)) ?? c.Lines[0]);
-        string inside = string.Join(" · ", e.Sections.Skip(1).Select(x => x.Title));
-        return string.Join("\n", lines) + $"\n\nInside: {inside}. Every edition is kept on the History page's Almanac tab.";
+        string inside = string.Join(" · ", e.Sections.Where(x => x.Title != Stories).Select(x => x.Title));
+        return string.Join("\n", lines) + (inside.Length > 0 ? $"\n\nInside: {inside}." : "") + "\n\nEvery edition is kept on the History page's Almanac tab.";
     }
 }
 
@@ -270,7 +293,7 @@ public sealed partial class GameSession
     private void PostAlmanac()
     {
         AlmanacEdition? e = null;
-        if (CollegeWords && World.College is { } cw)
+        if (InCollege && World.College is { } cw)
         {
             if (cw.History.Count > 0 && cw.History.Max(h => h.Year) is var y && y + 1 == Today.Year)
                 e = Almanac.College(this, cw.History.First(h => h.Year == y));

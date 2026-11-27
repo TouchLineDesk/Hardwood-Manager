@@ -47,7 +47,8 @@ public sealed class AlmanacCard
     public AlmanacEdition Edition { get; init; } = null!;
     public Team? Champion { get; init; }
     public IBrush Stripe { get; init; } = Brushes.Gray;
-    public string Label => Edition.Label;
+    /// <summary>The list's label: "2026-27", or "2026-27 · college" in a career that has editions of both kinds.</summary>
+    public string Label { get; init; } = "";
     public string Title => Edition.Title.ToUpperInvariant();
     public string Cover => Edition.Cover;
     public IReadOnlyList<AlmanacSection> Sections => Edition.Sections;
@@ -388,10 +389,12 @@ public sealed partial class HistoryViewModel : PageViewModel
     {
         var s = Session; var cw = s.World.College;
         string? keep = SelectedAlmanac?.Label;
-        Almanacs = Hardwood.Core.Season.Almanac.Editions(s).Select(e =>
+        var editions = Hardwood.Core.Season.Almanac.Editions(s);
+        bool both = editions.Any(e => e.College) && editions.Any(e => !e.College);
+        Almanacs = editions.Select(e =>
         {
-            var champ = e.ChampionId is { } id ? (IsCollege && cw != null ? cw.Program(id) : s.FindTeam(id)) : null;
-            return new AlmanacCard { Edition = e, Champion = champ, Stripe = StripeFor(champ) };
+            var champ = e.ChampionId is { } id ? (e.College && cw != null ? cw.Program(id) : s.FindTeam(id)) : null;
+            return new AlmanacCard { Edition = e, Champion = champ, Stripe = StripeFor(champ), Label = e.Label + (both ? (e.College ? " · college" : " · pros") : "") };
         }).ToList();
         SelectedAlmanac = Almanacs.FirstOrDefault(a => a.Label == keep) ?? Almanacs.FirstOrDefault();
     }
