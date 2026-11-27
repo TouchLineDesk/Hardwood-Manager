@@ -1402,6 +1402,7 @@ public sealed partial class GameSession
         // The world's summer starts too: overseas contracts end and some players enter the shared free-agent pool.
         var recruiting = World.College?.Season.Recruiting;
         World.BeginSummer(Offseason.Season + 1, _sim, League.FreeAgents);
+        SecondGenerationSummer(Offseason.Season + 1); // W3 (run 231): sons of retired players in the new classes; no random draw
         Hardwood.Core.World.WorldMarket.Attach(World, Offseason, _sim);
         // H108 (run 112): "overseas" means clubs abroad; players leaving G League or pyramid clubs aren't listed here.
         var abroad = World.LeftClub.Where(x => x.player.CurrentAbility >= Hardwood.Core.World.GameWorld.NablCalibre
@@ -1789,6 +1790,7 @@ public sealed partial class GameSession
         HumanTeam.DepthChart = null;
         Midseason = null;
         BuildSeason();
+        SecondGenerationSignings(); // W3 (run 231): sons who joined a team over the summer
         var last = League.History.Last();
         if (InCollege && Employed) Post($"Welcome to {League.Season}-{(League.Season + 1) % 100:00}", CollegeSeasonWelcomeBody(), "Board"); // K26 (run 179)
         else

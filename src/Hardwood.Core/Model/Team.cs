@@ -163,6 +163,8 @@ public sealed class League
     public People.MediaDesk Media { get; set; } = new();
     /// <summary>The in-season cup (run 223): this season's groups and knockouts, and past winners. Saved as JSON in meta.</summary>
     public Season.CupBook Cup { get; set; } = new();
+    /// <summary>W3 (run 231): sons of retired players found in new classes. Saved as JSON in meta; older saves have none.</summary>
+    public People.LineageBook Lineage { get; set; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;
 

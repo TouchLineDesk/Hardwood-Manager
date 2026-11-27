@@ -33,7 +33,8 @@ public sealed class Player
 {
     public int Id { get; init; }
     public required string FirstName { get; init; }
-    public required string LastName { get; init; }
+    /// <summary>Settable since W3 (run 231): a son found in a new class takes his father's surname.</summary>
+    public required string LastName { get; set; }
     public string Name => $"{FirstName} {LastName}";
 
     public DateOnly BirthDate { get; init; }

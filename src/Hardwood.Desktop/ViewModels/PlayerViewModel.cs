@@ -136,6 +136,7 @@ public sealed partial class PlayerViewModel : PageViewModel
         if (retiredBy.Count > 0) bits.Add($"Number retired by {string.Join(", ", retiredBy)}");
         Honours = bits.Count == 0 ? "" : string.Join(" · ", bits);
         var story = new List<string>();
+        if (s.LineageLine(p) is { } lineage) story.Add(lineage); // W3 (run 231): a son's father, a father's sons
         if (s.World.College is { } cw)
         {
             if (InCollegeProgram(s, p) && cw.OriginOf(p.Id) is { } origin)
