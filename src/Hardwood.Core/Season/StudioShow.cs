@@ -97,6 +97,25 @@ public sealed class StudioShow
     public static readonly StudioAnalyst Guard = new("guard", "Marcus 'Showtime' Lyle", "Analyst · former guard", "Two-time All-Star. Loves a hot hand, a star and an upset.", "#F85149");
     public static readonly StudioAnalyst Coach = new("coach", "Vern Haskell", "Guest · former head coach", "Thirty years on the sideline. Joins the desk for the big nights.", "#3FB950");
     public static readonly StudioAnalyst[] Cast = { HostDesk, BigMan, Numbers, Guard, Coach };
+    /// <summary>K43 (run 220): fitted to the full engine (`hardwood calib --pros`, 3,000 NBA games on each of seeds 31,
+    /// 2026, 77 and 9): 0.35–0.37 points of margin per strength point and a home edge of 1.3–1.8; the probit that fits the
+    /// wins best is Phi(0.044–0.048 × gap + 0.14–0.20), so the spread is the margin's 0.36 over 0.046. The old line
+    /// (0.69 a point over sd 13.9, Phi(0.050 × gap + 0.18)) ran a little steep.</summary>
+    public const double ProPerPoint = 0.36, ProHomeEdge = 1.5, ProSd = 7.8;
+
+    /// <summary>K43 (run 220): the expected home margin and its spread from the strength gap (home minus away).</summary>
+    public static (double margin, double sd) Line(bool college, double gap) =>
+        college ? (gap * 0.52 + 2.5, 9.0) : (gap * ProPerPoint + ProHomeEdge, ProSd);
+
+    /// <summary>K43 (run 220): the home side's chance, as the desk shows it.</summary>
+    public static double Chance(double margin, double sd) => Clamp(GameFlow.Phi(margin / sd));
+
+    /// <summary>K43 (run 220): the pros' home chance from the strength gap.</summary>
+    public static double ProChance(double gap) { var (m, sd) = Line(false, gap); return Chance(m, sd); }
+
+    /// <summary>K43 (run 220): no game is a lock on the desk: the shown chance stays within 3–97%.</summary>
+    public static double Clamp(double p) => Math.Clamp(p, 0.03, 0.97);
+
     public static StudioAnalyst? ByKey(string key) => Cast.FirstOrDefault(a => a.Key == key);
 
     public static (StudioSet set, string name, string line, string accent, string second) SetFor(DateOnly date, bool college, bool abroad, Series? series, bool firstGame)
@@ -156,9 +175,8 @@ public sealed partial class GameSession
 
         double hs = QuickSim.Strength(home, date), as_ = QuickSim.Strength(away, date);
         bool college = InCollege;
-        double perPoint = college ? 0.52 : 0.55 * 1.2625, sd = college ? 9.0 : 11 * 1.2625;
-        double margin = (hs - as_) * perPoint + 2.5;
-        double homeChance = Phi(margin / sd);
+        var (margin, sd) = StudioShow.Line(college, hs - as_);
+        double homeChance = StudioShow.Chance(margin, sd);
 
         var panel = new List<StudioAnalyst> { StudioShow.BigMan, StudioShow.Numbers, StudioShow.Guard };
         if (set is StudioSet.Playoffs or StudioSet.Finals or StudioSet.ThirdPlace) panel.Add(StudioShow.Coach);

@@ -124,8 +124,18 @@ public sealed class GameCalls
         bool homeWon = homeScore > awayScore;
         string w = homeWon ? homeName : awayName, l = homeWon ? awayName : homeName;
         int ws = Math.Max(homeScore, awayScore), ls = Math.Min(homeScore, awayScore), margin = ws - ls;
-        int down = 0;   // the most the winner trailed by
-        foreach (var e in plays) down = Math.Max(down, homeWon ? e.AwayScore - e.HomeScore : e.HomeScore - e.AwayScore);
+        int down = 0, downLate = 0, led = 0;   // the most the winner trailed by (in all, and after halftime), and led by
+        int half = Math.Max(1, periods / 2);
+        foreach (var e in plays)
+        {
+            int behind = homeWon ? e.AwayScore - e.HomeScore : e.HomeScore - e.AwayScore;
+            down = Math.Max(down, behind); led = Math.Max(led, -behind);
+            if (e.Period > half) downLate = Math.Max(downLate, behind);
+        }
+        // K43 (run 220): a comeback is a 10-point hole after halftime (or 15 at any time); an early 12-point deficit
+        // erased by the second quarter isn't one. A winner whose 15-point lead shrank to 6 or less held off a rally.
+        bool comeback = downLate >= 10 || down >= 15;
+        bool heldOff = !comeback && led >= 15 && margin <= 6;
         // Review (run 174): a winner who wasn't ahead before the last score (a walk-off) didn't "hold on".
         int lastScore = -1;
         for (int k = plays.Count - 1; k >= 0 && lastScore < 0; k--)
@@ -136,16 +146,18 @@ public sealed class GameCalls
         var o = occasion ?? new Occasion();
         bool champion = o.Stage == "Championship";
         string verb = champion ? "are national champions"
-            : down >= 10 ? "complete the comeback"
+            : comeback ? "complete the comeback"
             : walkOff ? "steal it at the death"
+            : heldOff ? "hold off the rally"
             : margin <= 3 ? "hold on"
             : margin >= 20 ? "roll"
             : "win it";
         lines.Add($"{w.ToUpperInvariant()} {verb.ToUpperInvariant()}! Final: {w} {ws}, {l} {ls}{(ots == 1 ? " in overtime" : ots > 1 ? $" in {ots} overtimes" : "")}");
 
         var context = new List<string>();
-        if (down >= 10 && !champion) context.Add($"{w} were down {down} and came all the way back");
-        else if (down >= 10) context.Add($"From {down} down: {w} came all the way back to win it all");
+        if (comeback && !champion) context.Add($"{w} were down {down} and came all the way back");
+        else if (comeback) context.Add($"From {down} down: {w} came all the way back to win it all");
+        else if (heldOff) context.Add($"{w} led by {led} and held off a late {l} rally");
         if (o.Stage != null && !champion && o.NextStage != null) context.Add($"{w} advance to the {o.NextStage}");
         if (o.WinnerSeed > 0 && o.LoserSeed > 0 && o.WinnerSeed - o.LoserSeed >= 4)
             context.Add($"An upset: the {o.WinnerSeed}-seed knocks out the {o.LoserSeed}-seed. Their season is over");

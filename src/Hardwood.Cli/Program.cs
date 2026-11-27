@@ -70,6 +70,55 @@ public static class Program
             return 0;
         }
 
+        if (cmd == "calib" && args.Contains("--pros"))
+        {
+            // K43 (run 220): the pro studio's win chance from the full engine: margin per strength point, the home edge and
+            // the residual spread over random NBA pairings, then predicted against actual home wins by decile.
+            var sim2 = new GameSimulator(); var rr = new Rng(seed + 1);
+            int n = int.Parse(ArgValue(args, "--games") ?? "2000");
+            var teams = league.Teams.ToList();
+            var xs = new List<(double x, double y)>();
+            for (int i = 0; i < n; i++)
+            {
+                var a = teams[rr.Next(teams.Count)]; var b = teams[rr.Next(teams.Count)];
+                if (a == b) continue;
+                var r = sim2.Simulate(a, b, Rules.Nba, rr.NextULong());
+                xs.Add((Hardwood.Core.World.QuickSim.Strength(a) - Hardwood.Core.World.QuickSim.Strength(b), r.Home.Points - r.Away.Points));
+            }
+            double mx = xs.Average(t => t.x), my = xs.Average(t => t.y);
+            double k = xs.Sum(t => (t.x - mx) * (t.y - my)) / xs.Sum(t => (t.x - mx) * (t.x - mx)), h = my - k * mx;
+            double sd = Math.Sqrt(xs.Average(t => Math.Pow(t.y - k * t.x - h, 2)));
+            Console.WriteLine($"engine pros: margin per strength point {k:0.000}, home edge {h:0.00}, residual sd {sd:0.00}, n {xs.Count}, gap sd {Math.Sqrt(xs.Average(t => t.x * t.x)):0.0}");
+            void Deciles(string name, Func<double, double> chance)
+            {
+                var rows = xs.Select(t => (p: chance(t.x), won: t.y > 0 ? 1.0 : 0.0)).OrderBy(t => t.p).ToList();
+                double worst = 0; var parts = new List<string>();
+                for (int d = 0; d < 10; d++)
+                {
+                    var bin = rows.Skip(d * rows.Count / 10).Take(rows.Count / 10).ToList();
+                    double p = bin.Average(t => t.p), a = bin.Average(t => t.won);
+                    worst = Math.Max(worst, Math.Abs(p - a)); parts.Add($"{100 * p:0}/{100 * a:0}");
+                }
+                Console.WriteLine($"  {name}: predicted/actual by decile {string.Join(" ", parts)} · worst gap {100 * worst:0.0} pts");
+            }
+            // The probit that fits the wins best (log loss over a grid), as a check on the least-squares line.
+            double bestA = 0, bestB = 0, bestL = double.MaxValue;
+            for (double a = 0.030; a <= 0.070; a += 0.001)
+                for (double b = 0.0; b <= 0.40; b += 0.01)
+                {
+                    double ll = 0;
+                    foreach (var (x, y) in xs) { double p = Math.Clamp(Hardwood.Core.Engine.GameFlow.Phi(a * x + b), 1e-6, 1 - 1e-6); ll -= y > 0 ? Math.Log(p) : Math.Log(1 - p); }
+                    if (ll < bestL) (bestL, bestA, bestB) = (ll, a, b);
+                }
+            Console.WriteLine($"  best probit: Phi({bestA:0.000} x gap + {bestB:0.00}) · least squares gives Phi({k / sd:0.000} x gap + {h / sd:0.00})");
+            Deciles("studio now", x => Hardwood.Core.Season.StudioShow.ProChance(x));
+            var big = xs.Where(t => Math.Abs(t.x) >= 30).ToList();
+            if (big.Count > 0)
+                Console.WriteLine($"  gaps of 30+: {big.Count} games, favourite predicted {100 * big.Average(t => Math.Max(Hardwood.Core.Season.StudioShow.ProChance(t.x), 1 - Hardwood.Core.Season.StudioShow.ProChance(t.x))):0.0}%"
+                    + $", won {100.0 * big.Count(t => t.x * t.y > 0) / big.Count:0.0}%");
+            return 0;
+        }
+
         if (cmd == "calib")
         {
             var gen = new Hardwood.Core.Generation.PlayerGenerator(new Rng(5), 2_000_000);
