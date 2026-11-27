@@ -89,7 +89,8 @@ public sealed partial class GameSession
         }
         var beat = cast[0];
         int beatPick = Media.Columns.For(year, HumanTeam.Id).First(p => p.Key == beat.Key).PickOf(HumanTeam.Id);
-        Post($"Preseason picks: {beat.Name} has you {Ordinal(beatPick)} in the {table}",
+        // Review (PR): not "Preseason…", which the college preseason message checks for (a mid-autumn move to college).
+        Post($"The columnists' picks: {beat.Name} has you {Ordinal(beatPick)} in the {table}",
             $"Before the season, the columnists pick the {table}:\n\n" + string.Join("\n", lines) + "\n\n" + footer, "League");
     }
 
@@ -109,8 +110,9 @@ public sealed partial class GameSession
         var lines = new List<string>();
         foreach (var p in picks)
         {
-            var w = cast.GetValueOrDefault(p.Key) ?? new Columnist(p.Key, p.Name, p.Outlet, ColumnVoice.Numbers, false);
-            lines.Add("• " + MediaCast.VerdictLine(w, p.PickOf(HumanTeam.Id), finish, HumanTeam.FullName, table));
+            // Review (PR): the writer who made the picks judges them, by his saved name (a rename keeps the old writer).
+            var w = (cast.GetValueOrDefault(p.Key) ?? new Columnist(p.Key, p.Name, p.Outlet, ColumnVoice.Numbers, false)) with { Name = p.Name, Outlet = p.Outlet };
+            lines.Add("• " + MediaCast.VerdictLine(w, p.PickOf(HumanTeam.Id), finish, HumanTeam.FullName, table, p.Order.Count, InCollege));
         }
         // Around the table: each writer's best call and biggest miss (the almanac, W2, keeps them).
         var calls = new List<string>();
@@ -122,7 +124,7 @@ public sealed partial class GameSession
             calls.Add($"{p.Name} {b}; biggest miss: {NameOf(teams, miss.id)} (picked {Ordinal(p.PickOf(miss.id))}, finished {Ordinal(p.FinishOf(miss.id))}).");
         }
         int beatPick = picks[0].PickOf(HumanTeam.Id);
-        string title = finish == 1 ? $"Picked {Ordinal(beatPick)}, won the {table}: the columnists look back"
+        string title = finish == 1 ? $"Picked {Ordinal(beatPick)}, {(InCollege ? "won" : "top of")} the {table}: the columnists look back"
             : $"Picked {Ordinal(beatPick)}, finished {Ordinal(finish)}: the columnists look back";
         Post(title, $"The regular season is over, and the preseason picks are judged.\n\n{string.Join("\n", lines)}\n\nAround the {table}: {string.Join(" ", calls)}", "League");
     }
@@ -142,13 +144,14 @@ public sealed partial class GameSession
         if (rank == 0 || all.Count < 4) return;
         var w = MediaCast.Numbers;
         string top = string.Join(", ", all.Take(5).Select((r, i) => $"{i + 1}. {r.Team.FullName} ({r.Wins}-{r.Losses})"));
-        string since = book.LastRank > 0 && book.LastRankings.DayNumber > 0 && Today.DayNumber - book.LastRankings.DayNumber <= 60
+        string since = book.LastRank > 0 && book.LastRankTeamId == HumanTeam.Id && book.LastRankings.DayNumber > 0 && Today.DayNumber - book.LastRankings.DayNumber <= 60
             ? rank < book.LastRank ? $", up {book.LastRank - rank} since the last rankings" : rank > book.LastRank ? $", down {rank - book.LastRank} since the last rankings" : ", the same as last time"
             : MyColumnPicks.FirstOrDefault(p => p.Key == w.Key) is { } pk ? $" ({w.He} picked you {Ordinal(pk.PickOf(HumanTeam.Id))} in the {pk.Table} before the season)" : "";
         string body = $"\n\nPOWER RANKINGS, by {w.Byline}: {top}. {HumanTeam.FullName}: {Ordinal(rank)} of {all.Count}{since}.";
         Inbox[Inbox.IndexOf(week)] = new InboxMessage { Id = week.Id, Date = week.Date, Title = week.Title, Body = week.Body + body, Category = week.Category, Read = week.Read };
         book.LastRankings = Today;
         book.LastRank = rank;
+        book.LastRankTeamId = HumanTeam.Id;
     }
 
     private static string NameOf(List<Team> teams, int id) => teams.FirstOrDefault(t => t.Id == id)?.FullName ?? "?";

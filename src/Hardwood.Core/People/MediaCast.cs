@@ -56,6 +56,8 @@ public sealed class ColumnBook
     /// <summary>The last power rankings in your results message (pros and abroad), and where they had you.</summary>
     public DateOnly LastRankings { get; set; }
     public int LastRank { get; set; }
+    /// <summary>The team the last rankings were about (review: a job change starts the movement line afresh).</summary>
+    public int LastRankTeamId { get; set; }
 
     public List<ColumnPicks> For(int season, int teamId) => Picks.Where(p => p.Season == season && p.TeamId == teamId).ToList();
 }
@@ -189,13 +191,18 @@ public static class MediaCast
     }
 
     /// <summary>The verdict on a columnist's call about your team, in his voice ("He picked you 11th. You won the conference.").</summary>
-    public static string VerdictLine(Columnist w, int pick, int finish, string team, string table)
+    public static string VerdictLine(Columnist w, int pick, int finish, string team, string table, int of = 0, bool college = true)
     {
         int delta = pick - finish; // positive: better than picked
         // Three steps each way: about right (within two places), a clear miss (3-4), a big miss (5+, or a title from 4th or lower).
         int step = delta >= 5 || (finish == 1 && pick >= 4) ? 2 : delta >= 3 ? 1 : delta <= -5 ? -2 : delta <= -3 ? -1 : 0;
-        string fact = pick == 1 && finish == 1 ? $"{w.Name} ({w.Outlet}) picked you to win the {table}, and you did."
-            : finish == 1 ? $"{w.Name} ({w.Outlet}) picked you {Ord(pick)}. You won the {table}."
+        // Review (PR): the big-miss lines speak of a good team let down, so they need a pick in the top half.
+        if (step == -2 && of > 0 && pick > of / 2) step = -1;
+        // Review (PR): first place in a pro or overseas regular season isn't the title, which the playoffs decide.
+        string won = college ? $"You won the {table}." : $"You finished top of the {table}.";
+        string fact = pick == 1 && finish == 1 ? (college ? $"{w.Name} ({w.Outlet}) picked you to win the {table}, and you did."
+                : $"{w.Name} ({w.Outlet}) picked you to finish top of the {table}, and you did.")
+            : finish == 1 ? $"{w.Name} ({w.Outlet}) picked you {Ord(pick)}. {won}"
             : $"{w.Name} ({w.Outlet}) picked you {Ord(pick)}. You finished {Ord(finish)}.";
         string q = (w.Voice, step) switch
         {

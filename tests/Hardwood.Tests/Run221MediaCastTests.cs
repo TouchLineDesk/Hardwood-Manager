@@ -72,6 +72,10 @@ public class Run221MediaCastTests
         Assert.StartsWith("Priya Venkataraman (The Possession Log) picked you 3rd. You finished 9th.", MediaCast.VerdictLine(MediaCast.Numbers, 3, 9, "X", "East"));
         Assert.StartsWith("Walt Brennecke (the Courtside Sentinel) picked you to win the East, and you did.", MediaCast.VerdictLine(MediaCast.OldSchool, 1, 1, "X", "East"));
         Assert.Contains("Told you so", MediaCast.VerdictLine(MediaCast.OldSchool, 5, 6, "X", "East"));
+        // Review: a pro regular season's first place isn't the title; a low pick that sinks isn't "a good team let down".
+        Assert.Contains("You finished top of the East.", MediaCast.VerdictLine(MediaCast.Numbers, 6, 1, "X", "East", 15, college: false));
+        Assert.DoesNotContain("they'd be good", MediaCast.VerdictLine(MediaCast.OldSchool, 10, 15, "X", "East", 15, college: false));
+        Assert.Contains("they'd be good", MediaCast.VerdictLine(MediaCast.OldSchool, 2, 9, "X", "East", 15, college: false));
     }
 
     private static int BenchClub(ulong seed)
@@ -96,7 +100,7 @@ public class Run221MediaCastTests
             var picks = s.MyColumnPicks;
             Assert.Equal(3, picks.Count);
             Assert.All(picks, p => Assert.Equal(s.MyTable.Count, p.Order.Count));
-            var msg = Assert.Single(s.Inbox, m => m.Title.StartsWith("Preseason picks:"));
+            var msg = Assert.Single(s.Inbox, m => m.Title.StartsWith("The columnists' picks:"));
             _out.WriteLine($"{msg.Title}\n{msg.Body}\n");
             Assert.Contains(MediaCast.Numbers.Name, msg.Body);
             Assert.Contains(MediaCast.OldSchool.Name, msg.Body);
@@ -142,7 +146,7 @@ public class Run221MediaCastTests
         _out.WriteLine($"{pre.Title}\n{pre.Body}\n");
         Assert.Contains("The columnists' picks:", pre.Body);
         Assert.Contains(MediaCast.CollegeWriter.Name, pre.Body);
-        Assert.DoesNotContain(s.Inbox, m => m.Title.StartsWith("Preseason picks:"));
+        Assert.DoesNotContain(s.Inbox, m => m.Title.StartsWith("The columnists' picks:"));
         Assert.DoesNotContain(s.Inbox, m => m.Body.Contains("POWER RANKINGS"));
         var picks = s.MyColumnPicks;
         Assert.Equal(3, picks.Count);
