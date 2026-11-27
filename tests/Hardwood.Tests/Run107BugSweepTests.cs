@@ -59,7 +59,7 @@ public class Run107BugSweepTests
         bus.Name = "Pegasus";   // as a save from before run 107 stores it
         var pack = new NamePack();
         pack.Clubs["Yokohama Bay Stars"] = new PackClub { City = "Yokohama", Name = "Pack One" };
-        pack.Clubs["Busan Egis"] = new PackClub { City = "Busan", Name = "Pack Two" };
+        pack.Clubs["Busan KCC Egis"] = new PackClub { City = "Busan", Name = "Pack Two" };
         try
         {
             Assert.True(pack.ApplyToClubs(league, world) >= 2);

@@ -117,7 +117,8 @@ public class Run213InternationalDutyTests
     public void A_jump_mid_tournament_carries_only_the_injuries_already_picked_up()
     {
         var s = NewCareer();
-        var jump = new DateOnly(2027, 9, 5); // a league that opens before the World Cup ends (run 209's review)
+        // Run 218: Aug 30 (was Sep 5): in the real-clubs world no injury falls after Sep 5, so the jump comes earlier in the cup.
+        var jump = new DateOnly(2027, 8, 30); // a league that opens before the World Cup ends (run 209's review)
         s.PlayInternationalOverSummer(new DateOnly(2027, 5, 8), jump);
         var cup = Assert.Single(s.World.International.WorldCups);
         var people = AllPlayers(s);

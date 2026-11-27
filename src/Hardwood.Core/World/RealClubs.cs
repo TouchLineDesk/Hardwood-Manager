@@ -15,7 +15,7 @@ namespace Hardwood.Core.World;
 /// ones when it loads (as D44 renamed the pyramid). <see cref="ClubSeed.Standing"/> is the club's place in the real hierarchy,
 /// added to its roster's quality in a new world, so Real Madrid and Zalgiris are strong and Lleida and Gargzdai are not.</para>
 /// </summary>
-public static class RealClubs
+public static partial class RealClubs
 {
     private static ClubSeed R(string city, string name, string abbr, string? full, string arena, int capacity, int standing, string wasCity, string wasName) =>
         new(city, name, abbr) { Full = full, Arena = arena, Capacity = capacity, Standing = standing, Was = $"{wasCity}|{wasName}" };
@@ -166,9 +166,16 @@ public static class RealClubs
     private static Dictionary<string, ClubSeed> ByWas => _byWas ??= Seeds().Where(s => s.Was != null).GroupBy(s => s.Was!).ToDictionary(g => g.Key, g => g.First());
 
     /// <summary>Every real club abroad.</summary>
-    public static IEnumerable<ClubSeed> Seeds() => Spain.Concat(Turkey).Concat(Greece).Concat(Italy).Concat(France).Concat(Germany).Concat(Lithuania);
+    public static IEnumerable<ClubSeed> Seeds() => Spain.Concat(Turkey).Concat(Greece).Concat(Italy).Concat(France).Concat(Germany).Concat(Lithuania).Concat(Slice2());
 
     private static string Key(string city, string name) => city + "|" + name;
+
+    /// <summary>Made-up names run 107 (H79) replaced with other made-up names, which the real clubs replaced in turn.</summary>
+    private static readonly Dictionary<string, string> Older = new()
+    {
+        ["Munich|Lions"] = "Munich|Bavarians", ["Yokohama|Bay Stars"] = "Yokohama|B-Corsairs",
+        ["Busan|Pegasus"] = "Busan|Egis", ["Batangas|Beer Men"] = "Batangas|Bossing",
+    };
 
     /// <summary>The real club a team is, if it is one.</summary>
     public static ClubSeed? Of(string city, string name) => ByName.TryGetValue(Key(city, name), out var s) ? s : null;
@@ -201,8 +208,16 @@ public static class RealClubs
             // and isn't a real club's too): then every club is renamed by its old name, once.
             var real = comp.Profile.Clubs.Select(s => Key(s.City, s.Name)).ToHashSet();
             var was = comp.Profile.Clubs.Where(s => s.Was != null).Select(s => s.Was!).ToHashSet();
-            if (!comp.Clubs.Any(t => was.Contains(Key(t.City, t.Name)) && !real.Contains(Key(t.City, t.Name)))) continue;
-            foreach (var team in comp.Clubs) Rename(team, comp, used, ref n);
+            if (!comp.Clubs.Any(t => (was.Contains(Key(t.City, t.Name)) || Older.ContainsKey(Key(t.City, t.Name))) && !real.Contains(Key(t.City, t.Name)))) continue;
+            // Review (run 218): a league that is already partly real (a pre-run-107 name left in a save renamed by v0.205) is
+            // renamed only where a club still holds a made-up name; a club already under its real name keeps its arena size.
+            bool fresh = !comp.Clubs.Any(t => real.Contains(Key(t.City, t.Name)) && !was.Contains(Key(t.City, t.Name)));
+            foreach (var team in comp.Clubs)
+            {
+                string k = Key(team.City, team.Name);
+                if (real.Contains(k) && (!was.Contains(k) || !fresh)) continue;
+                Rename(team, comp, used, ref n);
+            }
         }
         return n;
     }
@@ -210,7 +225,10 @@ public static class RealClubs
     private static void Rename(Team team, WorldCompetition comp, HashSet<string> used, ref int n)
     {
         {
-            if (!ByWas.TryGetValue(Key(team.City, team.Name), out var real) || !comp.Profile.Clubs.Contains(real)) return;
+            // Run 218: a save from before run 107 still holds the made-up names that run renamed ("Busan Pegasus").
+            string was = Key(team.City, team.Name);
+            if (Older.TryGetValue(was, out var later)) was = later;
+            if (!ByWas.TryGetValue(was, out var real) || !comp.Profile.Clubs.Contains(real)) return;
             team.City = real.City; team.Name = real.Name;
             if (real.Capacity > 0) team.ArenaCapacity = real.Capacity;
             if (team.Abbreviation != real.Abbr && used.Add(real.Abbr)) team.Abbreviation = real.Abbr;
