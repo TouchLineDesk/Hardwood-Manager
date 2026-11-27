@@ -61,6 +61,8 @@ public sealed record PossessionInput(int Index, ulong Seed, IReadOnlyList<PlayEv
     public Func<Player, Role>? RoleOf { get; init; }
     /// <summary>A player's energy, 0.3–1.0 (null: everyone fresh). Tired players move a little slower, on screen only.</summary>
     public Func<Player, double>? EnergyOf { get; init; }
+    /// <summary>H215 (run 224): both dressed rosters, so a surname shared with a man on the bench is said with an initial too.</summary>
+    public IReadOnlyList<Player>? Dressed { get; init; }
     /// <summary>Target pace (possessions per 48): a faster side runs harder in transition.</summary>
     public double HomePace { get; init; } = 99;
     public double AwayPace { get; init; } = 99;
@@ -290,8 +292,8 @@ public static class PossessionChoreographer
             if (e.Other != null) Place(e.Other, e.Kind is PlayKind.Shot && e.Made ? (e.Home ? home : away) : e.Kind is PlayKind.Shot or PlayKind.Steal or PlayKind.Foul ? (e.Home ? away : home) : (e.Home ? home : away), actors);
         }
         var players = home.Concat(away).ToArray();
-        // K25 (run 174): a surname two players share (on the floor or just coming off) is said with a first initial.
-        var named = players.Concat(input.Start?.Keys ?? Enumerable.Empty<Player>()).Distinct().ToList();
+        // K25 (run 174): a surname two players share (on the floor, just coming off or, H215, on either bench) is said with a first initial.
+        var named = players.Concat(input.Start?.Keys ?? Enumerable.Empty<Player>()).Concat(input.Dressed ?? Array.Empty<Player>()).Distinct().ToList();
         var shared = named.GroupBy(p => p.LastName).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
         string N(Player? p) => p == null ? "" : shared.Contains(p.LastName) && p.FirstName.Length > 0 ? $"{p.FirstName[0]}. {p.LastName}" : p.LastName;
         var c = new Choreography { Input = input, Players = players, HomeOffense = homeOff };

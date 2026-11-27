@@ -59,6 +59,10 @@ public sealed partial class GuideViewModel : ObservableObject
     private int TipCount => (PageTip.Length > 0 ? 1 : 0) + Strategy.Count;
     /// <summary>No task cards: say so, so the panel never looks empty or broken.</summary>
     [ObservableProperty] private bool _noTasks;
+    /// <summary>K37 (run 224): during a live game the rest of the list waits until you leave it.</summary>
+    [ObservableProperty] private string _noTasksText = IdleNoTasks;
+    public const string IdleNoTasks = "Nothing needs you right now. Press Continue when you're ready.";
+    public const string LiveNoTasks = "Nothing needs you during the game. The rest waits until you leave the court.";
     [ObservableProperty] private bool _hasStrategy;
     [ObservableProperty] private string _level;
     public ObservableCollection<GuideTaskRow> Tasks { get; } = new();
@@ -142,7 +146,11 @@ public sealed partial class GuideViewModel : ObservableObject
     /// Run 183 (the launch list): the game-day card ("Next up: vs X … press Continue to play") is about the game you are
     /// watching, so it goes while a live game is on, final included; it named tonight's opponent beside the final score.
     /// </summary>
-    public static bool HiddenInLiveGame(GuideTask t) => t.Key.StartsWith("scout-", StringComparison.Ordinal);
+    /// <summary>K37 (run 224; hunt 27: "Locker room: Marshall late again" on the panel mid-game): during a live game the
+    /// panel keeps only what changes this game (an injured or ineligible starter, a short roster); press, locker-room,
+    /// mood, inbox, staff and money items wait until you leave the game.</summary>
+    public static bool HiddenInLiveGame(GuideTask t) =>
+        !(t.Key.StartsWith("hurt-", StringComparison.Ordinal) || t.Key.StartsWith("inelig-", StringComparison.Ordinal) || t.Key.StartsWith("short-", StringComparison.Ordinal));
 
     /// <summary>The live game moved on: refresh only the live lines (cheap; called every few possessions).</summary>
     public void LiveTick()
@@ -211,6 +219,7 @@ public sealed partial class GuideViewModel : ObservableObject
 
         HasStrategy = Strategy.Count > 0;
         NoTasks = Tasks.Count == 0;
+        NoTasksText = _liveRead != null ? LiveNoTasks : IdleNoTasks;
         if (_liveRead != null) LiveTick();
         OnPropertyChanged(nameof(ShowPageTip)); OnPropertyChanged(nameof(ShowStrategy));
         OnPropertyChanged(nameof(HasTips)); OnPropertyChanged(nameof(TipsButtonText));

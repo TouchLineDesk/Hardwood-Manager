@@ -71,7 +71,7 @@ public sealed partial class RoadTile : ObservableObject
     public string Help => Row.Help;
     public string Result => Row.Result ?? "";
     public string State => Row.Open ? (Row.Choice == null ? "Not picked: your staff will decide" : "Your pick")
-          : Row.Result == null || Row.Result.StartsWith("Not run") ? "Passed" : Row.ByStaff ? "Done · your staff's pick" : "Done · your pick";
+          : Row.Result == null || Row.Result.StartsWith("Not run") ? (Row.OtherYear is int y ? $"Passed · {y}" : "Passed") : Row.ByStaff ? "Done · your staff's pick" : "Done · your pick";
     [ObservableProperty] private string? _choice;
     partial void OnChoiceChanged(string? value)
     {

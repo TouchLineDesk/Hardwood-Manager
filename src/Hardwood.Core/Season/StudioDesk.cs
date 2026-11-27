@@ -304,6 +304,14 @@ public static class PostgameDesk
         return w;
     }
 
+    /// <summary>The most a side led by after halftime (run 224, as <see cref="Hardwood.Core.Presentation.GameCalls.Final"/>).</summary>
+    public static int LateLead(GameResult r, bool home)
+    {
+        int half = Math.Max(1, r.Periods / 2), led = 0;
+        foreach (var p in r.Flow) if (p.Period > half) led = Math.Max(led, home ? p.Home - p.Away : p.Away - p.Home);
+        return led;
+    }
+
     public static int RimPoints(TeamBox b) => b.Lines.Sum(l => l.ZoneMakes[0]) * 2;
     public static int BenchPoints(TeamBox b) => b.Lines.Where(l => !l.Started).Sum(l => l.Points);
 
@@ -328,6 +336,9 @@ public static class PostgameDesk
         string story = $"{win.Team.FullName} beat {lose.Team.FullName} {win.Points}-{lose.Points}";
         if (r.Overtimes > 0) story += r.Overtimes == 1 ? " in overtime." : $" in {r.Overtimes} overtimes.";
         else if (r.Flow.Count > 0 && loserLead >= 10) story += $", and they were down {loserLead} at one point.";
+        // K43's leftover (run 224): the desk agrees with the final call when a big lead nearly went.
+        // As the call (GameCalls.Final): a 15-point lead after halftime, won by 6 or less.
+        else if (r.Flow.Count > 0 && LateLead(r, win == h) is >= 15 and var late && gap <= 6) story += $". They led by {late} after halftime and had to hold off a late {lose.Team.Name} rally.";
         else if (r.Flow.Count > 0 && loserLead == 0) story += ": they led from the first basket to the last.";
         else if (gap >= 20) story += ". It was never close.";
         else if (gap <= 3) story += ": it came down to the last possession.";

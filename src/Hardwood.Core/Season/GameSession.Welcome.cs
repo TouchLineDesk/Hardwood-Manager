@@ -66,6 +66,37 @@ public sealed partial class GameSession
         return $"{lead}Your first game is {where} on {g.Date:ddd, MMM d}: set your rotation and tactics, then press Continue.";
     }
 
+    /// <summary>K45 (run 224; critic #25): the pro career's first message, under 120 words: the job, the owner's goal,
+    /// the first opponent and the reigning champions. Where the data comes from is in <see cref="ProWorldNoteBody"/>.</summary>
+    public string ProWelcomeBody()
+    {
+        string goal = "";
+        if (Job.Current is { } e)
+        {
+            string g = e.Survive ? "stay up: " + Jobs.Board.SurviveText(e) : Jobs.Board.LowerFirst(Jobs.Board.Describe(e.Goal, ContextOf(HumanTeam)));
+            goal = $" Owner {HumanTeam.Owner.Name} wants you to {g.TrimEnd('.')} (around {e.TargetWins} wins).";
+        }
+        string text = $"You are the new head coach and general manager of {HumanTeam.TheFullName} ({HumanLeagueName}).{goal}\n\n"
+            + FirstGameSentence("", NextMyGame);
+        if (Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last)
+            text += $"\n\nThe reigning NBA champions are the {last.Champion} ({last.Label}). The rosters, contracts and history are real: see \"About this world\".";
+        return text;
+    }
+
+    /// <summary>K45 (run 224): the data-provenance paragraphs the pro Welcome used to carry.</summary>
+    public string ProWorldNoteBody()
+    {
+        var text = "";
+        if (Hardwood.Core.RealWorld.RealWorldData.Seasons.LastOrDefault() is { } last)
+            text = $"The reigning NBA champions are the {last.Champion} ({last.Label}; Finals MVP {last.FinalsMvp}). The league's whole history, records and every franchise's titles are on the History page."
+                + $"\n\nThe rosters are the real ones: every player who had played in 2026-27 by Nov 11, 2026, rated from his numbers this season and last (checked {Hardwood.Core.RealWorld.RealPlayers.Checked}). Contracts, birthdays, heights and head coaches are real too (checked {Hardwood.Core.RealWorld.RealPlayers.RostersChecked}): this season's salary for each season left on his deal. Players on real rosters who hadn't played yet this season are rated from last season (everyone starts healthy). Careers before this season are real for the league's leading veterans (checked {Hardwood.Core.RealWorld.RealCareers.Checked}), so the records book and the NBA's records to beat start from the real past."
+                + (World.College?.IsReal == true ? $" College basketball has every Division I program in its 2026-27 conference, with its real name, colours and tournament history (checked {Hardwood.Core.RealWorld.RealColleges.Checked}); the college players and coaches are made up." : "")
+                + "\n\nThe clubs abroad carry their real names, cities and arenas; their players are made up.";
+        else text = "The league, its clubs and its players are made up. The History page keeps the league's records as you play.";
+        if (TrailOpen) text += $"\n\nRecruiting: you have {College.CollegeWorld.WeeklyHours} coach hours a week for high-school prospects (College page, Recruiting). Scout, call, visit and offer; a prospect can only commit to you once you've offered. Your assistant spends any hours you leave unused (Staff page, delegation).";
+        return text;
+    }
+
     /// <summary>The college career's first message (a new career).</summary>
     public string CollegeWelcomeBody()
     {

@@ -68,7 +68,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Text="Nothing needs you right now. Press Continue when you're ready." IsVisible="{Binding NoTasks}"
+            <TextBlock Text="{Binding NoTasksText}" IsVisible="{Binding NoTasks}"
                        TextWrapping="Wrap" Classes="muted" FontSize="11.5"/>
 
             <!-- D63 A: the page's tip and the strategy list behind one Tips button -->
