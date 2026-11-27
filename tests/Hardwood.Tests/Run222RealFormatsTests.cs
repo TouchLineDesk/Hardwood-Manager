@@ -103,4 +103,22 @@ public class Run222RealFormatsTests
         Assert.All(ec.Series.Where(x => x.Round != "Final"), x => Assert.Equal(1, x.BestOf));
         Assert.Equal(3, ec.Series.Single(x => x.Round == "Final").BestOf);
     }
+
+    [Fact]
+    public void An_older_save_in_the_EuroCup_quarter_finals_plays_on_to_one_final()
+    {
+        // Review (run 222): a v0.209 save holds its EuroCup quarter-finals at round index 0 (the eighth-finals' place now).
+        var (_, world) = RealWorldData.NewWorld(31, players: false);
+        var ec = world.Competitions.First(c => c.Key == WorldLeagues.EuroCup);
+        var sim = new GameSimulator();
+        var day = new DateOnly(2027, 1, 1);
+        while (ec.Season.Stage != "Quarter-finals" && day < new DateOnly(2027, 6, 1)) { world.PlayThrough(day, sim); day = day.AddDays(1); }
+        Assert.Equal("Quarter-finals", ec.Season.Stage);
+        foreach (var x in ec.Season.Series.Where(x => x.Round == "Quarter-finals")) x.RoundIndex = 0;
+        world.FinishSeasons(sim);
+        Assert.True(ec.Season.IsComplete);
+        Assert.Equal(4, ec.Season.Series.Count(x => x.Round == "Quarter-finals"));
+        Assert.Equal(2, ec.Season.Series.Count(x => x.Round == "Semi-finals"));
+        Assert.Single(ec.Season.Series, x => x.Round == "Final");
+    }
 }

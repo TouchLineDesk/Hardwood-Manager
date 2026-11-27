@@ -630,7 +630,10 @@ public sealed class GameWorld
         var active = s.Series.Where(x => x.Round == s.Stage).ToList();
         if (active.Any(x => !x.Complete)) { ScheduleNextGames(comp); return true; }
 
-        int ri = active[0].RoundIndex;
+        // Review (run 222): the round comes from the stage's name, not the stored index: a save from before the EuroCup's
+        // eighth-finals holds its quarter-finals at index 0, which is the eighth-finals' place now (it repeated the round).
+        int named = Array.FindIndex(p.Playoffs, r => r.Name == s.Stage);
+        int ri = named >= 0 ? named : active[0].RoundIndex;
         if (ri == p.Playoffs.Length - 1)
         {
             var final = active[0];
@@ -755,8 +758,9 @@ public sealed class GameWorld
         var p = comp.Profile;
         var lastPlayed = s.Fixtures.Where(f => f.Played).Select(f => f.Date).DefaultIfEmpty(new DateOnly(s.Year, p.Start.Month, p.Start.Day)).Max();
         if (notBefore is { } nb && lastPlayed < nb.AddDays(-1)) lastPlayed = nb.AddDays(-1);
+        HashSet<(int, DateOnly)>? busy = null;
         foreach (var series in s.Series.Where(x => (x.Round == s.Stage || (s.Stage == PlayInStage && x.Round is PlayInHigh or PlayInLow)
-                     || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round)) || UsaPyramid.IsPromotion(x.Round)) && !x.Complete))
+                     || (p.DivisionPlayoffs && Postseason.IsThirdPlace(x.Round)) || UsaPyramid.IsPromotion(x.Round)) && !x.Complete).ToList())
         {
             if (s.Fixtures.Any(f => f.SeriesId == series.Id && !f.Played)) continue;
             int gameNo = series.HighWins + series.LowWins + 1;
@@ -776,7 +780,8 @@ public sealed class GameWorld
                 // Run 222: never on a day either club already plays in another competition (a domestic playoff game against
                 // a EuroCup round, or a cup knockout against a domestic playoff game already set).
                 date = prev.AddDays(1);
-                while (!p.PlayoffDays.Contains(date.DayOfWeek) || PlaysElsewhere(comp, series.HighId, date) || PlaysElsewhere(comp, series.LowId, date))
+                busy ??= BusyElsewhere(comp);
+                while (!p.PlayoffDays.Contains(date.DayOfWeek) || busy.Contains((series.HighId, date)) || busy.Contains((series.LowId, date)))
                     date = date.AddDays(1);
             }
             bool highHome = series.BestOf switch { 3 => gameNo != 2, 5 => gameNo is 1 or 2 or 5, 7 => gameNo is 1 or 2 or 5 or 7, _ => true };
@@ -788,10 +793,23 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>Whether a club has a game on <paramref name="day"/> in a competition other than <paramref name="comp"/>.</summary>
-    private bool PlaysElsewhere(WorldCompetition comp, int teamId, DateOnly day) =>
-        Playing.Any(c => c != comp && c.Season.Participants.Contains(teamId)
-            && c.Season.Fixtures.Any(f => f.Date == day && (f.HomeId == teamId || f.AwayId == teamId)));
+    /// <summary>Every (club, day) with a game in a competition other than <paramref name="comp"/>, for this competition's clubs
+    /// (built once per scheduling pass; review, run 222).</summary>
+    private HashSet<(int, DateOnly)> BusyElsewhere(WorldCompetition comp)
+    {
+        var mine = comp.Season.Participants.ToHashSet();
+        var busy = new HashSet<(int, DateOnly)>();
+        foreach (var c in Playing)
+        {
+            if (c == comp || !c.Season.Participants.Any(mine.Contains)) continue;
+            foreach (var f in c.Season.Fixtures)
+            {
+                if (mine.Contains(f.HomeId)) busy.Add((f.HomeId, f.Date));
+                if (mine.Contains(f.AwayId)) busy.Add((f.AwayId, f.Date));
+            }
+        }
+        return busy;
+    }
 
     private void Crown(WorldCompetition comp, int champion, int runnerUp)
     {
