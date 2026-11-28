@@ -691,7 +691,11 @@ public static class Board
         // Early in the season the record says little, so the board moves slowly; impatient owners move faster.
         double pace = (projected - e.TargetWins) * 2 * (82 / full);
         drivers.Add(new BoardDriver("Pace",
-            $"On pace for {projected:0} wins against a target of {e.TargetWins}" + (Math.Abs(projected - e.TargetWins) < 0.5 ? "" : projected > e.TargetWins ? $" ({projected - e.TargetWins:0} ahead)" : $" ({e.TargetWins - projected:0} short)"),
+            // H240 (run 240): once the season's games are played the line is a result, not a pace (Kentucky read "On pace
+            // for 28 wins" after the season).
+            games >= full
+                ? $"Finished with {wins} {(wins == 1 ? "win" : "wins")} against a target of {e.TargetWins}" + (wins == e.TargetWins ? "" : wins > e.TargetWins ? $" ({wins - e.TargetWins} ahead)" : $" ({e.TargetWins - wins} short)")
+                : $"On pace for {projected:0} wins against a target of {e.TargetWins}" + (Math.Abs(projected - e.TargetWins) < 0.5 ? "" : projected > e.TargetWins ? $" ({projected - e.TargetWins:0} ahead)" : $" ({e.TargetWins - projected:0} short)"),
             pace));
         foreach (var d in e.Demands)
         {
@@ -1089,7 +1093,7 @@ public static class Board
                 job.Confidence = Math.Max(Math.Min(job.Confidence, seasonStart), keep);
             }
         }
-        string verdict = Verdict();
+        string verdict = relegated ? TellsTheDrop(Verdict()) : Verdict();
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
 
@@ -1154,6 +1158,21 @@ public static class Board
             : !relegated && madePost && winsVsTarget >= -CloseWins && job.Confidence >= 50
                 ? $"{owner} hoped for more, but the team {(ctx.IsCollege ? "made the tournament" : reachedPost ? "made the playoffs" : "finished in the top half")} close to the {e.TargetWins}-win target and still has the {(ctx.IsCollege ? "AD's" : "board's")} backing. Board confidence: {job.Confidence:0}/100."
             : $"{owner} expected more. Board confidence: {job.Confidence:0}/100.";
+    }
+
+    /// <summary>H243 (run 240): every relegation says the club is going down. A .500 season (the Aces, 31-31, last in the
+    /// division) fell through to a bare "expected more" with nothing about the drop.</summary>
+    public static string TellsTheDrop(string verdict)
+    {
+        if (verdict.Contains("going down", StringComparison.Ordinal) || verdict.Contains("gone down", StringComparison.Ordinal)
+            || verdict.Contains("stay up", StringComparison.Ordinal) || verdict.Contains("relegat", StringComparison.OrdinalIgnoreCase))
+            return verdict;
+        foreach (var mark in new[] { " Board confidence:", " AD confidence:", " You have been sacked." })
+        {
+            int at = verdict.IndexOf(mark, StringComparison.Ordinal);
+            if (at >= 0) return verdict[..at] + " The club is going down." + verdict[at..];
+        }
+        return verdict + " The club is going down.";
     }
 
     /// <summary>K20 (run 144): a record against the win target, worded by the margin: "reached" at or past it, "just short"

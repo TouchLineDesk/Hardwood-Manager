@@ -201,8 +201,11 @@ public sealed partial class ScheduleViewModel : PageViewModel
         {
             var part = _all.Where(g => Matches(g, name)).ToList();
             int pw = part.Count(g => g.Played && g.Won), pl = part.Count(g => g.Played && !g.Won);
-            Filters.Add(new FilterChip { Name = name, Record = pw + pl == 0 ? $"{part.Count} to play" : $"{pw}-{pl}", Selected = name == Filter,
-                Tip = $"{part.Count} game{(part.Count == 1 ? "" : "s")}: {pw + pl} played, {part.Count - pw - pl} to come" });
+            // H241 (run 240): a college season's event and tournament games are added as their brackets are drawn, so on day
+            // one the count is what is scheduled so far ("29 to play" read as the whole of a 32-game season).
+            Filters.Add(new FilterChip { Name = name, Record = pw + pl == 0 ? $"{part.Count} scheduled" : $"{pw}-{pl}", Selected = name == Filter,
+                Tip = $"{part.Count} game{(part.Count == 1 ? "" : "s")} scheduled: {pw + pl} played, {part.Count - pw - pl} to come"
+                      + (s.InCollege && name is ScheduleFilter.All or ScheduleFilter.NonConference ? ". Event and tournament games are added as their brackets are drawn." : "") });
         }
         // The H2H column reads as of each game (#529, "as of the current game"): before this season, plus this season's
         // meetings up to and including that game; a game to come shows the record going into it.
@@ -297,14 +300,26 @@ public sealed partial class ScheduleViewModel : PageViewModel
         else
         {
         ScoresTitle = "Around the league (yesterday)";
+        // H239 (run 240): a club below the top league saw the NBA's scores mixed with its own league's, unlabelled
+        // ("EDM @ HAE" beside NBA games). Its own league comes first, and each line says which league it is from.
+        var top = new List<string>();
         foreach (var g in s.Schedule.Where(g => g.Date == yesterday && s.Results.ContainsKey(g.Index)))
-            LeagueScores.Add(s.Results[g.Index].Summary());
-        if (s.HumanLeague is { } league)
-            foreach (var f in league.Season.Fixtures.Where(f => f.Date == yesterday && f.Played))
-                LeagueScores.Add($"{s.FindTeam(f.AwayId)!.Abbreviation} {f.AwayPts} @ {s.FindTeam(f.HomeId)!.Abbreviation} {f.HomePts}");
+            top.Add(s.Results[g.Index].Summary());
         if (s.Postseason != null)
             foreach (var se in s.Postseason.Series)
-            foreach (var r in se.Games.Where(r => r.Date == yesterday)) LeagueScores.Add($"{se.Round}: {r.Summary()}");
+            foreach (var r in se.Games.Where(r => r.Date == yesterday)) top.Add($"{se.Round}: {r.Summary()}");
+        var own = new List<string>();
+        if (s.HumanLeague is { } league)
+            foreach (var f in league.Season.Fixtures.Where(f => f.Date == yesterday && f.Played))
+                own.Add($"{s.FindTeam(f.AwayId)!.Abbreviation} {f.AwayPts} @ {s.FindTeam(f.HomeId)!.Abbreviation} {f.HomePts}");
+        if (own.Count > 0 && top.Count > 0 && s.HumanLeague is { } mine)
+        {
+            ScoresTitle = "Around the leagues (yesterday)";
+            foreach (var line in own) LeagueScores.Add($"{mine.Profile.Short} · {line}");
+            foreach (var line in top) LeagueScores.Add($"{s.League.Name} · {line}");
+        }
+        else
+            foreach (var line in own.Concat(top)) LeagueScores.Add(line);
         }
 
         var rec = s.MyRecord;
