@@ -40,9 +40,14 @@ public class ResultsMessageTests
         int weeks = (s.Today.DayNumber - start.DayNumber) / 7;
         if (everyOtherWeek)
         {
-            // About one message a fortnight (plus weeks carrying a press conference), not one a week.
-            Assert.InRange(results.Count, weeks / 3, weeks * 3 / 4);
+            // About one message a fortnight, not one a week. A week carrying a press conference or a locker-room item sends its
+            // message at once, so the next one covers a single week. Run 233: count by that rule, not a fixed range (a losing
+            // season on seed 92 had 12 such weeks in 25, so 20 messages).
+            Assert.InRange(results.Count, weeks / 3, weeks + 1);
             Assert.Contains(results, m => m.Title.StartsWith("Last two weeks"));
+            for (int i = 1; i < results.Count; i++)
+                if (results[i].Title.StartsWith("This week") && !results[i].Title.Contains(" · "))
+                    Assert.True(results[i - 1].Title.Contains(" · "), $"{results[i].Title} follows {results[i - 1].Title}");
         }
         else
         {
