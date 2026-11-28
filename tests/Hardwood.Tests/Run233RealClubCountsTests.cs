@@ -66,6 +66,10 @@ public class Run233RealClubCountsTests
             var p = comp.Profile;
             Assert.Equal(p.Clubs.Select(s => s.Name).Concat(p.More.Select(s => s.Name)), comp.Clubs.Select(t => t.Name));
             Assert.Equal(Enumerable.Range(comp.Clubs[0].Id, size), comp.Clubs.Select(t => t.Id));
+            // Review: no league repeats a nickname or an abbreviation, the added clubs included (Run107's rule).
+            var seeds = p.Clubs.Concat(p.More).ToList();
+            Assert.Equal(seeds.Count, seeds.Select(c => c.Name).Distinct().Count());
+            Assert.Equal(seeds.Count, seeds.Select(c => c.Abbr).Distinct().Count());
         }
     }
 
