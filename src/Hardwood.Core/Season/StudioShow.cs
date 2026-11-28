@@ -9,8 +9,12 @@ namespace Hardwood.Core.Season;
 public enum StudioSet { Regular, OpeningNight, Thanksgiving, Christmas, NewYear, MlkDay, Playoffs, Finals, ThirdPlace, International, College }
 
 /// <summary>A voice on the panel. Invented people on our own ESPN-style network, never real broadcasters (#446).</summary>
-public sealed record StudioAnalyst(string Key, string Name, string Role, string Bio, string Colour)
+/// <summary>Run 234: <paramref name="Voice"/> is a guest's voice (<see cref="GuestPanel"/>); the regulars leave it empty.</summary>
+public sealed record StudioAnalyst(string Key, string Name, string Role, string Bio, string Colour, string Voice = "")
 {
+    /// <summary>A guest in the chair (run 234), not one of the regulars.</summary>
+    public bool IsGuest => Voice != "";
+
     public string Initials
     {
         get
@@ -189,6 +193,7 @@ public sealed partial class GameSession
 
         var panel = new List<StudioAnalyst> { StudioShow.BigMan, StudioShow.Numbers, StudioShow.Guard };
         if (set is StudioSet.Playoffs or StudioSet.Finals or StudioSet.ThirdPlace) panel.Add(StudioShow.Coach);
+        else panel.Add(MonthGuest(date)); // run 234 (2c): the month's guest takes the chair on every other night
         string venue = cupTie is { Neutral: true } ? "" : RealWorld.RealWorldData.IsReal(League) ? RealWorld.RealWorldData.Teams.FirstOrDefault(r => r.Abbr == home.Abbreviation)?.Arena ?? Hardwood.Core.World.RealClubs.ArenaOf(home) ?? "" : "";
 
         var show = new StudioShow
@@ -317,6 +322,9 @@ public sealed partial class GameSession
                                     (hurt[t].Count > 1 ? $" and {hurt[t].Count - 1} more." : ".")));
         show.Segments.Add(new("KEYS TO THE GAME", "What to watch", watch));
 
+        // --- The guest chair (run 234, 2c): placed here, filled once his pick is known (below) ---
+        int chairAt = show.Segments.Count;
+
         // --- Off the court ---
         var off = OffCourt(show, us, them, date, rng);
         if (off.Count > 0) show.Segments.Add(new("OFF THE COURT", "Around the teams", off));
@@ -337,6 +345,19 @@ public sealed partial class GameSession
             else if (locked != null) { pick = locked.PickId == home.Id ? home : away; by = locked.Margin; }
             var (w, l) = desk.Record(a.Key, League.Season);
             show.Picks.Add(new(a, pick, by, why, w, l));
+        }
+        if (show.Picks.FirstOrDefault(p => p.Analyst.IsGuest) is { } guestPick)
+        {
+            string? starName = (homeStar, awayStar) switch
+            {
+                ({ } h, { } a) => ((h.s?.Ppg ?? 0) >= (a.s?.Ppg ?? 0) ? h.p : a.p).Name,
+                ({ } h, null) => h.p.Name,
+                (null, { } a) => a.p.Name,
+                _ => null,
+            };
+            var hotSide = form[home].streak >= form[away].streak ? home : away;
+            (Team, int)? hot = form[hotSide].streak >= 3 ? (hotSide, form[hotSide].streak) : null;
+            show.Segments.Insert(chairAt, GuestPanel.Segment(guestPick.Analyst, show, fav, favChance, starName, guestPick.Pick, hot));
         }
         return show;
     }
@@ -690,9 +711,17 @@ public sealed partial class GameSession
     private static (Team pick, int margin, string why) PanelPick(StudioAnalyst a, Team home, Team away, double margin, double sd,
         Dictionary<Team, (int w, int l, int streak)> form, Dictionary<Team, List<Player>> hurt, Rng rng)
     {
-        // Each voice leans its own way, with a little noise so the desk doesn't agree every night.
-        double lean = a.Key switch
+        // Each voice leans its own way, with a little noise so the desk doesn't agree every night. A guest (run 234) picks
+        // in his voice: old school like the big man, hype like the guard, numbers by the model, a contrarian against the
+        // favourite unless it's a heavy one.
+        string voice = a.Voice switch
         {
+            GuestPanel.OldSchool => "big", GuestPanel.Hype => "guard", GuestPanel.NumbersVoice => "numbers", GuestPanel.Contrarian => "contrarian",
+            _ => a.Key,
+        };
+        double lean = voice switch
+        {
+            "contrarian" => (Math.Abs(margin) <= sd * 0.6 ? -Math.Sign(margin) * (Math.Abs(margin) + 2) : 0) + rng.NextGaussian(0, 2),
             "numbers" => 0,
             "big" => 1.5 + rng.NextGaussian(0, 2.5),                                       // trusts the home floor
             "guard" => (form[home].streak - form[away].streak) * 0.8 + rng.NextGaussian(0, 4), // the hot hand, and upsets
@@ -701,10 +730,11 @@ public sealed partial class GameSession
         double m = margin + lean;
         var pick = m >= 0 ? home : away;
         int by = Math.Clamp((int)Math.Round(Math.Abs(m)), 1, 25);
-        if (a.Key != "numbers") by = Math.Clamp(by + rng.Next(-1, 3), 1, 25);
+        if (voice != "numbers") by = Math.Clamp(by + rng.Next(-1, 3), 1, 25);
         var other = pick == home ? away : home;
-        string why = a.Key switch
+        string why = voice switch
         {
+            "contrarian" => pick == (margin >= 0 ? away : home) ? $"Everybody's on {other.Name}. I'll take {pick.Name} by {by}." : $"Even I can't fade {pick.Name} tonight. {pick.Abbreviation} by {by}.",
             "numbers" => $"The model has {pick.Name} by {by}. I don't argue with it.",
             "big" => pick == home ? $"Home floor, {pick.Name} control the paint. {pick.Abbreviation} by {by}." : $"{pick.Name} are just bigger and tougher. They win on the road by {by}.",
             "guard" => form[pick].streak >= 3 ? $"{pick.Name} are rolling. Ride the hot team: {pick.Abbreviation} by {by}."
