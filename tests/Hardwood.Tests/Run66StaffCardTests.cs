@@ -17,7 +17,7 @@ namespace Hardwood.Tests;
 [Collection(SharedUiState.Name)]   // it swaps AppSettings, app-wide state
 public class Run66StaffCardTests
 {
-    [Fact]
+    [Avalonia.Headless.XUnit.AvaloniaFact]
     public void Bars_put_the_key_rating_first_and_compare_with_your_man()
     {
         var st = new Staff { Id = 7, FirstName = "Ann", LastName = "Lee", Role = StaffRole.Physio, Medical = 16, Coaching = 5, Scouting = 9 };

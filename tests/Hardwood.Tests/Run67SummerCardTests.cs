@@ -16,7 +16,7 @@ namespace Hardwood.Tests;
 [Collection(SharedUiState.Name)]   // it swaps AppSettings, app-wide state
 public class Run67SummerCardTests
 {
-    [Fact]
+    [Avalonia.Headless.XUnit.AvaloniaFact]
     public void Chips_and_bars_read_the_ask_the_budget_and_the_scouts_range()
     {
         Assert.Equal(12.5, SummerCards.Mid("12.5"));

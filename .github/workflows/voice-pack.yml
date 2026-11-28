@@ -1,0 +1,114 @@
+# Run 239, V1 of claude/studio-voice-plan.md: builds the optional studio-show voice pack, a zip of its own beside the
+# game (#1253). It downloads Kokoro-82M v1.0 (int8 ONNX) and its voices, checks them against tools/Voice/pin.json's
+# sha256 pins (GitHub's copy only: Hugging Face's onnx-community export is a different file), makes one line in
+# every cast voice on Linux (tools/Voice/VoiceCheck), and on main publishes
+# HardwoodManager-VoicePack-v1-win-x64.zip on the "voicepack-v1" release. Nothing it downloads is committed, and the
+# game zip (release.yml) doesn't change. On a pull request it only checks.
+name: Voice pack
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/Voice/**"
+      - "src/Hardwood.Voice/**"
+      - ".github/workflows/voice-pack.yml"
+  pull_request:
+    paths:
+      - "tools/Voice/**"
+      - "src/Hardwood.Voice/**"
+      - "src/Hardwood.Core/Presentation/SpeechText.cs"
+      - "src/Hardwood.Core/Season/StudioVoiceCast.cs"
+      - ".github/workflows/voice-pack.yml"
+
+permissions:
+  contents: read
+
+# Never cancel a main run mid-publish (an upload --clobber deletes the old zip first); PR checks may be cancelled.
+concurrency:
+  group: voice-pack-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PACK_TAG: voicepack-v1
+      PACK_ZIP: HardwoodManager-VoicePack-v1-win-x64.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Download the model and voices (checked against the pins)
+        run: python3 tools/Voice/fetch.py model
+
+      - name: Check the pack on Linux (one line in every cast voice)
+        run: |
+          dotnet build tools/Voice/VoiceCheck -c Release -o check-bin
+          dotnet check-bin/VoiceCheck.dll model check-wav
+
+      - name: Keep the check's audio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-check-wav
+          path: check-wav
+          retention-days: 14
+
+      - name: Build the Windows pack
+        run: |
+          dotnet publish src/Hardwood.Voice -c Release -r win-x64 --self-contained false -o pack/voice
+          cp model/* pack/voice/
+          cp tools/Voice/VOICE-PACK-NOTICES.md pack/voice/
+          rm -f pack/voice/*.pdb
+          ls -la pack/voice
+          python3 - <<'EOF'
+          import json, os
+          pin = json.load(open("pack/voice/voice-pack.json"))
+          for f in pin["files"]:
+              assert os.path.getsize(os.path.join("pack/voice", f["name"])) == f["bytes"], f["name"]
+          for need in ["Hardwood.Voice.dll", "MisakiSharp.dll", "Microsoft.ML.OnnxRuntime.dll", "onnxruntime.dll"]:
+              assert os.path.exists(os.path.join("pack/voice", need)), "missing " + need
+          print("pack contents ok")
+          EOF
+          (cd pack && zip -r -9 "../$PACK_ZIP" voice)
+          ls -la "$PACK_ZIP"
+
+      - name: Keep the pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-pack
+          path: ${{ env.PACK_ZIP }}
+          retention-days: 14
+
+  publish:
+    # Only main's build is ever published (a dispatch from a branch only checks), and only this job can write (review,
+    # run 239): the job that runs the downloaded model has a read-only token.
+    needs: pack
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      PACK_TAG: voicepack-v1
+      PACK_ZIP: HardwoodManager-VoicePack-v1-win-x64.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: voice-pack
+      - name: Publish the voicepack-v1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$PACK_TAG" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            gh release upload "$PACK_TAG" "$PACK_ZIP" --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "$PACK_TAG" "$PACK_ZIP" --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+              --title "Studio voices (voice pack v1)" --latest=false --notes-file tools/Voice/RELEASE-NOTES.md
+          fi
