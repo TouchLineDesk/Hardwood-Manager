@@ -45,13 +45,16 @@ public sealed partial class InboxViewModel : PageViewModel
     [ObservableProperty] private InboxItem? _selected;
     [ObservableProperty] private string _summary = "";
     /// <summary>The club in the header: set on every refresh, so it follows a new job (review #14 bug #6).</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(TeamBrush))] private Hardwood.Core.Model.Team? _team;
+    /// H245 (run 240): out of work there is no club, so no crest, no club colours and the coach's name as the title.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(TeamBrush)), NotifyPropertyChangedFor(nameof(HeaderTitle)), NotifyPropertyChangedFor(nameof(HasTeam))] private Hardwood.Core.Model.Team? _team;
+    public string HeaderTitle => Team?.FullName ?? Session.Coach.Name;
+    public bool HasTeam => Team != null;
     public Avalonia.Media.IBrush TeamBrush => new Avalonia.Media.LinearGradientBrush
     {
         StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative), EndPoint = new Avalonia.RelativePoint(1, 0, Avalonia.RelativeUnit.Relative),
         GradientStops =
         {
-            new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse(Session.HumanTeam.PrimaryColor), 0),
+            new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse(Team?.PrimaryColor ?? "#3A4452"), 0),
             new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse("#161B22"), 1),
         },
     };
@@ -189,7 +192,7 @@ public sealed partial class InboxViewModel : PageViewModel
     public override void Refresh()
     {
         var selectedId = Selected?.Message.Id;
-        Team = Session.HumanTeam;
+        Team = Session.Employed ? Session.HumanTeam : null;
         Items.Clear();
         foreach (var m in Session.Inbox.Where(Shows)) Items.Add(MakeItem(m));
         Selected = Items.FirstOrDefault(i => i.Message.Id == selectedId) ?? Items.FirstOrDefault();
@@ -212,7 +215,7 @@ public sealed partial class InboxViewModel : PageViewModel
         int rank = s.MyRank;
         var hurt = s.HumanTeam.Roster.Where(p => p.IsHurt(s.Today)).ToList();
         // H15b (run 81): out of work, the summary isn't your old club's.
-        if (!s.Employed) { Summary = $"{s.Coach.Name} · out of work · open jobs are on the Board page"; return; }
+        if (!s.Employed) { Summary = "You are out of work · open jobs are on the Board page"; return; }
         Summary = $"{s.HumanTeam.FullName} · {rec.Wins}-{rec.Losses}" + (rec.Games > 0 ? $" · {Ordinal(rank)} in the {s.MyTableName}" : "")
                   // College programs pay no wages (#307): the line read "wages $0.0M of a $0.0M budget".
                   + (s.InCollege || !s.Employed ? "" : $" · {s.MyBudgetLine}")

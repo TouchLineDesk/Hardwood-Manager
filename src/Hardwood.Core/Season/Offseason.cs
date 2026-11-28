@@ -195,6 +195,7 @@ public sealed class Offseason
             double mpg = _stats.TryGetValue(p.Id, out var s) ? s.Mpg : 0;
             if (_dev.ShouldRetire(p, Date, mpg, seasonsLeft: p.Contract is { Years: > 1 })) Retire(team, p);   // Years ticks down just below
         }
+        InductHallClass();
         foreach (var p in _league.FreeAgents.ToList())
         {
             if (_dev.ShouldRetire(p, Date, 0) || p.CurrentAbility < 60)
@@ -930,11 +931,34 @@ public sealed class Offseason
         ConsiderHallOfFame(p);
     }
 
+    /// <summary>H244 (run 240): the real Hall's rule. A player becomes eligible once he has been retired four full seasons,
+    /// so one who retires this summer joins the class inducted four summers from now (Stephen Curry was inducted the
+    /// summer he retired).</summary>
+    public const int HallWaitSeasons = 4;
+
     private void ConsiderHallOfFame(Player p)
     {
         if (!_league.Careers.TryGetValue(p.Id, out var c)) return;
         if (c.HallScore < HallOfFameThreshold) return;
-        _league.HallOfFame.Add(new HallOfFamer(p.Id, Season + 1, Math.Round(c.HallScore, 1)));
+        if (_league.HallOfFame.Any(h => h.PlayerId == p.Id)) return;
+        _league.HallPending[p.Id] = Season + 1 + HallWaitSeasons;
+    }
+
+    /// <summary>H244 (run 240): each summer, the waiting retirees whose class has come are inducted.</summary>
+    private void InductHallClass()
+    {
+        foreach (var (id, year) in _league.HallPending.Where(kv => kv.Value <= Season + 1).OrderBy(kv => kv.Value).ThenBy(kv => kv.Key).ToList())
+        {
+            _league.HallPending.Remove(id);
+            var p = _league.Retired.FirstOrDefault(x => x.Id == id);
+            if (p == null || !_league.Careers.TryGetValue(id, out var c) || _league.HallOfFame.Any(h => h.PlayerId == id)) continue;
+            Induct(p, c, year);
+        }
+    }
+
+    private void Induct(Player p, CareerTotals c, int year)
+    {
+        _league.HallOfFame.Add(new HallOfFamer(p.Id, year, Math.Round(c.HallScore, 1)));
         Report.HallOfFame.Add(p);
         // A franchise retires the number of a Hall of Famer who gave it at least six seasons' worth of games.
         // (A real player's career before the game has no games by team; only games played here count. R2 part 2b.)

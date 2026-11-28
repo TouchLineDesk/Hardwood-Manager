@@ -165,6 +165,9 @@ public sealed class League
     public Season.CupBook Cup { get; set; } = new();
     /// <summary>W3 (run 231): sons of retired players found in new classes. Saved as JSON in meta; older saves have none.</summary>
     public People.LineageBook Lineage { get; set; } = new();
+    /// <summary>H244 (run 240): retired players who have the Hall of Fame score but are still waiting out the real rule
+    /// (four full seasons retired). Player id → the class they join. Saved as optional meta <c>hall_pending</c>.</summary>
+    public Dictionary<int, int> HallPending { get; set; } = new();
     public int NextPickId { get; set; } = 1;
     public const int PickYearsAhead = 7;
 

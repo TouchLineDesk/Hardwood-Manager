@@ -146,6 +146,7 @@ public sealed class SaveFile
         Exec(conn, "INSERT INTO meta(key, value) VALUES('media', $v)", ("$v", ToJson(league.Media)));
         Exec(conn, "INSERT INTO meta(key, value) VALUES('nba_cup', $v)", ("$v", ToJson(league.Cup)));
         Exec(conn, "INSERT INTO meta(key, value) VALUES('lineage', $v)", ("$v", ToJson(league.Lineage)));
+        Exec(conn, "INSERT INTO meta(key, value) VALUES('hall_pending', $v)", ("$v", ToJson(league.HallPending)));
 
         foreach (var pk in league.Picks)
             Exec(conn, "INSERT INTO draft_pick(id, year, round, original_team_id, owner_team_id, protected_top) VALUES($id, $y, $r, $o, $w, $p)",
@@ -308,6 +309,11 @@ public sealed class SaveFile
         {
             cmd.CommandText = "SELECT value FROM meta WHERE key = 'lineage'"; // W3 (run 231); older saves have none
             if (cmd.ExecuteScalar() is string json && FromJson<People.LineageBook>(json) is { } lineage) league.Lineage = lineage;
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT value FROM meta WHERE key = 'hall_pending'"; // H244 (run 240); older saves have none
+            if (cmd.ExecuteScalar() is string json && FromJson<Dictionary<int, int>>(json) is { } pending) league.HallPending = pending;
         }
         using (var cmd = conn.CreateCommand())
         {
