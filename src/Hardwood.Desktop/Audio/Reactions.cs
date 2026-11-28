@@ -87,7 +87,7 @@ public static class Reactions
 {
     /// <summary>Down this many or more, the home crowd has given up on the small things (Danny: "goes quiet when the home
     /// team starts to really get beat hard").</summary>
-    public const int BlowoutDeficit = 15;
+    public const int BlowoutDeficit = CrowdCalls.BlowoutDeficit;
 
     public static List<SoundCue> Plan(Choreography c)
     {
@@ -112,9 +112,9 @@ public static class Reactions
                 {
                     bool three = e.Zone is ShotZone.CornerThree or ShotZone.AboveBreakThree;
                     if (!e.Home) { cues.Add(new SoundCue(t, Cue.Groan, beaten ? 0.35 : three ? 1.0 : 0.7)); break; }
-                    bool andOne = moments.Skip(i + 1).TakeWhile(m => m.E.Kind is PlayKind.Foul or PlayKind.FreeThrow)
-                        .Count(m => m.E.Kind == PlayKind.FreeThrow && m.E.Actor == e.Actor) == 1;
-                    bool leadChange = late && hBefore <= aBefore && home > away;
+                    // Run 237: the commentary's crowd lines (CrowdCalls) read the same and-one and lead-change rules.
+                    bool andOne = CrowdCalls.IsAndOne(moments, i);
+                    bool leadChange = CrowdCalls.LateLeadChange(e, input.Periods, hBefore, aBefore);
                     // Run 160: a dunk, an and-one or a late lead change brings the house down (the eruption), and the
                     // students join in unless it's a blowout; a three is the big cheer.
                     bool dunk = Choreography.IsDunk(e);

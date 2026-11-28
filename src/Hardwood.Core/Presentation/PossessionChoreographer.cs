@@ -92,6 +92,10 @@ public sealed record PossessionInput(int Index, ulong Seed, IReadOnlyList<PlayEv
     /// <summary>K25 (run 174): who had the ball as the last possession ended (the outlet's target, a stealer), so the push
     /// after a stop starts with him. Null: the point guard.</summary>
     public Player? BallWith { get; init; }
+    /// <summary>Run 237 (K25's crowd lines): the most the home side has trailed by earlier in the game, so the crowd's
+    /// "gone quiet" line is said the first time the home side falls <see cref="CrowdCalls.BlowoutDeficit"/> behind, not
+    /// every time the gap swings back over it.</summary>
+    public int HomeDeepestDeficit { get; init; }
 }
 
 /// <summary>How the possession began: from the tip or a period's start, after a make (an inbound under the basket),
@@ -853,6 +857,8 @@ public static class PossessionChoreographer
         if (input.LateAndClose) c.Key = true;
         // M5: a possession that opens with a call (a run, a lead change, a milestone) is watched at Key moments too.
         if (input.Calls.Count > 0) c.Key = true;
+        // K25's leftover (run 237): the commentary hears the crowd, from the same moments and rules as its sounds.
+        CrowdCalls.AddLines(c);
         // The commentary reads in time order (the set's lines are written before the passes', at earlier times).
         var sorted = c.Lines.OrderBy(l => l.T).ToList();
         c.Lines.Clear(); c.Lines.AddRange(sorted);

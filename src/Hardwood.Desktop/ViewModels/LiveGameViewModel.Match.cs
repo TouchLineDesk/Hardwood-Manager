@@ -216,6 +216,8 @@ public sealed partial class LiveGameViewModel
             Notes = notes ?? Array.Empty<string>(),
             Calls = calls ?? Array.Empty<string>(),
             BallWith = _ballWith,
+            // Run 237: the most the home side trailed by before this possession (the crowd goes quiet once a game).
+            HomeDeepestDeficit = r.Plays.Take(Math.Max(0, r.Plays.Count - events.Count)).Select(e => e.AwayScore - e.HomeScore).DefaultIfEmpty(0).Max(),
         };
     }
 
