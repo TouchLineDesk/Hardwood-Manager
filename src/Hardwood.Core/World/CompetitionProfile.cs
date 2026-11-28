@@ -113,6 +113,10 @@ public sealed class CompetitionProfile
     /// evenly over the <see cref="RoundDays"/> between <see cref="Start"/> and this date (the EuroLeague's double-round weeks),
     /// rather than played on consecutive round days.</summary>
     public (int Month, int Day)? RegularEnd { get; init; }
+    /// <summary>Run 233 (the domestic real club counts): the real clubs that bring the league to its real size, added after
+    /// <see cref="Clubs"/> in a new world from their own random stream, so the slotted clubs draw as before
+    /// (<see cref="RealClubs.MoreOf"/>). An older save keeps the clubs it has.</summary>
+    public ClubSeed[] More { get; init; } = Array.Empty<ClubSeed>();
     /// <summary>Run 222: a play-in before the first playoff round (the EuroLeague's): the top <c>Playoffs[0].Teams − 2</c> go
     /// straight in; the next four play 7v8 (the winner is the 7th seed) and 9v10, then the 7v8 loser meets the 9v10 winner for
     /// the 8th seed. Single games at the higher seed's arena.</summary>

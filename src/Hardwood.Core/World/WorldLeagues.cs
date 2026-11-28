@@ -46,11 +46,11 @@ public static class WorldLeagues
 
     private static CompetitionProfile League(string key, string name, string shortName, string country, string[] locals, int offset, int foreign,
         double salary, double prestige, ClubSeed[] clubs, PlayoffRound[]? playoffs = null, bool stars = false, int robins = 2,
-        (int, int)? start = null, DayOfWeek[]? days = null, bool twoDay = true, string? real = null) => new()
+        (int, int)? start = null, DayOfWeek[]? days = null, bool twoDay = true, string? real = null, (int, int)? end = null) => new()
     {
         Key = key, Name = name, Short = shortName, RealName = real, Country = country, LocalNationalities = locals, StrengthOffset = offset, ForeignLimit = foreign,
         ImportsAreStars = stars, SalaryScale = salary, JobPrestige = prestige, Clubs = clubs, Playoffs = playoffs ?? Eight, RoundRobins = robins,
-        Start = start ?? (9, 26), RoundDays = days ?? Weekend, TwoDayRounds = twoDay && days == null,
+        Start = start ?? (9, 26), RoundDays = days ?? Weekend, TwoDayRounds = twoDay && days == null, RegularEnd = end, More = RealClubs.MoreOf(key),
     };
 
     private static ClubSeed[] Clubs(string country, params (string City, string Name, string Abbr)[] c) =>
@@ -87,7 +87,8 @@ public static class WorldLeagues
             RealClubs.Benelux, real: "BNXT League"),
         // ---------------------------------------------------------------- Americas
         League(Argentina, "Argentine League", "LNA", "Argentina", new[] { "Argentina" }, -14, 3, 0.03, -24,
-            RealClubs.Argentina, real: "Liga Nacional de Básquet"),
+            // Run 233: 19 clubs (38 rounds) don't fit the weekends before the summer: Wednesdays and Saturdays to mid-April.
+            RealClubs.Argentina, days: new[] { DayOfWeek.Wednesday, DayOfWeek.Saturday }, end: (4, 18), real: "Liga Nacional de Básquet"),
         League(Brazil, "Brazilian League", "NBB", "Brazil", new[] { "Brazil" }, -15, 3, 0.035, -24,
             RealClubs.Brazil, real: "Novo Basquete Brasil"),
         League(PuertoRico, "Puerto Rico League", "BSN", "Puerto Rico", new[] { "Puerto Rico" }, -16, 3, 0.04, -25,

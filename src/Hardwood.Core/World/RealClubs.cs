@@ -166,7 +166,7 @@ public static partial class RealClubs
     private static Dictionary<string, ClubSeed> ByWas => _byWas ??= Seeds().Where(s => s.Was != null).GroupBy(s => s.Was!).ToDictionary(g => g.Key, g => g.First());
 
     /// <summary>Every real club abroad.</summary>
-    public static IEnumerable<ClubSeed> Seeds() => Spain.Concat(Turkey).Concat(Greece).Concat(Italy).Concat(France).Concat(Germany).Concat(Lithuania).Concat(Slice2()).Concat(Slice3());
+    public static IEnumerable<ClubSeed> Seeds() => Spain.Concat(Turkey).Concat(Greece).Concat(Italy).Concat(France).Concat(Germany).Concat(Lithuania).Concat(Slice2()).Concat(Slice3()).Concat(Counts());
 
     private static string Key(string city, string name) => city + "|" + name;
 

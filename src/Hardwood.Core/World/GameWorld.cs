@@ -161,6 +161,8 @@ public sealed class GameWorld
             real: Hardwood.Core.RealWorld.RealWorldData.IsReal(nabl));
         nabl.CollegeActive = true;
         nabl.NextPlayerId = gen.NextId;
+        // Run 233: the leagues abroad reach their real sizes, from their own stream after the college, so nothing above moves.
+        AddRealCounts(world, seed, gen, today, nabl);
         // The top league grows to 32 with the two strongest tier-2 clubs (Danny's D33 design, D36a A, #355).
         if (expandTop) UsaPyramid.ExpandTop(world, nabl, new StaffGenerator(new Rng(seed ^ 0x3332544F50UL)), today);
         world.Index();
@@ -168,6 +170,28 @@ public sealed class GameWorld
             world.Levels[c.Key] = Math.Round(c.Clubs.SelectMany(t => t.Roster).Average(p => p.CurrentAbility), 1);
         world.StartSeason(nabl.Season);
         return world;
+    }
+
+    /// <summary>Run 233 (the domestic real club counts): each league's <see cref="CompetitionProfile.More"/> clubs, added after its
+    /// slotted clubs with the next team ids of its block. Their own random stream and player generator (continuing the ids and
+    /// the name book), so the slotted clubs, the college world and the NBA draw exactly what they drew before.</summary>
+    private static void AddRealCounts(GameWorld world, ulong seed, PlayerGenerator gen, DateOnly today, League nabl)
+    {
+        var rng = new Rng(seed ^ 0x5245414C434E5453UL);
+        var more = new PlayerGenerator(new Rng(seed ^ 0x4D4F5245504C5952UL), nabl.NextPlayerId) { Names = gen.Names };
+        foreach (var comp in world.Competitions.Where(c => c.Profile.More.Length > 0 && c.Clubs.Count > 0))
+        {
+            int id = comp.Clubs.Max(t => t.Id) + 1;
+            foreach (var seedClub in comp.Profile.More)
+            {
+                var team = NewClub(id++, seedClub, comp.Profile, rng);
+                double quality = rng.NextGaussian(0, 7) + seedClub.Standing;
+                for (int s = 0; s < RosterSize; s++) team.Roster.Add(NewPlayer(team, comp.Profile, seedClub, s, quality, today, more, rng, foreignSlot: false));
+                ApplyForeignMix(team, comp.Profile, seedClub, quality, today, more, rng);
+                comp.Clubs.Add(team);
+            }
+        }
+        nabl.NextPlayerId = more.NextId;
     }
 
     private static readonly int[] SlotCa = { 138, 130, 124, 118, 113, 108, 103, 98, 93, 88, 83, 78, 72 };
@@ -1352,7 +1376,7 @@ public sealed class GameWorld
     }
 
     private static ClubSeed ClubOf(WorldCompetition comp, Team team) =>
-        comp.Profile.Clubs.FirstOrDefault(c => c.Abbr == team.Abbreviation) ?? new ClubSeed(team.City, team.Name, team.Abbreviation);
+        comp.Profile.Clubs.Concat(comp.Profile.More).FirstOrDefault(c => c.Abbr == team.Abbreviation) ?? new ClubSeed(team.City, team.Name, team.Abbreviation);
 
     private static string[] LocalsOf(CompetitionProfile profile, ClubSeed club) =>
         profile.LocalNationalities.Length > 0 ? profile.LocalNationalities : new[] { club.Country ?? "" };
