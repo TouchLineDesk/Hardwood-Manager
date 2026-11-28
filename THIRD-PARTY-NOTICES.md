@@ -71,3 +71,11 @@ The live game's sound (run 153) plays through two MIT-licensed libraries, used a
 > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 The period buzzer and the referee's whistle are synthesised in code (`Synth.cs`); no recording is used for them.
+
+## Studio-show voices (the optional voice pack; not in the game zip)
+
+The voice pack (`HardwoodManager-VoicePack-v1-win-x64.zip`, its own `voicepack-v1` release, built by
+`.github/workflows/voice-pack.yml`) carries Kokoro-82M v1.0 (Apache-2.0), MisakiSharp 2.2.0 (Apache-2.0) and
+Microsoft.ML.OnnxRuntime 1.20.1 (MIT), with its own notices file (`tools/Voice/VOICE-PACK-NOTICES.md`). None of them is
+in this repository or in the game zip; the model files are downloaded by the workflow and checked against
+`tools/Voice/pin.json`.

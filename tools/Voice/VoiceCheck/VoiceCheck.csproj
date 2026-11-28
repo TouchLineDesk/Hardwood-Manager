@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Run 239: the voice pack's check (voice-pack.yml runs it on Linux before publishing the pack). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Hardwood.Core/Hardwood.Core.csproj" />
+    <ProjectReference Include="../../../src/Hardwood.Voice/Hardwood.Voice.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Run 239, V1 of claude/studio-voice-plan.md: the studio shows' voice engine. It ships ONLY in the separate voice
+       pack (HardwoodManager-VoicePack-v1-win-x64.zip, built by .github/workflows/voice-pack.yml), never in the game zip:
+       the game doesn't reference this project, and it isn't in Hardwood.sln. No model or voice file is in the repo;
+       the workflow downloads them and checks tools/Voice/pin.json's sha256 pins. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Hardwood.Voice</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Apache-2.0. Kokoro's own G2P (misaki) in C#; no espeak-ng inside (#1252). -->
+    <PackageReference Include="MisakiSharp" Version="2.2.0" />
+    <!-- MIT. CPU inference only. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="VoiceCheck" />
+  </ItemGroup>
+</Project>
