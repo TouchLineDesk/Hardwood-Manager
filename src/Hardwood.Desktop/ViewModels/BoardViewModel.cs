@@ -114,6 +114,27 @@ public sealed partial class BoardViewModel : PageViewModel
     [ObservableProperty] private string _confidenceText = "";
     [ObservableProperty] private IBrush _confidenceBrush = Brushes.Gray;
     [ObservableProperty] private IReadOnlyList<LineSeries>? _confidenceTrend;
+    /// <summary>H231 (run 232): which weeks the chart covers, and the step to today's number when a review moved it.</summary>
+    [ObservableProperty] private string _confidenceTrendCaption = "";
+
+    /// <summary>
+    /// H231 (run 232): the weekly confidence line, ending at today's number. The weekly reviews are the line; the season's
+    /// review (and the owner's demands) move confidence between them, so the Board showed "Under pressure (45/100)" over a
+    /// line at 60-65: last season's weeks, without the review's drop. The chart now ends with today's value when it differs
+    /// from the last weekly point, and the caption says which weeks it covers.
+    /// </summary>
+    public static (double[] Values, string Caption) TrendFor(JobState job)
+    {
+        var h = job.History;
+        if (h.Count == 0) return (Array.Empty<double>(), "");
+        var values = h.Select(x => x.Confidence).ToList();
+        bool stepped = Math.Abs(h[^1].Confidence - Math.Round(job.Confidence, 1)) >= 0.5;
+        if (stepped) values.Add(Math.Round(job.Confidence, 1));
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        string caption = $"Weekly, {h[0].Date.ToString("MMM d, yyyy", inv)} to {h[^1].Date.ToString("MMM d, yyyy", inv)}"
+            + (stepped ? $"; the last point is today's {job.Confidence:0}." : ".");
+        return (values.ToArray(), caption);
+    }
     [ObservableProperty] private bool _hasTrend;
     /// <summary>Roadmap 4, the assistant explains why: what's pushing confidence up or down this week, and where it's heading.</summary>
     [ObservableProperty] private List<Hardwood.Desktop.Controls.Chip> _confidenceDrivers = new();
@@ -320,7 +341,9 @@ public sealed partial class BoardViewModel : PageViewModel
             RefreshProgram();
             RefreshAcademics();
             HasTrend = job.History.Count >= 2;
-            ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = s.InCollege ? "AD confidence" : "Board confidence", Values = job.History.Select(x => x.Confidence).ToArray(), Color = ThemeService.Accent, Emphasis = true } } : null;
+            var (trend, caption) = TrendFor(job);
+            ConfidenceTrend = HasTrend ? new[] { new LineSeries { Name = s.InCollege ? "AD confidence" : "Board confidence", Values = trend, Color = ThemeService.Accent, Emphasis = true } } : null;
+            ConfidenceTrendCaption = HasTrend ? caption : "";
         }
 
         else { HasFacilities = false; HasBusiness = false; HasProgram = false; }
@@ -820,7 +843,7 @@ public sealed partial class BoardViewModel : PageViewModel
         FacilityChips = new List<Hardwood.Desktop.Controls.Chip>
         {
             // H67 (run 105): the reserve is a floor he won't spend below, not money he holds ("keeps $72M in the bank" beside "Bank $34M").
-            new("Owner will fund", M(budget), budget > 0 ? $"above a {M(reserve)} reserve" : $"bank under his {M(reserve)} reserve", budget > 0 ? "good" : ""),
+            new("Owner will fund", M(budget), budget > 0 ? $"bank above his {M(reserve)} floor" : $"he spends only bank above {M(reserve)}", budget > 0 ? "good" : ""),
             new("Running costs", M(Hardwood.Core.Season.Franchise.Upkeep(f, s.MyLeagueRevenue)), "a season", ""),
             // H99 (run 109): money spent this summer reads "this summer" until the season starts.
             new("Invested", M(f.LastInvested), s.Phase is Hardwood.Core.Season.SessionPhase.Offseason or Hardwood.Core.Season.SessionPhase.Preseason ? "this summer" : "last summer", ""),

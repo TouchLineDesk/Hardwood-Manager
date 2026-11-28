@@ -49,6 +49,7 @@
               <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" Margin="10,0,0,0" Foreground="{Binding ConfidenceBrush}" FontWeight="SemiBold"/>
             </Grid>
             <c:LineChart Series="{Binding ConfidenceTrend}" Height="140" MinY="0" MaxY="100" IsVisible="{Binding HasTrend}"/>
+            <TextBlock Text="{Binding ConfidenceTrendCaption}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasTrend}"/>
             <!-- What moved confidence (roadmap 4) -->
             <TextBlock Text="What's moving it" FontWeight="SemiBold" Margin="0,6,0,0"/>
             <TextBlock Text="{Binding ConfidenceHeading}" TextWrapping="Wrap"/>
