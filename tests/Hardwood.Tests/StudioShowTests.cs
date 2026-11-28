@@ -43,7 +43,7 @@ public class StudioShowTests
         Assert.NotEmpty(show.ImpactLines);
         Assert.Equal("MVP ladder", show.RaceTitle == "Rookie of the Year ladder" ? "MVP ladder" : show.RaceTitle);
         Assert.InRange(show.Race.Count, 1, 5);
-        Assert.Equal(3, show.Picks.Count);
+        Assert.Equal(4, show.Picks.Count); // the three regulars and the month's guest (run 234)
         Assert.All(show.Picks, p => Assert.True(p.Pick == show.Home || p.Pick == show.Away));
         Assert.InRange(show.HomeChance, 0.01, 0.99);
         Assert.NotEqual("", show.Venue); // a real career names the real arena
@@ -60,7 +60,7 @@ public class StudioShowTests
 
         s.LockStudioPicks(show);
         s.LockStudioPicks(show); // once per game
-        Assert.Equal(3, s.Media.Studio.Picks.Count);
+        Assert.Equal(4, s.Media.Studio.Picks.Count); // with the guest (run 234)
         s.FinishLiveDay(live, played);
         Assert.All(s.Media.Studio.Picks, p => Assert.NotNull(p.Correct));
         int homeWon = live.Result.Home.Points > live.Result.Away.Points ? show.Home.Id : show.Away.Id;
