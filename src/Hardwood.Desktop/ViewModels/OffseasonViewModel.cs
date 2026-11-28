@@ -318,7 +318,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
             // H232 (run 232): outside the NBA with no deal up, the re-signing step read only "Free agency: make offers…" under a
             // "Continue to the draft" button. Free agency is open at once there (H95), so it says so and what Continue does.
             : !s.InNabl && o.Phase == OffseasonPhase.ReSigning
-                ? "No contracts of yours are up this summer. Free agency is already open in your league: make offers to free agents, including this year's college graduates (age 22); the owner won't let you go over the wage budget. Continue moves the summer on to the draft."
+                ? "No contract decisions are left this summer. Free agency is already open in your league: make offers to free agents, including this year's college graduates (age 22); the owner won't let you go over the wage budget. Continue moves the summer on to the draft."
             : (s.InNabl && renewing
                 ? "Contract decisions: talk to each player whose deal is up (offer a wage and years; he accepts, counters or walks), or release him. Then continue to free agency."
                 : "Free agency: make offers to free agents, including this year's college graduates (age 22). Players ask more to join a weaker team, and the owner won't let you go over the wage budget.")

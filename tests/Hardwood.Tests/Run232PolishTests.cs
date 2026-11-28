@@ -29,8 +29,10 @@ public class Run232PolishTests
     [Fact]
     public void H229_the_extension_is_paid_from_the_summer_the_rookie_year_ends()
     {
-        var s = GameSession.NewGame(31, 1, null);
+        int spurs = GameSession.NewGame(31, 1, null).League.Teams.Single(t => t.Roster.Any(p => p.Name == "Victor Wembanyama")).Id;
+        var s = GameSession.NewGame(31, spurs, null);
         var all = s.League.Teams.SelectMany(t => t.Roster).ToList();
+        Assert.Contains(s.HumanTeam.Roster, p => p.Name == "Victor Wembanyama");
         var wemby = all.Single(p => p.Name == "Victor Wembanyama");
         var eason = all.Single(p => p.Name == "Tari Eason");
         long rookie = wemby.Contract!.Salary, easonPay = eason.Contract!.Salary;
@@ -55,6 +57,11 @@ public class Run232PolishTests
         Assert.Equal(5, w.Contract.Years);
         Assert.True(w.Contract.Salary > rookie * 2, "the best player in the game is paid like one from his extension");
         Assert.True(w.Contract.Salary <= max);
+        Assert.Contains(s.Offseason!.Report.RookieExtensions, x => x.player == w && x.from == rookie && x.to == w.Contract.Salary);
+        var note = s.Inbox.FirstOrDefault(m => m.Title == "Victor Wembanyama's extension starts");
+        Assert.NotNull(note);
+        _out.WriteLine(note!.Body);
+        Assert.Contains("for 5 more seasons", note.Body);
         // The summer after, the deal no longer matches the source, so it never steps again.
         Assert.Null(RealPlayers.RookieExtensionSalary(w, s.League.Finance, s.Today));
         var e = s.League.Teams.SelectMany(t => t.Roster).Concat(s.League.FreeAgents).FirstOrDefault(p => p.Name == "Tari Eason");

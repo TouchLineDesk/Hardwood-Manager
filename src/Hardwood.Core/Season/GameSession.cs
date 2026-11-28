@@ -1454,6 +1454,11 @@ public sealed partial class GameSession
         var retired = Offseason.Report.Retired.Where(p => p.InjuryHistory != null).ToList();
         var ours = Offseason.Report.Retired.Where(p => HumanTeamHad(p)).ToList();
         if (ours.Count > 0) Post("Retirements", string.Join(", ", ours.Select(p => p.Name)) + (ours.Count == 1 ? " has" : " have") + " retired.", "Roster");
+        // H229 (run 232, the review of PR #301): a rookie extension's raise lands on your payroll this summer, so say so.
+        var raises = Offseason.Report.RookieExtensions.Where(x => x.team == HumanTeam).ToList();
+        if (raises.Count > 0) Post(raises.Count == 1 ? $"{raises[0].player.Name}'s extension starts" : "Rookie extensions start",
+            string.Join("\n", raises.Select(x => $"{x.player.Name}'s rookie deal is over and the extension he signed starts: ${x.from / 1e6:F2}M → ${x.to / 1e6:F2}M a season for {x.player.Contract!.Years} more seasons."))
+            + $"\n\nPayroll now ${ContractMarket.Payroll(HumanTeam) / 1e6:F1}M.", "Roster");
         if (Offseason.Report.Lottery is { } lottery)
         {
             int ourPick = lottery.Order.IndexOf(HumanTeam) + 1;
