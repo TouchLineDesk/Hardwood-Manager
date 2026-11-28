@@ -17,6 +17,8 @@ public sealed class OffseasonReport
     public int Season { get; init; }
     public List<DevelopmentReport> Development { get; } = new();
     public List<Player> Retired { get; } = new();
+    /// <summary>H229 (run 232): real rookie-scale deals whose extension started this summer, with the old and new wage.</summary>
+    public List<(Player player, Team team, long from, long to)> RookieExtensions { get; } = new();
     public List<(Player player, Team team)> ReSigned { get; } = new();
     public List<(Player player, Team from)> ToFreeAgency { get; } = new();
     public LotteryResult? Lottery { get; set; }
@@ -206,7 +208,17 @@ public sealed class Offseason
         // Contracts tick down; expiring players wait for a decision.
         foreach (var team in _league.Teams)
         {
-            foreach (var p in team.Roster) if (p.Contract != null) p.Contract.Years--;
+            foreach (var p in team.Roster)
+            {
+                if (p.Contract == null) continue;
+                // H229 (run 232): a real rookie-scale deal's extension starts as the rookie year ends.
+                if (RealWorld.RealPlayers.RookieExtensionSalary(p, _league.Finance, Date) is { } extension)
+                {
+                    Report.RookieExtensions.Add((p, team, p.Contract.Salary, extension));
+                    p.Contract.Salary = extension;
+                }
+                p.Contract.Years--;
+            }
             Expiring[team.Id] = team.Roster.Where(p => p.Contract == null || p.Contract.Years <= 0)
                 .OrderByDescending(p => ContractMarket.Value(p, Date)).ToList();
         }

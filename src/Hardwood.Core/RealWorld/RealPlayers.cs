@@ -236,6 +236,38 @@ public static class RealPlayers
             }
             : null;
 
+    /// <summary>H229 (run 232): a rookie-scale deal with its extension already signed: six seasons listed, the first a rookie
+    /// wage (under <see cref="RookieShareOfCap"/> of the cap), for a player 24 or under. The source gives one salary a player,
+    /// so the five extension years were paid at the rookie number (Wembanyama, the best player in the game, at $16.9M × 6).
+    /// Seven real players (the 2023 draft's extensions).</summary>
+    public const int RookieExtensionYears = 6;
+    public const double RookieShareOfCap = 0.12;
+    /// <summary>H229: a rookie extension is worth at most a quarter of the cap (the NBA's rookie maximum).</summary>
+    public const double RookieMaxShareOfCap = 0.25;
+
+    /// <summary>True when the source's deal for <paramref name="name"/> is a rookie-scale year followed by an extension.</summary>
+    public static bool IsRookieExtension(string name) =>
+        Bios.TryGetValue(name, out var b) && b.Salary is long salary && b.Years == RookieExtensionYears && RealCap > 0
+        && salary < RealCap * RookieShareOfCap && b.Born is { } born && born >= new DateOnly(2002, 2, 2); // 24 or under on Feb 1 2027
+
+    /// <summary>
+    /// H229 (run 232): the extension's wage, from the summer the rookie year ends. Called as contracts tick down: when
+    /// <paramref name="p"/> still holds the source's untouched deal (all six years left, at the real salary), the rest of it
+    /// is paid at his market value for his ability now (<see cref="Hardwood.Core.Season.ContractMarket.MarketSalary"/>), between his rookie wage and
+    /// the rookie maximum. Null otherwise: a re-signed, renegotiated or generated player's deal is never touched. No random
+    /// draw and nothing saved: once the salary moves, the deal no longer matches the source.
+    /// </summary>
+    public static long? RookieExtensionSalary(Player p, Finance finance, DateOnly on)
+    {
+        if (p.Contract is not { } c || !IsRookieExtension(p.Name) || c.Years != RookieExtensionYears) return null;
+        var real = Bios[p.Name];
+        long rookie = Math.Max(finance.MinSalary, (long)Math.Round(real.Salary!.Value / 10_000.0) * 10_000);
+        if (c.Salary != rookie) return null;
+        long max = (long)Math.Round(finance.SalaryCap * RookieMaxShareOfCap / 10_000) * 10_000;
+        long market = Hardwood.Core.Season.ContractMarket.MarketSalary(p.CurrentAbility, p.Age(on), finance);
+        return Math.Max(rookie, Math.Min(market, max));
+    }
+
     private static Position PosOf(string pos) => pos switch
     {
         "PG" => Position.PG, "SG" => Position.SG, "SF" => Position.SF, "PF" => Position.PF, _ => Position.C,

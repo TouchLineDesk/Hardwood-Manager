@@ -57,8 +57,34 @@ public sealed partial class GameSession
         // The review of PR #251: the stricter of the two rules, so a sacked losing coach isn't better placed than a kept one.
         if (CollegeCoach && Coach.Reputation < CollegeToProReputation)
             factor = Math.Min(factor, CollegeLosingSeason ? CollegeToProLosingFactor : CollegeToProFactor);
+        // H230 (run 232, #933): a club hires from the reputation it can see. A pro club's standing is read in its own league's
+        // terms, so the NBA's worst club looked like a fair match for a coach just sacked at 8-19 in Lithuania (hired by
+        // Indiana five months later). Out of work after a pro sacking last season or this one, a club above the level he was
+        // sacked at is a long shot unless his name is high: one level up rarely, two or more almost never.
+        if (SackedFromLevel is int from && Coach.Reputation < SackedProReputation)
+        {
+            int jump = from - LevelForJobs(t);
+            if (jump >= 2) factor = Math.Min(factor, SackedProTwoUpFactor);
+            else if (jump == 1) factor = Math.Min(factor, SackedProOneUpFactor);
+        }
         return chance * factor;
     }
+
+    /// <summary>H230: below this reputation a recently sacked pro coach is a long shot above the level he was sacked at.</summary>
+    public const double SackedProReputation = 60;
+    /// <summary>H230: his chance one level up, and two or more levels up (a club abroad counts as level 3).</summary>
+    public const double SackedProOneUpFactor = 0.3, SackedProTwoUpFactor = 0.05;
+
+    /// <summary>H230: a pro club's level for the job market: its pyramid level, or 3 abroad (where the overseas top flights
+    /// sit, as <see cref="NotALowerLeague"/> reads them).</summary>
+    private int LevelForJobs(Team t) => PyramidLevelOf(t) is > 0 and var level ? level : 3;
+
+    /// <summary>H230: out of work, sacked by a pro club last season or this one: that club's level. Null otherwise (in work,
+    /// a college program, or a club that no longer exists).</summary>
+    public int? SackedFromLevel =>
+        !Employed && Coach.History.LastOrDefault() is { Ended: "Sacked" } last && last.ToSeason >= League.Season - 1
+        && World.College?.Programs.Any(p => p.Id == last.TeamId) != true && FindTeam(last.TeamId) is { } club
+            ? LevelForJobs(club) : null;
 
     /// <summary>H194: the reputation at which a college coach is a real candidate for a pro head job.</summary>
     public const double CollegeToProReputation = 70;
