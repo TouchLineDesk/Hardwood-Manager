@@ -87,8 +87,20 @@ public static class SummerCards
     /// who'd talk but cost more, then the rest, each group best first (<paramref name="rows"/> come in ability order).
     /// A G League club with $0.8M to spend saw 24 stars asking $20M+, all "Aims higher", with Make offer greyed.
     /// </summary>
-    public static IEnumerable<FreeAgentRow> WithinReach(IEnumerable<FreeAgentRow> rows) =>
-        rows.Select((r, i) => (r, i)).OrderBy(x => x.r.Reach).ThenBy(x => x.i).Take(FreeAgentCount).Select(x => x.r);
+    /// <remarks>The review of #305: <paramref name="rows"/> is read lazily, only until <see cref="FreeAgentCount"/> rows that
+    /// fit have been seen, so a pool's cheaper players further down are found without building a card for everyone.</remarks>
+    public static IEnumerable<FreeAgentRow> WithinReach(IEnumerable<FreeAgentRow> rows)
+    {
+        var seen = new List<FreeAgentRow>();
+        int fits = 0;
+        foreach (var r in rows)
+        {
+            seen.Add(r);
+            if (r.Reach == 0) fits++;
+            if (fits >= FreeAgentCount) break;
+        }
+        return seen.Select((r, i) => (r, i)).OrderBy(x => x.r.Reach).ThenBy(x => x.i).Take(FreeAgentCount).Select(x => x.r).ToList();
+    }
 
     /// <summary>H242: what the cards are, for the note above them.</summary>
     public static string CardsNote(IReadOnlyCollection<FreeAgentRow> cards, int all, long room)
@@ -97,8 +109,10 @@ public static class SummerCards
         if (all <= cards.Count && cards.All(c => c.Reach == 0)) return $"All {all} free agent{(all == 1 ? "" : "s")}, best first, with what each asks of your club.";
         if (fits == cards.Count)
             return $"{cards.Count} free agents whose asks fit your wage room ({Money(Math.Max(0, room))}), best first, of {all:N0}.";
+        int talk = cards.Count(c => c.Reach == 1);
+        if (fits == 0 && talk == 0) return $"None of the best {cards.Count} of {all:N0} free agents will talk to you now (hover a card's chip for why).";
         return fits == 0
-            ? $"Nobody of {all:N0} free agents asks within your wage room ({Money(Math.Max(0, room))}): the best {cards.Count} who'd talk come first, then those who won't."
+            ? $"Nobody of {all:N0} free agents asks within your wage room ({Money(Math.Max(0, room))}): the best {talk} who'd talk come first{(talk < cards.Count ? ", then those who won't" : "")}."
             : $"{fits} free agent{(fits == 1 ? "" : "s")} whose asks fit your wage room ({Money(Math.Max(0, room))}) come first, best first; then the best of the rest of {all:N0}.";
     }
 }

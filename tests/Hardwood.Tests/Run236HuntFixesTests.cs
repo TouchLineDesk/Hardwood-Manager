@@ -159,6 +159,16 @@ public class Run236FreeAgentCardsTests
         Assert.Equal(Enumerable.Range(0, 24), best.Select(c => c.Player.Id));
         Assert.StartsWith("24 free agents whose asks fit your wage room", Hardwood.Desktop.ViewModels.SummerCards.CardsNote(best, 40, 50_000_000));
 
+        // Rows are read only until 24 that fit are seen (the review of #305).
+        int built = 0;
+        IEnumerable<Hardwood.Desktop.ViewModels.FreeAgentRow> Lazy() { for (int i = 0; i < 1000; i++) { built++; yield return Row(i, 200 - i / 10, 1_000_000, i % 2); } }
+        var lazy = Hardwood.Desktop.ViewModels.SummerCards.WithinReach(Lazy()).ToList();
+        Assert.Equal(47, built);   // the 24th that fits is row 46
+        Assert.All(lazy, c => Assert.Equal(0, c.Reach));
+
+        var wontTalk = Enumerable.Range(0, 24).Select(i => Row(i, 200 - i, 9_000_000, 2)).ToList();
+        Assert.StartsWith("None of the best 24 of 300 free agents will talk to you now", Hardwood.Desktop.ViewModels.SummerCards.CardsNote(wontTalk, 300, 5_000_000));
+
         var none = Enumerable.Range(0, 5).Select(i => Row(i, 200 - i, 9_000_000, 1)).ToList();
         Assert.StartsWith("Nobody of 5 free agents asks within your wage room", Hardwood.Desktop.ViewModels.SummerCards.CardsNote(none, 5, 0));
     }

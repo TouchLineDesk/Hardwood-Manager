@@ -132,16 +132,18 @@ public sealed partial class TransactionsViewModel : PageViewModel
         FreeAgents.Clear(); FreeAgentCards.Clear();
         foreach (var p in s.League.FreeAgents.OrderByDescending(p => p.CurrentAbility)) FreeAgents.Add(PlayerRow.From(p, s, "FA"));
         long room = s.MyWageRoom;
-        // H242 (run 236): the cards lead with players who'd come and fit the room (from the best 250 by ability).
-        foreach (var r in SummerCards.WithinReach(FreeAgents.Take(250).Select(r => SummerCards.FreeAgent(s, r.Player, s.Today, false, room)).ToList()))
+        // H242 (run 236): the cards lead with players who'd come and fit the room.
+        // Read lazily (the review of #305): rows are built only until 24 who fit are found.
+        foreach (var r in SummerCards.WithinReach(FreeAgents.Take(room > 0 ? int.MaxValue : SummerCards.FreeAgentCount).Select(r => SummerCards.FreeAgent(s, r.Player, s.Today, false, room))))
             FreeAgentCards.Add(r);
+        string cardsNote = SummerCards.CardsNote(FreeAgentCards, FreeAgents.Count, room);
         // H18 (run 100): the man you're talking to from further down goes after the best, not ahead of them.
         bool extra = keep != null && !FreeAgentCards.Any(c => c.Player == keep) && s.League.FreeAgents.Contains(keep);
         if (extra) FreeAgentCards.Add(SummerCards.FreeAgent(s, keep!, s.Today, false, room));
         // H103 (run 112): say when players reach the pool, not just that it is empty.
         FaCardsNote = (FreeAgents.Count == 0 ? FreeAgentsEmptyNote
             : FreeAgents.Count <= SummerCards.FreeAgentCount ? $"All {FreeAgents.Count} free agent{(FreeAgents.Count == 1 ? "" : "s")}, best first, with what each asks of your club. Pick a card to talk to him."
-            : SummerCards.CardsNote(FreeAgentCards, FreeAgents.Count, room) + " Pick a card to talk to him; the full table lists them all by ability.")
+            : cardsNote + " Pick a card to talk to him; the full table lists them all by ability.")
             + (extra ? $" {keep!.Name}, whom you're talking to, is last." : "");
         // Keep the man you were talking to (the rows are rebuilt), so an offer's answer stays on screen.
         var again = keep == null ? null : FreeAgents.FirstOrDefault(r => r.Player == keep);

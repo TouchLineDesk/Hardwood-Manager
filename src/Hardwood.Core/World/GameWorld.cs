@@ -477,7 +477,7 @@ public sealed class GameWorld
 
     /// <summary>The circle method: <paramref name="robins"/> passes, home and away alternating.
     /// H236 (run 236): the venue follows each club's slot on the circle (home on even slots, the top row and the bottom row
-    /// alike), so a club that moves one slot a round alternates home and away, with at most two in a row where the circle wraps
+    /// alike), so a club that moves one slot a round alternates home and away, with at most three in a row where the circle wraps
     /// or a pass turns over. The old rule flipped on <c>(round + pair + pass) % 2</c>, which a moving club's parity never
     /// changed: the Portland Kestrels played 26 straight home games, then went away. The club fixed at slot 0 alternates by round.
     /// Odd passes swap every venue, so each pairing is played once at each end over two passes.</summary>

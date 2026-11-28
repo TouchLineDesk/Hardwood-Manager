@@ -378,7 +378,12 @@ public sealed partial class OffseasonViewModel : PageViewModel
             }
             // H242 (run 236): the cards lead with players who'd come and whose asks fit the room, best first (a G League club's
             // 24 cards were all $20M+ stars aiming higher, against $0.8M to spend); the table keeps everyone by ability.
-            foreach (var r in SummerCards.WithinReach(FreeAgents)) FreeAgentCards.Add(r);
+            // The review of #305: past the table's 250, the cheaper players are looked at too, until 24 who fit are found.
+            // With no room nobody further down can fit either, so nothing more is built.
+            var beyond = (room > 0 ? s.League.FreeAgents : new List<Player>()).OrderByDescending(p => p.CurrentAbility).Skip(250)
+                .Select(p => SummerCards.FreeAgent(s, p, s.Today, p.RookieSeason == o.Season + 1, room));
+            foreach (var r in SummerCards.WithinReach(FreeAgents.Concat(beyond))) FreeAgentCards.Add(r);
+            string cardsNote = SummerCards.CardsNote(FreeAgentCards, s.League.FreeAgents.Count, room);
             // Bid from the table on someone further down: his card is added after the best, not ahead of them (H18, run 100:
             // a CA 118 player you'd talked to sat first, before the 149s), and the note says why he's there.
             FreeAgentRow? extra = null;
@@ -386,7 +391,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 FreeAgentCards.Add(extra = further);
             int all = s.League.FreeAgents.Count;
             FreeAgentNote = all == 0 ? "No free agents are left."
-                : SummerCards.CardsNote(FreeAgentCards, all, room) + $" Pick a card to talk to him; the full table lists the best {Math.Min(all, 250)} by ability."
+                : cardsNote + $" Pick a card to talk to him; the full table lists the best {Math.Min(all, 250)} by ability."
                   + (extra != null ? $" {extra.Player.Name}, whom you're talking to, is last." : "");
         }
         foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
