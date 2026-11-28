@@ -86,7 +86,21 @@ public static class DeskReel
         // Run 235 (b): the versus card, one beat a side, and the hot take.
         if (s.Debate is { } d)
         {
-            var rows = new List<DeskRow> { new("", d.Yes.Analyst.Name, d.No.Analyst.Name), new("Says", "Yes", "No") };
+            // Review (PR #304): the columns are the away and home sides, so a "who wins" debate puts each panelist under the
+            // team he backs; any other question is shown full width.
+            var rows = new List<DeskRow>();
+            if (d.Check == TakeCheck.Wins)
+            {
+                bool yesHome = d.TeamId == s.Home.Id;
+                var (away, home) = yesHome ? (d.No, d.Yes) : (d.Yes, d.No);
+                rows.Add(new("", away.Analyst.Name, home.Analyst.Name));
+                rows.Add(new("Says", away.Yes ? "Yes" : "No", home.Yes ? "Yes" : "No"));
+            }
+            else
+            {
+                rows.Add(new("", $"Yes: {d.Yes.Analyst.Name}", "", 0, true));
+                rows.Add(new("", $"No: {d.No.Analyst.Name}", ""));
+            }
             foreach (var side in new[] { d.Yes, d.No }) beats.Add(new("THE DEBATE", d.Question, rows, new StudioLine(side.Analyst, side.Take)));
         }
         if (s.HotTake is { } t)

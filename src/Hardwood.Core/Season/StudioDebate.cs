@@ -83,7 +83,8 @@ public static class StudioDebates
                 TakeCheck.Scores, 0, sp.Id, line);
         }
         // 3. No star numbers yet (opening night): does the favourite win by double digits?
-        var big = picks.Where(p => p.Pick == fav).OrderByDescending(p => p.Margin).First();
+        var big = picks.Where(p => p.Pick == fav).OrderByDescending(p => p.Margin).FirstOrDefault();
+        if (big == null) return null;   // review (PR #304): a rebuilt show whose locked picks are all on the new underdog
         var small = picks.Where(p => p.Pick == fav && p != big).OrderBy(p => p.Margin).FirstOrDefault();
         if (small == null || big.Margin < 10 || small.Margin >= 10) return null;
         return new StudioDebate($"{Ask(fav)} win by 10 or more?",
@@ -219,8 +220,8 @@ public sealed partial class GameSession
         var rows = new List<DeskRow>();
         foreach (var (t, ok, verdict, happened) in v)
         {
-            rows.Add(new(t.Kind == StudioTakeRecord.Debate ? "The debate" : "Hot take", t.Question, "", 0, true));
-            rows.Add(new(verdict, Cap1(happened), ""));
+            rows.Add(new("", $"{(t.Kind == StudioTakeRecord.Debate ? "The debate" : "Hot take")}: {t.Question}", "", 0, true));
+            rows.Add(new("", $"{verdict}: {happened}", ""));
         }
         var parts = v.Select(x => $"{x.Verdict}: {x.Happened}.").ToList();
         return new() { new DeskBeat("THE VERDICT", "Who called it", rows, new StudioLine(StudioShow.HostDesk, string.Join(" ", parts))) };

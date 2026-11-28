@@ -346,7 +346,12 @@ public sealed partial class GameSession
             var (pick, by, why) = PanelPick(a, home, away, margin, sd, form, hurt, rng);
             var locked = desk.Picks.FirstOrDefault(x => x.Key == show.Key && x.Analyst == a.Key);
             if (locked != null && locked.PickId == (pick == home ? home.Id : away.Id)) by = locked.Margin;
-            else if (locked != null) { pick = locked.PickId == home.Id ? home : away; by = locked.Margin; }
+            else if (locked != null)
+            {
+                // Review (PR #304): the reason follows the locked pick (the debate quotes it).
+                pick = locked.PickId == home.Id ? home : away; by = locked.Margin;
+                why = $"I'm sticking with {pick.Name}. {pick.Abbreviation} by {by}.";
+            }
             var (w, l) = desk.Record(a.Key, League.Season);
             show.Picks.Add(new(a, pick, by, why, w, l));
         }
