@@ -39,6 +39,11 @@ public class Run239SpeechTextTests
     [InlineData("The #1 seed", "The number one seed")]
     [InlineData("12,450 fans", "twelve thousand four hundred fifty fans")]
     [InlineData("St. John's", "Saint John's")]
+    // Review, run 239: records after "is"/"at" stay records; a clock with no period; a season across the century.
+    [InlineData("Duke is 20-5.", "Duke is twenty and five.")]
+    [InlineData("They sit at 17-15 in the standings.", "They sit at seventeen and fifteen in the standings.")]
+    [InlineData("4:12 left", "four-twelve left")]
+    [InlineData("The 1999-00 season", "The nineteen ninety-nine, two thousand season")]
     public void A_screen_line_is_said_the_way_a_broadcaster_says_it(string onScreen, string said) =>
         Assert.Equal(said, SpeechText.Say(onScreen));
 
@@ -71,6 +76,16 @@ public class Run239SpeechTextTests
         Assert.Equal("Wem-ban-yama, not DUKE", SpeechText.Say("Wembanyama, not DUKE", lex));
         // Whole words only: an abbreviation inside a longer word is left alone.
         Assert.Equal("UNCW", SpeechText.Say("UNCW", lex));
+    }
+
+    [Fact]
+    public void Huge_or_foreign_digits_never_throw()
+    {
+        foreach (var line in new[] { "$99999999999999999999", "#123456789012345678901", "1,000,000,000,000,000,000,000",
+                     "123456789012345678901st", "99999999999999999999.5%", "\uFF11\uFF12-\uFF13 and \u0661\u0662" })
+            _ = SpeechText.Say(line);
+        Assert.Equal("number one two three four five six seven eight nine zero one two three four five six seven eight nine zero one",
+            SpeechText.Say("#1234567890123456789012".Remove(22)));
     }
 
     [Fact]

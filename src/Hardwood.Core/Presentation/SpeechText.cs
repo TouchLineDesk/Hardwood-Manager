@@ -46,7 +46,7 @@ public static class SpeechText
     private static readonly HashSet<string> ScoreWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "lead", "leads", "led", "leading", "up", "down", "trail", "trails", "trailed", "trailing", "won", "win", "wins",
-        "beat", "beats", "lost", "lose", "loses", "final", "score", "scored", "it's", "is", "was", "at", "by", "edged",
+        "beat", "beats", "lost", "lose", "loses", "final", "score", "scored", "by", "edged",
         "ahead", "behind", "halftime", "tied", "series",
     };
 
@@ -70,16 +70,17 @@ public static class SpeechText
                 s = Regex.Replace(s, $@"(?<![\w]){Regex.Escape(key)}(?![\w])", said.Replace("$", "$$"));
 
         // 2. The game clock with its period: "Q3 4:12" → "third quarter, four-twelve left".
-        s = Regex.Replace(s, @"\b(Q[1-4]|H[12]|[2-9]?OT)\s+(\d{1,2}):(\d{2})(?:\.\d)?\b",
+        s = Regex.Replace(s, @"\b(Q[1-4]|H[12]|[2-9]?OT)\s+([0-9]{1,2}):([0-9]{2})(?:\.[0-9])?\b",
             m => $"{Period(m.Groups[1].Value)}, {Clock(int.Parse(m.Groups[2].Value), int.Parse(m.Groups[3].Value))} left");
         s = Regex.Replace(s, @"\b(Q[1-4]|H[12]|[2-9]?OT)\b", m => Period(m.Groups[1].Value));
+        s = Regex.Replace(s, @"(?<![0-9:])([0-9]{1,2}):([0-9]{2})(?![0-9:])", m => Clock(int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)));
 
         // 3. Money: "$41.25M" → "forty-one point two five million dollars"; "$1,234" → "one thousand … dollars".
-        s = Regex.Replace(s, @"\$(\d+(?:\.\d+)?)\s?([KMB])\b", m =>
+        s = Regex.Replace(s, @"\$([0-9]+(?:\.[0-9]+)?)\s?([KMB])\b", m =>
             $"{Decimal(m.Groups[1].Value)} {m.Groups[2].Value switch { "K" => "thousand", "M" => "million", _ => "billion" }} dollars");
-        s = Regex.Replace(s, @"\$(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?(?!\d)", m =>
+        s = Regex.Replace(s, @"\$([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.([0-9]{2}))?(?![0-9])", m =>
         {
-            var dollars = Cardinal(long.Parse(m.Groups[1].Value.Replace(",", ""), CultureInfo.InvariantCulture));
+            var dollars = Number(m.Groups[1].Value);
             var cents = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
             return cents > 0 ? $"{dollars} dollars and {Cardinal(cents)} cents" : $"{dollars} dollars";
         });
@@ -87,16 +88,16 @@ public static class SpeechText
         // 4. Abbreviations, whole tokens only.
         foreach (var (token, said) in Abbreviations)
             s = Regex.Replace(s, $@"(?<![\w%]){Regex.Escape(token)}(?![\w%])", said);
-        s = Regex.Replace(s, @"\bNo\.\s?(?=\d)", "number ");
-        s = Regex.Replace(s, @"#(\d+)", m => $"number {Cardinal(long.Parse(m.Groups[1].Value))}");
+        s = Regex.Replace(s, @"\bNo\.\s?(?=[0-9])", "number ");
+        s = Regex.Replace(s, @"#([0-9]+)", m => $"number {Number(m.Groups[1].Value)}");
         s = s.Replace(" @ ", " at ").Replace(" & ", " and ");
 
         // 5. Seasons and heights before the records: "2026-27" → "twenty twenty-six, twenty-seven"; 6'8" → "six-eight".
-        s = Regex.Replace(s, @"\b((?:19|20)\d{2})-(\d{2})\b", m => $"{Year(int.Parse(m.Groups[1].Value))}, {TwoDigits(int.Parse(m.Groups[2].Value))}");
-        s = Regex.Replace(s, @"\b([4-7])'(\d{1,2})""", m => $"{Ones[int.Parse(m.Groups[1].Value)]}-{Cardinal(int.Parse(m.Groups[2].Value))}");
+        s = Regex.Replace(s, @"\b((?:19|20)[0-9]{2})-([0-9]{2})\b", m => Season(int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)));
+        s = Regex.Replace(s, @"\b([4-7])'([0-9]{1,2})""", m => $"{Ones[int.Parse(m.Groups[1].Value)]}-{Cardinal(int.Parse(m.Groups[2].Value))}");
 
         // 6. Records and scores: "17-15" → "seventeen and fifteen"; after a score word, "seventeen to fifteen".
-        s = Regex.Replace(s, @"(?<![\w.\-])(\d{1,3})-(\d{1,3})(?![\w\-]|\.\d)", m =>
+        s = Regex.Replace(s, @"(?<![\w.\-])([0-9]{1,3})-([0-9]{1,3})(?![\w\-]|\.[0-9])", m =>
         {
             var before = s[..m.Index].TrimEnd();
             var lastWord = Regex.Match(before, @"([\w']+)\W*$").Groups[1].Value;
@@ -105,17 +106,17 @@ public static class SpeechText
         });
 
         // 7. Ordinals, percentages, shooting averages, signs.
-        s = Regex.Replace(s, @"\b(\d+)(?:st|nd|rd|th)\b", m => Ordinal(long.Parse(m.Groups[1].Value)));
-        s = Regex.Replace(s, @"(\d+(?:\.\d+)?)\s?%", m => $"{Decimal(m.Groups[1].Value)} percent");
-        s = Regex.Replace(s, @"(?<![\w.])\.(\d{3})\b", m => Average(m.Groups[1].Value));
-        s = Regex.Replace(s, @"(?<![\w])\+(\d+(?:\.\d+)?)", m => $"plus {Decimal(m.Groups[1].Value)}");
-        s = Regex.Replace(s, @"(?<=^|[\s(])-(\d+(?:\.\d+)?)", m => $"minus {Decimal(m.Groups[1].Value)}");
+        s = Regex.Replace(s, @"\b([0-9]+)(?:st|nd|rd|th)\b", m => m.Groups[1].Value.Length > 15 ? Number(m.Groups[1].Value) : Ordinal(long.Parse(m.Groups[1].Value)));
+        s = Regex.Replace(s, @"([0-9]+(?:\.[0-9]+)?)\s?%", m => $"{Decimal(m.Groups[1].Value)} percent");
+        s = Regex.Replace(s, @"(?<![\w.])\.([0-9]{3})\b", m => Average(m.Groups[1].Value));
+        s = Regex.Replace(s, @"(?<![\w])\+([0-9]+(?:\.[0-9]+)?)", m => $"plus {Decimal(m.Groups[1].Value)}");
+        s = Regex.Replace(s, @"(?<=^|[\s(])-([0-9]+(?:\.[0-9]+)?)", m => $"minus {Decimal(m.Groups[1].Value)}");
 
         // 8. Years, then every other number.
-        s = Regex.Replace(s, @"(?<![\d,.$])\b((?:19[5-9]|20\d)\d)\b(?![,.]\d)", m => Year(int.Parse(m.Groups[1].Value)));
-        s = Regex.Replace(s, @"\b\d{1,3}(?:,\d{3})+\b", m => Cardinal(long.Parse(m.Value.Replace(",", ""))));
-        s = Regex.Replace(s, @"\b\d+\.\d+\b", m => Decimal(m.Value));
-        s = Regex.Replace(s, @"\b\d+\b", m => m.Value.Length > 12 ? string.Join(" ", m.Value.Select(c => Ones[c - '0'])) : Cardinal(long.Parse(m.Value)));
+        s = Regex.Replace(s, @"(?<![0-9,.$])\b((?:19[5-9]|20[0-9])[0-9])\b(?![,.][0-9])", m => Year(int.Parse(m.Groups[1].Value)));
+        s = Regex.Replace(s, @"\b[0-9]{1,3}(?:,[0-9]{3})+\b", m => Number(m.Value));
+        s = Regex.Replace(s, @"\b[0-9]+\.[0-9]+\b", m => Decimal(m.Value));
+        s = Regex.Replace(s, @"\b[0-9]+\b", m => Number(m.Value));
 
         // 9. Screen punctuation to pauses.
         s = s.Replace(" · ", ", ").Replace("·", ", ").Replace(" | ", ", ").Replace(" / ", " or ");
@@ -156,7 +157,7 @@ public static class SpeechText
     public static string Decimal(string number)
     {
         var parts = number.Split('.');
-        var whole = Cardinal(long.Parse(parts[0], CultureInfo.InvariantCulture));
+        var whole = Number(parts[0]);
         if (parts.Length < 2 || parts[1].TrimEnd('0').Length == 0) return whole;
         return whole + " point " + string.Join(" ", parts[1].Select(c => Ones[c - '0']));
     }
@@ -167,6 +168,23 @@ public static class SpeechText
         if (y >= 2000 && y < 2010) return Cardinal(y);
         var (hi, lo) = (y / 100, y % 100);
         return lo == 0 ? Cardinal(hi) + " hundred" : $"{Cardinal(hi)} {TwoDigits(lo)}";
+    }
+
+    /// <summary>Digits in words, safely: up to 15 digits as a number (commas allowed), longer runs digit by digit.</summary>
+    private static string Number(string digits)
+    {
+        var plain = digits.Replace(",", "");
+        return plain.Length is > 0 and <= 15 && long.TryParse(plain, NumberStyles.None, CultureInfo.InvariantCulture, out var n)
+            ? Cardinal(n)
+            : string.Join(" ", plain.Where(char.IsAsciiDigit).Select(c => Ones[c - '0']));
+    }
+
+    /// <summary>"2026-27" → "twenty twenty-six, twenty-seven"; "1999-00" → "nineteen ninety-nine, two thousand".</summary>
+    private static string Season(int first, int yy)
+    {
+        var second = first / 100 * 100 + yy;
+        if (second <= first) second += 100;
+        return $"{Year(first)}, {(yy == 0 ? Year(second) : TwoDigits(yy))}";
     }
 
     private static string TwoDigits(int n) => n < 10 ? "oh-" + Ones[n] : Cardinal(n);

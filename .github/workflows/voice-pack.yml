@@ -1,6 +1,7 @@
 # Run 239, V1 of claude/studio-voice-plan.md: builds the optional studio-show voice pack, a zip of its own beside the
 # game (#1253). It downloads Kokoro-82M v1.0 (int8 ONNX) and its voices, checks them against tools/Voice/pin.json's
-# sha256 pins, makes one line in every cast voice on Linux (tools/Voice/VoiceCheck), and on main publishes
+# sha256 pins (GitHub's copy only: Hugging Face's onnx-community export is a different file), makes one line in
+# every cast voice on Linux (tools/Voice/VoiceCheck), and on main publishes
 # HardwoodManager-VoicePack-v1-win-x64.zip on the "voicepack-v1" release. Nothing it downloads is committed, and the
 # game zip (release.yml) doesn't change. On a pull request it only checks.
 name: Voice pack
@@ -22,11 +23,12 @@ on:
       - ".github/workflows/voice-pack.yml"
 
 permissions:
-  contents: write
+  contents: read
 
+# Never cancel a main run mid-publish (an upload --clobber deletes the old zip first); PR checks may be cancelled.
 concurrency:
   group: voice-pack-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pack:
@@ -83,8 +85,24 @@ jobs:
           path: ${{ env.PACK_ZIP }}
           retention-days: 14
 
+  publish:
+    # Only main's build is ever published (a dispatch from a branch only checks), and only this job can write (review,
+    # run 239): the job that runs the downloaded model has a read-only token.
+    needs: pack
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      PACK_TAG: voicepack-v1
+      PACK_ZIP: HardwoodManager-VoicePack-v1-win-x64.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: voice-pack
       - name: Publish the voicepack-v1 release
-        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

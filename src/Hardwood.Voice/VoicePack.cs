@@ -38,6 +38,9 @@ public static class VoicePack
         VoicePackManifest manifest;
         try { manifest = VoicePackManifest.Read(manifestPath); }
         catch (Exception e) when (e is JsonException or InvalidDataException or IOException) { return (null, $"The voice pack's manifest can't be read ({e.Message})."); }
+        // System.Text.Json leaves missing keys null even on non-nullable members (review, run 239).
+        if (string.IsNullOrEmpty(manifest.Model) || string.IsNullOrEmpty(manifest.Voices) || manifest.Files is null || manifest.Files.Any(f => f is null || string.IsNullOrEmpty(f.Name) || string.IsNullOrEmpty(f.Sha256)))
+            return (null, "The voice pack's manifest is incomplete: reinstall the voice pack.");
         foreach (var name in new[] { manifest.Model, manifest.Voices })
             if (manifest.Files.All(f => f.Name != name)) return (null, $"The voice pack's manifest has no pin for {name}.");
         foreach (var file in manifest.Files)
