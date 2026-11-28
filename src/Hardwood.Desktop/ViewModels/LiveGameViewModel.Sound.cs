@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using Hardwood.Core.Presentation;
 using Hardwood.Desktop.Audio;
 
 namespace Hardwood.Desktop.ViewModels;
@@ -119,7 +120,11 @@ public sealed partial class LiveGameViewModel
         _cues = _script == null ? new() : Reactions.Plan(_script).Concat(Reactions.Court(_script, band))
             .Concat(band ? Reactions.Band(_script, _bandRun) : Enumerable.Empty<SoundCue>()).OrderBy(q => q.T).ToList();
         _cueNext = 0;
+        if (_script != null) ScriptPlannedForTest?.Invoke(_script, _cues);
     }
+
+    /// <summary>Run 237 (K25's crowd lines): each possession's script and its planned sounds, for tests (nothing is kept).</summary>
+    public Action<Choreography, IReadOnlyList<SoundCue>>? ScriptPlannedForTest { get; set; }
 
     /// <summary>Fire the cues whose time has come, up to <paramref name="t"/> on the possession's clock.</summary>
     private void FireSound(double t)
