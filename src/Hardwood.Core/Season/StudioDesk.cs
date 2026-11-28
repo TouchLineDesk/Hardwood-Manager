@@ -83,6 +83,14 @@ public static class DeskReel
                 p.Wins + p.Losses == 0 ? "first pick" : p.Record, Key: p == s.Picks[i])).ToList();
             beats.Add(new("THE PICKS", "On the record", rows, new StudioLine(s.Picks[i].Analyst, s.Picks[i].Why)));
         }
+        // Run 235 (b): the versus card, one beat a side, and the hot take.
+        if (s.Debate is { } d)
+        {
+            var rows = new List<DeskRow> { new("", d.Yes.Analyst.Name, d.No.Analyst.Name), new("Says", "Yes", "No") };
+            foreach (var side in new[] { d.Yes, d.No }) beats.Add(new("THE DEBATE", d.Question, rows, new StudioLine(side.Analyst, side.Take)));
+        }
+        if (s.HotTake is { } t)
+            beats.Add(new("HOT TAKE", t.Analyst.Name, new List<DeskRow> { new("", t.Take, "", 0, true), new("", t.Tracker, "") }, new StudioLine(t.Analyst, t.Take)));
         return beats;
     }
 }

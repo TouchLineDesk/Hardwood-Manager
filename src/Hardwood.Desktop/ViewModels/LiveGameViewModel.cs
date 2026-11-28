@@ -488,9 +488,10 @@ public sealed partial class LiveGameViewModel : PageViewModel
         else if (final && AppSettings.Current.StudioShow && !IsNationalGame)
         {
             var (rows, line) = Session.PostgameTable(r);
-            HalftimeReel = new DeskReelViewModel(Hardwood.Core.Season.PostgameDesk.Build(r, rows, line, Session.HalftimeAround(r.Home.Team, r.Away.Team),
-                Session.DeskContextFor(r, final: true)),
-                r.Away.Team, r.Home.Team, "Postgame");
+            var post = Hardwood.Core.Season.PostgameDesk.Build(r, rows, line, Session.HalftimeAround(r.Home.Team, r.Away.Team),
+                Session.DeskContextFor(r, final: true));
+            post.AddRange(Session.VerdictBeats(r));   // run 235 (b): the debate and the hot take, judged
+            HalftimeReel = new DeskReelViewModel(post, r.Away.Team, r.Home.Team, "Postgame");
             DeskShown = true;
         }
         else { HalftimeReel = null; DeskShown = false; }

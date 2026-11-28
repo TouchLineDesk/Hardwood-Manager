@@ -88,6 +88,10 @@ public sealed class StudioShow
     public List<RaceRow> Race { get; } = new();
     public List<StudioLine> RaceLines { get; } = new();
     public List<StudioPickView> Picks { get; } = new();
+    /// <summary>Run 235: the night's "versus" card (or null), graded at the final.</summary>
+    public StudioDebate? Debate { get; set; }
+    /// <summary>Run 235: the night's hot take (or null), graded at the final.</summary>
+    public StudioHotTake? HotTake { get; set; }
     /// <summary>The home side's chance of winning before tip-off (the panel's numbers desk).</summary>
     public double HomeChance { get; init; }
     public string Key => GameKey(Date, Home, Away);
@@ -359,6 +363,16 @@ public sealed partial class GameSession
             (Team, int)? hot = form[hotSide].streak >= 3 ? (hotSide, form[hotSide].streak) : null;
             show.Segments.Insert(chairAt, GuestPanel.Segment(guestPick.Analyst, show, fav, favChance, starName, guestPick.Pick, hot));
         }
+        // --- The debate and the hot take (run 235, (b)): built from the picks, so nobody argues against his own ---
+        (Player p, double ppg)? starPpg = new[] { homeStar, awayStar }.Where(x => x is { s: not null }).Select(x => (x!.Value.p, x.Value.s!.Ppg))
+            .OrderByDescending(x => x.Ppg).Select(x => ((Player, double)?)x).FirstOrDefault();
+        show.Debate = StudioDebates.Build(show, fav, starPpg);
+        show.HotTake = StudioDebates.HotTake(show, desk, League.Season, fav, starPpg);
+        // A locked debate or take stays as it aired.
+        if (desk.Takes.FirstOrDefault(t => t.Key == show.Key && t.Kind == StudioTakeRecord.Debate) is { } ld && show.Debate is { } db && (ld.Yes != db.Yes.Analyst.Key || ld.Question != db.Question))
+            show.Debate = null;
+        if (desk.Takes.FirstOrDefault(t => t.Key == show.Key && t.Kind == StudioTakeRecord.Take) is { } lt && show.HotTake is { } ht && (lt.Yes != ht.Analyst.Key || lt.Question != ht.Take))
+            show.HotTake = null;
         return show;
     }
 
@@ -375,13 +389,29 @@ public sealed partial class GameSession
                 PickId = p.Pick.Id, Margin = p.Margin,
             });
         }
+        // Run 235: the debate and the hot take go on the record with the picks.
+        if (show.Debate is { } d && !desk.Takes.Any(x => x.Key == show.Key && x.Kind == StudioTakeRecord.Debate))
+            desk.Takes.Add(new StudioTakeRecord
+            {
+                Key = show.Key, Date = show.Date, Season = League.Season, Kind = StudioTakeRecord.Debate, Question = d.Question,
+                Yes = d.Yes.Analyst.Key, YesName = d.Yes.Analyst.Name, No = d.No.Analyst.Key, NoName = d.No.Analyst.Name,
+                Check = d.Check, TeamId = d.TeamId, PlayerId = d.PlayerId, Line = d.Line,
+            });
+        if (show.HotTake is { } t && !desk.Takes.Any(x => x.Key == show.Key && x.Kind == StudioTakeRecord.Take))
+            desk.Takes.Add(new StudioTakeRecord
+            {
+                Key = show.Key, Date = show.Date, Season = League.Season, Kind = StudioTakeRecord.Take, Question = t.Take,
+                Yes = t.Analyst.Key, YesName = t.Analyst.Name, Check = t.Check, TeamId = t.TeamId, PlayerId = t.PlayerId, Line = t.Line,
+            });
         // Two seasons of picks is plenty for the records.
         desk.Picks.RemoveAll(x => x.Season < League.Season - 1);
+        desk.Takes.RemoveAll(x => x.Season < League.Season - 1);
     }
 
     /// <summary>Grade any locked picks for games just played.</summary>
     internal void GradeStudioPicks(List<GameResult> played)
     {
+        GradeStudioTakes(played);
         var open = Media.Studio.Picks.Where(p => p.Correct == null).ToList();
         if (open.Count == 0) return;
         foreach (var r in played)
@@ -398,6 +428,29 @@ public sealed partial class GameSession
         // A pick for a game that was never played that day (a postponed or replayed day) is dropped after a week.
         Media.Studio.Picks.RemoveAll(p => p.Correct == null && p.Date < Today.AddDays(-7));
     }
+
+    /// <summary>Run 235: grade the debates and hot takes for games just played.</summary>
+    private void GradeStudioTakes(List<GameResult> played)
+    {
+        var open = Media.Studio.Takes.Where(t => t.Held == null).ToList();
+        if (open.Count == 0) return;
+        foreach (var r in played)
+        {
+            if (r.Date is not { } d) continue;
+            string key = StudioShow.GameKey(d, r.Home.Team, r.Away.Team);
+            foreach (var t in open.Where(t => t.Key == key))
+            {
+                t.Held = StudioDebates.Holds(t.Check, t.TeamId, t.PlayerId, t.Line, r);
+                t.Verdict = StudioDebates.Verdict(t, t.Held.Value);
+                t.Happened = StudioDebates.WhatHappened(t, r);
+            }
+        }
+        Media.Studio.Takes.RemoveAll(t => t.Held == null && t.Date < Today.AddDays(-7));
+    }
+
+    /// <summary>Run 235: the last graded debate on your games, for the next show's "last time" line.</summary>
+    public StudioTakeRecord? StudioLastDebate() =>
+        Media.Studio.Takes.Where(t => t.Held != null && t.Kind == StudioTakeRecord.Debate).OrderByDescending(t => t.Date).FirstOrDefault();
 
     /// <summary>The panel's last graded picks on your games, newest first, for the show's "how we did" line.</summary>
     public List<StudioPickRecord> StudioLastNight() =>
@@ -558,6 +611,9 @@ public sealed partial class GameSession
             lines.Add(new(host, right == last.Count ? $"Quick note: the whole panel got last time right ({last[0].Final}). Don't let it go to their heads."
                 : right == 0 ? $"For the record, nobody on this desk got the last one right ({last[0].Final})."
                 : $"Last time out ({last[0].Final}), {right} of {last.Count} on the panel had it right."));
+            // Run 235: and who won last time's debate.
+            if (StudioLastDebate() is { } ld && ld.Key == last[0].Key && ld.Verdict != "")
+                lines.Add(new(host, $"And the last debate (\"{ld.Question}\"): {ld.Verdict}. {Cap1(ld.Happened)}."));
         }
         return lines;
     }
@@ -570,6 +626,11 @@ public sealed partial class GameSession
         var first = text.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? "";
         return first.Length > 180 ? first[..first.LastIndexOf(' ', 177)] + "…" : first;
     }
+
+    /// <summary>"Raptors'" not "Raptors's" (run 235).</summary>
+    internal static string Possessive(string name) => name.EndsWith('s') ? name + "'" : name + "'s";
+
+    private static string Cap1(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
     private static string Pick(Rng rng, params string[] options) => options[rng.Next(options.Length)];
 
@@ -738,7 +799,7 @@ public sealed partial class GameSession
             "numbers" => $"The model has {pick.Name} by {by}. I don't argue with it.",
             "big" => pick == home ? $"Home floor, {pick.Name} control the paint. {pick.Abbreviation} by {by}." : $"{pick.Name} are just bigger and tougher. They win on the road by {by}.",
             "guard" => form[pick].streak >= 3 ? $"{pick.Name} are rolling. Ride the hot team: {pick.Abbreviation} by {by}."
-                     : pick == (margin >= 0 ? away : home) ? $"I'm calling the upset. {pick.Name} by {by}, and you heard it here first." : $"{pick.Name}'s stars are better. {pick.Abbreviation} by {by}.",
+                     : pick == (margin >= 0 ? away : home) ? $"I'm calling the upset. {pick.Name} by {by}, and you heard it here first." : $"{Possessive(pick.Name)} stars are better. {pick.Abbreviation} by {by}.",
             _ => hurt[other].Count > hurt[pick].Count ? $"{other.Name} are short-handed. Healthy teams win: {pick.Abbreviation} by {by}." : $"{pick.Name} execute better late. {pick.Abbreviation} by {by}.",
         };
         return (pick, by, why);

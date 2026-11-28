@@ -14,6 +14,8 @@ public sealed record StudioTape(string Label, string Away, string Home, FontWeig
 public sealed record StudioImpactRow(string Place, Team Team, string Name, string Record, string Back, string Zone, IBrush ZoneBrush, IBrush Row);
 public sealed record StudioImpactTable(string Title, IReadOnlyList<StudioImpactRow> Rows);
 public sealed record StudioRace(string Rank, string Name, string Team, string Line, IBrush Row);
+/// <summary>Run 235: one side of the versus card.</summary>
+public sealed record StudioDebateSide(string Name, string Initials, IBrush Colour, string Says, string Take, string Record);
 public sealed record StudioPickRow(string Name, string Initials, IBrush Colour, Team Pick, string PickText, string Why, string Record);
 
 /// <summary>
@@ -78,6 +80,18 @@ public sealed partial class StudioShowViewModel : PageViewModel
     public bool HasRace => Race.Count > 0;
     public List<StudioPickRow> Picks { get; private set; } = new();
 
+    // Run 235 (b): the debate ("versus") card and the hot take.
+    public bool HasDebate => Show.Debate != null;
+    public string DebateQuestion => Show.Debate?.Question ?? "";
+    public StudioDebateSide? DebateYes { get; private set; }
+    public StudioDebateSide? DebateNo { get; private set; }
+    public bool HasHotTake => Show.HotTake != null;
+    public string HotTakeName => Show.HotTake?.Analyst.Name ?? "";
+    public string HotTakeInitials => Show.HotTake?.Analyst.Initials ?? "";
+    public IBrush HotTakeColour => B(Show.HotTake?.Analyst.Colour ?? "#E6EDF3");
+    public string HotTakeText => Show.HotTake?.Take ?? "";
+    public string HotTakeTracker => Show.HotTake?.Tracker ?? "";
+
     public bool SkipShow
     {
         get => !AppSettings.Current.StudioShow;
@@ -101,6 +115,16 @@ public sealed partial class StudioShowViewModel : PageViewModel
         RaceLines = Show.RaceLines.Select(Say).ToList();
         Picks = Show.Picks.Select(p => new StudioPickRow(p.Analyst.Name, p.Analyst.Initials, B(p.Analyst.Colour), p.Pick, $"{p.Pick.Abbreviation} by {p.Margin}", p.Why,
             p.Wins + p.Losses == 0 ? "First pick of the season" : $"Season record on your games: {p.Record}")).ToList();
+        if (Show.Debate is { } d)
+        {
+            StudioDebateSide Side(DebateSide x)
+            {
+                var (r, w) = Session.Media.Studio.DebateRecord(x.Analyst.Key, Session.League.Season);
+                return new(x.Analyst.Name, x.Analyst.Initials, B(x.Analyst.Colour), x.Yes ? "YES" : "NO", x.Take,
+                    r + w == 0 ? "First debate of the season" : $"Debates this season: {r}-{w}");
+            }
+            DebateYes = Side(d.Yes); DebateNo = Side(d.No);
+        }
     }
 
     public override void Refresh() { }

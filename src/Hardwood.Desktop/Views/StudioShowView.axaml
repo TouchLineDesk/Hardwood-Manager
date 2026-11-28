@@ -250,6 +250,73 @@
           </ItemsControl>
         </StackPanel>
       </Border>
+
+      <!-- Run 235: the debate ("versus" card), graded at the final -->
+      <Border Classes="panel" Padding="12,10" IsVisible="{Binding HasDebate}">
+        <StackPanel Spacing="6">
+          <TextBlock Text="THE DEBATE" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="{DynamicResource HwAccentBrush}"/>
+          <TextBlock Text="{Binding DebateQuestion}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="*,Auto,*">
+            <ContentControl Content="{Binding DebateYes}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:StudioDebateSide">
+                  <Border Background="#141920" BorderBrush="{Binding Colour}" BorderThickness="0,3,0,0" CornerRadius="6" Padding="10,8">
+                    <StackPanel Spacing="4">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Width="28" Height="28" CornerRadius="14" Background="{Binding Colour}">
+                          <TextBlock Text="{Binding Initials}" Foreground="#101318" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" Margin="8,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Says}" FontSize="16" FontWeight="Bold" Foreground="{Binding Colour}" VerticalAlignment="Center"/>
+                      </Grid>
+                      <TextBlock Text="{Binding Take}" TextWrapping="Wrap" FontSize="12.5"/>
+                      <TextBlock Text="{Binding Record}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+            <Border Grid.Column="1" Width="3" Margin="10,4" CornerRadius="2" Background="{Binding SecondBrush}"/>
+            <ContentControl Grid.Column="2" Content="{Binding DebateNo}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:StudioDebateSide">
+                  <Border Background="#141920" BorderBrush="{Binding Colour}" BorderThickness="0,3,0,0" CornerRadius="6" Padding="10,8">
+                    <StackPanel Spacing="4">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Width="28" Height="28" CornerRadius="14" Background="{Binding Colour}">
+                          <TextBlock Text="{Binding Initials}" Foreground="#101318" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" Margin="8,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Says}" FontSize="16" FontWeight="Bold" Foreground="{Binding Colour}" VerticalAlignment="Center"/>
+                      </Grid>
+                      <TextBlock Text="{Binding Take}" TextWrapping="Wrap" FontSize="12.5"/>
+                      <TextBlock Text="{Binding Record}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+          </Grid>
+          <TextBlock Text="Graded at the final whistle." Classes="muted" FontSize="11.5"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Run 235: the hot take, with its season tracker -->
+      <Border Classes="panel" Padding="12,10" IsVisible="{Binding HasHotTake}" BorderBrush="{Binding HotTakeColour}" BorderThickness="3,0,0,0">
+        <StackPanel Spacing="4">
+          <TextBlock Text="HOT TAKE" FontSize="10.5" FontWeight="Bold" LetterSpacing="1.5" Foreground="#F85149"/>
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Width="28" Height="28" CornerRadius="14" Background="{Binding HotTakeColour}" VerticalAlignment="Top">
+              <TextBlock Text="{Binding HotTakeInitials}" Foreground="#101318" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+              <TextBlock Text="{Binding HotTakeName}" FontSize="11.5" FontWeight="Bold" Foreground="{Binding HotTakeColour}"/>
+              <TextBlock Text="{Binding HotTakeText}" FontSize="15" FontWeight="Bold" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding HotTakeTracker}" Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>
