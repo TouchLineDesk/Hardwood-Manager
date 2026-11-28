@@ -214,7 +214,10 @@ public class CharacterizationTests
         // data notes are their own "About this world" message (one more). With that message taken out, the old pin holds exactly.
         // Run 227 (the EuroCup's two groups): re-pinned (was A753321B2903C9C9). Its 20 clubs play 18 group rounds (180 games, not
         // 190), so the first month's quick results draw differently on the shared stream. With the old profile the old pin holds.
-        Pin("career seed 2026, 30 days, no saves", "14656BECA739BE78", Session(s));
+        // Run 233 (the domestic real club counts): re-pinned (was 14656BECA739BE78). Ten leagues abroad reach their real sizes
+        // (29 more clubs, 50 rounds in the B.League), so the first month's quick results draw differently on the shared stream.
+        // With the added clubs taken out (and Argentina on its old weekends), the old pin holds exactly.
+        Pin("career seed 2026, 30 days, no saves", "98630E4249F29206", Session(s));
     }
 
     [Fact]

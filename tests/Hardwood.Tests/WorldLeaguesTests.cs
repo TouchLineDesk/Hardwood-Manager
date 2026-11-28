@@ -27,7 +27,7 @@ public class WorldLeaguesTests
         foreach (var p in added)
         {
             var comp = world[p.Key];
-            Assert.InRange(comp.Clubs.Count, 10, 18);
+            Assert.InRange(comp.Clubs.Count, 10, 26); // run 233: the real sizes (Argentina 19, the B.League's B1 26)
             Assert.All(comp.Clubs, t => Assert.Equal(GameWorld.RosterSize, t.Roster.Count));
             // Mostly home players, within the import limit.
             Assert.All(comp.Clubs, t => Assert.True(GameWorld.Imports(t, p) <= p.ForeignLimit, $"{t.FullName}: {GameWorld.Imports(t, p)} imports"));
