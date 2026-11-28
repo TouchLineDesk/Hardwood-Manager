@@ -312,11 +312,13 @@ public sealed partial class ScheduleViewModel : PageViewModel
         if (s.HumanLeague is { } league)
             foreach (var f in league.Season.Fixtures.Where(f => f.Date == yesterday && f.Played))
                 own.Add($"{s.FindTeam(f.AwayId)!.Abbreviation} {f.AwayPts} @ {s.FindTeam(f.HomeId)!.Abbreviation} {f.HomePts}");
-        if (own.Count > 0 && top.Count > 0 && s.HumanLeague is { } mine)
+        // The review of PR #308: the top league's short name (never its long real name), and labels on any day a club below
+        // the top league sees the top league's scores, even when its own league didn't play.
+        if (top.Count > 0 && s.HumanLeague is { } mine)
         {
-            ScoresTitle = "Around the leagues (yesterday)";
+            if (own.Count > 0) ScoresTitle = "Around the leagues (yesterday)";
             foreach (var line in own) LeagueScores.Add($"{mine.Profile.Short} · {line}");
-            foreach (var line in top) LeagueScores.Add($"{s.League.Name} · {line}");
+            foreach (var line in top) LeagueScores.Add($"{Hardwood.Core.Names.Brand.TopShort} · {line}");
         }
         else
             foreach (var line in own.Concat(top)) LeagueScores.Add(line);

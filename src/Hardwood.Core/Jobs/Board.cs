@@ -1125,7 +1125,7 @@ public static class Board
             : diff >= 0 && job.Confidence < ContentLine ? (winsVsTarget < 0
                 ? $"{owner} accepts that the goal was met, but the record fell short of the {e.TargetWins}-win target. Board confidence: {job.Confidence:0}/100."
                 : $"{owner} accepts the result, but there is ground to make up. Board confidence: {job.Confidence:0}/100.")
-            : diff >= 1 ? $"{owner} is delighted."
+            : diff >= 1 && !relegated ? $"{owner} is delighted."
             // H188 (run 182): half a college step past the goal (the Elite Eight against a Sweet 16 goal) is a goal beaten,
             // not "about what the seed promised" (Florida, a 2-seed, read "hoped for more").
             : diff > 0 && ctx.IsCollege ? $"{owner} is pleased: {result}, past the goal ({goalText}). AD confidence: {job.Confidence:0}/100."
@@ -1138,7 +1138,7 @@ public static class Board
             : diff == 0 && ctx.IsCollege && wins < e.TargetWins && wins <= losses && e.TargetWins - wins > 1
                 ? $"{owner} wanted to see progress, and {TargetPhrase(wins, losses, e.TargetWins)}{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
             : diff == 0 && ctx.IsCollege && wins < e.TargetWins ? $"{owner} is satisfied with the progress, though {TargetPhrase(wins, losses, e.TargetWins)}{(reachedPost ? "" : " and the team missed the tournament")}. AD confidence: {job.Confidence:0}/100."
-            : diff == 0 ? $"{owner} is satisfied."
+            : diff == 0 && !relegated ? $"{owner} is satisfied."
             // H70: the verdict follows the whole season, so a record well past the target isn't met with "expected more".
             : relegated && wins > losses ? $"{owner} is disappointed: a winning record wasn't enough to stay up, last in the division. Board confidence: {job.Confidence:0}/100."
             // H137: a college season is told by March as well. An early exit for the seed is a disappointment, however good
