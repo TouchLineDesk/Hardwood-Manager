@@ -130,7 +130,10 @@ public class Run236HuntFixesTests
     }
 }
 
-/// <summary>H242 (run 236): the free-agent cards lead with players who'd come and fit the wage room.</summary>
+/// <summary>H242 (run 236): the free-agent cards lead with players who'd come and fit the wage room. Run 239: on the UI
+/// thread, in the shared UI collection: a <see cref="Hardwood.Desktop.ViewModels.FreeAgentRow"/> touches
+/// <c>StaffCards</c>' static brushes, and a first touch from a test thread poisons that type for the whole shard.</summary>
+[Collection(SharedUiState.Name)]
 public class Run236FreeAgentCardsTests
 {
     private static Hardwood.Desktop.ViewModels.FreeAgentRow Row(int id, int ca, long ask, int reach) => new()
@@ -139,7 +142,7 @@ public class Run236FreeAgentCardsTests
         Ask = new ContractDemand(ask, 2), Reach = reach,
     };
 
-    [Fact]
+    [Avalonia.Headless.XUnit.AvaloniaFact]
     public void H242_cards_put_affordable_players_first_then_over_budget_then_those_who_wont_talk_each_best_first()
     {
         // 30 stars who aim higher, then 20 who'd talk but cost too much, then 10 who fit, in ability order (as the table is).
