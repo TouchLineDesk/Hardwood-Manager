@@ -75,6 +75,23 @@ public sealed class MediaDesk
 public sealed class StudioDesk
 {
     public List<StudioPickRecord> Picks { get; set; } = new();
+    /// <summary>Run 235: the debates and hot takes on your games, graded at the final. Older saves load with none.</summary>
+    public List<Hardwood.Core.Season.StudioTakeRecord> Takes { get; set; } = new();
+
+    /// <summary>Run 235: a panelist's hot takes this season (landed, missed).</summary>
+    public (int landed, int missed) TakeRecord(string analyst, int season)
+    {
+        var mine = Takes.Where(t => t.Kind == Hardwood.Core.Season.StudioTakeRecord.Take && t.Yes == analyst && t.Season == season && t.Held != null).ToList();
+        return (mine.Count(t => t.Held == true), mine.Count(t => t.Held == false));
+    }
+
+    /// <summary>Run 235: a panelist's debates this season (right, wrong), on either side.</summary>
+    public (int right, int wrong) DebateRecord(string analyst, int season)
+    {
+        var mine = Takes.Where(t => t.Kind == Hardwood.Core.Season.StudioTakeRecord.Debate && (t.Yes == analyst || t.No == analyst) && t.Season == season && t.Held != null).ToList();
+        int right = mine.Count(t => (t.Held == true) == (t.Yes == analyst));
+        return (right, mine.Count - right);
+    }
 
     /// <summary>An analyst's record on your games in a season.</summary>
     public (int wins, int losses) Record(string analyst, int season)

@@ -149,7 +149,8 @@ public class Run143StudioDeskTests
             window.ApplyScale(1.0); window.Width = 1480;
             r.SkipToEnd();
             Assert.False(r.CanNext);
-            Assert.Equal("THE PICKS", r.Kicker);
+            // Run 235: the picks are followed by the debate and the hot take on most nights.
+            Assert.Contains(r.Kicker, new[] { "THE PICKS", "THE DEBATE", "HOT TAKE" });
             Settle(window);
             Snap(window, "run143-pregame-picks");
             Scan(window, problems, "pregame picks");

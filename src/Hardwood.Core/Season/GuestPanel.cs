@@ -125,7 +125,7 @@ public static class GuestPanel
             case Hype:
                 lines.Add(new(guest, star != null
                     ? $"{star} is the best player on the floor and he knows it. Big night coming. Book it."
-                    : hot is { } h ? $"{h.team.Name} have won {h.streak} straight. Ride the hot team." : $"{pick.Name}'s stars are better. That's the whole show."));
+                    : hot is { } h ? $"{h.team.Name} have won {h.streak} straight. Ride the hot team." : $"{GameSession.Possessive(pick.Name)} stars are better. That's the whole show."));
                 lines.Add(new(StudioShow.Numbers, "One player doesn't beat a whole rotation over a full game. The depth says otherwise."));
                 break;
             default:
