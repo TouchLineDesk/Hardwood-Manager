@@ -78,6 +78,27 @@ public static class SummerCards
         {
             Player = p, Age = p.Age(date), Knowledge = know, Ask = d, Graduate = graduate,
             FitText = fit.Item1, FitBrush = fit.Item2, FitTip = fit.Item3,
+            Reach = why != null ? 2 : d.Wage <= room ? 0 : 1,
         };
+    }
+
+    /// <summary>
+    /// H242 (run 236): the free agents shown as cards: those who'd talk and whose asks fit the wage room first, then those
+    /// who'd talk but cost more, then the rest, each group best first (<paramref name="rows"/> come in ability order).
+    /// A G League club with $0.8M to spend saw 24 stars asking $20M+, all "Aims higher", with Make offer greyed.
+    /// </summary>
+    public static IEnumerable<FreeAgentRow> WithinReach(IEnumerable<FreeAgentRow> rows) =>
+        rows.Select((r, i) => (r, i)).OrderBy(x => x.r.Reach).ThenBy(x => x.i).Take(FreeAgentCount).Select(x => x.r);
+
+    /// <summary>H242: what the cards are, for the note above them.</summary>
+    public static string CardsNote(IReadOnlyCollection<FreeAgentRow> cards, int all, long room)
+    {
+        int fits = cards.Count(c => c.Reach == 0);
+        if (all <= cards.Count && cards.All(c => c.Reach == 0)) return $"All {all} free agent{(all == 1 ? "" : "s")}, best first, with what each asks of your club.";
+        if (fits == cards.Count)
+            return $"{cards.Count} free agents whose asks fit your wage room ({Money(Math.Max(0, room))}), best first, of {all:N0}.";
+        return fits == 0
+            ? $"Nobody of {all:N0} free agents asks within your wage room ({Money(Math.Max(0, room))}): the best {cards.Count} who'd talk come first, then those who won't."
+            : $"{fits} free agent{(fits == 1 ? "" : "s")} whose asks fit your wage room ({Money(Math.Max(0, room))}) come first, best first; then the best of the rest of {all:N0}.";
     }
 }

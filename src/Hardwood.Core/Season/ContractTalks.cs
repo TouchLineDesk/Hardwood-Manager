@@ -49,6 +49,9 @@ public static class ContractTalks
         if (gap > 8) wage *= 1 + Math.Min(0.2, (gap - 8) / 100.0);       // too good for this team
         wage *= 1 + Math.Max(0, h.Ambition - 12) * 0.01;                 // ambitious: wants top money
         long min = (long)(fin.MinSalary * salaryScale);
+        // H237 (run 236): never above the league's maximum for his years in the game (Stephon Castle asked $52.5M at 23,
+        // more than the MVP's $40.8M).
+        wage = Math.Min(wage, ContractMarket.MaxSalary(p, on, fin) * salaryScale);
         // Review (run 110): the floor holds after a loyal player's renewal discount too, so the ask never reads under the
         // "at least $X" the talks panel shows.
         return new ContractDemand(Math.Max(Math.Max(min, Round(wage)), floor), PreferredYears(p, on));

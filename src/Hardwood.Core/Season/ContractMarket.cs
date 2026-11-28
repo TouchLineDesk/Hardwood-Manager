@@ -19,6 +19,29 @@ public static class ContractMarket
     }
 
     /// <summary>
+    /// H237 (run 236): the most a player can ask, as the NBA's maximum: <see cref="MaxShareYoung"/> of the cap through his
+    /// sixth season, <see cref="MaxShareMid"/> in his seventh to ninth, <see cref="MaxShareVeteran"/> from his tenth. The
+    /// demand's mark-ups (too good for the team, ambition, unhappy) had lifted a 23-year-old's first deal after his rookie
+    /// contract to $52.5M × 3. Seasons in the game are counted from his draft year, else his rookie season, else from age 19.
+    /// </summary>
+    public static long MaxSalary(Player p, DateOnly on, Finance fin)
+    {
+        int seasons = ServiceSeasons(p, on);
+        double share = seasons <= 6 ? MaxShareYoung : seasons <= 9 ? MaxShareMid : MaxShareVeteran;
+        return (long)Math.Round(fin.SalaryCap * share / 10_000) * 10_000;
+    }
+
+    /// <summary>H237: completed seasons as a pro by <paramref name="on"/> (the summer after his fourth season counts 4).</summary>
+    public static int ServiceSeasons(Player p, DateOnly on)
+    {
+        int start = p.Draft?.Year ?? p.RookieSeason ?? on.Year - Math.Max(0, p.Age(on) - 19);
+        int lastEnded = on.Month >= 7 ? on.Year : on.Year - 1;   // the calendar year the last finished season ended in
+        return Math.Max(0, lastEnded - start);
+    }
+
+    public const double MaxShareYoung = 0.25, MaxShareMid = 0.30, MaxShareVeteran = 0.35;
+
+    /// <summary>
     /// H61 (run 110, the contracts-economy pass): the least a player takes to play in a league, from what he could earn in
     /// the best league that would have him. Wages below the top league are its market times the league's scale, so a
     /// star's ask fell with the league (Jarrett Allen, CA 145, for $1.05M in tier 4; Giannis renewing in the G League for

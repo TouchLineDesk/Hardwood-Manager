@@ -475,11 +475,18 @@ public sealed class GameWorld
         return fixtures;
     }
 
-    /// <summary>The circle method: <paramref name="robins"/> passes, home and away alternating.</summary>
-    private static List<List<(int h, int a)>> Rounds(List<int> ids, int robins)
+    /// <summary>The circle method: <paramref name="robins"/> passes, home and away alternating.
+    /// H236 (run 236): the venue follows each club's slot on the circle (home on even slots, the top row and the bottom row
+    /// alike), so a club that moves one slot a round alternates home and away, with at most two in a row where the circle wraps
+    /// or a pass turns over. The old rule flipped on <c>(round + pair + pass) % 2</c>, which a moving club's parity never
+    /// changed: the Portland Kestrels played 26 straight home games, then went away. The club fixed at slot 0 alternates by round.
+    /// Odd passes swap every venue, so each pairing is played once at each end over two passes.</summary>
+    public static List<List<(int h, int a)>> Rounds(List<int> ids, int robins)
     {
         var teams = ids.ToList();
-        if (teams.Count % 2 == 1) teams.Add(-1); // bye
+        // The bye takes the fixed slot (H236), so every club moves round the circle and its venues keep alternating; the club
+        // facing the bye sits that round out.
+        if (teams.Count % 2 == 1) teams.Insert(0, -1);
         int n = teams.Count;
         var rounds = new List<List<(int h, int a)>>();
         for (int pass = 0; pass < robins; pass++)
@@ -492,8 +499,11 @@ public sealed class GameWorld
                 {
                     int a = rot[i], b = rot[n - 1 - i];
                     if (a < 0 || b < 0) continue;
-                    bool flip = (r + i + pass) % 2 == 1;
-                    round.Add(flip ? (b, a) : (a, b));
+                    // i = 0 is the fixed club (slot 0) against the club on the last slot; otherwise rot[i] is on slot i and
+                    // rot[n - 1 - i] on slot n - 1 - i, one of them even (n is even).
+                    bool aHome = i == 0 ? r % 2 == 0 : i % 2 == 0;
+                    if (pass % 2 == 1) aHome = !aHome;
+                    round.Add(aHome ? (a, b) : (b, a));
                 }
                 rounds.Add(round);
                 rot.Insert(1, rot[^1]); rot.RemoveAt(rot.Count - 1);
