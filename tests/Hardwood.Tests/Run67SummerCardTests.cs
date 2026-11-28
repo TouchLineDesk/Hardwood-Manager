@@ -84,7 +84,9 @@ public class Run67SummerCardTests
             Assert.False(Named<DataGrid>("FreeAgentGrid").IsEffectivelyVisible);
             Assert.True(tx.FreeAgentCards.Count > 0, $"FA {s.League.FreeAgents.Count} rows {tx.FreeAgents.Count} day {s.Today} phase {s.Phase}");
             Assert.True(tx.FreeAgentCards.Count <= SummerCards.FreeAgentCount);
-            Assert.Equal(tx.FreeAgents.Take(tx.FreeAgentCards.Count).Select(r => r.Player), tx.FreeAgentCards.Select(c => c.Player));
+            // H242 (run 236): the cards are the best by ability within each reach (fits the room, over budget, won't talk).
+            Assert.All(tx.FreeAgentCards, c => Assert.Contains(tx.FreeAgents, r => r.Player == c.Player));
+            Assert.Equal(tx.FreeAgentCards.OrderBy(c => c.Reach).Select(c => c.Player), tx.FreeAgentCards.Select(c => c.Player));
             Assert.All(tx.FreeAgentCards, c => { Assert.StartsWith("Asks $", c.AskChip); Assert.False(string.IsNullOrEmpty(c.FitText)); Assert.Equal(4, c.Bars.Count); });
 
             // A card press opens talks with him and lights his card.
@@ -115,7 +117,7 @@ public class Run67SummerCardTests
                 Assert.DoesNotContain("Enter a wage", tx.Talk.Reply);
                 if (s.League.FreeAgents.Contains(pick.Player)) Assert.Same(pick.Player, tx.Talk.Player);
                 // An accepted offer (two refreshes follow it) keeps his answer on screen (code review).
-                var cheap = tx.FreeAgentCards.Last();
+                var cheap = tx.FreeAgentCards.OrderBy(c => c.Reach).ThenBy(c => c.Ask.Wage).First();   // H242: the cards are no longer in ability order
                 tx.PickFreeAgentCard(cheap);
                 var want = s.PeekDemand(cheap.Player);
                 tx.Talk.Wage = Math.Round((decimal)(want.Wage / 1e6), 2) + 0.05m; tx.Talk.Years = want.Years;
@@ -217,7 +219,7 @@ public class Run67SummerCardTests
             Assert.False(Named<DataGrid>("SummerFreeAgentGrid").IsEffectivelyVisible);
             Assert.NotEmpty(off.FreeAgentCards);
             Assert.True(off.FreeAgentCards.Count <= SummerCards.FreeAgentCount);
-            Assert.Contains("free agents by ability", off.FreeAgentNote);
+            Assert.Contains("by ability", off.FreeAgentNote);   // H242: the note says how the cards were chosen
             var grad = off.FreeAgents.FirstOrDefault(f => f.Graduate);
             if (grad != null) Assert.EndsWith("(graduate)", grad.Name);
             // H18 (run 100): a man you're talking to from further down goes after the best, not ahead of them.
@@ -225,7 +227,7 @@ public class Run67SummerCardTests
             {
                 var low = off.FreeAgents[^1];
                 off.Talk.Show(low.Player); off.Refresh(); Settle();
-                Assert.Same(off.FreeAgents[0].Player, off.FreeAgentCards[0].Player);
+                Assert.Same(SummerCards.WithinReach(off.FreeAgents).First().Player, off.FreeAgentCards[0].Player);   // H242
                 Assert.Same(low.Player, off.FreeAgentCards[^1].Player);
                 Assert.EndsWith($"{low.Player.Name}, whom you're talking to, is last.", off.FreeAgentNote);
             }

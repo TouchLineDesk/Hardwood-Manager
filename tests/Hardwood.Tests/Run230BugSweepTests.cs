@@ -133,12 +133,18 @@ public class Run230BugSweepTests
     public void A_relegated_nba_club_needs_the_g_leagues_minimum()
     {
         var (probe, _) = Hardwood.Core.RealWorld.RealWorldData.NewWorld(31);
-        var teamId = probe.Teams.OrderBy(t => QuickSim.Strength(t)).First().Id;
-        var s = GameSession.NewGame(31, teamId, null);
-        s.Job.Current!.TargetWins = 0;
-        ToFreeAgency(s);
-        _out.WriteLine($"{s.HumanTeam.FullName}: going down {s.GoingDown()}");
-        Assert.True(s.GoingDown(), "seed 31's weakest club goes down (run 229's measure)");
+        // Run 236: which of the weakest clubs goes down moves with the shared stream (H236 moved it), so the test takes the
+        // first of seed 31's four weakest that does.
+        GameSession? s = null;
+        foreach (var teamId in probe.Teams.OrderBy(t => QuickSim.Strength(t)).Take(4).Select(t => t.Id))
+        {
+            s = GameSession.NewGame(31, teamId, null);
+            s.Job.Current!.TargetWins = 0;
+            ToFreeAgency(s);
+            _out.WriteLine($"{s.HumanTeam.FullName}: going down {s.GoingDown()}");
+            if (s.GoingDown()) break;
+        }
+        Assert.True(s!.GoingDown(), "one of seed 31's four weakest clubs goes down");
         Assert.Equal(GameWorld.RosterMinimum, s.NextSeasonRosterMin);
         Assert.Equal(s.NextSeasonRosterMin, s.MyRosterMin);   // review: releases, minimum deals and pages count to the hold's number
         Cut(s, GameWorld.RosterMinimum);

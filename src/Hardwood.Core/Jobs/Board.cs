@@ -505,6 +505,10 @@ public static class Board
     public const double YearRiseCap = 20;
     /// <summary>H205 (run 203): the most a college coach's first season at .500 or better costs the AD's confidence.</summary>
     public const double FirstSeasonDropCap = 20;
+    /// <summary>H238 (run 236): below this confidence a second relegation, in the rebuild season after the first, is a sacking
+    /// however patient the owner (a final warning is given at 25 or under).</summary>
+    public const double DownAgainSackLine = 30;
+
     /// <summary>H205: the wins (with a tournament bid) that keep a first-year college coach off a final warning.</summary>
     public const int FirstSeasonSafeWins = 20;
     /// <summary>H205: the confidence such a first season never falls below (above the final-warning line of 25).</summary>
@@ -1028,7 +1032,12 @@ public static class Board
         bool shielded = protectedNow && !relegated
             && wins / Math.Max(1.0, wins + losses) >= ProtectedFloor;
         double sackLine = 25 - (team.Owner.Patience - 10);
-        bool sacked = !firstSeason && !graced && !winning && !shielded && job.Confidence < sackLine;
+        // H238 (run 236): going down again in the season the board gave to rebuild after the last relegation ends the job once
+        // confidence is below DownAgainSackLine, whatever the owner's patience (the Aces were told "final warning" at 13-69,
+        // went down again at 27-35 with confidence 21 and kept the coach, because a patient owner's sack line was 20). A board
+        // that still has real faith (K7's 90 → 60) keeps him and says why it hurts.
+        bool downAgain = relegated && rebuildYear && !ctx.IsCollege && !firstSeason && job.Confidence < DownAgainSackLine;
+        bool sacked = downAgain || (!firstSeason && !graced && !winning && !shielded && job.Confidence < sackLine);
         // The review of PR #245: the warning is decided before the floor, so a patient AD (sack line 20 or lower) still says it.
         bool graceWarning = graced && !firstSeason && job.Confidence < sackLine;
         if (graceWarning) job.Confidence = Math.Max(job.Confidence, 20);
@@ -1084,7 +1093,8 @@ public static class Board
         lines.Add(verdict);
         return (sacked ? "You have been sacked" : "Season review", string.Join("\n", lines), sacked);
 
-        string Verdict() => sacked ? $"{owner} has decided to make a change. You have been sacked."
+        string Verdict() => sacked && downAgain ? $"{owner} gave you a season to rebuild after the last relegation, and the club has gone down again. {owner} has decided to make a change. You have been sacked."
+            : sacked ? $"{owner} has decided to make a change. You have been sacked."
             // H212 (run 212): a college coach can't be sacked after his first or second season (#1129), so the AD doesn't
             // threaten it: Providence's first-year coach read "final warning" at 11-19 and was kept two more seasons.
             : firstSeason && diff < 0 && job.Confidence <= 25 && ctx.IsCollege

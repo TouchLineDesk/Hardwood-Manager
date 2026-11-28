@@ -376,7 +376,14 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 row.Picked = Talk.Player == p;
                 FreeAgents.Add(row);
             }
-            foreach (var r in FreeAgents.Take(SummerCards.FreeAgentCount)) FreeAgentCards.Add(r);
+            // H242 (run 236): the cards lead with players who'd come and whose asks fit the room, best first (a G League club's
+            // 24 cards were all $20M+ stars aiming higher, against $0.8M to spend); the table keeps everyone by ability.
+            // The review of #305: past the table's 250, the cheaper players are looked at too, until 24 who fit are found.
+            // With no room nobody further down can fit either, so nothing more is built.
+            var beyond = (room > 0 ? s.League.FreeAgents : new List<Player>()).OrderByDescending(p => p.CurrentAbility).Skip(250)
+                .Select(p => SummerCards.FreeAgent(s, p, s.Today, p.RookieSeason == o.Season + 1, room));
+            foreach (var r in SummerCards.WithinReach(FreeAgents.Concat(beyond))) FreeAgentCards.Add(r);
+            string cardsNote = SummerCards.CardsNote(FreeAgentCards, s.League.FreeAgents.Count, room);
             // Bid from the table on someone further down: his card is added after the best, not ahead of them (H18, run 100:
             // a CA 118 player you'd talked to sat first, before the 149s), and the note says why he's there.
             FreeAgentRow? extra = null;
@@ -384,7 +391,7 @@ public sealed partial class OffseasonViewModel : PageViewModel
                 FreeAgentCards.Add(extra = further);
             int all = s.League.FreeAgents.Count;
             FreeAgentNote = all == 0 ? "No free agents are left."
-                : $"The best {Math.Min(all, SummerCards.FreeAgentCount)} of {all:N0} free agents by ability, with what each asks of your club. Pick a card to talk to him; the full table lists {Math.Min(all, 250)}."
+                : cardsNote + $" Pick a card to talk to him; the full table lists the best {Math.Min(all, 250)} by ability."
                   + (extra != null ? $" {extra.Player.Name}, whom you're talking to, is last." : "");
         }
         foreach (var p in team.Roster.OrderByDescending(p => p.CurrentAbility)) Roster.Add(PlayerRow.From(p, s, team.Abbreviation));
@@ -601,6 +608,8 @@ public sealed partial class FreeAgentRow : ObservableObject
     public string FitText { get; init; } = "";
     public Avalonia.Media.IBrush FitBrush { get; init; } = SummerCards.Neutral;
     public string FitTip { get; init; } = "";
+    /// <summary>H242 (run 236): 0 = he'd talk and his ask fits your wage room, 1 = he'd talk but is over budget, 2 = he won't talk now.</summary>
+    public int Reach { get; init; }
     public IReadOnlyList<SkillBar> Bars => SummerCards.Bars(Player, Knowledge);
     public string Name => Player.Name + (Graduate ? "  (graduate)" : "");
     public string Pos => PosText.Of(Player);

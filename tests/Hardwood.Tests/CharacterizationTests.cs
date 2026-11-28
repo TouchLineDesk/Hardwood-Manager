@@ -217,7 +217,9 @@ public class CharacterizationTests
         // Run 233 (the domestic real club counts): re-pinned (was 14656BECA739BE78). Ten leagues abroad reach their real sizes
         // (29 more clubs, 50 rounds in the B.League), so the first month's quick results draw differently on the shared stream.
         // With the added clubs taken out (and Argentina on its old weekends), the old pin holds exactly.
-        Pin("career seed 2026, 30 days, no saves", "98630E4249F29206", Session(s));
+        // Run 236 (H236): re-pinned (was 98630E4249F29206). The world's round robins alternate home and away, so every league
+        // abroad plays its first month with different home sides.
+        Pin("career seed 2026, 30 days, no saves", "E630DFC0CB9898B4", Session(s));
     }
 
     [Fact]
