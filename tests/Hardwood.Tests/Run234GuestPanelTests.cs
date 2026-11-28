@@ -79,6 +79,24 @@ public class Run234GuestPanelTests
     }
 
     [Fact]
+    public void A_guest_s_take_agrees_with_his_own_pick()
+    {
+        var s = RealCareerOnGameDay(40);
+        var (live, _) = s.BeginLiveDay();
+        var show = s.BuildStudioShow(live!.Result.Home.Team, live.Result.Away.Team);
+        Team fav = show.HomeChance >= 0.5 ? show.Home : show.Away, dog = fav == show.Home ? show.Away : show.Home;
+        double chance = Math.Max(show.HomeChance, 1 - show.HomeChance);
+        var contrarian = GuestPanel.Invented.Single(g => g.Voice == GuestPanel.Contrarian);
+        Assert.Contains("I'm not", GuestPanel.Segment(contrarian, show, fav, chance, null, dog, null).Lines[1].Text);
+        Assert.Contains("so do I", GuestPanel.Segment(contrarian, show, fav, chance, null, fav, null).Lines[1].Text);
+        var old = GuestPanel.Invented.Single(g => g.Voice == GuestPanel.OldSchool);
+        Assert.Contains(dog.Name, GuestPanel.Segment(old, show, fav, chance, null, dog, null).Lines[1].Text);
+        // On the show itself, the chair sits right after the keys to the game.
+        int keys = show.Segments.FindIndex(x => x.Kicker == "KEYS TO THE GAME");
+        Assert.Equal("THE GUEST CHAIR", show.Segments[keys + 1].Kicker);
+    }
+
+    [Fact]
     public void Career_retirees_take_the_chair_and_real_players_never_do()
     {
         var s = RealCareerOnGameDay(5);

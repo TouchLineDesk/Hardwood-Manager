@@ -322,20 +322,8 @@ public sealed partial class GameSession
                                     (hurt[t].Count > 1 ? $" and {hurt[t].Count - 1} more." : ".")));
         show.Segments.Add(new("KEYS TO THE GAME", "What to watch", watch));
 
-        // --- The guest chair (run 234, 2c) ---
-        if (panel.FirstOrDefault(a => a.IsGuest) is { } guest)
-        {
-            string? starName = (homeStar, awayStar) switch
-            {
-                ({ } h, { } a) => ((h.s?.Ppg ?? 0) >= (a.s?.Ppg ?? 0) ? h.p : a.p).Name,
-                ({ } h, null) => h.p.Name,
-                (null, { } a) => a.p.Name,
-                _ => null,
-            };
-            var hotSide = form[home].streak >= form[away].streak ? home : away;
-            (Team, int)? hot = form[hotSide].streak >= 3 ? (hotSide, form[hotSide].streak) : null;
-            show.Segments.Add(GuestPanel.Segment(guest, show, fav, favChance, starName, (int)Math.Round(hs - as_), hot));
-        }
+        // --- The guest chair (run 234, 2c): placed here, filled once his pick is known (below) ---
+        int chairAt = show.Segments.Count;
 
         // --- Off the court ---
         var off = OffCourt(show, us, them, date, rng);
@@ -357,6 +345,19 @@ public sealed partial class GameSession
             else if (locked != null) { pick = locked.PickId == home.Id ? home : away; by = locked.Margin; }
             var (w, l) = desk.Record(a.Key, League.Season);
             show.Picks.Add(new(a, pick, by, why, w, l));
+        }
+        if (show.Picks.FirstOrDefault(p => p.Analyst.IsGuest) is { } guestPick)
+        {
+            string? starName = (homeStar, awayStar) switch
+            {
+                ({ } h, { } a) => ((h.s?.Ppg ?? 0) >= (a.s?.Ppg ?? 0) ? h.p : a.p).Name,
+                ({ } h, null) => h.p.Name,
+                (null, { } a) => a.p.Name,
+                _ => null,
+            };
+            var hotSide = form[home].streak >= form[away].streak ? home : away;
+            (Team, int)? hot = form[hotSide].streak >= 3 ? (hotSide, form[hotSide].streak) : null;
+            show.Segments.Insert(chairAt, GuestPanel.Segment(guestPick.Analyst, show, fav, favChance, starName, guestPick.Pick, hot));
         }
         return show;
     }

@@ -99,9 +99,10 @@ public static class GuestPanel
     }
 
     /// <summary>The guest chair's segment: the host's introduction, the guest's take on tonight in his voice, and a regular
-    /// pushing back. <paramref name="star"/> is the best player on the floor tonight (or null).</summary>
+    /// pushing back. <paramref name="star"/> is the best player on the floor tonight (or null); <paramref name="pick"/> is the
+    /// guest's own tracked pick, so his take never argues against it (the review of PR #303).</summary>
     public static StudioSegment Segment(StudioAnalyst guest, StudioShow show, Team fav, double favChance, string? star,
-                                        int bigEdge, (Team team, int streak)? hot)
+                                        Team pick, (Team team, int streak)? hot)
     {
         var host = show.Host;
         var dog = fav == show.Home ? show.Away : show.Home;
@@ -112,8 +113,7 @@ public static class GuestPanel
         switch (guest.Voice)
         {
             case OldSchool:
-                var bigger = bigEdge >= 0 ? show.Home : show.Away;
-                lines.Add(new(guest, $"Forget the threes. {bigger.Name} have the size tonight, and the team that owns the glass owns the night."));
+                lines.Add(new(guest, $"Forget the threes. {pick.Name} are tougher inside tonight, and the team that owns the glass owns the night."));
                 lines.Add(new(StudioShow.Guard, $"That's the 1995 answer. {(star != null ? $"{star} doesn't care who's bigger." : "This league is spacing now.")}"));
                 break;
             case NumbersVoice:
@@ -125,11 +125,11 @@ public static class GuestPanel
             case Hype:
                 lines.Add(new(guest, star != null
                     ? $"{star} is the best player on the floor and he knows it. Big night coming. Book it."
-                    : hot is { } h ? $"{h.team.Name} have won {h.streak} straight. Ride the hot team." : $"{fav.Name}'s stars are better. That's the whole show."));
-                lines.Add(new(StudioShow.Numbers, "One player doesn't beat a rotation for 48 minutes. The depth says otherwise."));
+                    : hot is { } h ? $"{h.team.Name} have won {h.streak} straight. Ride the hot team." : $"{pick.Name}'s stars are better. That's the whole show."));
+                lines.Add(new(StudioShow.Numbers, "One player doesn't beat a whole rotation over a full game. The depth says otherwise."));
                 break;
             default:
-                lines.Add(new(guest, pct >= 75
+                lines.Add(new(guest, pick == fav
                     ? $"Everybody likes {fav.Name}, and so do I. But it's closer than {pct}% says. {dog.Name} keep it within six."
                     : $"Everybody's on {fav.Name}. I'm not. {dog.Name} steal this one late."));
                 lines.Add(new(StudioShow.Numbers, $"The model has {fav.Name} at {pct}%. Picking against that is a habit, not a take."));
